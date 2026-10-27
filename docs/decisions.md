@@ -177,3 +177,33 @@ highlights wrongly.
 One implementation of Button, Menu, Dialog, … used by Jig and (as `@jig/sdk/ui`, phase 6) by add-ons, so
 agent-written add-ons look native and follow the tokens. Menus are global (one open at a time, opened
 with `openMenu`/`contextMenu`), which makes right-click menus from add-ons trivial.
+
+### D-029 — The Tools menu has a filter box, but stays a menu
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+With many add-ons the Tools menu gets long, so it has a filter box at the top. Everything is listed and
+clickable before you type anything, grouped (Build, Sessions, Projects, …, then add-ons) — it is not a
+command line and there are no commands to remember (D-006). `Ctrl+Shift+P`-style "command palette"
+shortcuts are deliberately not bound to it.
+
+### D-030 — One view at a time per side region, with tabs in the region header
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Stacked, resizable sections inside a sidebar are fiddly and need drag-to-resize per section. A region
+shows one view; the region header has a tab per view (icon + title), right-click → move/hide. Change in
+`renderer/workbench/Region.tsx` if you prefer stacked sections.
+
+### D-031 — Main-area tabs stay mounted once opened; Settings is a single tab
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+So chats, terminals and diffs keep their scroll position and state when you switch tabs (hidden with
+CSS, not unmounted). Tabs are only mounted when first shown, so a restored layout with many tabs starts
+fast. Tab types can be `singleton` (Settings): opening it again reuses the tab.
+
+### D-032 — Project colours are token names
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+A project's colour is one of `accent`, `info`, `success`, `warning`, `danger`, `muted`, so it follows
+the theme (and the token rule) instead of being a fixed hex. New projects get the first unused one.
+
+### D-033 — Keyboard shortcuts (all also in menus)
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+`Ctrl+,` settings, `Ctrl+B` / `Ctrl+Alt+B` / `Ctrl+J` toggle left / right / bottom, `Ctrl+W` close tab,
+`Ctrl+Tab` cycle tabs, `Ctrl+Shift+I` developer tools (VS Code-like, so they feel familiar). Later phases
+add `Ctrl+N` new session and ``Ctrl+` `` new terminal. Every shortcut is an action in the Tools menu.

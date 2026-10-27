@@ -153,8 +153,9 @@ saying "make me a button that…" in any chat starts the builder. These are the 
 
 ## 6. The workbench — layout as data
 
-The window is divided into **regions**: `topbar`, `left` sidebar, `main` (tabs, splittable — _planned_),
-`right` sidebar, `bottom` panel, `statusbar`. The arrangement is plain data in `layout.json`:
+The window is divided into **regions**: `topbar`, `left` sidebar, `main` (tabs; splitting is in the
+backlog), `right` sidebar, `bottom` panel, `statusbar`. The arrangement is plain data in `layout.json`
+(`apps/desktop/src/shared/layout.ts`, reference: `docs/reference/layout.md`):
 
 ```jsonc
 {
@@ -171,7 +172,16 @@ minimal application menu so Cmd+C/V/Q and window shortcuts keep working (D-023).
 
 Core features and add-ons contribute **views** with stable ids; the layout decides where they appear.
 Moving, hiding or resizing a view is a layout change — which is also what the builder does for
-"level 1" requests ("move pipelines to the right").
+"level 1" requests ("move pipelines to the right"). Every layout change is a pure function in
+`shared/layout.ts`, shared by the renderer and the host.
+
+**Renderer structure.** `renderer/workbench/` is the shell: a **registry** (views, tab types, Tools-menu
+actions, status-bar items — a store, so add-ons can register and unregister at runtime), the layout
+store, the top bar, regions, main-area tabs, status bar, the **Tools menu** (every action, grouped,
+with a filter box — a menu, not a command line), toasts and keyboard shortcuts (every shortcut is
+also an action in a menu). `renderer/features/<feature>/` registers its views, tabs and actions
+(`features/index.ts`). Views, tabs and status items each render inside an error boundary. Tab bodies
+stay mounted once opened, so a chat or terminal keeps its state while you switch tabs.
 
 ## 7. Design system and themes
 

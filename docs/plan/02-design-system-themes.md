@@ -26,8 +26,8 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 - [x] Source: installed VS Code / Insiders / Cursor / VSCodium / Windsurf extensions folders + VS Code's built-in themes
 - [x] Source: Open VSX search + install (extract theme JSON only, never run anything) — tested with a mocked API; open-vsx.org is blocked in the cloud container
 - [x] Source: files in `~/.jig/themes` (Jig or VS Code format), live reload on save
-- [ ] Settings → Appearance: theme picker with live preview, follow system light/dark
-- [~] Style settings: density, radius, UI font, mono font, font size (applied from config; the UI lands with Settings in phase 3)
+- [x] Settings → Appearance: theme picker with live preview (hover), follow system light/dark
+- [x] Style settings: density, radius, UI font, mono font, font size
 - [x] `docs/guides/themes.md`
 
 ## Progress notes
@@ -42,4 +42,4 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
    `themes.searchOpenVsx`, `themes.installOpenVsx`, event `themes.changed`.
 3. ~~Renderer: apply the active theme's CSS variables + style settings (density, radius, fonts, size);
    update the title-bar overlay colours; Shiki highlighter built from the theme's token colours.~~ — done.
-4. Settings → Appearance (lands with the settings tab in phase 3).
+4. ~~Settings → Appearance~~ — done with the settings tab (phase 3).

@@ -1,4 +1,4 @@
-import { app, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import type { AppInfo } from "../shared/ipc";
 import { JigError } from "../shared/ipc";
 import { handle } from "./ipc/router";
@@ -22,4 +22,26 @@ export function registerAppHandlers(): void {
     await shell.openExternal(url);
   });
   handle("app.showItemInFolder", ({ path }) => shell.showItemInFolder(path));
+  handle("app.openPath", async ({ path }) => {
+    const error = await shell.openPath(path);
+    if (error) throw new JigError("open_failed", error);
+  });
+  handle("app.pickFolder", async ({ title }, ctx) => {
+    const window = BrowserWindow.fromWebContents(ctx.sender);
+    const options = { title: title ?? "Choose a folder", properties: ["openDirectory" as const] };
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options);
+    return result.canceled ? undefined : result.filePaths[0];
+  });
+  handle("app.toggleDevTools", (_args, ctx) => ctx.sender.toggleDevTools());
+  handle("app.reload", (_args, ctx) => ctx.sender.reloadIgnoringCache());
+  handle("window.minimize", (_args, ctx) => BrowserWindow.fromWebContents(ctx.sender)?.minimize());
+  handle("window.toggleMaximize", (_args, ctx) => {
+    const window = BrowserWindow.fromWebContents(ctx.sender);
+    if (!window) return;
+    if (window.isMaximized()) window.unmaximize();
+    else window.maximize();
+  });
+  handle("window.close", (_args, ctx) => BrowserWindow.fromWebContents(ctx.sender)?.close());
 }

@@ -64,3 +64,14 @@
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/*
+ * The top bar sits under the window controls: Windows/Linux draw them over the right end (Window
+ * Controls Overlay exposes the free area as titlebar-area-*), macOS draws the traffic lights on the left.
+ */
+.topbar-insets {
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.5rem);
+}
+html[data-platform="darwin"] .topbar-insets {
+  padding-left: 80px;
+}

@@ -8,6 +8,8 @@
  * docs/reference/ipc.md.
  */
 import type { DeepPartial, JigConfig } from "./config";
+import type { Layout } from "./layout";
+import type { Project, ProjectColor, ProjectsState } from "./projects";
 import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
 
 export const CHANNEL_CALL = "jig:call";
@@ -26,6 +28,11 @@ export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
   "app.openExternal": { args: { url: string }; result: void };
   "app.showItemInFolder": { args: { path: string }; result: void };
+  /** Opens a folder in Explorer/Finder or a file with its default app. */
+  "app.openPath": { args: { path: string }; result: void };
+  "app.pickFolder": { args: { title?: string }; result: string | undefined };
+  "app.toggleDevTools": { args: void; result: void };
+  "app.reload": { args: void; result: void };
   "config.get": { args: void; result: JigConfig };
   "config.update": { args: DeepPartial<JigConfig>; result: JigConfig };
   "themes.list": { args: void; result: ThemeSummary[] };
@@ -35,6 +42,18 @@ export interface HostMethods {
   "themes.installOpenVsx": { args: { namespace: string; name: string }; result: ThemeSummary[] };
   "themes.remove": { args: { id: string }; result: void };
   "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
+  "window.minimize": { args: void; result: void };
+  "window.toggleMaximize": { args: void; result: void };
+  "window.close": { args: void; result: void };
+  "layout.get": { args: void; result: Layout };
+  "layout.set": { args: Layout; result: Layout };
+  "projects.list": { args: void; result: ProjectsState };
+  /** Without `path`, shows the folder picker; resolves `undefined` when cancelled. */
+  "projects.add": { args: { path?: string }; result: Project | undefined };
+  "projects.update": { args: { id: string; name?: string; color?: ProjectColor }; result: ProjectsState };
+  "projects.remove": { args: { id: string }; result: ProjectsState };
+  "projects.setActive": { args: { id: string | undefined }; result: ProjectsState };
+  "projects.reorder": { args: { ids: string[] }; result: ProjectsState };
 }
 
 /** Event topic → payload type. */
@@ -42,6 +61,17 @@ export interface HostEvents {
   "config.changed": JigConfig;
   /** The theme list or a theme file changed; refetch the list and the active theme. */
   "themes.changed": void;
+  /** The host changed the layout (e.g. an accepted level-1 build). */
+  "layout.changed": Layout;
+  "projects.changed": ProjectsState;
+  /** A notification from the host, shown as a toast. */
+  notify: HostNotification;
+}
+
+export interface HostNotification {
+  title: string;
+  message?: string;
+  tone?: "info" | "success" | "warning" | "danger";
 }
 
 export type MethodName = keyof HostMethods;

@@ -1,8 +1,10 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 import { registerAppHandlers } from "./app";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { installRouter } from "./ipc/router";
+import { registerLayoutHandlers } from "./layout";
 import { logger } from "./log";
+import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { jigHome } from "./state/paths";
 import { startThemes } from "./themes";
@@ -30,10 +32,13 @@ async function start() {
   await app.whenReady();
   log.info(`Starting Jig ${app.getVersion()} (home: ${jigHome()})`);
   installAppProtocol();
+  installApplicationMenu();
   await loadConfig();
   installRouter();
   registerAppHandlers();
   registerConfigHandlers();
+  registerLayoutHandlers();
+  startProjects();
   await startThemes();
   await createMainWindow();
 
@@ -45,3 +50,17 @@ async function start() {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
+/**
+ * No native menu bar on Windows/Linux: every menu is Jig's own (D-023). macOS keeps a minimal
+ * application menu, because Cmd+C/V/X/A/Z/Q only work through menu roles there.
+ */
+function installApplicationMenu() {
+  if (process.platform !== "darwin") {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]),
+  );
+}

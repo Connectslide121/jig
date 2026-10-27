@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-27, end of the first session (planning + phase 1)._
+_Last updated: 2026-10-27, second session (phases 2–3)._
 
 ## Continue here (next session)
 
@@ -8,31 +8,43 @@ _Last updated: 2026-10-27, end of the first session (planning + phase 1)._
 2. Clone ThinkRail beside it for reference: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`.
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
-4. Continue the plan at **phase 2** (`docs/plan/02-design-system-themes.md`). The theme package is half
-   done (see below).
+4. Continue the plan at the first phase that is not ✅ in `docs/plan/README.md`.
 5. Run `npm run check` before every commit; tick plan items as they land.
 
 ## What works today
 
-- **Phase 0 (done):** docs, plan, decision log, agent instructions, tooling.
-- **Phase 1 (done):** the Electron app starts and shows a placeholder screen (version + engine).
-  - `npm run dev`: hot-reloading UI; main/preload changes restart Electron.
-  - `npm run build && npm start`: production build served from `jig-app://` with a CSP.
-  - Typed host bridge (`window.jig` → `call()` in the renderer), config in `~/.jig/config.json`,
-    window size/position remembered, host log in `~/.jig/logs/main.log`.
-  - `npm run check` passes; `npm run e2e` runs 3 Playwright tests against the real app.
-- **Phase 2 (started, untested):** `packages/themes` has the colour utilities, the theme model,
-  Jig Dark and Jig Light, and the VS Code theme mapper (`vscode.ts`: JSONC, `include` chains, key
-  fallbacks, contrast pass, terminal colours, token colours). It **typechecks and lints but has no unit
-  tests yet and isn't wired into the app.** The design tokens (`apps/desktop/src/renderer/styles/tokens.css`)
-  and Tailwind setup are in place.
+- **Phase 0–1 (done):** docs, plan, tooling; the Electron app with the typed host bridge, config in
+  `~/.jig/config.json`, window state, host log in `~/.jig/logs/main.log`.
+- **Phase 2 (done): design system & themes.**
+  - Every colour, space, radius and type size is a token (`docs/reference/design-tokens.md`);
+    `npm run check:tokens` rejects hard-coded colours and arbitrary values.
+  - Themes: Jig Dark, Jig Light, your own files in `~/.jig/themes` (Jig or VS Code format, re-applied
+    on save), themes from installed VS Code / Insiders / Cursor / VSCodium / Windsurf (plus VS Code's own
+    built-in themes), and Open VSX search + install (theme JSON only). See `docs/guides/themes.md`.
+  - Settings → Appearance: theme grid with hover preview, follow the system light/dark mode, density,
+    corners, font size, UI/code fonts. Code is highlighted with Shiki using the theme's own colours.
+  - Base components in `apps/desktop/src/renderer/ui/` (buttons, inputs, menus, dialogs, …).
+- **Phase 3 (done): workbench shell.**
+  - No native menu bar on Windows/Linux; Jig's own top bar with the project switcher, **Tools** menu
+    (every action, grouped, with a filter box), layout menu and settings.
+  - Layout as data (`~/.jig/layout.json`): left/right/bottom regions (resizable, collapsible), views
+    movable/hideable from their `⋯` menu, main-area tabs (reorder by drag, close, close others),
+    restored on restart.
+  - Projects: add a folder, switch, rename, recolour, remove (right-click or `⋯`), project dashboard.
+  - Settings tab: Appearance, Layout, Claude Code, Terminal, Learning, About.
+  - Toasts, keyboard shortcuts (`docs/reference/layout.md`).
 
 ## How to try it
 
 ```bash
 npm install
-npm run dev          # opens the window (placeholder screen for now)
+npm run dev          # opens Jig
 ```
+
+- Add a project: **Add project…** in the middle of the empty window, or the project switcher.
+- Try themes: the gear (top right) → Appearance. Drop a VS Code theme `.json` into `~/.jig/themes`
+  and it appears; edit it and Jig recolours as you save.
+- Move a view: `⋯` in the sidebar header → Move to right sidebar.
 
 ## Needs testing on your machine
 
@@ -42,11 +54,17 @@ Things the cloud build environment couldn't verify:
   `win32-x64` package).
 - The window's title-bar overlay (Windows window controls drawn over Jig's own top bar).
 - Everything involving real Claude Code (phase 4 onwards).
+- **Themes from your real VS Code install**: open Settings → Appearance and check your installed themes
+  appear (labels, dark/light) and look right. On Windows Jig reads `%USERPROFILE%\.vscode\extensions`
+  and `%LOCALAPPDATA%\Programs\Microsoft VS Code\resources\app\extensions` (built-in themes).
+- **Open VSX** search and install (open-vsx.org is blocked in the cloud container; tested with a mock).
+- The top bar under the Windows window controls (the right padding comes from the Window Controls
+  Overlay `titlebar-area-*` CSS variables) and the window-control colours following the theme.
+- The native folder picker when adding a project.
 
 ## Known gaps / notes
 
 - In the cloud container Electron's binary download fails through the proxy; it was installed by
   hand. On a normal machine `npm install` downloads it.
-- The native Electron menu bar is not removed yet (planned in phase 3, D-023).
 - `docs/plan/01-app-skeleton.md` lists the bridge as `window.jig.invoke` + renderer `call()` (the
   envelope design); see its notes.

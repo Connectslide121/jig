@@ -3,6 +3,7 @@ export * from "./Button";
 export * from "./Card";
 export * from "./cn";
 export * from "./Dialog";
+export * from "./ErrorBoundary";
 export * from "./Input";
 export * from "./ListRow";
 export * from "./Menu";
