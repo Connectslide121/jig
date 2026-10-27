@@ -1,0 +1,10 @@
+node_modules/
+dist/
+out/
+release/
+.cache/
+*.log
+test-results/
+playwright-report/
+.jig-test-home*/
+.DS_Store

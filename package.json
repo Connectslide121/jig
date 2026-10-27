@@ -1,0 +1,33 @@
+{
+  "name": "jig",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jig — a personal agentic workbench around Claude Code that builds its own tools.",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @jig/desktop",
+    "build": "npm run build --workspace @jig/desktop",
+    "start": "npm run start --workspace @jig/desktop",
+    "typecheck": "tsc -p packages/sdk && tsc -p packages/themes && tsc -p packages/learning && tsc -p apps/desktop/tsconfig.node.json && tsc -p apps/desktop/tsconfig.web.json && tsc -p tsconfig.e2e.json",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "check:tokens": "node scripts/check-tokens.ts",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run check:tokens",
+    "e2e": "npm run build && playwright test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
