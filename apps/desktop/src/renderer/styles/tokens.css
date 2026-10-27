@@ -49,6 +49,23 @@
 
   --spacing: var(--jig-spacing);
 
+  /* Type scale, relative to the UI font size setting (1rem = --jig-font-size, 13px by default). */
+  --text-*: initial;
+  --text-2xs: 0.77rem;
+  --text-2xs--line-height: 1.3;
+  --text-xs: 0.846rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.923rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.154rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.385rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.692rem;
+  --text-2xl--line-height: 1.25;
+
   --shadow-popover: 0 8px 24px var(--jig-shadow), 0 2px 6px var(--jig-shadow);
   --shadow-card: 0 1px 2px var(--jig-shadow);
 }
@@ -85,9 +102,14 @@
   --jig-font-ui: "Inter Variable";
   --jig-font-mono: "JetBrains Mono Variable";
   --jig-font-size: 13px;
+  /* Density: comfortable = 0.25rem, compact = 0.2rem (lib/theme.ts). */
   --jig-spacing: 0.25rem;
   --jig-radius-sm: 4px;
   --jig-radius-md: 6px;
   --jig-radius-lg: 10px;
   --jig-radius-xl: 14px;
+  --jig-sidebar-width: 280px;
+  --jig-menu-max-h: 70vh;
+  /* Control heights follow the density setting. */
+  --jig-control-h: calc(var(--jig-spacing) * 7);
 }

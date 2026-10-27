@@ -10,10 +10,10 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 
 ### Tokens
 - [x] Colour tokens as CSS variables, mapped into Tailwind v4 `@theme`
-- [ ] Spacing, radius, typography scales (density + radius are style settings)
-- [ ] Base component styles: button, input, card, list row, badge, tabs, menu, dialog, tooltip
+- [x] Spacing, radius, typography scales (density + radius are style settings)
+- [x] Base component styles: button, input, card, list row, badge, tabs, menu, dialog, tooltip (`renderer/ui/`)
 - [x] `scripts/check-tokens.ts` — rejects raw colours / arbitrary values in UI code and add-ons
-- [ ] `docs/reference/design-tokens.md`
+- [x] `docs/reference/design-tokens.md`
 
 ### Themes
 - [x] `packages/themes`: theme model + validation
@@ -22,13 +22,13 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 - [x] VS Code theme mapper: token ← ordered VS Code keys + derived fallbacks + contrast pass
 - [x] JSONC parsing and `include` chains
 - [x] Terminal ANSI mapping
-- [ ] Syntax highlighting via Shiki using the theme's `tokenColors`
-- [ ] Source: installed VS Code / Insiders / Cursor / VSCodium extensions folders
-- [ ] Source: Open VSX search + install (extract theme JSON only, never run anything)
-- [ ] Source: files in `~/.jig/themes` (Jig or VS Code format), live reload on save
+- [x] Syntax highlighting via Shiki using the theme's `tokenColors` (`renderer/lib/highlight.ts`)
+- [x] Source: installed VS Code / Insiders / Cursor / VSCodium / Windsurf extensions folders + VS Code's built-in themes
+- [x] Source: Open VSX search + install (extract theme JSON only, never run anything) — tested with a mocked API; open-vsx.org is blocked in the cloud container
+- [x] Source: files in `~/.jig/themes` (Jig or VS Code format), live reload on save
 - [ ] Settings → Appearance: theme picker with live preview, follow system light/dark
-- [ ] Style settings: density, radius, UI font, mono font, font size
-- [ ] `docs/guides/themes.md`
+- [~] Style settings: density, radius, UI font, mono font, font size (applied from config; the UI lands with Settings in phase 3)
+- [x] `docs/guides/themes.md`
 
 ## Progress notes
 
@@ -37,9 +37,9 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 1. ~~Unit tests for `packages/themes`~~ — done (fixtures in `packages/themes/src/fixtures/`;
    `parseJsonc` is now string-aware for trailing commas; `ensureContrast` aims 1% above the target so
    hex rounding can't drop below it; Jig-format theme files in `user.ts`; Shiki theme in `shiki.ts`).
-2. Host theme service (`apps/desktop/src/main/themes/`): list/get themes (built-in, `~/.jig/themes`,
+2. ~~Host theme service~~ — done:  (`apps/desktop/src/main/themes/`): list/get themes (built-in, `~/.jig/themes`,
    installed VS Code extensions, Open VSX installs), IPC methods `themes.list`, `themes.get`,
    `themes.searchOpenVsx`, `themes.installOpenVsx`, event `themes.changed`.
-3. Renderer: apply the active theme's CSS variables + style settings (density, radius, fonts, size);
-   update the title-bar overlay colours; Shiki highlighter built from the theme's token colours.
+3. ~~Renderer: apply the active theme's CSS variables + style settings (density, radius, fonts, size);
+   update the title-bar overlay colours; Shiki highlighter built from the theme's token colours.~~ — done.
 4. Settings → Appearance (lands with the settings tab in phase 3).

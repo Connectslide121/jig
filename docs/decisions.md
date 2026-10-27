@@ -158,3 +158,22 @@ small and coherent. Change to a branch + pull-request flow if you prefer reviewi
 The first session finished the plan (and phase 1, which was already built when this was decided). The
 next session starts from `docs/status.md` → "Continue here", with ThinkRail cloned beside Jig as
 reference (`docs/reference/reference-repos.md`).
+
+### D-026 — Theme ids and duplicates
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Ids are `jig-dark`/`jig-light`, `user:<file-slug>`, `vscode:<publisher.name>/<theme-slug>` and
+`openvsx:<namespace.name>/<theme-slug>`, so a saved setting survives editor updates (the version is not in
+the id). When the same extension is installed in several editors, or an editor left an old version
+behind, the newest folder found first wins. Change in `apps/desktop/src/main/themes/sources.ts`.
+
+### D-027 — Shiki with its JavaScript regex engine
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+No WASM to load and nothing to relax in the CSP; grammars load on demand. Shiki's Oniguruma (WASM)
+engine is more exact for a few rare grammars — switch in `renderer/lib/highlight.ts` if a language
+highlights wrongly.
+
+### D-028 — Base components live in the app (`renderer/ui/`) and are re-exported to add-ons
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+One implementation of Button, Menu, Dialog, … used by Jig and (as `@jig/sdk/ui`, phase 6) by add-ons, so
+agent-written add-ons look native and follow the tokens. Menus are global (one open at a time, opened
+with `openMenu`/`contextMenu`), which makes right-click menus from add-ons trivial.

@@ -10,6 +10,8 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `config.json` | JSON, `ConfigSchema` (`shared/config.ts`) | user settings — see below |
 | `window-state.json` | JSON | main window size, position, maximised |
 | `logs/main.log` | text | host log |
+| `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
+| `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |
 
 _More files are added by later phases (layout, projects, sessions, themes, add-ons, activity,
 suggestions); each is documented here when it lands._

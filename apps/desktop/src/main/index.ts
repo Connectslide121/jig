@@ -5,6 +5,7 @@ import { installRouter } from "./ipc/router";
 import { logger } from "./log";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { jigHome } from "./state/paths";
+import { startThemes } from "./themes";
 import { createMainWindow } from "./window";
 
 const log = logger("main");
@@ -33,6 +34,7 @@ async function start() {
   installRouter();
   registerAppHandlers();
   registerConfigHandlers();
+  await startThemes();
   await createMainWindow();
 
   app.on("activate", () => {

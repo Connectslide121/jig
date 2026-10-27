@@ -1,0 +1,165 @@
+import { X } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { create } from "zustand";
+import { Button, IconButton } from "./Button";
+import { cn } from "./cn";
+import { Input } from "./Input";
+
+export function Dialog({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  width = "md",
+  testId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  width?: "sm" | "md" | "lg";
+  testId?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const first = ref.current?.querySelector<HTMLElement>("input, textarea, select, [data-autofocus]");
+    (first ?? ref.current)?.focus();
+    return () => previous?.focus?.();
+  }, [open]);
+  if (!open) return null;
+  return createPortal(
+    <div
+      className="no-drag fixed inset-0 z-40 flex items-center justify-center bg-shadow p-6"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        data-testid={testId}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+        className={cn(
+          "flex max-h-full w-full flex-col rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none",
+          { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl" }[width],
+        )}
+      >
+        <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
+          <div className="min-w-0 flex-1 truncate text-base font-semibold">{title}</div>
+          <IconButton icon={X} label="Close" size="sm" onClick={onClose} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+interface Pending {
+  kind: "confirm" | "prompt";
+  title: string;
+  message?: ReactNode;
+  confirmLabel: string;
+  danger?: boolean;
+  initial?: string;
+  placeholder?: string;
+  resolve: (value: string | undefined) => void;
+}
+const usePending = create<{ pending: Pending | undefined }>(() => ({ pending: undefined }));
+
+/** Asks a yes/no question. Resolves `true` when confirmed. */
+export function confirmDialog(options: {
+  title: string;
+  message?: ReactNode;
+  confirmLabel?: string;
+  danger?: boolean;
+}): Promise<boolean> {
+  return new Promise((resolve) =>
+    usePending.setState({
+      pending: {
+        kind: "confirm",
+        confirmLabel: "OK",
+        ...options,
+        resolve: (value) => resolve(value !== undefined),
+      },
+    }),
+  );
+}
+
+/** Asks for a line of text. Resolves `undefined` when cancelled. */
+export function promptDialog(options: {
+  title: string;
+  message?: ReactNode;
+  confirmLabel?: string;
+  initial?: string;
+  placeholder?: string;
+}): Promise<string | undefined> {
+  return new Promise((resolve) =>
+    usePending.setState({ pending: { kind: "prompt", confirmLabel: "OK", ...options, resolve } }),
+  );
+}
+
+/** Mount once at the root. */
+export function DialogHost() {
+  const pending = usePending((s) => s.pending);
+  const [value, setValue] = useState("");
+  useEffect(() => setValue(pending?.initial ?? ""), [pending]);
+  if (!pending) return null;
+  const finish = (result: string | undefined) => {
+    usePending.setState({ pending: undefined });
+    pending.resolve(result);
+  };
+  return (
+    <Dialog
+      open
+      width="sm"
+      title={pending.title}
+      onClose={() => finish(undefined)}
+      testId="dialog"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => finish(undefined)}>
+            Cancel
+          </Button>
+          <Button
+            data-autofocus
+            variant={pending.danger ? "danger" : "primary"}
+            disabled={pending.kind === "prompt" && !value.trim()}
+            onClick={() => finish(pending.kind === "prompt" ? value.trim() : "")}
+            data-testid="dialog-confirm"
+          >
+            {pending.confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      {pending.message && <div className="mb-2 text-muted">{pending.message}</div>}
+      {pending.kind === "prompt" && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (value.trim()) finish(value.trim());
+          }}
+        >
+          <Input
+            value={value}
+            placeholder={pending.placeholder}
+            onChange={(e) => setValue(e.target.value)}
+            data-testid="dialog-input"
+          />
+        </form>
+      )}
+    </Dialog>
+  );
+}

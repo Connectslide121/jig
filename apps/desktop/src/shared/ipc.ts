@@ -8,6 +8,7 @@
  * docs/reference/ipc.md.
  */
 import type { DeepPartial, JigConfig } from "./config";
+import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
 
 export const CHANNEL_CALL = "jig:call";
 export const CHANNEL_EVENT = "jig:event";
@@ -27,11 +28,20 @@ export interface HostMethods {
   "app.showItemInFolder": { args: { path: string }; result: void };
   "config.get": { args: void; result: JigConfig };
   "config.update": { args: DeepPartial<JigConfig>; result: JigConfig };
+  "themes.list": { args: void; result: ThemeSummary[] };
+  "themes.get": { args: { id: string }; result: JigTheme };
+  "themes.rescan": { args: void; result: ThemeSummary[] };
+  "themes.searchOpenVsx": { args: { query: string }; result: OpenVsxExtension[] };
+  "themes.installOpenVsx": { args: { namespace: string; name: string }; result: ThemeSummary[] };
+  "themes.remove": { args: { id: string }; result: void };
+  "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
 }
 
 /** Event topic → payload type. */
 export interface HostEvents {
   "config.changed": JigConfig;
+  /** The theme list or a theme file changed; refetch the list and the active theme. */
+  "themes.changed": void;
 }
 
 export type MethodName = keyof HostMethods;
