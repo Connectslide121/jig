@@ -9,7 +9,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started · ⏸ blocked (r
 | # | Phase | Status | Done when |
 |---|---|---|---|
 | 0 | [Foundations](00-foundations.md) | ✅ | repo, docs, tooling and checks exist |
-| 1 | [App skeleton](01-app-skeleton.md) | ⬜ | an Electron window renders the React UI and talks to the host through the typed bridge; e2e harness runs |
+| 1 | [App skeleton](01-app-skeleton.md) | ✅ | an Electron window renders the React UI and talks to the host through the typed bridge; e2e harness runs |
 | 2 | [Design system & themes](02-design-system-themes.md) | ⬜ | tokens everywhere, built-in themes, VS Code themes importable, token check enforced |
 | 3 | [Workbench shell](03-workbench-shell.md) | ⬜ | layout-as-data regions, tabs, Tools menu, projects, settings |
 | 4 | [Chat sessions](04-chat-sessions.md) | ⬜ | several Claude Code sessions across projects, streaming, permissions, history |

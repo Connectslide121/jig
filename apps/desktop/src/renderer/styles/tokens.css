@@ -1,0 +1,93 @@
+/*
+ * Design tokens. This is the ONLY file allowed to contain raw colour values (fallbacks before a
+ * theme is applied). Themes set the --jig-* variables at runtime (see lib/theme.ts); Tailwind's
+ * colour utilities are generated only from these tokens — the default Tailwind palette is removed,
+ * so `text-red-500` does not exist. Documented in docs/reference/design-tokens.md.
+ */
+@theme {
+  --color-*: initial;
+  --color-canvas: var(--jig-canvas);
+  --color-surface: var(--jig-surface);
+  --color-raised: var(--jig-raised);
+  --color-elevated: var(--jig-elevated);
+  --color-titlebar: var(--jig-titlebar);
+  --color-statusbar: var(--jig-statusbar);
+  --color-on-statusbar: var(--jig-on-statusbar);
+  --color-line: var(--jig-line);
+  --color-line-strong: var(--jig-line-strong);
+  --color-fg: var(--jig-fg);
+  --color-muted: var(--jig-muted);
+  --color-hint: var(--jig-hint);
+  --color-accent: var(--jig-accent);
+  --color-accent-hover: var(--jig-accent-hover);
+  --color-on-accent: var(--jig-on-accent);
+  --color-accent-soft: color-mix(in srgb, var(--jig-accent) 16%, transparent);
+  --color-hover: var(--jig-hover);
+  --color-active: var(--jig-active);
+  --color-selection: var(--jig-selection);
+  --color-focus: var(--jig-focus);
+  --color-code: var(--jig-code);
+  --color-success: var(--jig-success);
+  --color-success-soft: color-mix(in srgb, var(--jig-success) 16%, transparent);
+  --color-warning: var(--jig-warning);
+  --color-warning-soft: color-mix(in srgb, var(--jig-warning) 16%, transparent);
+  --color-danger: var(--jig-danger);
+  --color-danger-soft: color-mix(in srgb, var(--jig-danger) 16%, transparent);
+  --color-on-danger: var(--jig-on-danger);
+  --color-info: var(--jig-info);
+  --color-info-soft: color-mix(in srgb, var(--jig-info) 16%, transparent);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-sans: var(--jig-font-ui), "Inter Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--jig-font-mono), "JetBrains Mono Variable", Consolas, monospace;
+
+  --radius-sm: var(--jig-radius-sm);
+  --radius-md: var(--jig-radius-md);
+  --radius-lg: var(--jig-radius-lg);
+  --radius-xl: var(--jig-radius-xl);
+
+  --spacing: var(--jig-spacing);
+
+  --shadow-popover: 0 8px 24px var(--jig-shadow), 0 2px 6px var(--jig-shadow);
+  --shadow-card: 0 1px 2px var(--jig-shadow);
+}
+
+/* Fallback values (Jig Dark) until the theme is applied. */
+:root {
+  --jig-canvas: #1e1f22;
+  --jig-surface: #232428;
+  --jig-raised: #2b2d31;
+  --jig-elevated: #2f3136;
+  --jig-titlebar: #1b1c1f;
+  --jig-statusbar: #1b1c1f;
+  --jig-on-statusbar: #9da0a6;
+  --jig-line: #34363b;
+  --jig-line-strong: #45484f;
+  --jig-fg: #dfe1e5;
+  --jig-muted: #a2a6ad;
+  --jig-hint: #70747c;
+  --jig-accent: #e0a458;
+  --jig-accent-hover: #ebb877;
+  --jig-on-accent: #1e1f22;
+  --jig-hover: #2e3035;
+  --jig-active: #383b41;
+  --jig-selection: #4b4231;
+  --jig-focus: #e0a458;
+  --jig-code: #1a1b1e;
+  --jig-success: #6fbf73;
+  --jig-warning: #e5c07b;
+  --jig-danger: #ef6b6b;
+  --jig-on-danger: #1e1f22;
+  --jig-info: #6cb6ff;
+  --jig-shadow: rgb(0 0 0 / 0.35);
+
+  --jig-font-ui: "Inter Variable";
+  --jig-font-mono: "JetBrains Mono Variable";
+  --jig-font-size: 13px;
+  --jig-spacing: 0.25rem;
+  --jig-radius-sm: 4px;
+  --jig-radius-md: 6px;
+  --jig-radius-lg: 10px;
+  --jig-radius-xl: 14px;
+}

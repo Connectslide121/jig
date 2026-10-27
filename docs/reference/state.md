@@ -1,0 +1,37 @@
+# State reference (`~/.jig`)
+
+Root: `JIG_HOME` or `~/.jig` (`C:\Users\<you>\.jig` on Windows). Paths are defined in
+`apps/desktop/src/main/state/paths.ts`. JSON files are written atomically (temp file + rename) through
+`state/jsonStore.ts`; a file that fails validation is renamed to `<file>.invalid-<timestamp>` and
+defaults are used, so a hand-edit mistake never prevents Jig from starting.
+
+| Path | Format | Contents |
+|---|---|---|
+| `config.json` | JSON, `ConfigSchema` (`shared/config.ts`) | user settings — see below |
+| `window-state.json` | JSON | main window size, position, maximised |
+| `logs/main.log` | text | host log |
+
+_More files are added by later phases (layout, projects, sessions, themes, add-ons, activity,
+suggestions); each is documented here when it lands._
+
+## `config.json`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `appearance.themeId` | `jig-dark` | theme when not following the system |
+| `appearance.followSystem` | `false` | switch between `lightThemeId` / `darkThemeId` with the OS |
+| `appearance.lightThemeId` / `darkThemeId` | `jig-light` / `jig-dark` | |
+| `appearance.density` | `comfortable` | `compact` or `comfortable` (spacing scale) |
+| `appearance.radius` | `soft` | `sharp`, `soft` or `round` corners |
+| `appearance.uiFont` / `monoFont` | Inter / JetBrains Mono | font families |
+| `appearance.fontSize` | `13` | base UI font size in px (11–18) |
+| `engine.claudePath` | `""` | your own `claude` binary; empty = the one shipped with the Agent SDK |
+| `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
+| `engine.defaultModel` | `""` | model for new sessions; empty = Claude Code's default |
+| `engine.defaultPermissionMode` | `default` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
+| `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere |
+| `learning.recording` | `true` | record activity locally |
+| `learning.retentionDays` | `90` | delete activity older than this |
+| `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
+| `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
+| `learning.model` | `haiku` | model for the reflection step |
