@@ -1,0 +1,8 @@
+{
+  "name": "Sparse Light",
+  "colors": {
+    "editor.background": "#ffffff",
+    "editor.foreground": "#333333"
+  },
+  "tokenColors": []
+}

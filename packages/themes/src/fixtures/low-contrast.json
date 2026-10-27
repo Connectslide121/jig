@@ -1,0 +1,13 @@
+{
+  "name": "Murky",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#202020",
+    "foreground": "#303030",
+    "descriptionForeground": "#282828",
+    "button.background": "#222222",
+    "button.foreground": "#232323",
+    "statusBar.background": "#101010",
+    "statusBar.foreground": "#111111"
+  }
+}

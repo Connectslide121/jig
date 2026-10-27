@@ -1,0 +1,4 @@
+{
+  "colors": { "button.background": "#0e639c", "sideBar.background": "#ffffff" },
+  "tokenColors": "./tokens.json"
+}

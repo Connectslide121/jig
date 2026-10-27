@@ -1,0 +1,9 @@
+/* Block comment at the top */
+{
+  "name": "Tricky // not a comment",
+  "url": "http://example.com/*not-a-comment*/",
+  "list": ["a, ]", "b", ],
+  "escaped": "quote \" and , }",
+  // trailing comment
+  "nested": { "x": [1, 2, 3,], },
+}

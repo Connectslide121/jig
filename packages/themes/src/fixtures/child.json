@@ -1,0 +1,6 @@
+{
+  "name": "Child",
+  "include": "./base.json",
+  "colors": { "editor.background": "#101820" },
+  "tokenColors": [{ "scope": "string", "settings": { "foreground": "#00ff00" } }]
+}

@@ -116,17 +116,19 @@ export function readableOn(background: Rgba): Rgba {
 
 /**
  * Moves `fg` towards white or black (whichever is further from `bg`) until it reaches `minRatio`
- * against `bg`. Keeps the hue roughly; returns `fg` unchanged when it already passes.
+ * against `bg`. Keeps the hue roughly; returns `fg` unchanged when it already passes. Aims 1% above
+ * `minRatio` so rounding to 8-bit hex afterwards can't drop it below.
  */
 export function ensureContrast(fg: Rgba, bg: Rgba, minRatio: number): Rgba {
   const solid = composite(fg, bg);
   if (contrastRatio(solid, bg) >= minRatio) return solid;
   const target = readableOn(bg);
+  const goal = Math.min(minRatio * 1.01, contrastRatio(target, bg));
   let lo = 0;
   let hi = 1;
   for (let i = 0; i < 20; i++) {
     const t = (lo + hi) / 2;
-    if (contrastRatio(mix(solid, target, t), bg) >= minRatio) hi = t;
+    if (contrastRatio(mix(solid, target, t), bg) >= goal) hi = t;
     else lo = t;
   }
   return mix(solid, target, hi);

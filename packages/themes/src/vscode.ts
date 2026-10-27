@@ -40,15 +40,20 @@ export interface VsCodeTheme {
 // ---------------------------------------------------------------------------------------------
 // JSONC
 
-/** Parses JSON with comments and trailing commas (the format VS Code themes are written in). */
+/**
+ * Parses JSON with comments and trailing commas (the format VS Code themes are written in). String
+ * literals are copied verbatim, so `//`, `/*` or `, ]` inside a string are left alone.
+ */
 export function parseJsonc(text: string): unknown {
   let out = "";
+  /** Index in `out` of a comma that may turn out to be trailing. */
+  let pendingComma = -1;
   let i = 0;
   const n = text.length;
   while (i < n) {
     const ch = text[i]!;
     if (ch === '"') {
-      // Copy a string literal verbatim, honouring escapes.
+      pendingComma = -1;
       let j = i + 1;
       while (j < n && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
       out += text.slice(i, j + 1);
@@ -60,14 +65,19 @@ export function parseJsonc(text: string): unknown {
       while (i < n && !(text[i] === "*" && text[i + 1] === "/")) i++;
       i += 2;
     } else {
+      if (ch === "}" || ch === "]") {
+        if (pendingComma >= 0) out = out.slice(0, pendingComma) + out.slice(pendingComma + 1);
+        pendingComma = -1;
+      } else if (ch === ",") {
+        pendingComma = out.length;
+      } else if (!/\s/.test(ch)) {
+        pendingComma = -1;
+      }
       out += ch;
       i++;
     }
   }
-  // Remove trailing commas before } or ] (outside strings — strings were copied above, but a ", }"
-  // inside a string is rare enough in themes and harmless here because we only touch `,` + space + bracket).
-  out = out.replace(/,(\s*[}\]])/g, "$1");
-  return JSON.parse(out.replace(/^﻿/, ""));
+  return JSON.parse(out.replace(/^\uFEFF/, ""));
 }
 
 // ---------------------------------------------------------------------------------------------

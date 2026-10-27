@@ -16,12 +16,12 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 - [ ] `docs/reference/design-tokens.md`
 
 ### Themes
-- [~] `packages/themes`: theme model + validation
-- [~] Built-in themes: Jig Dark, Jig Light
-- [~] Colour utilities (parse, mix, contrast ratio, ensure-contrast) with tests
-- [~] VS Code theme mapper: token ← ordered VS Code keys + derived fallbacks + contrast pass
-- [~] JSONC parsing and `include` chains
-- [~] Terminal ANSI mapping
+- [x] `packages/themes`: theme model + validation
+- [x] Built-in themes: Jig Dark, Jig Light
+- [x] Colour utilities (parse, mix, contrast ratio, ensure-contrast) with tests
+- [x] VS Code theme mapper: token ← ordered VS Code keys + derived fallbacks + contrast pass
+- [x] JSONC parsing and `include` chains
+- [x] Terminal ANSI mapping
 - [ ] Syntax highlighting via Shiki using the theme's `tokenColors`
 - [ ] Source: installed VS Code / Insiders / Cursor / VSCodium extensions folders
 - [ ] Source: Open VSX search + install (extract theme JSON only, never run anything)
@@ -34,10 +34,9 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 
 `[~]` = code written but **not yet unit-tested or wired into the app** (first session). Next steps:
 
-1. Unit tests for `packages/themes/src/color.ts` and `vscode.ts`, using hand-written VS Code theme
-   fixtures (a dark theme, a light one, one with few keys, JSONC with comments and trailing commas, an
-   `include` chain). Note: `parseJsonc` removes trailing commas with a regex that would also touch a
-   `", ]"` inside a string; make it string-aware while writing the tests.
+1. ~~Unit tests for `packages/themes`~~ — done (fixtures in `packages/themes/src/fixtures/`;
+   `parseJsonc` is now string-aware for trailing commas; `ensureContrast` aims 1% above the target so
+   hex rounding can't drop below it; Jig-format theme files in `user.ts`; Shiki theme in `shiki.ts`).
 2. Host theme service (`apps/desktop/src/main/themes/`): list/get themes (built-in, `~/.jig/themes`,
    installed VS Code extensions, Open VSX installs), IPC methods `themes.list`, `themes.get`,
    `themes.searchOpenVsx`, `themes.installOpenVsx`, event `themes.changed`.
