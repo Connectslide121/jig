@@ -33,7 +33,10 @@ test("views move between regions from their ⋯ menu and the layout is saved", a
   await expect(page.getByTestId("region-right")).toContainText("Projects");
   await expect(page.getByTestId("region-left")).toBeHidden();
   await expect
-    .poll(async () => JSON.parse(await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}")).right?.views)
+    .poll(
+      async () =>
+        JSON.parse(await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}")).right?.views,
+    )
     .toEqual(["jig.projects"]);
   await page.getByTestId("view-menu-jig.projects").click();
   await page.getByTestId("hide-view").click();
@@ -84,7 +87,9 @@ test("tabs and layout survive a restart", async ({ app, page, jigHome }) => {
 
 test("host notifications appear as toasts", async ({ app, page }) => {
   await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.webContents.send("jig:event", "notify", { title: "Hello from the host" });
+    BrowserWindow.getAllWindows()[0]?.webContents.send("jig:event", "notify", {
+      title: "Hello from the host",
+    });
   });
   await expect(page.getByTestId("toast")).toContainText("Hello from the host");
 });
