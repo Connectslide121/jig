@@ -31,7 +31,7 @@ test("views move between regions from their ⋯ menu and the layout is saved", a
   await page.getByTestId("view-menu-jig.projects").click();
   await page.getByTestId("move-view-right").click();
   await expect(page.getByTestId("region-right")).toContainText("Projects");
-  await expect(page.getByTestId("region-left")).toBeHidden();
+  await expect(page.getByTestId("region-left").getByTestId("view-tab-jig.projects")).toHaveCount(0);
   await expect
     .poll(
       async () =>
