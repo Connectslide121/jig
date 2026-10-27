@@ -1,6 +1,7 @@
 # Jig — architecture
 
-This is the canonical design document. It describes how Jig is built **as it is** (sections marked
+This is the canonical design document. Code worth reading for each part is listed in
+`docs/reference/reference-repos.md` (mainly JetBrains' ThinkRail). It describes how Jig is built **as it is** (sections marked
 _planned_ are not built yet; `docs/plan/` tracks progress). Read `docs/vision.md` first for the why.
 When a change moves a boundary, a contract or a decision described here, update this file in the
 same commit.
@@ -164,6 +165,10 @@ The window is divided into **regions**: `topbar`, `left` sidebar, `main` (tabs, 
 }
 ```
 
+**No native menu bar.** The window has no OS title bar and no Electron menu bar on Windows/Linux:
+the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings). macOS keeps a
+minimal application menu so Cmd+C/V/Q and window shortcuts keep working (D-023).
+
 Core features and add-ons contribute **views** with stable ids; the layout decides where they appear.
 Moving, hiding or resizing a view is a layout change — which is also what the builder does for
 "level 1" requests ("move pipelines to the right").
@@ -278,11 +283,12 @@ confirmation. Where it makes sense, a level-3 change adds a new slot.
    the builder with the suggestion as the goal; **Not now** snoozes; **Never** blocks that pattern.
    Answers feed the next reflection.
 
-## 11. VS Code inside Jig (_planned_)
+## 11. Git (_planned_)
 
-A built-in add-on runs the user's own VS Code as a local web UI (`code serve-web`) and shows it in a
-workbench tab opened at the active project — so GitLens, Azure extensions and the full editor are
-available without Jig re-implementing them. Jig's own git view stays a lean multi-repo overview.
+Jig has its own Git tab (a built-in add-on, phase 7): branches, **commit history per branch**,
+working changes, and **commit detail and file diffs opened as tabs in the main window**. The host runs
+the user's `git` CLI safely (argument arrays, no shell) and parses its machine-readable output. Rebase,
+graph and blame are out of scope. Jig does not run VS Code extensions or embed VS Code (D-019, D-022).
 
 ## 12. Testing
 

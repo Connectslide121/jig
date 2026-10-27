@@ -14,7 +14,9 @@ contains only `@AGENTS.md`).
 2. `docs/vision.md` — principles. They are binding.
 3. `docs/architecture.md` — how it is built.
 4. `docs/plan/README.md` — what is done and what is next.
-5. `docs/status.md` — what works today.
+5. `docs/status.md` — what works today, and "Continue here" for the next steps.
+6. `docs/reference/reference-repos.md` — code to read for each part (clone JetBrains' ThinkRail
+   beside this repo: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`).
 
 ## Keep the docs true — part of every change
 

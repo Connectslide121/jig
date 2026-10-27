@@ -9,19 +9,19 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 ## Checklist
 
 ### Tokens
-- [ ] Colour tokens as CSS variables, mapped into Tailwind v4 `@theme`
+- [x] Colour tokens as CSS variables, mapped into Tailwind v4 `@theme`
 - [ ] Spacing, radius, typography scales (density + radius are style settings)
 - [ ] Base component styles: button, input, card, list row, badge, tabs, menu, dialog, tooltip
-- [ ] `scripts/check-tokens.mjs` — rejects raw colours / arbitrary values in UI code and add-ons
+- [x] `scripts/check-tokens.ts` — rejects raw colours / arbitrary values in UI code and add-ons
 - [ ] `docs/reference/design-tokens.md`
 
 ### Themes
-- [ ] `packages/themes`: theme model + validation
-- [ ] Built-in themes: Jig Dark, Jig Light
-- [ ] Colour utilities (parse, mix, contrast ratio, ensure-contrast) with tests
-- [ ] VS Code theme mapper: token ← ordered VS Code keys + derived fallbacks + contrast pass
-- [ ] JSONC parsing and `include` chains
-- [ ] Terminal ANSI mapping
+- [~] `packages/themes`: theme model + validation
+- [~] Built-in themes: Jig Dark, Jig Light
+- [~] Colour utilities (parse, mix, contrast ratio, ensure-contrast) with tests
+- [~] VS Code theme mapper: token ← ordered VS Code keys + derived fallbacks + contrast pass
+- [~] JSONC parsing and `include` chains
+- [~] Terminal ANSI mapping
 - [ ] Syntax highlighting via Shiki using the theme's `tokenColors`
 - [ ] Source: installed VS Code / Insiders / Cursor / VSCodium extensions folders
 - [ ] Source: Open VSX search + install (extract theme JSON only, never run anything)
@@ -29,3 +29,18 @@ imported from the local VS Code install, Open VSX or a file, and code blocks use
 - [ ] Settings → Appearance: theme picker with live preview, follow system light/dark
 - [ ] Style settings: density, radius, UI font, mono font, font size
 - [ ] `docs/guides/themes.md`
+
+## Progress notes
+
+`[~]` = code written but **not yet unit-tested or wired into the app** (first session). Next steps:
+
+1. Unit tests for `packages/themes/src/color.ts` and `vscode.ts`, using hand-written VS Code theme
+   fixtures (a dark theme, a light one, one with few keys, JSONC with comments and trailing commas, an
+   `include` chain). Note: `parseJsonc` removes trailing commas with a regex that would also touch a
+   `", ]"` inside a string; make it string-aware while writing the tests.
+2. Host theme service (`apps/desktop/src/main/themes/`): list/get themes (built-in, `~/.jig/themes`,
+   installed VS Code extensions, Open VSX installs), IPC methods `themes.list`, `themes.get`,
+   `themes.searchOpenVsx`, `themes.installOpenVsx`, event `themes.changed`.
+3. Renderer: apply the active theme's CSS variables + style settings (density, radius, fonts, size);
+   update the title-bar overlay colours; Shiki highlighter built from the theme's token colours.
+4. Settings → Appearance (lands with the settings tab in phase 3).

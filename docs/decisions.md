@@ -119,7 +119,7 @@ no tokens. If `az` turns out too slow for listing, the add-on can get a token fr
 `az account get-access-token` per call and use the REST API — still no stored secrets.
 
 ### D-019 — Git: lean multi-repo overview in Jig; GitLens via a VS Code tab
-**Decided by:** Claude, agreed · **Date:** 2026-10-27
+**Superseded by D-022.** · **Decided by:** Claude, agreed · **Date:** 2026-10-27
 Running VS Code extensions inside Jig would mean re-implementing the VS Code API. Instead a built-in
 add-on shows the user's own VS Code (`code serve-web`) in a tab, where GitLens works as usual. Jig's own
 Repos view stays a cross-repo overview (status, push/pull, latest commits), which GitLens does not do.
@@ -132,3 +132,29 @@ Jon's instructions in his other repositories. Change with `git config` if you pr
 ### D-021 — State in `~/.jig`, overridable with `JIG_HOME`
 **Decided by:** Claude, on my own · **Date:** 2026-10-27
 One folder that is easy to back up, inspect and delete. On Windows that is `C:\Users\<you>\.jig`.
+
+### D-022 — Jig's own Git tab; no VS Code tab, no VS Code extensions
+**Decided by:** Jon · **Date:** 2026-10-27
+VS Code extensions (e.g. GitLens) can't run inside Jig without re-implementing the VS Code API, and
+embedding VS Code (`code serve-web`) was rejected. Jig builds its own Git tab focused on what Jon uses:
+commit history per branch, diffs, and clicking a commit or file to see the detail in the main window.
+Rebase, graph and blame are out of scope.
+
+### D-023 — No native menu bar; Jig's own top bar and menus
+**Decided by:** Jon (raised) / Claude, on my own (details) · **Date:** 2026-10-27
+Electron apps get a native File/Edit/View menu bar by default. Jig hides the OS title bar (window
+controls are drawn over Jig's top bar on Windows) and removes the menu bar on Windows/Linux, so every
+menu is Jig's own and themed (principle 4). On macOS a minimal application menu stays, because
+Cmd+C/V/X/A/Z/Q only work through menu roles there. Copy/paste in inputs keeps working on Windows
+without a menu.
+
+### D-024 — Push to `origin/main` at the end of each phase
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Cloud sessions run in throwaway containers, so finished work is pushed so it isn't lost. Commits stay
+small and coherent. Change to a branch + pull-request flow if you prefer reviewing before it lands.
+
+### D-025 — Planning first; implementation continues in a new session
+**Decided by:** Jon · **Date:** 2026-10-27
+The first session finished the plan (and phase 1, which was already built when this was decided). The
+next session starts from `docs/status.md` → "Continue here", with ThinkRail cloned beside Jig as
+reference (`docs/reference/reference-repos.md`).

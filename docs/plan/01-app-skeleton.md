@@ -11,10 +11,10 @@ production build; `npm run e2e` launches the app with a temp `JIG_HOME` and pass
 - [x] `apps/desktop/scripts/build.mjs` — esbuild for main (ESM) and preload (CJS), Vite for renderer
 - [x] `apps/desktop/scripts/dev.mjs` — Vite dev server + esbuild watch + Electron restart on main changes
 - [x] Secure `BrowserWindow` (contextIsolation, sandbox, no nodeIntegration, CSP)
-- [x] Typed IPC contract in `src/shared/ipc.ts` (`HostApi` methods, `HostEvents` topics)
+- [x] Typed IPC contract in `src/shared/ipc.ts` (`HostMethods`, `HostEvents`)
 - [x] Main-process router: registers handlers, validates method names, maps errors to `{code,message}`
-- [x] Preload: `window.jig.call` / `window.jig.on`
-- [x] Renderer hooks: `useHost`, `useHostEvent`
+- [x] Preload: `window.jig.invoke` / `window.jig.on` (envelope; see notes)
+- [x] Renderer: typed `call()` and `useHostEvent()` (`renderer/lib/host.ts`)
 - [x] State directory module (`JIG_HOME`, atomic JSON read/write, defaults)
 - [x] Config module (`config.json` with schema + defaults)
 - [x] Host logging to `~/.jig/logs/`

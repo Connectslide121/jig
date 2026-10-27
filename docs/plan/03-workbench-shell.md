@@ -8,6 +8,8 @@ the Tools menu lists every action, projects can be added and switched, settings 
 
 ## Checklist
 
+- [ ] Remove the native Electron menu bar on Windows/Linux; minimal app menu on macOS (D-023)
+- [ ] Top bar drawn by Jig under the window-control overlay (drag region, no-drag for controls)
 - [ ] Layout model (`layout.json`) with defaults + schema; persisted on change
 - [ ] Regions: topbar, left, main (tabs), right, bottom, statusbar; resizable, collapsible
 - [ ] View registry (core views + add-on views by id)

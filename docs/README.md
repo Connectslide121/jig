@@ -9,5 +9,6 @@
 | [plan/](plan/README.md) | The phased plan as checklists, with status per phase |
 | [reference/](reference/) | Contracts: IPC methods, state files, slots, add-on API, design tokens, engine |
 | [guides/](guides/) | How-tos: developing, testing, writing add-ons, themes |
+| [reference/reference-repos.md](reference/reference-repos.md) | Code to read for each part (ThinkRail) and the Agent SDK references |
 
 Agent instructions live in the root [`AGENTS.md`](../AGENTS.md).
