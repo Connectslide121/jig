@@ -1,11 +1,13 @@
 /** Jig's base components. Reuse these before writing new ones (AGENTS.md). Add-ons get them as `@jig/sdk/ui`. */
 export * from "./Button";
 export * from "./Card";
+export * from "./CodeBlock";
 export * from "./cn";
 export * from "./Dialog";
 export * from "./ErrorBoundary";
 export * from "./Input";
 export * from "./ListRow";
+export * from "./Markdown";
 export * from "./Menu";
 export * from "./Spinner";
 export * from "./Tabs";

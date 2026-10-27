@@ -207,3 +207,27 @@ the theme (and the token rule) instead of being a fixed hex. New projects get th
 `Ctrl+,` settings, `Ctrl+B` / `Ctrl+Alt+B` / `Ctrl+J` toggle left / right / bottom, `Ctrl+W` close tab,
 `Ctrl+Tab` cycle tabs, `Ctrl+Shift+I` developer tools (VS Code-like, so they feel familiar). Later phases
 add `Ctrl+N` new session and ``Ctrl+` `` new terminal. Every shortcut is an action in the Tools menu.
+
+### D-034 — Jig keeps its own follow-up queue
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+A message sent while Claude works waits in Jig (visible above the composer, removable) and is sent when
+the turn ends, instead of being pushed into Claude Code mid-turn. Predictable, and you can take a
+message back. Change in `main/sessions/manager.ts` (`send`).
+
+### D-035 — One Claude Code process per session, started on the first message
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Restoring a layout with many chat tabs doesn't start many processes; a process starts when you send and
+is resumed with Claude Code's own session id after a restart. Processes stay alive until you stop them
+(session menu), archive/delete the session or quit Jig. An idle timeout can be added if memory becomes
+an issue.
+
+### D-036 — Jig caches transcripts; Claude Code stays the source of truth
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Jig stores its normalised transcript (last 3000 items) in `~/.jig/sessions/<id>.json` so sessions open
+instantly with tool cards and permission history; the conversation itself is resumed from Claude Code's
+own session file. Deleting a session in Jig leaves Claude Code's file alone.
+
+### D-037 — Models offered in the menu
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Default, Opus, Sonnet, Haiku (Claude Code's aliases, so they follow new model versions) and "Other
+model…" for any id. The session header shows what Claude Code actually reports.

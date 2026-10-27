@@ -34,6 +34,18 @@ export function registerAppHandlers(): void {
       : await dialog.showOpenDialog(options);
     return result.canceled ? undefined : result.filePaths[0];
   });
+  handle("app.pickFiles", async ({ title, defaultPath }, ctx) => {
+    const window = BrowserWindow.fromWebContents(ctx.sender);
+    const options = {
+      title: title ?? "Choose files",
+      defaultPath,
+      properties: ["openFile" as const, "multiSelections" as const],
+    };
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options);
+    return result.canceled ? [] : result.filePaths;
+  });
   handle("app.toggleDevTools", (_args, ctx) => ctx.sender.toggleDevTools());
   handle("app.reload", (_args, ctx) => ctx.sender.reloadIgnoringCache());
   handle("window.minimize", (_args, ctx) => BrowserWindow.fromWebContents(ctx.sender)?.minimize());

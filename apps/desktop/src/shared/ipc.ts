@@ -8,6 +8,7 @@
  * docs/reference/ipc.md.
  */
 import type { DeepPartial, JigConfig } from "./config";
+import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
 import type { Layout } from "./layout";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
 import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
@@ -31,6 +32,7 @@ export interface HostMethods {
   /** Opens a folder in Explorer/Finder or a file with its default app. */
   "app.openPath": { args: { path: string }; result: void };
   "app.pickFolder": { args: { title?: string }; result: string | undefined };
+  "app.pickFiles": { args: { title?: string; defaultPath?: string }; result: string[] };
   "app.toggleDevTools": { args: void; result: void };
   "app.reload": { args: void; result: void };
   "config.get": { args: void; result: JigConfig };
@@ -54,6 +56,24 @@ export interface HostMethods {
   "projects.remove": { args: { id: string }; result: ProjectsState };
   "projects.setActive": { args: { id: string | undefined }; result: ProjectsState };
   "projects.reorder": { args: { ids: string[] }; result: ProjectsState };
+  "sessions.list": { args: void; result: SessionMeta[] };
+  "sessions.get": { args: { id: string }; result: SessionSnapshot };
+  "sessions.create": { args: { projectId: string; title?: string }; result: SessionMeta };
+  /** Sends a message, or queues it while Claude is busy. */
+  "sessions.send": { args: { id: string; text: string }; result: void };
+  "sessions.interrupt": { args: { id: string }; result: void };
+  "sessions.answerPermission": {
+    args: { id: string; requestId: string; decision: PermissionDecision };
+    result: void;
+  };
+  "sessions.removeQueued": { args: { id: string; queuedId: string }; result: void };
+  "sessions.setModel": { args: { id: string; model: string }; result: void };
+  "sessions.setPermissionMode": { args: { id: string; mode: PermissionMode }; result: void };
+  "sessions.rename": { args: { id: string; title: string }; result: void };
+  "sessions.archive": { args: { id: string; archived: boolean }; result: void };
+  /** Ends the Claude Code process; the conversation resumes on the next message. */
+  "sessions.stop": { args: { id: string }; result: void };
+  "sessions.delete": { args: { id: string }; result: void };
 }
 
 /** Event topic → payload type. */
@@ -64,6 +84,8 @@ export interface HostEvents {
   /** The host changed the layout (e.g. an accepted level-1 build). */
   "layout.changed": Layout;
   "projects.changed": ProjectsState;
+  /** Transcript and metadata changes of one session. */
+  "sessions.update": { sessionId: string; updates: ChatUpdate[] };
   /** A notification from the host, shown as a toast. */
   notify: HostNotification;
 }

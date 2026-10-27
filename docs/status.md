@@ -34,6 +34,18 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
   - Settings tab: Appearance, Layout, Claude Code, Terminal, Learning, About.
   - Toasts, keyboard shortcuts (`docs/reference/layout.md`).
 
+- **Phase 4 (done): chat sessions.**
+  - Sessions view (left sidebar, next to Projects): every session of every project with live status
+    (idle / working / needs you / error). New session: `Ctrl+N`, the `+` in the Sessions header, or Tools.
+  - Chat tab: streaming markdown, collapsed thinking, tool-call cards (click to see input/output),
+    permission prompts (Allow once / Always allow / Deny), Claude's questions as clickable options,
+    per-turn duration/tokens/cost, follow-ups queue while Claude works, Stop (or `Esc`), model and
+    permission-mode menus, attach files (`@path`), rename/archive/delete/stop from the `⋯` menu.
+  - Sessions persist and resume with Claude Code's own session id after a restart.
+  - API keys are stripped from sessions by default; a warning shows if a session still bills an API key.
+  - `JIG_ENGINE=fake npm run dev` gives scripted replies (try "run the tests", "ask me a question",
+    "slow", "fail", "login").
+
 ## How to try it
 
 ```bash
@@ -53,7 +65,12 @@ Things the cloud build environment couldn't verify:
 - `npm install` on Windows (Electron download, `@lydell/node-pty` prebuilt binary, the Agent SDK's
   `win32-x64` package).
 - The window's title-bar overlay (Windows window controls drawn over Jig's own top bar).
-- Everything involving real Claude Code (phase 4 onwards).
+- **Real Claude Code sessions with your login** (phase 4): start a session, check streaming, tool
+  cards, permission prompts, Always allow, interrupt, model switch, resume after restarting Jig, and that
+  the header shows no "API key billing" badge. If Claude Code isn't signed in, check the banner.
+  Note: in the cloud container one smoke test ran the real Claude Code with an empty HOME and no
+  credentials in its environment, yet the container itself supplied a login, so one tiny request
+  (~$0.02) was made. Jig read no credentials; this was not repeated and tests use the fake engine.
 - **Themes from your real VS Code install**: open Settings → Appearance and check your installed themes
   appear (labels, dark/light) and look right. On Windows Jig reads `%USERPROFILE%\.vscode\extensions`
   and `%LOCALAPPDATA%\Programs\Microsoft VS Code\resources\app\extensions` (built-in themes).

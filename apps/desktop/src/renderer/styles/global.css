@@ -75,3 +75,53 @@
 html[data-platform="darwin"] .topbar-insets {
   padding-left: 80px;
 }
+
+/* Markdown from Claude: spacing and lists (colours come from tokens). */
+.jig-markdown > :first-child {
+  margin-top: 0;
+}
+.jig-markdown > :last-child {
+  margin-bottom: 0;
+}
+.jig-markdown p,
+.jig-markdown ul,
+.jig-markdown ol,
+.jig-markdown blockquote {
+  margin: 0.5rem 0;
+}
+.jig-markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.jig-markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.jig-markdown li + li {
+  margin-top: 0.15rem;
+}
+.jig-markdown h1,
+.jig-markdown h2,
+.jig-markdown h3 {
+  font-weight: 600;
+  margin: 0.9rem 0 0.4rem;
+}
+.jig-markdown h1 {
+  font-size: var(--text-lg);
+}
+.jig-markdown h2 {
+  font-size: var(--text-base);
+}
+.jig-markdown blockquote {
+  border-left: 2px solid var(--jig-line-strong);
+  padding-left: 0.75rem;
+  color: var(--jig-muted);
+}
+.jig-markdown hr {
+  border-color: var(--jig-line);
+  margin: 0.75rem 0;
+}
+/* Shiki's background is the theme's code token (packages/themes/src/shiki.ts). */
+.jig-code pre {
+  margin: 0;
+}

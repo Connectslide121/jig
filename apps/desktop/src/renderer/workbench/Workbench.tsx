@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useSessionsSync } from "../features/sessions";
 import { call, useHostEvent } from "../lib/host";
 import { useConfig } from "../stores/config";
 import { DialogHost, ErrorBoundary, MenuHost } from "../ui";
@@ -49,6 +50,7 @@ function useShortcuts() {
 
 export function Workbench() {
   useShellState();
+  useSessionsSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
   return (

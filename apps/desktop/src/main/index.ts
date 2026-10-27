@@ -6,6 +6,7 @@ import { registerLayoutHandlers } from "./layout";
 import { logger } from "./log";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
+import { startSessions } from "./sessions";
 import { jigHome } from "./state/paths";
 import { startThemes } from "./themes";
 import { createMainWindow } from "./window";
@@ -39,6 +40,7 @@ async function start() {
   registerConfigHandlers();
   registerLayoutHandlers();
   startProjects();
+  startSessions();
   await startThemes();
   await createMainWindow();
 

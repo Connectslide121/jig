@@ -110,6 +110,8 @@
   --jig-radius-xl: 14px;
   --jig-sidebar-width: 280px;
   --jig-menu-max-h: 70vh;
+  --jig-chat-width: 52rem;
+  --jig-chat-bubble: 85%;
   /* Control heights follow the density setting. */
   --jig-control-h: calc(var(--jig-spacing) * 7);
 }
