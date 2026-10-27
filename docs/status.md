@@ -46,6 +46,14 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
   - `JIG_ENGINE=fake npm run dev` gives scripted replies (try "run the tests", "ask me a question",
     "slow", "fail", "login").
 
+- **Phase 5 (done): terminals & scripts.**
+  - Terminals in the bottom panel (`Ctrl+\``, or `+` in its header): PowerShell by default on Windows,
+    themed, survive switching tabs; rename/stop/close from the right-click menu.
+  - Scripts on the project dashboard: npm/pnpm/yarn/bun scripts, `.ps1`/`.sh`, `dotnet run`/`watch`,
+    `func start`, per folder; Run / Stop / Restart; groups such as "Start local" start several at once;
+    the status bar shows "N running".
+  - Tools → Sign in to Claude Code… opens a private terminal with Claude Code for `/login`.
+
 ## How to try it
 
 ```bash
@@ -78,6 +86,10 @@ Things the cloud build environment couldn't verify:
 - The top bar under the Windows window controls (the right padding comes from the Window Controls
   Overlay `titlebar-area-*` CSS variables) and the window-control colours following the theme.
 - The native folder picker when adding a project.
+- **Terminals on Windows**: PowerShell starts in the project folder, colours/fonts look right, resizing
+  works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
+- **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
+- **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
 
 ## Known gaps / notes
 

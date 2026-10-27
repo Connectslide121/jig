@@ -11,6 +11,7 @@ import type { DeepPartial, JigConfig } from "./config";
 import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
 import type { Layout } from "./layout";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
+import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
 
 export const CHANNEL_CALL = "jig:call";
@@ -74,6 +75,37 @@ export interface HostMethods {
   /** Ends the Claude Code process; the conversation resumes on the next message. */
   "sessions.stop": { args: { id: string }; result: void };
   "sessions.delete": { args: { id: string }; result: void };
+  "terminals.list": { args: void; result: TerminalInfo[] };
+  /** A shell in the project (or `cwd`), or a shell running `command`. */
+  "terminals.create": {
+    args: {
+      projectId?: string;
+      cwd?: string;
+      command?: string;
+      title?: string;
+      cols?: number;
+      rows?: number;
+    };
+    result: TerminalInfo;
+  };
+  "terminals.write": { args: { id: string; data: string }; result: void };
+  "terminals.resize": { args: { id: string; cols: number; rows: number }; result: void };
+  "terminals.buffer": { args: { id: string }; result: string };
+  "terminals.rename": { args: { id: string; title: string }; result: void };
+  "terminals.kill": { args: { id: string }; result: void };
+  "terminals.close": { args: { id: string }; result: void };
+  /** Opens a private terminal running Claude Code so you can sign in (`/login`). */
+  "terminals.claudeLogin": { args: { projectId?: string }; result: TerminalInfo };
+  "scripts.list": { args: { projectId: string }; result: ProjectScripts };
+  "scripts.run": { args: { projectId: string; scriptId: string }; result: TerminalInfo };
+  "scripts.stop": { args: { projectId: string; scriptId: string }; result: void };
+  "scripts.restart": { args: { projectId: string; scriptId: string }; result: TerminalInfo };
+  "scripts.saveGroup": {
+    args: { projectId: string; group: Omit<ScriptGroup, "id"> & { id?: string } };
+    result: ProjectScripts;
+  };
+  "scripts.deleteGroup": { args: { projectId: string; groupId: string }; result: ProjectScripts };
+  "scripts.runGroup": { args: { projectId: string; groupId: string }; result: TerminalInfo[] };
 }
 
 /** Event topic → payload type. */
@@ -86,6 +118,9 @@ export interface HostEvents {
   "projects.changed": ProjectsState;
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };
+  "terminals.data": { id: string; data: string };
+  "terminals.changed": TerminalInfo[];
+  "scripts.changed": ProjectScripts;
   /** A notification from the host, shown as a toast. */
   notify: HostNotification;
 }

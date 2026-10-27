@@ -231,3 +231,25 @@ own session file. Deleting a session in Jig leaves Claude Code's file alone.
 **Decided by:** Claude, on my own · **Date:** 2026-10-27
 Default, Opus, Sonnet, Haiku (Claude Code's aliases, so they follow new model versions) and "Other
 model…" for any id. The session header shows what Claude Code actually reports.
+
+### D-038 — An in-process activity bus
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Sessions, terminals, scripts (and later git, add-ons, project switches) publish activity to
+`main/activity/bus.ts`; the activity log subscribes. Features don't know about recording, and a failing
+recorder can't break them.
+
+### D-039 — "Sign in to Claude Code" opens a private terminal with the official binary
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Jig starts Claude Code itself (`engine.claudePath`, else the binary shipped with the Agent SDK) in a Jig
+terminal marked private, and you type `/login` there. The sign-in is Anthropic's own flow; nothing typed
+in a private terminal is recorded, and Jig never stores or reads the result.
+
+### D-040 — Scripts on the project dashboard; one terminal per script
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Run/Stop/Restart and groups live on the dashboard's Scripts card and the status bar; a script has at
+most one terminal (running it again focuses it; a finished run is replaced) so the panel doesn't fill up.
+
+### D-041 — Terminals are not restored after a restart
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+A restored terminal would be a new shell anyway (processes can't survive Jig quitting), and restarting
+dev servers on launch could surprise you. Script groups make starting them again one click.

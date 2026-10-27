@@ -6,8 +6,10 @@ import { registerLayoutHandlers } from "./layout";
 import { logger } from "./log";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
+import { registerScriptHandlers } from "./scripts";
 import { startSessions } from "./sessions";
 import { jigHome } from "./state/paths";
+import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes } from "./themes";
 import { createMainWindow } from "./window";
 
@@ -41,6 +43,8 @@ async function start() {
   registerLayoutHandlers();
   startProjects();
   startSessions();
+  startTerminals();
+  registerScriptHandlers();
   await startThemes();
   await createMainWindow();
 
@@ -48,6 +52,8 @@ async function start() {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
   });
 }
+
+app.on("will-quit", () => stopTerminals());
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

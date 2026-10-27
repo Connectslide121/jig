@@ -20,5 +20,6 @@ export const paths = {
   activity: () => join(jigHome(), "activity"),
   suggestions: () => join(jigHome(), "suggestions.json"),
   builds: () => join(jigHome(), "builds.json"),
+  scripts: () => join(jigHome(), "scripts.json"),
   logs: () => join(jigHome(), "logs"),
 };

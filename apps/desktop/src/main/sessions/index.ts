@@ -1,5 +1,6 @@
 import { app } from "electron";
 import type { PermissionMode } from "../../shared/engine";
+import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer } from "../engine/jigTools";
@@ -9,18 +10,10 @@ import { paths } from "../state/paths";
 import { SessionManager } from "./manager";
 
 let manager: SessionManager | undefined;
-type ActivityListener = NonNullable<ConstructorParameters<typeof SessionManager>[0]["onActivity"]>;
-const activityListeners = new Set<ActivityListener>();
 
 export function sessionManager(): SessionManager {
   if (!manager) throw new Error("Sessions not started");
   return manager;
-}
-
-/** Session activity (prompts, tool calls) for the learning log. */
-export function onSessionActivity(listener: ActivityListener): () => void {
-  activityListeners.add(listener);
-  return () => activityListeners.delete(listener);
 }
 
 export function startSessions(): void {
@@ -49,9 +42,17 @@ export function startSessions(): void {
     appendSystemPrompt: (meta) => jigContext(meta, projectNames.get(meta.projectId)),
     mcpServers: (meta) => (getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined),
     onUpdate: (sessionId, updates) => emit("sessions.update", { sessionId, updates }),
-    onActivity: (event) => {
-      for (const listener of activityListeners) listener(event);
-    },
+    onActivity: (event) =>
+      publishActivity(
+        event.kind === "prompt"
+          ? { kind: "prompt", text: event.text, projectId: event.session.projectId }
+          : {
+              kind: "session.tool",
+              text: event.text,
+              projectId: event.session.projectId,
+              detail: { tool: event.tool ?? "" },
+            },
+      ),
   });
   const m = manager;
 

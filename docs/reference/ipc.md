@@ -47,6 +47,16 @@ exceptions return `internal` (and are logged).
 | `sessions.rename` / `sessions.archive` | `{ id, title }` / `{ id, archived }` | — | |
 | `sessions.stop` | `{ id }` | — | ends the Claude Code process (resumes on the next message) |
 | `sessions.delete` | `{ id }` | — | removes Jig's record; Claude Code's own transcript stays |
+| `terminals.list` | — | `TerminalInfo[]` | see `docs/reference/terminals.md` |
+| `terminals.create` | `{ projectId?, cwd?, command?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command` |
+| `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
+| `terminals.buffer` | `{ id }` | `string` | scrollback so far |
+| `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
+| `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code for `/login` |
+| `scripts.list` | `{ projectId }` | `ProjectScripts` | discovered scripts + saved groups |
+| `scripts.run` / `scripts.stop` / `scripts.restart` | `{ projectId, scriptId }` | `TerminalInfo` / — / `TerminalInfo` | |
+| `scripts.saveGroup` | `{ projectId, group: { id?, name, scriptIds } }` | `ProjectScripts` | create or update |
+| `scripts.deleteGroup` / `scripts.runGroup` | `{ projectId, groupId }` | `ProjectScripts` / `TerminalInfo[]` | |
 
 ## Events
 
@@ -58,3 +68,6 @@ exceptions return `internal` (and are logged).
 | `projects.changed` | `ProjectsState` | after any project change |
 | `notify` | `{ title, message?, tone? }` | a host notification, shown as a toast |
 | `sessions.update` | `{ sessionId, updates: ChatUpdate[] }` | transcript/metadata/queue changes of a session |
+| `terminals.data` | `{ id, data }` | terminal output (batched) |
+| `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
+| `scripts.changed` | `ProjectScripts` | a project's script groups changed |

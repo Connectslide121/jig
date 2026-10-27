@@ -12,6 +12,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `logs/main.log` | text | host log |
 | `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
 | `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`) |
+| `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |
