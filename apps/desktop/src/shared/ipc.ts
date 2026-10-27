@@ -7,6 +7,7 @@
  * Add a method or event here first, then implement it in main, then document it in
  * docs/reference/ipc.md.
  */
+import type { AddonCommit, AddonInfo } from "./addons";
 import type { DeepPartial, JigConfig } from "./config";
 import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
 import type { Layout } from "./layout";
@@ -106,6 +107,16 @@ export interface HostMethods {
   };
   "scripts.deleteGroup": { args: { projectId: string; groupId: string }; result: ProjectScripts };
   "scripts.runGroup": { args: { projectId: string; groupId: string }; result: TerminalInfo[] };
+  "addons.list": { args: void; result: AddonInfo[] };
+  "addons.setEnabled": { args: { id: string; enabled: boolean }; result: void };
+  /** Calls a named export of the add-on's host.ts. */
+  "addons.call": { args: { id: string; method: string; args?: unknown }; result: unknown };
+  "addons.storageGet": { args: { id: string; key: string }; result: unknown };
+  "addons.storageSet": { args: { id: string; key: string; value: unknown }; result: void };
+  /** Rebuilds one add-on, or all when `id` is empty. */
+  "addons.reload": { args: { id?: string }; result: void };
+  "addons.history": { args: { id: string }; result: AddonCommit[] };
+  "addons.rollback": { args: { id: string; commit: string }; result: void };
 }
 
 /** Event topic → payload type. */
@@ -121,6 +132,9 @@ export interface HostEvents {
   "terminals.data": { id: string; data: string };
   "terminals.changed": TerminalInfo[];
   "scripts.changed": ProjectScripts;
+  "addons.changed": AddonInfo[];
+  /** An add-on's host code called api.emit(topic, payload). */
+  "addons.event": { id: string; topic: string; payload: unknown };
   /** A notification from the host, shown as a toast. */
   notify: HostNotification;
 }

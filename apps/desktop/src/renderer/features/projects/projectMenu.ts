@@ -3,16 +3,9 @@ import { closeTabsWhere } from "../../../shared/layout";
 import { PROJECT_COLORS, type ProjectInfo } from "../../../shared/projects";
 import { call } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
+import { contributedEntries } from "../../workbench/contextMenus";
 import { updateLayout, workbench } from "../../workbench/store";
 import { projectColorLabel } from "./colors";
-
-/** Extra entries contributed to a project's context menu (`context.project` slot, phase 6). */
-export type ProjectMenuContributor = (project: ProjectInfo) => MenuEntry[];
-const contributors = new Set<ProjectMenuContributor>();
-export function contributeProjectMenu(fn: ProjectMenuContributor): () => void {
-  contributors.add(fn);
-  return () => contributors.delete(fn);
-}
 
 export async function renameProject(project: ProjectInfo): Promise<void> {
   const name = await promptDialog({ title: "Rename project", initial: project.name, confirmLabel: "Rename" });
@@ -32,7 +25,7 @@ export async function removeProject(project: ProjectInfo): Promise<void> {
 }
 
 export function projectMenu(project: ProjectInfo): MenuEntry[] {
-  const extra = [...contributors].flatMap((fn) => fn(project));
+  const extra = contributedEntries({ slot: "context.project", project });
   return [
     {
       label: "Open dashboard",

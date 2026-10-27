@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu } from "electron";
+import { addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAppHandlers } from "./app";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { installRouter } from "./ipc/router";
@@ -10,7 +11,7 @@ import { registerScriptHandlers } from "./scripts";
 import { startSessions } from "./sessions";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
-import { startThemes } from "./themes";
+import { startThemes, themeService } from "./themes";
 import { createMainWindow } from "./window";
 
 const log = logger("main");
@@ -35,6 +36,7 @@ async function start() {
   await app.whenReady();
   log.info(`Starting Jig ${app.getVersion()} (home: ${jigHome()})`);
   installAppProtocol();
+  installAddonProtocol();
   installApplicationMenu();
   await loadConfig();
   installRouter();
@@ -45,7 +47,9 @@ async function start() {
   startSessions();
   startTerminals();
   registerScriptHandlers();
-  await startThemes();
+  await startThemes(addonThemes);
+  await startAddons();
+  onAddonsChange(() => themeService().refresh());
   await createMainWindow();
 
   app.on("activate", () => {

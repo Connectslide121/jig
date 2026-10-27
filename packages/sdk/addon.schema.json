@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "default": "",
+      "type": "string"
+    },
+    "version": {
+      "default": "0.1.0",
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "permissions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "contributes": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "views": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "region": {
+                "default": "left",
+                "type": "string",
+                "enum": ["left", "right", "bottom"]
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "title", "component"]
+          }
+        },
+        "tabs": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["type", "title", "component"]
+          }
+        },
+        "topbar": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "component"]
+          }
+        },
+        "statusbar": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "side": {
+                "default": "right",
+                "type": "string",
+                "enum": ["left", "right"]
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "component"]
+          }
+        },
+        "dashboard": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "order": {
+                "default": 50,
+                "type": "number"
+              }
+            },
+            "required": ["id", "component"]
+          }
+        },
+        "actions": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "group": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "shortcut": {
+                "type": "string"
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "title", "run"]
+          }
+        },
+        "menus": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "type": "string",
+                "enum": ["context.file", "context.project", "context.repo", "context.message"]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["slot", "id", "title", "run"]
+          }
+        },
+        "chatToolbar": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "component"]
+          }
+        },
+        "toolRenderers": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "type": "string"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["tool", "component"]
+          }
+        },
+        "prompts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "label": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "send": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": ["id", "label", "text"]
+          }
+        },
+        "watchers": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "every": {
+                "type": "string",
+                "pattern": "^\\d+(s|m|h)$"
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "every", "run"]
+          }
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "component": {
+              "type": "string",
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            }
+          },
+          "required": ["title", "component"]
+        },
+        "themes": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": ["path"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["id", "name"]
+}

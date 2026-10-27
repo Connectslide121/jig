@@ -36,6 +36,7 @@ function placements() {
   return Object.values(useRegistry.getState().views).map((v) => ({
     id: v.id,
     defaultRegion: v.defaultRegion,
+    reveal: v.owner !== undefined && v.owner !== "core",
   }));
 }
 

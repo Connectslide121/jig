@@ -15,6 +15,7 @@ export const paths = {
   themes: () => join(jigHome(), "themes"),
   addons: () => join(jigHome(), "addons"),
   addonData: () => join(jigHome(), "addon-data"),
+  addonsState: () => join(jigHome(), "addons-state.json"),
   work: () => join(jigHome(), "work"),
   cache: () => join(jigHome(), "cache"),
   activity: () => join(jigHome(), "activity"),

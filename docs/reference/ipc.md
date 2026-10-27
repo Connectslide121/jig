@@ -57,6 +57,12 @@ exceptions return `internal` (and are logged).
 | `scripts.run` / `scripts.stop` / `scripts.restart` | `{ projectId, scriptId }` | `TerminalInfo` / — / `TerminalInfo` | |
 | `scripts.saveGroup` | `{ projectId, group: { id?, name, scriptIds } }` | `ProjectScripts` | create or update |
 | `scripts.deleteGroup` / `scripts.runGroup` | `{ projectId, groupId }` | `ProjectScripts` / `TerminalInfo[]` | |
+| `addons.list` | — | `AddonInfo[]` | every add-on with manifest, errors, warnings, UI/CSS urls (`docs/reference/addon-api.md`) |
+| `addons.setEnabled` | `{ id, enabled }` | — | remembered in `addons-state.json` |
+| `addons.call` | `{ id, method, args? }` | `unknown` | calls a `host.ts` export; `disabled`, `no_host`, `addon_error` |
+| `addons.storageGet` / `addons.storageSet` | `{ id, key }` / `{ id, key, value }` | `unknown` / — | per-add-on JSON |
+| `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
+| `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 
 ## Events
 
@@ -71,3 +77,5 @@ exceptions return `internal` (and are logged).
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
+| `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
+| `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |

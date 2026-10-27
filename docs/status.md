@@ -54,6 +54,16 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
     the status bar shows "N running".
   - Tools → Sign in to Claude Code… opens a private terminal with Claude Code for `/login`.
 
+- **Phase 6 (done): add-on system.**
+  - Add-ons are folders with `addon.json` (+ `ui.tsx`, `host.ts`, `README.md`) in `~/.jig/addons`
+    (a git repository) or Jig's built-in `addons/`. They load into 16 slots (views, tabs, top bar,
+    status bar, dashboard, Tools actions, context menus, chat toolbar and tool cards, prompts,
+    watchers, settings pages, themes); see `docs/guides/writing-addons.md`.
+  - Saving a file reloads that add-on; a crash shows "Turn off" in its place, never a broken app.
+  - Host code runs in its own process with permission-checked `exec`/`fs`/`fetch`.
+  - Settings → Add-ons: on/off, problems and token warnings, permissions, open folder, reload,
+    history and roll back.
+
 ## How to try it
 
 ```bash
@@ -90,6 +100,8 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **Add-ons on Windows**: the add-on host process (utilityProcess) starts, `api.exec("git", …)` works
+  without a console window flashing, and file watching picks up saves in `%USERPROFILE%\.jig\addons`.
 
 ## Known gaps / notes
 

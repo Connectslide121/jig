@@ -253,3 +253,34 @@ most one terminal (running it again focuses it; a finished run is replaced) so t
 **Decided by:** Claude, on my own · **Date:** 2026-10-27
 A restored terminal would be a new shell anyway (processes can't survive Jig quitting), and restarting
 dev servers on launch could surprise you. Script groups make starting them again one click.
+
+### D-042 — Add-on CSS is generated at runtime with Jig's tokens
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+Jig's own stylesheet only contains classes Jig uses, so a user add-on's classes wouldn't exist. When an
+add-on loads, the host runs Tailwind's compiler over its source with only the token `@theme` (never the
+raw fallback colours) and serves the result as `jig-addon://<id>/ui.css`. Add-ons can use any token
+utility, and themes still recolour them. (`tailwindcss` became a runtime dependency.)
+
+### D-043 — Your copy of an add-on replaces the built-in one
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+A folder in `~/.jig/addons` with the same id as a built-in add-on is used instead of it. That is how
+the builder "changes an existing add-on" when it is a built-in one: it copies it into your add-ons
+(with history) and edits the copy; deleting your copy brings the built-in back.
+
+### D-044 — Add-on permissions are declared and enforced by the API, not a sandbox
+**Decided by:** Claude, on my own (follows D-007) · **Date:** 2026-10-27
+`exec`, `exec:<name>`, `fs:read`, `fs:write`, `net`, `terminal`, `chat` are shown in Settings → Add-ons
+and the builder's preview, and the host API refuses what isn't declared. Host code runs in its own
+Node process and could still import Node modules directly: it is code you reviewed and accepted. A real
+sandbox belongs to the backlog item for add-ons written by other people.
+
+### D-045 — Add-ons share Jig's React, components and icons
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+`react`, `react-dom`, `lucide-react`, `@jig/sdk` and `@jig/sdk/ui` imports in an add-on UI are mapped to
+the app's own modules; any other bare import is a build error. Add-ons stay tiny, can't bring a second
+React, and look native. Icons in manifests are lucide names.
+
+### D-046 — A new add-on view opens its region once
+**Decided by:** Claude, on my own · **Date:** 2026-10-27
+When an add-on view is placed for the first time, its region expands and shows it, so a freshly built
+tool is visible. After that the layout is yours (collapse it and it stays collapsed).

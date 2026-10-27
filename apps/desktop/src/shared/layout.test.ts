@@ -58,6 +58,19 @@ describe("views", () => {
     expect(layout.right.views).toEqual(["jig.projects"]);
   });
 
+  it("reveals a newly placed view when asked (new add-on views)", () => {
+    const layout = normalizeLayout(base(), [
+      ...views,
+      { id: "addon.x.v", defaultRegion: "right", reveal: true },
+    ]);
+    expect(layout.right).toMatchObject({ views: ["addon.x.v"], active: "addon.x.v", collapsed: false });
+    const again = normalizeLayout(toggleRegion(layout, "right"), [
+      ...views,
+      { id: "addon.x.v", defaultRegion: "right", reveal: true },
+    ]);
+    expect(again.right.collapsed).toBe(true);
+  });
+
   it("does not re-add hidden views", () => {
     const layout = normalizeLayout(hideView(base(), "jig.terminal"), views);
     expect(findView(layout, "jig.terminal")).toBe("hidden");

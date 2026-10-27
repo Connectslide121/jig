@@ -231,15 +231,22 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 ### 8.2 Runtime
 
 - **UI part.** The host bundles `ui.tsx` with esbuild into an ES module, with `react`,
-  `react/jsx-runtime` and `@jig/sdk/ui` mapped to the app's own instances (so add-ons share React and
-  the design system). The renderer loads it through the `jig-addon://` protocol and renders each
+  `react/jsx-runtime`, `react-dom`, `lucide-react`, `@jig/sdk` and `@jig/sdk/ui` mapped to the app's
+  own instances through `globalThis.__jigShared` (so add-ons share React and the design system). The
+  host also generates the add-on's Tailwind CSS at runtime from its source with Jig's token theme
+  (`main/addons/css.ts`). The renderer loads both through the `jig-addon://` protocol and renders each
   contribution inside an error boundary. A crashing contribution shows an inline error with
-  "Disable" / "Fix with AI" — never a broken app.
+  "Turn off" / "Fix with AI" — never a broken app.
 - **Host part.** `host.ts` is bundled to a Node module and runs in an Electron `utilityProcess` per
   add-on, talking to the host over a message port. It receives a host API (`exec`, `git`, `fs`, `http`,
   `storage`, `notify`, `emit`, `schedule`, `projects`) limited by the manifest's `permissions`.
 - **Hot reload.** The host watches add-on folders, rebuilds on change and tells the renderer to reload
   that add-on only.
+- **Built-in vs yours.** Built-in add-ons ship in `addons/`; a folder in `~/.jig/addons` with the same
+  id replaces the built-in one (the builder changes a built-in add-on by copying it there).
+- Code: `packages/sdk` (manifest, slots, API types), `main/addons/` (catalog, bundler, CSS, host
+  process, service, git history), `renderer/addons/` (loader, `ctx`, `@jig/sdk/ui`). References:
+  `docs/reference/slots.md`, `docs/reference/addon-api.md`.
 - **Context.** UI components receive `ctx`: `ctx.host.call()` to reach their host part, plus core
   APIs: active project, open a tab, run in a terminal, send a prompt to a chat, notify, per-add-on storage.
 

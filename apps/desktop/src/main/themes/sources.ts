@@ -56,6 +56,26 @@ export function isInside(path: string, root: string): boolean {
   return p === r || p.startsWith(r.endsWith(sep) ? r : r + sep);
 }
 
+/** One theme file (Jig or VS Code format) as an entry; includes may not leave `root`. */
+export function fileEntry(
+  path: string,
+  id: string,
+  label: string,
+  source: ThemeSource,
+  root: string,
+): ThemeEntry {
+  return {
+    id,
+    label,
+    source,
+    load: async () => {
+      const json = await readJsonc(path);
+      if (isJigThemeFile(json)) return jigThemeFromFile({ label, ...json }, id, source);
+      return mapVsCodeTheme(await loadVsCodeFile(path, root), { id, label, source });
+    },
+  };
+}
+
 /** Theme files in `~/.jig/themes` (top level only): Jig format or VS Code format. */
 export async function userEntries(dir: string): Promise<ThemeEntry[]> {
   let files: string[];
@@ -77,16 +97,7 @@ export async function userEntries(dir: string): Promise<ThemeEntry[]> {
     } catch {
       // Reported when loaded.
     }
-    entries.push({
-      id,
-      label,
-      source,
-      load: async () => {
-        const json = await readJsonc(path);
-        if (isJigThemeFile(json)) return jigThemeFromFile(json, id, source);
-        return mapVsCodeTheme(await loadVsCodeFile(path, dir), { id, label, source });
-      },
-    });
+    entries.push(fileEntry(path, id, label, source, dir));
   }
   return entries;
 }

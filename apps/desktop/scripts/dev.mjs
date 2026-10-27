@@ -1,10 +1,11 @@
 // Development: Vite dev server for the renderer (hot reload), esbuild watch for main/preload,
 // Electron restarted whenever main or preload change.
 import { spawn } from "node:child_process";
+import { copyFile, mkdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { context } from "esbuild";
 import { createServer } from "vite";
-import { appDir, mainConfig, preloadConfig } from "./build-config.mjs";
+import { appDir, mainAssets, mainConfig, preloadConfig } from "./build-config.mjs";
 
 const require = createRequire(import.meta.url);
 const electronPath = require("electron");
@@ -70,6 +71,8 @@ const mainCtx = await context({ ...mainConfig, plugins: [...mainConfig.plugins, 
 const preloadCtx = await context({ ...preloadConfig, plugins: [preloadWatch.plugin] });
 await Promise.all([mainCtx.watch(), preloadCtx.watch()]);
 await Promise.all([mainWatch.firstBuild, preloadWatch.firstBuild]);
+await mkdir(`${appDir}/dist/main`, { recursive: true });
+for (const [from, to] of mainAssets) await copyFile(from, to);
 startElectron();
 
 async function shutdown() {

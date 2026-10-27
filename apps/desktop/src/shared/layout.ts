@@ -51,6 +51,8 @@ export const defaultLayout = (): Layout => LayoutSchema.parse({});
 export interface ViewPlacement {
   id: string;
   defaultRegion: SideRegion;
+  /** Expand the region when the view is placed for the first time (new add-on views). */
+  reveal?: boolean;
 }
 
 export const MAX_TABS = 50;
@@ -92,7 +94,12 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   }
   layout.hidden = layout.hidden.filter((v) => !seen.has(v) && seen.add(v));
   for (const view of views) {
-    if (!seen.has(view.id)) layout[view.defaultRegion].views.push(view.id);
+    if (seen.has(view.id)) continue;
+    layout[view.defaultRegion].views.push(view.id);
+    if (view.reveal) {
+      layout[view.defaultRegion].collapsed = false;
+      layout[view.defaultRegion].active = view.id;
+    }
   }
   for (const r of SIDE_REGIONS) {
     const region = layout[r];

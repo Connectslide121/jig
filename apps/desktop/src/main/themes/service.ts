@@ -15,6 +15,8 @@ export interface ThemeServiceOptions {
   /** Editor extension folders to scan (see `vscodeExtensionDirs`). */
   extensionDirs: string[];
   fetch?: Fetch;
+  /** More themes, e.g. contributed by add-ons. */
+  extra?: () => Promise<ThemeEntry[]>;
 }
 
 /**
@@ -41,11 +43,18 @@ export class ThemeService {
       userEntries(this.options.themesDir),
       extensionEntries(this.openVsxDir, "openvsx"),
       ...this.options.extensionDirs.map((dir) => extensionEntries(dir, "vscode")),
+      this.options.extra?.() ?? Promise.resolve([]),
     ]);
     const map = new Map<string, ThemeEntry>();
     for (const entry of groups.flat()) if (!map.has(entry.id)) map.set(entry.id, entry);
     this.entries = map;
     return map;
+  }
+
+  /** Forgets everything and tells listeners (e.g. an add-on with themes changed). */
+  refresh(): void {
+    this.invalidate();
+    this.notify("all");
   }
 
   /** Forgets everything; the next call rescans. */

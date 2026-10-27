@@ -67,7 +67,22 @@ export interface StatusItemDef {
   owner?: string;
 }
 
+export interface TopbarItemDef {
+  id: string;
+  order?: number;
+  component: ComponentType;
+  owner?: string;
+}
+
+export interface ChatToolbarItemDef {
+  id: string;
+  component: ComponentType<{ sessionId: string; projectId: string }>;
+  owner?: string;
+}
+
 interface RegistryState {
+  topbarItems: Record<string, TopbarItemDef>;
+  chatToolbar: Record<string, ChatToolbarItemDef>;
   views: Record<string, ViewDef>;
   tabTypes: Record<string, TabTypeDef>;
   actions: Record<string, ActionDef>;
@@ -75,6 +90,8 @@ interface RegistryState {
 }
 
 export const useRegistry = create<RegistryState>(() => ({
+  topbarItems: {},
+  chatToolbar: {},
   views: {},
   tabTypes: {},
   actions: {},
@@ -95,6 +112,8 @@ export const registerView = (def: ViewDef) => register("views", def.id, def);
 export const registerTabType = (def: TabTypeDef) => register("tabTypes", def.type, def);
 export const registerAction = (def: ActionDef) => register("actions", def.id, def);
 export const registerStatusItem = (def: StatusItemDef) => register("statusItems", def.id, def);
+export const registerTopbarItem = (def: TopbarItemDef) => register("topbarItems", def.id, def);
+export const registerChatToolbarItem = (def: ChatToolbarItemDef) => register("chatToolbar", def.id, def);
 
 /** Removes everything an owner (an add-on) registered. */
 export function unregisterOwner(owner: string): void {
@@ -102,6 +121,8 @@ export function unregisterOwner(owner: string): void {
     const keep = <T extends { owner?: string }>(record: Record<string, T>) =>
       Object.fromEntries(Object.entries(record).filter(([, v]) => v.owner !== owner));
     return {
+      topbarItems: keep(s.topbarItems),
+      chatToolbar: keep(s.chatToolbar),
       views: keep(s.views),
       tabTypes: keep(s.tabTypes),
       actions: keep(s.actions),

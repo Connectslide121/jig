@@ -1,0 +1,115 @@
+# Add-on API reference
+
+Types: `packages/sdk/src/api.ts` (`@jig/sdk`), components: `@jig/sdk/ui`
+(`apps/desktop/src/renderer/addons/uiKit.ts`). Runtime: `apps/desktop/src/main/addons/` (host) and
+`apps/desktop/src/renderer/addons/` (UI). How to write one: `docs/guides/writing-addons.md`.
+
+## Folder
+
+```
+my-addon/
+├── addon.json   manifest (schema: packages/sdk/addon.schema.json)
+├── ui.tsx       optional — React components and handlers named in the manifest
+├── host.ts      optional — Node code: methods the UI calls, watchers
+└── README.md    what it does and why (the builder reads it before changing anything)
+```
+
+Built-in add-ons: `addons/` in Jig's repository. Yours: `~/.jig/addons/<folder>/` — a git repository;
+every change Jig accepts is a commit (Settings → Add-ons → History → Roll back). A folder of yours with
+the same `id` as a built-in add-on replaces it.
+
+## Manifest (`addon.json`)
+
+```jsonc
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "pipelines",                 // lower-case, digits, dashes
+  "name": "Pipelines",
+  "description": "Azure DevOps pipelines of your projects",
+  "version": "1.0.0",
+  "icon": "rocket",
+  "permissions": ["exec:az", "net"],
+  "contributes": { "views": [ … ], "actions": [ … ], "watchers": [ … ] }   // docs/reference/slots.md
+}
+```
+
+Problems (invalid manifest, a missing export, a build error) are shown in Settings → Add-ons; the
+add-on isn't loaded until they are fixed. Hard-coded colours or arbitrary Tailwind values show as
+design-token warnings (the builder must fix them; the add-on still loads).
+
+## UI (`ui.tsx`)
+
+- Allowed imports: `react`, `react-dom`, `lucide-react`, `@jig/sdk`, `@jig/sdk/ui` and relative files.
+  They are the app's own instances (shared through `globalThis.__jigShared`), so an add-on is a few
+  KB and looks native.
+- Styling: Tailwind token utilities only (`bg-surface`, `text-muted`, `p-2`, `rounded-md`, …;
+  `docs/reference/design-tokens.md`). Jig generates the CSS for an add-on's classes when it loads.
+- Every component gets `ctx: AddonUiContext` as a prop (also `useAddon()`), and renders inside an
+  error boundary: a crash shows "Turn off" / "Fix with AI" in its place.
+- Handlers (`actions[].run`, `menus[].run`) are exported functions `(ctx, target?) => void | Promise`.
+
+`AddonUiContext`:
+
+| Member | What |
+|---|---|
+| `addon` | `{ id, name }` |
+| `host.call(method, args)` | calls an export of `host.ts` |
+| `on(topic, listener)` | events from `api.emit` in host code |
+| `projects.active()` / `projects.list()` | `{ id, name, path, isGitRepo, exists }` |
+| `openTab(type, params)` / `showView(id)` | this add-on's tabs and views (short ids) |
+| `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
+| `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
+| `notify({ title, message?, tone? })` | toast |
+| `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code |
+| `openExternal(url)`, `openPath(path)`, `copy(text)` | |
+| `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added |
+| `confirm({…})`, `prompt({…})` | Jig dialogs |
+
+`@jig/sdk/ui` exports: `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
+`CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Tooltip`, `Spinner`,
+`Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
+`useAddon()`, `useActiveProject()`, `useProjectList()`, `useHostCall(method, args)` →
+`{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`.
+
+## Host (`host.ts`)
+
+Runs in its own process (an Electron `utilityProcess`, D-017): a hang or crash never freezes Jig; it
+restarts on the next call (up to 3 times a minute). Every named export is a method:
+
+```ts
+import type { AddonHostApi } from "@jig/sdk";
+export async function status(args: { projectId: string }, api: AddonHostApi) { … }
+export function activate(api: AddonHostApi) { … }   // optional, runs once at start
+```
+
+`AddonHostApi`:
+
+| Member | Permission | What |
+|---|---|---|
+| `exec(command, args, { cwd?, timeoutMs?, env?, input? })` → `{ code, stdout, stderr }` | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found) |
+| `fs.readFile/readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
+| `fetch(url, init)` | `net` | |
+| `storage.get/set` | — | same store as the UI |
+| `notify({…})`, `emit(topic, payload)` | — | toast; event to the UI |
+| `projects()` | — | registered projects |
+| `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
+| `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
+
+Permissions are shown to you (Settings → Add-ons, and in the builder's preview) and enforced by this
+API. Host code is code you accepted, not a sandbox (D-007): it could import Node modules directly.
+
+## Lifecycle
+
+- Discovery at start and on every file change (folders are watched; saving a file reloads that add-on
+  only — UI, CSS and host process).
+- Switching an add-on off (Settings → Add-ons, or "Turn off" after a crash) unloads it and is
+  remembered in `~/.jig/addons-state.json`.
+- `jig_list_addons` (the chat tool) and the builder read the catalog: manifest, contributions,
+  permissions and README of every add-on.
+
+## IPC
+
+`addons.list`, `addons.setEnabled`, `addons.call`, `addons.storageGet/Set`, `addons.reload`,
+`addons.history`, `addons.rollback`; events `addons.changed`, `addons.event` (`docs/reference/ipc.md`).
+The UI bundle is served at `jig-addon://<id>/ui.js`, its CSS at `jig-addon://<id>/ui.css`, other files
+of the folder (images) at `jig-addon://<id>/<path>`.

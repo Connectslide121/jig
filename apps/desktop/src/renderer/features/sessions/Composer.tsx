@@ -2,7 +2,8 @@ import { ArrowUp, Paperclip, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { QueuedMessage, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
-import { Button, IconButton } from "../../ui";
+import { Button, ErrorBoundary, IconButton } from "../../ui";
+import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { usePrompts } from "./prompts";
 
@@ -25,6 +26,7 @@ export function Composer({
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const prompts = Object.values(usePrompts());
+  const toolbar = Object.values(useRegistry((s) => s.chatToolbar));
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
 
   useEffect(() => {
@@ -76,8 +78,13 @@ export function Composer({
             ))}
           </div>
         )}
-        {prompts.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+        {(prompts.length > 0 || toolbar.length > 0) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {toolbar.map((item) => (
+              <ErrorBoundary key={item.id} label={item.id}>
+                <item.component sessionId={meta.id} projectId={meta.projectId} />
+              </ErrorBoundary>
+            ))}
             {prompts.map((p) => (
               <Button
                 key={p.id}

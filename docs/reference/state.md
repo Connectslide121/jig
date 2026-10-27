@@ -13,6 +13,10 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
 | `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`) |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
+| `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
+| `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
+| `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
+| `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |

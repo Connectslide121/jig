@@ -15,7 +15,11 @@ const externalizeDependencies = {
 };
 
 export const mainConfig = {
-  entryPoints: { index: `${appDir}/src/main/index.ts` },
+  entryPoints: {
+    index: `${appDir}/src/main/index.ts`,
+    // The process add-on host code runs in (Electron utilityProcess).
+    "addon-host": `${appDir}/src/main/addons/hostEntry.ts`,
+  },
   outdir: `${appDir}/dist/main`,
   outExtension: { ".js": ".mjs" },
   bundle: true,
@@ -39,3 +43,6 @@ export const preloadConfig = {
   external: ["electron"],
   logLevel: "warning",
 };
+
+/** Files the main process reads at runtime: the design tokens (for add-on CSS). */
+export const mainAssets = [[`${appDir}/src/renderer/styles/tokens.css`, `${appDir}/dist/main/tokens.css`]];

@@ -45,7 +45,7 @@ export function contentSecurityPolicy(dev: boolean): string {
   return [
     "default-src 'self'",
     `script-src 'self' jig-addon: 'wasm-unsafe-eval'${dev ? " 'unsafe-inline'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' jig-addon:",
     "img-src 'self' data: blob: https: jig-addon:",
     "font-src 'self' data:",
     `connect-src 'self' jig-addon:${dev ? " ws://localhost:* http://localhost:*" : ""}`,

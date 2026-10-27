@@ -12,7 +12,7 @@ import {
 import { projectDotClass } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
-import { cn, IconButton, openMenuAt } from "../ui";
+import { cn, ErrorBoundary, IconButton, openMenuAt } from "../ui";
 import { addProject, hiddenViews, openSettings } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { useRegistry } from "./registry";
@@ -72,6 +72,22 @@ function layoutMenu(): MenuEntry[] {
   ];
 }
 
+/** Items contributed to the top bar (`topbar.item` slot). */
+function TopbarItems() {
+  const items = Object.values(useRegistry((s) => s.topbarItems)).sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0),
+  );
+  return (
+    <div className="no-drag flex items-center gap-1">
+      {items.map((item) => (
+        <ErrorBoundary key={item.id} label={item.id}>
+          <item.component />
+        </ErrorBoundary>
+      ))}
+    </div>
+  );
+}
+
 export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
@@ -108,6 +124,7 @@ export function Topbar() {
         Tools
       </button>
       <div className="flex-1" />
+      <TopbarItems />
       <IconButton
         icon={PanelLeft}
         label="Layout and views"

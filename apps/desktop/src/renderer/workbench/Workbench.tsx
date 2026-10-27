@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useAddonsSync } from "../addons/loader";
 import { useSessionsSync } from "../features/sessions";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
@@ -53,6 +54,7 @@ export function Workbench() {
   useShellState();
   useSessionsSync();
   useTerminalsSync();
+  useAddonsSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
   return (

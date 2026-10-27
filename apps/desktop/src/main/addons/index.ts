@@ -1,0 +1,172 @@
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { dirname, join, normalize, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { slugify } from "@jig/themes";
+import { app, protocol, utilityProcess } from "electron";
+import type { AddonInfo } from "../../shared/addons";
+import { setJigToolHandlers } from "../engine/jigTools";
+import { emit, handle } from "../ipc/router";
+import { logger } from "../log";
+import { projectStore } from "../projects";
+import { mimeFor } from "../protocols";
+import { paths } from "../state/paths";
+import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { setTokensFile } from "./css";
+import type { HostChannel } from "./hostProcess";
+import type { FromHost } from "./hostRuntime";
+import { AddonService } from "./service";
+
+const log = logger("addons");
+const here = dirname(fileURLToPath(import.meta.url));
+
+let service: AddonService | undefined;
+let latest: AddonInfo[] = [];
+const changeListeners = new Set<(addons: AddonInfo[]) => void>();
+
+export function addonService(): AddonService {
+  if (!service) throw new Error("Add-ons not started");
+  return service;
+}
+
+export function onAddonsChange(listener: (addons: AddonInfo[]) => void): () => void {
+  changeListeners.add(listener);
+  return () => changeListeners.delete(listener);
+}
+
+/** Jig's own add-ons: `addons/` in the repository (dev) or in the app's resources (installed). */
+export function builtinAddonsDir(): string | undefined {
+  if (process.env.JIG_BUILTIN_ADDONS) return process.env.JIG_BUILTIN_ADDONS || undefined;
+  const candidates = app.isPackaged
+    ? [join(process.resourcesPath, "addons")]
+    : [join(here, "..", "..", "..", "..", "addons")];
+  return candidates.find((c) => existsSync(c));
+}
+
+function utilityHost(addonId: string): HostChannel {
+  const child = utilityProcess.fork(join(here, "addon-host.mjs"), [], {
+    serviceName: `Jig add-on ${addonId}`,
+    stdio: "pipe",
+  });
+  child.stdout?.on("data", (d: Buffer) => log.debug(`[${addonId}] ${d.toString().trimEnd()}`));
+  child.stderr?.on("data", (d: Buffer) => log.warn(`[${addonId}] ${d.toString().trimEnd()}`));
+  return {
+    send: (message) => child.postMessage(message),
+    onMessage: (listener) => child.on("message", (message: FromHost) => listener(message)),
+    onExit: (listener) => child.on("exit", listener),
+    kill: () => child.kill(),
+  };
+}
+
+/** Themes contributed by enabled add-ons (`contributes.themes`). */
+export async function addonThemes(): Promise<ThemeEntry[]> {
+  return latest
+    .filter((a) => a.enabled && a.errors.length === 0)
+    .flatMap((a) =>
+      (a.manifest?.contributes.themes ?? []).map((t) => {
+        const file = join(a.dir, t.path);
+        const label =
+          t.label ??
+          t.path
+            .split("/")
+            .pop()!
+            .replace(/\.jsonc?$/, "");
+        return fileEntry(file, `addon:${a.id}/${slugify(label)}`, label, { kind: "user", file }, a.dir);
+      }),
+    );
+}
+
+export function installAddonProtocol(): void {
+  protocol.handle("jig-addon", async (request) => {
+    const url = new URL(request.url);
+    const id = url.hostname;
+    const path = decodeURIComponent(url.pathname).replace(/^\/+/, "");
+    const s = service;
+    const headers = (type: string) => ({ "content-type": type, "cache-control": "no-store" });
+    if (!s) return new Response("Not ready", { status: 503 });
+    if (path === "ui.js") {
+      const ui = s.ui(id);
+      return ui
+        ? new Response(ui.code, { headers: headers("text/javascript; charset=utf-8") })
+        : new Response("Not found", { status: 404 });
+    }
+    if (path === "ui.css") {
+      const ui = s.ui(id);
+      return ui
+        ? new Response(ui.css, { headers: headers("text/css; charset=utf-8") })
+        : new Response("", { status: 404 });
+    }
+    // Other files of the add-on folder (images, …), read-only and never outside it.
+    const addon = s.list().find((a) => a.id === id);
+    if (!addon) return new Response("Not found", { status: 404 });
+    const file = normalize(join(addon.dir, path));
+    if (!file.startsWith(addon.dir + sep) || /\.(ts|tsx|mjs|js)$/.test(file))
+      return new Response("Forbidden", { status: 403 });
+    try {
+      return new Response(await readFile(file), { headers: headers(mimeFor(file)) });
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
+  });
+}
+
+export async function startAddons(): Promise<void> {
+  const tokens = [
+    join(here, "tokens.css"),
+    join(here, "..", "..", "src", "renderer", "styles", "tokens.css"),
+  ].find((p) => existsSync(p));
+  if (tokens) setTokensFile(tokens);
+  else log.warn("tokens.css not found; add-on CSS will be empty");
+
+  service = new AddonService({
+    builtinDir: builtinAddonsDir(),
+    userDir: paths.addons(),
+    cacheDir: paths.cache(),
+    dataDir: paths.addonData(),
+    stateFile: paths.addonsState(),
+    nodePaths: [join(here, "..", "..", "node_modules"), join(here, "..", "..", "..", "..", "node_modules")],
+    hostFactory: utilityHost,
+    rpc: (addonId) => async (op, args) => {
+      if (op === "notify") {
+        const n = args as {
+          title: string;
+          message?: string;
+          tone?: "info" | "success" | "warning" | "danger";
+        };
+        emit("notify", { title: n.title, message: n.message, tone: n.tone });
+      } else if (op === "emit") {
+        const { topic, payload } = args as { topic: string; payload: unknown };
+        emit("addons.event", { id: addonId, topic, payload });
+      } else if (op === "projects") {
+        return (await projectStore().state()).projects;
+      } else if (op === "log") {
+        const { message, detail } = args as { message: string; detail?: unknown };
+        log.info(`[${addonId}] ${message}`, detail);
+      }
+      return undefined;
+    },
+    onChange: (addons) => {
+      latest = addons;
+      emit("addons.changed", addons);
+      for (const listener of changeListeners) listener(addons);
+    },
+  });
+  const s = service;
+  await s.start();
+  s.watchFiles();
+  setJigToolHandlers({ listAddons: async () => s.catalog() });
+
+  handle("addons.list", () => s.list());
+  handle("addons.setEnabled", ({ id, enabled }) => s.setEnabled(id, enabled));
+  handle("addons.call", ({ id, method, args }) => s.call(id, method, args));
+  handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
+  handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));
+  handle("addons.reload", async ({ id }) => {
+    if (id) await s.reload(id);
+    else await s.reloadAll();
+  });
+  handle("addons.history", ({ id }) => s.history(id));
+  handle("addons.rollback", ({ id, commit }) => s.rollback(id, commit));
+
+  app.on("will-quit", () => s.stop());
+}

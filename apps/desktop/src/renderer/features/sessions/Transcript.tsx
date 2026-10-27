@@ -1,9 +1,19 @@
-import { Brain, ChevronRight, CircleAlert, Info, TriangleAlert } from "lucide-react";
+import { Brain, ChevronRight, CircleAlert, Copy, Info, MoreHorizontal, TriangleAlert } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
-import { cn, Markdown, Spinner } from "../../ui";
+import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
+import { contributedEntries } from "../../workbench/contextMenus";
 import { PermissionCard } from "./PermissionCard";
 import { ToolCard } from "./ToolCard";
+
+/** A message's menu: Copy, plus entries add-ons contribute (`context.message`). */
+function messageMenu(sessionId: string, text: string): MenuEntry[] {
+  const extra = contributedEntries({ slot: "context.message", sessionId, text });
+  return [
+    { label: "Copy", icon: Copy, onSelect: () => void navigator.clipboard.writeText(text) },
+    ...(extra.length ? [{ separator: true } as const, ...extra] : []),
+  ];
+}
 
 function Thinking({ item }: { item: Extract<ChatItem, { kind: "thinking" }> }) {
   const [open, setOpen] = useState(false);
@@ -51,9 +61,20 @@ const Item = memo(function Item({
       );
     case "assistant":
       return (
-        <div data-testid="assistant-message">
+        <div data-testid="assistant-message" className="group/message relative">
           <Markdown text={item.text} />
           {item.streaming && !item.text && <Spinner size="sm" />}
+          {!item.streaming && item.text && (
+            <div className="absolute -top-2 right-0 hidden group-hover/message:block">
+              <IconButton
+                icon={MoreHorizontal}
+                size="sm"
+                label="Message options"
+                className="bg-elevated shadow-card"
+                onClick={(e) => openMenuAt(e.currentTarget, messageMenu(sessionId, item.text), true)}
+              />
+            </div>
+          )}
         </div>
       );
     case "thinking":

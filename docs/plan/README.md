@@ -17,7 +17,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 3 | [Workbench shell](03-workbench-shell.md) | ✅ | layout-as-data regions, tabs, Tools menu, projects, settings |
 | 4 | [Chat sessions](04-chat-sessions.md) | ✅ | several Claude Code sessions across projects, streaming, permissions, history |
 | 5 | [Terminals & scripts](05-terminals-scripts.md) | ✅ | terminals per project; scripts startable with a click |
-| 6 | [Add-on system](06-addon-system.md) | ⬜ | slots, manifest, UI + host runtime, hot reload, management UI |
+| 6 | [Add-on system](06-addon-system.md) | ✅ | slots, manifest, UI + host runtime, hot reload, management UI |
 | 7 | [Built-in add-ons](07-builtin-addons.md) | ⬜ | Git tab, Repos overview, Pipelines (Azure DevOps), Scripts |
 | 8 | [Builder — levels 1 & 2](08-builder.md) | ⬜ | "Build something…" changes layout/settings or creates/changes an add-on, with preview + accept |
 | 9 | [Learning & suggestions](09-learning.md) | ⬜ | activity log, pattern mining, "Look for patterns now", Monday 10:00 run, inbox |

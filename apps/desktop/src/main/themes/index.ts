@@ -3,7 +3,7 @@ import { emit, handle } from "../ipc/router";
 import { paths } from "../state/paths";
 import { setTitleBarColours } from "../window";
 import { ThemeService } from "./service";
-import { vscodeExtensionDirs } from "./sources";
+import { type ThemeEntry, vscodeExtensionDirs } from "./sources";
 
 let service: ThemeService | undefined;
 
@@ -12,8 +12,8 @@ export function themeService(): ThemeService {
   return service;
 }
 
-export async function startThemes(): Promise<void> {
-  service = new ThemeService({ themesDir: paths.themes(), extensionDirs: vscodeExtensionDirs() });
+export async function startThemes(extra?: () => Promise<ThemeEntry[]>): Promise<void> {
+  service = new ThemeService({ themesDir: paths.themes(), extensionDirs: vscodeExtensionDirs(), extra });
   service.onChange(() => emit("themes.changed", undefined));
   await service.watch();
 

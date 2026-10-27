@@ -113,9 +113,24 @@ export function promptDialog(options: {
 /** Mount once at the root. */
 export function DialogHost() {
   const pending = usePending((s) => s.pending);
-  const [value, setValue] = useState("");
-  useEffect(() => setValue(pending?.initial ?? ""), [pending]);
   if (!pending) return null;
+  return <PendingDialog key={pendingKey(pending)} pending={pending} />;
+}
+
+const keys = new WeakMap<Pending, number>();
+let nextKey = 0;
+function pendingKey(p: Pending): number {
+  let key = keys.get(p);
+  if (key === undefined) {
+    key = ++nextKey;
+    keys.set(p, key);
+  }
+  return key;
+}
+
+/** One question; its text field starts with `initial` on the first render (no effect, no race). */
+function PendingDialog({ pending }: { pending: Pending }) {
+  const [value, setValue] = useState(pending.initial ?? "");
   const finish = (result: string | undefined) => {
     usePending.setState({ pending: undefined });
     pending.resolve(result);
