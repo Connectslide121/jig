@@ -37,6 +37,9 @@ npm run build   # bundle the new screenshots
 # run the spec once more after this build
 ```
 
+GitHub and browsers cache README images by address: after regenerating the screenshots (or the icon),
+bump the `?v=` number on the README's image links so the new pictures show.
+
 `about.jpg` and `slots.jpg` (the page itself) are only used by the repository's `README.md`, which
 shows the same screenshots as the project's landing page.
 
