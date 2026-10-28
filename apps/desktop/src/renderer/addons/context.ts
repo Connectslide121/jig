@@ -4,10 +4,12 @@ import {
   addonTabType,
   addonViewId,
   type MenuItemInput,
+  type RunningScript,
 } from "@jig/sdk";
 import { icons } from "lucide-react";
 import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
+import { useTerminals } from "../features/terminals/store";
 import { call, errorMessage } from "../lib/host";
 import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } from "../ui";
 import { contributedEntries } from "../workbench/contextMenus";
@@ -78,9 +80,34 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         return p ? toProject(p) : undefined;
       },
       list: () => useProjects.getState().projects.map(toProject),
+      setActive: async (projectId) => {
+        await call("projects.setActive", { id: projectId });
+      },
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
-    showView: (viewId) => workbench.showView(addonViewId(id, viewId)),
+    // A full id ("addon.git.git", "jig.terminals") shows another view; a short id one of this add-on's.
+    showView: (viewId) =>
+      workbench.showView(/^(addon|jig)\./.test(viewId) ? viewId : addonViewId(id, viewId)),
+    scripts: {
+      list: (projectId) => call("scripts.list", { projectId }),
+      async run(projectId, scriptId) {
+        const t = await call("scripts.run", { projectId, scriptId });
+        (await import("../features/terminals/actions")).showTerminal(t.id);
+      },
+      stop: (projectId, scriptId) => call("scripts.stop", { projectId, scriptId }),
+      async restart(projectId, scriptId) {
+        const t = await call("scripts.restart", { projectId, scriptId });
+        (await import("../features/terminals/actions")).showTerminal(t.id);
+      },
+      async runGroup(projectId, groupId) {
+        const started = await call("scripts.runGroup", { projectId, groupId });
+        if (started[0]) (await import("../features/terminals/actions")).showTerminal(started[0].id);
+      },
+      running: () => runningScripts(useTerminals.getState().terminals),
+      show: (terminalId) =>
+        void import("../features/terminals/actions").then((m) => m.showTerminal(terminalId)),
+    },
+    openSettings: () => void workbench.openTab("jig.settings", { section: `addon.${id}` }),
     async runInTerminal(command, options = {}) {
       if (!has(addon, "terminal")) throw new Error(`${addon.name} needs the "terminal" permission`);
       const { showTerminal } = await import("../features/terminals/actions");
@@ -125,6 +152,18 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     confirm: (input) => confirmDialog(input),
     prompt: (input) => promptDialog(input),
   };
+}
+
+function runningScripts(terminals: ReturnType<typeof useTerminals.getState>["terminals"]): RunningScript[] {
+  return terminals
+    .filter((t) => t.scriptId && t.projectId && t.status === "running")
+    .map((t) => ({ terminalId: t.id, projectId: t.projectId!, scriptId: t.scriptId!, title: t.title }));
+}
+
+/** Scripts running in terminals, re-rendering when that changes. */
+export function useRunningScripts(): RunningScript[] {
+  const terminals = useTerminals((s) => s.terminals);
+  return runningScripts(terminals);
 }
 
 export const AddonContext = createContext<AddonUiContext | undefined>(undefined);

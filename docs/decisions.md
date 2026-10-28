@@ -282,5 +282,34 @@ React, and look native. Icons in manifests are lucide names.
 
 ### D-046 — A new add-on view opens its region once
 **Decided by:** Claude, on my own · **Date:** 2026-10-27
-When an add-on view is placed for the first time, its region expands and shows it, so a freshly built
-tool is visible. After that the layout is yours (collapse it and it stays collapsed).
+When a view of one of your add-ons is placed for the first time, its region expands and shows it, so a
+freshly built tool is visible. After that the layout is yours (collapse it and it stays collapsed).
+Built-in add-on views don't do this, so Jig's first start stays calm (Projects stays in front).
+
+### D-047 — Built-in add-ons are self-contained folders
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Each built-in add-on keeps all its code in its own folder (Repos has its own small git runner instead
+of importing the Git add-on's), so copying one into `~/.jig/addons` to change it (D-043) always works.
+
+### D-048 — Git operations follow your git configuration
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Pull is a plain `git pull` (your `pull.rebase`/`ff` settings apply); push sets the upstream on a
+branch's first push (`-u origin <branch>`); commits take the message on stdin (`-F -`) so multi-line
+messages are kept; "Commit" with nothing staged stages everything first (the button says so). Discard
+on an untracked file deletes it, after a confirmation.
+
+### D-049 — Running `.cmd` programs on Windows
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+`az` and `code` are batch files on Windows, which can't be started without a shell. The add-on host
+finds programs through PATH/PATHEXT and runs `.cmd`/`.bat` files through `cmd.exe /d /s /c` with
+cross-spawn-style quoting (`main/addons/winCommand.ts`, tested). Executables still run directly.
+
+### D-050 — The Views menu opens a view
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Top bar → layout button → Views lists every view with a check for the ones not hidden; clicking one
+shows and focuses it (like VS Code's View menu). Hiding is done from the view's own `⋯` menu.
+
+### D-051 — The Pipelines watcher only follows runs you started from Jig
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Notifying about every run in every project would be noise; runs started from Jig are checked every
+minute until they finish. The view itself refreshes every 30 s while visible.

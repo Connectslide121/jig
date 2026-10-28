@@ -37,10 +37,10 @@ test("views move between regions from their ⋯ menu and the layout is saved", a
       async () =>
         JSON.parse(await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}")).right?.views,
     )
-    .toEqual(["jig.projects"]);
+    .toContain("jig.projects");
   await page.getByTestId("view-menu-jig.projects").click();
   await page.getByTestId("hide-view").click();
-  await expect(page.getByTestId("region-right")).toBeHidden();
+  await expect(page.getByTestId("view-tab-jig.projects")).toHaveCount(0);
 });
 
 test("projects: add, switch, rename and remove", async ({ page, jigHome }) => {

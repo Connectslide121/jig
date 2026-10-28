@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { access, readdir, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { type AddonHostApi, allowsExec } from "@jig/sdk";
+import { resolveCommand } from "./winCommand";
 
 /**
  * Runs inside an add-on's own process (Electron utilityProcess, D-017). It loads the bundled host
@@ -53,11 +54,13 @@ export function createHostRuntime(send: (message: FromHost) => void) {
           return Promise.reject(
             new PermissionError(`This add-on needs "exec:${command}" (or "exec") in addon.json`),
           );
+        const resolved = resolveCommand(command, args, process.platform, process.env);
         return new Promise((resolve) => {
           const child = execFile(
-            command,
-            args,
+            resolved.file,
+            resolved.args,
             {
+              windowsVerbatimArguments: resolved.verbatim,
               cwd: options.cwd,
               timeout: options.timeoutMs ?? 120_000,
               maxBuffer: 64 * 1024 * 1024,

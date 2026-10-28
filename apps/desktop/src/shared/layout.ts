@@ -82,8 +82,9 @@ function removeEverywhere(layout: Layout, viewId: string) {
 
 /**
  * Makes the layout consistent with the views that exist: views nobody placed yet (a new add-on) go to
- * their default region; unknown views are kept (an add-on may be reloading) but never active;
- * duplicates are removed; every non-empty region has an active view.
+ * their default region; unknown views are kept (an add-on may be reloading) and stay active if they
+ * were, so a hot reload doesn't switch the region to another view (the region shows the first known
+ * view meanwhile); duplicates are removed; a region whose active view left it gets a new one.
  */
 export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   const layout = clone(input);
@@ -103,8 +104,8 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   }
   for (const r of SIDE_REGIONS) {
     const region = layout[r];
-    const visible = region.views.filter((v) => known.has(v));
-    if (!region.active || !visible.includes(region.active)) region.active = visible[0];
+    if (!region.active || !region.views.includes(region.active))
+      region.active = region.views.find((v) => known.has(v)) ?? region.views[0];
   }
   if (layout.main.active && !layout.main.tabs.some((t) => t.id === layout.main.active))
     layout.main.active = layout.main.tabs[0]?.id;

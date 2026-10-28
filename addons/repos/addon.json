@@ -1,0 +1,54 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "repos",
+  "name": "Repos",
+  "description": "All your projects' repositories at a glance: branch, uncommitted changes, ahead/behind and last fetch, with fetch/pull/push.",
+  "version": "1.0.0",
+  "icon": "folder-git-2",
+  "permissions": ["exec:git", "exec:code", "fs:read"],
+  "contributes": {
+    "views": [
+      {
+        "id": "overview",
+        "title": "Repos",
+        "icon": "folder-git-2",
+        "region": "right",
+        "component": "ReposView"
+      }
+    ],
+    "statusbar": [{ "id": "attention", "side": "right", "component": "ReposStatus" }],
+    "actions": [
+      { "id": "show", "title": "Show all repos", "group": "Git", "icon": "folder-git-2", "run": "showRepos" },
+      {
+        "id": "fetch-all",
+        "title": "Fetch all repos",
+        "group": "Git",
+        "icon": "cloud-download",
+        "run": "fetchAll"
+      }
+    ],
+    "menus": [
+      {
+        "slot": "context.project",
+        "id": "vscode",
+        "title": "Open in VS Code",
+        "icon": "code",
+        "run": "openInCode"
+      },
+      {
+        "slot": "context.project",
+        "id": "explorer",
+        "title": "Open in Explorer",
+        "icon": "folder-open",
+        "run": "openInExplorer"
+      },
+      {
+        "slot": "context.repo",
+        "id": "repo-vscode",
+        "title": "Open in VS Code",
+        "icon": "code",
+        "run": "openInCode"
+      }
+    ]
+  }
+}

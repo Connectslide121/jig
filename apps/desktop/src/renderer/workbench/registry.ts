@@ -22,6 +22,8 @@ export interface ViewDef {
   headerActions?: ComponentType<ViewProps>;
   /** `core` or the add-on id. */
   owner?: string;
+  /** Open its region the first time it is placed (views of add-ons you built). */
+  reveal?: boolean;
 }
 
 export interface TabProps {

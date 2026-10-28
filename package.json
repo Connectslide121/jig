@@ -2,7 +2,7 @@
   "name": "jig",
   "private": true,
   "version": "0.1.0",
-  "description": "Jig — a personal agentic workbench around Claude Code that builds its own tools.",
+  "description": "Jig \u2014 a personal agentic workbench around Claude Code that builds its own tools.",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -15,7 +15,7 @@
     "dev": "npm run dev --workspace @jig/desktop",
     "build": "npm run build --workspace @jig/desktop",
     "start": "npm run start --workspace @jig/desktop",
-    "typecheck": "tsc -p packages/sdk && tsc -p packages/themes && tsc -p packages/learning && tsc -p apps/desktop/tsconfig.node.json && tsc -p apps/desktop/tsconfig.web.json && tsc -p tsconfig.e2e.json",
+    "typecheck": "tsc -p packages/sdk && tsc -p packages/themes && tsc -p packages/learning && tsc -p apps/desktop/tsconfig.node.json && tsc -p apps/desktop/tsconfig.web.json && tsc -p tsconfig.e2e.json && tsc -p addons",
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "vitest run",

@@ -64,6 +64,18 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
   - Settings → Add-ons: on/off, problems and token warnings, permissions, open folder, reload,
     history and roll back.
 
+- **Phase 7 (done): built-in add-ons.**
+  - **Git** (left sidebar, `Ctrl+Shift+G`): current branch with ahead/behind and fetch/pull/push,
+    working changes with stage/unstage/discard and commit, branches (click → history, right-click →
+    switch/compare/new branch). History, commit detail, diffs (side by side / inline) and compare open
+    as tabs in the main window. Branch in the status bar.
+  - **Repos** (right sidebar): every project's repo with branch, changes, ahead/behind, last fetch;
+    fetch/pull/push; "N to push/pull" in the status bar; right-click a project → Open in VS Code /
+    Explorer.
+  - **Pipelines** (right sidebar): Azure DevOps through your `az` login; set up in Settings →
+    Pipelines; run on a branch, open in the browser, notifications when your runs finish.
+  - **Scripts** (right sidebar): every script of every project; Tools → Run a script… (`Ctrl+Shift+R`).
+
 ## How to try it
 
 ```bash
@@ -100,6 +112,13 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **Pipelines with your Azure DevOps** (not testable here): Settings → Pipelines → Check Azure CLI,
+  enter the organisation, Load from Azure DevOps, pick projects; check the list, Run…, the browser
+  links, and the notification when a run finishes. Needs `az login` and
+  `az extension add --name azure-devops`.
+- **Git on your real repos**: large histories (scrolling, filter), Windows paths with spaces, line
+  endings in diffs, push with your credential manager (a sign-in window may appear — that is git's,
+  not Jig's), Open in VS Code (needs the `code` command on PATH).
 - **Add-ons on Windows**: the add-on host process (utilityProcess) starts, `api.exec("git", …)` works
   without a console window flashing, and file watching picks up saves in `%USERPROFILE%\.jig\addons`.
 

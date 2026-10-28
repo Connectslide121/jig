@@ -300,12 +300,20 @@ confirmation. Where it makes sense, a level-3 change adds a new slot.
    the builder with the suggestion as the goal; **Not now** snoozes; **Never** blocks that pattern.
    Answers feed the next reflection.
 
-## 11. Git (_planned_)
+## 11. Git and the built-in add-ons
 
-Jig has its own Git tab (a built-in add-on, phase 7): branches, **commit history per branch**,
-working changes, and **commit detail and file diffs opened as tabs in the main window**. The host runs
-the user's `git` CLI safely (argument arrays, no shell) and parses its machine-readable output. Rebase,
-graph and blame are out of scope. Jig does not run VS Code extensions or embed VS Code (D-019, D-022).
+Jig's own Git tab is the built-in add-on `addons/git`: the Git view (current branch, working changes
+with stage/unstage/discard and commit, branches), and main-area tabs for **history per branch**,
+**commit detail** and **file diffs** (side by side or inline, theme-highlighted, unchanged regions
+collapsed) and branch comparison. Its host code runs the user's `git` safely (argument arrays, no
+shell, `core.quotepath=off`, `GIT_TERMINAL_PROMPT=0`) and parses machine-readable output
+(`addons/git/lib/parse.ts`). Rebase, graph and blame are out of scope. Jig does not run VS Code
+extensions or embed VS Code (D-019, D-022).
+
+The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, Open in
+VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
+and `addons/scripts` (scripts view and Tools-menu actions). They use only public slots, so they are
+also examples for the builder.
 
 ## 12. Testing
 

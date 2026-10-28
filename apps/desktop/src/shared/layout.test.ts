@@ -47,14 +47,19 @@ describe("views", () => {
     expect(layout.bottom.views).toEqual(["jig.terminal"]);
   });
 
-  it("keeps the user's placement, removes duplicates and keeps unknown views inactive", () => {
+  it("keeps the user's placement, removes duplicates and keeps a reloading view active", () => {
     const custom = LayoutSchema.parse({
       left: { views: ["addon.gone", "jig.sessions"], active: "addon.gone" },
       right: { views: ["jig.projects", "jig.sessions"] },
     });
     const layout = normalizeLayout(custom, views);
     expect(layout.left.views).toEqual(["addon.gone", "jig.sessions"]);
-    expect(layout.left.active).toBe("jig.sessions");
+    expect(layout.left.active).toBe("addon.gone");
+    const moved = normalizeLayout(
+      LayoutSchema.parse({ left: { views: ["jig.sessions"], active: "addon.moved-away" } }),
+      views,
+    );
+    expect(moved.left.active).toBe("jig.sessions");
     expect(layout.right.views).toEqual(["jig.projects"]);
   });
 
@@ -76,6 +81,7 @@ describe("views", () => {
     expect(findView(layout, "jig.terminal")).toBe("hidden");
     expect(layout.bottom.views).toEqual([]);
     expect(layout.bottom.active).toBeUndefined();
+    expect(findView(layout, "jig.projects")).toBe("left");
   });
 
   it("moves a view, activating and expanding the target region", () => {

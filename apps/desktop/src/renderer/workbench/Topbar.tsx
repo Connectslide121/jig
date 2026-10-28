@@ -66,7 +66,8 @@ function layoutMenu(): MenuEntry[] {
           label: v.title,
           icon: v.icon,
           checked: !hidden.includes(v),
-          onSelect: () => (hidden.includes(v) ? workbench.showView(v.id) : workbench.hideView(v.id)),
+          // Opens the view (hide it from its own ⋯ menu).
+          onSelect: () => workbench.showView(v.id),
         })),
     },
   ];

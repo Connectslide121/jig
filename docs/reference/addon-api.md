@@ -55,8 +55,11 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `addon` | `{ id, name }` |
 | `host.call(method, args)` | calls an export of `host.ts` |
 | `on(topic, listener)` | events from `api.emit` in host code |
-| `projects.active()` / `projects.list()` | `{ id, name, path, isGitRepo, exists }` |
-| `openTab(type, params)` / `showView(id)` | this add-on's tabs and views (short ids) |
+| `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists }` |
+| `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
+| `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |
+| `openSettings()` | this add-on's settings page |
+| `scripts.list/run/stop/restart/runGroup(projectId, …)`, `scripts.running()`, `scripts.show(terminalId)` | discovered scripts and their terminals (`docs/reference/terminals.md`) |
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
 | `notify({ title, message?, tone? })` | toast |
@@ -68,8 +71,10 @@ design-token warnings (the builder must fix them; the add-on still loads).
 `@jig/sdk/ui` exports: `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
 `CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
-`useAddon()`, `useActiveProject()`, `useProjectList()`, `useHostCall(method, args)` →
-`{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`.
+`useAddon()`, `useActiveProject()`, `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
+→ `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists),
+`useHighlightedLines(code, lang)` (theme-highlighted HTML per line, for diffs) and
+`languageForPath(path)`.
 
 ## Host (`host.ts`)
 
@@ -86,7 +91,7 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 
 | Member | Permission | What |
 |---|---|---|
-| `exec(command, args, { cwd?, timeoutMs?, env?, input? })` → `{ code, stdout, stderr }` | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found) |
+| `exec(command, args, { cwd?, timeoutMs?, env?, input? })` → `{ code, stdout, stderr }` | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found). On Windows, PATH/PATHEXT are searched and `.cmd`/`.bat` programs (`az`, `code`, `npm`) run through `cmd.exe` with safe quoting |
 | `fs.readFile/readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
 | `fetch(url, init)` | `net` | |
 | `storage.get/set` | — | same store as the UI |

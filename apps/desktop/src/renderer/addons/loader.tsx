@@ -104,6 +104,7 @@ async function mount(addon: AddonInfo): Promise<void> {
         defaultRegion: v.region,
         component: Component,
         owner,
+        reveal: addon.source === "user",
       });
   }
   for (const t of c.tabs) {

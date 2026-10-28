@@ -1,0 +1,64 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "git",
+  "name": "Git",
+  "description": "Branches, working changes and commits of the active project, with history per branch, commit details and diffs in the main window.",
+  "version": "1.0.0",
+  "icon": "git-branch",
+  "permissions": ["exec:git", "fs:read"],
+  "contributes": {
+    "views": [
+      { "id": "git", "title": "Git", "icon": "git-branch", "region": "left", "component": "GitView" }
+    ],
+    "tabs": [
+      { "type": "history", "title": "History", "icon": "history", "component": "HistoryTab" },
+      { "type": "commit", "title": "Commit", "icon": "git-commit-horizontal", "component": "CommitTab" },
+      { "type": "diff", "title": "Diff", "icon": "file-diff", "component": "DiffTab" },
+      { "type": "compare", "title": "Compare", "icon": "git-compare", "component": "CompareTab" }
+    ],
+    "statusbar": [{ "id": "branch", "side": "left", "component": "BranchStatus" }],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show Git",
+        "group": "Git",
+        "icon": "git-branch",
+        "shortcut": "Mod+Shift+G",
+        "run": "showGit"
+      },
+      {
+        "id": "history",
+        "title": "History of the current branch",
+        "group": "Git",
+        "icon": "history",
+        "run": "openHistory"
+      },
+      { "id": "fetch", "title": "Fetch", "group": "Git", "icon": "cloud-download", "run": "fetch" },
+      { "id": "pull", "title": "Pull", "group": "Git", "icon": "arrow-down-to-line", "run": "pull" },
+      { "id": "push", "title": "Push", "group": "Git", "icon": "arrow-up-from-line", "run": "push" },
+      {
+        "id": "switch",
+        "title": "Switch branch…",
+        "group": "Git",
+        "icon": "git-branch",
+        "run": "switchBranch"
+      },
+      {
+        "id": "create",
+        "title": "Create branch…",
+        "group": "Git",
+        "icon": "git-branch-plus",
+        "run": "createBranch"
+      }
+    ],
+    "menus": [
+      {
+        "slot": "context.project",
+        "id": "history",
+        "title": "Git history",
+        "icon": "history",
+        "run": "openProjectHistory"
+      }
+    ]
+  }
+}

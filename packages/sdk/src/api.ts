@@ -14,6 +14,30 @@ export interface AddonProject {
 
 export type NotifyTone = "info" | "success" | "warning" | "danger";
 
+/** A script Jig found in a project (package.json, .ps1/.sh, dotnet, Azure Functions). */
+export interface AddonScript {
+  id: string;
+  name: string;
+  kind: string;
+  folder: string;
+  cwd: string;
+  command: string;
+  detail?: string;
+}
+
+export interface AddonScriptGroup {
+  id: string;
+  name: string;
+  scriptIds: string[];
+}
+
+export interface RunningScript {
+  terminalId: string;
+  projectId: string;
+  scriptId: string;
+  title: string;
+}
+
 export interface MenuItemInput {
   label: string;
   icon?: string;
@@ -30,11 +54,28 @@ export interface AddonUiContext {
   host: { call<T = unknown>(method: string, args?: unknown): Promise<T> };
   /** Events your host code sends with `api.emit(topic, payload)`. Returns an unsubscribe function. */
   on(topic: string, listener: (payload: unknown) => void): () => void;
-  projects: { active(): AddonProject | undefined; list(): AddonProject[] };
+  projects: {
+    active(): AddonProject | undefined;
+    list(): AddonProject[];
+    setActive(projectId: string): Promise<void>;
+  };
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
-  /** Shows one of this add-on's views (short id). */
+  /** Shows one of this add-on's views (short id), or any view by its full id (`addon.git.git`, `jig.terminals`). */
   showView(viewId: string): void;
+  /** Scripts of a project (the same discovery as the dashboard), and running them in terminals. */
+  scripts: {
+    list(projectId: string): Promise<{ scripts: AddonScript[]; groups: AddonScriptGroup[] }>;
+    run(projectId: string, scriptId: string): Promise<void>;
+    stop(projectId: string, scriptId: string): Promise<void>;
+    restart(projectId: string, scriptId: string): Promise<void>;
+    runGroup(projectId: string, groupId: string): Promise<void>;
+    running(): RunningScript[];
+    /** Shows a running script's terminal. */
+    show(terminalId: string): void;
+  };
+  /** Opens this add-on's settings page (`contributes.settings`). */
+  openSettings(): void;
   /** Opens a terminal in the bottom panel running `command`. Needs the `terminal` permission. */
   runInTerminal(
     command: string,

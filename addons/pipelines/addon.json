@@ -1,0 +1,38 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "pipelines",
+  "name": "Pipelines",
+  "description": "Azure DevOps pipelines grouped per project: latest run, branch and time; run a pipeline on a branch, open runs in the browser, get notified when a run you started finishes.",
+  "version": "1.0.0",
+  "icon": "rocket",
+  "permissions": ["exec:az"],
+  "contributes": {
+    "views": [
+      {
+        "id": "pipelines",
+        "title": "Pipelines",
+        "icon": "rocket",
+        "region": "right",
+        "component": "PipelinesView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show pipelines",
+        "group": "Pipelines",
+        "icon": "rocket",
+        "run": "showPipelines"
+      },
+      {
+        "id": "run",
+        "title": "Run a pipeline…",
+        "group": "Pipelines",
+        "icon": "play",
+        "run": "runPipelineAction"
+      }
+    ],
+    "watchers": [{ "id": "runs", "every": "1m", "run": "checkTrackedRuns" }],
+    "settings": { "title": "Pipelines", "component": "PipelinesSettings" }
+  }
+}

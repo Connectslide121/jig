@@ -1,0 +1,44 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "scripts",
+  "name": "Scripts",
+  "description": "Every script Jig finds in your projects, per project and folder, started and stopped with one click; groups such as \"Start local\" start several at once.",
+  "version": "1.0.0",
+  "icon": "square-terminal",
+  "permissions": ["terminal"],
+  "contributes": {
+    "views": [
+      {
+        "id": "scripts",
+        "title": "Scripts",
+        "icon": "square-terminal",
+        "region": "right",
+        "component": "ScriptsView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "run",
+        "title": "Run a script…",
+        "group": "Terminals",
+        "icon": "play",
+        "shortcut": "Mod+Shift+R",
+        "run": "runScriptMenu"
+      },
+      {
+        "id": "group",
+        "title": "Start a script group…",
+        "group": "Terminals",
+        "icon": "layers",
+        "run": "runGroupMenu"
+      },
+      {
+        "id": "stop",
+        "title": "Stop a running script…",
+        "group": "Terminals",
+        "icon": "square",
+        "run": "stopScriptMenu"
+      }
+    ]
+  }
+}
