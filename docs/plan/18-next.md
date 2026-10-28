@@ -256,6 +256,20 @@ what already works** where there is one, and then **keeps the discipline**, proa
   - the notes' audiences and languages;
   - a commit message convention (optional);
   - when to release (e.g. "before every prod deploy", weekly).
+- **How the project ships is part of the policy**, since it differs from project to project:
+  - **Release style:**
+    - **Planned releases:** versions, release candidates on stage, notes per release, and the
+      discipline nudges below.
+    - **Continuous:** every prod deploy is a release. Common for small projects where a customer asks
+      for a small change or reports a bug and it's simply fixed and deployed. Each deploy gets a
+      version automatically (CalVer or a build number such as `2026.10.28.2`) and a one-line entry in
+      a running changelog. There are no "release first?" prompts and no reminders.
+    - **None:** the project isn't tracked.
+  - **How deploys happen:**
+    - **A pipeline:** Jig sees the runs through the Pipelines add-on.
+    - **By hand:** e.g. publish and upload to a VM. Jig can't see this, so a "Deployed" button (and
+      later a Release workflow step) records it.
+    - **Both**, per environment.
 - **The rules are saved as the repository's release policy.** Proposed: `.jig/release.json`, committed,
   so colleagues get the same rules and the add-on helps them too. To confirm.
 - **Starting fresh:** a baseline release (`1.0.0`, "first versioned release") marks the starting
@@ -264,8 +278,11 @@ what already works** where there is one, and then **keeps the discipline**, proa
 ### Staying disciplined
 - **Unreleased work is visible:** a badge in Git and Repos ("14 commits unreleased, 3 weeks"), and the
   workspace list of repositories with something to release.
-- **Deploys without a version:** when a prod pipeline runs (or is about to run) on a commit with no
-  release, Jig says "release 1.4.0 first?". It's a warning you can override, not a block (proposed).
+- **Deploys without a version (planned releases only):** when a prod pipeline runs (or is about to
+  run) on a commit with no release, Jig says "release 1.4.0 first?". It's a warning you can override,
+  not a block (proposed).
+- **Continuous projects stay light:** after each prod deploy, the deploy is tagged and logged. The
+  only AI is an optional "what changed this month" summary to send the customer, made when you ask.
 - **Commit messages follow the policy:** the Git panel's Write uses the convention, so the changelog
   and the bump suggestion are reliable.
 - **Reminders follow the policy's cadence.** Learning reports how releases are going in its weekly
