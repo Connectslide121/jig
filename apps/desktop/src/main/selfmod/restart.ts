@@ -52,6 +52,7 @@ export function restartWithLauncher(options: {
   const child = spawn(options.electron, args, {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
     env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
   child.unref();

@@ -7,6 +7,7 @@
  * Add a method or event here first, then implement it in main, then document it in
  * docs/reference/ipc.md.
  */
+
 import type { AddonCommit, AddonInfo } from "./addons";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
@@ -14,6 +15,7 @@ import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, Sessi
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
+import type { SetupCheck, UpdateInfo } from "./setup";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
 
@@ -30,6 +32,8 @@ export interface AppInfo {
   safeMode: boolean;
   /** The launcher had to fall back after a change to Jig failed to start. */
   startedAfterFailure: boolean;
+  /** An installed build (not running from source). */
+  packaged: boolean;
   /** Set in a preview instance of a level-3 change (the build id). */
   preview?: string;
 }
@@ -37,6 +41,11 @@ export interface AppInfo {
 /** Method name → argument and result types. */
 export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
+  /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
+  "setup.check": { args: void; result: SetupCheck[] };
+  "updates.check": { args: void; result: UpdateInfo };
+  /** From a git clone: pull, build, restart. Installed: opens the release page. */
+  "updates.apply": { args: void; result: { restarting: boolean } };
   "app.openExternal": { args: { url: string }; result: void };
   "app.showItemInFolder": { args: { path: string }; result: void };
   /** Opens a folder in Explorer/Finder or a file with its default app. */

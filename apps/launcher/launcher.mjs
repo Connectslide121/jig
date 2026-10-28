@@ -65,7 +65,12 @@ export async function attempt(args, step, log, spawnImpl = spawn) {
   delete env.ELECTRON_RUN_AS_NODE;
   const extra = process.platform === "linux" && process.getuid?.() === 0 ? ["--no-sandbox"] : [];
   log(`starting ${step.name}: ${args.electron} ${step.app}`);
-  const child = spawnImpl(args.electron, [step.app, ...extra], { env, detached: true, stdio: "ignore" });
+  const child = spawnImpl(args.electron, [step.app, ...extra], {
+    env,
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  });
   let exited = false;
   child.on("exit", (code) => {
     exited = true;

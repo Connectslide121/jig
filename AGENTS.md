@@ -41,6 +41,7 @@ npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
 npm run check          # typecheck + lint + unit tests + design-token check — run before every commit
 npm run e2e            # build, then Playwright drives the real app (Linux needs xvfb-run)
+npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 ```

@@ -11,7 +11,10 @@ exceptions return `internal` (and are logged).
 
 | Method | Args | Result | Notes |
 |---|---|---|---|
-| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `safeMode`, `startedAfterFailure`, `preview?` |
+| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `safeMode`, `startedAfterFailure`, `preview?` |
+| `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
+| `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
+| `updates.apply` | — | `{ restarting }` | pull + build + restart, or open the release page; `update_failed`, `no_source` |
 | `app.undoLastChange` | — | `{ goal }` | reverts the last accepted level-3 change, rebuilds, restarts; `nothing_to_undo`, `build_failed` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |

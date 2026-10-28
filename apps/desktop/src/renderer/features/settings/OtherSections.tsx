@@ -387,6 +387,11 @@ export function AboutSettings() {
           Open
         </Button>
       </SettingRow>
+      <SettingRow label="Setup and updates" description="What Jig needs on this machine, and newer versions.">
+        <Button size="sm" onClick={() => void workbench.openTab("jig.setup")} data-testid="about-setup">
+          Get started…
+        </Button>
+      </SettingRow>
       <SettingRow label="Logs" description="The host log helps when something goes wrong.">
         <Button
           size="sm"

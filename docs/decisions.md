@@ -385,3 +385,30 @@ your work with the builder's. Jig doesn't push; that stays yours.
 `apps/launcher/`, `main/builder/`, `main/selfmod/`, `main/engine/claude.ts` (credentials rules) and
 `AGENTS.md`. A change touching them can only be accepted after a separate confirmation dialog listing
 the files (`confirmProtected`).
+
+### D-065 — The packaged app has no asar archive
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+esbuild (bundling add-ons as they load) and Tailwind (add-on CSS) read files from `node_modules`, and
+the Claude Code binary and node-pty must be real files. With asar every one of them needs an unpack
+rule and a path rewrite; without it the packaged app behaves like the dev build. The cost is a bigger
+install folder, which is fine for a personal tool.
+
+### D-066 — First-run checks ask tools for their version, never for their login
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+"Is Claude Code signed in?" could only be answered by reading its credentials or asking it about them,
+which the credentials rule forbids. Get started shows that Claude Code is there (its `--version`) and
+offers **Sign in to Claude Code…**; the sign-in state shows when your first session starts (Claude Code
+reports `not_signed_in`). The same goes for gh and az: only versions and whether the Azure DevOps
+extension is installed. Get started opens by itself only in an installed Jig (dev runs and tests don't).
+
+### D-067 — Updates: pull + build from a clone, the GitHub release page when installed
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+No electron-updater and no silent updates: Jig changes itself only when you press a button. From a git
+clone, **Pull, build and restart** fast-forwards, builds and restarts through the launcher (with the
+previous build as fallback). An installed Jig compares with the latest GitHub release of
+`Connectslide121/jig` and opens its page; downloading and running the installer stays yours.
+
+### D-068 — The installer is unsigned and per user
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+There is no code-signing certificate, so SmartScreen asks once. A per-user NSIS install needs no admin
+rights and keeps the app beside `%USERPROFILE%\.jig`.

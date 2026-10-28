@@ -1,30 +1,14 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
-import { app } from "electron";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
 import { getEngine } from "../engine";
 import { setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
-import { logger } from "../log";
-import { restartWithLauncher } from "../selfmod/restart";
-import { isJigRepo } from "../selfmod/workspace";
+import { restarter, sourceRepo } from "../selfmod";
 import { registerSessionKind, sessionManager } from "../sessions";
 import { jigHome, paths } from "../state/paths";
 import { BuildService } from "./service";
-
-const log = logger("builder");
-const here = dirname(fileURLToPath(import.meta.url));
-
-/** Jig's source repository: the setting, or the repository Jig runs from (development). */
-async function sourceRepo(): Promise<string | undefined> {
-  const configured = getConfig().builder.sourcePath;
-  if (configured) return configured;
-  const running = join(app.getAppPath(), "..", "..");
-  return (await isJigRepo(running)) ? running : undefined;
-}
 
 export function stopBuilder(): void {
   service?.stop();
@@ -82,19 +66,7 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
       appBuildsDir: paths.appBuilds(),
       electron: process.execPath,
       // JIG_NO_RESTART (tests): accept without restarting; Jig says a restart is pending.
-      restart: process.env.JIG_NO_RESTART
-        ? undefined
-        : (appDir, previous) => {
-            log.info(`Restarting through the launcher into ${appDir}`);
-            restartWithLauncher({
-              launcher: join(here, "launcher.mjs"),
-              electron: process.execPath,
-              app: appDir,
-              previous,
-              home: jigHome(),
-            });
-            app.quit();
-          },
+      restart: restarter(),
     },
     onChange: (jobs) => emit("builds.changed", jobs),
     notify: (n) => emit("notify", n),

@@ -15,6 +15,7 @@ export function registerAppHandlers(): void {
     jigHome: jigHome(),
     dev: Boolean(process.env.JIG_DEV),
     engine: engineKind(),
+    packaged: app.isPackaged,
     safeMode: process.env.JIG_SAFE_MODE === "1",
     startedAfterFailure: process.env.JIG_STARTED_AFTER_FAILURE === "1",
     preview: process.env.JIG_PREVIEW || undefined,

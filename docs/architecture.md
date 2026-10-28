@@ -53,12 +53,14 @@ jig/
 │   ├── reference/                 contracts: slots, add-on API, IPC, themes, state files
 │   └── guides/                    how-tos: developing, testing, writing add-ons, themes
 ├── apps/desktop/                  the Electron app
-│   ├── scripts/                   build.mjs, dev.mjs
+│   ├── scripts/                   build.mjs, dev.mjs, dist.mjs (electron-builder), make-icon.mjs
+│   ├── electron-builder.yml       packaging (Windows NSIS installer)
 │   └── src/
 │       ├── shared/                types shared by main, preload and renderer (IPC contract)
 │       ├── main/                  host modules, one folder per domain
 │       ├── preload/               the window.jig bridge
 │       └── renderer/              the React UI
+├── apps/launcher/                 restarts Jig after a change to its code, with fallback (phase 10)
 ├── packages/
 │   ├── sdk/                       @jig/sdk — add-on manifest schema, slot ids, add-on API types
 │   ├── themes/                    @jig/themes — theme model, built-in themes, VS Code mapping
@@ -321,7 +323,17 @@ VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher
 and `addons/scripts` (scripts view and Tools-menu actions). They use only public slots, so they are
 also examples for the builder.
 
-## 12. Testing
+## 12. Packaging, first run and updates
+
+`npm run dist` builds the app and packages it with electron-builder for the platform it runs on
+(Windows: an NSIS installer, per user). No asar: runtime tools (esbuild, Tailwind, the Claude Code
+binary, node-pty) need real files. Built-in add-ons ship in `resources/addons`. An installed Jig opens
+**Get started** on its first start: version checks of Claude Code, git, gh, az (+ Azure DevOps
+extension) and `code` — never a login. Updates: from a git clone, pull + build + restart through the
+launcher; installed, the latest GitHub release page. Guide: `docs/guides/packaging.md`; reference:
+`docs/reference/setup.md`.
+
+## 13. Testing
 
 - **Unit** (Vitest): pure packages and host modules (with a temp `JIG_HOME`).
 - **End-to-end** (Playwright driving Electron, under Xvfb on Linux): `JIG_ENGINE=fake`, temp

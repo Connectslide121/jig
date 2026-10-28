@@ -12,6 +12,7 @@ import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { registerScriptHandlers } from "./scripts";
 import { startSessions } from "./sessions";
+import { registerSetupHandlers } from "./setup";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
@@ -50,6 +51,7 @@ async function start() {
   startSessions();
   startTerminals();
   registerScriptHandlers();
+  registerSetupHandlers();
   await startThemes(addonThemes);
   await startAddons();
   onAddonsChange(() => themeService().refresh());

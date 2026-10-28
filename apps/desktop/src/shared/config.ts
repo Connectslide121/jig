@@ -44,6 +44,12 @@ export const ConfigSchema = z.object({
       installCommand: z.string().default("npm install"),
     })
     .prefault({}),
+  setup: z
+    .object({
+      /** The Get started checklist was closed (it opens on the first start of an installed Jig). */
+      firstRunDone: z.boolean().default(false),
+    })
+    .prefault({}),
   terminal: z
     .object({
       /** Shell executable; empty = PowerShell on Windows, $SHELL elsewhere. */

@@ -1,0 +1,54 @@
+# Packaging (phase 11): `npm run dist` from the repository root, on the platform you package for
+# (Windows: an NSIS installer). See docs/guides/packaging.md.
+appId: dev.jig.workbench
+productName: Jig
+executableName: Jig
+copyright: Jon Mendizabal
+directories:
+  output: release
+  buildResources: build
+# Use the Electron that npm installed (no second download).
+electronDist: ../../node_modules/electron/dist
+# No asar: esbuild (add-on bundling), Tailwind (add-on CSS), node-pty and the Claude Code binary all
+# read or execute files from node_modules, which an asar archive would hide (D-065).
+asar: false
+files:
+  - dist/**
+  - package.json
+  - "!**/*.map"
+  # Only the Claude Code binary for this platform (glibc builds don't need the musl one).
+  - "!node_modules/@anthropic-ai/claude-agent-sdk-linux-*-musl/**"
+extraResources:
+  # Built-in add-ons (Git, Repos, Pipelines, Scripts), loaded from resources/addons.
+  - from: ../../addons
+    to: addons
+    filter:
+      - "**/*"
+      - "!**/*.test.ts"
+      - "!tsconfig.json"
+npmRebuild: false
+# Updates are checked by Jig itself (Tools → Check for updates…), not electron-updater (D-067).
+publish: null
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Jig
+  artifactName: Jig-Setup-${version}.${ext}
+linux:
+  target:
+    - target: dir
+  icon: build/icon.png
+  category: Development
+mac:
+  target:
+    - target: dir
+  icon: build/icon.png
+  category: public.app-category.developer-tools

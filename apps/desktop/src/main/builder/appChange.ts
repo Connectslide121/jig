@@ -222,6 +222,7 @@ export class AppChanges {
       env,
       detached: true,
       stdio: "ignore",
+      windowsHide: true,
     });
     child.on("exit", () => {
       this.previews.delete(id);

@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-28 (phases 2–10)._
+_Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 
 ## Continue here (next session)
 
@@ -8,8 +8,10 @@ _Last updated: 2026-10-28 (phases 2–10)._
 2. Clone ThinkRail beside it for reference: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`.
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
-4. Continue the plan at the first phase that is not ✅ in `docs/plan/README.md`.
-5. Run `npm run check` before every commit; tick plan items as they land.
+4. Every phase in `docs/plan/README.md` is ✅. Next: work through "Needs testing on your machine" below
+   on Windows (installer, real Claude Code sessions, a real level-3 change), then pick items from
+   `docs/plan/99-backlog.md`.
+5. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
 
@@ -105,6 +107,12 @@ _Last updated: 2026-10-28 (phases 2–10)._
     as "previous", merges into your branch, builds and restarts through the launcher. If the new build
     doesn't report ready, the launcher starts the previous one, then safe mode (your add-ons off), and
     Jig shows a banner with **Undo the last change to Jig** (also in Tools).
+- **Phase 11 (done): packaging & Windows.**
+  - `npm run dist` packages Jig with electron-builder; on Windows it makes `Jig-Setup-<version>.exe`
+    (per-user NSIS installer with Start menu shortcut and Jig's icon). Guide: `docs/guides/packaging.md`.
+  - **Get started** (opens on an installed Jig's first start; Tools → Check your setup…): Claude Code,
+    git, gh, az + Azure DevOps extension, VS Code `code`, with install links and Sign in to Claude Code….
+  - **Check for updates…**: from a git clone, pull + build + restart; installed, the latest GitHub release.
 
 ## How to try it
 
@@ -168,6 +176,17 @@ Things the cloud build environment couldn't verify:
   purpose (e.g. throw in `main/index.ts`) and check the previous build starts with the banner and Undo
   works. Also check the launcher with a packaged install (phase 11: the packaged app can only change
   itself when Settings → Builder points at a source clone).
+
+- **The Windows installer** (phase 11; only the Linux package could be built and run here): on
+  Windows run `npm install` and `npm run dist`, install `apps/desktop/release/Jig-Setup-0.1.0.exe`
+  (SmartScreen: More info → Run anyway), start Jig from the Start menu, check the icon, that Get started
+  opens and finds Claude Code (the bundled `claude.exe`), git, az + the DevOps extension and `code`;
+  start a session, open a terminal (PowerShell; try `cmd.exe` and Git Bash in Settings → Terminal), and
+  check the built-in add-ons load (they are bundled with the packaged esbuild). Uninstall from Windows
+  Settings → Apps.
+- **Updates**: Check for updates… in your clone after a new commit on GitHub (Pull, build and restart),
+  and in the installed app once there is a GitHub release (a private repository can't be checked
+  without a login, so it says "Couldn't check").
 
 ## Known gaps / notes
 

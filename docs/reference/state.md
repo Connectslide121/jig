@@ -53,5 +53,6 @@ suggestions); each is documented here when it lands._
 | `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
 | `learning.model` | `haiku` | model for the reflection step |
+| `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `builder.sourcePath` | `""` | Jig's source repository for level 3; empty = the repo Jig runs from |
 | `builder.checkCommand` / `buildCommand` / `installCommand` | `npm run check` / `npm run build` / `npm install` | level-3 commands (`docs/reference/self-modification.md`) |

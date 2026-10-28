@@ -2,7 +2,7 @@
   "name": "jig",
   "private": true,
   "version": "0.1.0",
-  "description": "Jig \u2014 a personal agentic workbench around Claude Code that builds its own tools.",
+  "description": "Jig — a personal agentic workbench around Claude Code that builds its own tools.",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -21,7 +21,8 @@
     "test": "vitest run",
     "check:tokens": "node scripts/check-tokens.ts",
     "check": "npm run typecheck && npm run lint && npm run test && npm run check:tokens",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "dist": "npm run build && npm run dist --workspace @jig/desktop"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

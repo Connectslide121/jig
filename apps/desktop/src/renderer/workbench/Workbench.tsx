@@ -4,6 +4,7 @@ import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { useLearningSync } from "../features/learning";
 import { useSessionsSync } from "../features/sessions";
+import { useFirstRun } from "../features/setup";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
 import { useConfig } from "../stores/config";
@@ -63,6 +64,7 @@ export function Workbench() {
   useLearningSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
+  useFirstRun(ready);
   return (
     <div className="flex h-full flex-col" data-testid="app-root">
       <Topbar />
