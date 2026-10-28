@@ -427,3 +427,12 @@ The renderer can't read files, so `files.image` reads an image (by extension, at
 a `data:` URL, which the UI's Content Security Policy already allows. No new protocol is needed, and
 nothing but images can be read this way. Git versions of an image come from `git show <rev>:<path>`
 through the add-on API, which now returns binary output as base64 (`encoding: "base64"`).
+
+### D-071 — File icons: VS Code icon themes, defaulting to VS Code's own choice; Material isn't bundled
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Jon uses Material Icon Theme in VS Code and wants the same icons. Rather than copying one icon set,
+Jig reads the VS Code icon-theme format, so any theme works (Material, Seti, Catppuccin icons…).
+The default, "Same as VS Code", reads only `workbench.iconTheme` from VS Code's `settings.json` and
+uses that theme from VS Code's extensions folder, so it matches without setup. Material (MIT, ~5 MB
+of SVGs) isn't bundled: it's already in your VS Code, and Open VSX can install it otherwise; without
+any theme Jig uses its own lucide icons.

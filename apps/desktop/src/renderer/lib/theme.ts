@@ -2,6 +2,7 @@ import { type JigTheme, jigDark, jigLight, themeCssVariables } from "@jig/themes
 import { useEffect } from "react";
 import type { JigConfig } from "../../shared/config";
 import { useAppearance } from "../stores/appearance";
+import { loadFileIcons } from "../stores/fileIcons";
 import { setHighlightTheme } from "./highlight";
 import { call, errorMessage, useHostEvent } from "./host";
 import { activeThemeId, styleVariables } from "./style";
@@ -48,15 +49,20 @@ export function useThemeController(): void {
   useEffect(() => {
     void refresh();
     void refreshList();
+    void call("config.get").then((c) => loadFileIcons(c.appearance.fileIconTheme));
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => void refresh();
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, []);
 
-  useHostEvent("config.changed", (config) => void refresh(config));
+  useHostEvent("config.changed", (config) => {
+    void refresh(config);
+    void loadFileIcons(config.appearance.fileIconTheme);
+  });
   useHostEvent("themes.changed", () => {
     void refresh();
     void refreshList();
+    void call("config.get").then((c) => loadFileIcons(c.appearance.fileIconTheme, true));
   });
 }

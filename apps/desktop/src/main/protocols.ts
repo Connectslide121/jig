@@ -17,6 +17,11 @@ export function registerSchemes(): void {
       scheme: "jig-addon",
       privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
     },
+    // File icon themes: icons and fonts of a loaded theme (main/themes/fileIcons.ts).
+    {
+      scheme: "jig-icons",
+      privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+    },
   ]);
 }
 
@@ -46,8 +51,8 @@ export function contentSecurityPolicy(dev: boolean): string {
     "default-src 'self'",
     `script-src 'self' jig-addon: 'wasm-unsafe-eval'${dev ? " 'unsafe-inline'" : ""}`,
     "style-src 'self' 'unsafe-inline' jig-addon:",
-    "img-src 'self' data: blob: https: jig-addon:",
-    "font-src 'self' data:",
+    "img-src 'self' data: blob: https: jig-addon: jig-icons:",
+    "font-src 'self' data: jig-icons:",
     `connect-src 'self' jig-addon:${dev ? " ws://localhost:* http://localhost:*" : ""}`,
     "frame-src http://localhost:* http://127.0.0.1:*",
     "object-src 'none'",

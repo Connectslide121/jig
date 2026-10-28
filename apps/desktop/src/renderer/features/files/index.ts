@@ -12,6 +12,7 @@ export function registerFiles(): void {
     title: (params) => baseName(String(params.path ?? "Image")),
     icon: Image,
     component: ImageTab,
+    filePath: (params) => (typeof params.path === "string" ? params.path : undefined),
     owner: "core",
   });
 }

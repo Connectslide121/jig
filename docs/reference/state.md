@@ -27,7 +27,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
-| `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |
+| `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only (file icon themes: also their icons and fonts) |
 
 _More files are added by later phases (layout, projects, sessions, themes, add-ons, activity,
 suggestions); each is documented here when it lands._
@@ -53,6 +53,7 @@ suggestions); each is documented here when it lands._
 | `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
 | `learning.model` | `haiku` | model for the reflection step |
+| `appearance.fileIconTheme` | `"vscode"` | file icons: `vscode` (same as VS Code), `jig`, or a theme id (`docs/reference/file-icons.md`) |
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `builder.sourcePath` | `""` | Jig's source repository for level 3; empty = the repo Jig runs from |
 | `builder.checkCommand` / `buildCommand` / `installCommand` | `npm run check` / `npm run build` / `npm install` | level-3 commands (`docs/reference/self-modification.md`) |

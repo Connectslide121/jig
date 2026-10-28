@@ -10,6 +10,7 @@ import {
   Button,
   cn,
   Empty,
+  FileIcon,
   IconButton,
   Input,
   isImagePath,
@@ -150,6 +151,7 @@ function FileRow({
       staged: group === "staged",
       untracked: group === "untracked",
       title: short(change.path),
+      fileIcon: change.path,
     });
   const stage = () => void run(ctx, "Staged", "stage", { cwd, paths: [change.path] }, true).then(onChanged);
   const unstage = () =>
@@ -207,6 +209,7 @@ function FileRow({
       className="group flex h-6 cursor-default items-center gap-1.5 rounded-md px-2 text-xs hover:bg-hover"
       title={change.origPath ? `${change.origPath} → ${change.path}` : change.path}
     >
+      <FileIcon path={change.path} className="size-3.5" />
       <span className="min-w-0 truncate text-fg">{short(change.path)}</span>
       <span className="min-w-0 flex-1 truncate text-hint">{folder(change.path)}</span>
       <span className="hidden items-center group-hover:flex">
@@ -925,6 +928,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                     path: f.path,
                     commit: commit.hash,
                     title: `${short(f.path)} @ ${commit.short}`,
+                    fileIcon: f.path,
                   })
                 }
                 onKeyDown={(e) =>
@@ -946,6 +950,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                 }}
                 className="flex h-8 cursor-default items-center gap-2 border-b border-line px-3 text-sm last:border-b-0 hover:bg-hover"
               >
+                <FileIcon path={f.path} />
                 <span className="truncate">{short(f.path)}</span>
                 <span className="min-w-0 flex-1 truncate text-xs text-hint">
                   {f.origPath ? `${f.origPath} → ` : ""}

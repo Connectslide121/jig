@@ -58,3 +58,12 @@ light/dark pair when "follow system" is on), asks the host for it (`themes.get`)
 variables and the style variables on `<html>`, recolours the window controls and reloads the
 highlighter. It re-runs on `config.changed`, `themes.changed` and OS light/dark changes. A theme that
 fails to load falls back to Jig Dark/Light and the error is shown in Settings → Appearance.
+
+## File icons
+
+Settings → Appearance → **File icons** picks the icons for files and folders. By default Jig uses the
+icon theme your VS Code uses (for example Material Icon Theme), read from your VS Code's extensions and
+settings — nothing to set up. You can also choose Jig's own icons, any other installed icon theme, or
+install one from Open VSX (search "material icon theme" under Get themes). Details:
+`docs/reference/file-icons.md`.
+

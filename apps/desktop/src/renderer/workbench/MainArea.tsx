@@ -2,7 +2,7 @@ import { FolderPlus, Settings, Sparkles, Wrench, X } from "lucide-react";
 import { useState } from "react";
 import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
-import { Button, cn, contextMenu, ErrorBoundary } from "../ui";
+import { Button, cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
 import { addProject } from "./actions";
 import { useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
@@ -21,6 +21,9 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
   const [dragOver, setDragOver] = useState(false);
   const title = useTabTitle(tab);
   const Icon = (def && (def.iconFor?.(tab.params) ?? def.icon)) || Settings;
+  const filePath =
+    def?.filePath?.(tab.params) ??
+    (typeof tab.params.fileIcon === "string" ? tab.params.fileIcon : undefined);
   return (
     <div
       role="tab"
@@ -74,7 +77,7 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
       )}
     >
       {active && <span className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
-      <Icon className="size-3.5 shrink-0" />
+      {filePath ? <FileIcon path={filePath} className="size-3.5" /> : <Icon className="size-3.5 shrink-0" />}
       <span className="min-w-0 flex-1 truncate">{title}</span>
       <button
         type="button"

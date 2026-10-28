@@ -78,7 +78,9 @@ design-token warnings (the builder must fix them; the add-on still loads).
 `languageForPath(path)`, and for resizable layouts `Pane` (`<Pane id edge defaultSize min? max?>`: a flex
 child with a drag handle on `edge`; the size is remembered in `layout.json` under `id` — use
 `addon.<your id>.<name>`), `useSplitRatio(id, fallback?)` → `[ratio, setRatio, reset]` for two columns,
-and the bare `ResizeHandle`. For images: `ImagePreview` (`<ImagePreview src bytes? compact?>`: fitted on a
+and the bare `ResizeHandle`. `FileIcon` (`<FileIcon path folder? expanded?>`) draws a file's icon in
+the user's file icon theme (`docs/reference/file-icons.md`); `fileIcon: <path>` in `openTab` params gives
+the tab that icon. For images: `ImagePreview` (`<ImagePreview src bytes? compact?>`: fitted on a
 checkerboard, 100% toggle, pixel and file size), `useImageFile(path)` → `{ data?: { dataUrl, bytes, mime }, error? }`
 (reads through the host), `isImagePath(path)` and `formatBytes(n)`. `@jig/sdk` also exports
 `isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.

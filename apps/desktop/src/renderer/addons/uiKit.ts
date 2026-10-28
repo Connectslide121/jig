@@ -16,6 +16,7 @@ export {
   Dialog,
   Empty,
   ErrorBoundary,
+  FileIcon,
   formatBytes,
   IconButton,
   ImagePreview,

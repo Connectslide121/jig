@@ -19,6 +19,7 @@ import {
   Switch,
 } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { FileIconSettings } from "./FileIconSettings";
 import { SettingRow, SettingsSection } from "./parts";
 
 const sourceLabel: Record<ThemeSummary["source"], string> = {
@@ -150,7 +151,9 @@ function OpenVsxSearch() {
       const added = await call("themes.installOpenVsx", { namespace: ext.namespace, name: ext.name });
       notify({
         title: `Installed ${ext.displayName}`,
-        message: added.map((t) => t.label).join(", "),
+        message: added.length
+          ? added.map((t) => t.label).join(", ")
+          : "If it is a file icon theme, choose it under File icons.",
         tone: "success",
       });
     } catch (e) {
@@ -171,7 +174,7 @@ function OpenVsxSearch() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search Open VSX themes (e.g. dracula, catppuccin)"
+          placeholder="Search Open VSX themes (e.g. dracula, catppuccin, material icon theme)"
         />
         <Button type="submit" icon={Search} busy={busy}>
           Search
@@ -204,7 +207,8 @@ function OpenVsxSearch() {
         </div>
       ))}
       <p className="text-xs text-hint">
-        Only the theme's colour files are downloaded. Nothing from an extension is ever run.
+        Only the theme's colour files (and a file icon theme's icons and fonts) are downloaded. Nothing from
+        an extension is ever run.
       </p>
     </div>
   );
@@ -296,10 +300,12 @@ export function AppearanceSettings() {
 
       <SettingsSection
         title="Get themes"
-        description="Install colour themes from Open VSX. Themes from your installed VS Code, VS Code Insiders, Cursor and VSCodium appear above automatically."
+        description="Install colour themes and file icon themes from Open VSX. Themes from your installed VS Code, VS Code Insiders, Cursor and VSCodium appear automatically."
       >
         <OpenVsxSearch />
       </SettingsSection>
+
+      <FileIconSettings />
 
       <SettingsSection
         title="Style"

@@ -113,6 +113,9 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 - **Image previews:** a changed image in the Git view shows before/after side by side; images Claude
   reads or writes show a thumbnail in their tool card; both open an image tab (fit / 100%, pixel and
   file size, show in folder).
+- **File icon themes:** files and folders (Git, tabs, chat tool cards, builds, add-ons via `FileIcon`) use
+  the icon theme your VS Code uses — e.g. Material Icon Theme — or any VS Code icon theme you pick in
+  Settings → Appearance → File icons (or install from Open VSX); "Jig" keeps Jig's own icons.
 - **Phase 11 (done): packaging & Windows.**
   - `npm run dist` packages Jig with electron-builder; on Windows it makes `Jig-Setup-<version>.exe`
     (per-user NSIS installer with Start menu shortcut and Jig's icon). Guide: `docs/guides/packaging.md`.
@@ -193,6 +196,11 @@ Things the cloud build environment couldn't verify:
 - **Updates**: Check for updates… in your clone after a new commit on GitHub (Pull, build and restart),
   and in the installed app once there is a GitHub release (a private repository can't be checked
   without a login, so it says "Couldn't check").
+
+- **File icons with your VS Code**: Settings → Appearance → File icons should say "Same as VS Code
+  (Material Icon Theme)" and the samples, Git list and tabs should match VS Code. Also try VS Code's
+  default Seti (a font-based theme: only tested with unit tests) and a light colour theme (Material's
+  light variants).
 
 ## Known gaps / notes
 

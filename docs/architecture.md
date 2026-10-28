@@ -202,6 +202,10 @@ stay mounted once opened, so a chat or terminal keeps its state while you switch
   Sources: the user's installed VS Code / VS Code Insiders / Cursor / VSCodium extension folders, the
   Open VSX registry (download the `.vsix`, extract only the theme JSON — nothing is executed), and
   files dropped into `~/.jig/themes`. JSONC and `include` chains are supported.
+- **File icon themes.** VS Code icon themes (Material Icon Theme, Seti, …) from the same sources;
+  by default the one VS Code uses (`workbench.iconTheme`). `resolveFileIcon` in `packages/themes`
+  follows VS Code's rules; icons are served by the `jig-icons:` protocol; `FileIcon` (also in
+  `@jig/sdk/ui`) draws them. Reference: `docs/reference/file-icons.md`.
 - **Style settings** (independent of colour): density, corner radius, UI font, mono font, font size.
 
 ## 8. Add-ons and slots

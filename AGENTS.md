@@ -72,6 +72,8 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
   or arbitrary values (`w-[13px]`, `text-[#…]`). `npm run check:tokens` enforces this in
   `apps/desktop/src/renderer` and `addons/`.
 - Reuse the base components in `apps/desktop/src/renderer/ui/` before writing new ones.
+- Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
+  make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
 
 ## Testing rules

@@ -18,7 +18,13 @@ import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
-import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
+import type {
+  FileIconThemeData,
+  FileIconThemeList,
+  JigTheme,
+  OpenVsxExtension,
+  ThemeSummary,
+} from "./themes";
 
 export const CHANNEL_CALL = "jig:call";
 export const CHANNEL_EVENT = "jig:event";
@@ -65,6 +71,12 @@ export interface HostMethods {
   "themes.searchOpenVsx": { args: { query: string }; result: OpenVsxExtension[] };
   "themes.installOpenVsx": { args: { namespace: string; name: string }; result: ThemeSummary[] };
   "themes.remove": { args: { id: string }; result: void };
+  /** File icon themes (VS Code `iconThemes`) found in editor installs and Open VSX. */
+  "iconThemes.list": { args: void; result: FileIconThemeList };
+  "iconThemes.rescan": { args: void; result: FileIconThemeList };
+  "iconThemes.get": { args: { id: string }; result: FileIconThemeData };
+  /** The theme chosen in Settings → Appearance → File icons; `null` = Jig's own icons. */
+  "iconThemes.active": { args: void; result: FileIconThemeData | null };
   "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
   "window.minimize": { args: void; result: void };
   "window.toggleMaximize": { args: void; result: void };

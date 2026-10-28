@@ -18,6 +18,8 @@ export const ConfigSchema = z.object({
       uiFont: z.string().default("Inter Variable"),
       monoFont: z.string().default("JetBrains Mono Variable"),
       fontSize: z.number().int().min(11).max(18).default(13),
+      /** File icons: `vscode` = the icon theme your VS Code uses, `jig` = Jig's own, or a theme id. */
+      fileIconTheme: z.string().default("vscode"),
     })
     .prefault({}),
   engine: z

@@ -5,6 +5,7 @@ export * from "./CodeBlock";
 export * from "./cn";
 export * from "./Dialog";
 export * from "./ErrorBoundary";
+export * from "./FileIcon";
 export * from "./ImagePreview";
 export * from "./Input";
 export * from "./ListRow";

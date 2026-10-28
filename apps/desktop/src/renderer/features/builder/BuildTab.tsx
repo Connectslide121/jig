@@ -1,9 +1,9 @@
 import { describePermission } from "@jig/sdk";
-import { Check, ExternalLink, FileDiff, MessageSquare, Shield, X } from "lucide-react";
+import { Check, ExternalLink, MessageSquare, Shield, X } from "lucide-react";
 import { useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
 import { call, errorMessage } from "../../lib/host";
-import { Badge, Button, Card, CodeBlock, confirmDialog, Empty, Markdown, Spinner } from "../../ui";
+import { Badge, Button, Card, CodeBlock, confirmDialog, Empty, FileIcon, Markdown, Spinner } from "../../ui";
 import type { TabProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -127,7 +127,7 @@ function FileRow({
               .catch(() => setPatch(""));
         }}
       >
-        <FileDiff className="size-3.5 text-muted" />
+        <FileIcon path={path} className="size-3.5" />
         <span className="min-w-0 flex-1 truncate font-mono text-xs">{path}</span>
         {status && (
           <Badge tone={status === "added" ? "success" : status === "deleted" ? "danger" : "warning"}>

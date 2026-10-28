@@ -1,6 +1,6 @@
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
-import { contributedThemes, parseJsonc } from "@jig/themes";
+import { contributedIconThemes, contributedThemes, parseJsonc } from "@jig/themes";
 import { unzipSync } from "fflate";
 import { JigError } from "../../shared/ipc";
 import type { OpenVsxExtension } from "../../shared/themes";
@@ -8,7 +8,8 @@ import { isInside } from "./sources";
 
 /**
  * Open VSX (open-vsx.org): search theme extensions and install one by extracting only its
- * `package.json`, `package.nls.json` and JSON files. Nothing from the `.vsix` is executed. Installed
+ * `package.json`, `package.nls.json` and JSON files (plus icons and fonts for file icon themes).
+ * Nothing from the `.vsix` is executed. Installed
  * extensions live in `~/.jig/themes/openvsx/<namespace>.<name>/`.
  */
 export const OPEN_VSX = "https://open-vsx.org/api";
@@ -73,20 +74,30 @@ export async function installOpenVsx(
   return extractThemeVsix(bytes, join(targetRoot, `${namespace}.${name}`));
 }
 
-/** Extracts the theme parts of a `.vsix` (a zip with the extension under `extension/`). */
+/**
+ * Extracts the theme parts of a `.vsix` (a zip with the extension under `extension/`): JSON files, and
+ * for file icon themes also their icons and fonts (svg, png, jpg, gif, webp, woff, woff2, ttf, otf).
+ */
 export async function extractThemeVsix(bytes: Uint8Array, targetDir: string): Promise<string> {
+  const manifestBytes = unzipSync(bytes, { filter: (file) => file.name === "extension/package.json" })[
+    "extension/package.json"
+  ];
+  if (!manifestBytes) throw new JigError("invalid_extension", "No package.json in the extension");
+  const manifest = parseJsonc(new TextDecoder().decode(manifestBytes));
+  const icons = contributedIconThemes(manifest).length > 0;
+  if (contributedThemes(manifest).length === 0 && !icons)
+    throw new JigError(
+      "not_a_theme",
+      "This extension does not contribute a colour theme or a file icon theme",
+    );
+  const wanted = icons ? /\.(json|jsonc|svg|png|jpe?g|gif|webp|woff2?|ttf|otf)$/i : /\.(json|jsonc)$/i;
   const files = unzipSync(bytes, {
     filter: (file) =>
       file.name.startsWith("extension/") &&
       !file.name.includes("node_modules/") &&
-      /\.(json|jsonc)$/i.test(file.name) &&
+      wanted.test(file.name) &&
       file.originalSize < 10 * 1024 * 1024,
   });
-  const manifestBytes = files["extension/package.json"];
-  if (!manifestBytes) throw new JigError("invalid_extension", "No package.json in the extension");
-  const manifest = parseJsonc(new TextDecoder().decode(manifestBytes));
-  if (contributedThemes(manifest).length === 0)
-    throw new JigError("not_a_theme", "This extension does not contribute any colour theme");
 
   const temp = `${targetDir}.tmp-${Date.now()}`;
   await rm(temp, { recursive: true, force: true });

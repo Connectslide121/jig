@@ -40,6 +40,8 @@ export interface TabTypeDef {
   icon: LucideIcon;
   /** Icon depending on the tab's params (e.g. a file type); falls back to `icon`. */
   iconFor?: (params: Record<string, unknown>) => LucideIcon | undefined;
+  /** A file the tab shows: its icon comes from the file icon theme (wins over `icon`). */
+  filePath?: (params: Record<string, unknown>) => string | undefined;
   component: ComponentType<TabProps>;
   /** At most one tab of this type (e.g. Settings): opening it again reuses it with the new params. */
   singleton?: boolean;

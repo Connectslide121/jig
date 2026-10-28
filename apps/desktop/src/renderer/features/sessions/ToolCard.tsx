@@ -17,7 +17,7 @@ import {
 import { type ReactNode, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
-import { CodeBlock, cn, ImagePreview, Spinner } from "../../ui";
+import { CodeBlock, cn, FileIcon, ImagePreview, Spinner } from "../../ui";
 import { openImage, useImageFile } from "../files";
 import { useToolRenderers } from "./toolRenderers";
 
@@ -115,6 +115,7 @@ function Detail({ item }: { item: ToolItem }) {
 }
 
 const IMAGE_TOOLS = new Set(["Read", "Write"]);
+const FILE_TOOLS = new Set(["Read", "Write", "Edit", "MultiEdit"]);
 
 /** The image a Read/Write tool call touched, as a thumbnail; click opens it in a tab. */
 function ImageThumb({ path }: { path: string }) {
@@ -150,6 +151,7 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
         />
         <Icon className="size-3.5 shrink-0 text-muted" />
         <span className="shrink-0 font-medium text-fg">{toolLabel(item.name)}</span>
+        {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
         <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
         {item.status === "running" && <Spinner size="sm" />}
         {item.status === "done" && <CircleCheck className="size-3.5 shrink-0 text-success" />}
