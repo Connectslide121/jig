@@ -65,9 +65,9 @@ function Form({ open }: { open: Open }) {
     >
       <div className="flex flex-col gap-3">
         <div className="text-sm text-muted">
-          Describe the tool or change. Jig tries the lightest thing first — a layout or settings change, then
-          an add-on (changing an existing one when it fits), and only then its own code. You'll see a preview
-          before anything changes.
+          Describe the tool or change. Jig tries the lightest thing first: a layout or settings change, then
+          an add-on (changing an existing one when it fits). If no extension point can do it, Jig tells you
+          which one is missing. You'll see a preview before anything changes.
         </div>
         <Textarea
           rows={5}
