@@ -7,6 +7,19 @@ Source of truth: `apps/desktop/src/shared/ipc.ts`. The renderer calls `call(meth
 Errors: handlers throw `JigError(code, message)`; unknown methods return `unknown_method`; unexpected
 exceptions return `internal` (and are logged).
 
+## Checks at the boundary
+
+Every call is checked in `main/ipc/router.ts` before its handler runs (`main/ipc/validate.ts`):
+- **Sender:** it comes from Jig's own page, `jig-app://` (or the dev server), in its main frame. A
+  previewed page or any frame can't call the host.
+- **Arguments:** they are an object (or nothing).
+- **Exact shapes:** the methods that touch paths, programs, URLs, prompts, terminal input or add-on
+  storage have zod schemas (`SCHEMAS`).
+
+Refused calls return `forbidden` or `invalid_args`. `app.openPath` shows executables and scripts in
+their folder instead of running them. Handlers still check what they own: preview grants, protected
+settings, add-on permissions.
+
 ## Methods
 
 | Method | Args | Result | Notes |

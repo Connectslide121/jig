@@ -52,6 +52,8 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
   renderer never touches the system; it calls the host through `window.jig` only.
 - **One typed IPC contract**: add host methods and events in `apps/desktop/src/shared/ipc.ts` first,
   then implement the handler in `apps/desktop/src/main/` and document it in `docs/reference/ipc.md`.
+  A method that takes a path, command, URL, prompt or terminal input also gets a schema in
+  `main/ipc/validate.ts` (D-089).
 - **Pure logic goes in `packages/*`** (no Electron imports) so it can be unit-tested.
 - **State lives in `JIG_HOME`** (`~/.jig`); write files atomically through the state module, never
   with ad-hoc `fs.writeFile` on state files.

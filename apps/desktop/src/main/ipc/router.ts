@@ -11,6 +11,7 @@ import {
   type MethodResult,
 } from "../../shared/ipc";
 import { logger } from "../log";
+import { invalidArgs, isAllowedOrigin } from "./validate";
 
 const log = logger("ipc");
 
@@ -50,6 +51,14 @@ export function installRouter(): void {
       if (typeof method !== "string" || !handlers.has(method)) {
         return { ok: false, error: { code: "unknown_method", message: `Unknown method ${String(method)}` } };
       }
+      // Only Jig's own page (its main frame) talks to the host; a previewed page or frame never can.
+      const frame = event.senderFrame;
+      if (!frame || frame.parent || !isAllowedOrigin(frame.url)) {
+        log.warn(`Refused ${method} from ${frame?.url ?? "an unknown frame"}`);
+        return { ok: false, error: { code: "forbidden", message: "Not allowed from this page" } };
+      }
+      const invalid = invalidArgs(method as MethodName, args);
+      if (invalid) return { ok: false, error: { code: "invalid_args", message: `${method}: ${invalid}` } };
       try {
         const value = await handlers.get(method)!(args, { sender: event.sender });
         return { ok: true, value };

@@ -605,3 +605,11 @@ approve. A tour is ordered for understanding and pinned to hunks, which is what 
 what a plain chat answer can't show. "Turn this chat into a tool" reuses the builder instead of a new
 mechanism: Jig writes the goal from the transcript (requests, commands, changed files) and the builder
 picks the shape, so a manual workflow becomes a button the way any other tool does.
+
+### D-089 — The IPC boundary checks the sender and the arguments
+**Decided by:** Claude, on my own (from the code review; Jon: "do them") · **Date:** 2026-10-28
+Add-on UI code runs in the renderer and shares `window.jig`, so the host can't trust argument types
+from TypeScript alone. The router now accepts calls only from Jig's own page (main frame, `jig-app://`
+or the dev server) and only plain-object arguments. The methods that reach the file system, programs,
+URLs, prompts or terminals have exact schemas. `app.openPath` no longer runs executables. Schemas live
+in one file next to the router, so a new risky method gets one there (AGENTS.md).

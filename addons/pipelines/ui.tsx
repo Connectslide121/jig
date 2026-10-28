@@ -127,7 +127,12 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                   )
                 }
                 onKeyDown={(e) =>
-                  e.key === "Enter" && ctx.openExternal(pipelineUrl(data.org, p.project, pl.id))
+                  e.key === "Enter" &&
+                  ctx.openExternal(
+                    pl.latest
+                      ? runUrl(data.org, p.project, pl.latest.id)
+                      : pipelineUrl(data.org, p.project, pl.id),
+                  )
                 }
                 onContextMenu={(e) => {
                   e.preventDefault();

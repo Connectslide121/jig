@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, shell } from "electron";
 import type { AppInfo } from "../shared/ipc";
 import { JigError } from "../shared/ipc";
 import { handle } from "./ipc/router";
+import { EXECUTABLE } from "./ipc/validate";
 import { jigHome } from "./state/paths";
 
 export function engineKind(): AppInfo["engine"] {
@@ -26,6 +27,11 @@ export function registerAppHandlers(): void {
   });
   handle("app.showItemInFolder", ({ path }) => shell.showItemInFolder(path));
   handle("app.openPath", async ({ path }) => {
+    // Opening a program or script runs it: show it in its folder instead.
+    if (EXECUTABLE.test(path)) {
+      shell.showItemInFolder(path);
+      return;
+    }
     const error = await shell.openPath(path);
     if (error) throw new JigError("open_failed", error);
   });
