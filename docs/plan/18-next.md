@@ -218,8 +218,9 @@ Each project keeps its own **links, in groups**: e.g. "Stage" with its resource 
 - **Optional help:** "Add from Azure…" lists your resource groups or resources through your own `az`
   login (as Pipelines does) so you can tick the ones to add. Jig stores no tokens.
 - **Clicking a link** opens it in your browser. Right-click: copy URL, edit, ask Claude about it.
-- **Where it shows:** per project, so it follows the active project (D-102): a **Links** view on the
-  left and a Links card on the project's Home. To confirm when we start.
+- **Where it shows** (decided): it follows the active project (D-102).
+  - In the left panel as a collapsible **section below Projects** (D-099), not its own tab.
+  - On the project's Home, as a Links card.
 
 ## Checklist
 
