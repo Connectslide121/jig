@@ -1,14 +1,34 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { app } from "electron";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
 import { getEngine } from "../engine";
 import { setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
+import { logger } from "../log";
+import { restartWithLauncher } from "../selfmod/restart";
+import { isJigRepo } from "../selfmod/workspace";
 import { registerSessionKind, sessionManager } from "../sessions";
-import { paths } from "../state/paths";
-import { BUILDER_PROMPT } from "./prompt";
+import { jigHome, paths } from "../state/paths";
 import { BuildService } from "./service";
+
+const log = logger("builder");
+const here = dirname(fileURLToPath(import.meta.url));
+
+/** Jig's source repository: the setting, or the repository Jig runs from (development). */
+async function sourceRepo(): Promise<string | undefined> {
+  const configured = getConfig().builder.sourcePath;
+  if (configured) return configured;
+  const running = join(app.getAppPath(), "..", "..");
+  return (await isJigRepo(running)) ? running : undefined;
+}
+
+export function stopBuilder(): void {
+  service?.stop();
+}
 
 let service: BuildService | undefined;
 
@@ -51,6 +71,31 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
     },
     layout: { get: getLayout, set: (layout) => setLayout(layout, "host") },
     config: { get: getConfig, update: updateConfig },
+    app: {
+      sourceRepo,
+      commands: () => {
+        const b = getConfig().builder;
+        return { check: b.checkCommand, build: b.buildCommand, install: b.installCommand };
+      },
+      home: jigHome(),
+      workDir: paths.work(),
+      appBuildsDir: paths.appBuilds(),
+      electron: process.execPath,
+      // JIG_NO_RESTART (tests): accept without restarting; Jig says a restart is pending.
+      restart: process.env.JIG_NO_RESTART
+        ? undefined
+        : (appDir, previous) => {
+            log.info(`Restarting through the launcher into ${appDir}`);
+            restartWithLauncher({
+              launcher: join(here, "launcher.mjs"),
+              electron: process.execPath,
+              app: appDir,
+              previous,
+              home: jigHome(),
+            });
+            app.quit();
+          },
+    },
     onChange: (jobs) => emit("builds.changed", jobs),
     notify: (n) => emit("notify", n),
   });
@@ -58,7 +103,7 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
   await s.load();
 
   registerSessionKind("builder", {
-    appendSystemPrompt: () => BUILDER_PROMPT,
+    appendSystemPrompt: (meta) => s.promptFor(meta),
     mcpServers: (meta) => {
       if (getEngine().kind !== "claude" || !meta.buildId) return undefined;
       const tools = s.toolsFor(meta.buildId).map((t) =>
@@ -97,7 +142,10 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
     return s.list();
   });
   handle("builds.start", (input) => s.start(input));
-  handle("builds.accept", ({ id }) => s.accept(id));
+  handle("builds.accept", ({ id, confirmProtected }) => s.accept(id, { confirmProtected }));
+  handle("builds.startAppChange", ({ id }) => s.startAppChange(id));
+  handle("builds.openPreview", ({ id }) => s.openPreview(id));
+  handle("app.undoLastChange", () => s.undoLastAppChange());
   handle("builds.discard", ({ id }) => s.discard(id));
   handle("builds.diff", ({ id, path }) => s.diff(id, path));
 }

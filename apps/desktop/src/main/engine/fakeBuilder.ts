@@ -128,3 +128,42 @@ export function hello(ctx: AddonUiContext) {
   });
   say(`I built a new add-on: ${id}.`);
 }
+
+/**
+ * The scripted level-3 builder: changes Jig's source in the worktree (`cwd`), runs the checks and
+ * finishes. It writes `docs/builder-notes.md`; a goal mentioning "launcher" also touches the
+ * protected launcher, so Accept needs your explicit confirmation.
+ */
+export async function runFakeAppBuilder(
+  text: string,
+  tools: Tools,
+  emit: (e: EngineEvent) => void,
+  cwd: string,
+): Promise<void> {
+  const call = async (name: string, args: Record<string, unknown> = {}) => {
+    const id = `tool-${randomUUID()}`;
+    emit({ type: "tool_use", id, name: `mcp__jig-builder__${name}`, input: args });
+    const output = await tools[name]!(args);
+    emit({ type: "tool_result", toolUseId: id, output, isError: false });
+    return output;
+  };
+  const goal = /for this request: (.*)/.exec(text)?.[1]?.trim() ?? text;
+  await mkdir(join(cwd, "docs"), { recursive: true });
+  const notes = join(cwd, "docs", "builder-notes.md");
+  const before = await readFile(notes, "utf8").catch(() => "# Builder notes\n");
+  await writeFile(notes, `${before.trimEnd()}\n\n- ${goal}\n`);
+  if (/launcher/i.test(goal)) {
+    const launcher = join(cwd, "apps", "launcher", "launcher.mjs");
+    const code = await readFile(launcher, "utf8").catch(() => "");
+    await mkdir(join(cwd, "apps", "launcher"), { recursive: true });
+    await writeFile(launcher, `${code}\n// Changed by the builder: ${goal}\n`);
+  }
+  await call("run_checks");
+  await call("finish_app_change", { summary: `Changed Jig: ${goal}` });
+  emit({
+    type: "block_end",
+    id: `msg-${randomUUID()}:text:0`,
+    block: "text",
+    text: "I changed Jig's source.",
+  });
+}

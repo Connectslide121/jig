@@ -44,5 +44,8 @@ export const preloadConfig = {
   logLevel: "warning",
 };
 
-/** Files the main process reads at runtime: the design tokens (for add-on CSS). */
-export const mainAssets = [[`${appDir}/src/renderer/styles/tokens.css`, `${appDir}/dist/main/tokens.css`]];
+/** Files the main process reads at runtime: the design tokens (for add-on CSS) and the launcher. */
+export const mainAssets = [
+  [`${appDir}/src/renderer/styles/tokens.css`, `${appDir}/dist/main/tokens.css`],
+  [`${appDir}/../launcher/launcher.mjs`, `${appDir}/dist/main/launcher.mjs`],
+];

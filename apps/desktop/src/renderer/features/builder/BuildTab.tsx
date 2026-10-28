@@ -20,9 +20,24 @@ function describeOp(op: LayoutOp): string {
 }
 
 export async function acceptBuild(job: BuildJob): Promise<void> {
+  const protectedFiles = job.app?.protectedFiles ?? [];
+  if (
+    protectedFiles.length &&
+    !(await confirmDialog({
+      title: "Accept a change to protected files?",
+      message: `This change touches Jig's launcher or builder core:\n${protectedFiles.join("\n")}\n\nIf it is wrong, Jig may not restart properly (the launcher then falls back to the previous build).`,
+      confirmLabel: "Accept protected change",
+      danger: true,
+    }))
+  )
+    return;
   try {
-    await call("builds.accept", { id: job.id });
-    notify({ title: "Accepted", message: job.summary, tone: "success" });
+    await call("builds.accept", { id: job.id, confirmProtected: protectedFiles.length > 0 });
+    notify({
+      title: job.app ? "Accepted — Jig restarts with the change" : "Accepted",
+      message: job.summary,
+      tone: "success",
+    });
   } catch (error) {
     notify({ title: "Couldn't accept", message: errorMessage(error), tone: "danger" });
   }
@@ -93,9 +108,9 @@ function FileRow({
 }: {
   job: BuildJob;
   path: string;
-  added: number;
-  deleted: number;
-  status: string;
+  added?: number;
+  deleted?: number;
+  status?: string;
 }) {
   const [patch, setPatch] = useState<string>();
   const [open, setOpen] = useState(false);
@@ -114,11 +129,13 @@ function FileRow({
       >
         <FileDiff className="size-3.5 text-muted" />
         <span className="min-w-0 flex-1 truncate font-mono text-xs">{path}</span>
-        <Badge tone={status === "added" ? "success" : status === "deleted" ? "danger" : "warning"}>
-          {status}
-        </Badge>
-        <span className="text-xs text-success">+{added}</span>
-        <span className="text-xs text-danger">−{deleted}</span>
+        {status && (
+          <Badge tone={status === "added" ? "success" : status === "deleted" ? "danger" : "warning"}>
+            {status}
+          </Badge>
+        )}
+        {added !== undefined && <span className="text-xs text-success">+{added}</span>}
+        {deleted !== undefined && <span className="text-xs text-danger">−{deleted}</span>}
       </button>
       {open && (
         <div className="px-3 pb-2">
@@ -130,6 +147,108 @@ function FileRow({
         </div>
       )}
     </div>
+  );
+}
+
+/** Level 3: the proposal, the worktree's checks, the preview instance and the changed files. */
+function AppChangePanel({ job }: { job: BuildJob }) {
+  const app = job.app!;
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<unknown>, failure: string) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (error) {
+      notify({ title: failure, message: errorMessage(error), tone: "danger" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Card className="flex flex-col gap-2 p-4 text-sm" data-testid="app-change">
+        <div className="font-medium text-warning">
+          This needs a change to Jig's own source code (level 3).
+        </div>
+        {app.reason && (
+          <div>
+            <span className="text-muted">Why no slot can do it: </span>
+            <span className="selectable">{app.reason}</span>
+          </div>
+        )}
+        {app.plan && (
+          <div>
+            <span className="text-muted">Plan: </span>
+            <span className="selectable">{app.plan}</span>
+          </div>
+        )}
+        <div className="text-muted">
+          The builder works in a git worktree of {app.repo || "Jig's repository"}, runs its checks, and you
+          try the result in a separate preview window before anything changes. Accept merges it and restarts
+          Jig; if the new build doesn't start, Jig falls back to the previous one.
+        </div>
+        {app.stage === "proposed" && job.status !== "discarded" && (
+          <div>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => void run(() => call("builds.startAppChange", { id: job.id }), "Couldn't start")}
+              data-testid="build-start-app"
+            >
+              Let the builder change Jig's code
+            </Button>
+          </div>
+        )}
+        {app.stage === "preview" && job.status === "preview" && (
+          <div className="flex items-center gap-2">
+            <Button
+              icon={ExternalLink}
+              disabled={busy || app.previewRunning}
+              onClick={() =>
+                void run(() => call("builds.openPreview", { id: job.id }), "Couldn't open the preview")
+              }
+              data-testid="build-open-preview"
+            >
+              {app.previewRunning ? "Preview instance is open" : "Open preview instance"}
+            </Button>
+            <span className="text-xs text-hint">
+              Uses a copy of your Jig home; your real data isn't touched.
+            </span>
+          </div>
+        )}
+        {app.stage === "accepted" && app.restartPending && (
+          <div className="text-success">Accepted. Restart Jig to use the change.</div>
+        )}
+      </Card>
+      {app.protectedFiles?.length ? (
+        <Card className="p-3 text-sm text-danger" data-testid="app-protected">
+          Touches protected files (launcher / builder core): {app.protectedFiles.join(", ")}. Accept asks you
+          to confirm explicitly.
+        </Card>
+      ) : null}
+      {app.checks && (
+        <Card className="p-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Badge tone={app.checks.ok ? "success" : "danger"}>
+              {app.checks.ok ? "Checks pass" : "Checks fail"}
+            </Badge>
+            <span className="text-xs text-hint">{new Date(app.checks.at).toLocaleString()}</span>
+          </div>
+          <details className="mt-2">
+            <summary className="cursor-default text-xs text-muted">Output</summary>
+            <CodeBlock code={app.checks.output || "(no output)"} />
+          </details>
+        </Card>
+      )}
+      {app.files?.length ? (
+        <Card className="overflow-hidden" data-testid="build-files">
+          <div className="border-b border-line px-3 py-2 text-sm font-medium">{app.files.length} files</div>
+          {app.files.map((path) => (
+            <FileRow key={path} job={job} path={path} />
+          ))}
+        </Card>
+      ) : null}
+    </>
   );
 }
 
@@ -157,17 +276,7 @@ export function BuildTab({ params }: TabProps) {
             The builder is waiting. Open its chat to answer or ask it to continue.
           </Card>
         )}
-        {job.kind === "app" && (
-          <Card className="p-3 text-sm">
-            <div className="font-medium text-warning">
-              This needs a change to Jig's own source code (level 3).
-            </div>
-            <div className="mt-1 text-muted">
-              Self-modification is the last resort; it runs in a separate preview instance (see the Builds
-              documentation).
-            </div>
-          </Card>
-        )}
+        {job.app && <AppChangePanel job={job} />}
         {job.summary && (
           <Card className="p-4">
             <Markdown text={job.summary} />

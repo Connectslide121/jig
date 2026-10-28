@@ -11,7 +11,8 @@ exceptions return `internal` (and are logged).
 
 | Method | Args | Result | Notes |
 |---|---|---|---|
-| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind |
+| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `safeMode`, `startedAfterFailure`, `preview?` |
+| `app.undoLastChange` | — | `{ goal }` | reverts the last accepted level-3 change, rebuilds, restarts; `nothing_to_undo`, `build_failed` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |
@@ -64,7 +65,10 @@ exceptions return `internal` (and are logged).
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
 | `builds.list` | — | `BuildJob[]` | newest first (`docs/reference/builder.md`) |
 | `builds.start` | `{ goal, origin, targetAddonId?, originSessionId? }` | `BuildJob` | starts a builder session |
-| `builds.accept` / `builds.discard` | `{ id }` | `BuildJob` | `not_ready`, `accept_failed` |
+| `builds.accept` | `{ id, confirmProtected? }` | `BuildJob` | `not_ready`, `accept_failed`; level 3: `needs_confirmation` (protected files), `build_failed` |
+| `builds.discard` | `{ id }` | `BuildJob` | |
+| `builds.startAppChange` | `{ id }` | `BuildJob` | level 3: you agreed to the proposal; `no_source`, `not_ready` |
+| `builds.openPreview` | `{ id }` | — | level 3: starts the preview instance |
 | `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
 | `learning.state` | — | `LearningState` | suggestions, recent runs, last/next run, activity stats (`docs/reference/learning.md`) |
 | `learning.runNow` | — | `PatternRun` | look for patterns now; no AI call when nothing repeats; `busy` |

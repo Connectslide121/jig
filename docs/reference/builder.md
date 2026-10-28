@@ -2,7 +2,7 @@
 
 Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, validation),
 `apps/desktop/src/shared/builds.ts` (types), `apps/desktop/src/renderer/features/builder/` (UI). Level 3
-(Jig's own source) is phase 10.
+(Jig's own source): `docs/reference/self-modification.md`.
 
 ## Entry points (all menus, no commands)
 
@@ -47,7 +47,8 @@ Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, valid
 | `validate { id }` | the checks above |
 | `stage_layout { ops }` | `move`/`hide`/`show` a view, `resize`/`collapse`/`expand` a region |
 | `stage_settings { patch }` | a partial `config.json`, validated |
-| `propose_app_change { reason, plan }` | level 3 needed (phase 10) |
+| `propose_app_change { reason, plan }` | level 3 needed: the job waits for you (see self-modification.md) |
+| `run_checks` / `finish_app_change { summary }` | level-3 sessions only: run the repo's checks; commit, check, build, preview |
 | `finish { summary, kind, addonId? }` | validate and go to preview |
 
 The same tools are plain functions for the fake engine: with `JIG_ENGINE=fake` a scripted builder

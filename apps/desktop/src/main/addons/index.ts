@@ -131,6 +131,7 @@ export async function startAddons(): Promise<void> {
     stateFile: paths.addonsState(),
     nodePaths: addonNodePaths(),
     hostFactory: utilityHost,
+    safeMode: process.env.JIG_SAFE_MODE === "1",
     rpc: (addonId) => async (op, args) => {
       if (op === "notify") {
         const n = args as {

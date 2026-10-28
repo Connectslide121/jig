@@ -7,6 +7,7 @@ export default defineConfig({
       "apps/desktop/src/**/*.test.ts",
       "apps/desktop/src/**/*.test.tsx",
       "addons/**/*.test.ts",
+      "apps/launcher/**/*.test.ts",
       "scripts/**/*.test.ts",
     ],
     environment: "node",

@@ -33,6 +33,17 @@ export const ConfigSchema = z.object({
         .default("default"),
     })
     .prefault({}),
+  builder: z
+    .object({
+      /** Jig's own source repository for level-3 changes; empty = the repo Jig runs from (development). */
+      sourcePath: z.string().default(""),
+      /** Run in the worktree before you see a level-3 change. */
+      checkCommand: z.string().default("npm run check"),
+      buildCommand: z.string().default("npm run build"),
+      /** Run when a level-3 change touches package.json / package-lock.json. */
+      installCommand: z.string().default("npm install"),
+    })
+    .prefault({}),
   terminal: z
     .object({
       /** Shell executable; empty = PowerShell on Windows, $SHELL elsewhere. */

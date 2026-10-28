@@ -1,7 +1,8 @@
+import { writeFile } from "node:fs/promises";
 import { app, BrowserWindow, Menu } from "electron";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAppHandlers } from "./app";
-import { startBuilder } from "./builder";
+import { startBuilder, stopBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
@@ -55,13 +56,24 @@ async function start() {
   await startBuilder(addonNodePaths());
   await startLearning();
   await createMainWindow();
+  await reportReady();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
   });
 }
 
-app.on("will-quit", () => stopTerminals());
+/** The launcher waits for this file to know the new build started (docs/reference/self-modification.md). */
+async function reportReady() {
+  const file = process.env.JIG_READY_FILE;
+  if (!file) return;
+  await writeFile(file, String(process.pid)).catch((e) => log.warn("Writing the ready file failed", e));
+}
+
+app.on("will-quit", () => {
+  stopTerminals();
+  stopBuilder();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

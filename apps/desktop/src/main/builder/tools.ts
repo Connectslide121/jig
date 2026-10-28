@@ -29,7 +29,13 @@ export interface BuilderEnv {
   /** Prepares an add-on folder in the worktree and returns it. */
   startAddon: (id: string, mode: "change" | "new") => Promise<string>;
   validate: (id: string) => Promise<{ ok: boolean; problems: string[] }>;
-  finish: (input: { summary: string; kind: BuildKind; addonId?: string }) => Promise<string>;
+  finish: (input: {
+    summary: string;
+    kind: BuildKind;
+    addonId?: string;
+    reason?: string;
+    plan?: string;
+  }) => Promise<string>;
 }
 
 export interface BuilderTool {
@@ -205,6 +211,8 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
         env.finish({
           summary: `Needs a change to Jig itself: ${String(reason)}\n\nPlan: ${String(plan)}`,
           kind: "app",
+          reason: String(reason),
+          plan: String(plan),
         }),
     },
     {

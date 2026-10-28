@@ -39,6 +39,29 @@ export interface BuildFile {
   deleted: number;
 }
 
+/** A level-3 change: Jig's own source, in a worktree of its repository. */
+export interface AppChange {
+  stage: "proposed" | "working" | "preview" | "accepted";
+  repo: string;
+  reason?: string;
+  plan?: string;
+  worktree?: string;
+  branch?: string;
+  /** The commit the worktree started from. */
+  base?: string;
+  /** Copy of your Jig home used by the preview instance. */
+  home?: string;
+  files?: string[];
+  /** Changed files in protected paths (launcher, builder core): Accept needs your explicit OK. */
+  protectedFiles?: string[];
+  checks?: { ok: boolean; output: string; at: string };
+  needsInstall?: boolean;
+  previewRunning?: boolean;
+  mergeCommit?: string;
+  /** Accepted, but Jig wasn't restarted (JIG_NO_RESTART). */
+  restartPending?: boolean;
+}
+
 export interface BuildJob {
   id: string;
   goal: string;
@@ -64,6 +87,7 @@ export interface BuildJob {
   permissions?: string[];
   problems?: string[];
   validationRounds: number;
+  app?: AppChange;
   log: BuildLogEntry[];
   error?: string;
 }

@@ -8,12 +8,20 @@ build if the new one fails to start.
 
 ## Checklist
 
-- [ ] Setting: path to Jig's source repo (default: the repo Jig runs from in dev)
-- [ ] Launcher (`apps/launcher` or script): keeps `current` and `previous` builds, detects failed start
+- [x] Setting: path to Jig's source repo (default: the repo Jig runs from in dev)
+- [x] Launcher (`apps/launcher` or script): keeps `current` and `previous` builds, detects failed start
       (no "ready" heartbeat within N s), offers/starts the previous build, safe mode (add-ons off)
-- [ ] Builder level 3: worktree of the app repo, `AGENTS.md` loaded, runs `npm run check`
-- [ ] Preview instance: launch the worktree build with a copy of `JIG_HOME`
-- [ ] Accept → merge to the user's branch, build, restart via launcher; Discard → remove worktree
-- [ ] Protected paths (launcher, builder core) require explicit confirmation
-- [ ] When reasonable, the change adds a new slot (builder instruction)
-- [ ] Docs: `docs/reference/self-modification.md`
+- [x] Builder level 3: worktree of the app repo, `AGENTS.md` loaded, runs `npm run check`
+- [x] Preview instance: launch the worktree build with a copy of `JIG_HOME`
+- [x] Accept → merge to the user's branch, build, restart via launcher; Discard → remove worktree
+- [x] Protected paths (launcher, builder core) require explicit confirmation
+- [x] When reasonable, the change adds a new slot (builder instruction)
+- [x] Docs: `docs/reference/self-modification.md`
+
+## Notes
+
+- Level 3 is a stage of a normal build job (`job.app`), started from the proposal with an explicit button
+  (D-060). The worktree links the repository's `node_modules` unless dependencies change (D-061).
+- Safe mode switches off only your own add-ons; built-ins are part of Jig (D-062).
+- Added: "Undo the last change to Jig" (Tools menu and fallback banner), protected-path confirmation
+  dialog, Settings → Builder (source repo and commands).

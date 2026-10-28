@@ -26,6 +26,12 @@ export interface AppInfo {
   jigHome: string;
   dev: boolean;
   engine: "claude" | "fake";
+  /** Started by the launcher in safe mode: your own add-ons are off. */
+  safeMode: boolean;
+  /** The launcher had to fall back after a change to Jig failed to start. */
+  startedAfterFailure: boolean;
+  /** Set in a preview instance of a level-3 change (the build id). */
+  preview?: string;
 }
 
 /** Method name → argument and result types. */
@@ -122,7 +128,14 @@ export interface HostMethods {
   "builds.list": { args: void; result: BuildJob[] };
   "builds.start": { args: BuildRequestInput; result: BuildJob };
   /** Applies a build in preview: layout/settings, or merges the add-on into ~/.jig/addons. */
-  "builds.accept": { args: { id: string }; result: BuildJob };
+  /** For a level-3 change that touches protected files, `confirmProtected` must be true. */
+  "builds.accept": { args: { id: string; confirmProtected?: boolean }; result: BuildJob };
+  /** You agreed to a level-3 proposal: the builder changes Jig's source in a worktree. */
+  "builds.startAppChange": { args: { id: string }; result: BuildJob };
+  /** Starts the changed Jig as a separate preview window (with a copy of your Jig home). */
+  "builds.openPreview": { args: { id: string }; result: void };
+  /** Reverts the last accepted change to Jig, rebuilds and restarts. */
+  "app.undoLastChange": { args: void; result: { goal: string } };
   "builds.discard": { args: { id: string }; result: BuildJob };
   /** The patch of one file a build changed. */
   "builds.diff": { args: { id: string; path: string }; result: string };

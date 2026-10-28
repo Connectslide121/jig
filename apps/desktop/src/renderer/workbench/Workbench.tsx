@@ -12,6 +12,7 @@ import { MainArea } from "./MainArea";
 import { useProjects } from "./projects";
 import { Region } from "./Region";
 import { useRegistry } from "./registry";
+import { StartupBanner } from "./StartupBanner";
 import { StatusBar } from "./StatusBar";
 import { matchesShortcut } from "./shortcuts";
 import { setLayoutFromHost, useWorkbench } from "./store";
@@ -65,6 +66,7 @@ export function Workbench() {
   return (
     <div className="flex h-full flex-col" data-testid="app-root">
       <Topbar />
+      <StartupBanner />
       {ready && (
         <div className="flex min-h-0 flex-1">
           <Region region="left" />

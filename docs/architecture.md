@@ -268,7 +268,7 @@ own system prompt and the `jig-builder` MCP server. It follows the **levels** st
 2. **Add-on** — first it **reads the catalog of existing add-ons** (manifests + READMEs) and decides
    whether to **change an existing add-on** (preferred when it is a natural fit) or create a new one.
    Work happens in a git worktree of `~/.jig/addons` under `~/.jig/work/`.
-3. **App source** — only when 1 and 2 cannot do it (_planned_, see below).
+3. **App source** — only when 1 and 2 cannot do it (see below).
 
 Before anything reaches the user, the host validates: manifest schema, bundling, design-token check,
 and a smoke load. Failures go back to the builder session to fix (bounded retries). Then the user sees
@@ -276,12 +276,16 @@ a **preview** (the add-on loaded from the worktree, marked "Preview") and choose
 commit in `~/.jig/addons`, add-on goes live) or **Discard** (worktree deleted). Progress is shown as a
 card in the chat that asked, and in the Builds view.
 
-**Level 3 (_planned_).** Jig knows where its own source repo is. The builder works in a git worktree
+**Level 3** (`docs/reference/self-modification.md`, `main/builder/appChange.ts`, `main/selfmod/`,
+`apps/launcher/`). Jig knows where its own source repo is (Settings → Builder, default: the repo it runs
+from). The builder works in a git worktree
 of it, runs the repo's checks, launches the changed app as a **separate preview instance** (with a
 copy of the state directory), and on Accept merges, rebuilds and restarts through a small **launcher**
 that keeps the previous working build and offers "start previous version" if the new one fails to
 start. The launcher and the builder core are protected: the AI changes them only after an explicit
-confirmation. Where it makes sense, a level-3 change adds a new slot.
+confirmation. Where it makes sense, a level-3 change adds a new slot. Jig writes a "ready" file once its
+window has loaded; the launcher falls back to the previous build, then to safe mode (your add-ons
+off), and Jig shows a banner with **Undo the last change to Jig**.
 
 ## 10. Learning — activity, patterns, suggestions
 

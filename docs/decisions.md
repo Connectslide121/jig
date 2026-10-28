@@ -356,3 +356,32 @@ built) isn't given to the next reflection again; "Never" blocks the pattern perm
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 The weekly reflection is one Claude Code request with no tools, no settings sources and `haiku` by
 default (Settings → Learning → Model), so it is cheap and can't touch files.
+
+### D-060 — Level 3 is a stage of the same build, started by an explicit button
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+A build that needs Jig's source records a proposal (reason + plan) and waits. Only **Let the builder
+change Jig's code** starts the level-3 session; it is a new builder session (with its own instructions
+and tools) in a worktree of Jig's repository, but the same build job, so the history stays in one place.
+
+### D-061 — The level-3 worktree links node_modules; dependency changes get a real install
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Installing Electron and friends for every change is slow, so the worktree links the repository's
+`node_modules` (junctions on Windows). When `package.json`/`package-lock.json` change, the links are
+removed and the install command runs in the worktree; after Accept it runs in the repository too.
+
+### D-062 — Safe mode turns off your own add-ons only
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Built-in add-ons (Git, Repos, Pipelines, Scripts) ship with Jig's code, so they are as trusted as the
+build itself; safe mode only skips add-ons in `~/.jig/addons`. It doesn't change `addons-state.json`.
+
+### D-063 — Accept merges into your current branch and refuses a dirty checkout
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+The change is merged with `--no-ff` (one merge commit, easy to revert: Undo is `git revert -m 1`). If the
+source repository has uncommitted changes to tracked files, Accept stops and says so instead of mixing
+your work with the builder's. Jig doesn't push; that stays yours.
+
+### D-064 — Protected paths: launcher, builder core, Claude Code start-up, AGENTS.md
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+`apps/launcher/`, `main/builder/`, `main/selfmod/`, `main/engine/claude.ts` (credentials rules) and
+`AGENTS.md`. A change touching them can only be accepted after a separate confirmation dialog listing
+the files (`confirmProtected`).

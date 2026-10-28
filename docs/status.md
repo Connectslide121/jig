@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-27, second session (phases 2–3)._
+_Last updated: 2026-10-28 (phases 2–10)._
 
 ## Continue here (next session)
 
@@ -96,6 +96,15 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
     10:00 (catch-up at launch): repeated commands, sequences and similar prompts are found without AI;
     only then one small Claude Code request picks at most 3 suggestions with evidence.
   - **Build it** starts the builder; **Not now** hides it for 14 days; **Never** blocks the pattern.
+- **Phase 10 (done): Jig changes its own code (builder level 3).**
+  - When no slot can do it, the build shows why and a plan; **Let the builder change Jig's code**
+    starts a builder session in a git worktree of Jig's repository (Settings → Builder: source repo,
+    check/build/install commands) with `AGENTS.md` loaded. It must pass `npm run check`.
+  - **Open preview instance** runs the changed Jig in its own window with a copy of your Jig home.
+  - **Accept** (an extra confirmation when the launcher or builder core changed) keeps the current build
+    as "previous", merges into your branch, builds and restarts through the launcher. If the new build
+    doesn't report ready, the launcher starts the previous one, then safe mode (your add-ons off), and
+    Jig shows a banner with **Undo the last change to Jig** (also in Tools).
 
 ## How to try it
 
@@ -108,6 +117,9 @@ npm run dev          # opens Jig
 - Try themes: the gear (top right) → Appearance. Drop a VS Code theme `.json` into `~/.jig/themes`
   and it appears; edit it and Jig recolours as you save.
 - Move a view: `⋯` in the sidebar header → Move to right sidebar.
+- Try level 3 without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
+  itself: …" → Let the builder change Jig's code. (It writes `docs/builder-notes.md` in a worktree;
+  Accept merges it into your checkout and restarts — use a throwaway clone as the source repository.)
 
 ## Needs testing on your machine
 
@@ -149,6 +161,13 @@ Things the cloud build environment couldn't verify:
   not Jig's), Open in VS Code (needs the `code` command on PATH).
 - **Add-ons on Windows**: the add-on host process (utilityProcess) starts, `api.exec("git", …)` works
   without a console window flashing, and file watching picks up saves in `%USERPROFILE%\.jig\addons`.
+
+- **Level 3 for real** (needs a Jig clone): a real Claude Code builder in the worktree, `npm run
+  check` there (node_modules are junctions on Windows), **Open preview instance** (a second Jig window
+  with its own home), Accept → restart through the launcher, and the fallback: break the build on
+  purpose (e.g. throw in `main/index.ts`) and check the previous build starts with the banner and Undo
+  works. Also check the launcher with a packaged install (phase 11: the packaged app can only change
+  itself when Settings → Builder points at a source clone).
 
 ## Known gaps / notes
 

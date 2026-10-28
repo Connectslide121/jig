@@ -37,6 +37,8 @@ export interface AddonServiceOptions {
   /** Answers RPCs from host code that need the main process (notify, emit, projects). */
   rpc: (addonId: string) => RpcHandler;
   onChange: (addons: AddonInfo[]) => void;
+  /** Safe mode (the launcher's last resort): your own add-ons stay off; built-ins still load. */
+  safeMode?: boolean;
 }
 
 interface Loaded {
@@ -136,7 +138,7 @@ export class AddonService {
   private async load(record: AddonRecord): Promise<void> {
     const previous = this.loaded.get(record.id);
     if (previous) this.unload(previous);
-    const enabled = !this.disabled.has(record.id);
+    const enabled = !this.disabled.has(record.id) && !(this.options.safeMode && record.source === "user");
     const errors = [...record.errors];
     const warnings: string[] = [];
     const info: AddonInfo = {

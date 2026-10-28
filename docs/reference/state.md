@@ -19,6 +19,10 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
 | `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
+| `work/<job>-app/`, `work/<job>-home/` | git worktree / copy | level 3: worktree of Jig's repository (branch `jig-build/<job>`) and the preview instance's Jig home |
+| `app-builds/previous/` | build snapshot | the build that ran before the last accepted level-3 change (launcher fallback) |
+| `app-builds/last.json` | JSON `{ repo, mergeCommit, goal, at }` | the last accepted level-3 change (for Undo) |
+| `launcher/` | `status.json`, `launcher.log`, `ready-*` | the launcher's result, log and ready heartbeats (`docs/reference/self-modification.md`) |
 | `activity/YYYY-MM-DD.jsonl` | JSON lines `{ at, kind, text, projectId?, detail? }` | the local activity log (`docs/reference/learning.md`) |
 | `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
@@ -49,3 +53,5 @@ suggestions); each is documented here when it lands._
 | `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
 | `learning.model` | `haiku` | model for the reflection step |
+| `builder.sourcePath` | `""` | Jig's source repository for level 3; empty = the repo Jig runs from |
+| `builder.checkCommand` / `buildCommand` / `installCommand` | `npm run check` / `npm run build` / `npm install` | level-3 commands (`docs/reference/self-modification.md`) |

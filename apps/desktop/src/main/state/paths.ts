@@ -23,4 +23,6 @@ export const paths = {
   builds: () => join(jigHome(), "builds.json"),
   scripts: () => join(jigHome(), "scripts.json"),
   logs: () => join(jigHome(), "logs"),
+  /** Level 3: the previous build (launcher fallback) and the last accepted change (for Undo). */
+  appBuilds: () => join(jigHome(), "app-builds"),
 };

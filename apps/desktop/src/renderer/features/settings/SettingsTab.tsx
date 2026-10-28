@@ -1,4 +1,4 @@
-import { Bot, Info, LayoutPanelLeft, Palette, Puzzle, Sparkles, SquareTerminal } from "lucide-react";
+import { Bot, Hammer, Info, LayoutPanelLeft, Palette, Puzzle, Sparkles, SquareTerminal } from "lucide-react";
 import type { ComponentType } from "react";
 import { create } from "zustand";
 import { updateTabParams } from "../../../shared/layout";
@@ -9,6 +9,7 @@ import { AddonsSettings } from "./AddonsSettings";
 import { AppearanceSettings } from "./Appearance";
 import {
   AboutSettings,
+  BuilderSettings,
   EngineSettings,
   LayoutSettings,
   LearningSettings,
@@ -43,6 +44,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       component: TerminalSettings,
       order: 3,
     },
+    builder: { id: "builder", title: "Builder", icon: Hammer, component: BuilderSettings, order: 4.5 },
     learning: { id: "learning", title: "Learning", icon: Sparkles, component: LearningSettings, order: 4 },
     addons: { id: "addons", title: "Add-ons", icon: Puzzle, component: AddonsSettings, order: 5 },
     about: { id: "about", title: "About", icon: Info, component: AboutSettings, order: 100 },

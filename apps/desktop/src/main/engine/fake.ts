@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
-import { runFakeBuilder } from "./fakeBuilder";
+import { runFakeAppBuilder, runFakeBuilder } from "./fakeBuilder";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
 /**
@@ -77,7 +77,9 @@ export class FakeEngine implements Engine {
           });
         }
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
-        if (options.toolHandlers?.catalog) {
+        if (options.toolHandlers?.run_checks) {
+          await runFakeAppBuilder(text, options.toolHandlers, onEvent, options.cwd);
+        } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (lower.includes("run") || lower.includes("permission")) {
           const toolId = `tool-${randomUUID()}`;

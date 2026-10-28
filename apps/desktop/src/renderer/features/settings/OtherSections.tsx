@@ -145,6 +145,67 @@ export function TerminalSettings() {
   );
 }
 
+/** Level 3: where Jig's source is and which commands check and build it. */
+export function BuilderSettings() {
+  const config = useConfig((s) => s.config);
+  if (!config) return <Spinner />;
+  const b = config.builder;
+  return (
+    <SettingsSection
+      title="Builder"
+      description="When no add-on or setting can do what you ask, the builder can change Jig's own code (level 3). It works in a git worktree of Jig's repository, runs these checks, and you try a preview instance before accepting."
+    >
+      <SettingRow
+        label="Jig's source repository"
+        description="A git clone of Jig (with AGENTS.md). Empty = the repository Jig runs from, when it runs from source."
+      >
+        <div className="flex items-center gap-2">
+          <span className="selectable max-w-72 truncate font-mono text-xs text-muted">
+            {b.sourcePath || "(the repository Jig runs from)"}
+          </span>
+          <Button
+            size="sm"
+            icon={FolderOpen}
+            onClick={() =>
+              void call("app.pickFolder", { title: "Jig's source repository" }).then(
+                (sourcePath) => sourcePath && void updateConfig({ builder: { sourcePath } }),
+              )
+            }
+          >
+            Choose…
+          </Button>
+          {b.sourcePath && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void updateConfig({ builder: { sourcePath: "" } })}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+      </SettingRow>
+      <TextSetting
+        label="Check command"
+        description="Must pass before you see a change."
+        value={b.checkCommand}
+        onSave={(checkCommand) => void updateConfig({ builder: { checkCommand } })}
+      />
+      <TextSetting
+        label="Build command"
+        value={b.buildCommand}
+        onSave={(buildCommand) => void updateConfig({ builder: { buildCommand } })}
+      />
+      <TextSetting
+        label="Install command"
+        description="Run when a change touches package.json or package-lock.json."
+        value={b.installCommand}
+        onSave={(installCommand) => void updateConfig({ builder: { installCommand } })}
+      />
+    </SettingsSection>
+  );
+}
+
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function LearningSettings() {
