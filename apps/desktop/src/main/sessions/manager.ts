@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { type ChatState, reduceEvent } from "../../shared/chat";
 import type {
-  ChatImage,
+  ChatAttachment,
   ChatItem,
   ChatUpdate,
   EngineEvent,
@@ -19,7 +19,7 @@ import { JigError } from "../../shared/ipc";
 import type { Engine, EngineSession } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
-import { addImage, type EngineImage, readImages, removeAttachments } from "./attachments";
+import { addAttachment, type EnginePart, readAttachments, removeAttachments } from "./attachments";
 
 const log = logger("sessions");
 
@@ -34,7 +34,16 @@ const SessionFileSchema = z.object({
       z.object({
         id: z.string(),
         text: z.string(),
-        images: z.array(z.object({ path: z.string(), mime: z.string() })).optional(),
+        attachments: z
+          .array(
+            z.object({
+              path: z.string(),
+              mime: z.string(),
+              name: z.string().optional(),
+              kind: z.enum(["image", "pdf", "office", "text"]).optional(),
+            }),
+          )
+          .optional(),
       }),
     )
     .default([]),
@@ -250,20 +259,20 @@ export class SessionManager {
       const next = live.queue.shift();
       if (next) {
         this.emit(live, [{ op: "queue", queue: live.queue }]);
-        void this.startTurn(live, next.text, next.images);
+        void this.startTurn(live, next.text, next.attachments);
       }
     }
   }
 
-  private async startTurn(live: Live, text: string, images: ChatImage[] = []) {
-    let data: EngineImage[] = [];
+  private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = []) {
+    let data: EnginePart[] = [];
     try {
-      data = await readImages(this.options.attachmentsDir, live.state.meta.id, images);
+      data = await readAttachments(this.options.attachmentsDir, live.state.meta.id, attachments);
     } catch (error) {
       this.handleEvent(live, {
         type: "error",
         code: "process",
-        message: `Images: ${(error as Error).message}`,
+        message: `Attachments: ${(error as Error).message}`,
       });
       return;
     }
@@ -272,12 +281,15 @@ export class SessionManager {
       id: `user-${randomUUID()}`,
       text,
       at: new Date().toISOString(),
-      ...(images.length ? { images } : {}),
+      ...(attachments.length ? { attachments } : {}),
     };
     const updates: ChatUpdate[] = [{ op: "upsert", item }];
     live.state.items.push(item);
     const meta = live.state.meta;
-    const title = meta.turns === 0 && meta.title === "New session" ? summarize(text || "Image") : meta.title;
+    const title =
+      meta.turns === 0 && meta.title === "New session"
+        ? summarize(text || attachments[0]?.name || "Attachment")
+        : meta.title;
     live.state.meta = {
       ...meta,
       title,
@@ -296,23 +308,26 @@ export class SessionManager {
   }
 
   /** Sends a message, or queues it while Claude is busy. */
-  async send(id: string, text: string, images: ChatImage[] = []): Promise<void> {
+  async send(id: string, text: string, attachments: ChatAttachment[] = []): Promise<void> {
     const live = await this.live(id);
     const trimmed = text.trim();
-    if (!trimmed && images.length === 0) return;
+    if (!trimmed && attachments.length === 0) return;
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
     if (busy) {
-      live.queue.push({ id: randomUUID(), text: trimmed, ...(images.length ? { images } : {}) });
+      live.queue.push({ id: randomUUID(), text: trimmed, ...(attachments.length ? { attachments } : {}) });
       this.emit(live, [{ op: "queue", queue: live.queue }]);
       return;
     }
-    await this.startTurn(live, trimmed, images);
+    await this.startTurn(live, trimmed, attachments);
   }
 
-  /** Keeps a pasted, dropped or attached image for the next message of a session. */
-  async addImage(id: string, input: { data?: string; mime?: string; path?: string }): Promise<ChatImage> {
+  /** Keeps a pasted, dropped or picked file for the next message of a session. */
+  async addAttachment(
+    id: string,
+    input: { data?: string; mime?: string; name?: string; path?: string },
+  ): Promise<ChatAttachment> {
     await this.live(id);
-    return addImage(this.options.attachmentsDir, id, input);
+    return addAttachment(this.options.attachmentsDir, id, input);
   }
 
   /** Adds an item to a transcript (e.g. a build card in the chat that asked for it). */

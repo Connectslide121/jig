@@ -1,85 +1,121 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import type { ChatImage } from "../../shared/engine";
-import { imageMime } from "../../shared/files";
+import { basename, join } from "node:path";
+import {
+  ATTACHMENT_LIMITS,
+  attachmentType,
+  extensionOf,
+  limitText,
+  officeToText,
+  wrapDocument,
+} from "@jig/documents";
+import type { ChatAttachment } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { isInside } from "../themes/sources";
 
-/** Image types Claude accepts, and its size limit per image. */
-export const CHAT_IMAGE_TYPES: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/gif": "gif",
-  "image/webp": "webp",
-};
-export const MAX_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
-
-export interface EngineImage {
-  mime: string;
-  /** base64 */
-  data: string;
-}
+/**
+ * Files attached to a chat message (pasted, dropped or picked), kept in
+ * `~/.jig/attachments/<session>/`. On send they become what Claude Code takes: images as image blocks,
+ * PDFs as document blocks, Office and text files as text (Office text is extracted by Jig).
+ */
+export type EnginePart =
+  | { type: "image"; mime: string; data: string }
+  | { type: "pdf"; name: string; data: string }
+  | { type: "text"; name: string; text: string };
 
 const SAFE_ID = /^[\w-]+$/;
+const MB = 1024 * 1024;
+/** Claude takes at most 32 MB per request. */
+const MAX_TOTAL_BYTES = 30 * MB;
 
 function sessionDir(root: string, sessionId: string): string {
   if (!SAFE_ID.test(sessionId)) throw new JigError("invalid_args", "Bad session id");
   return join(root, sessionId);
 }
 
-function checkType(mime: string | undefined): string {
-  const ext = mime ? CHAT_IMAGE_TYPES[mime] : undefined;
-  if (!ext) throw new JigError("not_supported", "Claude accepts PNG, JPEG, GIF and WebP images");
-  return ext;
+function limitFor(kind: ChatAttachment["kind"]): number {
+  return kind === "image"
+    ? ATTACHMENT_LIMITS.imageBytes
+    : kind === "pdf"
+      ? ATTACHMENT_LIMITS.pdfBytes
+      : ATTACHMENT_LIMITS.fileBytes;
 }
 
-function tooLarge(): JigError {
-  return new JigError("too_large", "The image is larger than 5 MB, the most Claude accepts");
-}
+const tooLarge = (kind: ChatAttachment["kind"]) =>
+  new JigError(
+    "too_large",
+    kind === "image"
+      ? "The image is larger than 5 MB, the most Claude accepts"
+      : `The file is larger than ${limitFor(kind) / MB} MB, the most Jig sends to Claude`,
+  );
 
-/** Saves a pasted/dropped image (base64) or copies an image file into the session's attachments. */
-export async function addImage(
+/** Saves pasted/dropped bytes (base64) or copies a file into the session's attachments. */
+export async function addAttachment(
   root: string,
   sessionId: string,
-  input: { data?: string; mime?: string; path?: string },
-): Promise<ChatImage> {
+  input: { data?: string; mime?: string; name?: string; path?: string },
+): Promise<ChatAttachment> {
   const dir = sessionDir(root, sessionId);
-  await mkdir(dir, { recursive: true });
+  const name = (input.path ? basename(input.path) : input.name) || "pasted";
+  const type = attachmentType(name, input.mime);
+  if (type.kind === "unsupported") throw new JigError("not_supported", type.reason);
+  let bytes: Buffer;
   if (input.path) {
-    const mime = imageMime(input.path);
-    const ext = checkType(mime);
     const info = await stat(input.path).catch(() => undefined);
     if (!info?.isFile()) throw new JigError("not_found", `${input.path} doesn't exist`);
-    if (info.size > MAX_CHAT_IMAGE_BYTES) throw tooLarge();
-    const target = join(dir, `${randomUUID()}.${ext}`);
-    await copyFile(input.path, target);
-    return { path: target, mime: mime! };
+    if (info.size > limitFor(type.kind)) throw tooLarge(type.kind);
+    bytes = await readFile(input.path);
+  } else {
+    bytes = Buffer.from(input.data ?? "", "base64");
+    if (bytes.byteLength === 0) throw new JigError("invalid_args", "The file is empty");
+    if (bytes.byteLength > limitFor(type.kind)) throw tooLarge(type.kind);
   }
-  const ext = checkType(input.mime);
-  const bytes = Buffer.from(input.data ?? "", "base64");
-  if (bytes.byteLength === 0) throw new JigError("invalid_args", "No image data");
-  if (bytes.byteLength > MAX_CHAT_IMAGE_BYTES) throw tooLarge();
+  if (type.kind === "office") {
+    try {
+      officeToText(extensionOf(name), bytes);
+    } catch (error) {
+      throw new JigError("unreadable", `${name}: ${(error as Error).message}`);
+    }
+  }
+  await mkdir(dir, { recursive: true });
+  const ext = extensionOf(name) || (type.kind === "image" ? type.mime.split("/")[1] : "txt");
   const target = join(dir, `${randomUUID()}.${ext}`);
-  await writeFile(target, bytes);
-  return { path: target, mime: input.mime! };
+  if (input.path) await copyFile(input.path, target);
+  else await writeFile(target, bytes);
+  return { path: target, mime: type.mime, name, kind: type.kind };
 }
 
-/** Checks that the images belong to the session and reads them for Claude. */
-export async function readImages(
+/** Checks that the attachments belong to the session and turns them into what Claude Code takes. */
+export async function readAttachments(
   root: string,
   sessionId: string,
-  images: ChatImage[],
-): Promise<EngineImage[]> {
+  list: ChatAttachment[],
+): Promise<EnginePart[]> {
   const dir = sessionDir(root, sessionId);
-  return Promise.all(
-    images.map(async (image) => {
-      if (!isInside(image.path, dir))
-        throw new JigError("invalid_args", "That image isn't an attachment of this chat");
-      checkType(image.mime);
-      return { mime: image.mime, data: (await readFile(image.path)).toString("base64") };
-    }),
-  );
+  let total = 0;
+  const parts: EnginePart[] = [];
+  for (const a of list) {
+    if (!isInside(a.path, dir))
+      throw new JigError("invalid_args", "That file isn't an attachment of this chat");
+    const bytes = await readFile(a.path);
+    total += bytes.byteLength;
+    if (total > MAX_TOTAL_BYTES)
+      throw new JigError(
+        "too_large",
+        "The attachments add up to more than 30 MB; send them in separate messages",
+      );
+    const name = a.name ?? basename(a.path);
+    const kind = a.kind ?? "image";
+    if (kind === "image") parts.push({ type: "image", mime: a.mime, data: bytes.toString("base64") });
+    else if (kind === "pdf") parts.push({ type: "pdf", name, data: bytes.toString("base64") });
+    else {
+      const raw = kind === "office" ? officeToText(extensionOf(name), bytes) : bytes.toString("utf8");
+      const { text, truncated } = limitText(raw);
+      const note = kind === "office" ? "text extracted by Jig" : truncated ? "cut by Jig" : undefined;
+      parts.push({ type: "text", name, text: wrapDocument(name, text, note) });
+    }
+  }
+  return parts;
 }
 
 export async function removeAttachments(root: string, sessionId: string): Promise<void> {

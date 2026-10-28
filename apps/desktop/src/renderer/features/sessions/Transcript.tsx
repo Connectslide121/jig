@@ -4,7 +4,7 @@ import type { ChatItem } from "../../../shared/engine";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { BuildCard } from "../builder/BuildCard";
-import { ChatImages } from "./ChatImages";
+import { ChatAttachments } from "./ChatAttachments";
 import { PermissionCard } from "./PermissionCard";
 import { ToolCard } from "./ToolCard";
 
@@ -56,7 +56,7 @@ const Item = memo(function Item({
     case "user":
       return (
         <div className="flex flex-col items-end gap-1.5" data-testid="user-message">
-          {item.images?.length ? <ChatImages images={item.images} className="justify-end" /> : null}
+          <ChatAttachments files={item.attachments ?? item.images ?? []} className="justify-end" />
           {item.text && (
             <div className="selectable max-w-[var(--jig-chat-bubble)] rounded-lg bg-active px-3 py-2 text-sm whitespace-pre-wrap text-fg">
               {item.text}

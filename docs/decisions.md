@@ -444,3 +444,12 @@ parsing; image content blocks in the user message are what Claude Code itself se
 image. The bytes are written to `~/.jig/attachments/<session>/` (not into `sessions/*.json`) so the
 transcript can show them later; they are deleted with the session. Only Claude's image types (PNG,
 JPEG, GIF, WebP) up to 5 MB are accepted, with a clear message otherwise.
+
+### D-073 — Documents: PDFs go to Claude whole; Office files are sent as text Jig extracts
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Claude reads PDFs natively (Claude Code passes `document` blocks), so PDFs are sent as they are. It
+doesn't read Word, Excel or PowerPoint files, so Jig extracts their text itself (`packages/documents`,
+pure, no Office or Python needed): structure is kept where it matters (headings, lists, tables, one
+CSV per sheet, slides with notes) and the text is marked "extracted by Jig". Images inside Office
+files are not sent. Old binary formats (.doc/.xls/.ppt) are refused with "save as .docx/.xlsx/.pptx"
+rather than adding a converter. Supersedes the image-only part of D-072.

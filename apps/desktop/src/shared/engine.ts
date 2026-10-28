@@ -71,7 +71,15 @@ export type PermissionDecision =
   | { behavior: "deny"; message?: string };
 
 export type ChatItem =
-  | { kind: "user"; id: string; text: string; at: string; images?: ChatImage[] }
+  | {
+      kind: "user";
+      id: string;
+      text: string;
+      at: string;
+      attachments?: ChatAttachment[];
+      /** Older transcripts (images only). */
+      images?: ChatAttachment[];
+    }
   | { kind: "assistant"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
   | { kind: "thinking"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
   | {
@@ -116,13 +124,19 @@ export type ChatUpdate =
 export interface QueuedMessage {
   id: string;
   text: string;
-  images?: ChatImage[];
+  attachments?: ChatAttachment[];
 }
 
-/** An image sent with a message (pasted, dropped or attached), kept in `~/.jig/attachments/<session>/`. */
-export interface ChatImage {
+/**
+ * A file sent with a message (pasted, dropped or attached), kept in `~/.jig/attachments/<session>/`:
+ * an image or PDF (sent as is), or an Office or text file (sent as text).
+ */
+export interface ChatAttachment {
   path: string;
   mime: string;
+  /** The original file name. */
+  name?: string;
+  kind?: "image" | "pdf" | "office" | "text";
 }
 
 export interface SessionSnapshot {

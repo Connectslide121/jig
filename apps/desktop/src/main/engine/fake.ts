@@ -168,7 +168,8 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `${"This is a long answer that keeps going. ".repeat(200)}`, signal);
         } else {
           const seen = /^\[(\d+) images?\]/.exec(text)?.[1];
-          const reply = `${seen ? `I see ${seen} image${seen === "1" ? "" : "s"}. ` : ""}You said: *${text.slice(0, 200)}*\n\nHere is some code:\n\n\`\`\`ts\nconst answer: number = 42;\nconsole.log("hello", answer);\n\`\`\`\n\n- one\n- two`;
+          const docs = [...text.matchAll(/\[(?:pdf|doc): ([^\]]+)\]/g)].map((m) => m[1]);
+          const reply = `${seen ? `I see ${seen} image${seen === "1" ? "" : "s"}. ` : ""}${docs.length ? `I read ${docs.join(", ")}. ` : ""}You said: *${text.slice(0, 200)}*\n\nHere is some code:\n\n\`\`\`ts\nconst answer: number = 42;\nconsole.log("hello", answer);\n\`\`\`\n\n- one\n- two`;
           await stream(`${msg}:text:0`, reply, signal);
         }
         if (lower.includes("fail")) {
@@ -203,10 +204,16 @@ export class FakeEngine implements Engine {
     };
 
     return {
-      send(text, images = []) {
-        queue.push(
-          images.length ? `[${images.length} image${images.length === 1 ? "" : "s"}] ${text}` : text,
-        );
+      send(text, attachments = []) {
+        // The fake says what it got: "[1 image] [pdf: spec.pdf] [doc: plan.docx] …".
+        const images = attachments.filter((a) => a.type === "image").length;
+        const tags = [
+          ...(images ? [`[${images} image${images === 1 ? "" : "s"}]`] : []),
+          ...attachments.flatMap((a) =>
+            a.type === "pdf" ? [`[pdf: ${a.name}]`] : a.type === "text" ? [`[doc: ${a.name}]`] : [],
+          ),
+        ];
+        queue.push(tags.length ? `${tags.join(" ")} ${text}` : text);
         void pump();
       },
       async interrupt() {

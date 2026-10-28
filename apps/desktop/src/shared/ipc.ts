@@ -12,7 +12,7 @@ import type { AddonCommit, AddonInfo } from "./addons";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type {
-  ChatImage,
+  ChatAttachment,
   ChatUpdate,
   PermissionDecision,
   PermissionMode,
@@ -100,16 +100,17 @@ export interface HostMethods {
   "sessions.list": { args: void; result: SessionMeta[] };
   "sessions.get": { args: { id: string }; result: SessionSnapshot };
   "sessions.create": { args: { projectId: string; title?: string }; result: SessionMeta };
-  /** Sends a message, or queues it while Claude is busy. */
-  /** Sends a message (with images saved by `sessions.addImage`), or queues it while Claude works. */
-  "sessions.send": { args: { id: string; text: string; images?: ChatImage[] }; result: void };
+  /** Sends a message (with files kept by `sessions.addAttachment`), or queues it while Claude works. */
+  "sessions.send": { args: { id: string; text: string; attachments?: ChatAttachment[] }; result: void };
   /**
-   * Keeps an image for the next message: pasted/dropped bytes (`data`, base64, with `mime`) or a file
-   * (`path`). PNG, JPEG, GIF or WebP up to 5 MB. Errors: `not_supported`, `too_large`, `not_found`.
+   * Keeps a file for the next message: pasted/dropped bytes (`data`, base64, with `name`/`mime`) or a
+   * file on disk (`path`). Images (PNG, JPEG, GIF, WebP ≤ 5 MB), PDFs, Word/Excel/PowerPoint
+   * (.docx/.xlsx/.pptx) and text files (≤ 30 MB). Errors: `not_supported`, `too_large`, `not_found`,
+   * `unreadable`.
    */
-  "sessions.addImage": {
-    args: { id: string; data?: string; mime?: string; path?: string };
-    result: ChatImage;
+  "sessions.addAttachment": {
+    args: { id: string; data?: string; mime?: string; name?: string; path?: string };
+    result: ChatAttachment;
   };
   "sessions.interrupt": { args: { id: string }; result: void };
   "sessions.answerPermission": {

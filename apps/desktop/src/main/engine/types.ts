@@ -1,4 +1,5 @@
 import type { EngineEvent, PermissionDecision, PermissionMode, PermissionRequest } from "../../shared/engine";
+import type { EnginePart } from "../sessions/attachments";
 
 /**
  * The one engine contract. `ClaudeEngine` runs the official Claude Code through the Agent SDK;
@@ -27,8 +28,8 @@ export interface StartOptions {
 }
 
 export interface EngineSession {
-  /** Sends a user message (starts a turn), with images (base64) if any. */
-  send(text: string, images?: Array<{ mime: string; data: string }>): void;
+  /** Sends a user message (starts a turn), with attachments (images, PDFs, document text) if any. */
+  send(text: string, attachments?: EnginePart[]): void;
   interrupt(): Promise<void>;
   setModel(model: string): Promise<void>;
   setPermissionMode(mode: PermissionMode): Promise<void>;

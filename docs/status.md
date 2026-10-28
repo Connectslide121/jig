@@ -113,9 +113,10 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 - **Image previews:** a changed image in the Git view shows before/after side by side; images Claude
   reads or writes show a thumbnail in their tool card; both open an image tab (fit / 100%, pixel and
   file size, show in folder).
-- **Screenshots in chat:** paste (Ctrl+V) or drop images into the message box, or pick them with the
-  paperclip; they show as thumbnails (remove with ×), are sent to Claude with your message, and appear
-  in the transcript (click to open).
+- **Screenshots and documents in chat:** paste (Ctrl+V) or drop images, PDFs, Word, Excel, PowerPoint
+  (.docx/.xlsx/.pptx) and text files into the message box, or pick them with the paperclip. They show as
+  thumbnails or chips (remove with ×), go to Claude with your message (PDFs as documents, Office files
+  as text Jig extracts), and stay in the transcript (click to open).
 - **File icon themes:** files and folders (Git, tabs, chat tool cards, builds, add-ons via `FileIcon`) use
   the icon theme your VS Code uses — e.g. Material Icon Theme — or any VS Code icon theme you pick in
   Settings → Appearance → File icons (or install from Open VSX); "Jig" keeps Jig's own icons.
@@ -202,7 +203,8 @@ Things the cloud build environment couldn't verify:
 
 - **Pasting a screenshot with real Claude Code**: Win+Shift+S, then Ctrl+V in a chat, ask "what's in this
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
-  here).
+  here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
+  also try copying a file in Explorer and pasting it into the message box.
 - **File icons with your VS Code**: Settings → Appearance → File icons should say "Same as VS Code
   (Material Icon Theme)" and the samples, Git list and tabs should match VS Code. Also try VS Code's
   default Seti (a font-based theme: only tested with unit tests) and a light colour theme (Material's

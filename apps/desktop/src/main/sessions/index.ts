@@ -104,8 +104,8 @@ export function startSessions(): void {
       permissionMode: engine.defaultPermissionMode as PermissionMode,
     });
   });
-  handle("sessions.send", ({ id, text, images }) => m.send(id, text, images));
-  handle("sessions.addImage", ({ id, ...input }) => m.addImage(id, input));
+  handle("sessions.send", ({ id, text, attachments }) => m.send(id, text, attachments));
+  handle("sessions.addAttachment", ({ id, ...input }) => m.addAttachment(id, input));
   handle("sessions.interrupt", ({ id }) => m.interrupt(id));
   handle("sessions.answerPermission", ({ id, requestId, decision }) =>
     m.answerPermission(id, requestId, decision),

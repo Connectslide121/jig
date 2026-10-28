@@ -64,7 +64,8 @@ jig/
 ├── packages/
 │   ├── sdk/                       @jig/sdk — add-on manifest schema, slot ids, add-on API types
 │   ├── themes/                    @jig/themes — theme model, built-in themes, VS Code mapping
-│   └── learning/                  @jig/learning — command normalisation, pattern mining
+│   ├── learning/                  @jig/learning — command normalisation, pattern mining
+│   └── documents/                 @jig/documents — attachment types, text from .docx/.xlsx/.pptx
 ├── addons/                        built-in add-ons (same format as user add-ons)
 ├── scripts/                       repo checks (design-token check, …)
 └── e2e/                           Playwright tests driving the real Electron app

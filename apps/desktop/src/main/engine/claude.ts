@@ -83,16 +83,24 @@ export class ClaudeEngine implements Engine {
     })();
 
     return {
-      send(text, images = []) {
-        // Images go first, as content blocks (what Claude Code does for pasted images).
-        const content = images.length
-          ? [
-              ...images.map((i) => ({
+      send(text, attachments = []) {
+        // Attachments go first, as content blocks (what Claude Code sends for pasted images and PDFs).
+        const blocks = attachments.map((part) =>
+          part.type === "image"
+            ? {
                 type: "image" as const,
-                source: { type: "base64" as const, media_type: i.mime, data: i.data },
-              })),
-              ...(text ? [{ type: "text" as const, text }] : []),
-            ]
+                source: { type: "base64" as const, media_type: part.mime, data: part.data },
+              }
+            : part.type === "pdf"
+              ? {
+                  type: "document" as const,
+                  title: part.name,
+                  source: { type: "base64" as const, media_type: "application/pdf", data: part.data },
+                }
+              : { type: "text" as const, text: part.text },
+        );
+        const content = blocks.length
+          ? [...blocks, ...(text ? [{ type: "text" as const, text }] : [])]
           : text;
         input.push({
           type: "user",

@@ -80,14 +80,24 @@ prompt tells Claude to use `jig_request_build` instead of editing Jig's files it
 See `docs/reference/ipc.md` → `sessions.*` and the `sessions.update` event (`ChatUpdate[]`:
 `upsert` an item, `append` streamed text, `meta`, `queue`).
 
-## Images in messages
+## Attachments (images and documents)
 
-Screenshots pasted (Ctrl+V) or dropped into the composer, and images picked with the paperclip, are
-saved to `~/.jig/attachments/<session>/` (`sessions.addImage`) and shown as thumbnails. On send, the host
-checks they belong to that session, reads them and passes them to Claude Code as **image content
-blocks** before the text (`{ type: "image", source: { type: "base64", media_type, data } }` in the
-streaming input) — the same thing Claude Code does with a pasted image. Types: PNG, JPEG, GIF, WebP;
-at most 5 MB each (Claude's limit). The user item keeps `images: [{ path, mime }]`; queued messages
-keep theirs. The fake engine answers "I see N image(s)." Other attached files are still sent as
-`@path` mentions.
+Files pasted (Ctrl+V — screenshots, or files copied in Explorer), dropped on the message box, or picked
+with the paperclip are kept in `~/.jig/attachments/<session>/` (`sessions.addAttachment`) and shown as
+thumbnails (images) or chips (documents). On send, the host checks they belong to that session and
+turns each into what Claude Code takes, placed before your text (`main/sessions/attachments.ts`,
+`packages/documents`):
 
+| File | Sent as | Limit |
+|---|---|---|
+| PNG, JPEG, GIF, WebP | image block (base64) | 5 MB |
+| PDF | document block (`application/pdf`, base64) — Claude reads text and pages as images | 30 MB |
+| Word `.docx`, Excel `.xlsx`/`.xlsm`, PowerPoint `.pptx` | text extracted by Jig (headings, lists and tables; one CSV block per sheet; one section per slide with notes), in `<document name="…" note="text extracted by Jig">` | 30 MB file, 400k characters |
+| text files (txt, md, csv, json, xml, html, code, logs, …) | text in `<document name="…">` | 30 MB file, 400k characters |
+
+All attachments of one message together may not exceed 30 MB (Claude's request limit is 32 MB). Old
+binary Office files (`.doc`, `.xls`, `.ppt`) and other types are refused with a message saying what to
+do. Files picked with the paperclip that are code or text **inside the project** are still sent as
+`@path` mentions (Claude Code reads the current version and can edit it). The user item keeps
+`attachments: [{ path, mime, name, kind }]` (older transcripts: `images`); queued messages keep theirs.
+The fake engine answers "I see N image(s)." and "I read <names>."

@@ -75,12 +75,12 @@ describe("SessionManager", () => {
     const session = await create(m);
     const png =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-    const image = await m.addImage(session.id, { data: png, mime: "image/png" });
+    const image = await m.addAttachment(session.id, { data: png, mime: "image/png" });
     await m.send(session.id, "", [image]);
     await until(async () => (await metaOf(m, session.id)).turns === 1);
     const snap = await m.snapshot(session.id);
-    expect(snap.meta.title).toBe("Image");
-    expect(snap.items[0]).toMatchObject({ kind: "user", text: "", images: [image] });
+    expect(snap.meta.title).toBe("pasted");
+    expect(snap.items[0]).toMatchObject({ kind: "user", text: "", attachments: [image] });
     const reply = snap.items.find((i) => i.kind === "assistant");
     expect(reply?.kind === "assistant" && reply.text).toContain("I see 1 image.");
     // Only this chat's attachments can be sent.

@@ -1,13 +1,16 @@
-import { ArrowUp, Image as ImageIcon, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Paperclip, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { ChatImage, QueuedMessage, SessionMeta } from "../../../shared/engine";
-import { isImagePath } from "../../../shared/files";
+import type { ChatAttachment, QueuedMessage, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, IconButton } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
-import { addImages, ChatImages } from "./ChatImages";
+import { addFiles, ChatAttachments } from "./ChatAttachments";
 import { usePrompts } from "./prompts";
+
+/** Files Claude Code reads itself when mentioned with @. */
+const TEXT_FILE =
+  /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|md|txt|css|scss|html|cs|csproj|sln|py|go|rs|java|kt|rb|php|sh|ps1|yml|yaml|toml|xml|sql|vue|svelte|env|ini|cfg|config|props|targets|bicep|tf)$/i;
 
 function relativeTo(cwd: string, path: string): string {
   const norm = (p: string) => p.replaceAll("\\", "/");
@@ -26,7 +29,7 @@ export function Composer({
   active: boolean;
 }) {
   const [text, setText] = useState("");
-  const [images, setImages] = useState<ChatImage[]>([]);
+  const [files, setFiles] = useState<ChatAttachment[]>([]);
   const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const prompts = Object.values(usePrompts());
@@ -44,46 +47,50 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
   }, [text]);
 
-  const send = async (value = text, withImages = images) => {
+  const send = async (value = text, withFiles = files) => {
     const trimmed = value.trim();
-    if (!trimmed && withImages.length === 0) return;
+    if (!trimmed && withFiles.length === 0) return;
     setText("");
-    setImages([]);
+    setFiles([]);
     try {
-      await call("sessions.send", { id: meta.id, text: trimmed, images: withImages });
+      await call("sessions.send", { id: meta.id, text: trimmed, attachments: withFiles });
     } catch (error) {
       setText(trimmed);
-      setImages(withImages);
+      setFiles(withFiles);
       notify({ title: "Not sent", message: errorMessage(error), tone: "danger" });
     }
   };
-  const keep = async (add: () => Promise<ChatImage[]>) => {
-    try {
-      const added = await add();
-      setImages((list) => [...list, ...added]);
-    } catch (error) {
-      notify({ title: "Couldn't add the image", message: errorMessage(error), tone: "danger" });
+  /** Adds attachments one by one, so one unsupported file doesn't drop the others. */
+  const keep = async (adds: Array<() => Promise<ChatAttachment>>) => {
+    for (const add of adds) {
+      try {
+        const added = await add();
+        setFiles((list) => [...list, added]);
+      } catch (error) {
+        notify({ title: "Couldn't attach the file", message: errorMessage(error), tone: "danger" });
+      }
     }
   };
-  /** Pasted or dropped image files (screenshots) become images of the next message. */
-  const takeImages = (files: FileList | File[]): boolean => {
-    const list = [...files].filter((f) => f.type.startsWith("image/"));
-    if (list.length === 0) return false;
-    void keep(() => addImages(meta.id, list));
+  /** Pasted or dropped files (screenshots, PDFs, Office files…) become attachments of the next message. */
+  const takeFiles = (list: FileList | File[]): boolean => {
+    const dropped = [...list];
+    if (dropped.length === 0) return false;
+    void keep(dropped.map((file) => () => addFiles(meta.id, [file]).then((r) => r[0]!)));
     return true;
   };
   const attach = async () => {
-    const files = await call("app.pickFiles", { title: "Attach files", defaultPath: meta.cwd });
-    if (!files.length) return;
-    // Images go with the message; other files are mentioned so Claude Code reads them.
-    const pictures = files.filter((f) => isImagePath(f) && !/\.(svg|ico|bmp|avif)$/i.test(f));
-    const others = files.filter((f) => !pictures.includes(f));
-    if (pictures.length)
-      void keep(() => Promise.all(pictures.map((path) => call("sessions.addImage", { id: meta.id, path }))));
-    if (others.length) {
-      const mentions = others.map((f) => `@${relativeTo(meta.cwd, f)}`).join(" ");
+    const picked = await call("app.pickFiles", { title: "Attach files", defaultPath: meta.cwd });
+    if (!picked.length) return;
+    // Code and text files inside the project are mentioned (Claude Code reads the current version and
+    // can edit it); everything else — images, PDFs, Office files, files from elsewhere — is attached.
+    const inProject = (f: string) => relativeTo(meta.cwd, f) !== f.replaceAll("\\", "/");
+    const mention = picked.filter((f) => inProject(f) && TEXT_FILE.test(f));
+    const attachments = picked.filter((f) => !mention.includes(f));
+    if (mention.length) {
+      const mentions = mention.map((f) => `@${relativeTo(meta.cwd, f)}`).join(" ");
       setText((t) => (t ? `${t.trimEnd()} ${mentions} ` : `${mentions} `));
     }
+    void keep(attachments.map((path) => () => call("sessions.addAttachment", { id: meta.id, path })));
     ref.current?.focus();
   };
 
@@ -96,10 +103,10 @@ export function Composer({
             {queue.map((q) => (
               <div key={q.id} className="flex items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs">
                 <span className="min-w-0 flex-1 truncate">
-                  {q.images?.length ? (
+                  {q.attachments?.length ? (
                     <span className="mr-1 inline-flex items-center gap-0.5 text-muted">
-                      <ImageIcon className="size-3" />
-                      {q.images.length}
+                      <Paperclip className="size-3" />
+                      {q.attachments.length}
                     </span>
                   ) : null}
                   {q.text}
@@ -135,7 +142,7 @@ export function Composer({
             ))}
           </div>
         )}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop zone for images; Attach does the same from a button. */}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop zone for files; Attach does the same from a button. */}
         <div
           className={cn(
             "flex flex-col gap-2 rounded-lg border bg-raised p-1.5 focus-within:border-focus",
@@ -143,7 +150,7 @@ export function Composer({
           )}
           data-testid="composer"
           onDragOver={(e) => {
-            if ([...e.dataTransfer.items].some((i) => i.type.startsWith("image/"))) {
+            if ([...e.dataTransfer.items].some((i) => i.kind === "file")) {
               e.preventDefault();
               setDragging(true);
             }
@@ -151,16 +158,20 @@ export function Composer({
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             setDragging(false);
-            if (takeImages(e.dataTransfer.files)) e.preventDefault();
+            if (takeFiles(e.dataTransfer.files)) e.preventDefault();
           }}
         >
-          <ChatImages
-            images={images}
+          <ChatAttachments
+            files={files}
             className="px-1 pt-1"
-            onRemove={(image) => setImages((list) => list.filter((i) => i !== image))}
+            onRemove={(file) => setFiles((list) => list.filter((f) => f !== file))}
           />
           <div className="flex items-end gap-2">
-            <IconButton icon={Paperclip} label="Attach files or images" onClick={() => void attach()} />
+            <IconButton
+              icon={Paperclip}
+              label="Attach files (images, PDF, Word, Excel, PowerPoint, text)"
+              onClick={() => void attach()}
+            />
             <textarea
               ref={ref}
               rows={1}
@@ -171,7 +182,7 @@ export function Composer({
               }
               onChange={(e) => setText(e.target.value)}
               onPaste={(e) => {
-                if (takeImages(e.clipboardData.files)) e.preventDefault();
+                if (takeFiles(e.clipboardData.files)) e.preventDefault();
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -199,7 +210,7 @@ export function Composer({
               size="md"
               variant="primary"
               icon={ArrowUp}
-              disabled={!text.trim() && images.length === 0}
+              disabled={!text.trim() && files.length === 0}
               data-testid="composer-send"
               onClick={() => void send()}
             >
@@ -208,7 +219,7 @@ export function Composer({
           </div>
         </div>
         <div className="text-2xs text-hint">
-          Enter to send · Shift+Enter for a new line · Paste or drop screenshots · Esc stops Claude
+          Enter to send · Shift+Enter for a new line · Paste or drop screenshots and files · Esc stops Claude
         </div>
       </div>
     </div>
