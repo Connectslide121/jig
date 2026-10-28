@@ -8,6 +8,7 @@ import {
   normalizeLayout,
   openTab,
   type SideRegion,
+  setPaneSize,
   setRegion,
   showView,
   toggleRegion,
@@ -83,6 +84,13 @@ export const workbench = {
   },
   toggleRegion: (region: SideRegion) => updateLayout((l) => toggleRegion(l, region)),
   resizeRegion: (region: SideRegion, size: number) => updateLayout((l) => setRegion(l, region, { size })),
+  resizePane: (id: string, size: number) => updateLayout((l) => setPaneSize(l, id, size)),
+  resetPane: (id: string) =>
+    updateLayout((l) => {
+      const panes = { ...l.panes };
+      delete panes[id];
+      return { ...l, panes };
+    }),
   activeTab() {
     const layout = useWorkbench.getState().layout;
     return layout?.main.tabs.find((t) => t.id === layout.main.active);

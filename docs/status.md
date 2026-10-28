@@ -107,6 +107,9 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
     as "previous", merges into your branch, builds and restarts through the launcher. If the new build
     doesn't report ready, the launcher starts the previous one, then safe mode (your add-ons off), and
     Jig shows a banner with **Undo the last change to Jig** (also in Tools).
+- **Resizable panels:** drag the edge of the sidebars and the bottom panel (or focus the handle and use
+  the arrow keys; double-click resets), the terminal list, the Settings list and the two sides of a Git
+  diff. Sizes are remembered (`layout.json`).
 - **Phase 11 (done): packaging & Windows.**
   - `npm run dist` packages Jig with electron-builder; on Windows it makes `Jig-Setup-<version>.exe`
     (per-user NSIS installer with Start menu shortcut and Jig's icon). Guide: `docs/guides/packaging.md`.

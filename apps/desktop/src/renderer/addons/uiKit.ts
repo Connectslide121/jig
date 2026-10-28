@@ -19,6 +19,7 @@ export {
   Kbd,
   ListRow,
   Markdown,
+  ResizeHandle,
   SectionTitle,
   Select,
   Spinner,
@@ -29,5 +30,6 @@ export {
   useHighlightedLines,
   VirtualList,
 } from "../ui";
+export { Pane, usePaneSize, useSplitRatio } from "../workbench/Pane";
 export { iconByName, useActiveProject, useAddon, useProjectList, useRunningScripts } from "./context";
 export { useAddonEvent, useHostCall } from "./hooks";

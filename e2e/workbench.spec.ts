@@ -93,3 +93,38 @@ test("host notifications appear as toasts", async ({ app, page }) => {
   });
   await expect(page.getByTestId("toast")).toContainText("Hello from the host");
 });
+
+test("sidebars and panes resize by dragging or with the keyboard, and remember it", async ({
+  page,
+  jigHome,
+}) => {
+  const region = page.getByTestId("region-left");
+  const handle = page.getByTestId("resize-left");
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 300);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 150, box.y + 300, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await region.boundingBox())!.width)).toBeGreaterThan(400);
+  await handle.focus();
+  const before = Math.round((await region.boundingBox())!.width);
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(async () => Math.round((await region.boundingBox())!.width)).toBe(before - 16);
+  await handle.dblclick();
+  await expect.poll(async () => Math.round((await region.boundingBox())!.width)).toBe(280);
+
+  // A pane inside a tab: the Settings list.
+  await page.keyboard.press("Control+,");
+  const pane = page.getByTestId("pane-jig.settings.nav");
+  await expect(pane).toBeVisible();
+  const paneHandle = pane.getByRole("separator");
+  await paneHandle.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect.poll(async () => Math.round((await pane.boundingBox())!.width)).toBe(208 + 64);
+  await expect
+    .poll(async () => {
+      const saved = await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}");
+      return JSON.parse(saved).panes?.["jig.settings.nav"];
+    })
+    .toBe(272);
+});

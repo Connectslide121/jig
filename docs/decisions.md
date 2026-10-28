@@ -412,3 +412,11 @@ previous build as fallback). An installed Jig compares with the latest GitHub re
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 There is no code-signing certificate, so SmartScreen asks once. A per-user NSIS install needs no admin
 rights and keeps the app beside `%USERPROFILE%\.jig`.
+
+### D-069 — Pane sizes live in layout.json; handles are 8px and keyboard-accessible
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Sidebar and bottom-panel sizes were already in the layout; sizes of panes inside views and tabs (the
+terminal list, the Settings list, the two sides of a Git diff) now go into `layout.json` `panes` too,
+so they survive restarts and the builder can see them. Every drag handle is an 8px hit area on the
+border with an accent line on hover, arrow keys resize, double-click resets, and a side region can't
+squeeze the main area below 320px.

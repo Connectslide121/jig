@@ -39,6 +39,21 @@
   .selectable {
     user-select: text;
   }
+  /* While a resize handle is dragged: one cursor everywhere, no text selection, iframes ignore the mouse. */
+  body.jig-resizing,
+  body.jig-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
+  }
+  body.jig-resizing-row,
+  body.jig-resizing-row * {
+    cursor: row-resize !important;
+    user-select: none !important;
+  }
+  body.jig-resizing iframe,
+  body.jig-resizing-row iframe {
+    pointer-events: none;
+  }
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

@@ -12,12 +12,19 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   "right":  { "views": [], "size": 320, "collapsed": true },
   "bottom": { "views": ["jig.terminals"], "active": "jig.terminals", "size": 260, "collapsed": true },
   "hidden": ["addon.pipelines.view"],
+  "panes":  { "jig.terminals.list": 240, "addon.git.diff": 0.4 },
   "main":   { "tabs": [{ "id": "t…", "type": "jig.chat", "params": { "sessionId": "…" } }], "active": "t…" }
 }
 ```
 
 - **Regions** `left`, `right`, `bottom` hold **views** by id. A region shows one view at a time; the
   others are tabs in its header. `size` is the width (left/right) or height (bottom) in px (120–2000).
+  Drag the edge of a region (an 8px handle on its border, highlighted on hover) to resize it, or focus
+  the handle and use the arrow keys (Shift: bigger steps); double-click resets. The main area always
+  keeps at least 320px.
+- **panes**: sizes of resizable panes inside views and tabs, by pane id — px, or a 0–1 ratio for a
+  two-column split (`setPaneSize`). Core panes: `jig.terminals.list`, `jig.settings.nav`; the Git
+  add-on's diff uses `addon.git.diff`. Add-ons use `Pane` / `useSplitRatio` from `@jig/sdk/ui`.
 - **hidden**: views the user hid. They come back from the layout menu (top bar) → Views, or
   Settings → Layout.
 - **main**: tabs in the main area, in order, and the active one. A tab is `{ id, type, params }`;

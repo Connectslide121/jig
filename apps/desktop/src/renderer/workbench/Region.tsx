@@ -1,8 +1,7 @@
 import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight, Sparkles } from "lucide-react";
-import { useCallback, useRef } from "react";
 import type { SideRegion } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
-import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../ui";
+import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
 import { useRegistry } from "./registry";
 import { useWorkbench, workbench } from "./store";
 
@@ -41,43 +40,28 @@ export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
   ];
 }
 
-/** Drag handle that resizes a region. */
-function Resizer({ region }: { region: SideRegion }) {
-  const start = useRef<{ pos: number; size: number }>(undefined);
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent) => {
-      const size = useWorkbench.getState().layout?.[region].size ?? 280;
-      start.current = { pos: region === "bottom" ? event.clientY : event.clientX, size };
-      (event.target as HTMLElement).setPointerCapture(event.pointerId);
-    },
-    [region],
-  );
-  const onPointerMove = (event: React.PointerEvent) => {
-    if (!start.current) return;
-    const pos = region === "bottom" ? event.clientY : event.clientX;
-    const delta = pos - start.current.pos;
-    const size = region === "left" ? start.current.size + delta : start.current.size - delta;
-    const max = region === "bottom" ? window.innerHeight * 0.75 : window.innerWidth * 0.5;
-    workbench.resizeRegion(region, Math.min(size, max));
+const DEFAULT_SIZE: Record<SideRegion, number> = { left: 280, right: 320, bottom: 260 };
+const MIN_MAIN = 320;
+
+/** Drag handle that resizes a region; the main area keeps at least 320px. */
+function Resizer({ region, size }: { region: SideRegion; size: number }) {
+  const max = () => {
+    const layout = useWorkbench.getState().layout;
+    if (region === "bottom") return window.innerHeight * 0.75;
+    const other = region === "left" ? layout?.right : layout?.left;
+    const otherSize = other && !other.collapsed && other.views.length ? other.size : 0;
+    return window.innerWidth - otherSize - MIN_MAIN;
   };
   return (
-    <div
-      role="separator"
-      aria-orientation={region === "bottom" ? "horizontal" : "vertical"}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={() => {
-        start.current = undefined;
-      }}
-      onDoubleClick={() =>
-        workbench.resizeRegion(region, region === "bottom" ? 260 : region === "left" ? 280 : 320)
-      }
-      className={cn(
-        "absolute z-10 bg-transparent transition-colors hover:bg-focus",
-        region === "left" && "top-0 -right-0.5 h-full w-1 cursor-col-resize",
-        region === "right" && "top-0 -left-0.5 h-full w-1 cursor-col-resize",
-        region === "bottom" && "-top-0.5 left-0 h-1 w-full cursor-row-resize",
-      )}
+    <ResizeHandle
+      edge={region === "left" ? "right" : region === "right" ? "left" : "top"}
+      size={size}
+      min={120}
+      max={max}
+      label={`Resize the ${regionNames[region]}`}
+      onResize={(next) => workbench.resizeRegion(region, next)}
+      onReset={() => workbench.resizeRegion(region, DEFAULT_SIZE[region])}
+      data-testid={`resize-${region}`}
     />
   );
 }
@@ -146,7 +130,7 @@ export function Region({ region }: { region: SideRegion }) {
           <View viewId={active.id} region={region} />
         </ErrorBoundary>
       </div>
-      <Resizer region={region} />
+      <Resizer region={region} size={state.size} />
     </section>
   );
 }

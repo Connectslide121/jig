@@ -2,6 +2,7 @@ import { Pencil, Plus, Power, RotateCw, SquareTerminal, X } from "lucide-react";
 import type { TerminalInfo } from "../../../shared/terminals";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, type MenuEntry, promptDialog } from "../../ui";
+import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
 import { newTerminal } from "./actions";
@@ -62,7 +63,14 @@ export function TerminalsView(_props: ViewProps) {
           </div>
         ))}
       </div>
-      <div className="flex w-48 shrink-0 flex-col border-l border-line">
+      <Pane
+        id="jig.terminals.list"
+        edge="left"
+        defaultSize={192}
+        max={480}
+        label="Resize the terminal list"
+        className="flex flex-col border-l border-line"
+      >
         <div className="min-h-0 flex-1 overflow-y-auto p-1">
           {terminals.map((t) => (
             <div
@@ -100,7 +108,7 @@ export function TerminalsView(_props: ViewProps) {
             </div>
           ))}
         </div>
-      </div>
+      </Pane>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   normalizeLayout,
   openTab,
   reorderView,
+  setPaneSize,
   setRegion,
   showView,
   tabKey,
@@ -178,5 +179,17 @@ describe("tabs", () => {
     for (let n = 0; n < MAX_TABS + 5; n++) layout = openTab(layout, { type: "t", params: { n } }).layout;
     expect(layout.main.tabs).toHaveLength(MAX_TABS);
     expect(layout.main.tabs.some((t) => t.params.n === MAX_TABS + 4)).toBe(true);
+  });
+});
+
+describe("setPaneSize", () => {
+  it("remembers pixel sizes and split ratios within bounds", () => {
+    let layout = defaultLayout();
+    expect(layout.panes).toEqual({});
+    layout = setPaneSize(layout, "jig.terminals.list", 250.4);
+    layout = setPaneSize(layout, "addon.git.diff", 0.95);
+    layout = setPaneSize(layout, "tiny", 10);
+    expect(layout.panes).toEqual({ "jig.terminals.list": 250, "addon.git.diff": 0.9, tiny: 48 });
+    expect(setPaneSize(layout, "", 100)).toBe(layout);
   });
 });

@@ -36,6 +36,8 @@ export const LayoutSchema = z.object({
   bottom: RegionSchema(260, true),
   /** Views the user hid; they come back from the Views menu. */
   hidden: z.array(z.string()).default([]),
+  /** Sizes of resizable panes inside views and tabs (`Pane id` → px, or a 0–1 ratio for splits). */
+  panes: z.record(z.string(), z.number()).default({}),
   main: z
     .object({
       tabs: z.array(TabSchema).default([]),
@@ -147,6 +149,17 @@ export function setRegion(
   const layout = clone(input);
   Object.assign(layout[region], patch);
   if (patch.size !== undefined) layout[region].size = Math.round(Math.min(2000, Math.max(120, patch.size)));
+  return layout;
+}
+
+/** Remembers the size of a resizable pane (px, or a ratio between 0 and 1 for splits). */
+export function setPaneSize(input: Layout, id: string, size: number): Layout {
+  if (!id || !Number.isFinite(size)) return input;
+  const layout = clone(input);
+  layout.panes[id] =
+    size <= 1
+      ? Math.round(Math.max(0.1, Math.min(0.9, size)) * 1000) / 1000
+      : Math.round(Math.min(4000, Math.max(48, size)));
   return layout;
 }
 

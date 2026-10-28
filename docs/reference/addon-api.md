@@ -73,8 +73,11 @@ design-token warnings (the builder must fix them; the add-on still loads).
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
 → `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists),
-`useHighlightedLines(code, lang)` (theme-highlighted HTML per line, for diffs) and
-`languageForPath(path)`.
+`useHighlightedLines(code, lang)` (theme-highlighted HTML per line, for diffs),
+`languageForPath(path)`, and for resizable layouts `Pane` (`<Pane id edge defaultSize min? max?>`: a flex
+child with a drag handle on `edge`; the size is remembered in `layout.json` under `id` — use
+`addon.<your id>.<name>`), `useSplitRatio(id, fallback?)` → `[ratio, setRatio, reset]` for two columns,
+and the bare `ResizeHandle`.
 
 ## Host (`host.ts`)
 

@@ -9,6 +9,7 @@ export * from "./Input";
 export * from "./ListRow";
 export * from "./Markdown";
 export * from "./Menu";
+export * from "./ResizeHandle";
 export * from "./Spinner";
 export * from "./Tabs";
 export * from "./Tooltip";

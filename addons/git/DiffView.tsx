@@ -1,6 +1,6 @@
-import { cn, languageForPath, useHighlightedLines } from "@jig/sdk/ui";
+import { cn, languageForPath, ResizeHandle, useHighlightedLines, useSplitRatio } from "@jig/sdk/ui";
 import { ChevronsUpDown } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   collapseUnchanged,
   type DiffLine,
@@ -37,6 +37,21 @@ function Collapsed({ count, onExpand }: { count: number; onExpand: () => void })
   );
 }
 
+/** The width of an element, kept up to date. */
+function useWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setWidth(el.clientWidth));
+    observer.observe(el);
+    setWidth(el.clientWidth);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
 export function DiffView({ patch, path, mode }: { patch: string; path: string; mode: "split" | "inline" }) {
   const diff = useMemo(() => parseUnifiedDiff(patch), [patch]);
   const lines = useMemo(() => diff.hunks.flatMap((h) => h.lines), [diff]);
@@ -61,6 +76,8 @@ export function DiffView({ patch, path, mode }: { patch: string; path: string; m
   const oldHtml = useHighlightedLines(oldText, lang);
   const newHtml = useHighlightedLines(newText, lang);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [ratio, setRatio, resetRatio] = useSplitRatio("addon.git.diff");
+  const [boxRef, width] = useWidth();
 
   const oldIndex = useMemo(() => {
     const map = new Map<number, number>();
@@ -135,25 +152,43 @@ export function DiffView({ patch, path, mode }: { patch: string; path: string; m
       </span>
     </div>
   );
+  const columns = { gridTemplateColumns: `minmax(0, ${ratio}fr) minmax(0, ${1 - ratio}fr)` };
   return (
-    <div
-      className="selectable min-h-0 flex-1 overflow-auto bg-code font-mono text-xs leading-5"
-      data-testid="git-diff-split"
-    >
-      {segments.map((segment, i) =>
-        segment.kind === "collapsed" && !expanded.has(i) ? (
-          <Collapsed key={i} count={segment.items.length} onExpand={() => expand(i)} />
-        ) : (
-          <Fragment key={i}>
-            {segment.items.map((row, j) => (
-              <div key={j} className="grid grid-cols-2 divide-x divide-line">
-                {cell(row.left, "old")}
-                {cell(row.right, "new")}
-              </div>
-            ))}
-          </Fragment>
-        ),
+    <div ref={boxRef} className="relative flex min-h-0 flex-1 flex-col">
+      {width > 0 && (
+        <div className="pointer-events-none absolute inset-y-0 left-0" style={{ width: ratio * width }}>
+          <ResizeHandle
+            edge="right"
+            size={ratio * width}
+            min={width * 0.1}
+            max={width * 0.9}
+            label="Resize the two sides"
+            className="pointer-events-auto"
+            onResize={(px) => setRatio(px / width)}
+            onReset={resetRatio}
+            data-testid="git-diff-resize"
+          />
+        </div>
       )}
+      <div
+        className="selectable min-h-0 flex-1 overflow-auto bg-code font-mono text-xs leading-5"
+        data-testid="git-diff-split"
+      >
+        {segments.map((segment, i) =>
+          segment.kind === "collapsed" && !expanded.has(i) ? (
+            <Collapsed key={i} count={segment.items.length} onExpand={() => expand(i)} />
+          ) : (
+            <Fragment key={i}>
+              {segment.items.map((row, j) => (
+                <div key={j} className="grid divide-x divide-line" style={columns}>
+                  {cell(row.left, "old")}
+                  {cell(row.right, "new")}
+                </div>
+              ))}
+            </Fragment>
+          ),
+        )}
+      </div>
     </div>
   );
 }
