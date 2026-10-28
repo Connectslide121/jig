@@ -225,5 +225,39 @@ test("screenshots for the About page", async () => {
   await page.getByTestId("about-slot-view").locator("button").first().click();
   await page.waitForTimeout(500);
   await shot("slots");
+
+  // A Markdown preview with a Mermaid diagram.
+  await writeFile(
+    join(ws, "webshop", "ARCHITECTURE.md"),
+    "# Webshop architecture\n\nThe checkout runs in three steps. Prices come from the **orders-api**.\n\n```mermaid\nflowchart LR\n  Cart[Cart] --> Checkout[Checkout] --> Pay[Payment]\n  Checkout --> API[(orders-api)]\n```\n\n| Step | Owner | Status |\n|---|---|---|\n| Cart | Web | done |\n| Checkout | Web | in progress |\n| Payment | Payments | planned |\n",
+  );
+  await key("Control+Shift+G");
+  await page.waitForTimeout(1500);
+  await page.getByTestId("git-file-untracked-webshop/ARCHITECTURE.md").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Preview" }).click();
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("mermaid").locator("svg")).toBeVisible({
+    timeout: 15000,
+  });
+  await shot("preview");
+
+  // A guided tour of the webshop's changes.
+  await page.getByTestId("git-claude-menu").nth(1).click();
+  await page.getByRole("menuitem", { name: "Walk me through the changes" }).click();
+  await expect(page.getByTestId("tour")).toBeVisible({ timeout: 15000 });
+  await page.waitForTimeout(600);
+  await shot("tour");
+
+  // Try several ways, judged.
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("Try a task several ways");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("attempts-task").fill("Add a discount code to checkout and write notes.md about it");
+  await page.getByTestId("attempts-start").click();
+  for (const n of [1, 2, 3])
+    await expect(page.getByTestId(`attempt-${n}`)).toContainText("1 file", { timeout: 30000 });
+  await page.getByTestId("attempt-2").getByText("notes.md").click();
+  await page.getByTestId("attempts-judge").click();
+  await expect(page.getByTestId("attempts-verdict")).toBeVisible();
+  await shot("attempts");
   await app.close();
 });

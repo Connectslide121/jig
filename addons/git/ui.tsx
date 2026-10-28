@@ -112,6 +112,9 @@ function useProject(projectId: unknown, repo?: unknown): RepoProject | undefined
 }
 
 /** Refreshes `reload` whenever git state changes in `cwd` (watcher) or the window regains focus. */
+/** How often the Git view checks the working tree (files created or edited outside git). */
+const POLL_MS = 5000;
+
 function useLiveRefresh(cwd: string | undefined, reload: () => void) {
   const ctx = useAddon();
   useEffect(() => {
@@ -119,7 +122,12 @@ function useLiveRefresh(cwd: string | undefined, reload: () => void) {
     void ctx.host.call("watchRepo", { cwd }).catch(() => {});
     const onFocus = () => reload();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    // New and edited files don't touch .git: look again every few seconds while Jig is visible.
+    const timer = setInterval(() => document.visibilityState === "visible" && reload(), POLL_MS);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(timer);
+    };
   }, [cwd, ctx, reload]);
   useAddonEvent("changed", (payload) => {
     if ((payload as { cwd?: string })?.cwd === cwd) reload();
@@ -852,7 +860,12 @@ function useLiveRefreshAll(cwds: string[], reload: () => void) {
     for (const cwd of cwds) void ctx.host.call("watchRepo", { cwd }).catch(() => {});
     const onFocus = () => reload();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    // New and edited files don't touch .git: look again every few seconds while Jig is visible.
+    const timer = setInterval(() => document.visibilityState === "visible" && reload(), POLL_MS);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(timer);
+    };
   }, [key, ctx, reload]);
   useAddonEvent("changed", (payload) => {
     if (cwds.includes((payload as { cwd?: string })?.cwd ?? "")) reload();
