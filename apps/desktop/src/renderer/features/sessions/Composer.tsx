@@ -6,6 +6,7 @@ import { Button, cn, ErrorBoundary, IconButton } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
+import { takeDraft } from "./drafts";
 import { usePrompts } from "./prompts";
 
 /** Files Claude Code reads itself when mentioned with @. */
@@ -28,7 +29,7 @@ export function Composer({
   queue: QueuedMessage[];
   active: boolean;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => takeDraft(meta.id));
   const [files, setFiles] = useState<ChatAttachment[]>([]);
   const [dragging, setDragging] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);

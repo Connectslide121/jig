@@ -24,6 +24,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 10 | [Extension proposals (no self-editing)](10-extension-proposals.md) | ✅ | when no slot fits, the builder proposes the missing extension point; Jig never edits its own code |
 | 11 | [Packaging & Windows](11-packaging.md) | ✅ | Windows installer, first-run checks, updates |
 | 12 | [Workspaces](12-workspaces.md) | ✅ | a folder of repositories works as one project: Git, scripts, repos and chats across all of them |
+| 13 | [What Jig can do](13-about-page.md) | ✅ | an in-app page: features with screenshots, live extension slots, add-ons, skills, configure examples, shortcuts |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

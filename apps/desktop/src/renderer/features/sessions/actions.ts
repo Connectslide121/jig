@@ -2,10 +2,18 @@ import { call, errorMessage } from "../../lib/host";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { setDraft } from "./drafts";
 import { useSessions } from "./store";
 
-/** Creates a session in a project (in `cwd`, a folder inside it, when given) and opens it. */
-export async function newSession(projectId?: string, cwd?: string): Promise<string | undefined> {
+/**
+ * Creates a session in a project (in `cwd`, a folder inside it, when given) and opens it, with
+ * `draft` in the composer (not sent).
+ */
+export async function newSession(
+  projectId?: string,
+  cwd?: string,
+  draft?: string,
+): Promise<string | undefined> {
   const id = projectId ?? useProjects.getState().activeId;
   if (!id) {
     notify({
@@ -21,6 +29,7 @@ export async function newSession(projectId?: string, cwd?: string): Promise<stri
       metas: { ...s.metas, [meta.id]: meta },
       transcripts: { ...s.transcripts, [meta.id]: { items: [], queue: [] } },
     }));
+    if (draft) setDraft(meta.id, draft);
     workbench.openTab("jig.chat", { sessionId: meta.id });
     return meta.id;
   } catch (error) {

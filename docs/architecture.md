@@ -154,6 +154,11 @@ project names and colours, and install themes — through tools on the `jig` MCP
 through Claude Code's permission prompt and leave a card with Undo in the chat; billing and
 program-running settings are Settings-only. Reference: `docs/reference/configure.md`.
 
+**What Jig can do.** A core tab explains Jig with bundled screenshots and live data: the slots from
+`@jig/sdk`, the add-ons that use them, your Claude Code skills (`about.skills`, front matter only), the
+registered shortcuts. Its examples start a build or open a chat with a draft. Reference:
+`docs/reference/about.md`.
+
 ## 5. Projects, sessions and terminals
 
 - **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds

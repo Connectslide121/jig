@@ -123,6 +123,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
   actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
+- **What Jig can do** (the `?` in the top bar, Tools → What Jig can do, the welcome screen, Settings →
+  About): a page with screenshots of each part, a live grid of the 16 extension slots (which of your
+  add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
+  gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
+  the project's), build examples that open the Build dialog, and every keyboard shortcut.
 - **File icon themes:** files and folders (Git, tabs, chat tool cards, builds, add-ons via `FileIcon`) use
   the icon theme your VS Code uses — e.g. Material Icon Theme — or any VS Code icon theme you pick in
   Settings → Appearance → File icons (or install from Open VSX); "Jig" keeps Jig's own icons.
@@ -206,6 +211,8 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **The What Jig can do page**: open it with the `?` in the top bar; check your skills from
+  `~/.claude/skills` are listed and that the screenshots look right on your screen.
 - **Configuring from a real chat**: ask Claude Code (real login) to "switch to a light theme and make it
   compact" and "move the terminals to the right"; check the permission prompts, the change cards and
   Undo, and that "allow API keys" is refused.

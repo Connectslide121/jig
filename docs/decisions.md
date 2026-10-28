@@ -500,3 +500,15 @@ card, so it survives restarts). Read-only tools run without a prompt so Claude c
 Three settings stay Settings-only — `engine.allowApiKey` (billing), `engine.claudePath` (which program
 runs as Claude Code) and `updates.*` (shell commands Jig runs) — so a chat can never change billing or
 make Jig run other programs.
+
+### D-078 — "What Jig can do" is a core page with live data and generated screenshots
+**Decided by:** Jon (a place that shows what Jig can do, with screenshots, a bit interactive) and
+Claude, on my own (how) · **Date:** 2026-10-28
+It is a core tab, not an add-on, so it is always there and can show the whole app (an add-on could not
+read the other add-ons' manifests or the shortcuts). Lists that change — slots, add-ons, skills,
+shortcuts — are read live, so the page doesn't go stale when slots or add-ons are added; only the
+prose, the slot examples and the configure tool list are written by hand. Screenshots are produced by
+an opt-in Playwright spec with the fake engine and a demo workspace, so they can be regenerated after
+UI changes instead of being taken by hand. Examples act instead of just describing: "Try in a chat"
+opens a chat with the text in the composer (not sent, so nothing happens without you) and build
+examples open the Build dialog. Skills are found by reading only SKILL.md front matter.

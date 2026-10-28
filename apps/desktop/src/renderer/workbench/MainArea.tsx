@@ -1,4 +1,4 @@
-import { FolderPlus, Settings, Sparkles, Wrench, X } from "lucide-react";
+import { CircleHelp, FolderPlus, Settings, Sparkles, Wrench, X } from "lucide-react";
 import { useState } from "react";
 import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
@@ -114,6 +114,13 @@ function EmptyMain() {
         </Button>
         <Button icon={Wrench} onClick={(e) => openToolsMenu(e.currentTarget)}>
           Tools
+        </Button>
+        <Button
+          icon={CircleHelp}
+          onClick={() => workbench.openTab("jig.about")}
+          data-testid="main-empty-about"
+        >
+          What Jig can do
         </Button>
         <Button variant="ghost" icon={Settings} onClick={() => workbench.openTab("jig.settings")}>
           Settings

@@ -78,6 +78,9 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 - Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
+- A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot
+  needs an example in `SLOT_EXAMPLES`. When the UI changes noticeably, regenerate the page's screenshots
+  (`docs/reference/about.md`).
 
 ## Testing rules
 

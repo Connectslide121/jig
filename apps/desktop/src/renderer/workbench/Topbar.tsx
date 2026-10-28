@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  CircleHelp,
   Eye,
   FolderPlus,
   LayoutDashboard,
@@ -131,6 +132,12 @@ export function Topbar() {
         label="Layout and views"
         data-testid="layout-button"
         onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true)}
+      />
+      <IconButton
+        icon={CircleHelp}
+        label="What Jig can do"
+        data-testid="about-button"
+        onClick={() => workbench.openTab("jig.about")}
       />
       <IconButton
         icon={Settings}

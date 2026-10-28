@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { app, BrowserWindow, Menu } from "electron";
+import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAppHandlers } from "./app";
 import { startBuilder } from "./builder";
@@ -55,6 +56,7 @@ async function start() {
   startTerminals();
   registerScriptHandlers();
   registerFileHandlers();
+  registerAboutHandlers();
   registerSetupHandlers();
   startUsage();
   await startThemes(addonThemes);

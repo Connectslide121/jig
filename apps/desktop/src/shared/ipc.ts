@@ -8,6 +8,7 @@
  * docs/reference/ipc.md.
  */
 
+import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo } from "./addons";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
@@ -56,6 +57,8 @@ export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };
+  /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
+  "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "usage.get": { args: void; result: PlanUsage };
   /** Asks Claude Code again now. */
