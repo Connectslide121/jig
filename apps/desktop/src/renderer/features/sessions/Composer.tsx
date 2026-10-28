@@ -1,10 +1,11 @@
-import { ArrowUp, Paperclip, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, Paperclip, Sparkles, Split, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ChatAttachment, QueuedMessage, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, IconButton } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
+import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
 import { takeDraft } from "./drafts";
 import { usePrompts } from "./prompts";
@@ -197,6 +198,14 @@ export function Composer({
               label="Attach files (images, PDF, Word, Excel, PowerPoint, text)"
               onClick={() => void attach()}
             />
+            {meta.kind !== "builder" && (
+              <IconButton
+                icon={Split}
+                label="Try several ways: this task in parallel chats, each in its own copy of the repo"
+                data-testid="composer-attempts"
+                onClick={() => openAttemptsDialog({ task: text, projectId: meta.projectId })}
+              />
+            )}
             <textarea
               ref={ref}
               rows={1}

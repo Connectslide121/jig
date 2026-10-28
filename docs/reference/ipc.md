@@ -18,6 +18,11 @@ exceptions return `internal` (and are logged).
 | `files.image` | `{ path }` | `{ dataUrl, bytes, mime }` | an image file for a preview (png, jpg, gif, webp, avif, bmp, ico, svg; ≤ 25 MB); `not_image`, `not_found`, `too_large` |
 | `sessions.undoChange` | `{ sessionId, itemId }` | — | undoes a change Claude made to Jig's configuration (a `change` card; `docs/reference/configure.md`) |
 | `about.skills` | — | `SkillInfo[]` | Claude Code skills in `~/.claude/skills` and the active project's `.claude/skills` (front matter only; `docs/reference/about.md`) |
+| `attempts.start` | `{ projectId, repo, task, hints }` | `AttemptRun` | 2–4 chats on the same task, each in its own git worktree (`docs/reference/attempts.md`) |
+| `attempts.list` / `attempts.get` | — / `{ id }` | `AttemptRun[]` / `AttemptRun` | runs |
+| `attempts.changes` / `attempts.diff` | `{ id }` / `{ id, index, path? }` | `AttemptChanges[]` / `string` | what each attempt changed |
+| `attempts.judge` | `{ id }` | `AttemptVerdict` | Claude compares the attempts (one-shot, no tools) |
+| `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
 | `ai.ask` | `{ addonId, prompt, cwd? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`) |
@@ -102,6 +107,7 @@ exceptions return `internal` (and are logged).
 | `projects.changed` | `ProjectsState` | after any project change |
 | `notify` | `{ title, message?, tone? }` | a host notification, shown as a toast |
 | `sessions.update` | `{ sessionId, updates: ChatUpdate[] }` | transcript/metadata/queue changes of a session |
+| `attempts.changed` | `AttemptRun` | a run started, was judged, kept or discarded |
 | `sessions.reveal` | `{ sessionId }` | show this chat (its desktop notification was clicked) |
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |

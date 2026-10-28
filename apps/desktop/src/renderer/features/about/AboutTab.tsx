@@ -15,6 +15,7 @@ import {
   Puzzle,
   Settings2,
   Sparkles,
+  Split,
   SquareTerminal,
   Wand2,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "overview", title: "Overview", icon: BookOpen },
   { id: "chats", title: "Chats", icon: MessageSquare },
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
+  { id: "attempts", title: "Try several ways", icon: Split },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
   { id: "terminals", title: "Terminals & scripts", icon: SquareTerminal },
@@ -580,6 +582,20 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "A focus repo for new chats and the Git view",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch and changes",
+              ]}
+            />
+          </Section>
+          <Section
+            id="attempts"
+            title="Try several ways"
+            lead="Hand the same task to 2–4 Claude Code chats at once, each in its own git worktree and from a different angle: simplest, cleanest, most thorough, unconventional. Compare what they did, let Claude judge, and keep the best one in your working copy."
+          >
+            <Bullets
+              items={[
+                "The split button in the message box, or Tools → Try a task several ways…",
+                "Live progress and changed files per attempt, with diffs",
+                "Let Claude judge: a recommendation with strengths and weaknesses",
+                "Keep this one applies it uncommitted and removes the rest",
               ]}
             />
           </Section>

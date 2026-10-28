@@ -4,6 +4,7 @@ import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
+import { startAttempts } from "./attempts";
 import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { startConfigure } from "./configure";
@@ -54,6 +55,7 @@ async function start() {
   registerLayoutHandlers();
   startProjects();
   startSessions();
+  startAttempts();
   startTerminals();
   registerScriptHandlers();
   registerFileHandlers();

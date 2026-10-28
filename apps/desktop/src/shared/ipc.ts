@@ -10,6 +10,7 @@
 
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo } from "./addons";
+import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type {
@@ -64,6 +65,21 @@ export interface HostMethods {
   /** Size and change time of a file (`null`: gone); the Preview tab polls it to follow edits. */
   "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
+  /** "Try several ways": the same task in 2–4 chats, each in its own git worktree (docs/reference/attempts.md). */
+  "attempts.start": {
+    args: { projectId: string; repo: string; task: string; hints: string[] };
+    result: AttemptRun;
+  };
+  "attempts.list": { args: void; result: AttemptRun[] };
+  "attempts.get": { args: { id: string }; result: AttemptRun };
+  "attempts.changes": { args: { id: string }; result: AttemptChanges[] };
+  "attempts.diff": { args: { id: string; index: number; path?: string }; result: string };
+  /** Claude compares the attempts and recommends one. */
+  "attempts.judge": { args: { id: string }; result: AttemptVerdict };
+  /** Applies an attempt to the repository's working copy and removes every worktree. */
+  "attempts.keep": { args: { id: string; index: number }; result: AttemptRun };
+  "attempts.discard": { args: { id: string }; result: AttemptRun };
+  "attempts.repoDirty": { args: { id: string }; result: boolean };
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
   "ai.ask": { args: { addonId: string; prompt: string; cwd?: string }; result: string };
   "about.skills": { args: void; result: SkillInfo[] };
@@ -220,6 +236,7 @@ export interface HostEvents {
   "projects.changed": ProjectsState;
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };
+  "attempts.changed": AttemptRun;
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };

@@ -250,11 +250,11 @@ export function NotebookView({ preview }: { preview: FilePreview }) {
   );
 }
 
-/** A unified diff (.diff/.patch) with added and removed lines coloured. */
-export function DiffFileView({ preview }: { preview: FilePreview }) {
-  const lines = (preview.text ?? "").split("\n");
+/** Unified diff text with added and removed lines coloured. */
+export function DiffLines({ text, testId }: { text: string; testId?: string }) {
+  const lines = text.split("\n");
   return (
-    <pre className="selectable p-4 font-mono text-xs leading-5" data-testid="preview-diff">
+    <pre className="selectable p-4 font-mono text-xs leading-5" data-testid={testId}>
       {lines.map((line, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: lines of a file.
@@ -273,6 +273,11 @@ export function DiffFileView({ preview }: { preview: FilePreview }) {
       ))}
     </pre>
   );
+}
+
+/** A .diff/.patch file. */
+export function DiffFileView({ preview }: { preview: FilePreview }) {
+  return <DiffLines text={preview.text ?? ""} testId="preview-diff" />;
 }
 
 /** Highlighting gets slow on huge files: above this, plain text. */

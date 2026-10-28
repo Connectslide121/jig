@@ -586,3 +586,13 @@ folder), so a page can load its own CSS and images and nothing else. HTML runs i
 that is never same-origin, with scripts off unless turned on. PDFs use Chromium's own viewer
 (`plugins: true`) instead of bundling pdf.js. Mermaid (12.1.0) is a dependency because Claude writes
 diagrams in it all the time; it loads only when a diagram is shown.
+
+### D-087 — "Try several ways": parallel attempts in git worktrees, judged by Claude, applied uncommitted
+**Decided by:** Jon (original AI features) and Claude, on my own (the feature and how) · **Date:** 2026-10-28
+Asking for the same change several times is the cheapest way to get a better result from an agent, but
+doing it by hand means juggling branches. Each attempt gets its own git worktree (real isolation; the
+same mechanism the builder uses) and an angle, so the attempts differ on purpose. The judge is a
+one-shot question with no tools, so it can only read the diffs. Keeping an attempt applies its diff to
+the working copy uncommitted, after `git apply --check`: you review and commit as usual, and nothing is
+merged or committed behind your back. Attempt chats run in *Accept edits*, since they edit Jig's copy,
+not yours.

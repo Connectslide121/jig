@@ -139,3 +139,42 @@ test("A failed script offers Ask Claude, with its output in a new chat", async (
   await expect(input).toHaveValue(/Error: the cart total is wrong/);
   await expect(page.getByTestId("terminal-ask-claude")).toBeVisible();
 });
+
+test("Try several ways: parallel attempts in worktrees, Claude judges, keep one", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git("init", "-q", "-b", "main");
+  git("config", "user.name", "Ann Demo");
+  git("config", "user.email", "ann@example.com");
+  await writeFile(join(dir, "cart.ts"), "export const total = 1;\n");
+  git("add", ".");
+  git("commit", "-q", "-m", "Add cart");
+  await hostCall(page, "projects.add", { path: dir });
+
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("Try a task several ways");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("attempts-task").fill("please write feature.txt");
+  await page.getByTestId("attempts-start").click();
+
+  const attempts = page.getByTestId("attempts");
+  for (const n of [1, 2, 3])
+    await expect(attempts.getByTestId(`attempt-${n}`)).toContainText("1 file ·", { timeout: 20000 });
+  await attempts.getByTestId("attempt-1").getByText("feature.txt").click();
+  await expect(attempts.getByTestId("attempts-diff")).toContainText("+Written by the fake engine.");
+
+  await attempts.getByTestId("attempts-judge").click();
+  await expect(attempts.getByTestId("attempts-verdict")).toContainText("Claude recommends attempt 2");
+  await expect(attempts.getByTestId("attempt-2")).toContainText("Claude's pick");
+
+  await attempts.getByTestId("attempt-keep-2").click();
+  await page.getByTestId("dialog-confirm").click();
+  await expect(attempts).toContainText("Kept attempt 2");
+  expect(await readFile(join(dir, "feature.txt"), "utf8")).toContain("Written by the fake engine.");
+  expect(git("worktree", "list").trim().split("\n")).toHaveLength(1);
+  expect(git("branch", "--list", "jig/*").trim()).toBe("");
+});

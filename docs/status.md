@@ -127,6 +127,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
   "Removed projects", where they can be opened or deleted.
+- **Try several ways:** the split button in the message box (or Tools → Try a task several ways…)
+  starts 2–4 chats on the same task. Each works in its own git worktree from your last commit, from a
+  different angle (simplest, cleanest, most thorough, unconventional; all editable). The Attempts tab
+  shows their progress and changes with diffs. **Let Claude judge** recommends one with strengths and
+  weaknesses per attempt. **Keep this one** applies it to your working copy and removes the rest.
 - **File previews:** right-click a file in Git → Preview, the eye on a chat tool card, an attachment, or
   Tools → Preview a file…. Markdown is rendered with Mermaid diagrams, relative images and links between
   files. HTML runs in a sandbox, with scripts off unless you turn them on. PDFs open in a viewer.
@@ -245,6 +250,9 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Try several ways with your real Claude Code**: three attempts on a small task in one of your repos;
+  check the worktrees appear under `~/.jig/attempts`, the judge's verdict makes sense, and Keep applies
+  cleanly and removes the worktrees (`git worktree list`).
 - **Previews on Windows**: a PDF, a video (seeking) and an HTML page with scripts from your own repos;
   Markdown with images in a sibling folder.
 - **Desktop notifications on Windows**: put Jig in the background during a long turn; a Windows
