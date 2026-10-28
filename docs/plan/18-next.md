@@ -185,6 +185,19 @@ In each panel, from the panel itself:
 One arrangement per panel, the same for every project (decided). The add-on keeps it in its own
 storage.
 
+## 6. Split view in the main area
+
+Two panes, **side by side**, each with its own tabs (decided). For example a chat next to its diff, a
+chat next to a preview, or two chats.
+- **Opening a tab on the other side:**
+  - drag a tab to the right edge (or onto the other pane's tab bar), like VS Code;
+  - right-click a tab → **Open to the side** (decided).
+- **Layout:** the divider is draggable and its ratio is kept in the layout (`panes`). Closing the
+  last tab of a pane removes the split.
+- **Model:** `main` gets a second tab group in the layout (`main.groups`). New tabs open in the pane
+  that has focus.
+- Out of scope: a grid, and top/bottom splits.
+
 ## Checklist
 
 - [ ] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
@@ -194,6 +207,8 @@ storage.
       pinned chats, drag and drop chats between projects, chats without a project; workspaces and
       Repos unchanged
 - [ ] Scripts and Pipelines: hide, reorder and dividers, from the panel
+- [ ] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
+      side"; draggable divider
 - [ ] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
 - [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
       follow-up

@@ -5,7 +5,6 @@ Ideas and deferred work. Each entry says why it is here.
 - **Git worktree per chat** — an option to start any chat in its own worktree (as ThinkRail does).
   "Try several ways" already runs its attempts in worktrees (phase 14); a per-chat option waits until
   that has been used for a while.
-- **Split main area** (side-by-side tabs). Deferred: tabs first.
 - **Drag-and-drop layout editing.** Menus move views first; drag later.
 - **Diff review with anchored comments sent to the chat** (ThinkRail's best feature).
 - **Sharing add-ons with colleagues**.
