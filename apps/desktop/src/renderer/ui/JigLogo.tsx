@@ -1,19 +1,18 @@
 import { cn } from "./cn";
 
 // Jig's logo on a 1024 grid — the same shapes as scripts/make-icon.mjs (the app icon).
-const BAR =
-  "M604 161H735A28 28 0 0 1 763 189V591A8 8 0 0 1 755 599H584A8 8 0 0 1 576 591V189A28 28 0 0 1 604 161Z";
-const HOOK =
-  "M260 618A14 14 0 0 1 274 604H425A8 8 0 0 1 433 612V628A71.5 71.5 0 0 0 576 628V629A8 8 0 0 1 584 621H753A10 10 0 0 1 763 631L761 631A251.5 251.5 0 0 1 261 618Z";
+const FENCE =
+  "M284 252h92a24 24 0 0 1 24 24v348h348a24 24 0 0 1 24 24v92a24 24 0 0 1-24 24H284a24 24 0 0 1-24-24V276a24 24 0 0 1 24-24Z";
 
 /**
- * Jig's logo: the "J" of a bar and a hook. `mark` is the J alone in the accent colour (top bar);
+ * Jig's logo: a corner jig — an L-shaped fence holding a square piece. `mark` is the shapes alone in
+ * the accent colour (top bar);
  * `icon` adds the rounded square in the canvas colour, so it follows the theme (graphite in Jig Dark).
  */
 export function JigLogo({ variant = "mark", className }: { variant?: "mark" | "icon"; className?: string }) {
   return (
     <svg
-      viewBox={variant === "icon" ? "0 0 1024 1024" : "250 150 524 710"}
+      viewBox={variant === "icon" ? "0 0 1024 1024" : "244 244 536 536"}
       className={cn("shrink-0", className)}
       role="img"
       aria-label="Jig"
@@ -29,8 +28,8 @@ export function JigLogo({ variant = "mark", className }: { variant?: "mark" | "i
           strokeWidth="8"
         />
       )}
-      <path d={BAR} className="fill-accent" />
-      <path d={HOOK} className="fill-accent" />
+      <path d={FENCE} className="fill-accent" />
+      <rect x="440" y="292" width="292" height="292" rx="24" className="fill-accent" />
     </svg>
   );
 }

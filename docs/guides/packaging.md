@@ -22,7 +22,7 @@ Config: `apps/desktop/electron-builder.yml`. The icon is generated: `npm run ico
 @jig/desktop` draws Jig's logo into `apps/desktop/build/icon.png` (1024×1024; electron-builder makes
 the `.ico`/`.icns`). The window uses the same file, so Jig shows its icon in the taskbar also when it
 runs from a clone. The logo's shapes live in two places that must match: `scripts/make-icon.mjs` and
-`src/renderer/ui/JigLogo.tsx` (the in-app logo); `docs/brand/` has the design it was drawn from.
+`src/renderer/ui/JigLogo.tsx` (the in-app logo); see `docs/brand/`.
 
 What is inside (`resources/`):
 

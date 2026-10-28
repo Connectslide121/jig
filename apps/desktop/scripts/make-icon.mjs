@@ -1,7 +1,7 @@
 // Draws Jig's app icon (build/icon.png, 1024×1024) without any image tooling: Jig's logo — an amber
-// "J" made of a bar and a hook with a thin gap, like a piece held in a jig — on a graphite rounded
-// square. The shapes are the same as `renderer/ui/JigLogo.tsx` (one 1024 grid). electron-builder makes
-// the .ico / .icns from it. Run: node scripts/make-icon.mjs
+// L-shaped fence holding a square piece in its corner, like a corner jig — on a graphite rounded square.
+// The shapes are the same as `renderer/ui/JigLogo.tsx` (one 1024 grid). electron-builder makes the
+// .ico / .icns from it. Run: node scripts/make-icon.mjs
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -29,19 +29,12 @@ function inRoundRect(x, y, x0, y0, x1, y1, [tl, tr, br, bl]) {
 
 // The logo on a 1024 grid (JigLogo.tsx uses the same numbers).
 const square = (x, y) => inRoundRect(x, y, 32, 32, 992, 992, [216, 216, 216, 216]);
-const bar = (x, y) => inRoundRect(x, y, 576, 161, 763, 599, [28, 28, 8, 8]);
-function hook(x, y) {
-  if (y < 604) return false;
-  if (x > 576 && y < 621) return false; // the gap under the bar
-  if (inRect(x, y, 433, 0, 576, 628) || inDisc(x, y, 504.5, 628, 71.5)) return false; // inside the U
-  if (!inRect(x, y, 260, 0, 763, 598) && !inDisc(x, y, 511.5, 598, 251.5)) return false;
-  // Slightly rounded tops of the two arms.
-  return (
-    (x > 433 && x < 576) ||
-    inRoundRect(x, y, 260, 604, 433, size, [14, 8, 0, 0]) ||
-    inRoundRect(x, y, 576, 621, 763, size, [8, 10, 0, 0])
-  );
-}
+// The fence: a vertical and a horizontal arm meeting in a square inner corner.
+const fence = (x, y) =>
+  inRoundRect(x, y, 260, 252, 400, 772, [24, 24, 0, 24]) ||
+  inRoundRect(x, y, 260, 624, 772, 772, [0, 24, 24, 24]);
+// The piece, held in the fence's corner with an even gap.
+const piece = (x, y) => inRoundRect(x, y, 440, 292, 732, 584, [24, 24, 24, 24]);
 
 for (let y = 0; y < size; y++) {
   for (let x = 0; x < size; x++) {
@@ -54,7 +47,7 @@ for (let y = 0; y < size; y++) {
         const fy = y + (sy + 0.5) / 4;
         if (!square(fx, fy)) continue;
         bg++;
-        if (bar(fx, fy) || hook(fx, fy)) fg++;
+        if (fence(fx, fy) || piece(fx, fy)) fg++;
       }
     const i = (y * size + x) * 4;
     const f = bg ? fg / bg : 0;

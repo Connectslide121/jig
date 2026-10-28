@@ -33,6 +33,8 @@ build`) with:
 JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts
 # optional: JIG_SCREENSHOT_ICONS=<an unpacked Material Icon Theme extension folder> for VS Code file icons
 npm run build   # bundle the new screenshots
+# about.jpg shows the page with the screenshots bundled at the last build: when they changed a lot,
+# run the spec once more after this build
 ```
 
 `about.jpg` and `slots.jpg` (the page itself) are only used by the repository's `README.md`, which

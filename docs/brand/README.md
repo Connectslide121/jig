@@ -1,15 +1,16 @@
 # Brand
 
-**Logo:** a "J" made of a vertical bar and a hook with a thin gap between them, like a piece held in
-a jig. Amber on a graphite rounded square.
+**Logo:** a corner jig — an L-shaped fence holding a square piece in its corner, with an even gap
+between them. Amber on a graphite rounded square. Abstract on purpose: next to the name it must not
+read as a letter (D-082).
 
 | | Jig Dark | Jig Light |
 | --- | --- | --- |
 | Mark (accent) | `#E0A458` | `#A8641A` |
 | Background | `#1E1F22` | the theme's canvas |
 
-- `logo-reference.png`: the design Jon picked (made with an image generator). The app icon and the in-app
-  logo are redrawn from it as exact geometry on a 1024 grid, in Jig's own colours:
-  `apps/desktop/scripts/make-icon.mjs` (→ `build/icon.png`) and `apps/desktop/src/renderer/ui/JigLogo.tsx`.
+- The shapes are defined twice, with the same numbers on a 1024 grid:
+  `apps/desktop/scripts/make-icon.mjs` (draws `build/icon.png`, the app and window icon) and
+  `apps/desktop/src/renderer/ui/JigLogo.tsx` (the in-app SVG, in the theme's accent and canvas colours).
 - One brand colour (amber). Green, yellow, red and blue are status colours (success, warning, danger,
   info), never brand.
