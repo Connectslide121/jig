@@ -71,7 +71,7 @@ export type PermissionDecision =
   | { behavior: "deny"; message?: string };
 
 export type ChatItem =
-  | { kind: "user"; id: string; text: string; at: string }
+  | { kind: "user"; id: string; text: string; at: string; images?: ChatImage[] }
   | { kind: "assistant"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
   | { kind: "thinking"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
   | {
@@ -116,6 +116,13 @@ export type ChatUpdate =
 export interface QueuedMessage {
   id: string;
   text: string;
+  images?: ChatImage[];
+}
+
+/** An image sent with a message (pasted, dropped or attached), kept in `~/.jig/attachments/<session>/`. */
+export interface ChatImage {
+  path: string;
+  mime: string;
 }
 
 export interface SessionSnapshot {

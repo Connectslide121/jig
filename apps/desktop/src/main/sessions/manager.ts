@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { type ChatState, reduceEvent } from "../../shared/chat";
 import type {
+  ChatImage,
   ChatItem,
   ChatUpdate,
   EngineEvent,
@@ -18,6 +19,7 @@ import { JigError } from "../../shared/ipc";
 import type { Engine, EngineSession } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
+import { addImage, type EngineImage, readImages, removeAttachments } from "./attachments";
 
 const log = logger("sessions");
 
@@ -27,11 +29,21 @@ const MAX_ITEMS = 3000;
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
   items: z.array(z.custom<ChatItem>()).default([]),
-  queue: z.array(z.object({ id: z.string(), text: z.string() })).default([]),
+  queue: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        images: z.array(z.object({ path: z.string(), mime: z.string() })).optional(),
+      }),
+    )
+    .default([]),
 });
 
 export interface SessionManagerOptions {
   dir: string;
+  /** Images sent in chats (`~/.jig/attachments`). */
+  attachmentsDir: string;
   engine: Engine;
   /** Settings at the time a Claude Code process starts. */
   engineSettings: () => { claudePath: string; allowApiKey: boolean; env: Record<string, string | undefined> };
@@ -238,17 +250,34 @@ export class SessionManager {
       const next = live.queue.shift();
       if (next) {
         this.emit(live, [{ op: "queue", queue: live.queue }]);
-        this.startTurn(live, next.text);
+        void this.startTurn(live, next.text, next.images);
       }
     }
   }
 
-  private startTurn(live: Live, text: string) {
-    const item: ChatItem = { kind: "user", id: `user-${randomUUID()}`, text, at: new Date().toISOString() };
+  private async startTurn(live: Live, text: string, images: ChatImage[] = []) {
+    let data: EngineImage[] = [];
+    try {
+      data = await readImages(this.options.attachmentsDir, live.state.meta.id, images);
+    } catch (error) {
+      this.handleEvent(live, {
+        type: "error",
+        code: "process",
+        message: `Images: ${(error as Error).message}`,
+      });
+      return;
+    }
+    const item: ChatItem = {
+      kind: "user",
+      id: `user-${randomUUID()}`,
+      text,
+      at: new Date().toISOString(),
+      ...(images.length ? { images } : {}),
+    };
     const updates: ChatUpdate[] = [{ op: "upsert", item }];
     live.state.items.push(item);
     const meta = live.state.meta;
-    const title = meta.turns === 0 && meta.title === "New session" ? summarize(text) : meta.title;
+    const title = meta.turns === 0 && meta.title === "New session" ? summarize(text || "Image") : meta.title;
     live.state.meta = {
       ...meta,
       title,
@@ -260,24 +289,30 @@ export class SessionManager {
     this.emit(live, updates);
     this.options.onActivity?.({ kind: "prompt", session: live.state.meta, text });
     try {
-      this.startEngine(live).send(text);
+      this.startEngine(live).send(text, data);
     } catch (error) {
       this.handleEvent(live, { type: "error", code: "process", message: (error as Error).message });
     }
   }
 
   /** Sends a message, or queues it while Claude is busy. */
-  async send(id: string, text: string): Promise<void> {
+  async send(id: string, text: string, images: ChatImage[] = []): Promise<void> {
     const live = await this.live(id);
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed && images.length === 0) return;
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
     if (busy) {
-      live.queue.push({ id: randomUUID(), text: trimmed });
+      live.queue.push({ id: randomUUID(), text: trimmed, ...(images.length ? { images } : {}) });
       this.emit(live, [{ op: "queue", queue: live.queue }]);
       return;
     }
-    this.startTurn(live, trimmed);
+    await this.startTurn(live, trimmed, images);
+  }
+
+  /** Keeps a pasted, dropped or attached image for the next message of a session. */
+  async addImage(id: string, input: { data?: string; mime?: string; path?: string }): Promise<ChatImage> {
+    await this.live(id);
+    return addImage(this.options.attachmentsDir, id, input);
   }
 
   /** Adds an item to a transcript (e.g. a build card in the chat that asked for it). */
@@ -349,6 +384,7 @@ export class SessionManager {
     clearTimeout(live.saveTimer);
     this.sessions.delete(id);
     await rm(this.file(id), { force: true });
+    await removeAttachments(this.options.attachmentsDir, id).catch(() => {});
   }
 
   /** Ends every Claude Code process (app quit). */

@@ -79,3 +79,15 @@ prompt tells Claude to use `jig_request_build` instead of editing Jig's files it
 
 See `docs/reference/ipc.md` → `sessions.*` and the `sessions.update` event (`ChatUpdate[]`:
 `upsert` an item, `append` streamed text, `meta`, `queue`).
+
+## Images in messages
+
+Screenshots pasted (Ctrl+V) or dropped into the composer, and images picked with the paperclip, are
+saved to `~/.jig/attachments/<session>/` (`sessions.addImage`) and shown as thumbnails. On send, the host
+checks they belong to that session, reads them and passes them to Claude Code as **image content
+blocks** before the text (`{ type: "image", source: { type: "base64", media_type, data } }` in the
+streaming input) — the same thing Claude Code does with a pasted image. Types: PNG, JPEG, GIF, WebP;
+at most 5 MB each (Claude's limit). The user item keeps `images: [{ path, mime }]`; queued messages
+keep theirs. The fake engine answers "I see N image(s)." Other attached files are still sent as
+`@path` mentions.
+

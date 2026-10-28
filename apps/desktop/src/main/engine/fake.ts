@@ -167,7 +167,8 @@ export class FakeEngine implements Engine {
         } else if (lower.includes("slow")) {
           await stream(`${msg}:text:0`, `${"This is a long answer that keeps going. ".repeat(200)}`, signal);
         } else {
-          const reply = `You said: *${text.slice(0, 200)}*\n\nHere is some code:\n\n\`\`\`ts\nconst answer: number = 42;\nconsole.log("hello", answer);\n\`\`\`\n\n- one\n- two`;
+          const seen = /^\[(\d+) images?\]/.exec(text)?.[1];
+          const reply = `${seen ? `I see ${seen} image${seen === "1" ? "" : "s"}. ` : ""}You said: *${text.slice(0, 200)}*\n\nHere is some code:\n\n\`\`\`ts\nconst answer: number = 42;\nconsole.log("hello", answer);\n\`\`\`\n\n- one\n- two`;
           await stream(`${msg}:text:0`, reply, signal);
         }
         if (lower.includes("fail")) {
@@ -202,8 +203,10 @@ export class FakeEngine implements Engine {
     };
 
     return {
-      send(text) {
-        queue.push(text);
+      send(text, images = []) {
+        queue.push(
+          images.length ? `[${images.length} image${images.length === 1 ? "" : "s"}] ${text}` : text,
+        );
         void pump();
       },
       async interrupt() {

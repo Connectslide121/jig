@@ -11,7 +11,14 @@
 import type { AddonCommit, AddonInfo } from "./addons";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
-import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
+import type {
+  ChatImage,
+  ChatUpdate,
+  PermissionDecision,
+  PermissionMode,
+  SessionMeta,
+  SessionSnapshot,
+} from "./engine";
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
@@ -94,7 +101,16 @@ export interface HostMethods {
   "sessions.get": { args: { id: string }; result: SessionSnapshot };
   "sessions.create": { args: { projectId: string; title?: string }; result: SessionMeta };
   /** Sends a message, or queues it while Claude is busy. */
-  "sessions.send": { args: { id: string; text: string }; result: void };
+  /** Sends a message (with images saved by `sessions.addImage`), or queues it while Claude works. */
+  "sessions.send": { args: { id: string; text: string; images?: ChatImage[] }; result: void };
+  /**
+   * Keeps an image for the next message: pasted/dropped bytes (`data`, base64, with `mime`) or a file
+   * (`path`). PNG, JPEG, GIF or WebP up to 5 MB. Errors: `not_supported`, `too_large`, `not_found`.
+   */
+  "sessions.addImage": {
+    args: { id: string; data?: string; mime?: string; path?: string };
+    result: ChatImage;
+  };
   "sessions.interrupt": { args: { id: string }; result: void };
   "sessions.answerPermission": {
     args: { id: string; requestId: string; decision: PermissionDecision };

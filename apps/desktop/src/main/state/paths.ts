@@ -12,6 +12,8 @@ export const paths = {
   layout: () => join(jigHome(), "layout.json"),
   projects: () => join(jigHome(), "projects.json"),
   sessions: () => join(jigHome(), "sessions"),
+  /** Images sent in chats, one folder per session. */
+  attachments: () => join(jigHome(), "attachments"),
   themes: () => join(jigHome(), "themes"),
   addons: () => join(jigHome(), "addons"),
   addonData: () => join(jigHome(), "addon-data"),

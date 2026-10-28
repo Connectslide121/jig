@@ -436,3 +436,11 @@ The default, "Same as VS Code", reads only `workbench.iconTheme` from VS Code's 
 uses that theme from VS Code's extensions folder, so it matches without setup. Material (MIT, ~5 MB
 of SVGs) isn't bundled: it's already in your VS Code, and Open VSX can install it otherwise; without
 any theme Jig uses its own lucide icons.
+
+### D-072 — Pasted screenshots go to Claude as image blocks, kept as files per session
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+An `@path` mention would make Claude spend a Read tool call and depends on Claude Code's prompt
+parsing; image content blocks in the user message are what Claude Code itself sends for a pasted
+image. The bytes are written to `~/.jig/attachments/<session>/` (not into `sessions/*.json`) so the
+transcript can show them later; they are deleted with the session. Only Claude's image types (PNG,
+JPEG, GIF, WebP) up to 5 MB are accepted, with a clear message otherwise.

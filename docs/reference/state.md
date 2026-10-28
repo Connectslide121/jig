@@ -12,6 +12,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `logs/main.log` | text | host log |
 | `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
 | `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`) |
+| `attachments/<session>/<uuid>.<ext>` | images | images pasted, dropped or attached in a chat; deleted with the session |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |

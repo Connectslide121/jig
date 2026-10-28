@@ -13,6 +13,7 @@ let activity: string[];
 function manager(engine = new FakeEngine(1)) {
   return new SessionManager({
     dir,
+    attachmentsDir: join(dir, "attachments"),
     engine,
     engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {} }),
     appendSystemPrompt: () => "You are inside Jig.",
@@ -67,6 +68,26 @@ describe("SessionManager", () => {
       const file = JSON.parse(await readFile(join(dir, `${session.id}.json`), "utf8").catch(() => "{}"));
       return file.items?.length === 4;
     });
+  });
+
+  it("sends pasted images to Claude with the message and shows them on the user item", async () => {
+    const m = manager();
+    const session = await create(m);
+    const png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const image = await m.addImage(session.id, { data: png, mime: "image/png" });
+    await m.send(session.id, "", [image]);
+    await until(async () => (await metaOf(m, session.id)).turns === 1);
+    const snap = await m.snapshot(session.id);
+    expect(snap.meta.title).toBe("Image");
+    expect(snap.items[0]).toMatchObject({ kind: "user", text: "", images: [image] });
+    const reply = snap.items.find((i) => i.kind === "assistant");
+    expect(reply?.kind === "assistant" && reply.text).toContain("I see 1 image.");
+    // Only this chat's attachments can be sent.
+    await m.send(session.id, "x", [{ path: join(dir, "elsewhere.png"), mime: "image/png" }]);
+    await until(async () => (await metaOf(m, session.id)).lastError);
+    await m.delete(session.id);
+    await expect(readFile(image.path)).rejects.toThrow();
   });
 
   it("queues messages sent while Claude is busy and sends them after the turn", async () => {

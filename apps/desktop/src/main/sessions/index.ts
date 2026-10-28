@@ -48,6 +48,7 @@ export function startSessions(): void {
 
   manager = new SessionManager({
     dir: paths.sessions(),
+    attachmentsDir: paths.attachments(),
     engine: getEngine(),
     engineSettings: () => {
       const { engine } = getConfig();
@@ -103,7 +104,8 @@ export function startSessions(): void {
       permissionMode: engine.defaultPermissionMode as PermissionMode,
     });
   });
-  handle("sessions.send", ({ id, text }) => m.send(id, text));
+  handle("sessions.send", ({ id, text, images }) => m.send(id, text, images));
+  handle("sessions.addImage", ({ id, ...input }) => m.addImage(id, input));
   handle("sessions.interrupt", ({ id }) => m.interrupt(id));
   handle("sessions.answerPermission", ({ id, requestId, decision }) =>
     m.answerPermission(id, requestId, decision),

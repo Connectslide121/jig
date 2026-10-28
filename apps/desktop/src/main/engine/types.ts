@@ -27,8 +27,8 @@ export interface StartOptions {
 }
 
 export interface EngineSession {
-  /** Sends a user message (starts a turn). */
-  send(text: string): void;
+  /** Sends a user message (starts a turn), with images (base64) if any. */
+  send(text: string, images?: Array<{ mime: string; data: string }>): void;
   interrupt(): Promise<void>;
   setModel(model: string): Promise<void>;
   setPermissionMode(mode: PermissionMode): Promise<void>;

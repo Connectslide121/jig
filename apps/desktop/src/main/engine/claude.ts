@@ -83,10 +83,20 @@ export class ClaudeEngine implements Engine {
     })();
 
     return {
-      send(text) {
+      send(text, images = []) {
+        // Images go first, as content blocks (what Claude Code does for pasted images).
+        const content = images.length
+          ? [
+              ...images.map((i) => ({
+                type: "image" as const,
+                source: { type: "base64" as const, media_type: i.mime, data: i.data },
+              })),
+              ...(text ? [{ type: "text" as const, text }] : []),
+            ]
+          : text;
         input.push({
           type: "user",
-          message: { role: "user", content: text },
+          message: { role: "user", content },
           parent_tool_use_id: null,
         } as SDKUserMessage);
       },

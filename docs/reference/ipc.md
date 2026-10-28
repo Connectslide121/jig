@@ -47,7 +47,8 @@ exceptions return `internal` (and are logged).
 | `sessions.list` | — | `SessionMeta[]` | newest first (see `docs/reference/engine.md`) |
 | `sessions.get` | `{ id }` | `SessionSnapshot` | `{ meta, items, queue }` |
 | `sessions.create` | `{ projectId, title? }` | `SessionMeta` | runs in the project folder with the default model/permission mode |
-| `sessions.send` | `{ id, text }` | — | starts a turn, or queues while Claude works |
+| `sessions.send` | `{ id, text, images? }` | — | starts a turn, or queues while Claude works; `images` are `ChatImage`s from `sessions.addImage` (text may be empty then) |
+| `sessions.addImage` | `{ id, data?, mime?, path? }` | `ChatImage { path, mime }` | keeps a pasted/dropped image (base64 `data` + `mime`) or copies an image file into `attachments/<session>/`; PNG, JPEG, GIF, WebP ≤ 5 MB; `not_supported`, `too_large`, `not_found` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |
 | `sessions.removeQueued` | `{ id, queuedId }` | — | |
