@@ -67,6 +67,64 @@ To work out when we start:
 - the add-on API (`AddonProject`, `ctx.projects`) and `projectId` on sessions;
 - Claude's configure tools for projects.
 
+## 4. Learning 2: Jig helps you work better
+
+Today (`docs/reference/learning.md`) Jig records what you *do* in Jig, mines repetition and proposes
+add-ons. It misses what you *say*, friction, and work done outside Jig, and it only answers "build a
+tool". Build in this order:
+
+### 4a. Evidence from chats and friction signals
+- **`jig_note_evidence`**, a Jig tool for Claude. When you mention manual work, work outside Jig,
+  frustration or a chore, Claude saves a short note: quote or summary, project, category.
+  - It shows as a "Noted for suggestions" card in the chat, with Remove.
+  - `jigContext` says when to use it. It never costs an extra AI call.
+  - The fake engine gets a trigger for it.
+- **Friction signals,** recorded without AI: interrupts, rewinds, denied permissions, corrections
+  ("no, I meant…"), the same error repeated, scripts that keep failing, long chats with no commit,
+  hopping between repositories.
+- Both go into the activity log and feed the miner and the reflection, with evidence shown on each
+  suggestion.
+
+### 4b. A profile, and more kinds of suggestions
+- **Profile:** a readable, editable file describing how you work: stack, release process, tools
+  outside Jig, preferences, what you already know. Every reflection reads it and proposes updates.
+- **A "What Jig knows about me" page:** the profile, the evidence and the activity, each editable or
+  deletable.
+- **Suggestion kinds, each with its own action:**
+  - tool → Build add-on;
+  - setting/layout → Change it;
+  - workflow → Draft a workflow, or a pipeline with the Pipelines add-on;
+  - Claude Code setup → add an MCP server, skill or hook;
+  - project memory → add to CLAUDE.md;
+  - prompting tip → with your own before/after examples;
+  - habit tip → Dismiss / Remind me;
+  - automation → make a routine.
+- Coaching (prompting, habits) is rare and specific: at most one tip a week, always with evidence.
+- **Did it help?** After a suggestion is built or adopted, check whether the pattern went away or the
+  tool is used. Tell the user, and feed it back into the next reflection.
+
+### 4c. Weekly check-in
+- An opt-in, skippable short chat: Claude asks 3–5 questions chosen from gaps in the profile and from
+  recent evidence (e.g. "You mentioned uploading to a VM twice — how does a release work for you?").
+- Answers update the profile. Frequency is a setting (weekly, every two weeks, off).
+- It uses some of the plan's usage, so it is kept short.
+
+### 4d. Workflows (a new built-in add-on)
+- **A workflow** is a named list of steps. A step is one of: a manual check, a script, a git action,
+  a pipeline run, a message to Claude, or a wait for your OK.
+- **Three levels:**
+  - manual: a checklist with buttons, and progress you can see;
+  - assisted: Claude runs the steps and stops at checkpoints; a workflow can be exported as a Claude
+    Code skill;
+  - automated: a trigger (schedule, push, file change) while Jig runs, or moved to a Claude Code
+    routine or an Azure DevOps pipeline to run without Jig.
+- Suggestions draft workflows from evidence ("Release webshop: build → package → upload to VM").
+- To decide: the file format (Markdown with steps?), where workflows live (per project?), and the
+  run history.
+
+Principles stay: local, quiet, visible, deletable (vision #7). Nothing leaves the machine apart from
+the AI calls that already exist (reflection, check-in).
+
 ## Checklist
 
 - [ ] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
@@ -75,3 +133,8 @@ To work out when we start:
 - [ ] Projects you manage: create/edit, default workspace and Git repo, per-project preferences,
       pinned chats, drag and drop chats between projects, chats without a project; workspaces and
       Repos unchanged
+- [ ] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
+- [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
+      follow-up
+- [ ] Learning 2c: weekly check-in chat (opt-in, frequency setting)
+- [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
