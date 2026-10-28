@@ -61,7 +61,50 @@ describe("ProjectStore", () => {
     state = await store.setActive(a.id);
     state = await store.remove(a.id);
     expect(state.activeId).toBe(b.id);
-    expect(events).toEqual([1, 2, 2, 2, 2, 1]);
+    // Adding a folder also adds it as a workspace (one more notice each).
+    expect(events).toEqual([0, 1, 1, 2, 2, 2, 2, 1]);
+  });
+
+  it("projects are yours: created with a default workspace, preferences, and kept apart from folders", async () => {
+    const store = new ProjectStore(file);
+    const { project } = await store.create({ name: " Podium ", path: join(root, "alpha"), model: "opus" });
+    let state = await store.state();
+    expect(state.workspaces.map((w) => w.path)).toEqual([join(root, "alpha")]);
+    expect(state.projects[0]).toMatchObject({ name: "Podium", path: join(root, "alpha"), model: "opus" });
+    expect(state.activeId).toBe(project.id);
+    // Two projects can share a workspace.
+    await store.create({ name: "Integration", path: join(root, "alpha") });
+    state = await store.update(project.id, {
+      instructions: "  Release notes in Swedish. ",
+      starters: ["Fix the failing test", " ", "Plan the next ticket"],
+      permissionMode: "plan",
+      effort: "high",
+    });
+    expect(state.workspaces).toHaveLength(1);
+    expect(state.projects[0]).toMatchObject({
+      instructions: "Release notes in Swedish.",
+      starters: ["Fix the failing test", "Plan the next ticket"],
+      permissionMode: "plan",
+      effort: "high",
+    });
+    // Empty values clear a preference; a new default workspace is added as a workspace.
+    state = await store.update(project.id, { model: "", starters: [], path: join(root, "beta") });
+    expect(state.projects[0]?.model).toBeUndefined();
+    expect(state.projects[0]?.starters).toBeUndefined();
+    expect(state.workspaces.map((w) => w.path).sort()).toEqual([join(root, "alpha"), join(root, "beta")]);
+    await expect(store.create({ name: " ", path: join(root, "alpha") })).rejects.toThrow("needs a name");
+  });
+
+  it("workspaces: added once, not removed while a project uses them as default", async () => {
+    const store = new ProjectStore(file);
+    const first = await store.addWorkspace(join(root, "alpha"));
+    const again = await store.addWorkspace(join(root, "alpha"));
+    expect(again.workspace.id).toBe(first.workspace.id);
+    await store.create({ name: "Podium", path: join(root, "alpha") });
+    await expect(store.removeWorkspace(first.workspace.id)).rejects.toThrow("Podium uses this folder");
+    const beta = await store.addWorkspace(join(root, "beta"));
+    const state = await store.removeWorkspace(beta.workspace.id);
+    expect(state.workspaces.map((w) => w.path)).toEqual([join(root, "alpha")]);
   });
 
   it("reports projects whose folder disappeared", async () => {

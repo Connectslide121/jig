@@ -1,11 +1,13 @@
 import { Eye, FolderOpen, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { defaultLayout } from "../../../shared/layout";
-import { call } from "../../lib/host";
+import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, confirmDialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
-import { hiddenViews } from "../../workbench/actions";
+import { addWorkspace, hiddenViews } from "../../workbench/actions";
+import { useProjects } from "../../workbench/projects";
 import { updateLayout, useWorkbench, workbench } from "../../workbench/store";
+import { notify } from "../../workbench/toasts";
 import { lookForPatterns, useLearning } from "../learning/store";
 import { SettingRow, SettingsSection } from "./parts";
 
@@ -25,7 +27,6 @@ export function LayoutSettings() {
           </Button>
         </SettingRow>
       ))}
-      <WorkspaceDepthRow />
       <SettingRow label="Reset layout" description="Put every view back where it started. Open tabs stay.">
         <Button
           size="sm"
@@ -473,6 +474,66 @@ export function AboutSettings() {
           Open logs
         </Button>
       </SettingRow>
+    </SettingsSection>
+  );
+}
+
+/** The folders Jig knows (workspaces): add, look for repositories again, forget. */
+export function WorkspacesSettings() {
+  const workspaces = useProjects((s) => s.workspaces);
+  const projects = useProjects((s) => s.projects);
+  return (
+    <SettingsSection
+      title="Workspaces"
+      description="The folders Jig knows: repositories, or folders of repositories. Projects use one as their default; chats can run in any of them. Repos lists every repository here."
+    >
+      {workspaces.length === 0 && <SettingRow label="No folders yet">{null}</SettingRow>}
+      {workspaces.map((w) => {
+        const users = projects.filter((p) => p.path === w.path).map((p) => p.name);
+        return (
+          <SettingRow
+            key={w.id}
+            label={w.name}
+            description={`${w.path}${w.repos.length ? ` · ${w.repos.length} repositories` : w.isGitRepo ? " · a repository" : ""}${users.length ? ` · default of ${users.join(", ")}` : ""}${w.exists ? "" : " · folder not found"}`}
+          >
+            <div className="flex gap-1.5">
+              {!w.isGitRepo && (
+                <Button
+                  size="sm"
+                  icon={Search}
+                  onClick={() => void call("projects.rescanRepos", { id: w.id })}
+                >
+                  Look again
+                </Button>
+              )}
+              <Button
+                size="sm"
+                icon={Trash2}
+                variant="ghost"
+                data-testid={`workspace-remove-${w.name}`}
+                onClick={() =>
+                  void call("workspaces.remove", { id: w.id }).catch((e) =>
+                    notify({ title: "Not removed", message: errorMessage(e), tone: "warning" }),
+                  )
+                }
+              >
+                Forget
+              </Button>
+            </div>
+          </SettingRow>
+        );
+      })}
+      <SettingRow label="Add a folder" description="A repository, or a folder with repositories inside.">
+        <Button
+          size="sm"
+          icon={FolderOpen}
+          onClick={() => void addWorkspace()}
+          data-testid="settings-workspace-add"
+        >
+          Add folder…
+        </Button>
+      </SettingRow>
+      <WorkspaceDepthRow />
     </SettingsSection>
   );
 }

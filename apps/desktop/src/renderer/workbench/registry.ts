@@ -86,7 +86,7 @@ export interface TopbarItemDef {
 
 export interface ChatToolbarItemDef {
   id: string;
-  component: ComponentType<{ sessionId: string; projectId: string }>;
+  component: ComponentType<{ sessionId: string; projectId?: string }>;
   owner?: string;
 }
 

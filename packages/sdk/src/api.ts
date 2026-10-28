@@ -4,9 +4,14 @@
  * docs/reference/addon-api.md.
  */
 
+/**
+ * A project: a group of chats the user manages (D-101). `path` and the facts below are about its
+ * default workspace, the folder its chats start in.
+ */
 export interface AddonProject {
   id: string;
   name: string;
+  /** The project's default workspace folder. */
   path: string;
   isGitRepo: boolean;
   exists: boolean;
@@ -15,8 +20,20 @@ export interface AddonProject {
    * single repository. `name` is the path relative to the project (`client-a/api`).
    */
   repos: Array<{ path: string; name: string }>;
-  /** Workspaces: the repository Git actions and the status bar use. */
+  /** The project's default Git repository (Git actions and the status bar use it). */
   focusRepo?: string;
+}
+
+/** A folder the user added (a repository or a folder of repositories), whatever the projects. */
+export interface AddonWorkspace {
+  id: string;
+  /** The folder's name. */
+  name: string;
+  path: string;
+  isGitRepo: boolean;
+  exists: boolean;
+  /** For a folder of repositories: the repositories inside (`name` relative to the folder). */
+  repos: Array<{ path: string; name: string }>;
 }
 
 export type NotifyTone = "info" | "success" | "warning" | "danger";
@@ -70,6 +87,8 @@ export interface AddonUiContext {
     /** Workspaces: looks for the repositories inside the folder again. */
     rescanRepos(projectId: string): Promise<void>;
   };
+  /** Every folder the user added (for views that cover all repositories, e.g. Repos). */
+  workspaces: { list(): AddonWorkspace[] };
   /**
    * Starts a new chat and opens it: in the active project (or `projectId`), in `cwd` if given (a folder
    * inside it), with `draft` in the message box (not sent: the user reads it and presses Enter).
@@ -208,6 +227,8 @@ export interface AddonHostApi {
   /** Sends an event to this add-on's UI (`ctx.on(topic, …)`). */
   emit(topic: string, payload?: unknown): void;
   projects(): Promise<AddonProject[]>;
+  /** Every folder the user added, with its repositories. */
+  workspaces(): Promise<AddonWorkspace[]>;
   log(message: string, detail?: unknown): void;
 }
 

@@ -23,7 +23,13 @@ export function startConfigure(): void {
     addons: () => addonService().list(),
     setAddonEnabled: (id, enabled) => addonService().setEnabled(id, enabled),
     projects: () => projectStore().state(),
+    createProject: async (input) => (await projectStore().create(input)).project,
     updateProject: (id, patch) => projectStore().update(id, patch),
+    removeProject: (id) => projectStore().remove(id),
+    setFocusRepo: (id, repo) => projectStore().setFocusRepo(id, repo),
+    chats: () => sessionManager().list(),
+    setChatProject: (id, projectId) => sessionManager().setProject(id, projectId),
+    setChatPinned: (id, pinned) => sessionManager().setPinned(id, pinned),
     addCard: (sessionId, item) => sessionManager().addItem(sessionId, item),
   };
   registerJigTools(configureTools(deps));

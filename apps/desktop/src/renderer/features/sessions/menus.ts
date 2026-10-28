@@ -4,11 +4,14 @@ import {
   Bot,
   Check,
   Download,
+  FolderInput,
   FolderPlus,
   Gauge,
   GitFork,
   Map as MapIcon,
   Pencil,
+  Pin,
+  PinOff,
   Plug,
   Power,
   Shield,
@@ -26,6 +29,7 @@ import {
 import { closeTabsWhere } from "../../../shared/layout";
 import { call, errorMessage } from "../../lib/host";
 import { confirmDialog, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
+import { useProjects } from "../../workbench/projects";
 import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openBuildDialog } from "../builder/BuildDialog";
@@ -61,6 +65,13 @@ function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
 
 /** "default" is how Claude Code names its default; Jig stores it as an empty model. */
 const modelId = (value: string) => (value === "default" ? "" : value);
+
+/** Models to choose from outside a chat: Claude Code's list once a chat asked for it, else the aliases. */
+export function modelChoices(): Array<{ id: string; label: string }> {
+  if (!models?.length) return MODEL_CHOICES;
+  const list = models.map((m) => ({ id: modelId(m.value), label: m.displayName }));
+  return list.some((m) => m.id === "") ? list : [MODEL_CHOICES[0]!, ...list];
+}
 
 export function modelLabel(meta: SessionMeta): string {
   const known = models?.find((m) => modelId(m.value) === meta.model);
@@ -181,9 +192,44 @@ export async function deleteSession(meta: SessionMeta): Promise<void> {
   forgetSession(meta.id);
 }
 
+/** Pin / move to a project: the same as dragging the chat in the Chats list. */
+function organiseMenu(meta: SessionMeta): MenuEntry[] {
+  const projects = useProjects.getState().projects;
+  return [
+    {
+      label: meta.pinned ? "Unpin" : "Pin to the top",
+      icon: meta.pinned ? PinOff : Pin,
+      onSelect: () => void call("sessions.setPinned", { id: meta.id, pinned: !meta.pinned }),
+      testId: "session-pin",
+    },
+    {
+      label: "Move to project",
+      icon: FolderInput,
+      testId: "session-move",
+      submenu: [
+        ...projects.map((p) => ({
+          label: p.name,
+          checked: meta.projectId === p.id,
+          testId: `session-move-${p.name}`,
+          onSelect: () => void call("sessions.setProject", { id: meta.id, projectId: p.id }),
+        })),
+        { separator: true } as const,
+        {
+          label: "No project",
+          checked: !meta.projectId,
+          testId: "session-move-none",
+          onSelect: () => void call("sessions.setProject", { id: meta.id }),
+        },
+      ],
+    },
+  ];
+}
+
 export function sessionMenu(meta: SessionMeta): MenuEntry[] {
   return [
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
+    ...organiseMenu(meta),
+    { separator: true },
     ...compactMenu(meta),
     {
       label: "Walk me through the changes",

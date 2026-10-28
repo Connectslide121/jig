@@ -15,6 +15,7 @@ function setup() {
   ]);
   const enabled: Record<string, boolean> = { git: true };
   let projects: ProjectsState = {
+    workspaces: [],
     activeId: "p1",
     projects: [
       {
@@ -30,6 +31,10 @@ function setup() {
     ],
   };
   const cards: ChatItem[] = [];
+  let chats = [
+    { id: "s1", projectId: "p1", title: "Fix cart", kind: "chat" },
+    { id: "s2", title: "Loose chat", kind: "chat" },
+  ] as unknown as SessionMeta[];
   const deps: ConfigureDeps = {
     config: () => config,
     updateConfig: async (patch) => {
@@ -55,19 +60,47 @@ function setup() {
       enabled[id] = on;
     },
     projects: async () => projects,
+    createProject: async (input) => {
+      const project = {
+        ...projects.projects[0]!,
+        ...input,
+        id: "p2",
+        exists: true,
+        isGitRepo: true,
+        repos: [],
+      };
+      projects = { ...projects, projects: [...projects.projects, project as never], activeId: "p2" };
+      return project as never;
+    },
     updateProject: async (id, patch) => {
       projects = {
         ...projects,
-        projects: projects.projects.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                ...(patch.name ? { name: patch.name } : {}),
-                ...(patch.color ? { color: patch.color } : {}),
-              }
-            : p,
-        ),
+        projects: projects.projects.map((p) => {
+          if (p.id !== id) return p;
+          const next: Record<string, unknown> = { ...p };
+          for (const [k, v] of Object.entries(patch)) {
+            if (v === "" || (Array.isArray(v) && !v.length)) delete next[k];
+            else if (v !== undefined) next[k] = v;
+          }
+          return next as never;
+        }),
       };
+    },
+    removeProject: async (id) => {
+      projects = { ...projects, projects: projects.projects.filter((p) => p.id !== id) };
+    },
+    setFocusRepo: async (id, repo) => {
+      projects = {
+        ...projects,
+        projects: projects.projects.map((p) => (p.id === id ? { ...p, focusRepo: repo } : p)),
+      };
+    },
+    chats: async () => chats,
+    setChatProject: async (id, projectId) => {
+      chats = chats.map((c) => (c.id === id ? { ...c, projectId } : c));
+    },
+    setChatPinned: async (id, pinned) => {
+      chats = chats.map((c) => (c.id === id ? { ...c, pinned } : c));
     },
     addCard: async (_id, item) => {
       cards.push(item);
@@ -77,7 +110,7 @@ function setup() {
   const meta = { id: "s1", projectId: "p1" } as SessionMeta;
   const call = async (name: string, args: Record<string, unknown> = {}) =>
     outputText(await tools[name]!.handler(args, meta));
-  return { deps, call, cards, tools, get: () => ({ config, layout, enabled, projects }) };
+  return { deps, call, cards, tools, get: () => ({ config, layout, enabled, projects, chats }) };
 }
 
 describe("configure tools", () => {
@@ -95,7 +128,13 @@ describe("configure tools", () => {
         .filter((t) => t.readOnly)
         .map((t) => t.name)
         .sort(),
-    ).toEqual(["jig_find_themes", "jig_get_layout", "jig_get_settings", "jig_list_themes"]);
+    ).toEqual([
+      "jig_find_themes",
+      "jig_get_layout",
+      "jig_get_settings",
+      "jig_list_projects",
+      "jig_list_themes",
+    ]);
   });
 
   it("changes settings with validation, refuses protected ones, and undoes", async () => {
@@ -147,5 +186,35 @@ describe("configure tools", () => {
     expect(get().layout.right.views).not.toContain("jig.terminals");
     expect(get().enabled.git).toBe(true);
     expect(get().projects.projects[0]).toMatchObject({ name: "shop", color: "accent" });
+  });
+
+  it("creates projects, sets their defaults and organises chats, each undoable", async () => {
+    const { call, cards, deps, get, tools } = setup();
+    expect(tools.jig_list_projects!.readOnly).toBe(true);
+    const list = await call("jig_list_projects");
+    expect(list).toContain("shop [p1] (active)");
+    expect(list).toContain('"Loose chat" [s2] in no project');
+
+    await call("jig_update_project", {
+      instructions: "Release notes in Swedish",
+      permissionMode: "plan",
+      starters: ["Plan the next ticket"],
+    });
+    expect(get().projects.projects[0]).toMatchObject({
+      instructions: "Release notes in Swedish",
+      permissionMode: "plan",
+      starters: ["Plan the next ticket"],
+    });
+    await call("jig_create_project", { name: "Podium", path: "/repos/podium", model: "opus" });
+    expect(get().projects.projects.map((p) => p.name)).toEqual(["shop", "Podium"]);
+    await call("jig_move_chat", { chatId: "s2", projectId: "p2", pinned: true });
+    expect(get().chats.find((c) => c.id === "s2")).toMatchObject({ projectId: "p2", pinned: true });
+
+    for (const c of [...cards].reverse())
+      await applyUndo(deps, (c as Extract<ChatItem, { kind: "change" }>).undo!);
+    expect(get().chats.find((c) => c.id === "s2")).toMatchObject({ projectId: undefined, pinned: false });
+    expect(get().projects.projects.map((p) => p.name)).toEqual(["shop"]);
+    expect(get().projects.projects[0]?.instructions).toBeUndefined();
+    expect(get().projects.projects[0]?.permissionMode).toBeUndefined();
   });
 });

@@ -39,6 +39,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Rewind and edit, effort levels, MCP status.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you.
+- **Projects you manage.** Group chats into projects the way you think about your work, each with a
+  default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
+  between them; pin the ones you keep.
 - **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel that
   follows the repo you work in (show others next to it when you need them, Repos below for all of
   them at a glance), every repo's scripts, and chats that can look at another repo for inspiration.

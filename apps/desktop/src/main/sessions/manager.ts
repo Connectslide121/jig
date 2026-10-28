@@ -206,13 +206,14 @@ export class SessionManager {
   }
 
   async create(input: {
-    projectId: string;
+    projectId?: string;
     cwd: string;
     title?: string;
     model: string;
     permissionMode: PermissionMode;
     kind?: SessionMeta["kind"];
     buildId?: string;
+    effort?: SessionMeta["effort"];
   }): Promise<SessionMeta> {
     await this.load();
     const at = new Date().toISOString();
@@ -232,6 +233,7 @@ export class SessionManager {
       turns: 0,
       kind: input.kind,
       buildId: input.buildId,
+      ...(input.effort ? { effort: input.effort } : {}),
     };
     const live: Live = { state: { meta, items: [] }, queue: [], permissions: new Map(), loaded: true };
     this.sessions.set(meta.id, live);
@@ -727,6 +729,24 @@ export class SessionManager {
     const live = await this.live(id);
     if (!title.trim()) throw new JigError("invalid_args", "A session needs a title");
     this.setMeta(live, { title: title.trim() });
+  }
+
+  /** Puts a chat in a project, moves it, or takes it out (`undefined`). */
+  async setProject(id: string, projectId: string | undefined): Promise<void> {
+    const live = await this.live(id);
+    this.setMeta(live, { projectId });
+  }
+
+  async setPinned(id: string, pinned: boolean): Promise<void> {
+    const live = await this.live(id);
+    this.setMeta(live, { pinned: pinned || undefined });
+  }
+
+  /** A project was removed: its chats move to "No project". */
+  async leaveProject(projectId: string): Promise<void> {
+    await this.load();
+    for (const live of this.sessions.values())
+      if (live.state.meta.projectId === projectId) this.setMeta(live, { projectId: undefined });
   }
 
   async setArchived(id: string, archived: boolean): Promise<void> {

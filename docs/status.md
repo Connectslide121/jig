@@ -124,17 +124,31 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 - **Plan usage, always visible:** the status bar shows `5h 42% · wk 18%` and each chat header has a ring
   for the 5-hour window; hover either for a card with every window, a bar each and when it resets (click
   to refresh). The numbers come from Claude Code's own `/usage` data.
-- **Workspaces:** add your repos folder as a project (Add project…) — Jig finds the repositories inside
-  (three levels deep; Settings → Layout → Workspace search depth). The Git view lists the repository you work in (the picker at its top; All repositories lists
-  every one, changed first, each with its branch, commit box and changes). The eye button shows other
-  repositories next to it for a while (kept per project and repository), and the hide button on a row
-  takes them away. Clicking a repository in the full list focuses it (status bar, Tools → Git
-  actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
-  repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
+- **Projects you manage** (D-101, D-102): a project groups chats; folders never decide which chats are
+  in it.
+  - **New project…** (Projects view, top bar menu, Tools) asks for a name, a colour, a default
+    workspace folder, a default Git repository, the model/effort/permission defaults for its chats,
+    instructions for Claude (added to its system prompt in those chats) and starter prompts for its
+    Home. ⋯ → Project settings… changes them.
+  - **Chats:** the active project's group comes first and open, the other projects below (click to
+    open), then "No project". Drag a chat onto a group to move it; pin a chat (hover → pin) to keep it
+    on top; the chat's menu has Pin and Move to project. Removing a project moves its chats to "No
+    project".
+  - **Home** uses the project's starter prompts. Its chat box has a folder picker (any workspace or
+    one of its repositories; the project's default workspace first).
+  - **Claude** can create projects, change their settings and move or pin chats from a chat (with
+    Undo).
+- **Workspaces** (Settings → Workspaces, or the folder button in the Projects view): the folders Jig
+  knows. A repos folder lists the repositories inside (three levels deep, set on the same page).
+  - The Git view lists the project's repository, picked at its top; All repositories lists every one,
+    changed first, each with its branch, commit box and changes.
+  - The eye button shows other repositories next to it for a while (kept per project and
+    repository), and the hide button on a row takes them away. Clicking a repository in the full
+    list focuses it (status bar, Tools → Git actions).
+  - Chats start in the project's default workspace, or anywhere you pick. Repos lists every
+    workspace's repositories, whatever the project.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
-- **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
-  "Removed projects", where they can be opened or deleted.
 - **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
   see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
   server's output.

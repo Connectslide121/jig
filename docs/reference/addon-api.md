@@ -68,8 +68,9 @@ are add-ons':
 | `addon` | `{ id, name }` |
 | `host.call(method, args)` | calls an export of `host.ts` |
 | `on(topic, listener)` | events from `api.emit` in host code |
-| `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }` — `repos` lists the repositories inside a workspace project (`[{ path, name }]`, empty for a single repository) |
-| `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | workspaces: set the focus repository (status bar, Git actions); look for repositories again |
+| `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }`: a project (a group of chats the user manages, D-101). `path` and the facts are about its default workspace; `repos` lists the repositories inside it (`[{ path, name }]`, empty for a single repository) |
+| `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | the project's default Git repository (Git panel, status bar, Git actions); look for repositories again |
+| `workspaces.list()` | `{ id, name, path, isGitRepo, exists, repos }[]`: every folder the user added, whatever the projects (for views covering all repositories, like Repos) |
 | `openChat({ projectId?, cwd?, draft? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent |
 | `ai.ask(prompt, { cwd? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
 | `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
@@ -123,7 +124,8 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `fetch(url, init)` | `net` | |
 | `storage.get/set` | — | same store as the UI |
 | `notify({…})`, `emit(topic, payload)` | — | toast; event to the UI |
-| `projects()` | — | registered projects |
+| `projects()` | — | the user's projects |
+| `workspaces()` | — | every folder the user added, with its repositories |
 | `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
 

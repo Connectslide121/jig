@@ -233,14 +233,25 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
 
 ## 5. Projects, sessions and terminals
 
-- **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds
-  the repositories inside a workspace (three levels deep by default, `projects.repoScanDepth`; cached) and exposes them as `ProjectInfo.repos`
-  / `AddonProject.repos`; the Git view shows all of them, scripts are searched in each, and a
-  **focus repository** (`focusRepo`) drives the status bar and Git actions. Registered in
-  `projects.json` with a display name and colour. The project switcher lists them; every view is
-  scoped to the active project unless it is a cross-project view (e.g. Repos overview).
-- **Session** = one Claude Code conversation in a project (in the project's folder or a folder inside
-  it). "Try several ways" runs several sessions on one task, each in its own **git worktree** under
+- **Workspace** = a folder you added: a git repo, or a folder of repositories (D-075). Jig finds the
+  repositories inside (three levels deep by default, `projects.repoScanDepth`; cached). Repos lists
+  every workspace's repositories (`AddonWorkspace`, `ctx.workspaces`, `api.workspaces()`).
+- **Project** = a group of chats **you** manage (D-101), like projects in the Claude app. It has:
+  - a name and colour;
+  - a **default workspace** (`path`), where its chats start;
+  - a **default Git repository** (`focusRepo`), which drives the Git panel, the status bar and Git
+    actions;
+  - defaults for its chats (model, effort, permission mode) and **instructions** appended to
+    Claude's system prompt (`jigContext`);
+  - starter prompts for its Home.
+
+  `ProjectInfo`/`AddonProject` carry the facts of the default workspace (`isGitRepo`, `repos`), so
+  "the project's folder" is still `path`. Stored in `projects.json`. **Left follows the active
+  project, right is global** (D-102, a guideline): Git, Files and Home follow it; Repos, Scripts,
+  Pipelines and Suggestions are global.
+- **Session** = one Claude Code conversation, in a project or none (`projectId?`; never set from the
+  folder). It runs in any folder (`cwd`), by default the project's default workspace. You put chats
+  in projects (drag and drop in Chats, a menu, or `jig_move_chat`) and pin them (`pinned`). "Try several ways" runs several sessions on one task, each in its own **git worktree** under
   `~/.jig/attempts`, so they don't collide (`docs/reference/attempts.md`). Several sessions run at once; the session list shows
   status (idle / working / needs permission / error) for every project at a glance.
 - **Terminal** = a pty (`@lydell/node-pty`, prebuilt binaries — no compiler needed on Windows) rendered

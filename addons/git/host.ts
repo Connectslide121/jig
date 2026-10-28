@@ -421,9 +421,10 @@ export async function autoFetch(_args: unknown, api: AddonHostApi) {
   fetching = true;
   try {
     const repos = new Set<string>();
-    for (const p of await api.projects()) {
-      if (p.isGitRepo) repos.add(p.path);
-      for (const r of p.repos ?? []) repos.add(r.path);
+    for (const w of await api.workspaces()) {
+      if (!w.exists) continue;
+      if (w.isGitRepo) repos.add(w.path);
+      for (const r of w.repos ?? []) repos.add(r.path);
     }
     for (const cwd of dueForFetch([...repos], lastFetched, s.minutes * 60_000, Date.now())) {
       lastFetched.set(cwd, Date.now());

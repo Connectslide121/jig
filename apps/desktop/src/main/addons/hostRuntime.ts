@@ -23,7 +23,7 @@ export type FromHost =
   | {
       t: "rpc";
       id: number;
-      op: "storage.get" | "storage.set" | "notify" | "emit" | "projects" | "log";
+      op: "storage.get" | "storage.set" | "notify" | "emit" | "projects" | "workspaces" | "log";
       args: unknown;
     };
 
@@ -125,6 +125,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
       notify: (input) => void rpc("notify", input),
       emit: (topic, payload) => void rpc("emit", { topic, payload }),
       projects: () => rpc("projects", {}) as Promise<never>,
+      workspaces: () => rpc("workspaces", {}) as Promise<never>,
       log: (message, detail) => void rpc("log", { message, detail }),
     };
   }

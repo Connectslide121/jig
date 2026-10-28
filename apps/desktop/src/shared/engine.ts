@@ -91,7 +91,10 @@ export interface ContextUsage {
 
 export interface SessionMeta {
   id: string;
-  projectId: string;
+  /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */
+  projectId?: string;
+  /** Stays at the top of its project in the Chats list. */
+  pinned?: boolean;
   cwd: string;
   title: string;
   createdAt: string;
@@ -242,7 +245,10 @@ export type ConfigUndo =
   | { type: "settings"; patch: Record<string, unknown> }
   | { type: "layout"; layout: unknown }
   | { type: "addon"; id: string; enabled: boolean }
-  | { type: "project"; id: string; name?: string; color?: string };
+  /** A project's previous settings (`defaultRepo` for its default repository). */
+  | { type: "project"; id: string; patch: Record<string, unknown> }
+  | { type: "projectCreated"; id: string }
+  | { type: "chat"; id: string; projectId?: string; pinned: boolean };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =

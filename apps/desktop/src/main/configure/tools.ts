@@ -12,17 +12,23 @@ import {
   patchPaths,
   protectedIn,
 } from "../../shared/config";
-import type { ChatItem, ConfigUndo, SessionMeta } from "../../shared/engine";
+import {
+  type ChatItem,
+  type ConfigUndo,
+  EFFORT_LEVELS,
+  PERMISSION_MODES,
+  type SessionMeta,
+} from "../../shared/engine";
 import type { Layout } from "../../shared/layout";
-import { PROJECT_COLORS, type ProjectColor, type ProjectsState } from "../../shared/projects";
+import { PROJECT_COLORS, type Project, type ProjectPatch, type ProjectsState } from "../../shared/projects";
 import type { FileIconThemeList, OpenVsxExtension } from "../../shared/themes";
 import { allViews, applyLayoutOps } from "../builder/tools";
 import type { JigTool } from "../engine/jigTools";
 
 /**
  * Tools that let Claude configure Jig from any chat (D-077): everything already configurable — settings
- * (theme, fonts, density, file icons, terminal, learning, …), layout, add-ons on/off, project name and
- * colour — plus finding and installing themes. Each change leaves a card in the chat with Undo. Protected
+ * (theme, fonts, density, file icons, terminal, learning, …), layout, add-ons on/off, projects (create,
+ * settings, which chats are in them) — plus finding and installing themes. Each change leaves a card in the chat with Undo. Protected
  * settings (billing, the Claude Code binary, update commands) stay Settings-only.
  */
 export interface ConfigureDeps {
@@ -37,7 +43,14 @@ export interface ConfigureDeps {
   addons(): AddonInfo[];
   setAddonEnabled(id: string, enabled: boolean): Promise<void>;
   projects(): Promise<ProjectsState>;
-  updateProject(id: string, patch: { name?: string; color?: ProjectColor }): Promise<unknown>;
+  createProject(input: { name: string; path: string } & ProjectPatch): Promise<Project>;
+  updateProject(id: string, patch: ProjectPatch): Promise<unknown>;
+  removeProject(id: string): Promise<unknown>;
+  setFocusRepo(id: string, repo: string | undefined): Promise<unknown>;
+  /** Chats, most recent first. */
+  chats(): Promise<SessionMeta[]>;
+  setChatProject(sessionId: string, projectId: string | undefined): Promise<void>;
+  setChatPinned(sessionId: string, pinned: boolean): Promise<void>;
   /** Adds a change card to the chat. */
   addCard(sessionId: string, item: ChatItem): Promise<void>;
 }
@@ -279,32 +292,142 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
       },
     },
     {
+      name: "jig_list_projects",
+      readOnly: true,
+      description:
+        "The user's projects (groups of chats they manage, each with a default workspace folder, default Git repository and defaults for its chats), the workspace folders with their repositories, and recent chats with their project. Read this before changing projects or moving chats.",
+      shape: {},
+      handler: async (_args, meta: SessionMeta) => {
+        const state = await deps.projects();
+        const name = (id?: string) => state.projects.find((p) => p.id === id)?.name ?? "no project";
+        const projects = state.projects.map((p) =>
+          [
+            `- ${p.name} [${p.id}]${p.id === state.activeId ? " (active)" : ""}: workspace ${p.path}`,
+            p.focusRepo ? `default repo ${p.focusRepo}` : "",
+            p.model ? `model ${p.model}` : "",
+            p.effort ? `effort ${p.effort}` : "",
+            p.permissionMode ? `permissions ${p.permissionMode}` : "",
+            p.instructions ? `instructions: ${JSON.stringify(p.instructions)}` : "",
+            p.starters?.length ? `starters: ${JSON.stringify(p.starters)}` : "",
+          ]
+            .filter(Boolean)
+            .join("; "),
+        );
+        const workspaces = state.workspaces.map(
+          (w) =>
+            `- ${w.path}${w.repos.length ? `: ${w.repos.map((r) => r.name).join(", ")}` : w.isGitRepo ? " (a repository)" : ""}`,
+        );
+        const chats = (await deps.chats())
+          .filter((c) => c.kind !== "builder" && !c.archived)
+          .slice(0, 30)
+          .map(
+            (c) =>
+              `- "${c.title}" [${c.id}] in ${name(c.projectId)}${c.pinned ? ", pinned" : ""}${c.id === meta.id ? " (this chat)" : ""}`,
+          );
+        return [
+          `Projects:\n${projects.join("\n") || "none"}`,
+          `Workspaces:\n${workspaces.join("\n") || "none"}`,
+          `Recent chats:\n${chats.join("\n") || "none"}`,
+        ].join("\n\n");
+      },
+    },
+    {
+      name: "jig_create_project",
+      description: `Create a project: a name and a default workspace folder (an absolute path, usually one of the workspaces), optionally a default Git repository inside it, colour (${PROJECT_COLORS.join(", ")}), model, effort, permission mode, instructions appended to Claude's system prompt in its chats, and starter prompts. It becomes the active project.`,
+      shape: { name: z.string(), path: z.string(), ...projectFields },
+      handler: async (args, meta: SessionMeta) => {
+        const { defaultRepo, ...settings } = args as Record<string, unknown>;
+        const project = await deps.createProject({
+          ...(settings as ProjectPatch),
+          name: String(args.name),
+          path: String(args.path),
+        });
+        if (typeof defaultRepo === "string" && defaultRepo) await deps.setFocusRepo(project.id, defaultRepo);
+        const details = describeProjectPatch(args as Record<string, unknown>);
+        await deps.addCard(
+          meta.id,
+          card(`Created project ${project.name}`, details, { type: "projectCreated", id: project.id }),
+        );
+        return `Created ${project.name} [${project.id}]:\n${details.join("\n")}`;
+      },
+    },
+    {
       name: "jig_update_project",
-      description: `Rename a project or change its colour (${PROJECT_COLORS.join(", ")}). Without projectId: this chat's project.`,
+      description: `Change a project: name, colour (${PROJECT_COLORS.join(", ")}), default workspace folder (path), default Git repository (defaultRepo, a repository of its workspace; "" for none), and the defaults for its new chats: model, effort, permissionMode, instructions (appended to Claude's system prompt in its chats), starters (prompts on its Home). An empty string or list clears a preference. Without projectId: this chat's project.`,
       shape: {
         projectId: z.string().optional(),
         name: z.string().optional(),
-        color: z.enum(PROJECT_COLORS).optional(),
+        path: z.string().optional(),
+        ...projectFields,
       },
       handler: async (args, meta: SessionMeta) => {
         const id = (args.projectId as string | undefined) ?? meta.projectId;
         const project = (await deps.projects()).projects.find((p) => p.id === id);
-        if (!project) throw new Error("Project not found");
-        const name = (args.name as string | undefined)?.trim();
-        const color = args.color as ProjectColor | undefined;
-        if (!name && !color) return "Nothing to change.";
-        await deps.updateProject(id, { name, color });
-        const details = [
-          ...(name ? [`name: "${project.name}" → "${name}"`] : []),
-          ...(color ? [`colour: ${project.color} → ${color}`] : []),
-        ];
+        if (!id || !project)
+          throw new Error("Project not found (this chat is in no project; pass projectId)");
+        const { projectId: _id, defaultRepo, ...patch } = args as Record<string, unknown>;
+        const keys = Object.keys(patch).filter((k) => patch[k] !== undefined);
+        if (!keys.length && defaultRepo === undefined) return "Nothing to change.";
+        // Undo puts back what was there ("" clears what wasn't set).
+        const before: Record<string, unknown> = {};
+        for (const k of keys) {
+          const old = (project as unknown as Record<string, unknown>)[k];
+          before[k] = old === undefined ? (k === "starters" ? [] : "") : old;
+        }
+        if (keys.length) await deps.updateProject(id, patch as ProjectPatch);
+        if (defaultRepo !== undefined) {
+          before.defaultRepo = project.focusRepo ?? "";
+          await deps.setFocusRepo(id, String(defaultRepo) || undefined);
+        }
+        const details = describeProjectPatch({
+          ...patch,
+          ...(defaultRepo !== undefined ? { defaultRepo } : {}),
+        });
         await deps.addCard(
           meta.id,
-          card(`Changed project ${project.name}`, details, {
-            type: "project",
-            id,
-            ...(name ? { name: project.name } : {}),
-            ...(color ? { color: project.color } : {}),
+          card(`Changed project ${project.name}`, details, { type: "project", id, patch: before }),
+        );
+        return `Done:\n${details.join("\n")}`;
+      },
+    },
+    {
+      name: "jig_move_chat",
+      description:
+        "Put a chat in a project, move it to another, or take it out (leave projectId out), and/or pin it to the top of its project. Without chatId: this chat. Chat and project ids come from jig_list_projects.",
+      shape: {
+        chatId: z.string().optional(),
+        projectId: z.string().optional(),
+        pinned: z.boolean().optional(),
+      },
+      handler: async (args, meta: SessionMeta) => {
+        const chatId = (args.chatId as string | undefined) ?? meta.id;
+        const chat = (await deps.chats()).find((c) => c.id === chatId);
+        if (!chat) throw new Error("Chat not found");
+        const state = await deps.projects();
+        const projectId = args.projectId as string | undefined;
+        if (projectId && !state.projects.some((p) => p.id === projectId))
+          throw new Error("Project not found");
+        const pinned = args.pinned as boolean | undefined;
+        const nameOf = (id?: string) => state.projects.find((p) => p.id === id)?.name ?? "No project";
+        const details: string[] = [];
+        // Moving is what the call is for unless it only pins.
+        const moves = projectId !== undefined || pinned === undefined;
+        if (moves && projectId !== chat.projectId) {
+          await deps.setChatProject(chatId, projectId);
+          details.push(`project: ${nameOf(chat.projectId)} → ${nameOf(projectId)}`);
+        }
+        if (pinned !== undefined && pinned !== Boolean(chat.pinned)) {
+          await deps.setChatPinned(chatId, pinned);
+          details.push(pinned ? "pinned" : "unpinned");
+        }
+        if (!details.length) return "Nothing to change.";
+        await deps.addCard(
+          meta.id,
+          card(`Organised the chat "${chat.title}"`, details, {
+            type: "chat",
+            id: chatId,
+            projectId: chat.projectId,
+            pinned: Boolean(chat.pinned),
           }),
         );
         return `Done:\n${details.join("\n")}`;
@@ -318,6 +441,50 @@ export async function applyUndo(deps: ConfigureDeps, undo: ConfigUndo): Promise<
   if (undo.type === "settings") await deps.updateConfig(undo.patch as DeepPartial<JigConfig>);
   else if (undo.type === "layout") await deps.setLayout(undo.layout as Layout);
   else if (undo.type === "addon") await deps.setAddonEnabled(undo.id, undo.enabled);
-  else if (undo.type === "project")
-    await deps.updateProject(undo.id, { name: undo.name, color: undo.color as ProjectColor | undefined });
+  else if (undo.type === "project") {
+    const { defaultRepo, ...patch } = undo.patch;
+    if (Object.keys(patch).length) await deps.updateProject(undo.id, patch as ProjectPatch);
+    if (defaultRepo !== undefined) await deps.setFocusRepo(undo.id, String(defaultRepo) || undefined);
+  } else if (undo.type === "projectCreated") await deps.removeProject(undo.id);
+  else if (undo.type === "chat") {
+    await deps.setChatProject(undo.id, undo.projectId);
+    await deps.setChatPinned(undo.id, undo.pinned);
+  }
+}
+
+/** The project settings Claude can set (shared by create and update). */
+const projectFields = {
+  color: z.enum(PROJECT_COLORS).optional(),
+  defaultRepo: z.string().optional().describe("Absolute path of a repository inside the default workspace"),
+  model: z.string().optional().describe('Model alias or id for new chats ("" = Jig\'s default)'),
+  effort: z.enum([...EFFORT_LEVELS, ""]).optional(),
+  permissionMode: z.enum([...PERMISSION_MODES, ""]).optional(),
+  instructions: z.string().optional().describe("Appended to Claude's system prompt in this project's chats"),
+  starters: z.array(z.string()).optional().describe("Prompts shown on the project's Home"),
+};
+
+function describeProjectPatch(patch: Record<string, unknown>): string[] {
+  const labels: Record<string, string> = {
+    name: "name",
+    path: "default workspace",
+    color: "colour",
+    defaultRepo: "default repository",
+    model: "model",
+    effort: "effort",
+    permissionMode: "permissions",
+    instructions: "instructions",
+    starters: "starter prompts",
+  };
+  return Object.entries(patch)
+    .filter(([k, v]) => labels[k] && v !== undefined)
+    .map(([k, v]) => {
+      const value = Array.isArray(v)
+        ? v.length
+          ? v.join(" · ")
+          : "(none)"
+        : v === ""
+          ? "(default)"
+          : String(v);
+      return `${labels[k]}: ${value.length > 120 ? `${value.slice(0, 120)}…` : value}`;
+    });
 }

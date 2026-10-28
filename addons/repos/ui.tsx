@@ -71,9 +71,19 @@ async function act(ctx: AddonUiContext, label: string, method: string, path: str
 
 function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject }) {
   const ctx = useAddon();
+  // Work in this repository: the project it belongs to (the active one when its folder holds it)
+  // becomes active with this repository in focus, and Git shows it.
   const open = async () => {
-    await ctx.projects.setActive(repo.projectId);
-    if (repo.repoPath) await ctx.projects.setFocusRepo(repo.projectId, repo.repoPath);
+    if (!project) {
+      ctx.notify({
+        title: `No project uses ${repo.name.split("/")[0]} yet`,
+        message: "Create a project with this folder as its default workspace to work in it from Git.",
+        tone: "info",
+      });
+      return;
+    }
+    if (ctx.projects.active()?.id !== project.id) await ctx.projects.setActive(project.id);
+    if (repo.repoPath) await ctx.projects.setFocusRepo(project.id, repo.repoPath);
     ctx.showView("addon.git.git");
   };
   // A repository inside a workspace is offered to other add-ons' menus as a project of its own.
@@ -102,7 +112,7 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
         {
           label: "New chat in this repository",
           icon: "message-square-plus",
-          onSelect: () => void ctx.openChat({ projectId: repo.projectId, cwd: repo.path }),
+          onSelect: () => void ctx.openChat({ projectId: project?.id, cwd: repo.path }),
         },
         { label: "Open in Explorer", icon: "folder-open", onSelect: () => ctx.openPath(repo.path) },
       ],
@@ -173,6 +183,12 @@ export function ReposView({ ctx }: AddonComponentProps) {
   const { repos, reload } = useOverview();
   const projects = useProjectList();
   const [busy, setBusy] = useState(false);
+  const active = projects.find((p) => p.id === ctx.projects.active()?.id);
+  // The project a repository belongs to: the active one if its folder holds it, else the first one.
+  const ownerOf = (r: RepoState) => {
+    const folder = ctx.workspaces.list().find((w) => w.id === r.workspaceId)?.path;
+    return active?.path === folder ? active : projects.find((p) => p.path === folder);
+  };
   if (!repos) return <Spinner className="m-3" />;
   if (repos.length === 0)
     return (
@@ -195,7 +211,7 @@ export function ReposView({ ctx }: AddonComponentProps) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
         {repos.map((r) => (
-          <RepoRow key={r.path} repo={r} project={projects.find((p) => p.id === r.projectId)} />
+          <RepoRow key={r.path} repo={r} project={ownerOf(r)} />
         ))}
       </div>
     </div>

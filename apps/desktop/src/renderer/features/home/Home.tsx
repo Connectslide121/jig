@@ -10,21 +10,24 @@ import {
   type LucideIcon,
   MessageSquare,
   MoreHorizontal,
+  Settings2,
   Sparkles,
   Split,
   SquareTerminal,
   Wand2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProjectInfo } from "../../../shared/projects";
 import { call, errorMessage } from "../../lib/host";
-import { Badge, Button, cn, IconButton, Kbd, openMenuAt } from "../../ui";
+import { Badge, Button, cn, IconButton, Kbd, openMenuAt, Select } from "../../ui";
+import { useProjects } from "../../workbench/projects";
 import { runAction, useRegistry } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openAbout } from "../about";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { projectTextClass } from "../projects/colors";
+import { openProjectDialog } from "../projects/ProjectDialog";
 import { projectMenu } from "../projects/projectMenu";
 import { useDashboardWidgets } from "../projects/widgets";
 import { newSession } from "../sessions/actions";
@@ -48,8 +51,8 @@ function ago(iso: string): string {
 }
 
 /** Starts a chat in the project and sends the message right away. */
-async function startChat(projectId: string, text: string): Promise<void> {
-  const id = await newSession(projectId);
+async function startChat(projectId: string, text: string, cwd?: string): Promise<void> {
+  const id = await newSession(projectId, cwd);
   if (!id) return;
   try {
     await call("sessions.send", { id, text });
@@ -91,6 +94,11 @@ function QuickAction({
  */
 export function Home({ project }: { project: ProjectInfo }) {
   const [text, setText] = useState("");
+  // The folder the chat starts in: the project's default workspace unless you pick another.
+  const [cwd, setCwd] = useState(project.path);
+  useEffect(() => setCwd(project.path), [project.path]);
+  const workspaces = useProjects((s) => s.workspaces);
+  const starters = project.starters?.length ? project.starters : STARTERS;
   const box = useRef<HTMLTextAreaElement>(null);
   const widgets = useDashboardWidgets();
   const hasGit = useRegistry((s) => Boolean(s.views["addon.git.git"]));
@@ -103,7 +111,7 @@ export function Home({ project }: { project: ProjectInfo }) {
     const value = text.trim();
     if (!value) return;
     setText("");
-    void startChat(project.id, value);
+    void startChat(project.id, value, cwd === project.path ? undefined : cwd);
   };
   const repoCount = project.repos.length;
   return (
@@ -124,6 +132,12 @@ export function Home({ project }: { project: ProjectInfo }) {
               {!project.exists && <Badge tone="danger">folder not found</Badge>}
             </div>
           </div>
+          <IconButton
+            icon={Settings2}
+            label="Project settings"
+            data-testid="home-project-settings"
+            onClick={() => openProjectDialog(project.id)}
+          />
           <IconButton
             icon={FolderOpen}
             label="Open the folder"
@@ -155,7 +169,26 @@ export function Home({ project }: { project: ProjectInfo }) {
               className="min-h-16 w-full resize-none bg-transparent text-base text-fg outline-none placeholder:text-hint"
             />
             <div className="flex items-center gap-2">
-              <span className="text-2xs text-hint">
+              <Select
+                aria-label="Folder the chat starts in"
+                title="Folder the chat starts in"
+                className="h-7 max-w-56 text-xs"
+                value={cwd}
+                onChange={(e) => setCwd(e.target.value)}
+                data-testid="home-folder"
+              >
+                {workspaces.map((w) => (
+                  <optgroup key={w.id} label={w.path === project.path ? `${w.name} (default)` : w.name}>
+                    <option value={w.path}>{w.name}</option>
+                    {w.repos.map((r) => (
+                      <option key={r.path} value={r.path}>
+                        {w.name}/{r.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+              <span className="hidden text-2xs text-hint lg:inline">
                 <Kbd>Enter</Kbd> starts a chat · <Kbd>Shift</Kbd>+<Kbd>Enter</Kbd> new line
               </span>
               <div className="flex-1" />
@@ -181,7 +214,7 @@ export function Home({ project }: { project: ProjectInfo }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {STARTERS.map((s) => (
+            {starters.map((s) => (
               <button
                 key={s}
                 type="button"

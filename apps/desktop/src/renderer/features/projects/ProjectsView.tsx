@@ -1,7 +1,7 @@
-import { FolderGit2, FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
+import { FolderGit2, FolderInput, FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
-import { addProject } from "../../workbench/actions";
+import { addProject, addWorkspace } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
 import { projectDotClass } from "./colors";
@@ -9,15 +9,26 @@ import { projectMenu } from "./projectMenu";
 
 export function ProjectsView() {
   const { projects, activeId } = useProjects();
+  const workspaces = useProjects((s) => s.workspaces);
   if (projects.length === 0)
     return (
       <Empty icon={FolderPlus} title="No projects yet">
-        <p>A project is a folder, usually a git repository.</p>
-        <button type="button" className="mt-2 text-accent hover:underline" onClick={() => void addProject()}>
-          Add project…
+        <p>A project groups your chats, with a default folder, Git repository and settings for Claude.</p>
+        <button
+          type="button"
+          className="mt-2 text-accent hover:underline"
+          data-testid="projects-new"
+          onClick={() => void addProject()}
+        >
+          New project…
         </button>
       </Empty>
     );
+  const where = (project: (typeof projects)[number]) => {
+    const folder = workspaces.find((w) => w.path === project.path)?.name ?? project.path;
+    const repo = project.repos.find((r) => r.path === project.focusRepo)?.name;
+    return repo ? `${folder} · ${repo}` : folder;
+  };
   return (
     <div
       role="listbox"
@@ -34,7 +45,11 @@ export function ProjectsView() {
           onDoubleClick={() => workbench.openTab("jig.project", { projectId: project.id })}
           onContextMenu={contextMenu(() => projectMenu(project))}
           leading={<span className={cn("size-2 rounded-full", projectDotClass(project.color))} />}
-          description={<span className="selectable">{project.path}</span>}
+          description={
+            <span className="selectable" title={project.path}>
+              {where(project)}
+            </span>
+          }
           trailing={
             <>
               {!project.exists && <FolderX className="size-3.5 text-danger" aria-label="Folder not found" />}
@@ -70,5 +85,22 @@ export function ProjectsView() {
 }
 
 export function ProjectsHeaderActions() {
-  return <IconButton icon={FolderPlus} label="Add project…" size="sm" onClick={() => void addProject()} />;
+  return (
+    <>
+      <IconButton
+        icon={FolderInput}
+        label="Add workspace folder…"
+        size="sm"
+        data-testid="workspace-add"
+        onClick={() => void addWorkspace()}
+      />
+      <IconButton
+        icon={FolderPlus}
+        label="New project…"
+        size="sm"
+        data-testid="project-new"
+        onClick={() => void addProject()}
+      />
+    </>
+  );
 }

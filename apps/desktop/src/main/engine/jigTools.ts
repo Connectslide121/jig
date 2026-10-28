@@ -111,15 +111,21 @@ export function jigToolHandlers(
 }
 
 /** Context appended to Claude Code's own system prompt (never replacing it). */
-export function jigContext(meta: SessionMeta, projectName: string | undefined): string {
+export function jigContext(
+  meta: SessionMeta,
+  project: { name: string; instructions?: string } | undefined,
+): string {
   return [
     "You are running inside Jig, the user's desktop workbench around Claude Code.",
-    projectName
-      ? `The current project is "${projectName}" at ${meta.cwd}.`
+    project
+      ? `This chat is in the user's project "${project.name}"; the working directory is ${meta.cwd}.`
       : `The working directory is ${meta.cwd}.`,
+    ...(project?.instructions
+      ? [`The user's instructions for chats in the project "${project.name}":\n${project.instructions}`]
+      : []),
     "For long-running commands (dev servers, watchers, anything that keeps running) use jig_terminal_run, so the user sees them in a Jig terminal, then jig_terminal_read for their output; jig_terminal_list shows the project's terminals (including the user's own dev server). Use your own shell for commands that finish.",
     "To check web UI you build, use Claude's browser (a real offscreen page with its own size; the user can watch it in Jig): jig_browser_open the dev server, jig_browser_read for the text and numbered elements, jig_browser_click / jig_browser_type / jig_browser_press to use it, jig_browser_screenshot to see it (sizes: phone, tablet, desktop checks responsive layouts in one call; fullPage for the whole page), jig_browser_console for errors. It runs headless: the user isn't interrupted.",
     "For work that should run on a schedule, use Claude Code routines (the RemoteTrigger tool); the user sees and manages them in Jig's Routines tab. Pages you publish with the Artifact tool can be opened in Jig from the chat.",
-    "Jig adds tools (MCP server `jig`). When the user wants Jig configured — settings, theme, fonts, density, file icons, layout (move/hide/show/resize views, or show one view below another as a collapsible section in its tab, like GitLens below Source Control), add-ons on or off, a project's name or colour — use jig_get_settings / jig_list_themes / jig_get_layout to look and jig_update_settings / jig_change_layout / jig_set_addon_enabled / jig_update_project / jig_install_theme to change it; the user approves each change and can undo it from the chat. When they ask for something new (a tool, button, view, menu entry), call jig_request_build with a clear goal. Never edit Jig's files yourself.",
+    "Jig adds tools (MCP server `jig`). When the user wants Jig configured — settings, theme, fonts, density, file icons, layout (move/hide/show/resize views, or show one view below another as a collapsible section in its tab, like GitLens below Source Control), add-ons on or off, projects (groups of chats the user manages: create one, its default workspace, default Git repository, model/effort/permission defaults, instructions and starter prompts; which chats are in which project, pinned chats) — use jig_get_settings / jig_list_themes / jig_get_layout / jig_list_projects to look and jig_update_settings / jig_change_layout / jig_set_addon_enabled / jig_create_project / jig_update_project / jig_move_chat / jig_install_theme to change it; the user approves each change and can undo it from the chat. When they ask for something new (a tool, button, view, menu entry), call jig_request_build with a clear goal. Never edit Jig's files yourself.",
   ].join("\n");
 }

@@ -35,11 +35,13 @@ export function startTerminals(): void {
     terminalTools({
       manager: () => m,
       projectPath: async (id) =>
-        (
-          await projectStore()
-            .get(id)
-            .catch(() => undefined)
-        )?.path,
+        id
+          ? (
+              await projectStore()
+                .get(id)
+                .catch(() => undefined)
+            )?.path
+          : undefined,
       reveal: (id) => emit("terminals.reveal", { id }),
     }),
   );

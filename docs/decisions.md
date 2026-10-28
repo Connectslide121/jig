@@ -873,3 +873,29 @@ can hold tokens. Now everything recorded passes through `@jig/learning`'s saniti
 It is rule-based with no AI, so it can miss an unusual secret format. The log stays local, has its
 "never record" list, and can be deleted at any time. Chats themselves (Claude Code's own transcripts)
 are not changed: they are the conversation.
+
+### D-104 — How projects-you-manage is built
+**Decided by:** Claude, on my own (Jon trusted my judgement for phase 18) · **Date:** 2026-10-28
+
+- **`projects.json` holds workspaces and projects.** A project's `path` is its default workspace.
+  `ProjectInfo` and `AddonProject` keep describing that folder (`isGitRepo`, `repos`), so add-ons and
+  every "the project's folder" use stay as they were. `focusRepo` becomes the project's default Git
+  repository.
+- **Two ways to make a project:**
+  - "New project…" opens a dialog;
+  - `projects.add {path}` (Get started, tests, quick use) adds the folder and a project named after
+    it.
+
+  Several projects can share a workspace.
+- **Chats keep their folder (`cwd`) and get an optional `projectId`** that only you set, by dragging,
+  the menu, or Claude with `jig_move_chat`. Removing a project moves its chats to "No project"
+  instead of stopping them.
+- **The project's defaults are applied when a chat is created** (model, effort, permission mode).
+  Its instructions are read each time Claude Code starts for the chat, so edits apply to the next
+  turn after a restart of the chat's process.
+- **Repos lists workspaces, not projects** (each repository once). Clicking a repository activates
+  the project whose default workspace holds it: the active one first, else the first such project.
+- **The Chats list** opens the active project's group and "No project", and keeps other projects
+  collapsed until clicked. With many projects the list stays short.
+- **Scripts still follow the active project's default workspace for now.** Making the Scripts panel
+  global (D-102) comes with arranging it (phase 18, item 5).

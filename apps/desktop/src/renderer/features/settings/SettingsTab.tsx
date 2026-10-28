@@ -1,6 +1,7 @@
 import {
   Bot,
   Download,
+  FolderTree,
   Info,
   LayoutPanelLeft,
   Palette,
@@ -24,6 +25,7 @@ import {
   LearningSettings,
   TerminalSettings,
   UpdatesSettings,
+  WorkspacesSettings,
 } from "./OtherSections";
 
 export interface SettingsPage {
@@ -46,6 +48,13 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       order: 0,
     },
     layout: { id: "layout", title: "Layout", icon: LayoutPanelLeft, component: LayoutSettings, order: 1 },
+    workspaces: {
+      id: "workspaces",
+      title: "Workspaces",
+      icon: FolderTree,
+      component: WorkspacesSettings,
+      order: 1.5,
+    },
     engine: { id: "engine", title: "Claude Code", icon: Bot, component: EngineSettings, order: 2 },
     terminal: {
       id: "terminal",

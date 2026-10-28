@@ -65,17 +65,22 @@ settings, add-on permissions.
 | `window.minimize` / `window.toggleMaximize` / `window.close` | — | — | for custom window controls |
 | `layout.get` | — | `Layout` | `~/.jig/layout.json` (see `docs/reference/layout.md`) |
 | `layout.set` | `Layout` | `Layout` | saves the renderer's layout (no event back to the renderer) |
-| `projects.list` | — | `ProjectsState` | `{ projects: ProjectInfo[], activeId }`; `ProjectInfo` adds `exists`, `isGitRepo`, `repos` (the repositories inside a workspace folder) |
-| `projects.add` | `{ path? }` | `Project \| undefined` | without `path`: folder picker; adding a known folder returns it; `not_a_folder` |
-| `projects.update` | `{ id, name?, color? }` | `ProjectsState` | colour is a token name (`accent`, `info`, `success`, `warning`, `danger`, `muted`) |
-| `projects.remove` | `{ id }` | `ProjectsState` | forgets the project; the folder is never touched |
+| `projects.list` | — | `ProjectsState` | `{ workspaces: WorkspaceInfo[], projects: ProjectInfo[], activeId }` (D-101). A workspace is a folder you added; `WorkspaceInfo` adds `name`, `exists`, `isGitRepo`, `repos`. A project is a group of chats you manage; `ProjectInfo` adds the same facts about its default workspace (`path`) |
+| `projects.add` | `{ path? }` | `Project \| undefined` | quick "a folder as a project": the folder becomes a workspace and, unless a project has it as default, a project named after it; that project becomes active. Without `path`: folder picker; `not_a_folder` |
+| `projects.create` | `{ name, path, color?, model?, effort?, permissionMode?, instructions?, starters? }` | `Project` | a new project with `path` as its default workspace (added if new); it becomes active |
+| `projects.update` | `{ id, name?, color?, path?, model?, effort?, permissionMode?, instructions?, starters? }` | `ProjectsState` | an empty string or list clears a preference; a new `path` is added as a workspace and clears the default repository. Colour is a token name (`accent`, `info`, `success`, `warning`, `danger`, `muted`) |
+| `projects.remove` | `{ id }` | `ProjectsState` | forgets the project; its chats move to "No project"; folders are never touched |
+| `workspaces.add` | `{ path? }` | `Workspace \| undefined` | adds a folder (folder picker without `path`); an added folder is returned as it is |
+| `workspaces.remove` | `{ id }` | `ProjectsState` | forgets a folder; `in_use` while a project has it as its default workspace |
 | `projects.setActive` | `{ id }` | `ProjectsState` | |
 | `projects.reorder` | `{ ids }` | `ProjectsState` | |
-| `projects.rescanRepos` | `{ id }` | `ProjectsState` | workspaces: look for the repositories inside again (the list is cached) |
-| `projects.setFocusRepo` | `{ id, repo? }` | `ProjectsState` | workspaces: the repository the status bar and Git actions use; `not_found` if it isn't one of the project's |
+| `projects.rescanRepos` | `{ id }` | `ProjectsState` | a project's or workspace's (by id) folder: look for the repositories inside again (the list is cached) |
+| `projects.setFocusRepo` | `{ id, repo? }` | `ProjectsState` | the project's default Git repository (status bar, Git actions, Git panel); `not_found` if it isn't one of its workspace's |
 | `sessions.list` | — | `SessionMeta[]` | newest first (see `docs/reference/engine.md`) |
 | `sessions.get` | `{ id }` | `SessionSnapshot` | `{ meta, items, queue }` |
-| `sessions.create` | `{ projectId, title?, cwd? }` | `SessionMeta` | runs in the project folder (or `cwd`, a folder inside it — e.g. one repository of a workspace) with the default model/permission mode |
+| `sessions.create` | `{ projectId?, title?, cwd? }` | `SessionMeta` | a chat in a project or none. Runs in `cwd` (any folder) or the project's default workspace; without a project `cwd` is required. Model, effort and permission mode: the project's defaults, else Jig's |
+| `sessions.setProject` | `{ id, projectId? }` | — | puts a chat in a project, moves it, or takes it out |
+| `sessions.setPinned` | `{ id, pinned }` | — | pinned chats stay at the top of their project |
 | `sessions.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment { path, mime, name, kind }` | keeps pasted/dropped bytes (base64) or copies a file into `attachments/<session>/`: images, PDFs, .docx/.xlsx/.pptx, text files (`docs/reference/engine.md` → Attachments); `not_supported`, `too_large`, `not_found`, `unreadable` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |

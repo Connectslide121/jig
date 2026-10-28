@@ -1,9 +1,10 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { AddonHostApi, AddonProject } from "@jig/sdk";
+import type { AddonHostApi, AddonWorkspace } from "@jig/sdk";
 
 export interface RepoState {
-  projectId: string;
+  /** The workspace (added folder) the repository is in. */
+  workspaceId: string;
   name: string;
   path: string;
   /** Set for a repository inside a workspace project (its path). */
@@ -55,22 +56,25 @@ export function summarize(
   return state;
 }
 
-type RepoItem = { projectId: string; name: string; path: string; repoPath?: string };
+type RepoItem = { workspaceId: string; name: string; path: string; repoPath?: string };
 
 /** Every repository: projects that are repositories, and the repositories inside workspace projects. */
-export function repoItems(projects: AddonProject[]): RepoItem[] {
-  return projects
-    .filter((p) => p.exists)
-    .flatMap((p): RepoItem[] =>
-      p.isGitRepo
-        ? [{ projectId: p.id, name: p.name, path: p.path }]
-        : (p.repos ?? []).map((r) => ({
-            projectId: p.id,
-            name: `${p.name}/${r.name}`,
+/** Every repository of every workspace (added folder), whatever the projects; each once. */
+export function repoItems(workspaces: AddonWorkspace[]): RepoItem[] {
+  const seen = new Set<string>();
+  return workspaces
+    .filter((w) => w.exists)
+    .flatMap((w): RepoItem[] =>
+      w.isGitRepo
+        ? [{ workspaceId: w.id, name: w.name, path: w.path }]
+        : (w.repos ?? []).map((r) => ({
+            workspaceId: w.id,
+            name: `${w.name}/${r.name}`,
             path: r.path,
             repoPath: r.path,
           })),
-    );
+    )
+    .filter((r) => !seen.has(r.path) && Boolean(seen.add(r.path)));
 }
 
 async function inspect(api: AddonHostApi, p: RepoItem): Promise<RepoState> {
@@ -101,7 +105,7 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>
 }
 
 export async function overview(_: unknown, api: AddonHostApi): Promise<RepoState[]> {
-  return pool(repoItems(await api.projects()), 6, (p) => inspect(api, p));
+  return pool(repoItems(await api.workspaces()), 6, (p) => inspect(api, p));
 }
 
 export async function fetch({ path }: { path: string }, api: AddonHostApi) {
@@ -119,7 +123,7 @@ export async function push({ path }: { path: string }, api: AddonHostApi) {
 }
 
 export async function fetchAll(_: unknown, api: AddonHostApi) {
-  const results = await pool(repoItems(await api.projects()), 4, async (p) => {
+  const results = await pool(repoItems(await api.workspaces()), 4, async (p) => {
     try {
       await fetch({ path: p.path }, api);
       return undefined;

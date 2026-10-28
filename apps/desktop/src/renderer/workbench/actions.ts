@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { cycleTab, defaultLayout, findView } from "../../shared/layout";
+import { openNewProjectDialog } from "../features/projects/ProjectDialog";
 import { call, errorMessage } from "../lib/host";
 import { useProjects } from "./projects";
 import { registerAction, useRegistry } from "./registry";
@@ -22,13 +23,18 @@ import { updateLayout, useWorkbench, workbench } from "./store";
 import { openToolsMenu } from "./ToolsMenu";
 import { notify } from "./toasts";
 
-/** Adds a project via the folder picker and opens its dashboard. */
+/** A new project: the dialog asks for its name, default workspace and defaults (D-101). */
 export async function addProject(): Promise<void> {
+  openNewProjectDialog();
+}
+
+/** Adds a folder as a workspace (folder picker). */
+export async function addWorkspace(): Promise<void> {
   try {
-    const project = await call("projects.add", {});
-    if (project) workbench.openTab("jig.project", { projectId: project.id });
+    const workspace = await call("workspaces.add", {});
+    if (workspace) notify({ title: `Added ${workspace.path}`, tone: "success" });
   } catch (error) {
-    notify({ title: "Couldn't add the project", message: errorMessage(error), tone: "danger" });
+    notify({ title: "Couldn't add the folder", message: errorMessage(error), tone: "danger" });
   }
 }
 
@@ -40,10 +46,19 @@ export function openSettings(section?: string): void {
 export function registerCoreActions(): void {
   registerAction({
     id: "jig.addProject",
-    title: "Add project…",
+    title: "New project…",
     group: "Projects",
     icon: FolderPlus,
+    keywords: ["add project", "create project"],
     run: addProject,
+  });
+  registerAction({
+    id: "jig.addWorkspace",
+    title: "Add workspace folder…",
+    group: "Projects",
+    icon: FolderPlus,
+    keywords: ["folder", "repos", "repository"],
+    run: addWorkspace,
   });
   registerAction({
     id: "jig.openProjectDashboard",

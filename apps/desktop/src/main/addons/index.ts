@@ -145,6 +145,8 @@ export async function startAddons(): Promise<void> {
         emit("addons.event", { id: addonId, topic, payload });
       } else if (op === "projects") {
         return (await projectStore().state()).projects;
+      } else if (op === "workspaces") {
+        return (await projectStore().state()).workspaces;
       } else if (op === "log") {
         const { message, detail } = args as { message: string; detail?: unknown };
         log.info(`[${addonId}] ${message}`, detail);

@@ -32,7 +32,7 @@ import type { ImageData } from "./files";
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { FilePreview } from "./preview";
-import type { Project, ProjectColor, ProjectsState } from "./projects";
+import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
@@ -139,20 +139,43 @@ export interface HostMethods {
   "layout.get": { args: void; result: Layout };
   "layout.set": { args: Layout; result: Layout };
   "projects.list": { args: void; result: ProjectsState };
-  /** Without `path`, shows the folder picker; resolves `undefined` when cancelled. */
+  /**
+   * "Add project…" with a folder: adds it as a workspace and, unless a project has it as default, a
+   * project named after it; makes that project active. Without `path`, shows the folder picker;
+   * resolves `undefined` when cancelled.
+   */
   "projects.add": { args: { path?: string }; result: Project | undefined };
-  "projects.update": { args: { id: string; name?: string; color?: ProjectColor }; result: ProjectsState };
+  /** A new project with a default workspace (added as a workspace if new); it becomes active. */
+  "projects.create": { args: { name: string; path: string } & ProjectPatch; result: Project };
+  /** Changes a project; an empty string or list clears a preference. */
+  "projects.update": { args: { id: string } & ProjectPatch; result: ProjectsState };
+  /** Adds a folder as a workspace. Without `path`, shows the folder picker (`undefined` when cancelled). */
+  "workspaces.add": { args: { path?: string }; result: Workspace | undefined };
+  /** Forgets a workspace (never the folder); refused while a project uses it as its default. */
+  "workspaces.remove": { args: { id: string }; result: ProjectsState };
+  /** Forgets a project; its chats move to "No project". */
   "projects.remove": { args: { id: string }; result: ProjectsState };
   "projects.setActive": { args: { id: string | undefined }; result: ProjectsState };
-  /** Workspaces: look for the repositories inside the folder again. */
+  /** Looks for the repositories inside a project's (or workspace's, by its id) folder again. */
   "projects.rescanRepos": { args: { id: string }; result: ProjectsState };
   /** Workspaces: the repository Git actions and the status bar use (`undefined` = none). */
   "projects.setFocusRepo": { args: { id: string; repo?: string }; result: ProjectsState };
   "projects.reorder": { args: { ids: string[] }; result: ProjectsState };
   "sessions.list": { args: void; result: SessionMeta[] };
   "sessions.get": { args: { id: string }; result: SessionSnapshot };
-  /** `cwd`: a folder inside the project (e.g. one repository of a workspace); default the project folder. */
-  "sessions.create": { args: { projectId: string; title?: string; cwd?: string }; result: SessionMeta };
+  /**
+   * A new chat, in a project or none. `cwd`: the folder it runs in, which can be any folder (another
+   * workspace, one repository of a workspace). Default: the project's default workspace; without a
+   * project, `cwd` is required. The project's model, effort and permission mode are the chat's defaults.
+   */
+  "sessions.create": {
+    args: { projectId?: string; title?: string; cwd?: string };
+    result: SessionMeta;
+  };
+  /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
+  "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
+  /** Pinned chats stay at the top of their project. */
+  "sessions.setPinned": { args: { id: string; pinned: boolean }; result: void };
   /** Sends a message (with files kept by `sessions.addAttachment`), or queues it while Claude works. */
   /** `now`: while Claude works, the message joins the running turn instead of waiting in the queue. */
   "sessions.send": {

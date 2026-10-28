@@ -1,6 +1,15 @@
-import { Archive, MessageSquarePlus, MoreHorizontal } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  MessageSquarePlus,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
+import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
@@ -18,12 +27,25 @@ function relative(iso: string): string {
   return `${Math.floor(diff / 86400)} d`;
 }
 
-/** Every session across projects, grouped by project, with live status. */
+const DRAG_TYPE = "application/x-jig-chat";
+
+/** Pinned first, then the most recent. */
+const order = (a: SessionMeta, b: SessionMeta) =>
+  Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt.localeCompare(a.updatedAt);
+
+/**
+ * Every chat, grouped by project (D-102): the active project first and open, the other projects below
+ * (collapsed until you open them), then "No project". Drag a chat onto a group to move it there; pinned
+ * chats stay at the top of their group.
+ */
 export function SessionsView() {
-  const metas = Object.values(useSessions((s) => s.metas));
+  const metas = Object.values(useSessions((s) => s.metas)).filter((m) => m.kind !== "builder");
   const { projects, activeId } = useProjects();
   const activeTab = useWorkbench((s) => s.layout?.main.tabs.find((t) => t.id === s.layout?.main.active));
   const [showArchived, setShowArchived] = useState(false);
+  // Groups opened or closed by hand; by default only the active project and "No project" are open.
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const [dropOn, setDropOn] = useState<string>();
   // Re-render every 30 s so "3 min" stays true.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -40,10 +62,16 @@ export function SessionsView() {
       selected={activeTab?.type === "jig.chat" && activeTab.params.sessionId === m.id}
       onClick={() => open(m)}
       onContextMenu={contextMenu(() => sessionMenu(m))}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DRAG_TYPE, m.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       leading={<StatusDot status={m.status} />}
       className={cn("pl-4", m.archived && "opacity-60")}
       trailing={
         <>
+          {m.pinned && <Pin className="size-3 shrink-0 text-hint group-hover:hidden" aria-label="Pinned" />}
           {m.status === "needs_you" || m.status === "error" ? (
             <span
               className={cn("group-hover:hidden", m.status === "needs_you" ? "text-warning" : "text-danger")}
@@ -53,6 +81,17 @@ export function SessionsView() {
           ) : (
             <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
           )}
+          <IconButton
+            icon={m.pinned ? PinOff : Pin}
+            label={m.pinned ? "Unpin" : "Pin to the top"}
+            size="sm"
+            data-testid={`session-pin-${m.title}`}
+            className="hidden group-hover:inline-flex"
+            onClick={(e) => {
+              e.stopPropagation();
+              void call("sessions.setPinned", { id: m.id, pinned: !m.pinned });
+            }}
+          />
           <IconButton
             icon={MoreHorizontal}
             label="Chat options"
@@ -69,47 +108,89 @@ export function SessionsView() {
       {m.title}
     </ListRow>
   );
-  // Chats of projects that were removed: still listed so they can be opened, stopped or deleted.
-  const orphans = visible
-    .filter((m) => m.kind !== "builder" && !projects.some((p) => p.id === m.projectId))
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  if (projects.length === 0 && orphans.length === 0)
-    return <Empty title="No projects yet">Add a project to start a chat.</Empty>;
+  /** A group: header (click to open/close, drop target) and its chats. */
+  const group = (key: string, title: string, dot: string, list: SessionMeta[], projectId?: string) => {
+    const isOpen = toggled[key] ?? (key === "none" || projectId === activeId);
+    const target = projectId ?? "";
+    return (
+      <div
+        key={key}
+        className={cn("mb-1 rounded-md", dropOn === key && "bg-accent-soft")}
+        data-testid={`chat-group-${title}`}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setDropOn(key);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropOn(undefined);
+        }}
+        onDrop={(e) => {
+          setDropOn(undefined);
+          const id = e.dataTransfer.getData(DRAG_TYPE);
+          if (!id) return;
+          e.preventDefault();
+          if ((useSessions.getState().metas[id]?.projectId ?? "") === target) return;
+          void call("sessions.setProject", { id, ...(projectId ? { projectId } : {}) });
+          setToggled((t) => ({ ...t, [key]: true }));
+        }}
+      >
+        <div className="group flex h-7 items-center gap-1 px-1 text-xs font-medium text-muted">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-fg"
+            aria-expanded={isOpen}
+            onClick={() => setToggled((t) => ({ ...t, [key]: !isOpen }))}
+          >
+            {isOpen ? (
+              <ChevronDown className="size-3 shrink-0" />
+            ) : (
+              <ChevronRight className="size-3 shrink-0" />
+            )}
+            <span className={cn("size-2 shrink-0 rounded-full", dot)} />
+            <span className="min-w-0 truncate">{title}</span>
+            {!isOpen && list.length > 0 && <span className="font-normal text-hint">{list.length}</span>}
+          </button>
+          {projectId && (
+            <IconButton
+              icon={MessageSquarePlus}
+              label={`New chat in ${title}`}
+              size="sm"
+              data-testid={`new-session-${title}`}
+              className="opacity-0 group-hover:opacity-100"
+              onClick={() => void newSession(projectId)}
+            />
+          )}
+        </div>
+        {isOpen && list.length === 0 && (
+          <div className="px-6 pb-1 text-xs text-hint">
+            {projectId ? "No chats — drag one here or start a new one" : "Chats you take out of a project"}
+          </div>
+        )}
+        {isOpen && list.map(row)}
+      </div>
+    );
+  };
+  const loose = visible
+    .filter((m) => !m.projectId || !projects.some((p) => p.id === m.projectId))
+    .sort(order);
+  if (projects.length === 0 && loose.length === 0)
+    return <Empty title="No chats yet">Create a project, or start a chat in a folder.</Empty>;
   return (
     <div className="flex h-full flex-col" data-testid="sessions-view">
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-        {groups.map((project) => {
-          const list = visible
-            .filter((m) => m.projectId === project.id)
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-          return (
-            <div key={project.id} className="mb-2">
-              <div className="group flex h-7 items-center gap-1.5 px-2 text-xs font-medium text-muted">
-                <span className={cn("size-2 rounded-full", projectDotClass(project.color))} />
-                <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                <IconButton
-                  icon={MessageSquarePlus}
-                  label={`New chat in ${project.name}`}
-                  size="sm"
-                  data-testid={`new-session-${project.name}`}
-                  className="opacity-0 group-hover:opacity-100"
-                  onClick={() => void newSession(project.id)}
-                />
-              </div>
-              {list.length === 0 && <div className="px-6 pb-1 text-xs text-hint">No sessions</div>}
-              {list.map(row)}
-            </div>
-          );
-        })}
-        {orphans.length > 0 && (
-          <div className="mb-2" data-testid="sessions-orphans">
-            <div className="flex h-7 items-center gap-1.5 px-2 text-xs font-medium text-muted">
-              <span className="size-2 rounded-full bg-hint" />
-              <span className="min-w-0 flex-1 truncate">Removed projects</span>
-            </div>
-            {orphans.map(row)}
-          </div>
+        {groups.map((project) =>
+          group(
+            project.id,
+            project.name,
+            projectDotClass(project.color),
+            visible.filter((m) => m.projectId === project.id).sort(order),
+            project.id,
+          ),
         )}
+        {(loose.length > 0 || dropOn === "none" || projects.length > 0) &&
+          group("none", "No project", "bg-hint", loose)}
       </div>
       {metas.some((m) => m.archived) && (
         <button

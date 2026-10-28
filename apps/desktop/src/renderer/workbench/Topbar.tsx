@@ -37,7 +37,7 @@ function projectMenu(): MenuEntry[] {
       onSelect: () => void call("projects.setActive", { id: p.id }),
     })),
     ...(projects.length ? [{ separator: true } as const] : []),
-    { label: "Add project…", icon: FolderPlus, onSelect: () => void addProject(), testId: "project-add" },
+    { label: "New project…", icon: FolderPlus, onSelect: () => void addProject(), testId: "project-add" },
     ...(activeId
       ? [
           {

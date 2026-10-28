@@ -18,15 +18,15 @@ const describe = (t: TerminalInfo) =>
  */
 export function terminalTools(deps: {
   manager: () => TerminalManager;
-  projectPath: (projectId: string) => Promise<string | undefined>;
+  projectPath: (projectId: string | undefined) => Promise<string | undefined>;
   reveal: (id: string) => void;
 }): JigTool[] {
-  const visible = (projectId: string) =>
+  const visible = (projectId: string | undefined) =>
     deps
       .manager()
       .list()
       .filter((t) => !t.private && t.projectId === projectId);
-  const find = (projectId: string, id: string) => {
+  const find = (projectId: string | undefined, id: string) => {
     const t = visible(projectId).find((x) => x.id === id || x.id.startsWith(id));
     if (!t) throw new Error(`No terminal ${id} in this project; jig_terminal_list shows them`);
     return t;

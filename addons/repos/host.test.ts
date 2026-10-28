@@ -25,7 +25,7 @@ describe("summarize", () => {
 });
 
 describe("repoItems", () => {
-  it("lists repository projects and the repositories inside workspace projects", () => {
+  it("lists every workspace's repositories, each once", () => {
     const base = { exists: true, repos: [] as Array<{ path: string; name: string }> };
     expect(
       repoItems([
@@ -39,10 +39,11 @@ describe("repoItems", () => {
           repos: [{ path: "/r/client-a/api", name: "client-a/api" }],
         },
         { ...base, id: "x", name: "gone", path: "/gone", isGitRepo: true, exists: false },
+        { ...base, id: "dup", name: "api", path: "/r/client-a/api", isGitRepo: true },
       ]),
     ).toEqual([
-      { projectId: "a", name: "shop", path: "/r/shop" },
-      { projectId: "w", name: "repos/client-a/api", path: "/r/client-a/api", repoPath: "/r/client-a/api" },
+      { workspaceId: "a", name: "shop", path: "/r/shop" },
+      { workspaceId: "w", name: "repos/client-a/api", path: "/r/client-a/api", repoPath: "/r/client-a/api" },
     ]);
   });
 });

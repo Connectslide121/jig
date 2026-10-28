@@ -24,19 +24,16 @@ export function startProjects(): void {
 
   handle("projects.list", () => projectStore().state());
   handle("projects.add", async ({ path }, ctx) => {
-    let folder = path;
-    if (!folder) {
-      const window = BrowserWindow.fromWebContents(ctx.sender);
-      const options = { title: "Add a project folder", properties: ["openDirectory" as const] };
-      const result = window
-        ? await dialog.showOpenDialog(window, options)
-        : await dialog.showOpenDialog(options);
-      if (result.canceled || !result.filePaths[0]) return undefined;
-      folder = result.filePaths[0];
-    }
-    return (await projectStore().add(folder)).project;
+    const folder = path ?? (await pickFolder(ctx.sender, "Add a project folder"));
+    return folder ? (await projectStore().add(folder)).project : undefined;
   });
+  handle("projects.create", async (input) => (await projectStore().create(input)).project);
   handle("projects.update", ({ id, ...patch }) => projectStore().update(id, patch));
+  handle("workspaces.add", async ({ path }, ctx) => {
+    const folder = path ?? (await pickFolder(ctx.sender, "Add a workspace folder"));
+    return folder ? (await projectStore().addWorkspace(folder)).workspace : undefined;
+  });
+  handle("workspaces.remove", ({ id }) => projectStore().removeWorkspace(id));
   handle("projects.remove", ({ id }) => projectStore().remove(id));
   handle("projects.setActive", async ({ id }) => {
     const state = await projectStore().setActive(id);
@@ -48,4 +45,12 @@ export function startProjects(): void {
   handle("projects.reorder", ({ ids }) => projectStore().reorder(ids));
   handle("projects.rescanRepos", ({ id }) => projectStore().rescanRepos(id));
   handle("projects.setFocusRepo", ({ id, repo }) => projectStore().setFocusRepo(id, repo));
+}
+
+/** The folder picker, over the window that asked; `undefined` when cancelled. */
+async function pickFolder(sender: Electron.WebContents, title: string): Promise<string | undefined> {
+  const window = BrowserWindow.fromWebContents(sender);
+  const options = { title, properties: ["openDirectory" as const] };
+  const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
+  return result.canceled ? undefined : result.filePaths[0];
 }

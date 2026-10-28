@@ -50,7 +50,7 @@ export function registerDigestHandlers(): void {
       .filter((m) => m.kind !== "builder" && new Date(m.updatedAt) >= since && m.turns > 0)
       .slice(0, 40)
       .map((m) => ({
-        project: names.get(m.projectId) ?? "removed project",
+        project: (m.projectId && names.get(m.projectId)) || "no project",
         title: m.title,
         turns: m.turns,
         status: m.status,

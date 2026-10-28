@@ -584,13 +584,15 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="workspaces"
             title="Projects & workspaces"
-            lead="Open a single repository, or a whole folder of repositories as one workspace. Jig finds the repos up to three levels deep, so Claude can look at one repo while you work in another."
+            lead="Projects are yours: groups of chats with a default folder, a default Git repository, model and permission defaults, instructions for Claude and starter prompts. Workspaces are the folders Jig knows — a single repository or a whole folder of them."
             shot={{ src: dashboard, alt: "The dashboard of a workspace with four repositories" }}
           >
             <Bullets
               items={[
-                "One dashboard per project with recent chats and scripts",
-                "A focus repo for new chats and the Git view",
+                "Drag chats between projects; pin the ones you keep coming back to",
+                "Instructions per project, added to what Claude reads in its chats",
+                "One Home per project with its starter prompts, recent chats and scripts",
+                "A default repo per project for the Git view, others shown next to it when needed",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch and changes",
               ]}

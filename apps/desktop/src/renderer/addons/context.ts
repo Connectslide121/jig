@@ -88,6 +88,17 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         await call("projects.rescanRepos", { id: projectId });
       },
     },
+    workspaces: {
+      list: () =>
+        useProjects.getState().workspaces.map((w) => ({
+          id: w.id,
+          name: w.name,
+          path: w.path,
+          isGitRepo: w.isGitRepo,
+          exists: w.exists,
+          repos: w.repos,
+        })),
+    },
     openChat: async (options = {}) => {
       await (await import("../features/sessions/actions")).newSession(
         options.projectId,

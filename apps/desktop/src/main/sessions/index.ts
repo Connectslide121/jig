@@ -1,5 +1,5 @@
 import { exec } from "node:child_process";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { app, BrowserWindow, dialog, Notification } from "electron";
@@ -47,15 +47,28 @@ export function sessionManager(): SessionManager {
 }
 
 export function startSessions(): void {
-  const projectNames = new Map<string, string>();
+  // Names and instructions of the projects, for Jig's addition to the system prompt.
+  const projects = new Map<string, { name: string; instructions?: string }>();
+  const known = new Set<string>();
+  const remember = (list: Array<{ id: string; name: string; instructions?: string }>) => {
+    projects.clear();
+    for (const p of list) projects.set(p.id, { name: p.name, instructions: p.instructions });
+  };
   void projectStore()
     .list()
     .then((list) => {
-      for (const p of list) projectNames.set(p.id, p.name);
+      remember(list);
+      for (const p of list) known.add(p.id);
     });
   projectStore().onChange((state) => {
-    projectNames.clear();
-    for (const p of state.projects) projectNames.set(p.id, p.name);
+    remember(state.projects);
+    // A removed project: its chats move to "No project".
+    for (const id of known)
+      if (!projects.has(id)) {
+        known.delete(id);
+        void manager?.leaveProject(id);
+      }
+    for (const p of state.projects) known.add(p.id);
   });
 
   manager = new SessionManager({
@@ -74,7 +87,7 @@ export function startSessions(): void {
     },
     appendSystemPrompt: (meta) =>
       kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
-      jigContext(meta, projectNames.get(meta.projectId)),
+      jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
     mcpServers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
       if (hooks) return hooks.mcpServers(meta);
@@ -150,18 +163,27 @@ export function startSessions(): void {
   handle("sessions.list", () => m.list());
   handle("sessions.get", ({ id }) => m.snapshot(id));
   handle("sessions.create", async ({ projectId, title, cwd }) => {
-    const project = await projectStore().get(projectId);
-    if (cwd && !isInside(cwd, project.path))
-      throw new JigError("invalid_args", "A chat's folder must be inside its project");
+    const project = projectId ? await projectStore().get(projectId) : undefined;
+    const folder = cwd || project?.path;
+    if (!folder) throw new JigError("invalid_args", "Choose a folder for a chat without a project");
+    const info = await stat(folder).catch(() => undefined);
+    if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
     const { engine } = getConfig();
+    // The project's defaults first, then Jig's.
     return m.create({
       projectId,
-      cwd: cwd || project.path,
+      cwd: folder,
       title,
-      model: engine.defaultModel,
-      permissionMode: engine.defaultPermissionMode as PermissionMode,
+      model: project?.model ?? engine.defaultModel,
+      permissionMode: (project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode,
+      effort: project?.effort,
     });
   });
+  handle("sessions.setProject", async ({ id, projectId }) => {
+    if (projectId) await projectStore().get(projectId);
+    await m.setProject(id, projectId);
+  });
+  handle("sessions.setPinned", ({ id, pinned }) => m.setPinned(id, pinned));
   handle("sessions.send", ({ id, text, attachments, now }) => m.send(id, text, attachments, now));
   handle("sessions.rewind", ({ id, itemId, files }) => m.rewind(id, itemId, files));
   handle("sessions.runShell", ({ id, command }) => m.runShell(id, command));

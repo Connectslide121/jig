@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
+import { PROJECT_COLORS } from "../../shared/projects";
 
 /**
  * Checks at the IPC boundary. The renderer (which add-on UI code shares) is not trusted with the host:
@@ -24,6 +26,18 @@ const addonId = z
   .regex(/^[a-z0-9][a-z0-9.-]*$/)
   .max(100);
 const int = z.number().int();
+
+/** What a project's settings may hold (the store trims and checks the rest). */
+const projectPatch = z.object({
+  name: z.string().max(200).optional(),
+  color: z.enum(PROJECT_COLORS).optional(),
+  path: path.optional(),
+  model: z.string().max(200).optional(),
+  effort: z.union([z.enum(EFFORT_LEVELS), z.literal("")]).optional(),
+  permissionMode: z.union([z.enum(PERMISSION_MODES), z.literal("")]).optional(),
+  instructions: z.string().max(20_000).optional(),
+  starters: z.array(z.string().max(500)).max(12).optional(),
+});
 
 const attachment = z.object({
   path,
@@ -51,7 +65,15 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "attempts.diff": z.object({ id, index: int.min(1).max(4), path: z.string().max(4096).optional() }),
   "attempts.keep": z.object({ id, index: int.min(1).max(4) }),
   "projects.add": z.object({ path: path.optional() }),
-  "sessions.create": z.object({ projectId: id, title: z.string().max(500).optional(), cwd: path.optional() }),
+  "projects.create": z.object({ name: z.string().min(1).max(200), path }).extend(projectPatch.shape),
+  "projects.update": z.object({ id }).extend(projectPatch.shape),
+  "workspaces.add": z.object({ path: path.optional() }),
+  "sessions.create": z.object({
+    projectId: id.optional(),
+    title: z.string().max(500).optional(),
+    cwd: path.optional(),
+  }),
+  "sessions.setProject": z.object({ id, projectId: id.optional() }),
   "sessions.send": z.object({
     id,
     text,

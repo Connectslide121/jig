@@ -389,7 +389,9 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git)\b/.test(lower)
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat)\b/.test(
+            lower,
+          )
         ) {
           // "switch to the light theme" / "move the terminals to the right": Claude configures Jig.
           const call = async (name: string, input: Record<string, unknown>) => {
@@ -400,7 +402,23 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/pipelines (?:below|under) git/.test(lower)) {
+          if (/make a project for this chat/.test(lower)) {
+            await call("jig_list_projects", {});
+            await call("jig_create_project", {
+              name: "Fake project",
+              path: options.cwd,
+              permissionMode: "plan",
+            });
+            const created = (await options.toolHandlers!.jig_list_projects!({}).then(outputText)).match(
+              /Fake project \[([^\]]+)\]/,
+            )?.[1];
+            await call("jig_move_chat", { projectId: created, pinned: true });
+            await stream(
+              `${msg}:text:0`,
+              "I made the project Fake project and put this chat in it, pinned.",
+              signal,
+            );
+          } else if (/pipelines (?:below|under) git/.test(lower)) {
             await call("jig_get_layout", {});
             await call("jig_change_layout", {
               ops: [{ op: "below", view: "addon.pipelines.pipelines", host: "addon.git.git" }],

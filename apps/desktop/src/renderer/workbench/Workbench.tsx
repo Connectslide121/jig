@@ -6,6 +6,7 @@ import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { StandupHost } from "../features/digest";
 import { useLearningSync } from "../features/learning";
+import { ProjectDialogHost } from "../features/projects/ProjectDialog";
 import { useSessionsSync } from "../features/sessions";
 import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
@@ -98,6 +99,7 @@ export function Workbench() {
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />
+        <ProjectDialogHost />
         <SessionDialogsHost />
         <StandupHost />
         <DialogHost />
