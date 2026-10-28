@@ -49,14 +49,21 @@ What a project is:
   - project instructions, appended to Claude's system prompt for this project's chats (append only,
     never replacing the preset);
   - starter prompts on its Home.
-- **What follows the active project** (decided): the Git panel, the Files panel and Home. The Chats
-  list always shows every project, grouped.
+- **The rule: the left panel follows the active project, the right panel is global** (decided, D-102).
+  - **Follow the project:** Git, Files and Home.
+  - **Chats:** the active project's chats come first, pinned at the top; the other projects are
+    listed below, still grouped, and you can drag chats between them.
+  - **Exception:** Repos stays below Git on the left and stays global.
+  - **Right panel:** Scripts, Pipelines, Suggestions and Claude's browser are global.
+  - The behaviour belongs to the view, not the side: Git moved to the right still follows the
+    project. The rule only decides where views start.
 
 What you do with chats:
 - **Start** a new chat in a project, and reopen older ones.
 - **Pin** chats so they stay at the top of the project.
 - **Drag and drop** a chat with no project onto a project, or from one project to another. Chats
-  without a project are in a **"No project" group** at the bottom of the Chats list (decided).
+  without a project are in a **"No project" group** at the bottom of the Chats list (decided). The
+  active project's group is first (D-102).
 - **Nothing is automatic:** projects never change because of the folder a chat runs in.
 
 What stays as it is:

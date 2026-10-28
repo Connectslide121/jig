@@ -842,3 +842,18 @@ Settled before building:
   - triggers run while Jig is open, and "Move to the cloud" turns a workflow into a routine or an Azure
     DevOps pipeline.
 - **Scripts and Pipelines:** hide, reorder and dividers from the panel, the same for every project.
+
+### D-102 — Left follows the active project, right is global
+**Decided by:** Jon · **Date:** 2026-10-28
+
+The default rule for the redone projects (phase 18):
+- **Left panel follows the active project:** Git, Files and Home.
+- **Right panel is global:** Scripts, Pipelines, Suggestions, Claude's browser.
+
+Details:
+- **Chats** shows the active project's chats first (pinned on top), then the other projects grouped
+  below, still draggable. This replaces "every project, grouped" from D-101.
+- **Repos** stays below Git on the left and stays global, the one exception.
+- **A view keeps its behaviour wherever you move it.** The rule decides only where views start. New
+  views, add-ons included, should follow it: project-scoped views start on the left, global ones on
+  the right.
