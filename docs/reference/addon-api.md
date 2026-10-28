@@ -57,6 +57,7 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `on(topic, listener)` | events from `api.emit` in host code |
 | `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists }` |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
+| `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |
 | `openSettings()` | this add-on's settings page |
 | `scripts.list/run/stop/restart/runGroup(projectId, …)`, `scripts.running()`, `scripts.show(terminalId)` | discovered scripts and their terminals (`docs/reference/terminals.md`) |
@@ -77,7 +78,10 @@ design-token warnings (the builder must fix them; the add-on still loads).
 `languageForPath(path)`, and for resizable layouts `Pane` (`<Pane id edge defaultSize min? max?>`: a flex
 child with a drag handle on `edge`; the size is remembered in `layout.json` under `id` — use
 `addon.<your id>.<name>`), `useSplitRatio(id, fallback?)` → `[ratio, setRatio, reset]` for two columns,
-and the bare `ResizeHandle`.
+and the bare `ResizeHandle`. For images: `ImagePreview` (`<ImagePreview src bytes? compact?>`: fitted on a
+checkerboard, 100% toggle, pixel and file size), `useImageFile(path)` → `{ data?: { dataUrl, bytes, mime }, error? }`
+(reads through the host), `isImagePath(path)` and `formatBytes(n)`. `@jig/sdk` also exports
+`isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.
 
 ## Host (`host.ts`)
 
@@ -94,8 +98,8 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 
 | Member | Permission | What |
 |---|---|---|
-| `exec(command, args, { cwd?, timeoutMs?, env?, input? })` → `{ code, stdout, stderr }` | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found). On Windows, PATH/PATHEXT are searched and `.cmd`/`.bat` programs (`az`, `code`, `npm`) run through `cmd.exe` with safe quoting |
-| `fs.readFile/readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
+| `exec(command, args, { cwd?, timeoutMs?, env?, input?, encoding? })` → `{ code, stdout, stderr }` (`encoding: "base64"` for binary output) | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found). On Windows, PATH/PATHEXT are searched and `.cmd`/`.bat` programs (`az`, `code`, `npm`) run through `cmd.exe` with safe quoting |
+| `fs.readFile(path, encoding?)` (`"base64"` for binary files), `fs.readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
 | `fetch(url, init)` | `net` | |
 | `storage.get/set` | — | same store as the UI |
 | `notify({…})`, `emit(topic, payload)` | — | toast; event to the UI |

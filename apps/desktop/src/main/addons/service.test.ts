@@ -71,7 +71,7 @@ beforeEach(async () => {
       },
     },
     "ui.tsx": `export function HelloView() { return <div className="p-2 bg-surface">Hi</div>; }\nexport function greet() {}\n`,
-    "host.ts": `export async function ping(args: { n: number }) { return args.n * 2; }\nexport async function emitIt(_: unknown, api: any) { api.emit("x", 1); return true; }`,
+    "host.ts": `export async function ping(args: { n: number }) { return args.n * 2; }\nexport async function emitIt(_: unknown, api: any) { api.emit("x", 1); return true; }\nexport async function bytes(_: unknown, api: any) { return (await api.exec("node", ["-e", "process.stdout.write(Buffer.from([0, 255, 1]))"], { encoding: "base64" })).stdout; }`,
   });
 });
 
@@ -85,6 +85,8 @@ describe("AddonService", () => {
     expect(s.ui("hello")?.css).toContain(".bg-surface");
     expect(await s.call("hello", "ping", { n: 21 })).toBe(42);
     expect(await s.call("hello", "emitIt", {})).toBe(true);
+    // Binary output survives as base64 (images from git show).
+    expect(await s.call("hello", "bytes", {})).toBe("AP8B");
     expect(rpcs).toEqual(["emit"]);
     await expect(s.call("hello", "nope", {})).rejects.toMatchObject({ code: "addon_error" });
     expect(s.catalog()).toContain("hello — Hello (builtin): Says hello");

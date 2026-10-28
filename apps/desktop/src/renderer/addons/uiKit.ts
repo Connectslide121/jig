@@ -3,6 +3,8 @@
  * the theme) and a few hooks. Add-ons get this exact module instance at runtime (shared.ts).
  */
 
+export { isImagePath } from "@jig/sdk";
+export { useImageFile } from "../features/files/images";
 export { languageForPath } from "../lib/highlight";
 export {
   Badge,
@@ -14,7 +16,9 @@ export {
   Dialog,
   Empty,
   ErrorBoundary,
+  formatBytes,
   IconButton,
+  ImagePreview,
   Input,
   Kbd,
   ListRow,

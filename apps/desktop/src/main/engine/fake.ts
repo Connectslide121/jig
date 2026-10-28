@@ -81,6 +81,14 @@ export class FakeEngine implements Engine {
           await runFakeAppBuilder(text, options.toolHandlers, onEvent, options.cwd);
         } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
+        } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
+          // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).
+          const file = /(\S+\.(?:png|jpe?g|gif|webp|svg))\b/i.exec(text)![1]!;
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: toolId, name: "Read", input: { file_path: file } });
+          await sleep(this.delayMs, signal);
+          onEvent({ type: "tool_result", toolUseId: toolId, output: "[image]", isError: false });
+          await stream(`${msg}:text:0`, "I looked at the image.", signal);
         } else if (lower.includes("run") || lower.includes("permission")) {
           const toolId = `tool-${randomUUID()}`;
           const input = { command: "npm test", description: "Run the tests" };

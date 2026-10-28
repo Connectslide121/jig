@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
-import { CodeBlock, cn, Spinner } from "../../ui";
+import { isImagePath } from "../../../shared/files";
+import { CodeBlock, cn, ImagePreview, Spinner } from "../../ui";
+import { openImage, useImageFile } from "../files";
 import { useToolRenderers } from "./toolRenderers";
 
 type ToolItem = Extract<ChatItem, { kind: "tool" }>;
@@ -112,11 +114,30 @@ function Detail({ item }: { item: ToolItem }) {
   return <div className="px-2 pb-1">{blocks}</div>;
 }
 
+const IMAGE_TOOLS = new Set(["Read", "Write"]);
+
+/** The image a Read/Write tool call touched, as a thumbnail; click opens it in a tab. */
+function ImageThumb({ path }: { path: string }) {
+  const { data, error } = useImageFile(path);
+  if (error) return null;
+  return (
+    <div className="px-2 pb-2">
+      {data ? (
+        <ImagePreview src={data.dataUrl} alt={path} compact onClick={() => openImage(path)} />
+      ) : (
+        <Spinner size="sm" />
+      )}
+    </div>
+  );
+}
+
 export function ToolCard({ item, children }: { item: ToolItem; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const custom = useToolRenderers()[item.name];
   const Icon = ICONS[item.name] ?? (item.name.startsWith("mcp__") ? Plug : Wrench);
   const summary = toolSummary(item.name, item.input);
+  const filePath = str(item.input.file_path);
+  const imagePath = IMAGE_TOOLS.has(item.name) && filePath && isImagePath(filePath) ? filePath : undefined;
   return (
     <div className="rounded-md border border-line bg-raised" data-testid="tool-card">
       <button
@@ -135,6 +156,7 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
         {item.status === "error" && <CircleAlert className="size-3.5 shrink-0 text-danger" />}
       </button>
       {custom && !open ? <div className="px-2 pb-2">{custom.render(item)}</div> : null}
+      {!custom && imagePath && item.status === "done" && <ImageThumb path={imagePath} />}
       {open && <Detail item={item} />}
       {children && <div className="flex flex-col gap-1 border-t border-line p-2">{children}</div>}
     </div>

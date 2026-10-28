@@ -110,6 +110,9 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 - **Resizable panels:** drag the edge of the sidebars and the bottom panel (or focus the handle and use
   the arrow keys; double-click resets), the terminal list, the Settings list and the two sides of a Git
   diff. Sizes are remembered (`layout.json`).
+- **Image previews:** a changed image in the Git view shows before/after side by side; images Claude
+  reads or writes show a thumbnail in their tool card; both open an image tab (fit / 100%, pixel and
+  file size, show in folder).
 - **Phase 11 (done): packaging & Windows.**
   - `npm run dist` packages Jig with electron-builder; on Windows it makes `Jig-Setup-<version>.exe`
     (per-user NSIS installer with Start menu shortcut and Jig's icon). Guide: `docs/guides/packaging.md`.

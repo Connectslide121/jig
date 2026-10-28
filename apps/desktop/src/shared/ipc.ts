@@ -12,6 +12,7 @@ import type { AddonCommit, AddonInfo } from "./addons";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
+import type { ImageData } from "./files";
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
@@ -41,6 +42,8 @@ export interface AppInfo {
 /** Method name → argument and result types. */
 export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
+  /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
+  "files.image": { args: { path: string }; result: ImageData };
   /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
   "setup.check": { args: void; result: SetupCheck[] };
   "updates.check": { args: void; result: UpdateInfo };

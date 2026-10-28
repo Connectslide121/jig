@@ -420,3 +420,10 @@ terminal list, the Settings list, the two sides of a Git diff) now go into `layo
 so they survive restarts and the builder can see them. Every drag handle is an 8px hit area on the
 border with an accent line on hover, arrow keys resize, double-click resets, and a side region can't
 squeeze the main area below 320px.
+
+### D-070 — Images reach the UI as data URLs through the host, image types only
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+The renderer can't read files, so `files.image` reads an image (by extension, at most 25 MB) and returns
+a `data:` URL, which the UI's Content Security Policy already allows. No new protocol is needed, and
+nothing but images can be read this way. Git versions of an image come from `git show <rev>:<path>`
+through the add-on API, which now returns binary output as base64 (`encoding: "base64"`).

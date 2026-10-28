@@ -15,3 +15,9 @@ detail in the main window**. Rebase, graph and blame are out of scope.
 
 Uses your own `git` (no shell, argument arrays, `core.quotepath=off`, no credential prompts from Jig —
 your credential helper works as usual). Parsers are in `lib/parse.ts` (tested).
+
+Changed images (png, jpg, gif, webp, avif, bmp, ico, svg) show **before and after** side by side
+instead of a text diff — the working copy against the index, staged against `HEAD`, or a commit
+against its parent — with their pixel and file sizes; the image button opens the file in Jig's image
+tab. The two sides of a text diff can be resized by dragging the line between them.
+

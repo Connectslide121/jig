@@ -23,7 +23,8 @@ interface EngineSession { send(text); interrupt(); setModel(m); setPermissionMod
   `resume: <Claude Code session id>`, `pathToClaudeCodeExecutable` from `engine.claudePath`,
   `canUseTool` → the permission prompt, `mcpServers: { jig }`.
 - **`FakeEngine`** (`fake.ts`): scripted replies for tests and `JIG_ENGINE=fake` (see the file header for
-  the trigger words: "run", "question", "slow", "fail", "login", "build"). `JIG_FAKE_DELAY` sets the
+  the trigger words: "run", "question", "slow", "fail", "login", "build", and a path ending in an image
+extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
   per-word delay (ms); `JIG_FAKE_ONESHOT` the one-shot answer.
 - `normalize.ts` turns SDK messages into `EngineEvent`s and ignores anything it doesn't know.
 

@@ -61,6 +61,8 @@ export interface AddonUiContext {
   };
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
+  /** Opens an image file (absolute path) in Jig's image tab. */
+  openImage(path: string): void;
   /** Shows one of this add-on's views (short id), or any view by its full id (`addon.git.git`, `jig.terminals`). */
   showView(viewId: string): void;
   /** Scripts of a project (the same discovery as the dashboard), and running them in terminals. */
@@ -144,10 +146,18 @@ export interface AddonHostApi {
   exec(
     command: string,
     args: string[],
-    options?: { cwd?: string; timeoutMs?: number; env?: Record<string, string>; input?: string },
+    options?: {
+      cwd?: string;
+      timeoutMs?: number;
+      env?: Record<string, string>;
+      input?: string;
+      /** `base64` returns stdout base64-encoded (binary output such as `git show <rev>:image.png`). */
+      encoding?: "utf8" | "base64";
+    },
   ): Promise<ExecResult>;
   fs: {
-    readFile(path: string): Promise<string>;
+    /** `base64` for binary files (images). */
+    readFile(path: string, encoding?: "utf8" | "base64"): Promise<string>;
     writeFile(path: string, content: string): Promise<void>;
     readdir(path: string): Promise<string[]>;
     exists(path: string): Promise<boolean>;

@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join } from "node:path";
-import type { AddonHostApi } from "@jig/sdk";
+import { type AddonHostApi, imageMime, MAX_IMAGE_BYTES } from "@jig/sdk";
 import {
   BRANCH_FORMAT,
   type Commit,
@@ -17,7 +17,7 @@ async function git(
   api: AddonHostApi,
   cwd: string,
   args: string[],
-  options: { ok?: number[]; timeoutMs?: number; input?: string } = {},
+  options: { ok?: number[]; timeoutMs?: number; input?: string; encoding?: "utf8" | "base64" } = {},
 ) {
   const result = await api.exec(
     "git",
@@ -36,6 +36,7 @@ async function git(
       timeoutMs: options.timeoutMs ?? 30_000,
       env: { GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C.UTF-8" },
       input: options.input,
+      encoding: options.encoding,
     },
   );
   if (!(options.ok ?? [0]).includes(result.code)) {
@@ -134,6 +135,37 @@ export async function diff(
   const patch = await run(FULL_CONTEXT);
   if (patch.length > 3_000_000) return { patch: await run("-U3"), truncated: true };
   return { patch, truncated: false };
+}
+
+/**
+ * One version of an image file as a data URL: `worktree` (the file on disk), `index` (staged), or a
+ * commit (`HEAD`, a hash, `hash^`). `null` when the file doesn't exist in that version.
+ */
+export async function image(
+  { cwd, path, rev }: Cwd & { path: string; rev: string },
+  api: AddonHostApi,
+): Promise<{ dataUrl: string; bytes: number } | { tooLarge: true } | null> {
+  const mime = imageMime(path);
+  if (!mime) throw new Error("Not an image file");
+  let base64: string;
+  if (rev === "worktree") {
+    const file = join(cwd, path);
+    if (!(await api.fs.exists(file))) return null;
+    base64 = await api.fs.readFile(file, "base64");
+  } else {
+    if (rev !== "index" && rev !== "HEAD" && !/^[0-9a-f]{4,40}\^?$/i.test(rev))
+      throw new Error("Bad revision");
+    const spec = rev === "index" ? `:${path}` : `${rev}:${path}`;
+    try {
+      base64 = await git(api, cwd, ["show", spec], { encoding: "base64" });
+    } catch {
+      return null;
+    }
+  }
+  const bytes =
+    Math.floor((base64.length * 3) / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0);
+  if (bytes > MAX_IMAGE_BYTES) return { tooLarge: true };
+  return { dataUrl: `data:${mime};base64,${base64}`, bytes };
 }
 
 export async function stage({ cwd, paths }: Cwd & { paths: string[] }, api: AddonHostApi) {

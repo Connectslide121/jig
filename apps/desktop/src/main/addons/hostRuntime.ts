@@ -66,7 +66,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
               maxBuffer: 64 * 1024 * 1024,
               windowsHide: true,
               env: { ...process.env, ...options.env },
-              encoding: "utf8",
+              encoding: "buffer",
             },
             (error, stdout, stderr) => {
               const code =
@@ -79,8 +79,10 @@ export function createHostRuntime(send: (message: FromHost) => void) {
                     : 0;
               resolve({
                 code,
-                stdout: String(stdout ?? ""),
-                stderr: String(stderr ?? "") || (error && code === 127 ? `${command} not found` : ""),
+                stdout: Buffer.from(stdout ?? "").toString(options.encoding === "base64" ? "base64" : "utf8"),
+                stderr:
+                  Buffer.from(stderr ?? "").toString("utf8") ||
+                  (error && code === 127 ? `${command} not found` : ""),
               });
             },
           );
@@ -90,9 +92,9 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         });
       },
       fs: {
-        readFile: async (path) => {
+        readFile: async (path, encoding = "utf8") => {
           need("fs:read");
-          return readFile(path, "utf8");
+          return readFile(path, encoding === "base64" ? "base64" : "utf8");
         },
         writeFile: async (path, content) => {
           need("fs:write");

@@ -4,6 +4,7 @@ import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, star
 import { registerAppHandlers } from "./app";
 import { startBuilder, stopBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
+import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
@@ -51,6 +52,7 @@ async function start() {
   startSessions();
   startTerminals();
   registerScriptHandlers();
+  registerFileHandlers();
   registerSetupHandlers();
   await startThemes(addonThemes);
   await startAddons();

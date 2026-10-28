@@ -12,6 +12,7 @@ import {
   Empty,
   IconButton,
   Input,
+  isImagePath,
   SectionTitle,
   Spinner,
   Textarea,
@@ -34,6 +35,7 @@ import {
   GitBranch,
   GitCompare,
   History,
+  Image as ImageIcon,
   Minus,
   MoreHorizontal,
   Plus,
@@ -42,6 +44,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DiffView } from "./DiffView";
+import { ImageDiff } from "./ImageDiff";
+
 import {
   type Branch,
   type Commit,
@@ -51,6 +55,10 @@ import {
   relativeTime,
   type Status,
 } from "./lib/parse";
+
+/** A repository-relative path made absolute (git always prints forward slashes). */
+const joinPath = (root: string, relative: string) =>
+  `${root.replace(/[\\/]+$/, "")}${root.includes("\\") ? "\\" : "/"}${relative.replaceAll("/", root.includes("\\") ? "\\" : "/")}`;
 
 // ------------------------------------------------------------------------------------------------
 // helpers
@@ -972,8 +980,9 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
     staged: Boolean(params.staged),
     untracked: Boolean(params.untracked),
   };
+  const isImage = isImagePath(args.path);
   const { data, error, reload } = useHostCall<{ patch: string; truncated: boolean }>("diff", args, {
-    skip: !project,
+    skip: !project || isImage,
   });
   useLiveRefresh(project && !args.commit ? project.path : undefined, reload);
   const [mode, setMode] = useState<"split" | "inline">("split");
@@ -999,25 +1008,44 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
         <Badge>{where}</Badge>
         {data?.truncated && <Badge tone="warning">large file: 3 lines of context</Badge>}
         <div className="flex-1" />
-        <div className="flex rounded-md border border-line p-0.5">
-          {(["split", "inline"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => choose(m)}
-              data-testid={`git-diff-mode-${m}`}
-              className={cn(
-                "rounded-sm px-2 py-0.5 text-xs",
-                mode === m ? "bg-active text-fg" : "text-muted hover:text-fg",
-              )}
-            >
-              {m === "split" ? "Side by side" : "Inline"}
-            </button>
-          ))}
-        </div>
+        {!isImage && (
+          <div className="flex rounded-md border border-line p-0.5">
+            {(["split", "inline"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => choose(m)}
+                data-testid={`git-diff-mode-${m}`}
+                className={cn(
+                  "rounded-sm px-2 py-0.5 text-xs",
+                  mode === m ? "bg-active text-fg" : "text-muted hover:text-fg",
+                )}
+              >
+                {m === "split" ? "Side by side" : "Inline"}
+              </button>
+            ))}
+          </div>
+        )}
+        {isImage && project && (
+          <IconButton
+            icon={ImageIcon}
+            size="sm"
+            label="Open the image"
+            onClick={() => ctx.openImage(joinPath(project.path, args.path))}
+          />
+        )}
         {!args.commit && <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={reload} />}
       </div>
-      {error ? (
+      {isImage ? (
+        <ImageDiff
+          ctx={ctx}
+          cwd={project.path}
+          path={args.path}
+          commit={args.commit}
+          staged={args.staged}
+          untracked={args.untracked}
+        />
+      ) : error ? (
         <div className="p-4 text-sm text-danger">{error}</div>
       ) : !data ? (
         <Spinner className="m-4" />
