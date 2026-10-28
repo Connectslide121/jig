@@ -5,7 +5,7 @@
 export interface BuildRequest {
   goal: string;
   addonId?: string;
-  origin?: string;
+  origin?: "tools" | "addon" | "chat" | "suggestion" | "settings";
 }
 
 let handler: ((request: BuildRequest) => void) | undefined;

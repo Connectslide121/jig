@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { useAddonsSync } from "../addons/loader";
+import { useBuildsSync } from "../features/builder";
+import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { useSessionsSync } from "../features/sessions";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
@@ -55,6 +57,7 @@ export function Workbench() {
   useSessionsSync();
   useTerminalsSync();
   useAddonsSync();
+  useBuildsSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
   return (
@@ -76,6 +79,7 @@ export function Workbench() {
       <MenuHost />
       <ToolsMenuHost />
       <ErrorBoundary label="Dialogs">
+        <BuildDialogHost />
         <DialogHost />
       </ErrorBoundary>
       <ErrorBoundary label="Notifications">

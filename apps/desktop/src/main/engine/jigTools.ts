@@ -48,6 +48,21 @@ export function jigMcpServer(meta: SessionMeta) {
   });
 }
 
+/** The jig tools as plain functions (for the fake engine's scripted sessions). */
+export function jigToolHandlers(
+  meta: SessionMeta,
+): Record<string, (args: Record<string, unknown>) => Promise<string>> {
+  return {
+    jig_list_addons: () => handlers.listAddons(),
+    jig_request_build: (args) =>
+      handlers.requestBuild({
+        goal: String(args.goal ?? ""),
+        addonId: args.addonId as string | undefined,
+        sessionId: meta.id,
+      }),
+  };
+}
+
 /** Context appended to Claude Code's own system prompt (never replacing it). */
 export function jigContext(meta: SessionMeta, projectName: string | undefined): string {
   return [

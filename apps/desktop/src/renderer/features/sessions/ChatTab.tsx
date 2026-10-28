@@ -63,6 +63,7 @@ export function ChatTab({ params, active }: TabProps) {
           {meta.title}
         </button>
         {project && <span className="truncate text-xs text-muted">{project.name}</span>}
+        {meta.kind === "builder" && <Badge tone="accent">Builder</Badge>}
         <span className="text-xs text-hint" data-testid="chat-status">
           {STATUS_LABEL[meta.status]}
         </span>

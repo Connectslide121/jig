@@ -1,6 +1,7 @@
-import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight } from "lucide-react";
+import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight, Sparkles } from "lucide-react";
 import { useCallback, useRef } from "react";
 import type { SideRegion } from "../../shared/layout";
+import { requestBuild } from "../addons/buildRequests";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../ui";
 import { useRegistry } from "./registry";
 import { useWorkbench, workbench } from "./store";
@@ -13,7 +14,20 @@ const regionNames: Record<SideRegion, string> = {
 const regionIcons = { left: PanelLeft, right: PanelRight, bottom: PanelBottom };
 
 export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
+  const owner = useRegistry.getState().views[viewId]?.owner;
+  const addonId = owner && owner !== "core" ? owner : undefined;
   return [
+    ...(addonId
+      ? [
+          {
+            label: "Change this with AI…",
+            icon: Sparkles,
+            testId: "change-with-ai",
+            onSelect: () => requestBuild({ goal: "", addonId, origin: "addon" }),
+          },
+          { separator: true } as const,
+        ]
+      : []),
     ...(["left", "right", "bottom"] as const)
       .filter((r) => r !== region)
       .map((r) => ({

@@ -110,6 +110,11 @@ export function installAddonProtocol(): void {
   });
 }
 
+/** Where add-on host code resolves `@jig/sdk` and friends from. */
+export function addonNodePaths(): string[] {
+  return [join(here, "..", "..", "node_modules"), join(here, "..", "..", "..", "..", "node_modules")];
+}
+
 export async function startAddons(): Promise<void> {
   const tokens = [
     join(here, "tokens.css"),
@@ -124,7 +129,7 @@ export async function startAddons(): Promise<void> {
     cacheDir: paths.cache(),
     dataDir: paths.addonData(),
     stateFile: paths.addonsState(),
-    nodePaths: [join(here, "..", "..", "node_modules"), join(here, "..", "..", "..", "..", "node_modules")],
+    nodePaths: addonNodePaths(),
     hostFactory: utilityHost,
     rpc: (addonId) => async (op, args) => {
       if (op === "notify") {

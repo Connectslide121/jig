@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
+import { runFakeBuilder } from "./fakeBuilder";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
 /**
@@ -76,7 +77,9 @@ export class FakeEngine implements Engine {
           });
         }
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
-        if (lower.includes("run") || lower.includes("permission")) {
+        if (options.toolHandlers?.catalog) {
+          await runFakeBuilder(text, options.toolHandlers, onEvent);
+        } else if (lower.includes("run") || lower.includes("permission")) {
           const toolId = `tool-${randomUUID()}`;
           const input = { command: "npm test", description: "Run the tests" };
           onEvent({ type: "tool_use", id: toolId, name: "Bash", input });
@@ -144,13 +147,12 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, answer ? `Great, **${answer}** it is.` : "No problem.", signal);
         } else if (lower.includes("build")) {
           const toolId = `tool-${randomUUID()}`;
-          onEvent({
-            type: "tool_use",
-            id: toolId,
-            name: "mcp__jig__jig_request_build",
-            input: { goal: text },
-          });
-          onEvent({ type: "tool_result", toolUseId: toolId, output: "Build requested.", isError: false });
+          const goal = text.replace(/^(please\s+)?build( me)?\s*/i, "") || text;
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__jig_request_build", input: { goal } });
+          const output = options.toolHandlers?.jig_request_build
+            ? await options.toolHandlers.jig_request_build({ goal })
+            : "Build requested.";
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: false });
           await stream(`${msg}:text:0`, "I've asked Jig's builder to make that.", signal);
         } else if (lower.includes("slow")) {
           await stream(`${msg}:text:0`, `${"This is a long answer that keeps going. ".repeat(200)}`, signal);

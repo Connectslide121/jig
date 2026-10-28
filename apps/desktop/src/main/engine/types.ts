@@ -20,6 +20,8 @@ export interface StartOptions {
   claudePath: string;
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
+  /** The same tools as plain functions, for the fake engine's scripted sessions. */
+  toolHandlers?: Record<string, (args: Record<string, unknown>) => Promise<string>>;
   /** Asks the user; resolves with their decision. */
   askPermission: (request: PermissionRequest, signal: AbortSignal) => Promise<PermissionDecision>;
 }

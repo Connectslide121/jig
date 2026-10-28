@@ -1,6 +1,7 @@
-import { FolderPlus, Settings, Wrench, X } from "lucide-react";
+import { FolderPlus, Settings, Sparkles, Wrench, X } from "lucide-react";
 import { useState } from "react";
 import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
+import { requestBuild } from "../addons/buildRequests";
 import { Button, cn, contextMenu, ErrorBoundary } from "../ui";
 import { addProject } from "./actions";
 import { useRegistry } from "./registry";
@@ -49,6 +50,16 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
       }}
       onClick={() => workbench.activateTab(tab.id)}
       onContextMenu={contextMenu([
+        ...(def?.owner && def.owner !== "core"
+          ? [
+              {
+                label: "Change this with AI…",
+                icon: Sparkles,
+                onSelect: () => requestBuild({ goal: "", addonId: def.owner, origin: "addon" }),
+              },
+              { separator: true } as const,
+            ]
+          : []),
         { label: "Close", icon: X, onSelect: () => workbench.closeTab(tab.id) },
         { label: "Close others", onSelect: () => updateLayout((l) => closeOtherTabs(l, tab.id)) },
         {

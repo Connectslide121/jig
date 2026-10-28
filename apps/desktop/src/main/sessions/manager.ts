@@ -37,6 +37,11 @@ export interface SessionManagerOptions {
   engineSettings: () => { claudePath: string; allowApiKey: boolean; env: Record<string, string | undefined> };
   appendSystemPrompt: (meta: SessionMeta) => string;
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
+  toolHandlers?: (
+    meta: SessionMeta,
+  ) => Record<string, (args: Record<string, unknown>) => Promise<string>> | undefined;
+  /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
+  onTurnEnd?: (meta: SessionMeta) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
   /** Activity for the learning log (phase 9): prompts and tool calls. */
   onActivity?: (event: {
@@ -141,6 +146,8 @@ export class SessionManager {
     title?: string;
     model: string;
     permissionMode: PermissionMode;
+    kind?: SessionMeta["kind"];
+    buildId?: string;
   }): Promise<SessionMeta> {
     await this.load();
     const at = new Date().toISOString();
@@ -158,6 +165,8 @@ export class SessionManager {
       costUsd: 0,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       turns: 0,
+      kind: input.kind,
+      buildId: input.buildId,
     };
     const live: Live = { state: { meta, items: [] }, queue: [], permissions: new Map(), loaded: true };
     this.sessions.set(meta.id, live);
@@ -185,6 +194,7 @@ export class SessionManager {
         env: settings.env,
         claudePath: settings.claudePath,
         mcpServers: this.options.mcpServers?.(meta),
+        toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {
             live.permissions.set(request.requestId, { resolve, request });
@@ -222,6 +232,7 @@ export class SessionManager {
         text: typeof event.input.command === "string" ? event.input.command : JSON.stringify(event.input),
       });
     this.emit(live, reduceEvent(live.state, event));
+    if (event.type === "result" || event.type === "exit") this.options.onTurnEnd?.(live.state.meta);
     if (event.type === "result") {
       this.scheduleSave(live, true);
       const next = live.queue.shift();
@@ -267,6 +278,13 @@ export class SessionManager {
       return;
     }
     this.startTurn(live, trimmed);
+  }
+
+  /** Adds an item to a transcript (e.g. a build card in the chat that asked for it). */
+  async addItem(id: string, item: ChatItem): Promise<void> {
+    const live = await this.live(id);
+    live.state.items.push(item);
+    this.emit(live, [{ op: "upsert", item }]);
   }
 
   async removeQueued(id: string, queuedId: string): Promise<void> {

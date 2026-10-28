@@ -1,4 +1,5 @@
 import { registerCoreActions } from "../workbench/actions";
+import { registerBuilder } from "./builder";
 import { registerProjects } from "./projects";
 import { registerSessions } from "./sessions";
 import { registerSettings } from "./settings";
@@ -11,4 +12,5 @@ export function registerFeatures(): void {
   registerSessions();
   registerSettings();
   registerTerminals();
+  registerBuilder();
 }

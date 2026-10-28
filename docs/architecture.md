@@ -257,10 +257,12 @@ disable, and process isolation for host code — see `docs/decisions.md` (D-007)
 ## 9. The builder — "build something"
 
 Entry points (all menus, no commands): **Tools → Build something…**, `⋯ → Change this with AI` on any
-add-on contribution, **Build it** on a suggestion, and the `jig_request_build` tool from any chat.
+add-on contribution, **Fix with AI** on a crashed one, **Build it** on a suggestion, and the
+`jig_request_build` tool from any chat. Reference: `docs/reference/builder.md`; code: `main/builder/`.
 
-A **build job** runs a dedicated Claude Code session with Jig's builder instructions and a builder
-MCP server. It follows the **levels** strictly, lightest first:
+A **build job** runs a dedicated Claude Code session (a normal session of kind `builder`, in *Accept
+edits* mode, working in the job's worktree) with Jig's builder instructions appended to Claude Code's
+own system prompt and the `jig-builder` MCP server. It follows the **levels** strictly, lightest first:
 
 1. **Layout / settings** — staged changes to `layout.json` / `config.json`.
 2. **Add-on** — first it **reads the catalog of existing add-ons** (manifests + READMEs) and decides

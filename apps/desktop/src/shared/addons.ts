@@ -10,6 +10,8 @@ export interface AddonInfo {
   source: "builtin" | "user";
   /** A user add-on that replaces the built-in one with the same id. */
   overridesBuiltin?: boolean;
+  /** Loaded from a build's worktree while you decide (Accept / Discard). */
+  preview?: { buildId: string };
   dir: string;
   enabled: boolean;
   manifest?: AddonManifest;

@@ -8,6 +8,7 @@
  * docs/reference/ipc.md.
  */
 import type { AddonCommit, AddonInfo } from "./addons";
+import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
 import type { Layout } from "./layout";
@@ -117,6 +118,13 @@ export interface HostMethods {
   "addons.reload": { args: { id?: string }; result: void };
   "addons.history": { args: { id: string }; result: AddonCommit[] };
   "addons.rollback": { args: { id: string; commit: string }; result: void };
+  "builds.list": { args: void; result: BuildJob[] };
+  "builds.start": { args: BuildRequestInput; result: BuildJob };
+  /** Applies a build in preview: layout/settings, or merges the add-on into ~/.jig/addons. */
+  "builds.accept": { args: { id: string }; result: BuildJob };
+  "builds.discard": { args: { id: string }; result: BuildJob };
+  /** The patch of one file a build changed. */
+  "builds.diff": { args: { id: string; path: string }; result: string };
 }
 
 /** Event topic → payload type. */
@@ -133,6 +141,7 @@ export interface HostEvents {
   "terminals.changed": TerminalInfo[];
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];
+  "builds.changed": BuildJob[];
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** A notification from the host, shown as a toast. */

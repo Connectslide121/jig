@@ -17,6 +17,8 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
+| `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
+| `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |

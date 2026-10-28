@@ -3,6 +3,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
+import { BuildCard } from "../builder/BuildCard";
 import { PermissionCard } from "./PermissionCard";
 import { ToolCard } from "./ToolCard";
 
@@ -110,6 +111,8 @@ const Item = memo(function Item({
           {item.costUsd !== undefined && item.costUsd > 0 && <span>· ≈ ${item.costUsd.toFixed(3)}</span>}
         </div>
       );
+    case "build":
+      return <BuildCard buildId={item.buildId} />;
     case "notice": {
       const Icon = item.tone === "danger" ? CircleAlert : item.tone === "warning" ? TriangleAlert : Info;
       return (

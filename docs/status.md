@@ -76,6 +76,18 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
     Pipelines; run on a branch, open in the browser, notifications when your runs finish.
   - **Scripts** (right sidebar): every script of every project; Tools → Run a script… (`Ctrl+Shift+R`).
 
+- **Phase 8 (done): builder, levels 1 and 2.**
+  - Tools → **Build something…** (`Ctrl+Shift+B`), **Change this with AI…** in an add-on view's `⋯`
+    menu or tab menu, **Fix with AI** on a crashed add-on, or ask in any chat ("make me a …").
+  - The builder (a Claude Code session you can open) picks the lightest level: a layout or settings
+    change, else an add-on — changing an existing one when it fits — validated (manifest, bundles,
+    exports, design tokens, README; up to 3 fix rounds).
+  - You review in the build tab: layout/settings changes, or the add-on running as a "(preview)" with
+    its files, diffs and permissions. **Accept** applies it (add-ons: a commit in `~/.jig/addons`,
+    roll back from Settings → Add-ons); **Discard** leaves nothing behind. Builds view in the bottom panel.
+  - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
+    "compact", "a pomodoro timer").
+
 ## How to try it
 
 ```bash
@@ -112,6 +124,10 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **A real build with Claude Code**: Tools → Build something… → e.g. "a status bar button that runs
+  npm test in the active project". Check that the builder reads the catalog, prefers changing an
+  existing add-on when you name one, passes validation, that the preview works, and Accept/Discard.
+  Open the Builder chat to see what it did.
 - **Pipelines with your Azure DevOps** (not testable here): Settings → Pipelines → Check Azure CLI,
   enter the organisation, Load from Azure DevOps, pick projects; check the list, Run…, the browser
   links, and the notification when a run finishes. Needs `az login` and

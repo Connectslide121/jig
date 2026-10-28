@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu } from "electron";
-import { addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
+import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAppHandlers } from "./app";
+import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
@@ -50,6 +51,7 @@ async function start() {
   await startThemes(addonThemes);
   await startAddons();
   onAddonsChange(() => themeService().refresh());
+  await startBuilder(addonNodePaths());
   await createMainWindow();
 
   app.on("activate", () => {

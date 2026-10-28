@@ -1,15 +1,33 @@
 import { app } from "electron";
-import type { PermissionMode } from "../../shared/engine";
+import type { PermissionMode, SessionMeta } from "../../shared/engine";
 import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
-import { jigContext, jigMcpServer } from "../engine/jigTools";
+import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { paths } from "../state/paths";
 import { SessionManager } from "./manager";
 
 let manager: SessionManager | undefined;
+
+/**
+ * Sessions of other kinds (the builder's) get their own instructions and tools. The builder module
+ * registers here, so sessions don't depend on it.
+ */
+export interface SessionKindHooks {
+  appendSystemPrompt: (meta: SessionMeta) => string;
+  mcpServers: (meta: SessionMeta) => Record<string, unknown> | undefined;
+  toolHandlers: (
+    meta: SessionMeta,
+  ) => Record<string, (args: Record<string, unknown>) => Promise<string>> | undefined;
+  onTurnEnd?: (meta: SessionMeta) => void;
+  onWorking?: (meta: SessionMeta) => void;
+}
+const kindHooks = new Map<string, SessionKindHooks>();
+export function registerSessionKind(kind: NonNullable<SessionMeta["kind"]>, hooks: SessionKindHooks): void {
+  kindHooks.set(kind, hooks);
+}
 
 export function sessionManager(): SessionManager {
   if (!manager) throw new Error("Sessions not started");
@@ -39,9 +57,25 @@ export function startSessions(): void {
         env: sessionEnv(process.env, engine.allowApiKey),
       };
     },
-    appendSystemPrompt: (meta) => jigContext(meta, projectNames.get(meta.projectId)),
-    mcpServers: (meta) => (getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined),
-    onUpdate: (sessionId, updates) => emit("sessions.update", { sessionId, updates }),
+    appendSystemPrompt: (meta) =>
+      kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
+      jigContext(meta, projectNames.get(meta.projectId)),
+    mcpServers: (meta) => {
+      const hooks = kindHooks.get(meta.kind ?? "");
+      if (hooks) return hooks.mcpServers(meta);
+      return getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
+    },
+    toolHandlers: (meta) => {
+      const hooks = kindHooks.get(meta.kind ?? "");
+      return hooks ? hooks.toolHandlers(meta) : jigToolHandlers(meta);
+    },
+    onTurnEnd: (meta) => kindHooks.get(meta.kind ?? "")?.onTurnEnd?.(meta),
+    onUpdate: (sessionId, updates) => {
+      emit("sessions.update", { sessionId, updates });
+      for (const u of updates)
+        if (u.op === "meta" && u.meta.kind && u.meta.status === "working")
+          kindHooks.get(u.meta.kind)?.onWorking?.(u.meta);
+    },
     onActivity: (event) =>
       publishActivity(
         event.kind === "prompt"

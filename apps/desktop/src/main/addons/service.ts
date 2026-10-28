@@ -8,7 +8,7 @@ import { JigError } from "../../shared/ipc";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
 import { bundleHost, bundleUi } from "./bundle";
-import { type AddonRecord, scanAddons } from "./catalog";
+import { type AddonRecord, readAddon, scanAddons } from "./catalog";
 import { addonCss } from "./css";
 import { AddonHostProcess, type HostChannelFactory, type RpcHandler } from "./hostProcess";
 import { commitAll, ensureRepo, history, rollback } from "./repo";
@@ -45,6 +45,8 @@ export class AddonService {
   private disabled = new Set<string>();
   private watchers: FSWatcher[] = [];
   private hasRepo = false;
+  /** Add-ons loaded from a build worktree instead of their live folder (id → preview). */
+  private previews = new Map<string, { dir: string; buildId: string }>();
 
   constructor(private readonly options: AddonServiceOptions) {}
 
@@ -68,8 +70,36 @@ export class AddonService {
     return this.loaded.get(id)?.ui;
   }
 
-  async reloadAll(): Promise<void> {
+  get repoReady(): boolean {
+    return this.hasRepo;
+  }
+
+  private async records(): Promise<AddonRecord[]> {
     const records = await scanAddons(this.options.builtinDir, this.options.userDir);
+    for (const [id, preview] of this.previews) {
+      const record = await readAddon(preview.dir, "user");
+      if (!record) continue;
+      const i = records.findIndex((r) => r.id === id);
+      const marked = { ...record, id, preview: { buildId: preview.buildId } };
+      if (i >= 0)
+        records[i] = {
+          ...marked,
+          overridesBuiltin: records[i]!.source === "builtin" || records[i]!.overridesBuiltin,
+        };
+      else records.push(marked);
+    }
+    return records;
+  }
+
+  /** Shows an add-on from a build worktree (or stops, with `dir` undefined). */
+  async setPreview(id: string, preview: { dir: string; buildId: string } | undefined): Promise<void> {
+    if (preview) this.previews.set(id, preview);
+    else this.previews.delete(id);
+    await this.reload(id);
+  }
+
+  async reloadAll(): Promise<void> {
+    const records = await this.records();
     const ids = new Set(records.map((r) => r.id));
     for (const [id, l] of this.loaded) if (!ids.has(id)) this.unload(l);
     for (const id of [...this.loaded.keys()]) if (!ids.has(id)) this.loaded.delete(id);
@@ -79,7 +109,7 @@ export class AddonService {
 
   /** Rebuilds one add-on (after a file change). */
   async reload(id: string): Promise<void> {
-    const records = await scanAddons(this.options.builtinDir, this.options.userDir);
+    const records = await this.records();
     const record = records.find((r) => r.id === id);
     const existing = this.loaded.get(id);
     if (!record) {
@@ -108,6 +138,7 @@ export class AddonService {
       version: record.manifest?.version ?? "",
       source: record.source,
       overridesBuiltin: record.overridesBuiltin,
+      preview: record.preview,
       dir: record.dir,
       enabled,
       manifest: record.manifest,

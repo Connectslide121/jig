@@ -50,6 +50,9 @@ export interface SessionMeta {
   /** Set when Claude Code isn't signed in; the UI shows the sign-in guidance. */
   needsLogin?: boolean;
   archived?: boolean;
+  /** `builder` sessions run a build job (hidden from the Sessions list, opened from the build). */
+  kind?: "chat" | "builder";
+  buildId?: string;
 }
 
 export interface PermissionRequest {
@@ -99,7 +102,9 @@ export type ChatItem =
       usage?: Usage;
       error?: string;
     }
-  | { kind: "notice"; id: string; at: string; text: string; tone: "info" | "warning" | "danger" };
+  | { kind: "notice"; id: string; at: string; text: string; tone: "info" | "warning" | "danger" }
+  /** A build this chat asked for (jig_request_build); the card follows the build's status. */
+  | { kind: "build"; id: string; at: string; buildId: string };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =

@@ -13,6 +13,7 @@ export interface AddonRecord {
   dir: string;
   source: "builtin" | "user";
   overridesBuiltin?: boolean;
+  preview?: { buildId: string };
   manifest?: AddonManifest;
   errors: string[];
   uiEntry?: string;

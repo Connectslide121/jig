@@ -62,6 +62,10 @@ exceptions return `internal` (and are logged).
 | `addons.call` | `{ id, method, args? }` | `unknown` | calls a `host.ts` export; `disabled`, `no_host`, `addon_error` |
 | `addons.storageGet` / `addons.storageSet` | `{ id, key }` / `{ id, key, value }` | `unknown` / — | per-add-on JSON |
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
+| `builds.list` | — | `BuildJob[]` | newest first (`docs/reference/builder.md`) |
+| `builds.start` | `{ goal, origin, targetAddonId?, originSessionId? }` | `BuildJob` | starts a builder session |
+| `builds.accept` / `builds.discard` | `{ id }` | `BuildJob` | `not_ready`, `accept_failed` |
+| `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 
 ## Events
@@ -79,3 +83,4 @@ exceptions return `internal` (and are logged).
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
+| `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |

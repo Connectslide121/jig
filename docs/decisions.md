@@ -313,3 +313,25 @@ shows and focuses it (like VS Code's View menu). Hiding is done from the view's 
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 Notifying about every run in every project would be noise; runs started from Jig are checked every
 minute until they finish. The view itself refreshes every 30 s while visible.
+
+### D-052 — The builder is a normal Claude Code session you can open
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+A build runs as a Claude Code session of kind `builder` (hidden from the Sessions list, opened with
+"Builder chat") in *Accept edits* mode inside the job's worktree, so file edits there don't prompt but
+anything else (commands) asks you in that chat. You can follow it, answer its questions and nudge it.
+
+### D-053 — Layout changes are staged as operations and applied to the current layout
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+A level-1 build stores operations ("move Terminals to the right"), not a snapshot, and applies them on
+Accept to the layout as it is then — so rearranging things while the build waits doesn't get undone.
+
+### D-054 — Three validation rounds, then the build fails
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Problems found by `finish` go back to the builder up to three times; after that the job fails (you can
+still open its chat). Keeps a stuck builder from looping on your quota.
+
+### D-055 — Level-2 previews are the real add-on, loaded from the worktree
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+While a build waits, its add-on is loaded from the worktree in place of the live one (views say
+"(preview)"), so you try the real thing before accepting. Accept merges the branch into
+`~/.jig/addons` (history, rollback); Discard deletes worktree and branch.

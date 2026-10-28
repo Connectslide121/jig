@@ -99,7 +99,7 @@ async function mount(addon: AddonInfo): Promise<void> {
     if (Component)
       registerView({
         id: addonViewId(owner, v.id),
-        title: v.title,
+        title: addon.preview ? `${v.title} (preview)` : v.title,
         icon: iconByName(v.icon ?? manifest.icon) ?? Puzzle,
         defaultRegion: v.region,
         component: Component,
