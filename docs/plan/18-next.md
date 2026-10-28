@@ -154,6 +154,9 @@ the Suggestions page; never as nagging.
 - **Classify what's pasted into chats,** without AI, when you send: HTTP responses and requests, JSON
   payloads, headers, stack traces, logs, HAR, SQL results, error dialogs (screenshots).
   - Only the category, size and a short redacted sample are recorded, never the whole paste.
+  - Today the `prompt` event logs the whole message, pastes included, and a pasted header can hold a
+    token. With 2f, large pasted blocks are replaced by their category in the prompt log, and
+    secret-looking values (bearer tokens, keys, cookies) are masked in everything recorded.
   - It's matched against the "never record" list.
 - **Debugging outside Jig, as evidence:** the browser's network tab, Postman, log portals. It comes
   from chat mentions (4a) and from the pastes.
