@@ -36,5 +36,6 @@ export {
   VirtualList,
 } from "../ui";
 export { Pane, usePaneSize, useSplitRatio } from "../workbench/Pane";
-export { iconByName, useActiveProject, useAddon, useProjectList, useRunningScripts } from "./context";
+export { useActiveProject, useAddon, useProjectList, useRunningScripts } from "./context";
 export { useAddonEvent, useHostCall } from "./hooks";
+export { Icon, iconByName } from "./icons";

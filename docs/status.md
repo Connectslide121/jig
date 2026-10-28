@@ -145,6 +145,9 @@ _Last updated: 2026-10-28 (phases 0–16: every phase of the plan is done; the l
     - Ctrl+F finds in the chat.
   - **With the fake engine, try:** "/usage", "make a todo list", "make a plan", "use a subagent",
     "start a background job", "edit README.md", "! ls".
+- **Icons for add-ons:** add-ons use Jig's own icon set, Lucide:
+  - names in `addon.json`, imports from `lucide-react`, and `<Icon name>` for icons chosen at runtime;
+  - Settings → Add-ons warns about icon names Lucide doesn't have.
 - **Routines** (Tools → Routines): your Claude Code routines, the prompts Claude Code runs on a
   schedule on the web.
   - The list shows each one's schedule in words, its last run and an on/off switch.

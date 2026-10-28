@@ -3,7 +3,7 @@ import { FolderOpen, History, Puzzle, RefreshCw, RotateCcw, Sparkles, TriangleAl
 import { useEffect, useState } from "react";
 import type { AddonCommit, AddonInfo } from "../../../shared/addons";
 import { requestBuild } from "../../addons/buildRequests";
-import { iconByName } from "../../addons/context";
+import { iconByName, unknownIcons } from "../../addons/icons";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage } from "../../lib/host";
 import { useConfig } from "../../stores/config";
@@ -73,6 +73,13 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
   const [history, setHistory] = useState(false);
   const Icon = iconByName(addon.manifest?.icon) ?? Puzzle;
   const errors = [...addon.errors, ...(loadError ? [loadError] : [])];
+  const warnings = [
+    ...unknownIcons(addon.manifest).map(
+      (name) =>
+        `addon.json: icon "${name}" isn't a Lucide icon (https://lucide.dev/icons); it shows as a puzzle piece`,
+    ),
+    ...(addon.warnings ?? []),
+  ];
   return (
     <div className="flex flex-col gap-2 px-4 py-3" data-testid={`addon-${addon.id}`}>
       <div className="flex items-center gap-3">
@@ -130,13 +137,13 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
           {errors.join("\n")}
         </div>
       )}
-      {addon.warnings?.length ? (
-        <details className="ml-8 text-xs text-warning">
+      {warnings.length ? (
+        <details className="ml-8 text-xs text-warning" data-testid="addon-warnings">
           <summary className="flex cursor-default items-center gap-1">
-            <TriangleAlert className="size-3.5" /> {addon.warnings.length} design-token warning(s)
+            <TriangleAlert className="size-3.5" /> {warnings.length} warning(s)
           </summary>
           <div className="mt-1 font-mono whitespace-pre-wrap text-muted selectable">
-            {addon.warnings.join("\n")}
+            {warnings.join("\n")}
           </div>
         </details>
       ) : null}

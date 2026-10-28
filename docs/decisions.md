@@ -673,3 +673,13 @@ Rejected:
 - Embedding claude.ai in a web view: it needs a claude.ai login inside Jig.
 - Calling the APIs with Claude Code's stored token: it reads credentials.
 
+### D-093 — One icon set: Lucide, for Jig and add-ons
+**Decided by:** Jon (add-ons should use Jig's icons); details by Claude, on my own · **Date:** 2026-10-28
+Jig's UI uses Lucide (`lucide-react`), and add-ons share the same copy, so their icons look like Jig's:
+- **Manifests** name icons in Lucide's kebab case. An unknown name shows a puzzle piece, and Settings →
+  Add-ons warns about it. The check runs in the UI because Lucide is bundled there, not in the main
+  process.
+- **`@jig/sdk/ui`** adds `Icon` and `iconByName` for names chosen at runtime.
+
+No second icon library, so the look stays consistent and add-ons stay small.
+

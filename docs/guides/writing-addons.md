@@ -63,6 +63,9 @@ Jig reloads just this add-on.
 - **Tokens only**: colours, spacing, radius and type through the token utilities. No `#hex`, `rgb()`,
   `text-red-500` or `w-[13px]` (design-token warnings; the builder rejects them).
 - **Reuse `@jig/sdk/ui`** components before writing your own.
+- **Icons are Lucide**, like Jig's: kebab-case names in `addon.json` (`"git-branch"`), imports from
+  `lucide-react` in `ui.tsx`, and `<Icon name="…" />` from `@jig/sdk/ui` for names chosen at runtime.
+  Browse them at https://lucide.dev/icons (`docs/reference/addon-api.md` → Icons).
 - **Menus, not commands**: put features in views, actions, menus and buttons.
 - **No credentials**: use the user's own CLIs (`git`, `gh`, `az`) through `api.exec`; never store tokens.
 - **README.md**: say what the add-on does and why; the builder reads it before changing anything.

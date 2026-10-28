@@ -48,6 +48,19 @@ design-token warnings (the builder must fix them; the add-on still loads).
   error boundary: a crash shows "Turn off" / "Fix with AI" in its place.
 - Handlers (`actions[].run`, `menus[].run`) are exported functions `(ctx, target?) => void | Promise`.
 
+## Icons
+
+Jig's icons are [Lucide](https://lucide.dev/icons) (`lucide-react`, the same copy Jig uses), and so
+are add-ons':
+- **In `addon.json`:** every `icon` is a Lucide name in kebab case, e.g. `"git-branch"`, `"rocket"`,
+  `"calendar-clock"`. A name Lucide doesn't have shows a puzzle piece, and Settings → Add-ons lists it
+  as a warning.
+- **In `ui.tsx`:** import icons directly, `import { Rocket } from "lucide-react"`. They follow the
+  theme through `currentColor`; size them with `size-4` and friends. Jig's `Button` and `IconButton`
+  take one as `icon={Rocket}`.
+- **An icon chosen at runtime** (from settings or data): `import { Icon } from "@jig/sdk/ui"` and
+  `<Icon name="rocket" className="size-4" />`, or `iconByName(name)` for the component itself.
+
 `AddonUiContext`:
 
 | Member | What |

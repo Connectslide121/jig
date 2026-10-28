@@ -6,7 +6,6 @@ import {
   type MenuItemInput,
   type RunningScript,
 } from "@jig/sdk";
-import { icons } from "lucide-react";
 import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { useTerminals } from "../features/terminals/store";
@@ -17,12 +16,9 @@ import { useProjects } from "../workbench/projects";
 import { workbench } from "../workbench/store";
 import { notify } from "../workbench/toasts";
 
-/** lucide icon by kebab-case name ("git-branch" → GitBranch). */
-export function iconByName(name: string | undefined) {
-  if (!name) return undefined;
-  const pascal = name.replace(/(^|-)(\w)/g, (_m, _d, c: string) => c.toUpperCase());
-  return (icons as Record<string, (typeof icons)[keyof typeof icons]>)[pascal];
-}
+import { iconByName } from "./icons";
+
+export { iconByName };
 
 /** Add-on events from host code (`api.emit`). */
 const eventListeners = new Map<string, Set<(topic: string, payload: unknown) => void>>();
