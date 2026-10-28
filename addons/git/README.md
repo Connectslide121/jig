@@ -11,7 +11,16 @@ detail in the main window**. Rebase, graph and blame are out of scope.
   syntax-highlighted with the active theme, unchanged regions collapsed), Compare (commits ahead/behind).
 - **Status bar**: current branch and ahead/behind. **Tools menu**: Show Git, History, Fetch, Pull,
   Push, Switch branch…, Create branch….
-- Live refresh: watches `.git/HEAD`, refs and the index.
+- Live refresh (`lib/watch.ts`, D-097):
+  - The git folder (HEAD, the index, refs) is watched for every repository on view. On Windows and
+    macOS the working folder is watched too: one system handle per repository, not one per folder.
+    `node_modules` is left out.
+  - A change refreshes only the repository that changed, at most once a second, 300 ms after a burst
+    ends. Watches are shared between views and closed when the last view goes.
+  - `git status` runs with `GIT_OPTIONAL_LOCKS=0`, so it never writes the index or triggers itself.
+  - Also on window focus (a workspace at most every 10 s), and as a safety net while Jig is visible:
+    every 60 s where the working folders are watched. Elsewhere (Linux) it runs every 5 s for one
+    repository, and 1 s per repository for a workspace, up to 30 s.
 
 Uses your own `git` (no shell, argument arrays, `core.quotepath=off`, no credential prompts from Jig —
 your credential helper works as usual). Parsers are in `lib/parse.ts` (tested).

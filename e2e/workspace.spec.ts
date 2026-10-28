@@ -66,6 +66,11 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   await expect(view).toContainText("3 repositories · 1 with changes", { timeout: 15000 });
   expect(git(join(ws, "web"), "log", "-1", "--format=%s").trim()).toBe("Update web readme");
 
+  // A file created outside Jig shows up by itself (watcher, or the safety-net check where
+  // folders can't be watched), without touching the window.
+  await writeFile(join(ws, "client-a", "portal", "notes.md"), "notes\n");
+  await expect(view).toContainText("3 repositories · 2 with changes", { timeout: 15000 });
+
   // Clicking a repository focuses it: the status bar shows its branch.
   await view.getByTestId("git-repo-client-a/portal").getByText("client-a/portal").click();
   await expect(page.getByTestId("git-status-branch")).toContainText("client-a/portal: main");

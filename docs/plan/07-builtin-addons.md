@@ -29,6 +29,8 @@ window.** Rebase, graph and blame are out of scope.
       current (commits ahead/behind)
 - [x] Copy hash, open commit on the remote (GitHub/Azure DevOps URL) from the commit's `⋯` menu
 - [x] Live refresh (watch `.git/HEAD`, refs and index; debounced)
+- [x] Live refresh for big workspaces: watch working folders (Windows/macOS), refresh only the
+      repository that changed, rare safety-net polling (D-097)
 
 ### Repos overview (`addons/repos`)
 - [x] All registered projects' repos: branch, dirty count, ahead/behind, last fetch

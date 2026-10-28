@@ -71,6 +71,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     working changes with stage/unstage/discard and commit, branches (click → history, right-click →
     switch/compare/new branch). History, commit detail, diffs (side by side / inline) and compare open
     as tabs in the main window. Branch in the status bar.
+    Updates live: on Windows and macOS within about a second of a file changing (watchers, only the
+    repository that changed is looked at again); on Linux by a check every few seconds.
   - **Repos** (right sidebar): every project's repo with branch, changes, ahead/behind, last fetch;
     fetch/pull/push; "N to push/pull" in the status bar; right-click a project → Open in VS Code /
     Explorer.
@@ -296,6 +298,9 @@ Things the cloud build environment couldn't verify:
   - MCP servers show their real status;
   - the Effort submenu matches your model;
   - `!` commands run in PowerShell on Windows.
+- **Git live refresh on Windows:** in a workspace with many repositories, edit a file in one of them
+  outside Jig; it should show in the Git view within about a second. Task Manager should show no steady
+  `git` processes while nothing changes. (Linux, where the tests run, uses the polling fallback.)
 - **Claude's browser with a real chat:** ask Claude to start your dev server and check a page. Check
   that the view follows, that clicks and typing on the picture reach the page (also on a HiDPI
   screen), that screenshots show in the chat, and that the browser window doesn't keep Jig running

@@ -731,3 +731,24 @@ Chromium, shares the live view and needs nothing installed.
 The model/effort and permission-mode menus moved from the chat header into the bottom row of the
 message box, after the +, attach and "try several ways" buttons and before Send. The text area now
 spans the full width above that row. The header keeps the title, status, context, usage, find and ⋯.
+
+### D-097 — The Git view refreshes the repository that changed, from file watchers
+**Decided by:** Claude, on my own (Jon: as close to real time as possible, without costing much with
+many repositories in a workspace) · **Date:** 2026-10-28
+
+Before, every Git view ran `git status` on every repository every 5 s while Jig was visible, besides
+watching `.git`. With 30 repositories that is 6 `git status` a second, all the time. Now:
+- **What is watched:**
+  - **The working folder** on Windows and macOS. One recursive `fs.watch` uses one system handle
+    there (ReadDirectoryChangesW / FSEvents), whatever the size of the repository. `node_modules` is
+    left out.
+  - **The git folder:** HEAD, the index and refs.
+- **What a change refreshes:** only that repository (`changed {cwd}` → `status` for that one), at
+  most once a second during a burst (a build writing files). Edits show within about 0.3 s.
+- **Polling is only a safety net:**
+  - every 60 s where the working folders are watched;
+  - on Linux, where a recursive watch means one inotify watch per folder, it isn't used. There the
+    check runs every 5 s for one repository, and for a workspace 1 s per repository, up to 30 s.
+
+  Focus still refreshes (a workspace at most every 10 s).
+- **Shared watches:** they are counted per repository and closed when the last view of it goes.

@@ -63,6 +63,7 @@ import {
   relativeTime,
   type Status,
 } from "./lib/parse";
+import { pollInterval } from "./lib/watch";
 
 /** A repository-relative path made absolute (git always prints forward slashes). */
 const joinPath = (root: string, relative: string) =>
@@ -111,22 +112,32 @@ function useProject(projectId: unknown, repo?: unknown): RepoProject | undefined
   return found ? repoView(project, found) : undefined;
 }
 
-/** Refreshes `reload` whenever git state changes in `cwd` (watcher) or the window regains focus. */
-/** How often the Git view checks the working tree (files created or edited outside git). */
-const POLL_MS = 5000;
-
+/**
+ * Keeps a view of `cwd` current: the host watches the repository and says when it changed; the view
+ * also looks again when Jig gets focus, and by itself as a safety net (rarely when the working folder
+ * is watched, every few seconds where it can't be: `pollInterval`).
+ */
 function useLiveRefresh(cwd: string | undefined, reload: () => void) {
   const ctx = useAddon();
   useEffect(() => {
     if (!cwd) return;
-    void ctx.host.call("watchRepo", { cwd }).catch(() => {});
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let gone = false;
+    const start = (tree: boolean) => {
+      if (gone) return;
+      timer = setInterval(() => document.visibilityState === "visible" && reload(), pollInterval(tree, 1));
+    };
+    void ctx.host
+      .call<{ tree: boolean }>("watchRepo", { cwd })
+      .then((r) => start(Boolean(r?.tree)))
+      .catch(() => start(false));
     const onFocus = () => reload();
     window.addEventListener("focus", onFocus);
-    // New and edited files don't touch .git: look again every few seconds while Jig is visible.
-    const timer = setInterval(() => document.visibilityState === "visible" && reload(), POLL_MS);
     return () => {
+      gone = true;
       window.removeEventListener("focus", onFocus);
       clearInterval(timer);
+      void ctx.host.call("unwatchRepo", { cwd }).catch(() => {});
     };
   }, [cwd, ctx, reload]);
   useAddonEvent("changed", (payload) => {
@@ -851,24 +862,50 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
 
 type RepoStatus = { cwd: string; status?: Status; error?: string };
 
-/** Reloads when git state changes in any of `cwds` (watchers) or the window regains focus. */
-function useLiveRefreshAll(cwds: string[], reload: () => void) {
+/**
+ * A workspace's live refresh: a repository that changed is looked at again on its own
+ * (`reloadOne`), so many repositories cost nothing while they don't change. Focus and the safety-net
+ * check reload them all, at most every 10 s on focus.
+ */
+function useLiveRefreshAll(cwds: string[], reloadAll: () => void, reloadOne: (cwd: string) => void) {
   const ctx = useAddon();
   const key = cwds.join("\n");
   // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for `cwds`.
   useEffect(() => {
-    for (const cwd of cwds) void ctx.host.call("watchRepo", { cwd }).catch(() => {});
-    const onFocus = () => reload();
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let gone = false;
+    let last = Date.now();
+    const all = () => {
+      last = Date.now();
+      reloadAll();
+    };
+    void Promise.all(
+      cwds.map((cwd) =>
+        ctx.host.call<{ tree: boolean }>("watchRepo", { cwd }).then(
+          (r) => Boolean(r?.tree),
+          () => false,
+        ),
+      ),
+    ).then((trees) => {
+      if (gone) return;
+      const watching = trees.length > 0 && trees.every(Boolean);
+      timer = setInterval(
+        () => document.visibilityState === "visible" && all(),
+        pollInterval(watching, cwds.length),
+      );
+    });
+    const onFocus = () => Date.now() - last > 10_000 && all();
     window.addEventListener("focus", onFocus);
-    // New and edited files don't touch .git: look again every few seconds while Jig is visible.
-    const timer = setInterval(() => document.visibilityState === "visible" && reload(), POLL_MS);
     return () => {
+      gone = true;
       window.removeEventListener("focus", onFocus);
       clearInterval(timer);
+      for (const cwd of cwds) void ctx.host.call("unwatchRepo", { cwd }).catch(() => {});
     };
-  }, [key, ctx, reload]);
+  }, [key, ctx, reloadAll]);
   useAddonEvent("changed", (payload) => {
-    if (cwds.includes((payload as { cwd?: string })?.cwd ?? "")) reload();
+    const cwd = (payload as { cwd?: string })?.cwd ?? "";
+    if (cwds.includes(cwd)) reloadOne(cwd);
   });
 }
 
@@ -1040,11 +1077,28 @@ function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   const repos = useMemo(() => project.repos.map((r) => repoView(project, r)), [project]);
   const cwds = useMemo(() => repos.map((r) => r.path), [repos]);
   const all = useHostCall<RepoStatus[]>("statusAll", { cwds });
-  const reload = all.reload;
-  useLiveRefreshAll(cwds, reload);
+  // Repositories looked at again on their own since the last full load (newer than `all.data`).
+  const [fresh, setFresh] = useState<Record<string, RepoStatus>>({});
+  const reloadAll = all.reload;
+  const reload = useMemo(
+    () => () => {
+      setFresh({});
+      reloadAll();
+    },
+    [reloadAll],
+  );
+  const reloadOne = useMemo(
+    () => (cwd: string) =>
+      void ctx.host.call<Status>("status", { cwd }).then(
+        (status) => setFresh((f) => ({ ...f, [cwd]: { cwd, status } })),
+        (error: Error) => setFresh((f) => ({ ...f, [cwd]: { cwd, error: error.message } })),
+      ),
+    [ctx],
+  );
+  useLiveRefreshAll(cwds, reload, reloadOne);
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
-  const byCwd = new Map((all.data ?? []).map((e) => [e.cwd, e]));
+  const byCwd = new Map([...(all.data ?? []), ...Object.values(fresh)].map((e) => [e.cwd, e]));
   const changed = (r: RepoProject) => {
     const st = byCwd.get(r.path)?.status;
     return st ? changeCount(st) > 0 || st.branch.ahead > 0 || st.branch.behind > 0 : false;

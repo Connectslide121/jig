@@ -11,6 +11,7 @@ import {
   parseStatus,
   SHOW_FORMAT,
 } from "./lib/parse";
+import { canWatchTree, gitDirChangeMatters, throttleDebounce, treeChangeMatters } from "./lib/watch";
 
 /** Runs the user's git safely: argument arrays (no shell), stable output, no prompts. */
 async function git(
@@ -298,38 +299,63 @@ export async function isRepo({ cwd }: Cwd, api: AddonHostApi) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Live refresh: watch .git/HEAD, the index and refs; tell the UI (debounced).
+// Live refresh: each repository's working folder (Windows, macOS: one cheap handle per tree) and its
+// git folder (HEAD, the index, refs) are watched; a change tells the UI which repository changed.
+// Shared by every view of the repository (counted), closed when the last one goes.
 
-const watchers = new Map<string, { watchers: FSWatcher[]; timer?: NodeJS.Timeout }>();
+type RepoWatch = {
+  users: number;
+  watchers: FSWatcher[];
+  changed: ReturnType<typeof throttleDebounce>;
+  tree: boolean;
+};
+const watchers = new Map<string, RepoWatch>();
 
-export async function watchRepo({ cwd }: Cwd, api: AddonHostApi) {
-  if (watchers.has(cwd)) return;
-  const gitDir = (await git(api, cwd, ["rev-parse", "--absolute-git-dir"])).trim();
-  const entry: { watchers: FSWatcher[]; timer?: NodeJS.Timeout } = { watchers: [] };
-  const changed = () => {
-    clearTimeout(entry.timer);
-    entry.timer = setTimeout(() => api.emit("changed", { cwd }), 300);
-  };
-  for (const [target, recursive] of [
-    [gitDir, false],
-    [join(gitDir, "refs"), true],
-  ] as const) {
-    try {
-      entry.watchers.push(
-        watch(target, { recursive }, (_e, file) => {
-          if (!file || /^(HEAD|index|FETCH_HEAD|ORIG_HEAD|packed-refs)$/.test(String(file)) || recursive)
-            changed();
-        }),
-      );
-    } catch {
-      // Watching isn't available; the view still refreshes on focus and after actions.
-    }
+/** Starts watching `cwd` (or adds a user). `tree`: the working folder is watched too. */
+export async function watchRepo({ cwd }: Cwd, api: AddonHostApi): Promise<{ tree: boolean }> {
+  const existing = watchers.get(cwd);
+  if (existing) {
+    existing.users++;
+    return { tree: existing.tree };
   }
+  const entry: RepoWatch = {
+    users: 1,
+    watchers: [],
+    changed: throttleDebounce(() => api.emit("changed", { cwd })),
+    tree: false,
+  };
   watchers.set(cwd, entry);
+  let gitDir: string;
+  try {
+    gitDir = (await git(api, cwd, ["rev-parse", "--absolute-git-dir"])).trim();
+  } catch (error) {
+    watchers.delete(cwd);
+    throw error;
+  }
+  const add = (target: string, recursive: boolean, matters: (file: string) => boolean) => {
+    try {
+      const w = watch(target, { recursive }, (_e, file) => {
+        if (!file || matters(String(file))) entry.changed.call();
+      });
+      w.on("error", () => w.close());
+      entry.watchers.push(w);
+      return true;
+    } catch {
+      // Watching isn't available here; the view still looks again by itself and on focus.
+      return false;
+    }
+  };
+  add(gitDir, false, gitDirChangeMatters);
+  add(join(gitDir, "refs"), true, () => true);
+  if (canWatchTree(process.platform)) entry.tree = add(cwd, true, treeChangeMatters);
+  if (watchers.get(cwd) !== entry) for (const w of entry.watchers) w.close(); // unwatched meanwhile
+  return { tree: entry.tree };
 }
 
 export function unwatchRepo({ cwd }: Cwd) {
   const entry = watchers.get(cwd);
-  for (const w of entry?.watchers ?? []) w.close();
+  if (!entry || --entry.users > 0) return;
+  for (const w of entry.watchers) w.close();
+  entry.changed.cancel();
   watchers.delete(cwd);
 }
