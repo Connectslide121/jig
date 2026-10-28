@@ -198,6 +198,29 @@ chat next to a preview, or two chats.
   that has focus.
 - Out of scope: a grid, and top/bottom splits.
 
+## 7. Project links (Azure resources, sites, anything)
+
+Each project keeps its own **links, in groups**: e.g. "Stage" with its resource groups and sites,
+"Prod" with its own. Groups are what you make them, so they can also be per customer, per service, or
+"Monitoring".
+- **A link** has a URL, a label (optional, else taken from the URL) and a **type**. The type gives its
+  icon and a default label:
+  - Azure: resource group, app service / website, function app, database, storage, key vault, App
+    Insights / monitoring, container / AKS;
+  - other: Azure DevOps (repo, pipeline, board), docs, API (Swagger), dashboard, other.
+
+  Types come from a fixed list in Jig, and a custom label is always possible.
+- **Managed by hand:** add, edit, reorder and group from the panel itself, with dividers between
+  groups (like item 5).
+- **Managed from a chat:** Claude gets tools to read and change a project's links (e.g. "add the
+  stage database and site to the Stage group"), with a change card and Undo like the other configure
+  tools.
+- **Optional help:** "Add from Azure…" lists your resource groups or resources through your own `az`
+  login (as Pipelines does) so you can tick the ones to add. Jig stores no tokens.
+- **Clicking a link** opens it in your browser. Right-click: copy URL, edit, ask Claude about it.
+- **Where it shows:** per project, so it follows the active project (D-102): a **Links** view on the
+  left and a Links card on the project's Home. To confirm when we start.
+
 ## Checklist
 
 - [ ] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
@@ -209,6 +232,8 @@ chat next to a preview, or two chats.
 - [ ] Scripts and Pipelines: hide, reorder and dividers, from the panel
 - [ ] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
       side"; draggable divider
+- [ ] Project links: grouped, typed links (icon + default label), managed in the panel and from
+      chats (with Undo), optional "Add from Azure…" via `az`
 - [ ] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
 - [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
       follow-up
