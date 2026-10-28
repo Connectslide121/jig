@@ -14,6 +14,8 @@ that can only answer. Each feature has a visible button or menu entry (D-083).
 | Explain / review changes | Git file and repo menus, ✨ → Review in a chat | a chat with the request typed in |
 | Try several ways | composer split button, Tools | `docs/reference/attempts.md` |
 | Turn this chat into a tool | chat ⋯ | the Build dialog with what happened in the chat (requests, commands, changed files) |
+| Claude's terminals | the Terminals panel ("Claude: …") | `jig_terminal_run/read/list/stop` (`docs/reference/terminals.md`) |
+| Images from tools | tool cards in the chat | screenshots and charts a tool returns are saved and shown |
 | Ask Claude about a failed script | failure toast, terminal list ✨, terminal menu | a chat with the command, exit code and output |
 | Ask Claude about a file | Preview tab | a chat with a request suited to the file kind |
 | Write my standup | Tools → Write my standup… | `digest.standup` (below) |

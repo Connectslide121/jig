@@ -51,6 +51,7 @@ export interface CreateTerminal {
   args?: string[];
   scriptId?: string;
   private?: boolean;
+  sessionId?: string;
   cols?: number;
   rows?: number;
 }
@@ -101,6 +102,7 @@ export class TerminalManager {
       status: "running",
       createdAt: new Date().toISOString(),
       private: input.private || undefined,
+      sessionId: input.sessionId,
     };
     const live: Live = { info, buffer: "", pending: "", recent: "", altScreen: false };
     this.terminals.set(info.id, live);

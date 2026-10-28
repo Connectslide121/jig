@@ -5,6 +5,7 @@ import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
+import type { ToolOutput } from "../engine/types";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { paths } from "../state/paths";
@@ -24,7 +25,7 @@ export interface SessionKindHooks {
   mcpServers: (meta: SessionMeta) => Record<string, unknown> | undefined;
   toolHandlers: (
     meta: SessionMeta,
-  ) => Record<string, (args: Record<string, unknown>) => Promise<string>> | undefined;
+  ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
   onTurnEnd?: (meta: SessionMeta) => void;
   onWorking?: (meta: SessionMeta) => void;
 }

@@ -55,3 +55,19 @@ output" in its menu. It opens a new chat in the terminal's folder (when it is in
 the request typed in, not sent: the title, command, exit code and the last 120 lines of output (colour
 and cursor codes removed, at most 12 000 characters). Code: `features/terminals/askClaude.ts`.
 
+## Claude's terminals
+
+Chats get tools on the `jig` MCP server (`main/terminals/claudeTools.ts`):
+- `jig_terminal_run { command, title?, cwd? }` starts a long-running command (dev server, watcher) in a
+  visible terminal. The terminal is titled "Claude: …", tagged with the chat (`TerminalInfo.sessionId`),
+  revealed in the panel (`terminals.reveal`), and returns its first output. Its folder must be inside
+  the project.
+- `jig_terminal_read { id, lines? }` (read-only, no prompt) returns the last lines of a terminal of the
+  project, plain text: Claude's own terminals, scripts, or your dev server.
+- `jig_terminal_list` (read-only) lists the project's terminals.
+- `jig_terminal_stop { id }` stops only terminals that chat started.
+
+Private terminals (the Claude Code sign-in) are never visible to these tools. The appended prompt tells
+Claude to use them for anything that keeps running, and its own shell for commands that finish. A
+terminal Claude started has "Open the chat that started it" in its menu.
+

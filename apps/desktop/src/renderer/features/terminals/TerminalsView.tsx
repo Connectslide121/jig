@@ -1,10 +1,11 @@
-import { Pencil, Plus, Power, RotateCw, Sparkles, SquareTerminal, X } from "lucide-react";
+import { MessageSquare, Pencil, Plus, Power, RotateCw, Sparkles, SquareTerminal, X } from "lucide-react";
 import type { TerminalInfo } from "../../../shared/terminals";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, type MenuEntry, promptDialog } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
+import { workbench } from "../../workbench/store";
 import { newTerminal } from "./actions";
 import { askClaudeAboutTerminal } from "./askClaude";
 import { useTerminals } from "./store";
@@ -12,6 +13,15 @@ import { XTerm } from "./XTerm";
 
 export function terminalMenu(t: TerminalInfo): MenuEntry[] {
   return [
+    ...(t.sessionId
+      ? [
+          {
+            label: "Open the chat that started it",
+            icon: MessageSquare,
+            onSelect: () => workbench.openTab("jig.chat", { sessionId: t.sessionId }),
+          },
+        ]
+      : []),
     ...(t.private
       ? []
       : [

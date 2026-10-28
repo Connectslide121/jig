@@ -127,6 +127,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
   "Removed projects", where they can be opened or deleted.
+- **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
+  see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
+  server's output.
+- **Images from tools:** screenshots and charts that a tool returns (an MCP browser, a plotting tool)
+  show as thumbnails in the chat instead of "[image]".
 - **Guided tours of changes:** Git → ✨ → Walk me through the changes (also a workspace repo's menu
   and the chat's ⋯). Claude orders the uncommitted changes for understanding and explains each step
   next to its highlighted diff; ←/→ to move.

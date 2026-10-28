@@ -118,6 +118,8 @@ export type ChatItem =
       input: Record<string, unknown>;
       status: "running" | "done" | "error";
       output?: string;
+      /** Images the tool returned (screenshots, charts), saved with the chat's attachments. */
+      images?: ChatAttachment[];
       at: string;
       parentId?: string;
     }
@@ -206,7 +208,16 @@ export type EngineEvent =
   | { type: "block_delta"; id: string; text: string }
   | { type: "block_end"; id: string; block: "text" | "thinking"; text: string; parentId?: string }
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown>; parentId?: string }
-  | { type: "tool_result"; toolUseId: string; output: string; isError: boolean }
+  | {
+      type: "tool_result";
+      toolUseId: string;
+      output: string;
+      isError: boolean;
+      /** Images the tool returned (a browser screenshot…), as the engine got them. */
+      imageData?: Array<{ mime: string; data: string }>;
+      /** The same images saved with the chat's attachments (set by the session manager). */
+      images?: ChatAttachment[];
+    }
   | { type: "permission"; request: PermissionRequest }
   | { type: "permission_resolved"; requestId: string; status: "allowed" | "always" | "denied" | "cancelled" }
   | {

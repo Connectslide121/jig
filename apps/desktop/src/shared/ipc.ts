@@ -246,6 +246,8 @@ export interface HostEvents {
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };
   "attempts.changed": AttemptRun;
+  /** Show this terminal (Claude started it from a chat). */
+  "terminals.reveal": { id: string };
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };

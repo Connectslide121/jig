@@ -14,6 +14,12 @@ import type { EnginePart } from "../sessions/attachments";
  * `FakeEngine` replays scripted events for tests and `JIG_ENGINE=fake`. Nothing else may implement
  * an agent loop (AGENTS.md: Claude Code is the only engine).
  */
+/** What a Jig tool returns: text, or text with images (a browser screenshot). */
+export type ToolOutput = string | { text: string; images?: Array<{ mime: string; data: string }> };
+
+export const outputText = (o: ToolOutput): string => (typeof o === "string" ? o : o.text);
+export const outputImages = (o: ToolOutput) => (typeof o === "string" ? undefined : o.images);
+
 export interface StartOptions {
   cwd: string;
   /** Model alias or id; empty = Claude Code's default. */
@@ -36,7 +42,7 @@ export interface StartOptions {
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */
-  toolHandlers?: Record<string, (args: Record<string, unknown>) => Promise<string>>;
+  toolHandlers?: Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>>;
   /** Asks the user; resolves with their decision. */
   askPermission: (request: PermissionRequest, signal: AbortSignal) => Promise<PermissionDecision>;
 }

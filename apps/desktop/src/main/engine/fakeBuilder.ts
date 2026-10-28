@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EngineEvent } from "../../shared/engine";
+import { outputText, type ToolOutput } from "./types";
 
 /**
  * A scripted builder for tests and `JIG_ENGINE=fake`: it calls the real `jig-builder` tools, so the
@@ -14,7 +15,7 @@ import type { EngineEvent } from "../../shared/engine";
  * - a target add-on → changes that add-on (adds a line to its README and a label)
  * - anything else → a new add-on with a view and a Tools-menu action
  */
-type Tools = Record<string, (args: Record<string, unknown>) => Promise<string>>;
+type Tools = Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>>;
 
 export async function runFakeBuilder(
   text: string,
@@ -24,7 +25,7 @@ export async function runFakeBuilder(
   const call = async (name: string, args: Record<string, unknown> = {}) => {
     const id = `tool-${randomUUID()}`;
     emit({ type: "tool_use", id, name: `mcp__jig-builder__${name}`, input: args });
-    const output = await tools[name]!(args);
+    const output = outputText(await tools[name]!(args));
     emit({ type: "tool_result", toolUseId: id, output, isError: false });
     return output;
   };

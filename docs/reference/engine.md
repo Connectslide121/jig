@@ -46,6 +46,7 @@ extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
 | `init { engineSessionId, model, permissionMode, authSource, slashCommands }` | `system/init` |
 | `block_start/block_delta/block_end { id, block: text \| thinking, parentId? }` | stream events + complete assistant messages; ids are `<messageId>:<type>:<n>` so the complete block replaces the streamed one |
 | `tool_use { id, name, input, parentId? }` / `tool_result { toolUseId, output, isError }` | assistant / user messages; `parentId` = a subagent's Task tool |
+| `tool_result … imageData` → `images` | image blocks in a tool result (an MCP screenshot): the session manager saves them with the chat's attachments (`tool-<id>-n.png`) and the tool card shows thumbnails |
 | `permission { request }` / `permission_resolved { requestId, status }` | `canUseTool` |
 | `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference) |
 | `suggestion { text }` | `prompt_suggestion` (with `promptSuggestions: true`, setting `engine.promptSuggestions`): kept as `SessionMeta.suggestion` until the next send; the composer shows it as a chip and as placeholder (Tab takes it). The fake engine suggests from the second turn on |

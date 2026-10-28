@@ -13,6 +13,8 @@ export interface TerminalInfo {
   createdAt: string;
   /** Nothing typed or shown here is recorded in the activity log (e.g. the Claude Code sign-in). */
   private?: boolean;
+  /** Started by Claude from this chat (jig_terminal_run). */
+  sessionId?: string;
 }
 
 export type ScriptKind = "npm" | "ps1" | "sh" | "cmd" | "dotnet-run" | "dotnet-watch" | "func";

@@ -72,4 +72,5 @@ export function useTerminalsSync(): void {
       });
   });
   useHostEvent("terminals.data", ({ id, data }) => routeTerminalData(id, data));
+  useHostEvent("terminals.reveal", ({ id }) => showTerminal(id));
 }

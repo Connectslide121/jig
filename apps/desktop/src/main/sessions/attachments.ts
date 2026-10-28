@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import {
@@ -120,4 +121,35 @@ export async function readAttachments(
 
 export async function removeAttachments(root: string, sessionId: string): Promise<void> {
   await rm(sessionDir(root, sessionId), { recursive: true, force: true });
+}
+
+const IMAGE_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+/**
+ * Saves images a tool returned (synchronously: tool results are applied in order) and returns them as
+ * attachments of the chat. Images over 10 MB or of other types are skipped.
+ */
+export function saveToolImages(
+  root: string,
+  sessionId: string,
+  toolUseId: string,
+  images: Array<{ mime: string; data: string }>,
+): ChatAttachment[] {
+  const dir = sessionDir(root, sessionId);
+  mkdirSync(dir, { recursive: true });
+  const safe = toolUseId.replace(/[^\w-]/g, "").slice(0, 60) || "tool";
+  const out: ChatAttachment[] = [];
+  images.forEach((image, i) => {
+    const ext = IMAGE_EXT[image.mime];
+    if (!ext || image.data.length > 14 * MB) return;
+    const name = `tool-${safe}-${i + 1}.${ext}`;
+    writeFileSync(join(dir, name), Buffer.from(image.data, "base64"));
+    out.push({ path: join(dir, name), mime: image.mime, name, kind: "image" });
+  });
+  return out;
 }

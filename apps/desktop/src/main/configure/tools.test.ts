@@ -4,6 +4,7 @@ import { type DeepPartial, deepMerge, defaultConfig, type JigConfig } from "../.
 import type { ChatItem, SessionMeta } from "../../shared/engine";
 import { defaultLayout, normalizeLayout } from "../../shared/layout";
 import type { ProjectsState } from "../../shared/projects";
+import { outputText } from "../engine/types";
 import { applyUndo, type ConfigureDeps, configureTools } from "./tools";
 
 function setup() {
@@ -74,7 +75,8 @@ function setup() {
   };
   const tools = Object.fromEntries(configureTools(deps).map((t) => [t.name, t]));
   const meta = { id: "s1", projectId: "p1" } as SessionMeta;
-  const call = (name: string, args: Record<string, unknown> = {}) => tools[name]!.handler(args, meta);
+  const call = async (name: string, args: Record<string, unknown> = {}) =>
+    outputText(await tools[name]!.handler(args, meta));
   return { deps, call, cards, tools, get: () => ({ config, layout, enabled, projects }) };
 }
 

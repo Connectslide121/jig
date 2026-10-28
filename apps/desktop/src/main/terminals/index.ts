@@ -3,9 +3,11 @@ import { spawn } from "@lydell/node-pty";
 import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
+import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { claudeBinary } from "./claudeBinary";
+import { terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
 import { defaultShell, makeWhich } from "./shell";
 
@@ -29,6 +31,18 @@ export function startTerminals(): void {
       publishActivity({ kind: "terminal.command", text: command, projectId: terminal.projectId }),
   });
   const m = manager;
+  registerJigTools(
+    terminalTools({
+      manager: () => m,
+      projectPath: async (id) =>
+        (
+          await projectStore()
+            .get(id)
+            .catch(() => undefined)
+        )?.path,
+      reveal: (id) => emit("terminals.reveal", { id }),
+    }),
+  );
 
   handle("terminals.list", () => m.list());
   handle("terminals.create", async ({ projectId, cwd, command, title, cols, rows }) => {

@@ -17,10 +17,16 @@ import type {
   SessionSnapshot,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import type { Engine, EngineSession } from "../engine/types";
+import type { Engine, EngineSession, ToolOutput } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
-import { addAttachment, type EnginePart, readAttachments, removeAttachments } from "./attachments";
+import {
+  addAttachment,
+  type EnginePart,
+  readAttachments,
+  removeAttachments,
+  saveToolImages,
+} from "./attachments";
 
 const log = logger("sessions");
 
@@ -69,7 +75,7 @@ export interface SessionManagerOptions {
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   toolHandlers?: (
     meta: SessionMeta,
-  ) => Record<string, (args: Record<string, unknown>) => Promise<string>> | undefined;
+  ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
   /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
   onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
@@ -274,7 +280,21 @@ export class SessionManager {
     return session;
   }
 
-  private handleEvent(live: Live, event: EngineEvent) {
+  private handleEvent(live: Live, incoming: EngineEvent) {
+    let event = incoming;
+    // Images in tool results go to the chat's attachments; the transcript keeps their paths.
+    if (event.type === "tool_result" && event.imageData?.length) {
+      const { imageData, ...rest } = event;
+      try {
+        event = {
+          ...rest,
+          images: saveToolImages(this.options.attachmentsDir, live.state.meta.id, event.toolUseId, imageData),
+        };
+      } catch (error) {
+        log.warn("Couldn't save tool images", error);
+        event = rest;
+      }
+    }
     if (event.type === "rate_limit") {
       this.options.onRateLimit?.(event);
       return;

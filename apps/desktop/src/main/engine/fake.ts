@@ -5,7 +5,7 @@ import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
 import { contextFrom } from "./normalize";
-import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
+import { type Engine, type EngineSession, type OneShotOptions, outputText, type StartOptions } from "./types";
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
@@ -113,8 +113,8 @@ export class FakeEngine implements Engine {
           const call = async (name: string, input: Record<string, unknown>) => {
             const toolId = `tool-${randomUUID()}`;
             onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${name}`, input });
-            const output = await options.toolHandlers![name]!(input).catch(
-              (e: Error) => `Error: ${e.message}`,
+            const output = outputText(
+              await options.toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`),
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
@@ -224,7 +224,7 @@ export class FakeEngine implements Engine {
           const goal = text.replace(/^(please\s+)?build( me)?\s*/i, "") || text;
           onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__jig_request_build", input: { goal } });
           const output = options.toolHandlers?.jig_request_build
-            ? await options.toolHandlers.jig_request_build({ goal })
+            ? outputText(await options.toolHandlers.jig_request_build({ goal }))
             : "Build requested.";
           onEvent({ type: "tool_result", toolUseId: toolId, output, isError: false });
           await stream(`${msg}:text:0`, "I've asked Jig's builder to make that.", signal);

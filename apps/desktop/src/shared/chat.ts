@@ -107,7 +107,12 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
     case "tool_result": {
       const tool = get(event.toolUseId);
       if (tool?.kind === "tool")
-        upsert({ ...tool, status: event.isError ? "error" : "done", output: event.output });
+        upsert({
+          ...tool,
+          status: event.isError ? "error" : "done",
+          output: event.output,
+          ...(event.images?.length ? { images: event.images } : {}),
+        });
       break;
     }
     case "permission":

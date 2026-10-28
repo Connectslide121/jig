@@ -38,6 +38,16 @@ export function toolOutputText(content: unknown): string {
     .join("\n");
 }
 
+/** The base64 images in a tool result (MCP screenshots, charts). */
+export function toolOutputImages(content: unknown): Array<{ mime: string; data: string }> {
+  if (!Array.isArray(content)) return [];
+  return content.flatMap((block: Msg) =>
+    block?.type === "image" && block.source?.type === "base64" && typeof block.source.data === "string"
+      ? [{ mime: String(block.source.media_type ?? "image/png"), data: block.source.data }]
+      : [],
+  );
+}
+
 export class Normalizer {
   /** message id → ordinal counters per block type, for streamed blocks. */
   private streamed = new Map<string, { text: number; thinking: number; byIndex: Map<number, string> }>();
@@ -193,6 +203,7 @@ export class Normalizer {
         toolUseId: b.tool_use_id,
         output: toolOutputText(b.content),
         isError: Boolean(b.is_error),
+        ...(toolOutputImages(b.content).length ? { imageData: toolOutputImages(b.content) } : {}),
       }));
   }
 

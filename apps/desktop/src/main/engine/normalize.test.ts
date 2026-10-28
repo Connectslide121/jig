@@ -267,4 +267,32 @@ describe("Normalizer", () => {
     ).toEqual([{ type: "suggestion", text: "Run the tests" }]);
     expect(n.handle({ type: "prompt_suggestion", suggestion: "  " })).toEqual([]);
   });
+
+  it("keeps the images a tool returns", () => {
+    const n = new Normalizer();
+    const events = n.handle({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "t1",
+            content: [
+              { type: "text", text: "Screenshot of the shop" },
+              { type: "image", source: { type: "base64", media_type: "image/png", data: "iVBOR" } },
+            ],
+          },
+        ],
+      },
+    });
+    expect(events).toEqual([
+      {
+        type: "tool_result",
+        toolUseId: "t1",
+        output: "Screenshot of the shop\n[image]",
+        isError: false,
+        imageData: [{ mime: "image/png", data: "iVBOR" }],
+      },
+    ]);
+  });
 });

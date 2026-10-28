@@ -182,6 +182,13 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
       </div>
       {custom && !open ? <div className="px-2 pb-2">{custom.render(item)}</div> : null}
       {!custom && imagePath && item.status === "done" && <ImageThumb path={imagePath} />}
+      {item.images && item.images.length > 0 && (
+        <div className="flex flex-wrap gap-1" data-testid="tool-images">
+          {item.images.map((image) => (
+            <ImageThumb key={image.path} path={image.path} />
+          ))}
+        </div>
+      )}
       {open && <Detail item={item} />}
       {children && <div className="flex flex-col gap-1 border-t border-line p-2">{children}</div>}
     </div>

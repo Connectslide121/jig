@@ -1,6 +1,7 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import type { SessionMeta } from "../../shared/engine";
+import type { ToolOutput } from "./types";
 
 /**
  * The `jig` MCP server attached to every session: the only tools Jig adds to Claude Code. They let
@@ -19,7 +20,7 @@ export interface JigTool {
   shape: z.ZodRawShape;
   /** Only reads: runs without asking the user (D-077). */
   readOnly?: boolean;
-  handler: (args: Record<string, unknown>, meta: SessionMeta) => Promise<string>;
+  handler: (args: Record<string, unknown>, meta: SessionMeta) => Promise<ToolOutput>;
 }
 
 let extraTools: JigTool[] = [];
@@ -70,7 +71,18 @@ export function jigMcpServer(meta: SessionMeta) {
       ...extraTools.map((t) =>
         tool(t.name, t.description, t.shape, async (args) => {
           try {
-            return text(await t.handler(args as Record<string, unknown>, meta));
+            const out = await t.handler(args as Record<string, unknown>, meta);
+            if (typeof out === "string") return text(out);
+            return {
+              content: [
+                { type: "text" as const, text: out.text },
+                ...(out.images ?? []).map((i) => ({
+                  type: "image" as const,
+                  data: i.data,
+                  mimeType: i.mime,
+                })),
+              ],
+            };
           } catch (error) {
             return { ...text(`Error: ${(error as Error).message}`), isError: true };
           }
@@ -83,7 +95,7 @@ export function jigMcpServer(meta: SessionMeta) {
 /** The jig tools as plain functions (for the fake engine's scripted sessions). */
 export function jigToolHandlers(
   meta: SessionMeta,
-): Record<string, (args: Record<string, unknown>) => Promise<string>> {
+): Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> {
   return {
     jig_list_addons: () => handlers.listAddons(),
     jig_request_build: (args) =>
@@ -105,6 +117,7 @@ export function jigContext(meta: SessionMeta, projectName: string | undefined): 
     projectName
       ? `The current project is "${projectName}" at ${meta.cwd}.`
       : `The working directory is ${meta.cwd}.`,
+    "For long-running commands (dev servers, watchers, anything that keeps running) use jig_terminal_run, so the user sees them in a Jig terminal, then jig_terminal_read for their output; jig_terminal_list shows the project's terminals (including the user's own dev server). Use your own shell for commands that finish.",
     "Jig adds tools (MCP server `jig`). When the user wants Jig configured — settings, theme, fonts, density, file icons, layout (move/hide/show/resize views), add-ons on or off, a project's name or colour — use jig_get_settings / jig_list_themes / jig_get_layout to look and jig_update_settings / jig_change_layout / jig_set_addon_enabled / jig_update_project / jig_install_theme to change it; the user approves each change and can undo it from the chat. When they ask for something new (a tool, button, view, menu entry), call jig_request_build with a clear goal. Never edit Jig's files yourself.",
   ].join("\n");
 }
