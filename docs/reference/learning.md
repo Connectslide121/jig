@@ -11,13 +11,25 @@ Sources publish to `main/activity/bus.ts`; the log appends one JSON line per eve
 
 | `kind` | From |
 |---|---|
-| `prompt` | every message you send in a chat |
+| `prompt` | every message you send in a chat (pastes collapsed, secrets masked — see below) |
 | `session.tool` | tool calls in sessions (the command for Bash) |
 | `terminal.command` | lines typed in Jig terminals (not in private ones, like the Claude sign-in) |
 | `script.run` | scripts started from Jig |
 | `addon.action` | add-on Tools actions and menu entries |
 | `git` | commit/push/pull/fetch/switch/branch/stage/discard from the Git add-on |
 | `project.switch` | switching the active project |
+
+**What is written is sanitized** (`packages/learning/src/sanitize.ts`, tested; D-103):
+- **Secrets are masked as `«secret»` in every event:**
+  - `Authorization`/`Cookie`/API-key headers;
+  - Bearer/Basic credentials, JWTs, known key formats (`sk-…`, `ghp_…`, `AKIA…`, …), private keys;
+  - credentials in URLs;
+  - `password=`, `token: …`, `"secret": "…"`, `--password …` and other secret-looking names, Azure
+    connection strings.
+- **Pasted material in chat messages is kept as `[pasted <kind>, N lines]`:** blocks of 6+ lines or
+  600+ characters, fenced or not. The kinds are `http`, `json`, `stack trace`, `log`, `xml/html`,
+  `sql`, `data`, `code`. The counts go to `detail.pasted` (e.g. `http:1`) for later suggestions. What
+  you typed around a paste stays.
 
 Settings → Learning: pause recording, never record activity containing (paths, names, any text —
 case-insensitive, also matched against the project path), keep for N days (older days are deleted at

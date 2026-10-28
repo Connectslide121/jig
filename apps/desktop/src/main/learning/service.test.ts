@@ -83,6 +83,41 @@ describe("ActivityLog", () => {
   });
 });
 
+describe("ActivityLog sanitizing", () => {
+  it("keeps a message's pastes only as their kind and masks secrets in every event", async () => {
+    const { activity } = setup();
+    const message = [
+      "Login fails with this response:",
+      "HTTP/1.1 401 Unauthorized",
+      "Content-Type: application/json",
+      "WWW-Authenticate: Bearer",
+      "Set-Cookie: session=abcdef123456",
+      "X-Request-Id: 7",
+      "Date: Tue, 28 Oct 2026",
+    ].join("\n");
+    await activity.record({ kind: "prompt", text: message }, day(20));
+    await activity.record(
+      { kind: "session.tool", text: 'curl -H "Authorization: Bearer abcdefgh12345678" https://api/x' },
+      day(20),
+    );
+    await activity.record(
+      { kind: "terminal.command", text: "export API_KEY=sk-abcdefghijklmnop1234" },
+      day(20),
+    );
+    const raw = await readFile(join(dir, "activity", `${localDay(day(20))}.jsonl`), "utf8");
+    expect(raw).not.toContain("abcdef123456");
+    expect(raw).not.toContain("abcdefgh12345678");
+    expect(raw).not.toContain("sk-abcdefghijklmnop1234");
+    const [prompt, tool, terminal] = await activity.read(30, day(21));
+    expect(prompt).toMatchObject({
+      text: "Login fails with this response:\n[pasted http, 6 lines]",
+      detail: { pasted: "http:1" },
+    });
+    expect(tool!.text).toBe('curl -H "Authorization: «secret»" https://api/x');
+    expect(terminal!.text).toBe("export API_KEY=«secret»");
+  });
+});
+
 describe("reflection", () => {
   const pattern = {
     key: "c-1",

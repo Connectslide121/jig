@@ -98,7 +98,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 - **Phase 9 (done): learning and suggestions.**
   - Jig records locally what you do (prompts, commands in sessions and terminals, scripts, add-on
     actions, git operations, project switches) in `~/.jig/activity`; pause, exclusions, retention and
-    delete-all in Settings → Learning.
+    delete-all in Settings → Learning. Secrets are masked and pasted blocks (responses, JSON, stack
+    traces, logs) are kept only as their kind, never their content.
   - **Look for patterns now** (light bulb in the top bar → Suggestions, or Tools) and every Monday at
     10:00 (catch-up at launch): repeated commands, sequences and similar prompts are found without AI;
     only then one small Claude Code request picks at most 3 suggestions with evidence.

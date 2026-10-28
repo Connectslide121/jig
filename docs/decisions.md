@@ -858,3 +858,18 @@ Details:
 - **A view keeps its behaviour wherever you move it.** The guideline decides only where views start.
   New views, add-ons included, lean on it: project-scoped views usually start on the left, global
   ones on the right, unless something else makes more sense.
+
+### D-103 — The activity log never keeps pastes or secrets
+**Decided by:** Jon (fix it now) and Claude, on my own (how) · **Date:** 2026-10-28
+
+The activity log recorded every chat message in full, including pasted API responses whose headers
+can hold tokens. Now everything recorded passes through `@jig/learning`'s sanitizer first:
+- **Secrets** are masked in every event, whatever its kind: headers, bearer tokens, JWTs, known key
+  formats, credentials in URLs, secret-looking names, connection strings and private keys.
+- **Pasted blocks in a chat message** (6+ lines or 600+ characters) are replaced by
+  `[pasted <kind>, N lines]`. The kinds are counted in `detail.pasted`, which is the signal for
+  phase 18's "you paste API responses a lot" suggestions.
+
+It is rule-based with no AI, so it can miss an unusual secret format. The log stays local, has its
+"never record" list, and can be deleted at any time. Chats themselves (Claude Code's own transcripts)
+are not changed: they are the conversation.
