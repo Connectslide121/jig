@@ -10,7 +10,7 @@ export function startBrowser(): void {
   const browser = new BrowserService({
     state: (state) => emit("browser.state", state),
     frame: (frame) => emit("browser.frame", frame),
-    // Headless unless you asked to watch: the view opens by itself only with browser.showWhenUsed.
+    // The view opens by itself unless you turned browser.showWhenUsed off.
     reveal: () => {
       if (getConfig().browser.showWhenUsed) emit("browser.reveal", undefined);
     },

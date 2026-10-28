@@ -631,7 +631,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="browser"
             title="Claude's browser"
-            lead="Claude checks its own web work in a real browser inside Jig: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. It works headless, so nothing pops up; open the Claude's browser view to watch live and take over with your mouse and keyboard."
+            lead="Claude checks its own web work in a real browser inside Jig: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; the Claude's browser view shows it live, and you can take over with your mouse and keyboard."
             shot={{
               src: browserShot,
               alt: "Claude checking a shop page in its browser, with a screenshot in the chat",

@@ -47,8 +47,8 @@ export const ConfigSchema = z.object({
     .prefault({}),
   browser: z
     .object({
-      /** Open the Claude's browser view when Claude starts using it (off: it works headless). */
-      showWhenUsed: z.boolean().default(false),
+      /** Open the Claude's browser view when Claude starts using it (off: it stays out of sight). */
+      showWhenUsed: z.boolean().default(true),
     })
     .prefault({}),
   updates: z

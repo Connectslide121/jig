@@ -295,7 +295,6 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
 <div class="card"><div>Cart</div><div class="total" id="total">€0.00</div><input placeholder="Discount code" style="padding:8px;border:1px solid #ccc;border-radius:6px;width:90%"></div>
 </main><script>let t=0;function add(p){t+=p;document.getElementById('total').textContent='€'+t.toFixed(2)}</script></body></html>`,
   );
-  await hostCall(page, "config.update", { browser: { showWhenUsed: true } });
   await hostCall(page, "browser.resize", { width: 390, height: 844 });
   await page.keyboard.press("Control+N");
   await page

@@ -707,14 +707,16 @@ What the sweep found, and what changed:
 Kept in menus on purpose: rarely used chat actions (MCP servers, folders, export, fork, archive), and
 everything in the Tools menu.
 
-### D-095 — Claude's browser works headless; the view opens only when you ask
+### D-095 — Claude's browser: the view opening by itself is a setting; screenshots at several sizes
 **Decided by:** Jon (asked for headless use that doesn't bother him), details by Claude, on my own ·
 **Date:** 2026-10-28
 
 The page was already offscreen, but the first `jig_browser_open` opened the Claude's browser view,
 which took the right sidebar. Now:
-- The view opens by itself only with `browser.showWhenUsed` (off by default; Settings → Claude Code).
-  Tools → Open Claude's browser shows it at any time.
+- Whether the view opens by itself is the setting `browser.showWhenUsed` (Settings → Claude Code).
+  First off by default; Jon then chose **on**: once it was clear the view only shows a picture of an
+  offscreen page with its own size (so a small side panel never limits Claude and nothing pops up),
+  he prefers to see it, with the setting to hide it.
 - `jig_browser_screenshot` takes `fullPage` (the window grows to the page's height for the capture,
   at most 8000 px) and `sizes` (phone, tablet, desktop: one image per size in one call, then the size
   goes back), so responsive checks need one tool call and never move anything on screen.

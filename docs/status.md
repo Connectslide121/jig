@@ -174,8 +174,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   account; Claude Code reads one back to open it in Jig.
 - **Claude's browser:** Claude opens your dev server (or any http/https/file page) in a real headless
   browser inside Jig, reads it, clicks and types, takes screenshots that show in the chat (the whole
-  page, or phone/tablet/desktop sizes in one go), and reads the console. Nothing pops up unless you
-  turn on Settings → Claude Code → Show Claude's browser when it's used. The **Claude's browser** view
+  page, or phone/tablet/desktop sizes in one go), and reads the console. The view opens by itself
+  (turn off Settings → Claude Code → Show Claude's browser when it's used to keep it closed); its size
+  never limits Claude. The **Claude's browser** view
   (right sidebar, or Tools → Open Claude's browser) shows the
   page live with an address bar, back/forward/reload, desktop/tablet/phone sizes and the console; click
   and type on it to take over. Try it with the fake engine: `browse file:///path/to/page.html`.

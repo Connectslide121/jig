@@ -46,7 +46,7 @@ export interface ConfigureDeps {
 export const SETTINGS_GUIDE = `appearance.themeId: colour theme id (see jig_list_themes); followSystem: switch between lightThemeId and darkThemeId with the OS; density: compact|comfortable; radius: sharp|soft|round; uiFont / monoFont: font family names; fontSize: 11–18; fileIconTheme: "vscode" (same as VS Code) | "jig" | an icon theme id from jig_list_themes.
 engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message.
 notifications.desktop: true|false, a system notification when a chat needs the user or finishes while Jig is in the background.
-browser.showWhenUsed: true|false, open the Claude's browser view when Claude starts using its browser (false: it works headless; the user opens the view from Tools when they want to watch).
+browser.showWhenUsed: true|false, open the Claude's browser view when Claude starts using its browser (default true; false: it stays out of sight and the user opens the view from Tools). The page has its own size either way, so the view's size never limits Claude.
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it.
 setup.firstRunDone: true|false.

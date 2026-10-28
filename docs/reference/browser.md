@@ -4,11 +4,12 @@ Code: `apps/desktop/src/main/browser/` (service, tools, page scripts),
 `apps/desktop/src/shared/browser.ts` (types), `apps/desktop/src/renderer/features/browser/` (the view).
 Decisions: D-090, D-095.
 
-Claude checks its own web work in a real Chromium page inside Jig. The page is headless: Claude opens
-pages, resizes the window and takes screenshots without anything popping up. When you want to watch,
-open the **Claude's browser** view (right sidebar; Tools → Open Claude's browser) and take over at any
-time. Settings → Claude Code → **Show Claude's browser when it's used** (`browser.showWhenUsed`, off by
-default) opens the view by itself whenever Claude starts browsing.
+Claude checks its own web work in a real Chromium page inside Jig. The page is offscreen with its own
+size: the **Claude's browser** view (right sidebar; Tools → Open Claude's browser) only shows a scaled
+picture of it, so the view's size never limits Claude, and resizing never moves anything on screen.
+The view opens by itself when Claude starts browsing; turn off Settings → Claude Code → **Show Claude's
+browser when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can take over
+in the view at any time.
 
 ## How it works
 
@@ -38,7 +39,7 @@ default) opens the view by itself whenever Claude starts browsing.
 
 | Tool | Read-only | What it does |
 | --- | --- | --- |
-| `jig_browser_open {url}` | no | opens the page, waits for it to load, and returns its text plus the numbered interactive elements; shows the view only with `browser.showWhenUsed` |
+| `jig_browser_open {url}` | no | opens the page, waits for it to load, and returns its text plus the numbered interactive elements; shows the view unless `browser.showWhenUsed` is off |
 | `jig_browser_read` | yes | the page's text (up to 8000 characters) and up to 200 interactive elements, `[n] kind "label" …` |
 | `jig_browser_click {ref \| selector \| text}` | no | scrolls the element into view and clicks its centre with real mouse events |
 | `jig_browser_type {ref \| selector, text, clear?, submit?}` | no | focuses the field (selecting its content unless `clear: false`), inserts the text, Enter with `submit` |

@@ -34,12 +34,8 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await expect(chat.getByTestId("tool-images").nth(1).locator("img")).toHaveCount(2);
   expect(JSON.stringify(await hostCall(page, "browser.state"))).toContain('"width":1280');
 
-  // Headless by default: nothing popped up. You open the view from Tools when you want to watch.
+  // The view opened by itself (browser.showWhenUsed is on by default) and shows the live page.
   const view = page.getByTestId("browser-view");
-  await expect(view).toBeHidden();
-  await page.keyboard.press("Control+k");
-  await page.getByTestId("tools-filter").fill("Claude's browser");
-  await page.keyboard.press("Enter");
   await expect(view).toBeVisible();
   await expect(view.getByTestId("browser-frame")).toBeVisible({ timeout: 10000 });
   await expect(view.getByTestId("browser-address")).toHaveValue(/index\.html/);
