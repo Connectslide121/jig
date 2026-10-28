@@ -21,6 +21,16 @@ detail in the main window**. Rebase, graph and blame are out of scope.
   - Also on window focus (a workspace at most every 10 s), and as a safety net while Jig is visible:
     every 60 s where the working folders are watched. Elsewhere (Linux) it runs every 5 s for one
     repository, and 1 s per repository for a workspace, up to 30 s.
+  - One `git status` at a time per repository: a call while one runs waits for one more run after it,
+    shared by every caller meanwhile (`singleFlight`).
+- **Fetch in the background** (watcher `autoFetch`, every minute; Settings → Git; on, every 5 min):
+  - It fetches every repository of your projects whose last fetch is older than the interval,
+    oldest first and one at a time.
+  - It never shows a login: `GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, no askpass. A
+    repository that would need one is skipped until the next round.
+  - The refs change, so the views refresh by themselves.
+- Long change lists show the first 500 files per group, then **Show all**; Stage all / Discard all
+  still cover every file.
 
 Uses your own `git` (no shell, argument arrays, `core.quotepath=off`, no credential prompts from Jig —
 your credential helper works as usual). Parsers are in `lib/parse.ts` (tested).

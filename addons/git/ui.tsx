@@ -8,6 +8,7 @@ import type {
 import {
   Badge,
   Button,
+  Card,
   CountBadge,
   cn,
   Empty,
@@ -16,7 +17,9 @@ import {
   Input,
   isImagePath,
   SectionTitle,
+  Select,
   Spinner,
+  Switch,
   Textarea,
   useActiveProject,
   useAddon,
@@ -63,7 +66,7 @@ import {
   relativeTime,
   type Status,
 } from "./lib/parse";
-import { pollInterval } from "./lib/watch";
+import { type AutoFetchSettings, pollInterval } from "./lib/watch";
 
 /** A repository-relative path made absolute (git always prints forward slashes). */
 const joinPath = (root: string, relative: string) =>
@@ -319,7 +322,11 @@ function ChangeGroup({
 }) {
   const ctx = useAddon();
   const [open, setOpen] = useState(true);
+  const [all, setAll] = useState(false);
   if (changes.length === 0) return null;
+  // Thousands of files (a folder missing from .gitignore) would make the view slow: show the first
+  // ones, the rest on request. Actions on the group still cover every file.
+  const shown = all ? changes : changes.slice(0, LIST_LIMIT);
   return (
     <div>
       <div className="group flex h-6 items-center gap-1 px-1 text-2xs font-semibold tracking-wide text-hint uppercase">
@@ -335,7 +342,7 @@ function ChangeGroup({
         {actions}
       </div>
       {open &&
-        changes.map((c) => (
+        shown.map((c) => (
           <FileRow
             key={`${group}:${c.path}`}
             ctx={ctx}
@@ -345,9 +352,22 @@ function ChangeGroup({
             onChanged={onChanged}
           />
         ))}
+      {open && shown.length < changes.length && (
+        <button
+          type="button"
+          className="px-6 py-1 text-left text-xs text-accent hover:underline"
+          data-testid={`git-show-all-${group}`}
+          onClick={() => setAll(true)}
+        >
+          Show all {changes.length} ({changes.length - shown.length} more)
+        </button>
+      )}
     </div>
   );
 }
+
+/** Files listed per group before "Show all". */
+const LIST_LIMIT = 500;
 
 function branchMenu(
   ctx: AddonUiContext,
@@ -1741,4 +1761,59 @@ export async function createBranch(ctx: AddonUiContext, repo?: RepoProject) {
     confirmLabel: "Create",
   });
   if (name) await run(ctx, `Created ${name}`, "createBranch", { cwd: p.path, name });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Settings → Git
+
+export function GitSettings({ ctx }: AddonComponentProps) {
+  const { data, reload } = useHostCall<AutoFetchSettings>("settings");
+  if (!data) return <Spinner />;
+  const save = async (next: AutoFetchSettings) => {
+    await ctx.host.call("saveSettings", next);
+    reload();
+  };
+  return (
+    <div className="flex flex-col gap-6" data-testid="git-settings">
+      <div>
+        <h2 className="text-lg font-semibold">Git</h2>
+        <p className="text-sm text-muted">
+          The Git view follows your repositories live: a changed file shows within about a second, and only
+          the repository that changed is looked at again.
+        </p>
+      </div>
+      <Card className="flex flex-col gap-3 p-4">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">Fetch in the background</div>
+            <div className="text-xs text-muted">
+              Fetches every repository of your projects from its remotes, one at a time, so "behind" shows new
+              commits without pressing Fetch. It never asks for a login; a repository that would need one is
+              skipped.
+            </div>
+          </div>
+          <Switch
+            label="Fetch in the background"
+            checked={data.enabled}
+            onChange={(enabled) => void save({ ...data, enabled })}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1 text-sm">Every</div>
+          <Select
+            value={String(data.minutes)}
+            disabled={!data.enabled}
+            data-testid="git-autofetch-minutes"
+            onChange={(e) => void save({ ...data, minutes: Number(e.target.value) })}
+          >
+            {[3, 5, 10, 15, 30, 60].map((m) => (
+              <option key={m} value={m}>
+                {m} minutes
+              </option>
+            ))}
+          </Select>
+        </div>
+      </Card>
+    </div>
+  );
 }

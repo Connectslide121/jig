@@ -72,7 +72,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     switch/compare/new branch). History, commit detail, diffs (side by side / inline) and compare open
     as tabs in the main window. Branch in the status bar.
     Updates live: on Windows and macOS within about a second of a file changing (watchers, only the
-    repository that changed is looked at again); on Linux by a check every few seconds.
+    repository that changed is looked at again); on Linux by a check every few seconds. Every
+    repository is fetched in the background every 5 minutes (Settings → Git), so "behind" stays
+    current; it never asks for a login.
   - **Repos** (right sidebar): every project's repo with branch, changes, ahead/behind, last fetch;
     fetch/pull/push; "N to push/pull" in the status bar; right-click a project → Open in VS Code /
     Explorer.

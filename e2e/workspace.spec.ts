@@ -101,3 +101,41 @@ test("a folder of repositories works as one workspace: every repo's changes in G
     "web:dev",
   ]);
 });
+
+test("Git fetches in the background and has a settings page", async ({ page, jigHome }) => {
+  // A remote, a clone added to Jig, and a commit pushed to the remote from elsewhere.
+  const origin = join(jigHome, "origin.git");
+  await mkdir(origin, { recursive: true });
+  git(origin, "init", "-q", "--bare", "-b", "main");
+  const other = join(jigHome, "other");
+  await repo(other, { "README.md": "# app\n" });
+  git(other, "remote", "add", "origin", origin);
+  git(other, "push", "-q", "-u", "origin", "main");
+  const mine = join(jigHome, "app");
+  execFileSync("git", ["clone", "-q", origin, mine]);
+  await writeFile(join(other, "NEWS.md"), "news\n");
+  git(other, "add", ".");
+  git(other, "commit", "-q", "-m", "News");
+  git(other, "push", "-q");
+  await hostCall(page, "projects.add", { path: mine });
+
+  // The background fetch (a watcher every minute; called directly here) brings the commit in.
+  expect(await hostCall(page, "addons.call", { id: "git", method: "autoFetch", args: {} })).toMatchObject({
+    ok: true,
+  });
+  expect(git(mine, "rev-list", "--count", "HEAD..origin/main").trim()).toBe("1");
+
+  // Settings → Git: on by default, every 5 minutes; turning it off is kept.
+  const settingsNow = async () =>
+    ((await hostCall(page, "addons.call", { id: "git", method: "settings", args: {} })) as { value: unknown })
+      .value;
+  expect(await settingsNow()).toEqual({ enabled: true, minutes: 5 });
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("settings");
+  await page.keyboard.press("Enter");
+  await page.locator('[data-testid^="settings-nav-"]', { hasText: /^Git$/ }).click();
+  const settings = page.getByTestId("git-settings");
+  await expect(settings).toBeVisible();
+  await settings.getByRole("switch", { name: "Fetch in the background" }).click();
+  await expect.poll(settingsNow).toEqual({ enabled: false, minutes: 5 });
+});

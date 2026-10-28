@@ -8,15 +8,47 @@
   "permissions": ["exec:git", "fs:read", "ai"],
   "contributes": {
     "views": [
-      { "id": "git", "title": "Git", "icon": "git-branch", "region": "left", "component": "GitView" }
+      {
+        "id": "git",
+        "title": "Git",
+        "icon": "git-branch",
+        "region": "left",
+        "component": "GitView"
+      }
     ],
     "tabs": [
-      { "type": "history", "title": "History", "icon": "history", "component": "HistoryTab" },
-      { "type": "commit", "title": "Commit", "icon": "git-commit-horizontal", "component": "CommitTab" },
-      { "type": "diff", "title": "Diff", "icon": "file-diff", "component": "DiffTab" },
-      { "type": "compare", "title": "Compare", "icon": "git-compare", "component": "CompareTab" }
+      {
+        "type": "history",
+        "title": "History",
+        "icon": "history",
+        "component": "HistoryTab"
+      },
+      {
+        "type": "commit",
+        "title": "Commit",
+        "icon": "git-commit-horizontal",
+        "component": "CommitTab"
+      },
+      {
+        "type": "diff",
+        "title": "Diff",
+        "icon": "file-diff",
+        "component": "DiffTab"
+      },
+      {
+        "type": "compare",
+        "title": "Compare",
+        "icon": "git-compare",
+        "component": "CompareTab"
+      }
     ],
-    "statusbar": [{ "id": "branch", "side": "left", "component": "BranchStatus" }],
+    "statusbar": [
+      {
+        "id": "branch",
+        "side": "left",
+        "component": "BranchStatus"
+      }
+    ],
     "actions": [
       {
         "id": "show",
@@ -33,19 +65,37 @@
         "icon": "history",
         "run": "openHistory"
       },
-      { "id": "fetch", "title": "Fetch", "group": "Git", "icon": "cloud-download", "run": "fetch" },
-      { "id": "pull", "title": "Pull", "group": "Git", "icon": "arrow-down-to-line", "run": "pull" },
-      { "id": "push", "title": "Push", "group": "Git", "icon": "arrow-up-from-line", "run": "push" },
+      {
+        "id": "fetch",
+        "title": "Fetch",
+        "group": "Git",
+        "icon": "cloud-download",
+        "run": "fetch"
+      },
+      {
+        "id": "pull",
+        "title": "Pull",
+        "group": "Git",
+        "icon": "arrow-down-to-line",
+        "run": "pull"
+      },
+      {
+        "id": "push",
+        "title": "Push",
+        "group": "Git",
+        "icon": "arrow-up-from-line",
+        "run": "push"
+      },
       {
         "id": "switch",
-        "title": "Switch branch…",
+        "title": "Switch branch\u2026",
         "group": "Git",
         "icon": "git-branch",
         "run": "switchBranch"
       },
       {
         "id": "create",
-        "title": "Create branch…",
+        "title": "Create branch\u2026",
         "group": "Git",
         "icon": "git-branch-plus",
         "run": "createBranch"
@@ -59,6 +109,17 @@
         "icon": "history",
         "run": "openProjectHistory"
       }
-    ]
+    ],
+    "watchers": [
+      {
+        "id": "autofetch",
+        "every": "1m",
+        "run": "autoFetch"
+      }
+    ],
+    "settings": {
+      "title": "Git",
+      "component": "GitSettings"
+    }
   }
 }

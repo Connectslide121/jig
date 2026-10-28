@@ -10,15 +10,32 @@ import {
   parseNumstat,
   parseStatus,
   SHOW_FORMAT,
+  type Status,
 } from "./lib/parse";
-import { canWatchTree, gitDirChangeMatters, throttleDebounce, treeChangeMatters } from "./lib/watch";
+import {
+  type AutoFetchSettings,
+  canWatchTree,
+  DEFAULT_AUTO_FETCH,
+  dueForFetch,
+  gitDirChangeMatters,
+  type SingleFlight,
+  singleFlight,
+  throttleDebounce,
+  treeChangeMatters,
+} from "./lib/watch";
 
 /** Runs the user's git safely: argument arrays (no shell), stable output, no prompts. */
 async function git(
   api: AddonHostApi,
   cwd: string,
   args: string[],
-  options: { ok?: number[]; timeoutMs?: number; input?: string; encoding?: "utf8" | "base64" } = {},
+  options: {
+    ok?: number[];
+    timeoutMs?: number;
+    input?: string;
+    encoding?: "utf8" | "base64";
+    env?: Record<string, string>;
+  } = {},
 ) {
   const result = await api.exec(
     "git",
@@ -35,7 +52,7 @@ async function git(
     {
       cwd,
       timeoutMs: options.timeoutMs ?? 30_000,
-      env: { GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C.UTF-8" },
+      env: { GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C.UTF-8", ...options.env },
       input: options.input,
       encoding: options.encoding,
     },
@@ -54,10 +71,24 @@ async function git(
 const NETWORK = { timeoutMs: 180_000 };
 type Cwd = { cwd: string };
 
-export async function status({ cwd }: Cwd, api: AddonHostApi) {
-  return parseStatus(
-    await git(api, cwd, ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"]),
-  );
+const statusRuns = new Map<string, SingleFlight<Status>>();
+
+/**
+ * The repository's status. One `git status` at a time per repository: a call while one runs waits
+ * for one more run after it (shared by every caller meanwhile), as VS Code does, so bursts of
+ * changes in a big repository never pile up git processes.
+ */
+export async function status({ cwd }: Cwd, api: AddonHostApi): Promise<Status> {
+  let run = statusRuns.get(cwd);
+  if (!run) {
+    run = singleFlight(async () =>
+      parseStatus(
+        await git(api, cwd, ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"]),
+      ),
+    );
+    statusRuns.set(cwd, run);
+  }
+  return run();
 }
 
 /** The status of several repositories at once (a workspace); one failing doesn't hide the others. */
@@ -358,4 +389,51 @@ export function unwatchRepo({ cwd }: Cwd) {
   for (const w of entry.watchers) w.close();
   entry.changed.cancel();
   watchers.delete(cwd);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Auto-fetch (a watcher, every minute): fetch each repository of your projects every few minutes,
+// one at a time, so ahead/behind stays current without pressing Fetch. Never asks for credentials:
+// a repository that would need a login is skipped until the next round.
+
+export async function settings(_args: unknown, api: AddonHostApi): Promise<AutoFetchSettings> {
+  return {
+    ...DEFAULT_AUTO_FETCH,
+    ...((await api.storage.get<Partial<AutoFetchSettings>>("autoFetch")) ?? {}),
+  };
+}
+
+export async function saveSettings(args: AutoFetchSettings, api: AddonHostApi) {
+  const minutes = Math.round(Number(args.minutes));
+  await api.storage.set("autoFetch", {
+    enabled: Boolean(args.enabled),
+    minutes: Number.isFinite(minutes) ? Math.min(120, Math.max(1, minutes)) : DEFAULT_AUTO_FETCH.minutes,
+  });
+}
+
+const lastFetched = new Map<string, number>();
+let fetching = false;
+
+export async function autoFetch(_args: unknown, api: AddonHostApi) {
+  if (fetching) return;
+  const s = await settings(undefined, api);
+  if (!s.enabled) return;
+  fetching = true;
+  try {
+    const repos = new Set<string>();
+    for (const p of await api.projects()) {
+      if (p.isGitRepo) repos.add(p.path);
+      for (const r of p.repos ?? []) repos.add(r.path);
+    }
+    for (const cwd of dueForFetch([...repos], lastFetched, s.minutes * 60_000, Date.now())) {
+      lastFetched.set(cwd, Date.now());
+      await git(api, cwd, ["fetch", "--all", "--prune", "--quiet"], {
+        ...NETWORK,
+        // No login windows or prompts in the background (Git Credential Manager, ssh).
+        env: { GCM_INTERACTIVE: "never", GIT_ASKPASS: "", SSH_ASKPASS: "" },
+      }).catch(() => undefined);
+    }
+  } finally {
+    fetching = false;
+  }
 }

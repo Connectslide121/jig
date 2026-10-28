@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   canWatchTree,
+  dueForFetch,
   gitDirChangeMatters,
   pollInterval,
+  singleFlight,
   throttleDebounce,
   treeChangeMatters,
 } from "./watch";
@@ -59,5 +61,58 @@ describe("throttleDebounce", () => {
       vi.advanceTimersByTime(100);
     }
     expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("singleFlight", () => {
+  it("runs one at a time and shares one queued run among callers that came meanwhile", async () => {
+    let runs = 0;
+    const resolvers: Array<(n: number) => void> = [];
+    const f = singleFlight(
+      () =>
+        new Promise<number>((resolve) => {
+          runs++;
+          resolvers.push(resolve);
+        }),
+    );
+    const a = f();
+    const b = f();
+    const c = f();
+    expect(runs).toBe(1);
+    resolvers[0]!(1);
+    expect(await a).toBe(1);
+    await Promise.resolve();
+    expect(runs).toBe(2);
+    resolvers[1]!(2);
+    expect(await b).toBe(2);
+    expect(await c).toBe(2);
+    const d = f();
+    expect(runs).toBe(3);
+    resolvers[2]!(3);
+    expect(await d).toBe(3);
+  });
+
+  it("runs the queued call even when the running one fails", async () => {
+    let n = 0;
+    const f = singleFlight(async () => {
+      n++;
+      if (n === 1) throw new Error("boom");
+      return n;
+    });
+    const a = f();
+    const b = f();
+    await expect(a).rejects.toThrow("boom");
+    expect(await b).toBe(2);
+  });
+});
+
+describe("dueForFetch", () => {
+  it("picks repositories not fetched for a while, never-fetched and oldest first", () => {
+    const last = new Map([
+      ["a", 1_000],
+      ["b", 9_000],
+      ["c", 500],
+    ]);
+    expect(dueForFetch(["a", "b", "c", "d"], last, 5_000, 10_000)).toEqual(["d", "c", "a"]);
   });
 });

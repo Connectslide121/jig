@@ -752,3 +752,30 @@ watching `.git`. With 30 repositories that is 6 `git status` a second, all the t
 
   Focus still refreshes (a workspace at most every 10 s).
 - **Shared watches:** they are counted per repository and closed when the last view of it goes.
+
+### D-098 — Git: what we took from VS Code, and what we didn't
+**Decided by:** Claude, on my own (Jon: "do everything that you think is an improvement" after
+comparing with VS Code) · **Date:** 2026-10-28
+
+VS Code's Git extension works like D-097: file watchers and a debounced `git status` per repository,
+with no polling of files. We added what it has and we lacked:
+- **One `git status` at a time per repository.** A call while one runs waits for one more run after
+  it, shared by every caller meanwhile (`singleFlight`). Bursts in a big repository never pile up git
+  processes, and the answer is never older than the call.
+- **Fetch in the background, on by default** (Settings → Git: every 3–60 minutes, default 5).
+  VS Code asks first; we turn it on because the fetch can't interrupt you:
+  - no prompts or login windows (`GCM_INTERACTIVE=never`, no askpass, no terminal prompt);
+  - one repository at a time, oldest fetch first;
+  - it reads only (refs), and never pulls or changes your working copy.
+- **Long change lists capped** at 500 files per group with "Show all", like VS Code's
+  `git.statusLimit`. The view stays fast when a folder is missing from `.gitignore`; group actions
+  still cover every file.
+
+Not taken:
+- **Watching folders on Linux.** Node's recursive watch there adds an inotify watch per folder and
+  can't leave `node_modules` out; doing it well needs our own walker that reads `.gitignore`. Jon uses
+  Windows, so Linux keeps the polling fallback (backlog).
+- **Dropping the 60 s safety net.** It costs one `git status` per repository per minute and covers
+  what watchers miss (network drives, some sync tools).
+- **Turning on git's `core.fsmonitor`.** That is the user's git configuration; Jig uses it when it's
+  set.

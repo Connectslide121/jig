@@ -55,3 +55,55 @@ export function throttleDebounce(fn: () => void, waitMs = 300, maxMs = 1_000) {
     },
   };
 }
+
+export type SingleFlight<T> = () => Promise<T>;
+
+/**
+ * At most one run of `fn` at a time. A call while it runs gets the result of one more run that starts
+ * when it ends (shared by every such call), so the answer is never older than the call.
+ */
+export function singleFlight<T>(fn: () => Promise<T>): SingleFlight<T> {
+  let running: Promise<T> | undefined;
+  let queued: Promise<T> | undefined;
+  const start = (): Promise<T> => {
+    const p = fn().finally(() => {
+      if (running === p) running = undefined;
+    });
+    running = p;
+    return p;
+  };
+  return () => {
+    if (!running) return start();
+    if (!queued) {
+      const settled = running.then(
+        () => undefined,
+        () => undefined,
+      );
+      queued = settled.then(() => {
+        queued = undefined;
+        return start();
+      });
+    }
+    return queued;
+  };
+}
+
+export interface AutoFetchSettings {
+  enabled: boolean;
+  /** Minutes between fetches of one repository. */
+  minutes: number;
+}
+
+export const DEFAULT_AUTO_FETCH: AutoFetchSettings = { enabled: true, minutes: 5 };
+
+/** The repositories whose last fetch is at least `everyMs` ago (never fetched first), oldest first. */
+export function dueForFetch(
+  repos: string[],
+  last: Map<string, number>,
+  everyMs: number,
+  now: number,
+): string[] {
+  return repos
+    .filter((r) => now - (last.get(r) ?? 0) >= everyMs)
+    .sort((a, b) => (last.get(a) ?? 0) - (last.get(b) ?? 0));
+}

@@ -31,6 +31,8 @@ window.** Rebase, graph and blame are out of scope.
 - [x] Live refresh (watch `.git/HEAD`, refs and index; debounced)
 - [x] Live refresh for big workspaces: watch working folders (Windows/macOS), refresh only the
       repository that changed, rare safety-net polling (D-097)
+- [x] One `git status` at a time per repository; fetch in the background (Settings → Git); long
+      change lists show 500 files per group, then Show all (D-098)
 
 ### Repos overview (`addons/repos`)
 - [x] All registered projects' repos: branch, dirty count, ahead/behind, last fetch
