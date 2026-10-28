@@ -1,0 +1,24 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "files",
+  "name": "Files",
+  "description": "The project's files as a tree: git colours for changed files, a filter, Preview on click, open in VS Code, ask Claude about a file. Follows the active project; show other folders next to it.",
+  "version": "1.0.0",
+  "icon": "files",
+  "permissions": ["fs:read", "exec:git", "exec:code"],
+  "contributes": {
+    "views": [
+      { "id": "files", "title": "Files", "icon": "files", "region": "left", "component": "FilesView" }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show files",
+        "group": "Files",
+        "icon": "files",
+        "shortcut": "Mod+Shift+E",
+        "run": "showFiles"
+      }
+    ]
+  }
+}

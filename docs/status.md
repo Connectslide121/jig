@@ -138,6 +138,13 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
+- **Files** (left sidebar, `Ctrl+Shift+E`): the project's files as a tree.
+  - Changed files in git colours with their letter; ignored ones dimmed.
+  - A filter; click for Preview; right-click to open in VS Code, ask Claude about the file, or copy
+    the path.
+  - The picker chooses the folder it follows, and the eye button shows others next to it (kept per
+    project).
+  - It updates by itself when files change.
 - **Workspaces** (Settings → Workspaces, or the folder button in the Projects view): the folders Jig
   knows. A repos folder lists the repositories inside (three levels deep, set on the same page).
   - The Git view lists the project's repository, picked at its top; All repositories lists every one,

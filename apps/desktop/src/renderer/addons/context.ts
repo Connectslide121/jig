@@ -1,6 +1,7 @@
 import {
   type AddonProject,
   type AddonUiContext,
+  type AddonWorkspace,
   addonTabType,
   addonViewId,
   type MenuItemInput,
@@ -219,4 +220,17 @@ export function useActiveProject(): AddonProject | undefined {
 export function useProjectList(): AddonProject[] {
   const projects = useProjects((s) => s.projects);
   return projects.map(toProject);
+}
+
+/** Every folder the user added, re-rendering when it changes. */
+export function useWorkspaceList(): AddonWorkspace[] {
+  const workspaces = useProjects((s) => s.workspaces);
+  return workspaces.map((w) => ({
+    id: w.id,
+    name: w.name,
+    path: w.path,
+    isGitRepo: w.isGitRepo,
+    exists: w.exists,
+    repos: w.repos,
+  }));
 }

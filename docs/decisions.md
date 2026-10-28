@@ -899,3 +899,17 @@ are not changed: they are the conversation.
   collapsed until clicked. With many projects the list stays short.
 - **Scripts still follow the active project's default workspace for now.** Making the Scripts panel
   global (D-102) comes with arranging it (phase 18, item 5).
+
+### D-105 — Files is a built-in add-on that follows the project
+**Decided by:** Claude, on my own (Jon: its own tab on the left, chosen per project from the panel)
+· **Date:** 2026-10-28
+
+The explorer is the built-in add-on `addons/files`, like Git, Repos and Scripts (D-047). It needed no
+core code beyond `useWorkspaceList()`, and the builder can change it like any add-on.
+- **What it shows:** the project's default workspace, unless the picker chose another folder. The
+  eye button adds folders next to it. All of this is kept per project in the add-on's storage.
+- **Not changed through the project's settings:** the project's settings stay core data, and the
+  view's choice belongs to the view, which is the same split as Git's shown repositories.
+- **Ignored files are shown, dimmed,** as in VS Code, and the filter leaves them out.
+- **No file operations** (new, rename, delete). Claude and your editor do those; the explorer is for
+  finding and looking. They can be added later.

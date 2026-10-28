@@ -330,7 +330,7 @@ true"). This step checks the whole picture again:
 
 ## Checklist
 
-- [ ] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
+- [x] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
 - [ ] Edit in Preview (CodeMirror, theme, find, Ctrl+S, conflict warning, save IPC + schema)
 - [ ] Docs: preview.md, layout.md ids, status, About page, README; e2e for both
 - [x] Projects you manage: create/edit, default workspace and Git repo, per-project preferences,

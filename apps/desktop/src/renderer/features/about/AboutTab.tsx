@@ -593,6 +593,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Instructions per project, added to what Claude reads in its chats",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",
+                "Files: the project's tree with git colours, a filter and Preview on click",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch and changes",
               ]}
