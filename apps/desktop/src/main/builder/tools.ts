@@ -4,7 +4,7 @@ import { addonViewId } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { BuildJob, BuildKind, LayoutOp } from "../../shared/builds";
-import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig } from "../../shared/config";
+import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
 import { hideView, type Layout, moveView, type SideRegion, setRegion, showView } from "../../shared/layout";
 
 /**
@@ -120,7 +120,7 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "read_addon",
       description: "Read every file of an add-on (built-in or the user's).",
-      shape: { id: z.string() },
+      shape: { id: z.string().regex(/^[a-z][a-z0-9-]*$/) },
       handler: async ({ id }) => {
         const addon = env.addons().find((a) => a.id === id);
         if (!addon) return `No add-on "${String(id)}". Call catalog to see the ids.`;
@@ -151,7 +151,7 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "validate",
       description: "Check the add-on you are building: manifest, bundles, exports, design tokens, README.",
-      shape: { id: z.string() },
+      shape: { id: z.string().regex(/^[a-z][a-z0-9-]*$/) },
       handler: async ({ id }) => {
         const result = await env.validate(String(id));
         return result.ok
@@ -194,6 +194,9 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
       shape: { patch: z.record(z.string(), z.unknown()) },
       handler: async ({ patch }) => {
         const job = env.job();
+        const blocked = protectedIn(patch);
+        if (blocked.length)
+          return `Not allowed: ${blocked.join(", ")} can only be changed by the user in Settings (they decide billing or run programs). Tell the user where to change it instead.`;
         const merged = deepMerge(job.staged?.settings ?? {}, patch as DeepPartial<JigConfig>);
         const check = ConfigSchema.safeParse(deepMerge(env.config(), merged));
         if (!check.success)
@@ -229,7 +232,10 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
       shape: {
         summary: z.string().describe("What the user will see and how to reach it, in plain language"),
         kind: z.enum(["layout", "settings", "change-addon", "new-addon", "nothing"]),
-        addonId: z.string().optional(),
+        addonId: z
+          .string()
+          .regex(/^[a-z][a-z0-9-]*$/)
+          .optional(),
       },
       handler: async ({ summary, kind, addonId }) =>
         env.finish({

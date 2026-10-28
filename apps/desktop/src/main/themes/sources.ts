@@ -50,9 +50,11 @@ async function loadVsCodeFile(path: string, root: string): Promise<VsCodeTheme> 
   return resolveIncludes((await readJsonc(path)) as VsCodeTheme, loader, path);
 }
 
-export function isInside(path: string, root: string): boolean {
-  const r = resolve(root);
-  const p = resolve(path);
+/** Whether `path` is `root` or inside it. Windows paths compare without case (`c:\\repo` = `C:\\Repo`). */
+export function isInside(path: string, root: string, platform = process.platform): boolean {
+  const fold = (p: string) => (platform === "win32" ? p.toLowerCase() : p);
+  const r = fold(resolve(root));
+  const p = fold(resolve(path));
   return p === r || p.startsWith(r.endsWith(sep) ? r : r + sep);
 }
 

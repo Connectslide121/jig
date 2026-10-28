@@ -123,7 +123,12 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
  * program runs as Claude Code, and shell commands Jig runs (updates). D-077.
  */
-export const PROTECTED_SETTINGS = ["engine.claudePath", "engine.allowApiKey", "updates"] as const;
+export const PROTECTED_SETTINGS = [
+  "engine.claudePath",
+  "engine.allowApiKey",
+  "terminal.shell",
+  "updates",
+] as const;
 
 /** Dotted paths of the leaves a patch sets (`{ appearance: { themeId } }` → `appearance.themeId`). */
 export function patchPaths(patch: unknown, prefix = ""): string[] {

@@ -4,7 +4,7 @@ import { join, relative, sep } from "node:path";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { BuildJob, BuildKind, BuildRequestInput } from "../../shared/builds";
-import type { DeepPartial, JigConfig } from "../../shared/config";
+import { type DeepPartial, type JigConfig, protectedIn } from "../../shared/config";
 import type { ChatItem, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import type { Layout } from "../../shared/layout";
@@ -352,6 +352,9 @@ export class BuildService {
           applyLayoutOps(await this.options.layout.get(), job.staged.layoutOps, views),
         );
       } else if (job.kind === "settings" && job.staged?.settings) {
+        const blocked = protectedIn(job.staged.settings);
+        if (blocked.length)
+          throw new JigError("invalid_args", `Change these in Settings yourself: ${blocked.join(", ")}`);
         await this.options.config.update(job.staged.settings);
       } else if (
         (job.kind === "new-addon" || job.kind === "change-addon") &&

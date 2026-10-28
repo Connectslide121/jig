@@ -30,7 +30,7 @@ Settings → Appearance).
 
 ## Not changeable from a chat
 
-`engine.claudePath`, `engine.allowApiKey` and `updates.*` (`PROTECTED_SETTINGS` in `shared/config.ts`):
+`engine.claudePath`, `engine.allowApiKey`, `terminal.shell` and `updates.*` (`PROTECTED_SETTINGS` in `shared/config.ts`; the builder checks them too, when staging and on Accept):
 they decide your billing, which program runs as Claude Code, and shell commands Jig runs. The tool
 refuses them; change them in Settings.
 

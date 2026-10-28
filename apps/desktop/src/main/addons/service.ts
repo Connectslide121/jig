@@ -158,11 +158,15 @@ export class AddonService {
     };
     const loaded: Loaded = { record, info, timers: [] };
     this.loaded.set(record.id, loaded);
+    // A newer load of the same add-on (a file save, turning it on/off) replaces this one: stop here
+    // after any await, so no host process or watcher timer is created for an entry nobody unloads.
+    const stale = () => this.loaded.get(record.id) !== loaded;
     if (!record.manifest || errors.length > 0 || !enabled) return;
     const manifest = record.manifest;
 
     if (record.uiEntry) {
       const bundle = await bundleUi(record.uiEntry);
+      if (stale()) return;
       if (bundle.errors.length) errors.push(...bundle.errors.map((e) => `ui: ${e}`));
       else {
         const sources = await Promise.all(bundle.inputs.map((f) => readFile(f, "utf8").catch(() => "")));
@@ -184,6 +188,7 @@ export class AddonService {
 
     if (record.hostEntry) {
       const bundle = await bundleHost(record.hostEntry, this.options.nodePaths);
+      if (stale()) return;
       if (bundle.errors.length) errors.push(...bundle.errors.map((e) => `host: ${e}`));
       else {
         const dir = join(this.options.cacheDir, "addons");
@@ -192,6 +197,7 @@ export class AddonService {
         await writeFile(file, bundle.code!);
         const dataDir = join(this.options.dataDir, record.id);
         await mkdir(dataDir, { recursive: true });
+        if (stale()) return;
         loaded.host = new AddonHostProcess(
           this.options.hostFactory,
           { addonId: record.id, dir: record.dir, dataDir, bundle: file, permissions: manifest.permissions },

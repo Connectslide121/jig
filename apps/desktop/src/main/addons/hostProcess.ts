@@ -32,6 +32,8 @@ export class AddonHostProcess {
   >();
   private crashes: number[] = [];
   private stopped = false;
+  /** Rejects the start-up promise (stop() while the host is still starting). */
+  private failStart: ((error: Error) => void) | undefined;
 
   constructor(
     private readonly factory: HostChannelFactory,
@@ -45,7 +47,17 @@ export class AddonHostProcess {
     const channel = this.factory(this.init.addonId);
     this.channel = channel;
     this.ready = new Promise<string[]>((resolve, reject) => {
+      this.failStart = reject;
+      // A host that never says it's ready (stuck in its top-level code) would block every call.
+      const startTimer = setTimeout(() => {
+        reject(new Error("The add-on's host code didn't start in time"));
+        if (this.channel === channel) {
+          this.channel = undefined;
+          channel.kill();
+        }
+      }, 30_000);
       channel.onMessage((message) => {
+        if (message.t === "ready" || message.t === "initError") clearTimeout(startTimer);
         if (message.t === "ready") resolve(message.exports);
         else if (message.t === "initError") reject(new Error(message.error));
         else if (message.t === "result") {
@@ -105,10 +117,19 @@ export class AddonHostProcess {
     });
   }
 
+  /** Ends the host process; calls still waiting (or waiting for it to start) fail right away. */
   stop(): void {
     this.stopped = true;
     this.channel?.kill();
     this.channel = undefined;
     this.ready = undefined;
+    const error = new Error("The add-on was reloaded or turned off");
+    this.failStart?.(error);
+    this.failStart = undefined;
+    for (const [id, call] of this.calls) {
+      clearTimeout(call.timer);
+      call.reject(error);
+      this.calls.delete(id);
+    }
   }
 }

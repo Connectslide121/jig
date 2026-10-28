@@ -568,3 +568,11 @@ means an answer can never change anything, so the permission only costs plan usa
 AI-powered tools a normal thing to build (the builder's instructions mention it), and the Git add-on
 uses it first, for commit messages. Anything that needs tools or a conversation opens a chat with a
 draft instead (`ctx.openChat({ draft })`), so you see and send the request yourself.
+
+### D-085 — Protected settings hold for the builder too; `terminal.shell` is protected
+**Decided by:** Claude, on my own (from a code review) · **Date:** 2026-10-28
+D-077 kept billing and program-running settings out of chats, but the builder's `stage_settings` and
+Accept didn't check them, so a build could switch on API-key billing or change the update command.
+Both now refuse protected settings. `terminal.shell` is added to the list: it is the program every new
+terminal and script runs. `engine.defaultPermissionMode` stays changeable from a chat (the change goes
+through Claude Code's permission prompt and shows an Undo card).

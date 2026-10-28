@@ -47,8 +47,8 @@ export async function commitWorktree(dir: string, message: string): Promise<Buil
 export async function changedFiles(dir: string): Promise<BuildFile[]> {
   const base = (await run(dir, ["merge-base", "HEAD", "main"]).catch(() => "")).trim() || "HEAD~0";
   const [names, numstat] = await Promise.all([
-    run(dir, ["diff", "--name-status", "-z", base, "HEAD"]),
-    run(dir, ["diff", "--numstat", "-z", base, "HEAD"]),
+    run(dir, ["diff", "--no-renames", "--name-status", "-z", base, "HEAD"]),
+    run(dir, ["diff", "--no-renames", "--numstat", "-z", base, "HEAD"]),
   ]);
   const counts = new Map<string, [number, number]>();
   for (const entry of numstat.split("\0").filter(Boolean)) {
