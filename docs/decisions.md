@@ -707,3 +707,17 @@ What the sweep found, and what changed:
 Kept in menus on purpose: rarely used chat actions (MCP servers, folders, export, fork, archive), and
 everything in the Tools menu.
 
+### D-095 — Claude's browser works headless; the view opens only when you ask
+**Decided by:** Jon (asked for headless use that doesn't bother him), details by Claude, on my own ·
+**Date:** 2026-10-28
+
+The page was already offscreen, but the first `jig_browser_open` opened the Claude's browser view,
+which took the right sidebar. Now:
+- The view opens by itself only with `browser.showWhenUsed` (off by default; Settings → Claude Code).
+  Tools → Open Claude's browser shows it at any time.
+- `jig_browser_screenshot` takes `fullPage` (the window grows to the page's height for the capture,
+  at most 8000 px) and `sizes` (phone, tablet, desktop: one image per size in one call, then the size
+  goes back), so responsive checks need one tool call and never move anything on screen.
+
+Not done: a second, separate headless engine (Playwright). Electron's offscreen page is already a full
+Chromium, shares the live view and needs nothing installed.

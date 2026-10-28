@@ -45,8 +45,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   an add-on. You review it before it's kept.
 - **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
   worktree and from its own angle; Claude judges the results and you keep the best.
-- **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig, clicks
-  through it, takes screenshots and reads the console, while you watch live and can take over. Its
+- **Claude checks its own work.** Claude opens your dev server in its own headless browser inside Jig,
+  clicks through it, takes screenshots at phone, tablet and desktop sizes and reads the console. Open
+  the view to watch live and take over. Its
   dev servers run in Jig terminals you can see.
 - **Routines and artifacts.** Your Claude Code routines in one tab (schedules, runs, logs, Run now),
   and Claude's published artifacts open right in Jig.

@@ -95,13 +95,43 @@ export function browserTools(browser: () => BrowserService): JigTool[] {
       name: "jig_browser_screenshot",
       readOnly: true,
       description:
-        "Screenshot of the visible part of the page in Claude's browser. The image comes back to you and is shown in the chat. Use it to check layout and visuals; use jig_browser_read for text.",
-      shape: {},
-      handler: async (): Promise<ToolOutput> => {
-        const shot = await browser().screenshot();
+        "Screenshot of the page in Claude's browser (headless: nothing pops up for the user). The images come back to you and show in the chat. fullPage captures the whole page, not only the visible part; sizes takes one screenshot per window size (desktop 1280×800, tablet 820×1180, phone 390×844) and then restores the size, for responsive checks in one call. Use jig_browser_read for text.",
+      shape: {
+        fullPage: z.boolean().optional().describe("The whole page, not only the visible part"),
+        sizes: z
+          .array(z.enum(["desktop", "tablet", "phone"]))
+          .max(3)
+          .optional()
+          .describe('One screenshot per window size, e.g. ["phone", "desktop"]'),
+      },
+      handler: async (args): Promise<ToolOutput> => {
+        const fullPage = Boolean(args.fullPage);
+        const sizes = (args.sizes as Array<keyof typeof VIEWPORTS> | undefined) ?? [];
+        if (!sizes.length) {
+          const shot = await browser().screenshot({ fullPage });
+          return {
+            text: `Screenshot of ${where(browser().state())} (${shot.width}×${shot.height}${fullPage ? ", whole page" : ""}).`,
+            images: [{ mime: "image/png", data: shot.png }],
+          };
+        }
+        const before = browser().size();
+        const lines: string[] = [];
+        const images: Array<{ mime: string; data: string }> = [];
+        try {
+          for (const name of sizes) {
+            const v = VIEWPORTS[name];
+            browser().resize(v.width, v.height);
+            await new Promise((r) => setTimeout(r, 400));
+            const shot = await browser().screenshot({ fullPage });
+            lines.push(`${images.length + 1}. ${v.label} (${v.width}×${v.height})`);
+            images.push({ mime: "image/png", data: shot.png });
+          }
+        } finally {
+          browser().resize(before.width, before.height);
+        }
         return {
-          text: `Screenshot of ${where(browser().state())} (${shot.width}×${shot.height}).`,
-          images: [{ mime: "image/png", data: shot.png }],
+          text: `Screenshots of ${where(browser().state())}${fullPage ? ", whole page" : ""}, in this order:\n${lines.join("\n")}`,
+          images,
         };
       },
     },

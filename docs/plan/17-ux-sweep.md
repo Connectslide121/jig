@@ -12,6 +12,8 @@
       Review / Walk me through / Undo; "waiting for you" on tools that wait for permission
 - [x] "chat" in all user-facing text; "Needs you" in the Chats list
 - [x] Tests: `turnChanges` unit test, `e2e/ux.spec.ts`
+- [x] Claude's browser stays headless: the view no longer pops up by itself (setting
+      `browser.showWhenUsed`); screenshots of the whole page and at several sizes in one call (D-095)
 
 ## Later
 

@@ -162,6 +162,16 @@ export function EngineSettings() {
         />
       </SettingRow>
       <SettingRow
+        label="Show Claude's browser when it's used"
+        description="Claude's browser works headless: Claude opens pages, resizes and takes screenshots without anything popping up. Turn this on to open the browser view by itself whenever Claude starts browsing. You can always open it from Tools."
+      >
+        <Switch
+          label="Show Claude's browser when it's used"
+          checked={config.browser.showWhenUsed}
+          onChange={(showWhenUsed) => void updateConfig({ browser: { showWhenUsed } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="File checkpoints"
         description="Claude Code keeps a copy of each file before changing it, so you can restore files to how they were before any of your messages (the message's menu)."
       >

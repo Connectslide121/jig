@@ -57,6 +57,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
+| `browser.showWhenUsed` | `false` | open the Claude's browser view by itself when Claude starts browsing (off: it works headless) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |
 | `learning.retentionDays` | `90` | delete activity older than this |

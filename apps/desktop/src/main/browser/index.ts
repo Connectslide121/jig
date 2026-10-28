@@ -1,3 +1,4 @@
+import { getConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { BrowserService } from "./service";
@@ -9,7 +10,10 @@ export function startBrowser(): void {
   const browser = new BrowserService({
     state: (state) => emit("browser.state", state),
     frame: (frame) => emit("browser.frame", frame),
-    reveal: () => emit("browser.reveal", undefined),
+    // Headless unless you asked to watch: the view opens by itself only with browser.showWhenUsed.
+    reveal: () => {
+      if (getConfig().browser.showWhenUsed) emit("browser.reveal", undefined);
+    },
   });
   service = browser;
   registerJigTools(browserTools(() => browser));

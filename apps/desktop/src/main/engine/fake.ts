@@ -439,6 +439,8 @@ export class FakeEngine implements Engine {
           const page = await call("jig_browser_open", { url });
           if (/\[1\]/.test(page)) await call("jig_browser_click", { ref: 1 });
           await call("jig_browser_screenshot", {});
+          // "browse … at phone and desktop": one screenshot per size, the size is put back after.
+          if (/\bphone\b/i.test(text)) await call("jig_browser_screenshot", { sizes: ["phone", "desktop"] });
           await stream(`${msg}:text:0`, "I opened the page in my browser and took a screenshot.", signal);
         } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).

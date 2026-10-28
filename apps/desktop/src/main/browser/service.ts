@@ -249,12 +249,41 @@ export class BrowserService {
     return `Pressed ${key}.`;
   }
 
-  async screenshot(): Promise<{ png: string; width: number; height: number }> {
-    const image = await this.page().capturePage();
-    const { width } = image.getSize();
-    // Large screenshots cost many tokens: keep them at most 1280 wide.
-    const scaled = width > 1280 ? image.resize({ width: 1280 }) : image;
+  /**
+   * A PNG of the page: the visible part, or with `fullPage` the whole page (the window grows to the
+   * page's height for the capture, at most 8000 px, then goes back). At most 1280 wide and 7900 high,
+   * since large images cost many tokens and Claude's limit is 8000 px.
+   */
+  async screenshot(
+    options: { fullPage?: boolean } = {},
+  ): Promise<{ png: string; width: number; height: number }> {
+    const c = this.page();
+    const { width, height } = this.viewport;
+    let image: Electron.NativeImage;
+    if (options.fullPage) {
+      const pageHeight = Number(
+        await c.executeJavaScript(
+          "Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)",
+          true,
+        ),
+      );
+      const tall = Math.min(Math.max(height, Math.round(pageHeight) || height), 8000);
+      this.window?.setContentSize(width, tall);
+      await new Promise((r) => setTimeout(r, 400));
+      try {
+        image = await c.capturePage();
+      } finally {
+        this.window?.setContentSize(width, height);
+      }
+    } else image = await c.capturePage();
+    let scaled = image.getSize().width > 1280 ? image.resize({ width: 1280 }) : image;
+    if (scaled.getSize().height > 7900) scaled = scaled.resize({ height: 7900 });
     return { png: scaled.toPNG().toString("base64"), ...scaled.getSize() };
+  }
+
+  /** The current window size (to put it back after trying other sizes). */
+  size(): { width: number; height: number } {
+    return { ...this.viewport };
   }
 
   consoleEntries(clear: boolean): ConsoleEntry[] {

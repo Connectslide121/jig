@@ -45,6 +45,12 @@ export const ConfigSchema = z.object({
       desktop: z.boolean().default(true),
     })
     .prefault({}),
+  browser: z
+    .object({
+      /** Open the Claude's browser view when Claude starts using it (off: it works headless). */
+      showWhenUsed: z.boolean().default(false),
+    })
+    .prefault({}),
   updates: z
     .object({
       /** Jig's source repository for "Pull, build and restart"; empty = the repo Jig runs from (development). */

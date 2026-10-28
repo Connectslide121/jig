@@ -21,7 +21,7 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+N");
 
-  await page.getByTestId("composer-input").fill(`browse ${pathToFileURL(file).href}`);
+  await page.getByTestId("composer-input").fill(`browse ${pathToFileURL(file).href} at phone and desktop`);
   await page.keyboard.press("Enter");
   const chat = page.getByTestId("chat");
   await expect(chat).toContainText("I opened the page in my browser and took a screenshot.", {
@@ -30,8 +30,16 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   // The screenshot comes back to Claude and shows in the chat.
   await expect(chat.getByTestId("tool-images").first()).toBeVisible();
 
-  // The view opened by itself and shows the live page.
+  // Two sizes in one call: two images, and the window is back at its size after.
+  await expect(chat.getByTestId("tool-images").nth(1).locator("img")).toHaveCount(2);
+  expect(JSON.stringify(await hostCall(page, "browser.state"))).toContain('"width":1280');
+
+  // Headless by default: nothing popped up. You open the view from Tools when you want to watch.
   const view = page.getByTestId("browser-view");
+  await expect(view).toBeHidden();
+  await page.keyboard.press("Control+k");
+  await page.getByTestId("tools-filter").fill("Claude's browser");
+  await page.keyboard.press("Enter");
   await expect(view).toBeVisible();
   await expect(view.getByTestId("browser-frame")).toBeVisible({ timeout: 10000 });
   await expect(view.getByTestId("browser-address")).toHaveValue(/index\.html/);

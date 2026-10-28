@@ -40,7 +40,7 @@ in this order:
 | "background job" | a Bash command that keeps running in the background (Stop ends it) |
 | "edit <file>" | edits the file's first line; the card shows the diff |
 | "theme", "light mode", "dark mode", "terminals to the right" | Claude changes Jig's settings or layout (change cards with Undo) |
-| "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot |
+| "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |
 | contains "question" | asks a multiple-choice question |
