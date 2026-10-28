@@ -8,6 +8,7 @@ import { useFirstRun } from "../features/setup";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
 import { useConfig } from "../stores/config";
+import { useUsageSync } from "../stores/usage";
 import { DialogHost, ErrorBoundary, MenuHost } from "../ui";
 import { MainArea } from "./MainArea";
 import { useProjects } from "./projects";
@@ -62,6 +63,7 @@ export function Workbench() {
   useAddonsSync();
   useBuildsSync();
   useLearningSync();
+  useUsageSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
   useFirstRun(ready);

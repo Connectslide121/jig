@@ -174,4 +174,11 @@ export type EngineEvent =
   | { type: "status"; status: "compacting" | "requesting" | null }
   | { type: "notice"; text: string; tone: "info" | "warning" | "danger" }
   | { type: "error"; message: string; code?: "not_signed_in" | "process" | "billing" | "rate_limit" }
+  | {
+      /** Claude Code reported plan rate-limit state (a warning, or a window used up). */
+      type: "rate_limit";
+      status: "allowed" | "allowed_warning" | "rejected";
+      window?: string;
+      resetsAt?: string;
+    }
   | { type: "exit" };

@@ -57,6 +57,21 @@ export class Normalizer {
         return this.user(message);
       case "result":
         return this.result(message);
+      case "rate_limit_event": {
+        const info = message.rate_limit_info ?? {};
+        return [
+          {
+            type: "rate_limit",
+            status: info.status ?? "allowed",
+            window: info.rateLimitType,
+            // Seconds or milliseconds since 1970 (the SDK doesn't say): both give a sensible date.
+            resetsAt:
+              typeof info.resetsAt === "number"
+                ? new Date(info.resetsAt > 1e12 ? info.resetsAt : info.resetsAt * 1000).toISOString()
+                : undefined,
+          },
+        ];
+      }
       case "auth_status":
         return message.error ? [{ type: "error", message: message.error, code: "not_signed_in" }] : [];
       default:

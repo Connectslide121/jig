@@ -143,6 +143,11 @@ session from a menu.
 (`createSdkMcpServer`) with a small set of tools — e.g. `jig_list_addons`, `jig_request_build` — so
 saying "make me a button that…" in any chat starts the builder. These are the only tools Jig adds.
 
+**Plan usage.** Your subscription's 5-hour and weekly windows are always visible (status bar, chat
+header ring, card on hover). Jig asks Claude Code for the data behind `/usage` (a prompt-less Claude Code
+process, every 5 minutes and after chats) and listens to Claude Code's rate-limit events; it never reads
+the login itself. Reference: `docs/reference/usage.md`.
+
 ## 5. Projects, sessions and terminals
 
 - **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds

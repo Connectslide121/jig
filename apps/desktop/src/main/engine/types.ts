@@ -1,4 +1,5 @@
 import type { EngineEvent, PermissionDecision, PermissionMode, PermissionRequest } from "../../shared/engine";
+import type { RawUsage } from "../../shared/usage";
 import type { EnginePart } from "../sessions/attachments";
 
 /**
@@ -50,6 +51,11 @@ export interface Engine {
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession;
   /** A single non-interactive query with no tools (pattern reflection, phase 9). Returns the text. */
   oneShot(prompt: string, options: OneShotOptions): Promise<string>;
+  /**
+   * Your plan's usage as Claude Code's `/usage` reports it (5-hour and weekly windows). Claude Code
+   * fetches it with its own login; no message is sent to Claude.
+   */
+  planUsage(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<RawUsage>;
 }
 
 /** Copies the environment, removing API-key variables unless the user allowed them (D-002). */

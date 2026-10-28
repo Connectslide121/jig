@@ -32,6 +32,7 @@ import type {
   OpenVsxExtension,
   ThemeSummary,
 } from "./themes";
+import type { PlanUsage } from "./usage";
 
 export const CHANNEL_CALL = "jig:call";
 export const CHANNEL_EVENT = "jig:event";
@@ -55,6 +56,10 @@ export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };
+  /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
+  "usage.get": { args: void; result: PlanUsage };
+  /** Asks Claude Code again now. */
+  "usage.refresh": { args: void; result: PlanUsage };
   /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
   "setup.check": { args: void; result: SetupCheck[] };
   "updates.check": { args: void; result: UpdateInfo };
@@ -203,6 +208,7 @@ export interface HostEvents {
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];
   "builds.changed": BuildJob[];
+  "usage.changed": PlanUsage;
   "learning.changed": LearningState;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };

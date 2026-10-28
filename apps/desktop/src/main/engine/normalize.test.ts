@@ -177,9 +177,34 @@ describe("Normalizer", () => {
     expect(result[1]).toMatchObject({ type: "result", ok: false });
   });
 
+  it("passes on plan rate-limit events (resets in seconds or milliseconds)", () => {
+    const n = new Normalizer();
+    expect(
+      n.handle({
+        type: "rate_limit_event",
+        rate_limit_info: { status: "allowed_warning", rateLimitType: "five_hour", resetsAt: 1793178000 },
+      }),
+    ).toEqual([
+      {
+        type: "rate_limit",
+        status: "allowed_warning",
+        window: "five_hour",
+        resetsAt: "2026-10-28T09:00:00.000Z",
+      },
+    ]);
+    expect(
+      n.handle({
+        type: "rate_limit_event",
+        rate_limit_info: { status: "rejected", resetsAt: 1793178000000 },
+      })[0],
+    ).toMatchObject({
+      resetsAt: "2026-10-28T09:00:00.000Z",
+    });
+  });
+
   it("ignores unknown messages", () => {
     const n = new Normalizer();
-    expect(n.handle({ type: "rate_limit_event" })).toEqual([]);
+    expect(n.handle({ type: "something_new" })).toEqual([]);
     expect(n.handle(null)).toEqual([]);
     expect(
       n.handle(stream({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "x" } })),

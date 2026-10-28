@@ -101,3 +101,12 @@ do. Files picked with the paperclip that are code or text **inside the project**
 `@path` mentions (Claude Code reads the current version and can edit it). The user item keeps
 `attachments: [{ path, mime, name, kind }]` (older transcripts: `images`); queued messages keep theirs.
 The fake engine answers "I see N image(s)." and "I read <names>."
+
+## Plan usage
+
+`Engine.planUsage()` returns the data behind Claude Code's `/usage` (5-hour and weekly windows) by
+asking a prompt-less Claude Code process — no message is sent to Claude, and Jig never sees the login.
+`rate_limit_event` messages become `{ type: "rate_limit", status, window?, resetsAt? }` engine events,
+which the session manager hands to the usage service instead of the transcript. Details:
+`docs/reference/usage.md`.
+

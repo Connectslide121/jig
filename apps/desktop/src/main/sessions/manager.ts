@@ -61,6 +61,8 @@ export interface SessionManagerOptions {
   toolHandlers?: (
     meta: SessionMeta,
   ) => Record<string, (args: Record<string, unknown>) => Promise<string>> | undefined;
+  /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
+  onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
@@ -238,6 +240,10 @@ export class SessionManager {
   }
 
   private handleEvent(live: Live, event: EngineEvent) {
+    if (event.type === "rate_limit") {
+      this.options.onRateLimit?.(event);
+      return;
+    }
     if (event.type === "exit") {
       live.engine = undefined;
       for (const [requestId, pending] of live.permissions) {

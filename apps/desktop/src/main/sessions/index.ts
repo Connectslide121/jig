@@ -9,6 +9,7 @@ import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { paths } from "../state/paths";
 import { isInside } from "../themes/sources";
+import { usageService } from "../usage";
 import { SessionManager } from "./manager";
 
 let manager: SessionManager | undefined;
@@ -72,7 +73,12 @@ export function startSessions(): void {
       const hooks = kindHooks.get(meta.kind ?? "");
       return hooks ? hooks.toolHandlers(meta) : jigToolHandlers(meta);
     },
-    onTurnEnd: (meta) => kindHooks.get(meta.kind ?? "")?.onTurnEnd?.(meta),
+    onTurnEnd: (meta) => {
+      kindHooks.get(meta.kind ?? "")?.onTurnEnd?.(meta);
+      // A chat used some of the plan: refresh the usage meter (at most once a minute).
+      usageService().refreshIfOlder(60_000);
+    },
+    onRateLimit: (event) => usageService().rateLimit(event),
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
       for (const u of updates)

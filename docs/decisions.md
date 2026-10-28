@@ -478,3 +478,13 @@ one repository from its menu). The Git view shows all repositories like VS Code'
 several repositories; one **focus repository** (set by clicking it, saved in `projects.json`) drives
 the status bar and the Tools-menu Git actions, so the active project never has to change. Repositories
 are not registered as projects of their own.
+
+### D-076 — Plan usage comes from Claude Code's own /usage data, shown in the status bar and chat header
+**Decided by:** Jon (always visible, built in, a hover card) and Claude, on my own (how) · **Date:** 2026-10-28
+Jon wants his 5-hour and weekly limits visible at all times, built in, not in an add-on tab. Jig can't
+call Anthropic's usage endpoint itself without reading the login (forbidden), so it asks Claude Code:
+the Agent SDK's experimental usage call on a prompt-less Claude Code process (no message is sent, so no
+limits are used), every 5 minutes, after chat turns and on Claude Code's rate-limit events. The meter
+lives in the status bar (always visible) and as a ring in the chat header; both show a card on hover and
+refresh on click. The SDK method is experimental: if it changes, the meter says "usage n/a" and nothing
+else breaks.

@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
+import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { Normalizer } from "./normalize";
 import { AsyncQueue } from "./queue";
@@ -123,6 +125,53 @@ export class ClaudeEngine implements Engine {
         }
       },
     };
+  }
+
+  async planUsage(options: {
+    env: Record<string, string | undefined>;
+    claudePath: string;
+  }): Promise<RawUsage> {
+    // A Claude Code process with no prompt: it answers control requests (here the data behind
+    // `/usage`) without sending anything to Claude. Closed right after.
+    const input = new AsyncQueue<SDKUserMessage>();
+    const abort = new AbortController();
+    const q = query({
+      prompt: input,
+      options: {
+        cwd: homedir(),
+        settingSources: [],
+        tools: [],
+        persistSession: false,
+        env: options.env,
+        pathToClaudeCodeExecutable: options.claudePath || undefined,
+        abortController: abort,
+        stderr: (data) => log.debug(`claude stderr (usage): ${data.trimEnd()}`),
+      },
+    });
+    const drain = (async () => {
+      for await (const _ of q) {
+        // Nothing is expected; keep the stream flowing.
+      }
+    })().catch(() => {});
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return (await Promise.race([
+        q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("Claude Code didn't answer in time")), 45_000);
+        }),
+      ])) as RawUsage;
+    } finally {
+      clearTimeout(timer);
+      input.close();
+      abort.abort();
+      try {
+        q.close();
+      } catch {
+        // Already closed.
+      }
+      void drain;
+    }
   }
 
   async oneShot(prompt: string, options: OneShotOptions): Promise<string> {

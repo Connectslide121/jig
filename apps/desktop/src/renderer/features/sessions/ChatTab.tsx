@@ -4,6 +4,7 @@ import { PERMISSION_MODE_LABELS } from "../../../shared/engine";
 import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
+import { UsageRing } from "../usage";
 import { Composer } from "./Composer";
 import { modelLabel, modelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
 import { STATUS_LABEL, StatusDot } from "./status";
@@ -69,6 +70,7 @@ export function ChatTab({ params, active }: TabProps) {
         </span>
         <div className="flex-1" />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
+        {meta.authSource !== "api_key" && <UsageRing />}
         {meta.turns > 0 && (
           <span
             className="text-2xs text-hint"

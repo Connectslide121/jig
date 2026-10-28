@@ -17,6 +17,7 @@ import { registerSetupHandlers } from "./setup";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
+import { startUsage, stopUsage } from "./usage";
 import { createMainWindow } from "./window";
 
 const log = logger("main");
@@ -54,6 +55,7 @@ async function start() {
   registerScriptHandlers();
   registerFileHandlers();
   registerSetupHandlers();
+  startUsage();
   await startThemes(addonThemes);
   await startAddons();
   onAddonsChange(() => themeService().refresh());
@@ -76,6 +78,7 @@ async function reportReady() {
 
 app.on("will-quit", () => {
   stopTerminals();
+  stopUsage();
 });
 
 app.on("window-all-closed", () => {

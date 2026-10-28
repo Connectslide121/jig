@@ -16,6 +16,7 @@ exceptions return `internal` (and are logged).
 | `iconThemes.get` | `{ id }` | `{ id, label, theme }` | a file icon theme with `jig-icons:` URLs |
 | `iconThemes.active` | — | `{ id, label, theme } \| null` | the theme chosen in Settings (`null` = Jig's icons) |
 | `files.image` | `{ path }` | `{ dataUrl, bytes, mime }` | an image file for a preview (png, jpg, gif, webp, avif, bmp, ico, svg; ≤ 25 MB); `not_image`, `not_found`, `too_large` |
+| `usage.get` / `usage.refresh` | — | `PlanUsage` | your Claude plan usage (5-hour and weekly windows) from Claude Code (`docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
 | `updates.apply` | — | `{ restarting }` | pull + build + restart, or open the release page; `update_failed`, `no_source` |
@@ -99,5 +100,6 @@ exceptions return `internal` (and are logged).
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
+| `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted |

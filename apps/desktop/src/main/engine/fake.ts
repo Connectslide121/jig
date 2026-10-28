@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
+import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
@@ -232,6 +233,27 @@ export class FakeEngine implements Engine {
   }
 
   /** Pattern reflection: one suggestion for the strongest pattern in the prompt. */
+  /**
+   * Scripted plan usage: 42 % of the 5-hour window (resets in 2 h 13 min) and 18 % of the week.
+   * `JIG_FAKE_USAGE=unavailable` acts like an API-key login; a JSON value replaces the answer.
+   */
+  async planUsage(): Promise<RawUsage> {
+    const scripted = process.env.JIG_FAKE_USAGE;
+    if (scripted === "unavailable")
+      return { subscription_type: null, rate_limits_available: false, rate_limits: null };
+    if (scripted) return JSON.parse(scripted) as RawUsage;
+    const at = (ms: number) => new Date(Date.now() + ms).toISOString();
+    return {
+      subscription_type: "max",
+      rate_limits_available: true,
+      rate_limits: {
+        five_hour: { utilization: 42, resets_at: at((2 * 60 + 13) * 60_000) },
+        seven_day: { utilization: 18, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+        seven_day_opus: { utilization: 31, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+      },
+    };
+  }
+
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
