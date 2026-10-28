@@ -198,6 +198,9 @@ function FileRow({
   };
   const menu: MenuItemInput[] = [
     { label: "Open diff", icon: "file-diff", onSelect: open },
+    ...(change.kind === "deleted"
+      ? []
+      : [{ label: "Preview", icon: "eye", onSelect: () => ctx.openPreview(`${cwd}/${change.path}`) }]),
     group === "staged"
       ? { label: "Unstage", icon: "minus", onSelect: unstage }
       : { label: "Stage", icon: "plus", onSelect: stage },

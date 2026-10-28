@@ -3,6 +3,7 @@ import { registerAbout } from "./about";
 import { registerBuilder } from "./builder";
 import { registerFiles } from "./files";
 import { registerLearning } from "./learning";
+import { registerPreview } from "./preview";
 import { registerProjects } from "./projects";
 import { registerSessions } from "./sessions";
 import { registerSettings } from "./settings";
@@ -21,6 +22,7 @@ export function registerFeatures(): void {
   registerLearning();
   registerSetup();
   registerFiles();
+  registerPreview();
   registerUsage();
   registerAbout();
 }

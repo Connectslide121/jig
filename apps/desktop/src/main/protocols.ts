@@ -17,6 +17,11 @@ export function registerSchemes(): void {
       scheme: "jig-addon",
       privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
     },
+    // File previews: granted folders only (main/files/preview.ts). `stream` for audio and video.
+    {
+      scheme: "jig-file",
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+    },
     // File icon themes: icons and fonts of a loaded theme (main/themes/fileIcons.ts).
     {
       scheme: "jig-icons",
@@ -51,10 +56,11 @@ export function contentSecurityPolicy(dev: boolean): string {
     "default-src 'self'",
     `script-src 'self' jig-addon: 'wasm-unsafe-eval'${dev ? " 'unsafe-inline'" : ""}`,
     "style-src 'self' 'unsafe-inline' jig-addon:",
-    "img-src 'self' data: blob: https: jig-addon: jig-icons:",
+    "img-src 'self' data: blob: https: jig-addon: jig-icons: jig-file:",
+    "media-src jig-file:",
     "font-src 'self' data: jig-icons:",
     `connect-src 'self' jig-addon:${dev ? " ws://localhost:* http://localhost:*" : ""}`,
-    "frame-src http://localhost:* http://127.0.0.1:*",
+    "frame-src http://localhost:* http://127.0.0.1:* jig-file:",
     "object-src 'none'",
     "base-uri 'none'",
   ].join("; ");

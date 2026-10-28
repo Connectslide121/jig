@@ -2,6 +2,7 @@ import { type AddonManifest, MANIFEST_KEY, SLOTS, type SlotId } from "@jig/sdk";
 import {
   BookOpen,
   ChevronDown,
+  Eye,
   FolderGit2,
   FolderPlus,
   Gauge,
@@ -46,6 +47,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "overview", title: "Overview", icon: BookOpen },
   { id: "chats", title: "Chats", icon: MessageSquare },
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
+  { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
   { id: "terminals", title: "Terminals & scripts", icon: SquareTerminal },
   { id: "configure", title: "Claude configures Jig", icon: Settings2 },
@@ -578,6 +580,20 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "A focus repo for new chats and the Git view",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch and changes",
+              ]}
+            />
+          </Section>
+          <Section
+            id="previews"
+            title="Previews"
+            lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as a tree, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
+          >
+            <Bullets
+              items={[
+                "Right-click a file in Git → Preview, or the eye on a chat tool card",
+                "Links between Markdown files open their preview",
+                "Preview / Source switch, and Ask Claude about the file",
+                "Tools → Preview a file… for anything else",
               ]}
             />
           </Section>

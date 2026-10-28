@@ -127,6 +127,13 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
   "Removed projects", where they can be opened or deleted.
+- **File previews:** right-click a file in Git → Preview, the eye on a chat tool card, an attachment, or
+  Tools → Preview a file…. Markdown is rendered with Mermaid diagrams, relative images and links between
+  files. HTML runs in a sandbox, with scripts off unless you turn them on. PDFs open in a viewer.
+  CSV/TSV and Excel show as filterable tables, JSON as a tree, and notebooks with their outputs.
+  Images, audio, video, Word/PowerPoint text, .mmd diagrams, patches and highlighted code also work.
+  The preview follows the file while it changes, and Ask Claude opens a chat about it. Chats draw
+  Mermaid blocks as diagrams too.
 - **Ask Claude about a failed script:** when a script exits with an error, a toast offers **Ask Claude**:
   a new chat opens in the script's folder with the command, exit code and the end of the output typed
   in. Failed terminals also get a ✨ button in the list, and any terminal's menu has "Ask Claude about
@@ -238,6 +245,8 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Previews on Windows**: a PDF, a video (seeking) and an HTML page with scripts from your own repos;
+  Markdown with images in a sibling folder.
 - **Desktop notifications on Windows**: put Jig in the background during a long turn; a Windows
   notification should appear when it finishes (and the taskbar button flash on a permission prompt).
 - **Restore files and fork with your real Claude Code**: let Claude edit a file, then Restore files to

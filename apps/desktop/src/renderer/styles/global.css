@@ -142,6 +142,30 @@ html[data-platform="darwin"] .topbar-insets {
 .jig-markdown h2 {
   font-size: var(--text-base);
 }
+/* A Markdown file in the Preview tab: a document, so headings are larger and spaced like one. */
+.jig-document {
+  font-size: var(--text-base);
+}
+.jig-document h1 {
+  font-size: var(--text-2xl);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--jig-line);
+  margin: 1.4rem 0 0.8rem;
+}
+.jig-document h2 {
+  font-size: var(--text-xl);
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--jig-line);
+  margin: 1.3rem 0 0.6rem;
+}
+.jig-document h3 {
+  font-size: var(--text-lg);
+}
+.jig-document p,
+.jig-document ul,
+.jig-document ol {
+  margin: 0.75rem 0;
+}
 .jig-markdown blockquote {
   border-left: 2px solid var(--jig-line-strong);
   padding-left: 0.75rem;

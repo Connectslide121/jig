@@ -576,3 +576,13 @@ Accept didn't check them, so a build could switch on API-key billing or change t
 Both now refuse protected settings. `terminal.shell` is added to the list: it is the program every new
 terminal and script runs. `engine.defaultPermissionMode` stays changeable from a chat (the change goes
 through Claude Code's permission prompt and shows an Undo card).
+
+### D-086 — One Preview tab; binary files through granted `jig-file:` folders; Mermaid bundled
+**Decided by:** Jon (an md previewer and other previewers) and Claude, on my own (how) · **Date:** 2026-10-28
+All formats share one tab type so every entry point (Git, chat, add-ons, links between files) opens
+the same thing. Text comes over IPC. PDF, media and HTML pages need real URLs, so they come from a
+`jig-file:` protocol that only serves folders a preview was opened in (the file's project, else its
+folder), so a page can load its own CSS and images and nothing else. HTML runs in a sandboxed frame
+that is never same-origin, with scripts off unless turned on. PDFs use Chromium's own viewer
+(`plugins: true`) instead of bundling pdf.js. Mermaid (12.1.0) is a dependency because Claude writes
+diagrams in it all the time; it loads only when a diagram is shown.

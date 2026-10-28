@@ -3,6 +3,7 @@ import type { ChatAttachment } from "../../../shared/engine";
 import { call } from "../../lib/host";
 import { Badge, cn, FileIcon, IconButton, Spinner } from "../../ui";
 import { openImage, useImageFile } from "../files";
+import { openPreview } from "../preview/actions";
 
 const KIND_LABEL: Record<NonNullable<ChatAttachment["kind"]>, string> = {
   image: "image",
@@ -53,7 +54,7 @@ function DocumentChip({ file, onRemove }: { file: ChatAttachment; onRemove?: () 
       <button
         type="button"
         title={`Open ${name}`}
-        onClick={() => void call("app.openPath", { path: file.path })}
+        onClick={() => openPreview(file.path)}
         className="flex h-16 max-w-56 items-center gap-2 rounded-md border border-line bg-surface px-3 text-left hover:bg-hover"
       >
         <FileIcon path={name} className="size-6" />

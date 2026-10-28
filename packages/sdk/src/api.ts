@@ -85,6 +85,11 @@ export interface AddonUiContext {
   openTab(type: string, params?: Record<string, unknown>): void;
   /** Opens an image file (absolute path) in Jig's image tab. */
   openImage(path: string): void;
+  /**
+   * Opens a file (absolute path) in Jig's Preview tab: rendered Markdown (with Mermaid), HTML, PDF,
+   * CSV/Excel tables, JSON, notebooks, images, audio, video, Word/PowerPoint text, or highlighted code.
+   */
+  openPreview(path: string): void;
   /** Shows one of this add-on's views (short id), or any view by its full id (`addon.git.git`, `jig.terminals`). */
   showView(viewId: string): void;
   /** Scripts of a project (the same discovery as the dashboard), and running them in terminals. */

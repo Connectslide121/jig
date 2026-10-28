@@ -2,6 +2,7 @@ import {
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  Eye,
   FilePen,
   FileSearch,
   FileText,
@@ -17,8 +18,9 @@ import {
 import { type ReactNode, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
-import { CodeBlock, cn, FileIcon, ImagePreview, Spinner } from "../../ui";
+import { CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
 import { openImage, useImageFile } from "../files";
+import { openPreview } from "../preview/actions";
 import { useToolRenderers } from "./toolRenderers";
 
 type ToolItem = Extract<ChatItem, { kind: "tool" }>;
@@ -139,24 +141,45 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
   const summary = toolSummary(item.name, item.input);
   const filePath = str(item.input.file_path);
   const imagePath = IMAGE_TOOLS.has(item.name) && filePath && isImagePath(filePath) ? filePath : undefined;
+  const notebookPath = str(item.input.notebook_path);
+  // Files Claude read or wrote open in the Preview tab (rendered Markdown, tables, notebooks…).
+  const previewPath =
+    item.status === "done"
+      ? FILE_TOOLS.has(item.name)
+        ? filePath
+        : item.name === "NotebookEdit"
+          ? notebookPath
+          : undefined
+      : undefined;
   return (
     <div className="rounded-md border border-line bg-raised" data-testid="tool-card">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex h-7 w-full min-w-0 items-center gap-2 px-2 text-left text-xs"
-      >
-        <ChevronRight
-          className={cn("size-3.5 shrink-0 text-hint transition-transform", open && "rotate-90")}
-        />
-        <Icon className="size-3.5 shrink-0 text-muted" />
-        <span className="shrink-0 font-medium text-fg">{toolLabel(item.name)}</span>
-        {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
-        <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
-        {item.status === "running" && <Spinner size="sm" />}
-        {item.status === "done" && <CircleCheck className="size-3.5 shrink-0 text-success" />}
-        {item.status === "error" && <CircleAlert className="size-3.5 shrink-0 text-danger" />}
-      </button>
+      <div className="flex min-w-0 items-center pr-1">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="flex h-7 min-w-0 flex-1 items-center gap-2 px-2 text-left text-xs"
+        >
+          <ChevronRight
+            className={cn("size-3.5 shrink-0 text-hint transition-transform", open && "rotate-90")}
+          />
+          <Icon className="size-3.5 shrink-0 text-muted" />
+          <span className="shrink-0 font-medium text-fg">{toolLabel(item.name)}</span>
+          {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
+          <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
+          {item.status === "running" && <Spinner size="sm" />}
+          {item.status === "done" && <CircleCheck className="size-3.5 shrink-0 text-success" />}
+          {item.status === "error" && <CircleAlert className="size-3.5 shrink-0 text-danger" />}
+        </button>
+        {previewPath && (
+          <IconButton
+            icon={Eye}
+            size="sm"
+            label="Preview the file"
+            data-testid="tool-preview"
+            onClick={() => openPreview(previewPath)}
+          />
+        )}
+      </div>
       {custom && !open ? <div className="px-2 pb-2">{custom.render(item)}</div> : null}
       {!custom && imagePath && item.status === "done" && <ImageThumb path={imagePath} />}
       {open && <Detail item={item} />}

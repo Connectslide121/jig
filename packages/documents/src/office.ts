@@ -108,7 +108,11 @@ function csvCell(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function xlsxToText(bytes: Uint8Array, maxRowsPerSheet = 5000): string {
+/** The sheets of an .xlsx: name and rows of cell texts (formulas without a cached value as `=…`). */
+export function xlsxToSheets(
+  bytes: Uint8Array,
+  maxRowsPerSheet = 5000,
+): Array<{ name: string; rows: string[][]; truncated: boolean }> {
   const files = unzip(bytes, (n) => (n.startsWith("xl/") && n.endsWith(".xml")) || n.endsWith(".rels"));
   const workbook = files["xl/workbook.xml"];
   if (!workbook) throw new Error("This .xlsx has no workbook");
@@ -116,18 +120,18 @@ export function xlsxToText(bytes: Uint8Array, maxRowsPerSheet = 5000): string {
     [...m[1]!.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map((t) => decode(t[1]!)).join(""),
   );
   const links = rels(files["xl/_rels/workbook.xml.rels"]);
-  const out: string[] = [];
+  const sheets: Array<{ name: string; rows: string[][]; truncated: boolean }> = [];
   for (const sheet of workbook.matchAll(/<sheet\b[^>]*\/?>/g)) {
     const name = decode(attr(sheet[0], "name") ?? "Sheet");
     const rid = attr(sheet[0], "r:id");
     const path = rid && links[rid] ? resolvePart("xl/workbook.xml", links[rid]!) : undefined;
     const xml = path ? files[path] : undefined;
     if (!xml) continue;
-    const rows: string[] = [];
-    let count = 0;
+    const rows: string[][] = [];
+    let truncated = false;
     for (const row of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>|<row\b[^>]*\/>/g)) {
-      if (++count > maxRowsPerSheet) {
-        rows.push(`[… more rows cut by Jig]`);
+      if (rows.length >= maxRowsPerSheet) {
+        truncated = true;
         break;
       }
       const cells: string[] = [];
@@ -150,13 +154,24 @@ export function xlsxToText(bytes: Uint8Array, maxRowsPerSheet = 5000): string {
         if (!value && /<f>/.test(inner)) value = `=${decode(/<f>([\s\S]*?)<\/f>/.exec(inner)?.[1] ?? "")}`;
         const index = ref ? columnIndex(ref) : cells.length;
         while (cells.length < index) cells.push("");
-        cells[index] = csvCell(value);
+        cells[index] = value;
       }
-      if (cells.some((c) => c !== "")) rows.push(cells.join(","));
+      if (cells.some((c) => c !== "")) rows.push(cells);
     }
-    out.push(`## Sheet: ${name}\n${rows.join("\n") || "(empty)"}`);
+    sheets.push({ name, rows, truncated });
   }
-  return out.join("\n\n").trim();
+  return sheets;
+}
+
+export function xlsxToText(bytes: Uint8Array, maxRowsPerSheet = 5000): string {
+  return xlsxToSheets(bytes, maxRowsPerSheet)
+    .map((sheet) => {
+      const rows = sheet.rows.map((cells) => cells.map(csvCell).join(","));
+      if (sheet.truncated) rows.push("[… more rows cut by Jig]");
+      return `## Sheet: ${sheet.name}\n${rows.join("\n") || "(empty)"}`;
+    })
+    .join("\n\n")
+    .trim();
 }
 
 // ------------------------------------------------------------------------------------------ PowerPoint

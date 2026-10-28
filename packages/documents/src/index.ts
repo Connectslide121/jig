@@ -5,3 +5,4 @@
  */
 export * from "./kinds";
 export * from "./office";
+export * from "./table";

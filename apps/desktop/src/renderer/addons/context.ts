@@ -107,6 +107,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
     openImage: (path) => void workbench.openTab("jig.image", { path }),
+    openPreview: (path) => void workbench.openTab("jig.preview", { path }),
     // A full id ("addon.git.git", "jig.terminals") shows another view; a short id one of this add-on's.
     showView: (viewId) =>
       workbench.showView(/^(addon|jig)\./.test(viewId) ? viewId : addonViewId(id, viewId)),

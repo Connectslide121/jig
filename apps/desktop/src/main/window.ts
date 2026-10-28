@@ -58,6 +58,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: false,
+      // Chromium's own PDF viewer, for PDF previews (a PDF can't run code in Jig).
+      plugins: true,
     },
   });
 

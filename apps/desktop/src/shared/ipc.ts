@@ -24,6 +24,7 @@ import type {
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
+import type { FilePreview } from "./preview";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
@@ -58,6 +59,10 @@ export interface HostMethods {
   "app.info": { args: void; result: AppInfo };
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };
+  /** A file for the Preview tab: its kind, text or extracted content, and a `jig-file:` address. */
+  "files.preview": { args: { path: string }; result: FilePreview };
+  /** Size and change time of a file (`null`: gone); the Preview tab polls it to follow edits. */
+  "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
   "ai.ask": { args: { addonId: string; prompt: string; cwd?: string }; result: string };

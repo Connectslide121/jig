@@ -154,6 +154,10 @@ project names and colours, and install themes — through tools on the `jig` MCP
 through Claude Code's permission prompt and leave a card with Undo in the chat; billing and
 program-running settings are Settings-only. Reference: `docs/reference/configure.md`.
 
+**File previews.** One Preview tab renders Markdown (with Mermaid), HTML, PDF, CSV/Excel, JSON,
+notebooks, media, Office text and code. Binary content is served through `jig-file:` with per-folder
+grants, never from arbitrary paths. Reference: `docs/reference/preview.md`.
+
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 

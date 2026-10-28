@@ -1,7 +1,10 @@
 import { readFile, stat } from "node:fs/promises";
+import { protocol } from "electron";
 import { type ImageData, imageMime, MAX_IMAGE_BYTES } from "../../shared/files";
 import { JigError } from "../../shared/ipc";
 import { handle } from "../ipc/router";
+import { projectStore } from "../projects";
+import { previewFile, serveFile } from "./preview";
 
 /** Reads an image file for a preview: image types only, at most 25 MB. */
 export async function readImage(path: string): Promise<ImageData> {
@@ -16,4 +19,15 @@ export async function readImage(path: string): Promise<ImageData> {
 
 export function registerFileHandlers(): void {
   handle("files.image", ({ path }) => readImage(path));
+  protocol.handle("jig-file", serveFile);
+  handle("files.preview", async ({ path }) =>
+    previewFile(
+      path,
+      (await projectStore().list()).map((p) => p.path),
+    ),
+  );
+  handle("files.stat", async ({ path }) => {
+    const info = await stat(path).catch(() => undefined);
+    return info?.isFile() ? { size: info.size, mtimeMs: info.mtimeMs } : null;
+  });
 }
