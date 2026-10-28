@@ -136,6 +136,40 @@ tool". Build in this order:
 - Suggestions draft workflows from evidence ("Release webshop: build → package → upload to VM").
 - Still open: the file format (Markdown with steps?) and the run history.
 
+### 4e. Manual vs AI: measured, and compared quietly
+Recorded silently. Shown only as evidence in suggestions and in a weekly "How you worked" summary on
+the Suggestions page; never as nagging.
+- **Attribution:** every Claude Edit/Write records which lines it wrote (file, hunk, hash). At each
+  commit, the diff is split into lines Claude wrote and lines written by hand (including lines Claude
+  wrote and you changed).
+- **Time:** chat time per task, against hand-editing time estimated from file changes no chat made
+  (the watchers of D-097) and the time between commits. It's an estimate and is labelled as one.
+- **Quality, as a proxy:** lines changed or reverted again within N days (churn), and "fix" commits
+  touching recent lines (git blame), per origin. It's a signal, not proof, and is worded that way.
+- **The summary:** e.g. "This week: 1,240 lines by Claude, 310 by hand. Hand-written code was changed
+  again 3× as often. The bug fixed in abc123 was in hand-written code from Tuesday." Tied to the
+  ladder: what to hand over next.
+
+### 4f. What you paste, and debugging by hand
+- **Classify what's pasted into chats,** without AI, when you send: HTTP responses and requests, JSON
+  payloads, headers, stack traces, logs, HAR, SQL results, error dialogs (screenshots).
+  - Only the category, size and a short redacted sample are recorded, never the whole paste.
+  - It's matched against the "never record" list.
+- **Debugging outside Jig, as evidence:** the browser's network tab, Postman, log portals. It comes
+  from chat mentions (4a) and from the pastes.
+- **Suggestions it leads to:**
+  - "You pasted 14 API responses this week: let Claude look itself." Claude's browser (with network
+    capture, below) or `curl` in a Jig terminal.
+  - Build an add-on for it: an API client for the project's endpoints, a log viewer, an error
+    explainer.
+  - A skill with the project's API base URL and auth steps.
+- **Claude's browser gets network capture:** `jig_browser_network` lists requests and responses
+  (method, URL, status, timing, headers, bodies up to a limit) through Chromium's DevTools protocol.
+  Claude debugs what the colleague now checks by hand in the Network tab. A Network list also goes in
+  the browser view.
+- **Tools never used:** "Claude never used the browser in your web project; it could have checked
+  the UI itself." This measures Jig's own tools against what the work needed.
+
 Principles stay: local, quiet, visible, deletable (vision #7). Nothing leaves the machine apart from
 the AI calls that already exist (reflection, check-in).
 
@@ -162,4 +196,8 @@ storage.
 - [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
       follow-up
 - [ ] Learning 2c: weekly check-in chat (opt-in, frequency setting)
+- [ ] Learning 2e: AI vs hand-written lines per commit, time and churn per origin, weekly "How you
+      worked" summary
+- [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
+      the browser view; "tools never used" signals
 - [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
