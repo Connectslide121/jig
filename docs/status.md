@@ -125,6 +125,10 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
+- **Restore files and fork:** hover one of your messages → ⋯ → **Restore files to before this
+  message…** shows which files Claude changed since then and puts them back (Claude Code's file
+  checkpoints; Settings → Claude Code → File checkpoints). The chat's ⋯ menu → **Fork chat** continues
+  the conversation in a new chat, so you can try another approach and keep the original.
 - **Next-message suggestions:** after a turn Claude Code proposes what you might send next. It shows
   as a chip above the message box (click to edit it, the arrow sends it) and as the box's placeholder
   (Tab takes it). Settings → Claude Code → Suggest the next message.
@@ -220,6 +224,9 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Restore files and fork with your real Claude Code**: let Claude edit a file, then Restore files to
+  before that message (the preview should list it); fork a chat and check the fork remembers the
+  conversation while the original doesn't see the fork's messages.
 - **Context meter with your real Claude Code**: after a few turns the % in the chat header should match
   `/context` in the CLI for the same session; Compact should shrink it and show "Conversation compacted
   (… → … tokens)".

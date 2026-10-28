@@ -104,6 +104,20 @@ do. Files picked with the paperclip that are code or text **inside the project**
 `attachments: [{ path, mime, name, kind }]` (older transcripts: `images`); queued messages keep theirs.
 The fake engine answers "I see N image(s)." and "I read <names>."
 
+## File checkpoints, restoring and forking
+
+- Every message Jig sends carries its own `uuid`; `send()` returns it and the user `ChatItem` keeps it
+  as `messageId`.
+- With `engine.fileCheckpoints` (default on) Claude Code runs with `enableFileCheckpointing`, and
+  `EngineSession.rewindFiles(messageId, dryRun)` restores (or previews) files to their state before
+  that message. The chat shows "Restore files to before this message…" in a user message's menu: a dry
+  run lists the files, you confirm, then they are restored and the chat gets a notice. The transcript
+  itself is unchanged.
+- **Fork chat** (the chat's ⋯ menu, `sessions.fork`): a new session with a copy of the transcript and
+  `forkPending`; its first start resumes the original Claude Code session with `forkSession: true`,
+  so it continues under a new id and the original is untouched.
+- The fake engine: "write <file>" writes a file and records a checkpoint; a fork gets a new id.
+
 ## Context window and compacting
 
 After every turn the session manager calls `EngineSession.contextUsage()`: the Claude engine asks

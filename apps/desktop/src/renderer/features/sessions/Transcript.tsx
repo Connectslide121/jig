@@ -1,4 +1,13 @@
-import { Brain, ChevronRight, CircleAlert, Copy, Info, MoreHorizontal, TriangleAlert } from "lucide-react";
+import {
+  Brain,
+  ChevronRight,
+  CircleAlert,
+  Copy,
+  History,
+  Info,
+  MoreHorizontal,
+  TriangleAlert,
+} from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
@@ -7,15 +16,30 @@ import { BuildCard } from "../builder/BuildCard";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { PermissionCard } from "./PermissionCard";
+import { restoreFiles } from "./restore";
 import { ToolCard } from "./ToolCard";
 
 /** A message's menu: Copy, plus entries add-ons contribute (`context.message`). */
-function messageMenu(sessionId: string, text: string): MenuEntry[] {
+function messageMenu(sessionId: string, text: string, own: MenuEntry[] = []): MenuEntry[] {
   const extra = contributedEntries({ slot: "context.message", sessionId, text });
   return [
     { label: "Copy", icon: Copy, onSelect: () => void navigator.clipboard.writeText(text) },
+    ...own,
     ...(extra.length ? [{ separator: true } as const, ...extra] : []),
   ];
+}
+
+/** Your message's menu: also Restore files to before it (Claude Code's file checkpoints). */
+function userMessageMenu(sessionId: string, item: Extract<ChatItem, { kind: "user" }>): MenuEntry[] {
+  return messageMenu(sessionId, item.text, [
+    {
+      label: "Restore files to before this message…",
+      icon: History,
+      disabled: !item.messageId,
+      onSelect: () => void restoreFiles(sessionId, item.id),
+      testId: "restore-files",
+    },
+  ]);
 }
 
 function Thinking({ item }: { item: Extract<ChatItem, { kind: "thinking" }> }) {
@@ -56,13 +80,23 @@ const Item = memo(function Item({
   switch (item.kind) {
     case "user":
       return (
-        <div className="flex flex-col items-end gap-1.5" data-testid="user-message">
+        <div className="group/message relative flex flex-col items-end gap-1.5" data-testid="user-message">
           <ChatAttachments files={item.attachments ?? item.images ?? []} className="justify-end" />
           {item.text && (
             <div className="selectable max-w-[var(--jig-chat-bubble)] rounded-lg bg-active px-3 py-2 text-sm whitespace-pre-wrap text-fg">
               {item.text}
             </div>
           )}
+          <div className="absolute -top-2 right-0 hidden group-focus-within/message:block group-hover/message:block">
+            <IconButton
+              icon={MoreHorizontal}
+              size="sm"
+              label="Message options"
+              data-testid="user-message-menu"
+              className="bg-elevated shadow-card"
+              onClick={(e) => openMenuAt(e.currentTarget, userMessageMenu(sessionId, item), true)}
+            />
+          </div>
         </div>
       );
     case "assistant":

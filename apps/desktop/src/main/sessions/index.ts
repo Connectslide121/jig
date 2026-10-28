@@ -128,6 +128,8 @@ export function startSessions(): void {
   handle("sessions.rename", ({ id, title }) => m.rename(id, title));
   handle("sessions.archive", ({ id, archived }) => m.setArchived(id, archived));
   handle("sessions.stop", ({ id }) => m.stopProcess(id));
+  handle("sessions.fork", ({ id }) => m.fork(id));
+  handle("sessions.rewindFiles", ({ id, itemId, dryRun }) => m.rewindFiles(id, itemId, dryRun));
   handle("sessions.delete", ({ id }) => m.delete(id));
 
   app.on("before-quit", () => {

@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
@@ -15,6 +17,7 @@ import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./type
  * - "fail" → the turn ends with an error
  * - "login" → behaves like Claude Code that isn't signed in
  * - "build" → calls the jig_request_build tool (needs the jig MCP server)
+ * - "write <file>" → writes <file> in the chat's folder (a file checkpoint: restore it from the message)
  * - anything else → a short markdown reply with a code block
  */
 export class FakeEngine implements Engine {
@@ -22,12 +25,16 @@ export class FakeEngine implements Engine {
   constructor(private readonly delayMs = Number(process.env.JIG_FAKE_DELAY ?? 15)) {}
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
-    const engineSessionId = options.resume ?? `fake-${randomUUID()}`;
+    // A fork continues the conversation under a new id, like Claude Code's forkSession.
+    const engineSessionId = options.resume && !options.forkSession ? options.resume : `fake-${randomUUID()}`;
     let model = options.model || "fake-model";
     let permissionMode: PermissionMode = options.permissionMode;
     let initialised = false;
     let turn: AbortController | undefined;
-    const queue: string[] = [];
+    const queue: Array<{ text: string; uuid: string }> = [];
+    // File checkpoints: the messages in order, and each file's content before a message changed it.
+    const messageOrder: string[] = [];
+    const checkpoints: Array<{ uuid: string; path: string; before: string | null }> = [];
     let closed = false;
     // Scripted context window: grows each turn ("read the big file" adds a lot), /compact shrinks it.
     const CONTEXT_MAX = 200_000;
@@ -58,7 +65,8 @@ export class FakeEngine implements Engine {
       onEvent({ type: "block_end", id, block, text });
     };
 
-    const runTurn = async (text: string) => {
+    const runTurn = async (text: string, uuid: string) => {
+      messageOrder.push(uuid);
       const controller = new AbortController();
       turn = controller;
       const signal = controller.signal;
@@ -200,6 +208,17 @@ export class FakeEngine implements Engine {
             isError: !answer,
           });
           await stream(`${msg}:text:0`, answer ? `Great, **${answer}** it is.` : "No problem.", signal);
+        } else if (/\bwrite\s+\S/.test(lower)) {
+          const name = /\bwrite\s+(\S+)/i.exec(text)![1]!;
+          const path = isAbsolute(name) ? name : join(options.cwd, name);
+          const before = await readFile(path, "utf8").catch(() => null);
+          if (options.fileCheckpoints) checkpoints.push({ uuid, path, before });
+          const toolId = `tool-${randomUUID()}`;
+          const content = `Written by the fake engine.\n${before ?? ""}`;
+          onEvent({ type: "tool_use", id: toolId, name: "Write", input: { file_path: path, content } });
+          await writeFile(path, content);
+          onEvent({ type: "tool_result", toolUseId: toolId, output: `Wrote ${path}`, isError: false });
+          await stream(`${msg}:text:0`, `I wrote ${name}.`, signal);
         } else if (lower.includes("build")) {
           const toolId = `tool-${randomUUID()}`;
           const goal = text.replace(/^(please\s+)?build( me)?\s*/i, "") || text;
@@ -255,7 +274,8 @@ export class FakeEngine implements Engine {
     const pump = async () => {
       while (queue.length > 0 && !closed) {
         if (turn) return;
-        await runTurn(queue.shift()!);
+        const next = queue.shift()!;
+        await runTurn(next.text, next.uuid);
       }
     };
 
@@ -269,8 +289,31 @@ export class FakeEngine implements Engine {
             a.type === "pdf" ? [`[pdf: ${a.name}]`] : a.type === "text" ? [`[doc: ${a.name}]`] : [],
           ),
         ];
-        queue.push(tags.length ? `${tags.join(" ")} ${text}` : text);
+        const uuid = randomUUID();
+        queue.push({ text: tags.length ? `${tags.join(" ")} ${text}` : text, uuid });
         void pump();
+        return uuid;
+      },
+      async rewindFiles(messageId, dryRun) {
+        const from = messageOrder.indexOf(messageId);
+        if (from < 0) return { canRewind: false, error: "No checkpoint for this message." };
+        const later = new Set(messageOrder.slice(from));
+        // Each file goes back to its content before the first change from this message on.
+        const originals = new Map<string, string | null>();
+        for (const c of checkpoints)
+          if (later.has(c.uuid) && !originals.has(c.path)) originals.set(c.path, c.before);
+        if (!dryRun) {
+          for (const [path, before] of originals)
+            before === null ? await rm(path, { force: true }) : await writeFile(path, before);
+          for (let i = checkpoints.length - 1; i >= 0; i--)
+            if (later.has(checkpoints[i]!.uuid)) checkpoints.splice(i, 1);
+        }
+        return {
+          canRewind: true,
+          filesChanged: [...originals.keys()],
+          insertions: 0,
+          deletions: originals.size,
+        };
       },
       async interrupt() {
         turn?.abort();

@@ -37,6 +37,7 @@ export class ClaudeEngine implements Engine {
         includePartialMessages: true,
         promptSuggestions: options.promptSuggestions,
         enableFileCheckpointing: options.fileCheckpoints,
+        forkSession: options.resume ? options.forkSession : undefined,
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         // biome-ignore lint/suspicious/noExplicitAny: the SDK's MCP server config type is opaque here.
@@ -109,17 +110,30 @@ export class ClaudeEngine implements Engine {
         const content = blocks.length
           ? [...blocks, ...(text ? [{ type: "text" as const, text }] : [])]
           : text;
+        const uuid = randomUUID();
         input.push({
           type: "user",
           message: { role: "user", content },
           parent_tool_use_id: null,
+          uuid,
         } as SDKUserMessage);
+        return uuid;
       },
       interrupt: async () => {
         await q.interrupt();
       },
       setModel: (model) => q.setModel(model || undefined),
       setPermissionMode: (mode: PermissionMode) => q.setPermissionMode(mode),
+      async rewindFiles(messageId, dryRun) {
+        const r = await q.rewindFiles(messageId, { dryRun });
+        return {
+          canRewind: r.canRewind,
+          error: r.error,
+          filesChanged: r.filesChanged,
+          insertions: r.insertions,
+          deletions: r.deletions,
+        };
+      },
       async contextUsage() {
         let timer: NodeJS.Timeout | undefined;
         try {

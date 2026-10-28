@@ -1,11 +1,12 @@
-import { Archive, ArchiveRestore, Bot, Check, Pencil, Power, Shield, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Bot, Check, GitFork, Pencil, Power, Shield, Trash2 } from "lucide-react";
 import { PERMISSION_MODE_LABELS, PERMISSION_MODES, type SessionMeta } from "../../../shared/engine";
 import { closeTabsWhere } from "../../../shared/layout";
-import { call } from "../../lib/host";
+import { call, errorMessage } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
-import { updateLayout } from "../../workbench/store";
+import { updateLayout, workbench } from "../../workbench/store";
+import { notify } from "../../workbench/toasts";
 import { compactMenu } from "./ContextMeter";
-import { forgetSession } from "./store";
+import { ensureTranscript, forgetSession } from "./store";
 
 export const MODEL_CHOICES = [
   { id: "", label: "Default model" },
@@ -81,6 +82,13 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
     ...compactMenu(meta),
     {
+      label: "Fork chat",
+      icon: GitFork,
+      disabled: !meta.engineSessionId,
+      onSelect: () => void forkSession(meta),
+      testId: "session-fork",
+    },
+    {
       label: "Stop Claude Code process",
       icon: Power,
       onSelect: () => void call("sessions.stop", { id: meta.id }),
@@ -105,4 +113,15 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       testId: "session-delete",
     },
   ];
+}
+
+/** A new chat that continues this one as a branch, to try another approach (Claude Code's fork). */
+export async function forkSession(meta: SessionMeta): Promise<void> {
+  try {
+    const fork = await call("sessions.fork", { id: meta.id });
+    await ensureTranscript(fork.id);
+    workbench.openTab("jig.chat", { sessionId: fork.id });
+  } catch (error) {
+    notify({ title: "Couldn't fork the chat", message: errorMessage(error), tone: "danger" });
+  }
 }

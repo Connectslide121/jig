@@ -17,6 +17,7 @@ import type {
   ChatUpdate,
   PermissionDecision,
   PermissionMode,
+  RewindResult,
   SessionMeta,
   SessionSnapshot,
 } from "./engine";
@@ -137,6 +138,10 @@ export interface HostMethods {
   "sessions.archive": { args: { id: string; archived: boolean }; result: void };
   /** Ends the Claude Code process; the conversation resumes on the next message. */
   "sessions.stop": { args: { id: string }; result: void };
+  /** A new chat that continues this one as a branch (Claude Code's fork). */
+  "sessions.fork": { args: { id: string }; result: SessionMeta };
+  /** Restores files Claude changed since a user message (file checkpoints); `dryRun` only reports. */
+  "sessions.rewindFiles": { args: { id: string; itemId: string; dryRun: boolean }; result: RewindResult };
   "sessions.delete": { args: { id: string }; result: void };
   "terminals.list": { args: void; result: TerminalInfo[] };
   /** A shell in the project (or `cwd`), or a shell running `command`. */

@@ -65,10 +65,21 @@ export interface SessionMeta {
   /** `builder` sessions run a build job (hidden from the Sessions list, opened from the build). */
   kind?: "chat" | "builder";
   buildId?: string;
+  /** A fork not started yet: the first start resumes `engineSessionId` as a new branch. */
+  forkPending?: boolean;
   /** Claude Code's suggestion for your next message (after a turn; cleared when you send). */
   suggestion?: string;
   /** The context window after the last turn (kept while no Claude Code process runs). */
   context?: ContextUsage;
+}
+
+/** What restoring files to before a message changes (Claude Code's file checkpoints). */
+export interface RewindResult {
+  canRewind: boolean;
+  error?: string;
+  filesChanged?: string[];
+  insertions?: number;
+  deletions?: number;
 }
 
 export interface PermissionRequest {
@@ -92,6 +103,8 @@ export type ChatItem =
       id: string;
       text: string;
       at: string;
+      /** The id Claude Code knows this message by (file checkpoints: restore to before it). */
+      messageId?: string;
       attachments?: ChatAttachment[];
       /** Older transcripts (images only). */
       images?: ChatAttachment[];

@@ -36,6 +36,8 @@ a past session.
 - [x] `docs/reference/engine.md`
 - [x] Context window meter in the chat header (Claude Code's `/context` data after each turn, breakdown
       on hover) and Compact (Claude Code's `/compact`, with or without instructions; a button from 70%)
+- [x] Next-message suggestions (Claude Code's prompt suggestions), restore files to before a message
+      (file checkpoints) and Fork chat (D-083)
 
 ## Notes
 

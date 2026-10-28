@@ -12,6 +12,7 @@ import type {
   PermissionMode,
   PermissionRequest,
   QueuedMessage,
+  RewindResult,
   SessionMeta,
   SessionSnapshot,
 } from "../../shared/engine";
@@ -223,6 +224,7 @@ export class SessionManager {
         env: settings.env,
         claudePath: settings.claudePath,
         promptSuggestions: settings.promptSuggestions,
+        forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
         mcpServers: this.options.mcpServers?.(meta),
         toolHandlers: this.options.toolHandlers?.(meta),
@@ -267,6 +269,8 @@ export class SessionManager {
         text: typeof event.input.command === "string" ? event.input.command : JSON.stringify(event.input),
       });
     this.emit(live, reduceEvent(live.state, event));
+    // A fork has its own Claude Code session id from its first start on.
+    if (event.type === "init" && live.state.meta.forkPending) this.setMeta(live, { forkPending: undefined });
     if (event.type === "result" || event.type === "exit") this.options.onTurnEnd?.(live.state.meta);
     if (event.type === "result") {
       this.scheduleSave(live, true);
@@ -326,7 +330,11 @@ export class SessionManager {
     this.emit(live, updates);
     this.options.onActivity?.({ kind: "prompt", session: live.state.meta, text });
     try {
-      this.startEngine(live).send(text, data);
+      const messageId = this.startEngine(live).send(text, data);
+      const sent = { ...item, messageId };
+      const at = live.state.items.indexOf(item);
+      if (at >= 0) live.state.items[at] = sent;
+      this.emit(live, [{ op: "upsert", item: sent }]);
     } catch (error) {
       this.handleEvent(live, { type: "error", code: "process", message: (error as Error).message });
     }
@@ -344,6 +352,73 @@ export class SessionManager {
       return;
     }
     await this.startTurn(live, trimmed, attachments);
+  }
+
+  /**
+   * A new chat that continues this one as a branch (Claude Code's fork): same transcript, and its
+   * first message resumes the conversation under a new Claude Code session id.
+   */
+  async fork(id: string): Promise<SessionMeta> {
+    const source = (await this.live(id)).state;
+    if (!source.meta.engineSessionId)
+      throw new JigError("invalid_args", "Send a message before forking this chat");
+    const meta = await this.create({
+      projectId: source.meta.projectId,
+      cwd: source.meta.cwd,
+      title: `${source.meta.title} (fork)`,
+      model: source.meta.model,
+      permissionMode: source.meta.permissionMode,
+    });
+    const live = await this.live(meta.id);
+    live.state.items = source.items
+      .filter((i) => i.kind !== "permission" || i.status !== "pending")
+      .map((i) => structuredClone(i));
+    live.state.items.push({
+      kind: "notice",
+      id: `fork-${Date.now()}`,
+      at: new Date().toISOString(),
+      tone: "info",
+      text: `Forked from “${source.meta.title}”. What you send here doesn't change the original chat.`,
+    });
+    this.setMeta(live, {
+      engineSessionId: source.meta.engineSessionId,
+      forkPending: true,
+      turns: source.meta.turns,
+      context: source.meta.context,
+    });
+    this.scheduleSave(live, true);
+    return live.state.meta;
+  }
+
+  /**
+   * Restores the files Claude changed since a message to how they were before it (Claude Code's file
+   * checkpoints). `dryRun` only reports what would change. Starts Claude Code if it isn't running.
+   */
+  async rewindFiles(id: string, itemId: string, dryRun: boolean): Promise<RewindResult> {
+    const live = await this.live(id);
+    const item = live.state.items.find((i) => i.id === itemId);
+    if (item?.kind !== "user" || !item.messageId)
+      return {
+        canRewind: false,
+        error: "Jig has no checkpoint for this message (sent before checkpoints were on).",
+      };
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status))
+      return { canRewind: false, error: "Wait until Claude has finished, or stop it first." };
+    const result = await this.startEngine(live).rewindFiles(item.messageId, dryRun);
+    if (!dryRun && result.canRewind) {
+      const n = result.filesChanged?.length ?? 0;
+      const notice: ChatItem = {
+        kind: "notice",
+        id: `rewind-${Date.now()}`,
+        at: new Date().toISOString(),
+        tone: "info",
+        text: `Restored ${n} file${n === 1 ? "" : "s"} to how they were before “${summarize(item.text || "this message")}”.`,
+      };
+      live.state.items.push(notice);
+      this.emit(live, [{ op: "upsert", item: notice }]);
+      this.scheduleSave(live);
+    }
+    return result;
   }
 
   /** Keeps a pasted, dropped or picked file for the next message of a session. */

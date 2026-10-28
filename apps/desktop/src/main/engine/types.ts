@@ -4,6 +4,7 @@ import type {
   PermissionDecision,
   PermissionMode,
   PermissionRequest,
+  RewindResult,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import type { EnginePart } from "../sessions/attachments";
@@ -30,6 +31,8 @@ export interface StartOptions {
   promptSuggestions?: boolean;
   /** Claude Code keeps copies of files before editing them (`rewindFiles`). */
   fileCheckpoints?: boolean;
+  /** With `resume`: continue the conversation as a new session (a fork) instead of the original. */
+  forkSession?: boolean;
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */
@@ -39,8 +42,13 @@ export interface StartOptions {
 }
 
 export interface EngineSession {
-  /** Sends a user message (starts a turn), with attachments (images, PDFs, document text) if any. */
-  send(text: string, attachments?: EnginePart[]): void;
+  /**
+   * Sends a user message (starts a turn), with attachments (images, PDFs, document text) if any.
+   * Returns the id Claude Code knows the message by (for `rewindFiles`).
+   */
+  send(text: string, attachments?: EnginePart[]): string;
+  /** Restores files Claude changed since `messageId` (file checkpoints); `dryRun` only reports. */
+  rewindFiles(messageId: string, dryRun: boolean): Promise<RewindResult>;
   interrupt(): Promise<void>;
   setModel(model: string): Promise<void>;
   setPermissionMode(mode: PermissionMode): Promise<void>;

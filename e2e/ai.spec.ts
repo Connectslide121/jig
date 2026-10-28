@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
 
@@ -36,4 +36,52 @@ test("Claude Code's next-message suggestion shows above the composer; Tab or a c
   await expect(suggestion).toContainText("Now write tests for this", { timeout: 15000 });
   await suggestion.getByTestId("suggestion-send").click();
   await expect(page.getByTestId("chat")).toContainText("Now write tests for this");
+});
+
+test("Restore files to before a message puts back what Claude changed", async ({ page, jigHome }) => {
+  const input = await chat(page, jigHome);
+  const notes = join(jigHome, "demo", "notes.txt");
+  await writeFile(notes, "my own notes\n");
+  await input.fill("please write notes.txt");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("chat")).toContainText("I wrote notes.txt.", { timeout: 15000 });
+  expect(await readFile(notes, "utf8")).toContain("Written by the fake engine.");
+
+  const message = page.getByTestId("user-message").first();
+  await message.hover();
+  await message.getByTestId("user-message-menu").click();
+  await page.getByTestId("restore-files").click();
+  await expect(page.getByRole("dialog")).toContainText("Restore 1 file?");
+  await expect(page.getByRole("dialog")).toContainText("notes.txt");
+  await page.getByTestId("dialog-confirm").click();
+  await expect(page.getByTestId("chat")).toContainText("Restored 1 file to how they were before");
+  expect(await readFile(notes, "utf8")).toBe("my own notes\n");
+});
+
+test("Fork chat continues a chat as a separate branch", async ({ page, jigHome }) => {
+  const input = await chat(page, jigHome);
+  await input.fill("first idea");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("chat-status")).toHaveText("Idle", { timeout: 15000 });
+
+  await page.getByRole("button", { name: "Session options" }).click();
+  await page.getByTestId("session-fork").click();
+  const fork = page.locator("[data-tab-id]:not(.hidden)").getByTestId("chat");
+  await expect(fork).toContainText("Forked from “first idea”");
+  await expect(fork).toContainText("first idea");
+  await expect(page.getByTestId("tab-jig.chat")).toHaveCount(2);
+
+  await fork.getByTestId("composer-input").fill("second idea, only in the fork");
+  await page.keyboard.press("Enter");
+  await expect(fork).toContainText("You said: second idea", { timeout: 15000 });
+  type Meta = { id: string; title: string; forkPending?: boolean };
+  const sessions = ((await hostCall(page, "sessions.list")) as { value: Meta[] }).value;
+  expect(sessions.find((s) => s.title === "first idea (fork)")?.forkPending).toBeUndefined();
+  const original = sessions.find((s) => s.title === "first idea")!;
+  const snap = (
+    (await hostCall(page, "sessions.get", { id: original.id })) as {
+      value: { items: Array<{ text?: string }> };
+    }
+  ).value;
+  expect(snap.items.some((i) => i.text?.includes("second idea"))).toBe(false);
 });
