@@ -21,8 +21,10 @@ export type BuildStatus =
 export type BuildKind = "layout" | "settings" | "change-addon" | "new-addon" | "app" | "nothing";
 
 export interface LayoutOp {
-  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand";
+  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below";
   view?: string;
+  /** For "below": the view to show `view` under, as a collapsible section in its tab. */
+  host?: string;
   region?: "left" | "right" | "bottom";
   size?: number;
 }

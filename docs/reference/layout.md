@@ -12,7 +12,10 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   "right":  { "views": [], "size": 320, "collapsed": true },
   "bottom": { "views": ["jig.terminals"], "active": "jig.terminals", "size": 260, "collapsed": true },
   "hidden": ["addon.pipelines.view"],
-  "panes":  { "jig.terminals.list": 240, "addon.git.diff": 0.4 },
+  "sections": { "addon.git.git": ["addon.repos.overview"] },
+  "closedSections": [],
+  "waitingUnder": [],
+  "panes":  { "jig.terminals.list": 240, "addon.git.diff": 0.4, "section:addon.repos.overview": 240 },
   "main":   { "tabs": [{ "id": "t…", "type": "jig.chat", "params": { "sessionId": "…" } }], "active": "t…" }
 }
 ```
@@ -25,6 +28,16 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
 - **panes**: sizes of resizable panes inside views and tabs, by pane id — px, or a 0–1 ratio for a
   two-column split (`setPaneSize`). Core panes: `jig.terminals.list`, `jig.settings.nav`; the Git
   add-on's diff uses `addon.git.diff`. Add-ons use `Pane` / `useSplitRatio` from `@jig/sdk/ui`.
+- **sections** (D-099): views shown *below* another view, in its tab, like GitLens below Source Control
+  in VS Code. Host view id → section view ids, top to bottom; one level deep. Each section has a header
+  (click to collapse, ⋯ for its menu) and its own height, dragged at its top edge
+  (`panes["section:<view>"]`, 240 px by default, double-click resets). **closedSections** are collapsed
+  to their header. The Repos add-on's view starts below Git (`"under": "addon.git.git"` in its
+  manifest).
+  - Any view's ⋯ menu (or right-click on its tab) has **Show below…**, listing the other views.
+  - A section's ⋯ menu has **Move to its own tab**.
+  - **waitingUnder**: a new view whose host hasn't loaded yet waits in its default region and moves
+    below the host once it is placed. A view you moved yourself stays where you put it.
 - **hidden**: views the user hid. They come back from the layout menu (top bar) → Views, or
   Settings → Layout.
 - **main**: tabs in the main area, in order, and the active one. A tab is `{ id, type, params }`;
@@ -33,7 +46,7 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
 - The top bar and status bar are fixed; add-ons contribute to them through slots (phase 6).
 
 `normalizeLayout(layout, views)` runs after every change and on load: views that exist but are not
-placed anywhere (a new add-on) go to their `defaultRegion`; views that are unknown right now (an add-on
+placed anywhere (a new add-on) go to their `defaultRegion`, or below their `under` view; views that are unknown right now (an add-on
 that is reloading or switched off) are kept in place but never shown; duplicates are removed.
 
 ## Operations
@@ -41,7 +54,8 @@ that is reloading or switched off) are kept in place but never shown; duplicates
 | Function | What |
 |---|---|
 | `moveView(layout, viewId, region)` | move (or un-hide) a view into a region, activate it, expand the region |
-| `hideView` / `showView(layout, viewId, fallbackRegion)` | hide / show and activate |
+| `hideView` / `showView(layout, viewId, fallbackRegion)` | hide / show and activate (a section: activate its host and open the section) |
+| `placeBelow(layout, viewId, hostId)`, `toggleSection(layout, viewId)`, `hostOf(layout, viewId)` | show a view as a section below another, collapse/open it, find its host |
 | `setRegion(layout, region, { size?, collapsed?, active? })`, `toggleRegion` | resize, collapse/expand |
 | `reorderView(layout, viewId, index)` | order within a region |
 | `openTab(layout, { type, params })` → `{ layout, tabId }` | open or focus a tab |

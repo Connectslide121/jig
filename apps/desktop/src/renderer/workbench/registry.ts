@@ -24,6 +24,8 @@ export interface ViewDef {
   owner?: string;
   /** Open its region the first time it is placed (views of add-ons you built). */
   reveal?: boolean;
+  /** Placed the first time as a collapsible section below this view (e.g. `addon.git.git`). */
+  under?: string;
 }
 
 export interface TabProps {

@@ -8,18 +8,21 @@ import {
   defaultLayout,
   findView,
   hideView,
+  hostOf,
   LayoutSchema,
   MAX_TABS,
   moveTab,
   moveView,
   normalizeLayout,
   openTab,
+  placeBelow,
   reorderView,
   setPaneSize,
   setRegion,
   showView,
   tabKey,
   toggleRegion,
+  toggleSection,
   updateTabParams,
 } from "./layout";
 
@@ -191,5 +194,73 @@ describe("setPaneSize", () => {
     layout = setPaneSize(layout, "tiny", 10);
     expect(layout.panes).toEqual({ "jig.terminals.list": 250, "addon.git.diff": 0.9, tiny: 48 });
     expect(setPaneSize(layout, "", 100)).toBe(layout);
+  });
+});
+
+describe("sections (a view below another, in the same tab)", () => {
+  const git = { id: "addon.git.git", defaultRegion: "left" as const };
+  const repos = { id: "addon.repos.overview", defaultRegion: "right" as const, under: "addon.git.git" };
+
+  it("places a new view below its host when the host is there", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, repos, git]);
+    expect(layout.sections).toEqual({ "addon.git.git": ["addon.repos.overview"] });
+    expect(layout.right.views).toEqual([]);
+    expect(findView(layout, "addon.repos.overview")).toBe("left");
+    expect(hostOf(layout, "addon.repos.overview")).toBe("addon.git.git");
+  });
+
+  it("waits in its own region while the host hasn't loaded, then moves below it", () => {
+    const first = normalizeLayout(defaultLayout(), [...views, repos]);
+    expect(first.right.views).toEqual(["addon.repos.overview"]);
+    expect(first.waitingUnder).toEqual(["addon.repos.overview"]);
+    const later = normalizeLayout(first, [...views, repos, git]);
+    expect(later.right.views).toEqual([]);
+    expect(later.sections["addon.git.git"]).toEqual(["addon.repos.overview"]);
+    expect(later.waitingUnder).toEqual([]);
+  });
+
+  it("keeps a view you moved yourself where you put it", () => {
+    const first = normalizeLayout(defaultLayout(), [...views, repos]);
+    const moved = moveView(first, "addon.repos.overview", "bottom");
+    const later = normalizeLayout(moved, [...views, repos, git]);
+    expect(later.bottom.views).toContain("addon.repos.overview");
+    expect(later.sections).toEqual({});
+  });
+
+  it("moves a section to its own tab, below another view, collapses it and shows it", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
+    const own = moveView(layout, "addon.repos.overview", "right");
+    expect(own.sections).toEqual({});
+    expect(own.right.views).toEqual(["addon.repos.overview"]);
+    const below = placeBelow(own, "addon.repos.overview", "jig.sessions");
+    expect(below.sections).toEqual({ "jig.sessions": ["addon.repos.overview"] });
+    expect(below.right.views).toEqual([]);
+    expect(below.left.active).toBe("jig.sessions");
+    const closed = toggleSection(below, "addon.repos.overview");
+    expect(closed.closedSections).toEqual(["addon.repos.overview"]);
+    const shown = showView(
+      { ...closed, left: { ...closed.left, active: "jig.projects" } },
+      "addon.repos.overview",
+      "left",
+    );
+    expect(shown.left.active).toBe("jig.sessions");
+    expect(shown.closedSections).toEqual([]);
+  });
+
+  it("is one level deep, and never below itself", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
+    expect(placeBelow(layout, "jig.sessions", "addon.repos.overview")).toBe(layout);
+    expect(placeBelow(layout, "jig.sessions", "jig.sessions")).toBe(layout);
+    // A host placed below another view hands its sections over.
+    const merged = placeBelow(layout, "addon.git.git", "jig.sessions");
+    expect(merged.sections).toEqual({ "jig.sessions": ["addon.git.git", "addon.repos.overview"] });
+  });
+
+  it("hiding a section hides only it", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
+    const hidden = hideView(layout, "addon.repos.overview");
+    expect(hidden.sections).toEqual({});
+    expect(hidden.hidden).toContain("addon.repos.overview");
+    expect(hidden.left.views).toContain("addon.git.git");
   });
 });

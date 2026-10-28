@@ -14,6 +14,9 @@
 - [x] Tests: `turnChanges` unit test, `e2e/ux.spec.ts`
 - [x] Model and permission mode moved from the chat header into the message box's bottom row (they
       configure the next message; the header was cramped and wrapped them)
+- [x] Git in a workspace lists the repository you work in, plus the ones you show next to it (picker
+      and eye button, per project and focus repository); Repos is a collapsible section below Git;
+      any view can be shown below another (D-099, D-100)
 - [x] Claude's browser: a setting for whether the view opens by itself (`browser.showWhenUsed`, on
       by default); screenshots of the whole page and at several sizes in one call (D-095)
 

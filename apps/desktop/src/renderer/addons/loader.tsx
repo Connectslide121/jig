@@ -112,6 +112,7 @@ async function mount(addon: AddonInfo): Promise<void> {
         component: Component,
         owner,
         reveal: addon.source === "user",
+        under: v.under,
       });
   }
   for (const t of c.tabs) {

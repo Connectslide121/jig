@@ -45,7 +45,7 @@ edits its own source (D-074): when no slot fits, the builder proposes an extensi
 | `read_addon { id }` | every file of an add-on (built-in ones are examples) |
 | `start_addon { id, mode: "change" \| "new" }` | prepares the folder in the worktree (a built-in add-on is copied there — your copy replaces it, D-043) and returns its path |
 | `validate { id }` | the checks above |
-| `stage_layout { ops }` | `move`/`hide`/`show` a view, `resize`/`collapse`/`expand` a region |
+| `stage_layout { ops }` | `move`/`hide`/`show` a view, `below` (a view as a section under `host`), `resize`/`collapse`/`expand` a region |
 | `stage_settings { patch }` | a partial `config.json`, validated |
 | `propose_extension_point { reason, proposal }` | no slot can do it: the job ends (`needs_you`, kind `app`) with `job.proposal` — the Build tab shows it with **Copy proposal**; you add the slot to Jig yourself |
 | `finish { summary, kind, addonId? }` | validate and go to preview |

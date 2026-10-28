@@ -13,12 +13,25 @@
         "title": "Repos",
         "icon": "folder-git-2",
         "region": "right",
+        "under": "addon.git.git",
         "component": "ReposView"
       }
     ],
-    "statusbar": [{ "id": "attention", "side": "right", "component": "ReposStatus" }],
+    "statusbar": [
+      {
+        "id": "attention",
+        "side": "right",
+        "component": "ReposStatus"
+      }
+    ],
     "actions": [
-      { "id": "show", "title": "Show all repos", "group": "Git", "icon": "folder-git-2", "run": "showRepos" },
+      {
+        "id": "show",
+        "title": "Show all repos",
+        "group": "Git",
+        "icon": "folder-git-2",
+        "run": "showRepos"
+      },
       {
         "id": "fetch-all",
         "title": "Fetch all repos",

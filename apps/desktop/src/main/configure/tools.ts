@@ -210,24 +210,29 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const title = (id: string) => views.find((v) => v.id === id)?.title ?? id;
         const regions = (["left", "right", "bottom"] as const).map((r) => {
           const reg = layout[r];
-          return `${r} (${reg.collapsed ? "collapsed" : "open"}, ${reg.size}px): ${reg.views.map((v) => `${title(v)} [${v}]${v === reg.active ? " (shown)" : ""}`).join(", ") || "empty"}`;
+          const below = (v: string) =>
+            layout.sections[v]?.length
+              ? ` with below it: ${layout.sections[v].map((s) => `${title(s)} [${s}]`).join(", ")}`
+              : "";
+          return `${r} (${reg.collapsed ? "collapsed" : "open"}, ${reg.size}px): ${reg.views.map((v) => `${title(v)} [${v}]${v === reg.active ? " (shown)" : ""}${below(v)}`).join(", ") || "empty"}`;
         });
         return [
           ...regions,
           `hidden: ${layout.hidden.map((v) => `${title(v)} [${v}]`).join(", ") || "none"}`,
           `All views: ${views.map((v) => `${v.id} (${v.title})`).join("; ")}`,
-          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region }.',
+          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view as a collapsible section under host, in the same tab; "move" puts it back in its own tab).',
         ].join("\n");
       },
     },
     {
       name: "jig_change_layout",
       description:
-        "Move, hide, show or resize views, or collapse/expand a region. Applied at once; the user can undo it from the chat.",
+        "Move, hide, show or resize views, show a view below another (a collapsible section in the same tab), or collapse/expand a region. Applied at once; the user can undo it from the chat.",
       shape: {
         ops: z.array(
           z.object({
-            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand"]),
+            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
+            host: z.string().optional(),
             view: z.string().optional(),
             region: z.enum(["left", "right", "bottom"]).optional(),
             size: z.number().optional(),
@@ -240,7 +245,9 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const next = applyLayoutOps(before, ops, viewIds());
         await deps.setLayout(next);
         const details = ops.map((o) =>
-          [o.op, o.view, o.region && `→ ${o.region}`, o.size && `${o.size}px`].filter(Boolean).join(" "),
+          [o.op, o.view, o.host && `under ${o.host}`, o.region && `→ ${o.region}`, o.size && `${o.size}px`]
+            .filter(Boolean)
+            .join(" "),
         );
         await deps.addCard(
           meta.id,

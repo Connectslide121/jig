@@ -31,6 +31,8 @@ export const ManifestSchema = z.object({
             title: z.string(),
             icon: Icon,
             region: z.enum(["left", "right", "bottom"]).default("left"),
+            /** Shown the first time as a collapsible section below this view (`addon.git.git`, `jig.files`). */
+            under: z.string().optional(),
             component: ExportName,
           }),
         )

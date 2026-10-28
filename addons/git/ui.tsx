@@ -37,6 +37,9 @@ import {
   CloudDownload,
   Copy,
   ExternalLink,
+  Eye,
+  EyeOff,
+  FolderGit2,
   FolderSearch,
   GitBranch,
   GitCompare,
@@ -66,6 +69,7 @@ import {
   relativeTime,
   type Status,
 } from "./lib/parse";
+import { NO_SHOWN, type Shown, showsAll, toggleExtra, visibleRepos } from "./lib/shown";
 import { type AutoFetchSettings, pollInterval } from "./lib/watch";
 
 /** A repository-relative path made absolute (git always prints forward slashes). */
@@ -1001,6 +1005,9 @@ function RepoSection({
   reload,
   open,
   onToggle,
+  focusOnClick = true,
+  beforeFocus,
+  onHide,
 }: {
   ctx: AddonUiContext;
   repo: RepoProject;
@@ -1008,6 +1015,12 @@ function RepoSection({
   reload: () => void;
   open: boolean;
   onToggle: () => void;
+  /** Clicking makes it the focus repository (listing all); not when the list follows the focus. */
+  focusOnClick?: boolean;
+  /** Called before the click makes it the focus repository. */
+  beforeFocus?: () => void;
+  /** Hides it from the list again (a repository shown next to the focus one). */
+  onHide?: () => void;
 }) {
   const status = entry?.status;
   const count = status ? changeCount(status) : 0;
@@ -1021,7 +1034,10 @@ function RepoSection({
         aria-expanded={open}
         onClick={() => {
           onToggle();
-          if (!focused) void ctx.projects.setFocusRepo(repo.id, repo.path);
+          if (focusOnClick && !focused) {
+            beforeFocus?.();
+            void ctx.projects.setFocusRepo(repo.id, repo.path);
+          }
         }}
         onKeyDown={(e) => e.key === "Enter" && onToggle()}
         onContextMenu={(e) => {
@@ -1052,7 +1068,10 @@ function RepoSection({
             onClick={(e) => {
               e.stopPropagation();
               // Working with this repository's branches makes it the focus, like clicking its row.
-              if (!focused) void ctx.projects.setFocusRepo(repo.id, repo.path);
+              if (focusOnClick && !focused) {
+                beforeFocus?.();
+                void ctx.projects.setFocusRepo(repo.id, repo.path);
+              }
               void switchBranchMenu(ctx, repo, e.currentTarget, reload);
             }}
             data-testid={`git-repo-branch-${repo.name}`}
@@ -1067,6 +1086,18 @@ function RepoSection({
         {entry?.error && <Badge tone="danger">error</Badge>}
         {!status && !entry?.error && <Spinner size="sm" />}
         <span className="hidden items-center group-focus-within:flex group-hover:flex">
+          {onHide && (
+            <IconButton
+              icon={EyeOff}
+              size="sm"
+              label={`Hide ${repo.name} from this list`}
+              data-testid={`git-repo-hide-${repo.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onHide();
+              }}
+            />
+          )}
           <IconButton
             icon={MoreHorizontal}
             size="sm"
@@ -1092,9 +1123,63 @@ function RepoSection({
   );
 }
 
-/** A workspace project: every repository's changes in one list, changed ones first (like VS Code's Source Control). */
+/** Which repositories the list shows for a project (`lib/shown.ts`), kept in the add-on's storage. */
+function useShown(ctx: AddonUiContext, projectId: string) {
+  const key = `shown:${projectId}`;
+  const [shown, setShown] = useState<Shown>();
+  useEffect(() => {
+    let gone = false;
+    setShown(undefined);
+    void ctx.storage.get<Shown>(key).then(
+      (v) => !gone && setShown(v ?? NO_SHOWN),
+      () => !gone && setShown(NO_SHOWN),
+    );
+    return () => {
+      gone = true;
+    };
+  }, [ctx, key]);
+  const update = (change: (s: Shown) => Shown) =>
+    setShown((s) => {
+      const next = change(s ?? NO_SHOWN);
+      void ctx.storage.set(key, next);
+      return next;
+    });
+  return [shown, update] as const;
+}
+
+/**
+ * A workspace project. By default the focus repository's changes (the one you work in) plus the
+ * repositories you chose to show next to it; "All repositories" lists every one, changed first
+ * (like VS Code's Source Control). The Repos section below shows every repository at a glance.
+ */
 function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonProject }) {
-  const repos = useMemo(() => project.repos.map((r) => repoView(project, r)), [project]);
+  const [shown, setShown] = useShown(ctx, project.id);
+  if (!shown) return <Spinner className="m-3" />;
+  return <WorkspaceList ctx={ctx} project={project} shown={shown} setShown={setShown} />;
+}
+
+function WorkspaceList({
+  ctx,
+  project,
+  shown,
+  setShown,
+}: {
+  ctx: AddonUiContext;
+  project: AddonProject;
+  shown: Shown;
+  setShown: (change: (s: Shown) => Shown) => void;
+}) {
+  const everyRepo = useMemo(() => project.repos.map((r) => repoView(project, r)), [project]);
+  const paths = everyRepo.map((r) => r.path);
+  const focus = project.focusRepo;
+  const listAll = showsAll(shown, focus, paths);
+  const visible = visibleRepos(paths, focus, shown);
+  const visibleKey = visible.join("\n");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `visibleKey` stands for `visible`.
+  const repos = useMemo(
+    () => visible.map((p) => everyRepo.find((r) => r.path === p)!).filter(Boolean),
+    [visibleKey, everyRepo],
+  );
   const cwds = useMemo(() => repos.map((r) => r.path), [repos]);
   const all = useHostCall<RepoStatus[]>("statusAll", { cwds });
   // Repositories looked at again on their own since the last full load (newer than `all.data`).
@@ -1123,7 +1208,46 @@ function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
     const st = byCwd.get(r.path)?.status;
     return st ? changeCount(st) > 0 || st.branch.ahead > 0 || st.branch.behind > 0 : false;
   };
-  const sorted = [...repos].sort((a, b) => Number(changed(b)) - Number(changed(a)));
+  // Every repository: changed first. Following the focus: the focus one first, then the chosen ones.
+  const sorted = listAll ? [...repos].sort((a, b) => Number(changed(b)) - Number(changed(a))) : repos;
+  const focusRepo = everyRepo.find((r) => r.path === focus);
+  const pick = (at: HTMLElement) =>
+    ctx.menu(
+      [
+        {
+          label: `All repositories (${everyRepo.length})`,
+          icon: "layers",
+          checked: listAll,
+          onSelect: () => setShown((s) => ({ ...s, all: true })),
+        },
+        { separator: true },
+        ...everyRepo.map((r) => ({
+          label: r.name,
+          checked: !listAll && r.path === focus,
+          onSelect: () => {
+            setShown((s) => ({ ...s, all: false }));
+            if (r.path !== focus) void ctx.projects.setFocusRepo(project.id, r.path);
+          },
+        })),
+      ],
+      at,
+    );
+  const chooseShown = (at: HTMLElement) =>
+    focus &&
+    ctx.menu(
+      [
+        { label: "Show next to " + (focusRepo?.name ?? "this repository"), disabled: true },
+        ...everyRepo
+          .filter((r) => r.path !== focus)
+          .map((r) => ({
+            label: r.name,
+            checked: (shown.extras[focus] ?? []).includes(r.path),
+            onSelect: () => setShown((s) => toggleExtra(s, focus, r.path)),
+          })),
+      ],
+      at,
+    );
+  const extras = listAll ? 0 : visible.length - 1;
   const dirty = repos.filter((r) => {
     const st = byCwd.get(r.path)?.status;
     return st && changeCount(st) > 0;
@@ -1137,11 +1261,31 @@ function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   };
   return (
     <div className="flex h-full flex-col" data-testid="git-workspace">
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line px-2">
-        <span className="min-w-0 flex-1 truncate text-sm">
-          <span className="font-medium">{repos.length} repositories</span>
-          <span className="text-muted">{all.data ? ` · ${dirty} with changes` : ""}</span>
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line px-1.5">
+        <button
+          type="button"
+          className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-sm hover:bg-hover"
+          title="Choose the repository this list follows, or list all of them"
+          data-testid="git-repo-picker"
+          onClick={(e) => pick(e.currentTarget)}
+        >
+          <FolderGit2 className="size-3.5 shrink-0 text-muted" />
+          <span className="truncate font-medium">{listAll ? "All repositories" : focusRepo?.name}</span>
+          {extras > 0 && <span className="shrink-0 text-xs text-muted">+{extras}</span>}
+          <ChevronDown className="size-3 shrink-0 text-hint" />
+        </button>
+        <span className="min-w-0 flex-1 truncate text-xs text-muted">
+          {listAll && all.data ? `${dirty} changed` : ""}
         </span>
+        {!listAll && (
+          <IconButton
+            icon={Eye}
+            size="sm"
+            label="Show other repositories next to this one"
+            data-testid="git-shown-menu"
+            onClick={(e) => chooseShown(e.currentTarget)}
+          />
+        )}
         <IconButton
           icon={CloudDownload}
           size="sm"
@@ -1162,7 +1306,8 @@ function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
         {sorted.map((repo) => {
           const entry = byCwd.get(repo.path);
           const st = entry?.status;
-          const auto = st ? changeCount(st) > 0 : false;
+          // Following the focus, its repositories are open; listing all, the changed ones are.
+          const auto = st ? !listAll || changeCount(st) > 0 : false;
           const open = toggled[repo.path] ?? auto;
           return (
             <RepoSection
@@ -1173,6 +1318,15 @@ function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
               reload={reload}
               open={open}
               onToggle={() => setToggled((t) => ({ ...t, [repo.path]: !open }))}
+              focusOnClick={listAll}
+              // Listing all, a click focuses the repository for the status bar and Git actions and
+              // keeps listing all; the picker is what narrows the list.
+              beforeFocus={() => !shown.all && setShown((s) => ({ ...s, all: true }))}
+              onHide={
+                !listAll && focus && repo.path !== focus
+                  ? () => setShown((s) => toggleExtra(s, focus, repo.path))
+                  : undefined
+              }
             />
           );
         })}

@@ -5,7 +5,16 @@ import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { BuildJob, BuildKind, LayoutOp } from "../../shared/builds";
 import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
-import { hideView, type Layout, moveView, type SideRegion, setRegion, showView } from "../../shared/layout";
+import {
+  hideView,
+  hostOf,
+  type Layout,
+  moveView,
+  placeBelow,
+  type SideRegion,
+  setRegion,
+  showView,
+} from "../../shared/layout";
 
 /**
  * The `jig-builder` tools. Defined once and used both as an in-process MCP server for Claude Code
@@ -75,11 +84,12 @@ export function allViews(addons: AddonInfo[]) {
 export function applyLayoutOps(layout: Layout, ops: LayoutOp[], viewIds: string[]): Layout {
   let next = layout;
   for (const op of ops) {
-    if (op.view && !viewIds.includes(op.view))
-      throw new Error(`Unknown view "${op.view}". Use an id from the catalog.`);
+    for (const id of [op.view, op.host])
+      if (id && !viewIds.includes(id)) throw new Error(`Unknown view "${id}". Use an id from the catalog.`);
     if (op.op === "move" && op.view && op.region) next = moveView(next, op.view, op.region);
     else if (op.op === "hide" && op.view) next = hideView(next, op.view);
     else if (op.op === "show" && op.view) next = showView(next, op.view, op.region ?? "left");
+    else if (op.op === "below" && op.view && op.host) next = placeBelow(next, op.view, op.host);
     else if (op.op === "resize" && op.region && op.size) next = setRegion(next, op.region, { size: op.size });
     else if (op.op === "collapse" && op.region) next = setRegion(next, op.region, { collapsed: true });
     else if (op.op === "expand" && op.region) next = setRegion(next, op.region, { collapsed: false });
@@ -99,9 +109,11 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
         const layout = await env.layout();
         const views = allViews(env.addons())
           .map((v) => {
-            const where =
-              (["left", "right", "bottom"] as const).find((r) => layout[r].views.includes(v.id)) ??
-              (layout.hidden.includes(v.id) ? "hidden" : v.region);
+            const host = hostOf(layout, v.id);
+            const where = host
+              ? `below ${host}`
+              : ((["left", "right", "bottom"] as const).find((r) => layout[r].views.includes(v.id)) ??
+                (layout.hidden.includes(v.id) ? "hidden" : v.region));
             return `- ${v.id} — ${v.title}: ${where}`;
           })
           .join("\n");
@@ -166,7 +178,8 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
       shape: {
         ops: z.array(
           z.object({
-            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand"]),
+            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
+            host: z.string().optional(),
             view: z.string().optional(),
             region: z.enum(["left", "right", "bottom"]).optional(),
             size: z.number().optional(),

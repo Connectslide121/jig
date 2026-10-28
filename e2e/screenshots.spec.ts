@@ -132,7 +132,14 @@ test("screenshots for the About page", async () => {
 
   // Workspace Git with a diff.
   await key("Control+Shift+G");
-  await expect(page.getByTestId("git-workspace")).toContainText("with changes", { timeout: 15000 });
+  // Working in webshop, with orders-api shown next to it.
+  const gitView = page.getByTestId("git-workspace");
+  await expect(gitView).toContainText("changed", { timeout: 15000 });
+  await gitView.getByTestId("git-repo-picker").click();
+  await page.getByRole("menuitem", { name: "webshop", exact: true }).click();
+  await gitView.getByTestId("git-shown-menu").click();
+  await page.getByRole("menuitem", { name: "orders-api" }).click();
+  await expect(gitView.getByTestId("git-repo-orders-api")).toBeVisible();
   await page.getByTestId("git-file-unstaged-webshop/src/cart.ts").click();
   await expect(page.getByTestId("git-diff-split")).toBeVisible();
   await shot("git");

@@ -6,6 +6,15 @@ detail in the main window**. Rebase, graph and blame are out of scope.
 - **Git view** (left sidebar): the active project's current branch with ahead/behind, fetch/pull/push,
   working changes (staged, changes, untracked) with stage/unstage/discard and a commit box, and all
   local and remote branches (click → history; right-click → switch, compare, copy).
+- **A workspace** (a folder of repositories) lists the repository you work in, not all of them
+  (`lib/shown.ts`, D-100):
+  - **The picker** at the top (`podium ▾`) chooses that repository. It is the focus repository, which
+    also drives the status bar and Git actions. **All repositories** lists every one, changed first.
+  - **The eye button** shows other repositories next to it, e.g. elearning while you integrate it into
+    podium. The hide button on a repository's row (on hover) takes it away again.
+  - The choice is kept per project and per focus repository (add-on storage `shown:<projectId>`).
+  - Only the listed repositories are watched and checked.
+  - The Repos add-on below the list shows every repository at a glance.
 - **Tabs in the main window**: History of a branch (filter by message or author, paged), Commit detail
   (message, author, date, parents, changed files with +/−), Diff (side-by-side or inline,
   syntax-highlighted with the active theme, unchanged regions collapsed), Compare (commits ahead/behind).

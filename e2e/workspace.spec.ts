@@ -44,7 +44,8 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   // Git: all repositories, changed ones first and open.
   await page.keyboard.press("Control+Shift+G");
   const view = page.getByTestId("git-workspace");
-  await expect(view).toContainText("3 repositories · 2 with changes", { timeout: 15000 });
+  await expect(view.getByTestId("git-repo-picker")).toContainText("All repositories");
+  await expect(view).toContainText("2 changed", { timeout: 15000 });
   await expect(view.getByTestId("git-file-unstaged-api/README.md")).toBeVisible();
   await expect(view.getByTestId("git-file-untracked-web/new.txt")).toBeVisible();
   await expect(view.getByTestId("git-repo-client-a/portal")).toHaveAttribute(
@@ -63,17 +64,56 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   const web = view.getByTestId("git-repo-web");
   await web.getByTestId("git-commit-message").fill("Update web readme");
   await web.getByTestId("git-commit").click();
-  await expect(view).toContainText("3 repositories · 1 with changes", { timeout: 15000 });
+  await expect(view).toContainText("1 changed", { timeout: 15000 });
   expect(git(join(ws, "web"), "log", "-1", "--format=%s").trim()).toBe("Update web readme");
 
   // A file created outside Jig shows up by itself (watcher, or the safety-net check where
   // folders can't be watched), without touching the window.
   await writeFile(join(ws, "client-a", "portal", "notes.md"), "notes\n");
-  await expect(view).toContainText("3 repositories · 2 with changes", { timeout: 15000 });
+  await expect(view).toContainText("2 changed", { timeout: 15000 });
 
-  // Clicking a repository focuses it: the status bar shows its branch.
+  // Clicking a repository focuses it (the status bar shows its branch) and still lists all.
   await view.getByTestId("git-repo-client-a/portal").getByText("client-a/portal").click();
   await expect(page.getByTestId("git-status-branch")).toContainText("client-a/portal: main");
+  await expect(view.getByTestId("git-repo-web")).toBeVisible();
+
+  // Working in one repository: the list follows it, and others can be shown next to it.
+  await view.getByTestId("git-repo-picker").click();
+  await page.getByRole("menuitem", { name: "web", exact: true }).click();
+  await expect(view.getByTestId("git-repo-picker")).toContainText("web");
+  await expect(view.getByTestId("git-repo-api")).toHaveCount(0);
+  await expect(view.getByTestId("git-repo-client-a/portal")).toHaveCount(0);
+  await expect(page.getByTestId("git-status-branch")).toContainText("web: main");
+  await view.getByTestId("git-shown-menu").click();
+  await page.getByRole("menuitem", { name: "client-a/portal" }).click();
+  await expect(view.getByTestId("git-repo-client-a/portal")).toBeVisible();
+  await expect(view.getByTestId("git-repo-picker")).toContainText("+1");
+  // Kept per project: still there after a reload.
+  await page.reload();
+  await page.waitForSelector("[data-testid=app-root]");
+  await expect(page.getByTestId("git-workspace").getByTestId("git-repo-client-a/portal")).toBeVisible({
+    timeout: 15000,
+  });
+  await page
+    .getByTestId("git-workspace")
+    .getByTestId("git-repo-client-a/portal")
+    .getByText("client-a/portal", { exact: true })
+    .hover();
+  await page.getByTestId("git-repo-hide-client-a/portal").click();
+  await expect(view.getByTestId("git-repo-client-a/portal")).toHaveCount(0);
+
+  // Every repository at a glance in the Repos section below the list.
+  const repos = page.getByTestId("section-addon.repos.overview");
+  await expect(repos.getByTestId("repos-view")).toContainText("repos/client-a/portal", { timeout: 15000 });
+  await page.getByTestId("section-toggle-addon.repos.overview").click();
+  await expect(repos.getByTestId("repos-view")).toHaveCount(0);
+  await page.getByTestId("section-toggle-addon.repos.overview").click();
+  await expect(repos.getByTestId("repos-view")).toBeVisible();
+
+  // Back to every repository.
+  await view.getByTestId("git-repo-picker").click();
+  await page.getByRole("menuitem", { name: /All repositories/ }).click();
+  await expect(view.getByTestId("git-repo-api")).toBeVisible();
 
   // A chat inside one repository.
   await view.getByTestId("git-repo-api").getByText("api", { exact: true }).click({ button: "right" });

@@ -36,6 +36,15 @@ export const LayoutSchema = z.object({
   bottom: RegionSchema(260, true),
   /** Views the user hid; they come back from the Views menu. */
   hidden: z.array(z.string()).default([]),
+  /**
+   * Views shown as collapsible sections below another view, in the same tab (like GitLens below
+   * Source Control in VS Code): host view id → section view ids, top to bottom.
+   */
+  sections: z.record(z.string(), z.array(z.string())).default({}),
+  /** Sections that are collapsed to their header. */
+  closedSections: z.array(z.string()).default([]),
+  /** Views placed in a region for now because the view they go below hasn't loaded yet. */
+  waitingUnder: z.array(z.string()).default([]),
   /** Sizes of resizable panes inside views and tabs (`Pane id` → px, or a 0–1 ratio for splits). */
   panes: z.record(z.string(), z.number()).default({}),
   main: z
@@ -55,6 +64,8 @@ export interface ViewPlacement {
   defaultRegion: SideRegion;
   /** Expand the region when the view is placed for the first time (new add-on views). */
   reveal?: boolean;
+  /** Placed for the first time as a section below this view (`addon.git.git`), when it exists. */
+  under?: string;
 }
 
 export const MAX_TABS = 50;
@@ -63,8 +74,16 @@ function clone(layout: Layout): Layout {
   return structuredClone(layout);
 }
 
+/** The view a section is shown below, if `viewId` is a section. */
+export function hostOf(layout: Layout, viewId: string): string | undefined {
+  return Object.keys(layout.sections).find((host) => layout.sections[host]!.includes(viewId));
+}
+
+/** The region a view is in (a section: its host's region). */
 function regionOf(layout: Layout, viewId: string): SideRegion | undefined {
-  return SIDE_REGIONS.find((r) => layout[r].views.includes(viewId));
+  const host = hostOf(layout, viewId);
+  const id = host ?? viewId;
+  return SIDE_REGIONS.find((r) => layout[r].views.includes(id));
 }
 
 export function findView(layout: Layout, viewId: string): SideRegion | "hidden" | undefined {
@@ -80,6 +99,12 @@ function removeEverywhere(layout: Layout, viewId: string) {
     if (region.active === viewId) region.active = region.views[Math.max(0, index - 1)];
   }
   layout.hidden = layout.hidden.filter((v) => v !== viewId);
+  for (const host of Object.keys(layout.sections)) {
+    const list = layout.sections[host]!.filter((v) => v !== viewId);
+    if (list.length) layout.sections[host] = list;
+    else delete layout.sections[host];
+  }
+  layout.waitingUnder = layout.waitingUnder.filter((v) => v !== viewId);
 }
 
 /**
@@ -96,14 +121,48 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
     layout[r].views = layout[r].views.filter((v) => !seen.has(v) && seen.add(v));
   }
   layout.hidden = layout.hidden.filter((v) => !seen.has(v) && seen.add(v));
-  for (const view of views) {
-    if (seen.has(view.id)) continue;
+  // Sections: one level only, each view once, never below itself.
+  for (const host of Object.keys(layout.sections)) {
+    const list = layout.sections[host]!.filter((v) => v !== host && !seen.has(v) && seen.add(v));
+    if (list.length) layout.sections[host] = list;
+    else delete layout.sections[host];
+  }
+  layout.closedSections = layout.closedSections.filter((v) => hostOf(layout, v));
+  const byId = new Map(views.map((v) => [v.id, v]));
+  const placed = (id: string) => known.has(id) && seen.has(id) && !hostOf(layout, id);
+  // New views: those that go below another view after the others, so that one is placed first.
+  const fresh = views
+    .filter((v) => !seen.has(v.id))
+    .sort((a, b) => Number(Boolean(a.under)) - Number(Boolean(b.under)));
+  for (const view of fresh) {
+    seen.add(view.id);
+    if (view.under && view.under !== view.id) {
+      if (placed(view.under)) {
+        layout.sections[view.under] = [...(layout.sections[view.under] ?? []), view.id];
+        continue;
+      }
+      layout.waitingUnder.push(view.id);
+    }
     layout[view.defaultRegion].views.push(view.id);
     if (view.reveal) {
       layout[view.defaultRegion].collapsed = false;
       layout[view.defaultRegion].active = view.id;
     }
   }
+  // A view waiting for the view it goes below: move it there once that one is placed.
+  layout.waitingUnder = layout.waitingUnder.filter((id) => {
+    const under = byId.get(id)?.under;
+    if (!under || !seen.has(id)) return false;
+    if (!placed(under)) return true;
+    const region = regionOf(layout, id);
+    if (region) {
+      const r = layout[region];
+      r.views = r.views.filter((v) => v !== id);
+      if (r.active === id) r.active = undefined;
+      layout.sections[under] = [...(layout.sections[under] ?? []), id];
+    }
+    return false;
+  });
   for (const r of SIDE_REGIONS) {
     const region = layout[r];
     if (!region.active || !region.views.includes(region.active))
@@ -131,13 +190,47 @@ export function hideView(input: Layout, viewId: string): Layout {
   return layout;
 }
 
-/** Shows a view: un-hides it (into `fallback`) if needed, activates it and expands its region. */
+/**
+ * Shows a view: un-hides it (into `fallback`) if needed, activates it and expands its region. A
+ * section: its host is activated and the section opened.
+ */
 export function showView(input: Layout, viewId: string, fallback: SideRegion): Layout {
   const region = regionOf(input, viewId);
   if (!region) return moveView(input, viewId, fallback);
   const layout = clone(input);
-  layout[region].active = viewId;
+  layout[region].active = hostOf(layout, viewId) ?? viewId;
   layout[region].collapsed = false;
+  layout.closedSections = layout.closedSections.filter((v) => v !== viewId);
+  return layout;
+}
+
+/**
+ * Shows `viewId` as a section below `hostId`, in the host's tab. A view that had sections of its own
+ * hands them to the host (sections are one level deep). Nothing happens for a host that is itself a
+ * section.
+ */
+export function placeBelow(input: Layout, viewId: string, hostId: string): Layout {
+  if (viewId === hostId || hostOf(input, hostId)) return input;
+  const layout = clone(input);
+  const own = layout.sections[viewId] ?? [];
+  delete layout.sections[viewId];
+  removeEverywhere(layout, viewId);
+  layout.sections[hostId] = [...(layout.sections[hostId] ?? []), viewId, ...own];
+  layout.closedSections = layout.closedSections.filter((v) => v !== viewId);
+  const region = regionOf(layout, hostId);
+  if (region) {
+    layout[region].active = hostId;
+    layout[region].collapsed = false;
+  }
+  return layout;
+}
+
+/** Collapses a section to its header, or opens it again. */
+export function toggleSection(input: Layout, viewId: string): Layout {
+  const layout = clone(input);
+  layout.closedSections = layout.closedSections.includes(viewId)
+    ? layout.closedSections.filter((v) => v !== viewId)
+    : [...layout.closedSections, viewId];
   return layout;
 }
 

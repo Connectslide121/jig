@@ -7,11 +7,13 @@ import {
   moveView,
   normalizeLayout,
   openTab,
+  placeBelow,
   type SideRegion,
   setPaneSize,
   setRegion,
   showView,
   toggleRegion,
+  toggleSection,
   updateTabParams,
 } from "../../shared/layout";
 import { call } from "../lib/host";
@@ -38,6 +40,7 @@ function placements() {
     id: v.id,
     defaultRegion: v.defaultRegion,
     reveal: v.reveal,
+    under: v.under,
   }));
 }
 
@@ -80,6 +83,8 @@ export const workbench = {
   activateTab: (tabId: string) => updateLayout((l) => activateTab(l, tabId)),
   moveView: (viewId: string, region: SideRegion) => updateLayout((l) => moveView(l, viewId, region)),
   hideView: (viewId: string) => updateLayout((l) => hideView(l, viewId)),
+  placeBelow: (viewId: string, hostId: string) => updateLayout((l) => placeBelow(l, viewId, hostId)),
+  toggleSection: (viewId: string) => updateLayout((l) => toggleSection(l, viewId)),
   showView(viewId: string) {
     const fallback = useRegistry.getState().views[viewId]?.defaultRegion ?? "left";
     updateLayout((l) => showView(l, viewId, fallback));

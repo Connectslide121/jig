@@ -75,7 +75,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     repository that changed is looked at again); on Linux by a check every few seconds. Every
     repository is fetched in the background every 5 minutes (Settings → Git), so "behind" stays
     current; it never asks for a login.
-  - **Repos** (right sidebar): every project's repo with branch, changes, ahead/behind, last fetch;
+  - **Repos** (a collapsible section at the bottom of the Git panel; its ⋯ menu moves it to its own
+    tab, and any view can be shown below another the same way): every project's repo with branch, changes, ahead/behind, last fetch;
     fetch/pull/push; "N to push/pull" in the status bar; right-click a project → Open in VS Code /
     Explorer.
   - **Pipelines** (right sidebar): Azure DevOps through your `az` login; set up in Settings →
@@ -123,8 +124,10 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   for the 5-hour window; hover either for a card with every window, a bar each and when it resets (click
   to refresh). The numbers come from Claude Code's own `/usage` data.
 - **Workspaces:** add your repos folder as a project (Add project…) — Jig finds the repositories inside
-  (three levels deep; Settings → Layout → Workspace search depth). The Git view lists every repository's changes in one panel (changed first, each with
-  its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
+  (three levels deep; Settings → Layout → Workspace search depth). The Git view lists the repository you work in (the picker at its top; All repositories lists
+  every one, changed first, each with its branch, commit box and changes). The eye button shows other
+  repositories next to it for a while (kept per project and repository), and the hide button on a row
+  takes them away. Clicking a repository in the full list focuses it (status bar, Tools → Git
   actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in

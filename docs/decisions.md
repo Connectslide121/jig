@@ -779,3 +779,36 @@ Not taken:
   what watchers miss (network drives, some sync tools).
 - **Turning on git's `core.fsmonitor`.** That is the user's git configuration; Jig uses it when it's
   set.
+
+### D-099 — A view can sit below another as a collapsible section
+**Decided by:** Jon (Repos at the bottom of the Git panel, expandable and collapsible, like GitLens in
+VS Code's Source Control) and Claude, on my own (made general) · **Date:** 2026-10-28
+
+Rather than merging the Repos add-on into Git, the layout learned sections. Any view can be shown
+below another view in its tab:
+- The layout has `sections` (host → views) and `closedSections`. Each section has a header that
+  collapses it and a height you drag.
+- A view's ⋯ menu has **Show below…**, and a section's has **Move to its own tab**.
+- An add-on asks for it in its manifest with `"under": "<view id>"`. Repos does, below Git.
+- Claude and the builder can do it too (layout op `below`).
+
+Repos stays its own add-on, so it can still be turned off, changed by the builder, or put back in a
+tab. Sections are one level deep.
+
+### D-100 — Git in a workspace lists the repository you work in, plus the ones you choose
+**Decided by:** Jon (a long list of every repository is hard to scan; show podium while working on
+podium, add elearning while integrating it, per project, reachable from the panel) and Claude, on my
+own (tied to the focus repository) · **Date:** 2026-10-28
+
+A workspace's Git list follows the **focus repository** (D-075), which is the repository you work in:
+- **Picker** (`podium ▾`) at the top of the panel: switches it, or chooses **All repositories**.
+- **Eye button:** shows others next to it.
+- **Hide button** on a shown repository's row: takes it away again.
+
+The extra repositories are remembered per focus repository, so going back to podium brings its set
+back, and they are stored per project in the Git add-on's storage. Only the listed repositories are
+watched and checked, which also makes a big workspace cheaper. Every repository is still visible at a
+glance in the Repos section below.
+
+A new workspace with no focus repository lists all. Clicking a repository there focuses it (status bar,
+Git actions) and keeps listing all; only the picker narrows the list.

@@ -13,7 +13,7 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_get_layout` | views per region, sizes, hidden views, every view id | no |
 | `jig_list_addons` | add-ons and what they do | no |
 | `jig_update_settings { patch }` | changes settings (validated against `ConfigSchema`; theme and icon-theme ids checked) | yes |
-| `jig_change_layout { ops }` | move / hide / show / resize / collapse / expand | yes |
+| `jig_change_layout { ops }` | move / hide / show / resize / collapse / expand / below (a view as a section under another) | yes |
 | `jig_set_addon_enabled { id, enabled }` | switches an add-on on or off | yes |
 | `jig_update_project { projectId?, name?, color? }` | renames / recolours a project (default: the chat's project) | yes |
 | `jig_install_theme { namespace, name }` | installs a theme extension from Open VSX (theme files only) | yes |
