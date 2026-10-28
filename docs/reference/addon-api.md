@@ -59,6 +59,8 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | workspaces: set the focus repository (status bar, Git actions); look for repositories again |
 | `openChat({ projectId?, cwd?, draft? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent |
 | `ai.ask(prompt, { cwd? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
+| `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
+| `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |

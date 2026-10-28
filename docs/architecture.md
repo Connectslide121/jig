@@ -34,6 +34,9 @@ same commit.
   calls the host through a single typed bridge (`window.jig`).
 - **Preload** exposes that bridge with `contextBridge`. The renderer runs with `contextIsolation: true`,
   `nodeIntegration: false`, `sandbox: true`.
+- **Helper windows.** Claude's browser is a hidden offscreen window owned by the main process.
+  `main/appWindows.ts` keeps such helpers out of everything that means "Jig's windows" (events,
+  focus, notifications, quitting).
 - **Pure packages** hold logic with no Electron dependency so it can be unit-tested:
   `packages/themes` (theme model + VS Code import), `packages/sdk` (add-on manifest, slots, the types
   add-ons are written against), `packages/learning` (pattern mining).
@@ -87,6 +90,15 @@ All renderer ↔ host traffic goes through two channels:
 The renderer wraps this in small hooks (`useHost`, `useHostEvent`). Errors cross the bridge as
 `{ code, message }`.
 
+The router checks every call before its handler runs (D-089):
+- it comes from Jig's own page (the main frame of `jig-app://`, or the dev server);
+- the arguments are plain data;
+- methods that take a path, command, URL, prompt or terminal input match a zod schema in
+  `main/ipc/validate.ts`.
+
+Add-on UI shares `window.jig`, so handlers still check what they own: folder grants, protected
+settings, add-on permissions.
+
 ### 3.2 State directory
 
 Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests always set it).
@@ -97,21 +109,32 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `layout.json` | the workbench layout (layout-as-data, §6) |
 | `projects.json` | registered projects |
 | `sessions/<id>.json` | chat session metadata + transcript cache |
+| `attachments/<session>/` | files sent in a chat and images tools returned |
+| `attempts/` | "Try several ways" runs and their git worktrees |
 | `themes/` | user themes (Jig or VS Code format) and imported themes |
 | `addons/` | the user's add-ons — **a git repository** (§8) |
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
 | `suggestions.json` | the suggestion inbox and the user's past answers |
 | `logs/` | host logs |
+| `window-state.json`, `builds.json`, `scripts.json`, `addons-state.json`, `addon-data/`, `cache/`, `app-builds/`, `launcher/` | see `docs/reference/state.md` |
 
 Writes are atomic (write temp file + rename). Formats are documented in `docs/reference/state.md`.
 
 ## 4. The engine — Claude Code via the Claude Agent SDK
 
-- `apps/desktop/src/main/engine/` defines an `Engine` interface: start a session (cwd, model,
-  permission mode, resume id), send a user message, interrupt, change model/permission mode, close;
-  it emits normalised `EngineEvent`s (text deltas, thinking, tool use, tool result, permission request,
-  result with usage/cost, status, error).
+- `apps/desktop/src/main/engine/` defines an `Engine` interface. It can:
+  - start a session (cwd, model, permission mode, effort, extra folders, resume id or a rewind
+    point);
+  - send a user message (also into a running turn), interrupt, and change the model, mode or effort;
+  - list commands and models, control MCP servers and background tasks, restore files, and close.
+
+  It emits normalised `EngineEvent`s: text deltas, thinking, tool use, tool results with diffs and
+  images, permission requests, results with usage and cost, subagent progress, command output,
+  status and errors (`docs/reference/engine.md`).
+- **One-shot questions** (`oneShot`: no tools, one turn) serve the AI features around the chat:
+  - commit messages, the pre-commit check, change tours, the standup, judging attempts;
+  - `ctx.ai.ask` for add-ons.
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.
@@ -133,15 +156,25 @@ user's Claude plan. Jig:
 
 **Your Claude Code setup keeps working.** Sessions use `settingSources: ['user','project','local']`
 and the `claude_code` system-prompt preset, so CLAUDE.md files, skills, plugins, hooks and MCP servers
-behave as in the CLI. Jig only **appends** a short context block (what Jig is, which Jig tools exist).
+behave as in the CLI. Jig only **appends** a short context block (what Jig is, which Jig tools exist and when to use the
+terminal and browser tools).
 
-**Permissions.** `canUseTool` routes permission requests to the UI (Allow once / Always allow /
-Deny); the session's permission mode (default, acceptEdits, plan, bypassPermissions) is selectable per
-session from a menu.
+**Permissions.** `canUseTool` routes permission requests to the UI:
+- Allow once, Always allow or Deny;
+- questions (AskUserQuestion) as option cards;
+- plans (ExitPlanMode) as a plan card.
+
+The session's permission mode (default, acceptEdits, plan, bypassPermissions) is set per session from
+a menu or with Shift+Tab.
 
 **Jig tools in every session.** Each session gets an in-process MCP server named `jig`
-(`createSdkMcpServer`) with a small set of tools — e.g. `jig_list_addons`, `jig_request_build` — so
-saying "make me a button that…" in any chat starts the builder. These are the only tools Jig adds.
+(`createSdkMcpServer`). Its tools are the only ones Jig adds:
+- `jig_request_build`, so saying "make me a button that…" in any chat starts the builder;
+- the configuration tools (`docs/reference/configure.md`);
+- the terminal tools (`jig_terminal_*`);
+- Claude's browser (`jig_browser_*`).
+
+Read-only tools run without a prompt.
 
 **Plan usage.** Your subscription's 5-hour and weekly windows are always visible (status bar, chat
 header ring, card on hover). Jig asks Claude Code for the data behind `/usage` (a prompt-less Claude Code
@@ -168,6 +201,13 @@ Chromium page owned by the main process (its own session, sandboxed), driven by 
 with real input events and shown live in a view the user can take over. Hidden helper windows are kept
 out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.
 
+**AI features around the chat.** Built on the same Claude Code:
+- Try several ways: parallel attempts in worktrees, judged by Claude (`docs/reference/attempts.md`).
+- Guided tours of changes, the pre-commit check, commit messages and the standup.
+- Ask Claude about a failed script or a previewed file, and turn a chat into a tool.
+
+Each has a menu entry. Reference: `docs/reference/ai-features.md`.
+
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 
@@ -179,16 +219,18 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
 ## 5. Projects, sessions and terminals
 
 - **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds
-  the repositories inside a workspace (two levels deep, cached) and exposes them as `ProjectInfo.repos`
+  the repositories inside a workspace (three levels deep by default, `projects.repoScanDepth`; cached) and exposes them as `ProjectInfo.repos`
   / `AddonProject.repos`; the Git view shows all of them, scripts are searched in each, and a
   **focus repository** (`focusRepo`) drives the status bar and Git actions. Registered in
   `projects.json` with a display name and colour. The project switcher lists them; every view is
   scoped to the active project unless it is a cross-project view (e.g. Repos overview).
-- **Session** = one Claude Code conversation in a project, optionally in its own **git worktree**
-  (_planned_) so parallel agents don't collide. Several sessions run at once; the session list shows
+- **Session** = one Claude Code conversation in a project (in the project's folder or a folder inside
+  it). "Try several ways" runs several sessions on one task, each in its own **git worktree** under
+  `~/.jig/attempts`, so they don't collide (`docs/reference/attempts.md`). Several sessions run at once; the session list shows
   status (idle / working / needs permission / error) for every project at a glance.
 - **Terminal** = a pty (`@lydell/node-pty`, prebuilt binaries — no compiler needed on Windows) rendered
-  with xterm.js. Terminals belong to a project and can be started by add-ons ("run this script").
+  with xterm.js. Terminals belong to a project and can be started by add-ons ("run this script") and
+  by Claude (`jig_terminal_run`, for dev servers and watchers you can see and stop).
 
 ## 6. The workbench — layout as data
 

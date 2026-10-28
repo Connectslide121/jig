@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
+_Last updated: 2026-10-28 (phases 0–15: every phase of the plan is done; the latest are Claude's browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
 
@@ -46,7 +46,7 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   - Sessions persist and resume with Claude Code's own session id after a restart.
   - API keys are stripped from sessions by default; a warning shows if a session still bills an API key.
   - `JIG_ENGINE=fake npm run dev` gives scripted replies (try "run the tests", "ask me a question",
-    "slow", "fail", "login").
+    "slow", "fail", "login"; the full list is in `docs/guides/testing.md`).
 
 - **Phase 5 (done): terminals & scripts.**
   - Terminals in the bottom panel (`Ctrl+\``, or `+` in its header): PowerShell by default on Windows,
@@ -185,9 +185,10 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   with Claude**, or a workspace repository → **Review changes with Claude**: a new chat opens with the
   request typed in, ready to send. Add-ons can do the same with `ctx.ai.ask` (permission `ai`); the
   builder knows about it.
-- **Restore files and fork:** hover one of your messages → ⋯ → **Restore files to before this
-  message…** shows which files Claude changed since then and puts them back (Claude Code's file
-  checkpoints; Settings → Claude Code → File checkpoints). The chat's ⋯ menu → **Fork chat** continues
+- **Restore files and fork:** hover one of your messages → ⋯ → **Rewind to before this message** →
+  **Only the files** shows which files Claude changed since then and puts them back (Claude Code's file
+  checkpoints; Settings → Claude Code → File checkpoints). The same submenu rewinds the chat, or the
+  chat and the files; **Edit and send again** rewinds and puts your message back in the box. The chat's ⋯ menu → **Fork chat** continues
   the conversation in a new chat, so you can try another approach and keep the original.
 - **Next-message suggestions:** after a turn Claude Code proposes what you might send next. It shows
   as a chip above the message box (click to edit it, the arrow sends it) and as the box's placeholder
@@ -224,6 +225,8 @@ npm run dev          # opens Jig
 - Move a view: `⋯` in the sidebar header → Move to right sidebar.
 - Try a proposal without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
   itself: …" → the build shows the proposed extension point.
+- Everything the fake engine can play (todo lists, plans, subagents, edits, the browser…):
+  `docs/guides/testing.md` → The fake engine.
 
 ## Needs testing on your machine
 

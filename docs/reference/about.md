@@ -40,7 +40,7 @@ npm run build   # bundle the new screenshots
 GitHub and browsers cache README images by address: after regenerating the screenshots (or the icon),
 bump the `?v=` number on the README's image links so the new pictures show.
 
-`about.jpg`, `slots.jpg`, `preview.jpg`, `tour.jpg` and `attempts.jpg` are only used by the repository's `README.md`, which
+`about.jpg`, `slots.jpg`, `preview.jpg`, `tour.jpg`, `attempts.jpg` and `chat-tools.jpg` are only used by the repository's `README.md`, which
 shows the same screenshots as the project's landing page.
 
 The spec builds a demo workspace (`<tmp>/jig-demo`) with four repositories and uses the fake engine.

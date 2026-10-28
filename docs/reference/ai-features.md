@@ -6,7 +6,8 @@ that can only answer. Each feature has a visible button or menu entry (D-083).
 | Feature | Where | How |
 | --- | --- | --- |
 | Next-message suggestions | above the composer (Tab takes it) | Claude Code's `promptSuggestions` (`docs/reference/engine.md`) |
-| Restore files to before a message | your message's ⋯ | file checkpoints, `sessions.rewindFiles` |
+| Restore files to before a message | your message's ⋯ → Rewind to before this message → Only the files | file checkpoints, `sessions.rewindFiles` |
+| Edit and send again / rewind the chat | your message's ⋯ | `sessions.rewind` (`docs/reference/chat.md`) |
 | Fork chat | chat ⋯ | `sessions.fork` (Claude Code's fork) |
 | Write the commit message | Git commit box → Write | `ctx.ai.ask` with the diff and recent subjects |
 | Check before committing | Git → ✨ menu | `ctx.ai.ask`: secrets, debug output, unfinished code, likely bugs → findings under the commit box |

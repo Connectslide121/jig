@@ -260,6 +260,24 @@ test("screenshots for the About page", async () => {
   await expect(page.getByTestId("attempts-verdict")).toBeVisible();
   await shot("attempts");
 
+  // The chat at Claude Code's level: a todo list, an edit with its diff, a plan to approve.
+  await page.keyboard.press("Control+N");
+  const chatInput = page.locator("[data-tab-id]:not(.hidden)").getByTestId("composer-input");
+  const results = page.locator("[data-tab-id]:not(.hidden)").getByTestId("turn-result");
+  await chatInput.fill("make a todo list for the discount code");
+  await page.keyboard.press("Enter");
+  await expect(results).toHaveCount(1, { timeout: 20000 });
+  await chatInput.fill("edit webshop/src/cart.ts");
+  await page.keyboard.press("Enter");
+  await expect(results).toHaveCount(2, { timeout: 20000 });
+  await chatInput.fill("make a plan for the checkout");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("plan-card")).toBeVisible({ timeout: 20000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: join(OUT, "chat-tools.jpg"), type: "jpeg", quality: 82 });
+  await page.getByTestId("plan-approve").click();
+  await expect(results).toHaveCount(3, { timeout: 20000 });
+
   // Claude's browser: Claude checks the shop on a phone-sized page.
   const shopPage = join(ws, "webshop", "public", "index.html");
   await mkdir(join(ws, "webshop", "public"), { recursive: true });

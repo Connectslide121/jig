@@ -10,7 +10,8 @@ Jig is a personal, desktop **agentic workbench** built around **Claude Code**. I
 that today live in different places:
 
 1. **A chat with the agent** — several Claude Code sessions at once, across several projects, all in one
-   window (what the Claude desktop app's Code tab does today).
+   window, doing everything Claude Code's terminal does (what the Claude desktop app's Code tab does
+   today, and more).
 2. **An IDE around the agent** — repos and their git status, commits, diffs, pipelines, scripts,
    terminals: the "quality of life" tools that were missing and that were previously hacked together as
    Claude Code plugins in the Claude desktop sidebar.
@@ -46,6 +47,8 @@ enforces them.
    CLIs (`git`, `gh`, `az`). Jig keeps no accounts or tokens of its own.
 4. **Menus, not commands.** Every capability is visible and clickable — a Tools menu, buttons, `⋯` menus,
    right-click menus. Nothing requires remembering a slash command. Plain language in a chat also works.
+   Claude Code's own shortcuts in the message box (`/` commands and skills, `@` files, `!` shell, `#`
+   memory) work as in its terminal, and each is also a menu item (D-091).
 5. **Build the lightest thing that fully works.** When Jig builds something for you it tries, in order:
    1. a **layout or settings change** (instant, no code);
    2. an **add-on** in one of the extension **slots** — and it **looks at the existing add-ons first and

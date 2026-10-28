@@ -28,10 +28,9 @@ interface EngineSession {
   `canUseTool` → the permission prompt, `mcpServers: { jig }`, `effort`, `additionalDirectories`, and
   `resumeSessionAt` after a rewind. Messages carry `origin: { kind: "human" }`; one sent while Claude
   works with `priority: "next"` joins the running turn.
-- **`FakeEngine`** (`fake.ts`): scripted replies for tests and `JIG_ENGINE=fake` (see the file header for
-  the trigger words: "run", "question", "slow", "fail", "login", "build", and a path ending in an image
-extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
-  per-word delay (ms); `JIG_FAKE_ONESHOT` the one-shot answer.
+- **`FakeEngine`** (`fake.ts`): scripted replies for tests and `JIG_ENGINE=fake`, with no Claude Code
+  process and no quota. The trigger words and environment variables are in `docs/guides/testing.md`
+  → The fake engine.
 - `normalize.ts` turns SDK messages into `EngineEvent`s and ignores anything it doesn't know.
 
 ## Credentials and billing
@@ -128,9 +127,16 @@ The fake engine answers "I see N image(s)." and "I read <names>."
   as `messageId`.
 - With `engine.fileCheckpoints` (default on) Claude Code runs with `enableFileCheckpointing`, and
   `EngineSession.rewindFiles(messageId, dryRun)` restores (or previews) files to their state before
-  that message. The chat shows "Restore files to before this message…" in a user message's menu: a dry
+  that message. The chat shows Rewind to before this message → Only the files in a user message's menu: a dry
   run lists the files, you confirm, then they are restored and the chat gets a notice. The transcript
   itself is unchanged.
+- **Rewinding the conversation** (`sessions.rewind`, the same submenu and Edit and send again): each
+  turn's result keeps `chainUuid`, the last main-conversation message of the turn.
+  - Rewinding to before a message drops it and everything after it from the transcript, stops Claude
+    Code, and stores `meta.resumeAt`. The next start resumes with `resumeSessionAt` at that point.
+  - Rewinding to before the first message sets `meta.resetPending`, and the next message starts a new
+    conversation.
+  - With `files`, the files are restored first.
 - **Fork chat** (the chat's ⋯ menu, `sessions.fork`): a new session with a copy of the transcript and
   `forkPending`; its first start resumes the original Claude Code session with `forkSession: true`,
   so it continues under a new id and the original is untouched.
@@ -167,7 +173,13 @@ which the session manager hands to the usage service instead of the transcript. 
 
 ## Jig's tools in every chat
 
-The `jig` MCP server (`engine/jigTools.ts`) has `jig_list_addons`, `jig_request_build`, and the
-configuration tools other modules register with `registerJigTools` (settings, themes, layout, add-ons,
-projects — `docs/reference/configure.md`). Tools marked `readOnly` run without a permission prompt.
+The `jig` MCP server (`engine/jigTools.ts`) has `jig_list_addons`, `jig_request_build`, and the tools
+other modules register with `registerJigTools`:
+- **Configuration** (settings, themes, layout, add-ons, projects): `docs/reference/configure.md`.
+- **Terminals** (`jig_terminal_run/read/list/stop`): `docs/reference/terminals.md`.
+- **Claude's browser** (`jig_browser_*`): `docs/reference/browser.md`.
+
+Tools marked `readOnly` run without a permission prompt. A tool may return images as well as text
+(`ToolOutput`); they show in the chat. `jigContext` (appended to Claude Code's system prompt) tells
+Claude when to use the terminal and browser tools.
 

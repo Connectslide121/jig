@@ -21,6 +21,51 @@ envelope.
 On Linux without a display, run under Xvfb: `xvfb-run -a npx playwright test` (after `npm run build`).
 On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 
+## The fake engine
+
+`JIG_ENGINE=fake` (always on in e2e tests) replaces Claude Code with a script
+(`apps/desktop/src/main/engine/fake.ts`). What it does depends on the message. The first match wins,
+in this order:
+
+| Message | What happens |
+| --- | --- |
+| contains "login" (first message) | acts like a Claude Code that isn't signed in |
+| `/compact …` | compacts the conversation (context drops to 21k tokens) |
+| `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
+| "todo list" | three TodoWrite updates, all done at the end |
+| "make a plan" | a plan to approve (ExitPlanMode); the reply says the mode after approval |
+| "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |
+| "background job" | a Bash command that keeps running in the background (Stop ends it) |
+| "edit <file>" | edits the file's first line; the card shows the diff |
+| "theme", "light mode", "dark mode", "terminals to the right" | Claude changes Jig's settings or layout (change cards with Undo) |
+| "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot |
+| a path ending in an image extension | a Read of that image (thumbnail in the card) |
+| contains "run" or "permission" | asks to run `npm test` (permission card) |
+| contains "question" | asks a multiple-choice question |
+| "write <file>" | writes the file (a file checkpoint: Restore files puts it back) |
+| contains "build" | asks Jig's builder for a tool (`jig_request_build`) |
+| contains "slow" | a long streamed answer (try Stop) |
+| anything else | a short Markdown answer that repeats your message, with a code block |
+
+More behaviour:
+- **Turn endings:** "fail" ends the turn with an error. "big file" adds 130k tokens to the context
+  (9k otherwise).
+- **Suggestions:** from the second turn on, it suggests a next message.
+- **Messages sent with Ctrl+Enter during a turn:** they get "Noted while working: …".
+- **Commands, models and MCP servers:** canned lists (`/usage`, `/explain-code`; models with effort
+  levels; `github` connected and `jira` needing sign-in).
+- **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups and
+  commit messages.
+- **The builder:** its sessions run a scripted build (`fakeBuilder.ts`).
+
+`JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
+`JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
+
+## Screenshots
+
+`e2e/screenshots.spec.ts` regenerates the pictures of the "What Jig can do" page and the README
+(skipped unless `JIG_SCREENSHOTS=1`; see `docs/reference/about.md`).
+
 ## Rules
 
 - Never use real Claude credentials in tests — use the fake engine.

@@ -12,8 +12,9 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `logs/main.log` | text | host log |
 | `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
 | `attempts/<run>.json`, `attempts/<run>/<n>/` | JSON `AttemptRun`; git worktrees | "Try several ways" runs and the attempts' worktrees (removed on Keep or Discard) |
-| `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`) |
+| `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`). Besides title, model, mode, usage and Claude Code's session id, `meta` keeps the chat's `effort`, extra folders (`addDirs`), background tasks, MCP status, the context window, and after a rewind the point to resume at (`resumeAt`, or `resetPending` to start over) |
 | `attachments/<session>/<uuid>.<ext>` | files | images and documents pasted, dropped or attached in a chat; deleted with the session |
+| `attachments/<session>/tool-<toolUseId>-<n>.png` | files | images a tool returned (a browser screenshot), shown in its tool card |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
@@ -29,8 +30,13 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only (file icon themes: also their icons and fonts) |
 
-_More files are added by later phases (layout, projects, sessions, themes, add-ons, activity,
-suggestions); each is documented here when it lands._
+Outside `~/.jig`:
+- **Claude's browser** keeps its cookies and storage in Electron's session `persist:jig-browser`, under
+  Electron's user data folder (`docs/reference/browser.md`).
+- **Claude Code** keeps its own conversations and settings in `~/.claude`. Jig reads no credentials
+  there. It only appends to `CLAUDE.md` when you choose Remember (`#`), and lists your skills.
+
+A new state file is documented here in the same commit that adds it.
 
 ## `config.json`
 

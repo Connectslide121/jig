@@ -44,7 +44,10 @@ npm run e2e            # build, then Playwright drives the real app (Linux needs
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
+JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts   # regenerate screenshots (after a build)
 ```
+
+What the fake engine does for which message is listed in `docs/guides/testing.md` → The fake engine.
 
 ## Architecture rules
 
@@ -60,6 +63,20 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 - **Claude Code is the only engine.** Never add another agent runtime, never call the Anthropic API
   directly for agent work, never assemble the system prompt yourself (only `append` to the
   `claude_code` preset).
+- **Follow Claude Code, don't reimplement it.**
+  - New Claude Code behaviour reaches the UI through `main/engine/normalize.ts`, which turns SDK
+    messages into `EngineEvent`s. Unknown messages are ignored, never a crash.
+  - Lists Claude Code owns (commands, skills, models, MCP servers) come from the running Claude Code,
+    not hard-coded lists.
+  - The chat should keep matching Claude Code's terminal (`docs/reference/chat.md`).
+- **Jig's tools for Claude** are registered with `registerJigTools` on the `jig` MCP server.
+  - Mark tools that only read with `readOnly`, so they run without a prompt.
+  - A tool may return images (`ToolOutput`); they show in the chat.
+  - Tell Claude when to use a tool in `jigContext` (`main/engine/jigTools.ts`).
+  - Give the fake engine a way to call new tools, so e2e tests cover them.
+- **Jig's windows:** use `appWindows()` (`main/appWindows.ts`), never `BrowserWindow.getAllWindows()`,
+  for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
+  (Claude's browser) are marked with `markHelperWindow`.
 - **Never read, copy, store, log or forward Claude credentials or tokens.** No login UI. Keep the
   default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session environments.
 - **The user's own tools and credentials** for git, GitHub, Azure, Azure DevOps (`git`, `gh`, `az`).
@@ -91,7 +108,8 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 - Unit tests next to the code (`*.test.ts`), Vitest. Pure packages need tests for every exported
   function with logic.
 - Host modules are tested with a temporary `JIG_HOME`.
-- End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`.
+- End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`. A new
+  fake-engine behaviour gets a row in the table in `docs/guides/testing.md`.
 - Never use real Claude credentials in tests.
 
 ## Commits

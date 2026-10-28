@@ -91,7 +91,7 @@ settings, add-on permissions.
 | `sessions.commands` / `sessions.models` | `{ id }` | `SlashCommandInfo[]` / `ModelInfo[]` | from Claude Code (starts it for the chat if needed) |
 | `sessions.setEffort` | `{ id, effort? }` | — | `low` … `max`; empty = the model's default |
 | `sessions.setDirs` | `{ id, dirs }` | — | extra folders (restarts Claude Code at the next message) |
-| `sessions.mcpStatus` / `mcpReconnect` / `mcpToggle` | `{ id }` / `{ id, name }` / `{ id, name, enabled }` | `McpServerInfo[]` / — / — | the chat's MCP servers |
+| `sessions.mcpStatus` / `sessions.mcpReconnect` / `sessions.mcpToggle` | `{ id }` / `{ id, name }` / `{ id, name, enabled }` | `McpServerInfo[]` / — / — | the chat's MCP servers |
 | `sessions.background` / `sessions.stopTask` | `{ id, toolUseId? }` / `{ id, taskId }` | `boolean` / — | move running work to the background; stop a background task |
 | `sessions.export` | `{ id }` | `string \| undefined` | saves the chat as Markdown (asks where) |
 | `files.search` | `{ root, query, limit? }` | `string[]` | fuzzy file/folder search inside a project (`@` mentions) |

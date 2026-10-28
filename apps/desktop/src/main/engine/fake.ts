@@ -67,20 +67,8 @@ const FAKE_MODELS = [
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
- * no quota. What it does depends on words in your message:
- *
- * - "run" / "permission" → asks to run `npm test` (permission prompt), then reports the result
- * - "question" → asks a multiple-choice question (AskUserQuestion)
- * - "slow" → streams for a long time (try Stop)
- * - "fail" → the turn ends with an error
- * - "login" → behaves like Claude Code that isn't signed in
- * - "build" → calls the jig_request_build tool (needs the jig MCP server)
- * - "write <file>" → writes <file> in the chat's folder (a file checkpoint: restore it from the message)
- * - "edit <file>" → edits its first line (the chat shows the diff)
- * - "/name" → a Claude Code command (output) or skill (a reply)
- * - "todo list", "make a plan", "subagent", "background job" → TodoWrite, ExitPlanMode, Task, a
- *   background command
- * - anything else → a short markdown reply with a code block
+ * no quota. What it does depends on words in your message; the full list is in
+ * docs/guides/testing.md → The fake engine (keep it in step with the branches in `runTurn`).
  */
 export class FakeEngine implements Engine {
   readonly kind = "fake" as const;
