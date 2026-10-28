@@ -29,7 +29,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 15 | [The chat, at least as good as Claude Code](15-chat-parity.md) | ✅ | `/` commands and skills, `@` files, `!` shell, `#` memory, history, modes, rewind, todos, plans, diffs, subagents, background tasks, MCP, effort, find |
 | 16 | [Routines and artifacts](16-routines-artifacts.md) | ✅ | Claude Code routines in a tab (list, run, on/off, runs) and from chats; artifacts open in Jig's Preview |
 | 17 | [UI/UX sweep](17-ux-sweep.md) | ✅ | Home with a chat box, New chat in the top bar, Ctrl+K, tab status dots, message actions on hover, changed files after a turn |
-| 18 | [Next: Jon's list](18-next.md) | ⏸ | waiting for Jon's go: file explorer, light editing in Preview, projects you manage, arranging Scripts/Pipelines, split view, project links, Learning 2 (evidence, profile, coaching, check-ins, workflows) |
+| 18 | [Next: Jon's list](18-next.md) | ⏸ | waiting for Jon's go: file explorer, light editing in Preview, projects you manage, arranging Scripts/Pipelines, split view, project links, Releases (start versioning), Learning 2 (evidence, profile, coaching, check-ins, workflows) |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

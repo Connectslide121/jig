@@ -222,7 +222,55 @@ Each project keeps its own **links, in groups**: e.g. "Stage" with its resource 
   - In the left panel as a collapsible **section below Projects** (D-099), not its own tab.
   - On the project's Home, as a Links card.
 
-## 8. Finish: everything documented (last step of the phase)
+## 8. Releases: start versioning, and keep at it (a new built-in add-on)
+
+Jon doesn't version his repos yet. The add-on's first job is to **get him started**, and its second is
+to **keep him disciplined**, proactively but quietly.
+
+### Getting started, once per repository
+- **A setup chat** ("Set up versioning for podium"). Claude looks at the repository first (stack, how
+  it's deployed, pipelines, history), then asks only what it can't work out.
+- **It proposes rules with reasons, and you adjust them:**
+  - the scheme: SemVer for APIs and libraries, CalVer for sites and apps that just ship;
+  - the one place the version lives (`Directory.Build.props`, `.csproj`, `package.json`, a `VERSION`
+    file) and the tag format (`v1.2.3`);
+  - environments: stage gets release candidates (`1.3.0-rc.1`), and prod gets the same build as
+    `1.3.0`;
+  - the notes' audiences and languages;
+  - a commit message convention (optional);
+  - when to release (e.g. "before every prod deploy", weekly).
+- **The rules are saved as the repository's release policy.** Proposed: `.jig/release.json`, committed,
+  so colleagues get the same rules and the add-on helps them too. To confirm.
+- **A baseline release** (`1.0.0`, "first versioned release") marks the starting point.
+
+### Staying disciplined
+- **Unreleased work is visible:** a badge in Git and Repos ("14 commits unreleased, 3 weeks"), and the
+  workspace list of repositories with something to release.
+- **Deploys without a version:** when a prod pipeline runs (or is about to run) on a commit with no
+  release, Jig says "release 1.4.0 first?". It's a warning you can override, not a block (proposed).
+- **Commit messages follow the policy:** the Git panel's Write uses the convention, so the changelog
+  and the bump suggestion are reliable.
+- **Reminders follow the policy's cadence.** Learning reports how releases are going in its weekly
+  summary.
+
+### Releasing
+- **What's unreleased:** commits, merged PRs, and the Azure DevOps work items they mention, since the
+  last tag. The version in files and in tags is checked to agree.
+- **Claude** suggests the bump (with reasons) and drafts a **changelog** (`CHANGELOG.md`: Added / Changed
+  / Fixed) and **notes for users** (plain language, in the policy's languages). You edit before
+  anything is written.
+- **One action, after a preview diff:** bump the version files, update the changelog, commit "Release
+  x.y.z", tag, push, and optionally start the release pipeline (Pipelines add-on).
+- **Afterwards:**
+  - the history of releases with their notes;
+  - "What's live": which version each environment runs, from pipeline runs, and which changes aren't
+    in prod yet;
+  - notes copied as Markdown or text, or published as an artifact.
+- **Ties to the rest of the plan:** Claude gets tools ("what changed since the last release?", "write
+  the notes for 2.5.0"); a "Release" workflow (4d) uses these steps; Learning suggests it when it sees
+  manual releases.
+
+## 9. Finish: everything documented (last step of the phase)
 
 When the items above are built, finish the phase by bringing every document up to date with all the
 new features. Each item already updates its own reference docs as it goes (AGENTS.md "Keep the docs
@@ -267,6 +315,9 @@ true"). This step checks the whole picture again:
 - [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals
 - [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
+- [ ] Releases add-on: setup chat and release policy per repository, baseline release; unreleased
+      badges, deploy-without-version warning, commit convention, reminders; bump suggestion,
+      changelog and user notes, one-action release, history and "What's live"
 - [ ] Finish: README, AGENTS.md, all docs (status, architecture, references, guides, index,
       decisions, plan), the About page and screenshots, and the guide artifact updated with every new
       feature
