@@ -5,9 +5,9 @@ import { compareVersions, type UpdateInfo } from "../../shared/setup";
 import { getConfig } from "../config";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
-import { restarter, sourceRepo } from "../selfmod";
 import { paths } from "../state/paths";
 import { claudeBinary } from "../terminals/claudeBinary";
+import { restarter, sourceRepo } from "../updates/relaunch";
 import { sourceStatus, updateSource } from "../updates/source";
 import { execTool, runSetupChecks } from "./checks";
 
@@ -92,7 +92,7 @@ export function registerSetupHandlers(): void {
     }
     const repo = await sourceRepo();
     if (!repo) throw new JigError("no_source", "Jig isn't running from a git clone");
-    const b = getConfig().builder;
+    const b = getConfig().updates;
     try {
       const result = await updateSource(
         repo,

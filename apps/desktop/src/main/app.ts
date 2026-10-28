@@ -18,7 +18,6 @@ export function registerAppHandlers(): void {
     packaged: app.isPackaged,
     safeMode: process.env.JIG_SAFE_MODE === "1",
     startedAfterFailure: process.env.JIG_STARTED_AFTER_FAILURE === "1",
-    preview: process.env.JIG_PREVIEW || undefined,
   }));
   handle("app.openExternal", async ({ url }) => {
     if (!/^(https?|mailto):/.test(url))

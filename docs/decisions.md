@@ -36,6 +36,7 @@ Windows support and Playwright testing. Tauri means a Rust host; Electrobun is y
 **Decided by:** Jon · **Date:** 2026-10-27
 The builder always tries the lightest level first. Extension slots are the first attempt; changing
 Jig's own code is the last resort. Where a level-3 change makes sense, it adds a new slot.
+_Changed by D-074: the builder no longer changes Jig's code; it proposes the missing slot._
 
 ### D-005 — Consider existing add-ons before creating new ones
 **Decided by:** Jon · **Date:** 2026-10-27
@@ -357,13 +358,13 @@ built) isn't given to the next reflection again; "Never" blocks the pattern perm
 The weekly reflection is one Claude Code request with no tools, no settings sources and `haiku` by
 default (Settings → Learning → Model), so it is cheap and can't touch files.
 
-### D-060 — Level 3 is a stage of the same build, started by an explicit button
+### D-060 — Level 3 is a stage of the same build, started by an explicit button _(superseded by D-074)_
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 A build that needs Jig's source records a proposal (reason + plan) and waits. Only **Let the builder
 change Jig's code** starts the level-3 session; it is a new builder session (with its own instructions
 and tools) in a worktree of Jig's repository, but the same build job, so the history stays in one place.
 
-### D-061 — The level-3 worktree links node_modules; dependency changes get a real install
+### D-061 — The level-3 worktree links node_modules; dependency changes get a real install _(superseded by D-074)_
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 Installing Electron and friends for every change is slow, so the worktree links the repository's
 `node_modules` (junctions on Windows). When `package.json`/`package-lock.json` change, the links are
@@ -374,13 +375,13 @@ removed and the install command runs in the worktree; after Accept it runs in th
 Built-in add-ons (Git, Repos, Pipelines, Scripts) ship with Jig's code, so they are as trusted as the
 build itself; safe mode only skips add-ons in `~/.jig/addons`. It doesn't change `addons-state.json`.
 
-### D-063 — Accept merges into your current branch and refuses a dirty checkout
+### D-063 — Accept merges into your current branch and refuses a dirty checkout _(superseded by D-074)_
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 The change is merged with `--no-ff` (one merge commit, easy to revert: Undo is `git revert -m 1`). If the
 source repository has uncommitted changes to tracked files, Accept stops and says so instead of mixing
 your work with the builder's. Jig doesn't push; that stays yours.
 
-### D-064 — Protected paths: launcher, builder core, Claude Code start-up, AGENTS.md
+### D-064 — Protected paths: launcher, builder core, Claude Code start-up, AGENTS.md _(superseded by D-074)_
 **Decided by:** Claude, on my own · **Date:** 2026-10-28
 `apps/launcher/`, `main/builder/`, `main/selfmod/`, `main/engine/claude.ts` (credentials rules) and
 `AGENTS.md`. A change touching them can only be accepted after a separate confirmation dialog listing
@@ -453,3 +454,15 @@ pure, no Office or Python needed): structure is kept where it matters (headings,
 CSV per sheet, slides with notes) and the text is marked "extracted by Jig". Images inside Office
 files are not sent. Old binary formats (.doc/.xls/.ppt) are refused with "save as .docx/.xlsx/.pptx"
 rather than adding a converter. Supersedes the image-only part of D-072.
+
+### D-074 — No self-editing: the builder proposes extension points, Jon changes Jig's code
+**Decided by:** Jon · **Date:** 2026-10-28
+Jig's builder never edits Jig's own source. Self-editing meant rebuilding Jig after every such change,
+running from a personal clone that drifts from upstream, and a risk of breaking startup — while Jon can
+change the code himself whenever the slots aren't enough. When no layout change, setting or add-on can do
+a request, the builder calls `propose_extension_point` and the build ends with a proposal (why, and the
+smallest slot or API that would make it an add-on), which can be copied. Removed: the level-3 flow
+(worktree of Jig's repo, checks, preview instance, merge, protected paths, Undo). Kept: the launcher, its
+ready heartbeat, fallback and safe mode — now used by "Pull, build and restart" updates — under
+Settings → Updates (`config.updates`). Supersedes D-060, D-061, D-063, D-064 and the level-3 part of
+D-004.

@@ -55,13 +55,6 @@ Tools → **Check for updates…** (and the Updates card in Get started):
 
 There is no silent auto-update (D-067).
 
-## Self-modification in an installed Jig
-
-The installed app has no source. To let the builder change Jig's code (level 3), clone the repository,
-run `npm install` there, and choose the clone in Settings → Builder → Jig's source repository. After
-Accept, Jig restarts into that clone's build (with the installed Electron); it keeps running from the
-clone until you install a newer release.
-
 ## Windows notes
 
 - **Shells.** Terminals use PowerShell by default (`powershell.exe`; set `pwsh.exe`, `cmd.exe` or Git
@@ -72,6 +65,5 @@ clone until you install a newer release.
   (no shell string concatenation). Level-3 worktrees link `node_modules` with junctions (no admin
   rights or developer mode needed).
 - **No console windows.** Every process Jig starts sets `windowsHide`.
-- **Long paths.** Deep `node_modules` in a level-3 worktree are linked, not copied, so the 260-character
-  limit isn't hit there; if `npm install` complains, enable long paths in Git (`git config --global
+- **Long paths.** If `npm install` complains about long paths, enable them in Git (`git config --global
   core.longpaths true`).

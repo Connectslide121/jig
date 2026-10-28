@@ -9,7 +9,7 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
 4. Every phase in `docs/plan/README.md` is ✅. Next: work through "Needs testing on your machine" below
-   on Windows (installer, real Claude Code sessions, a real level-3 change), then pick items from
+   on Windows (installer, real Claude Code sessions, a real build), then pick items from
    `docs/plan/99-backlog.md`.
 5. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
@@ -98,15 +98,9 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
     10:00 (catch-up at launch): repeated commands, sequences and similar prompts are found without AI;
     only then one small Claude Code request picks at most 3 suggestions with evidence.
   - **Build it** starts the builder; **Not now** hides it for 14 days; **Never** blocks the pattern.
-- **Phase 10 (done): Jig changes its own code (builder level 3).**
-  - When no slot can do it, the build shows why and a plan; **Let the builder change Jig's code**
-    starts a builder session in a git worktree of Jig's repository (Settings → Builder: source repo,
-    check/build/install commands) with `AGENTS.md` loaded. It must pass `npm run check`.
-  - **Open preview instance** runs the changed Jig in its own window with a copy of your Jig home.
-  - **Accept** (an extra confirmation when the launcher or builder core changed) keeps the current build
-    as "previous", merges into your branch, builds and restarts through the launcher. If the new build
-    doesn't report ready, the launcher starts the previous one, then safe mode (your add-ons off), and
-    Jig shows a banner with **Undo the last change to Jig** (also in Tools).
+- **Phase 10 (done, reworked): no self-editing.** When no slot can do a request, the build ends with a
+  proposal for the missing extension point (why, and the slot or API to add), with **Copy proposal** —
+  Jig never changes its own code; you add the slot yourself (D-074).
 - **Resizable panels:** drag the edge of the sidebars and the bottom panel (or focus the handle and use
   the arrow keys; double-click resets), the terminal list, the Settings list and the two sides of a Git
   diff. Sizes are remembered (`layout.json`).
@@ -138,9 +132,8 @@ npm run dev          # opens Jig
 - Try themes: the gear (top right) → Appearance. Drop a VS Code theme `.json` into `~/.jig/themes`
   and it appears; edit it and Jig recolours as you save.
 - Move a view: `⋯` in the sidebar header → Move to right sidebar.
-- Try level 3 without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
-  itself: …" → Let the builder change Jig's code. (It writes `docs/builder-notes.md` in a worktree;
-  Accept merges it into your checkout and restarts — use a throwaway clone as the source repository.)
+- Try a proposal without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
+  itself: …" → the build shows the proposed extension point.
 
 ## Needs testing on your machine
 
@@ -183,13 +176,9 @@ Things the cloud build environment couldn't verify:
 - **Add-ons on Windows**: the add-on host process (utilityProcess) starts, `api.exec("git", …)` works
   without a console window flashing, and file watching picks up saves in `%USERPROFILE%\.jig\addons`.
 
-- **Level 3 for real** (needs a Jig clone): a real Claude Code builder in the worktree, `npm run
-  check` there (node_modules are junctions on Windows), **Open preview instance** (a second Jig window
-  with its own home), Accept → restart through the launcher, and the fallback: break the build on
-  purpose (e.g. throw in `main/index.ts`) and check the previous build starts with the banner and Undo
-  works. Also check the launcher with a packaged install (phase 11: the packaged app can only change
-  itself when Settings → Builder points at a source clone).
-
+- **Updates from your clone with the launcher**: break the build on purpose in a throwaway commit (e.g.
+  throw in `main/index.ts`), push it, then Tools → Check for updates… → Pull, build and restart: the
+  launcher should start the previous build with the banner. Revert the commit and update again.
 - **The Windows installer** (phase 11; only the Linux package could be built and run here): on
   Windows run `npm install` and `npm run dist`, install `apps/desktop/release/Jig-Setup-0.1.0.exe`
   (SmartScreen: More info → Run anyway), start Jig from the Start menu, check the icon, that Get started

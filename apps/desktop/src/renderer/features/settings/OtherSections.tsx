@@ -145,15 +145,15 @@ export function TerminalSettings() {
   );
 }
 
-/** Level 3: where Jig's source is and which commands check and build it. */
-export function BuilderSettings() {
+/** Updates from a git clone of Jig: where it is and how it is built. */
+export function UpdatesSettings() {
   const config = useConfig((s) => s.config);
   if (!config) return <Spinner />;
-  const b = config.builder;
+  const u = config.updates;
   return (
     <SettingsSection
-      title="Builder"
-      description="When no add-on or setting can do what you ask, the builder can change Jig's own code (level 3). It works in a git worktree of Jig's repository, runs these checks, and you try a preview instance before accepting."
+      title="Updates"
+      description="When Jig runs from a git clone, Check for updates… pulls, builds and restarts it (Tools → Check for updates…). An installed Jig looks for new releases instead."
     >
       <SettingRow
         label="Jig's source repository"
@@ -161,24 +161,24 @@ export function BuilderSettings() {
       >
         <div className="flex items-center gap-2">
           <span className="selectable max-w-72 truncate font-mono text-xs text-muted">
-            {b.sourcePath || "(the repository Jig runs from)"}
+            {u.sourcePath || "(the repository Jig runs from)"}
           </span>
           <Button
             size="sm"
             icon={FolderOpen}
             onClick={() =>
               void call("app.pickFolder", { title: "Jig's source repository" }).then(
-                (sourcePath) => sourcePath && void updateConfig({ builder: { sourcePath } }),
+                (sourcePath) => sourcePath && void updateConfig({ updates: { sourcePath } }),
               )
             }
           >
             Choose…
           </Button>
-          {b.sourcePath && (
+          {u.sourcePath && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => void updateConfig({ builder: { sourcePath: "" } })}
+              onClick={() => void updateConfig({ updates: { sourcePath: "" } })}
             >
               Reset
             </Button>
@@ -186,21 +186,15 @@ export function BuilderSettings() {
         </div>
       </SettingRow>
       <TextSetting
-        label="Check command"
-        description="Must pass before you see a change."
-        value={b.checkCommand}
-        onSave={(checkCommand) => void updateConfig({ builder: { checkCommand } })}
-      />
-      <TextSetting
         label="Build command"
-        value={b.buildCommand}
-        onSave={(buildCommand) => void updateConfig({ builder: { buildCommand } })}
+        value={u.buildCommand}
+        onSave={(buildCommand) => void updateConfig({ updates: { buildCommand } })}
       />
       <TextSetting
         label="Install command"
-        description="Run when a change touches package.json or package-lock.json."
-        value={b.installCommand}
-        onSave={(installCommand) => void updateConfig({ builder: { installCommand } })}
+        description="Run when an update touches package.json or package-lock.json."
+        value={u.installCommand}
+        onSave={(installCommand) => void updateConfig({ updates: { installCommand } })}
       />
     </SettingsSection>
   );

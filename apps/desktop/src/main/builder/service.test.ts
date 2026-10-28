@@ -207,10 +207,17 @@ describe("BuildService", () => {
     await expect(service.accept(job.id)).rejects.toMatchObject({ code: "not_ready" });
   });
 
-  it("level 3 requests wait for you; jobs survive a restart", async () => {
+  it("requests no slot can do end with a proposed extension point, not a code change; jobs survive a restart", async () => {
     const { service, home } = await setup();
     const job = await service.start({ goal: "change jig itself", origin: "tools" });
-    expect(job).toMatchObject({ status: "needs_you", kind: "app", level: 3 });
+    expect(job).toMatchObject({
+      status: "needs_you",
+      kind: "app",
+      proposal: { reason: "No slot can change the window frame." },
+    });
+    expect(job.proposal?.proposal).toContain("window.decorations");
+    expect(job.level).toBeUndefined();
+    expect(job.worktree).toBeUndefined();
     await new Promise((r) => setTimeout(r, 50));
     const saved = JSON.parse(await readFile(join(home, "builds.json"), "utf8")) as { jobs: BuildJob[] };
     expect(saved.jobs[0]?.id).toBe(job.id);

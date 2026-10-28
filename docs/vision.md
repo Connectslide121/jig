@@ -50,8 +50,8 @@ enforces them.
    1. a **layout or settings change** (instant, no code);
    2. an **add-on** in one of the extension **slots** — and it **looks at the existing add-ons first and
       prefers changing one** over creating a new one;
-   3. a **change to Jig's own source code**, as the last resort — previewed, checked and reversible.
-      Where it makes sense, such a change adds a new slot, so the next similar request is an add-on.
+   3. when no slot can do it, a **proposal for a new extension point** — Jig never edits its own code;
+      you add the slot to Jig's source, and the next similar request is an add-on (D-074).
 6. **Nothing changes without your OK.** Every built change is previewed and must be accepted. Every
    accepted change is a git commit and can be rolled back. A broken add-on is switched off, never fatal.
 7. **Learning is local and quiet.** Activity is recorded on the machine only. Pattern detection runs
@@ -61,8 +61,8 @@ enforces them.
    (including any VS Code theme) recolour the whole app — including add-ons the agent writes — while
    the design itself stays Jig's.
 9. **Documented as it is built.** The plan, the architecture, the decisions and the guides are kept up to
-   date in the same change as the code. A well-documented codebase is also what makes the agent good
-   at changing Jig itself.
+   date in the same change as the code. A well-documented codebase is also what makes an agent good
+   at helping you change Jig itself.
 
 ## Non-goals (for now)
 

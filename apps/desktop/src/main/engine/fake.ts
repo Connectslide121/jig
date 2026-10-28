@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
-import { runFakeAppBuilder, runFakeBuilder } from "./fakeBuilder";
+import { runFakeBuilder } from "./fakeBuilder";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
 /**
@@ -77,9 +77,7 @@ export class FakeEngine implements Engine {
           });
         }
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
-        if (options.toolHandlers?.run_checks) {
-          await runFakeAppBuilder(text, options.toolHandlers, onEvent, options.cwd);
-        } else if (options.toolHandlers?.catalog) {
+        if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).

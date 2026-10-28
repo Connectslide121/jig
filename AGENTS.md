@@ -1,8 +1,8 @@
 # Agent instructions — Jig
 
 Jig is a personal desktop agentic workbench around Claude Code (Electron + React + TypeScript) that can
-build its own tools. These instructions apply to every coding agent working in this repository —
-including Jig's own builder when it changes Jig's source (level 3).
+build its own tools (as layout/settings changes and add-ons — it never edits its own source, D-074).
+These instructions apply to every coding agent working in this repository.
 
 Claude Code reads `CLAUDE.md`, which only imports this file. Put rules here, never in `CLAUDE.md`.
 Folder-specific rules go in an `AGENTS.md` inside that folder (with a `CLAUDE.md` next to it that
@@ -95,6 +95,7 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 - Never give the renderer Node access (`nodeIntegration`, disabling `contextIsolation` or `sandbox`).
 - Never execute anything from a VS Code extension; themes are imported as JSON only.
 - Never let an add-on crash the app: every contribution renders inside an error boundary.
-- Never change the launcher or the builder core from the in-app builder without explicit user
-  confirmation (protected paths, see `docs/architecture.md` §9).
+- Never let the in-app builder change Jig's own source code (D-074). It works only through layout,
+  settings and add-ons; when no slot can do something, it proposes a new extension point for the user
+  to add by hand. New features of that kind start as a slot or add-on API, not as one-off core code.
 - Never skip the docs. See "Keep the docs true".

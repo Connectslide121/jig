@@ -37,6 +37,6 @@ export function useFirstRun(ready: boolean): void {
   const info = useConfig((s) => s.info);
   const done = useConfig((s) => s.config?.setup.firstRunDone);
   useEffect(() => {
-    if (ready && info?.packaged && !info.preview && done === false) workbench.openTab("jig.setup");
+    if (ready && info?.packaged && done === false) workbench.openTab("jig.setup");
   }, [ready, info, done]);
 }

@@ -9,6 +9,11 @@ Ideas and deferred work. Each entry says why it is here.
 - **File tree and file viewer/editor** (Monaco with `@shikijs/monaco`). Jig opens files in the user's
   editor for now.
 - **Diff review with anchored comments sent to the chat** (ThinkRail's best feature).
-- **Sharing add-ons with colleagues**; level-3 changes as pull requests to a shared repo.
+- **Sharing add-ons with colleagues**.
 - **Sandboxed iframe runtime** for add-ons written by other people.
 - **Mobile / remote access** to a running Jig.
+- **Dropped: builder level 3 (Jig editing its own source).** Built and then removed (D-074): it needed a
+  rebuild per change and a personal clone that drifts from upstream; Jon changes Jig's code himself when
+  the slots aren't enough. The builder proposes the missing extension point instead. The removed code is
+  in git history (commit "Builder level 3: …").
+

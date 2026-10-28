@@ -27,3 +27,28 @@ started tab until you press **Done**.
 |---|---|---|
 | `updates.check` | `UpdateInfo { mode, current, latest?, available, detail, url? }` | `source` when Jig runs from a git clone (not packaged, `sourceRepo()` found): `git fetch` + commits behind `@{u}`; else `release`: GitHub API `repos/Connectslide121/jig/releases/latest` |
 | `updates.apply` | `{ restarting }` | `source`: refuse a dirty clone, snapshot the running build to `app-builds/previous`, `git pull --ff-only`, install if dependencies changed, build, restart through the launcher (not with `JIG_NO_RESTART`); `release`: opens the release page. Error `update_failed` |
+
+Settings → **Updates** (`config.updates`): Jig's source repository (empty = the repo Jig runs from), the
+build command and the install command.
+
+## The launcher (`apps/launcher/launcher.mjs`)
+
+Plain Node, no dependencies, copied to `dist/main/launcher.mjs` by the build. After "Pull, build and
+restart", Jig starts it as Electron in Node mode (`ELECTRON_RUN_AS_NODE=1`) and quits:
+
+```
+launcher.mjs --electron <exe> --app <apps/desktop> --previous <app-builds/previous/apps/desktop>
+             --home <jig home> --wait-pid <old pid> [--timeout 60]
+```
+
+1. Waits for the old process to exit.
+2. Starts the new build with `JIG_READY_FILE=<home>/launcher/ready-…`; Jig writes its pid there once the
+   main window has loaded (the ready heartbeat).
+3. No heartbeat within the timeout, or the process exits → starts the previous build with
+   `JIG_STARTED_AFTER_FAILURE=1` (banner).
+4. That fails too → the new build in safe mode (`JIG_SAFE_MODE=1`: your own add-ons stay off; banner).
+
+It writes `<home>/launcher/status.json` (`{ result: "new" | "previous" | "safe-mode" | "failed" }`) and
+`<home>/launcher/launcher.log`. `JIG_NO_RESTART=1` (tests) applies an update without restarting.
+Tests: `apps/launcher/launcher.test.ts` and `e2e/launcher.spec.ts`.
+

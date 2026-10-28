@@ -4,7 +4,8 @@ import type { Layout } from "./layout";
 /**
  * Build jobs: "Build something…" from anywhere. A job runs a builder session (Claude Code with Jig's
  * builder instructions and the `jig-builder` tools) that picks the lightest level that works:
- * 1 = layout/settings, 2 = an add-on (preferring to change an existing one), 3 = Jig's source (phase 10).
+ * 1 = layout/settings, 2 = an add-on (preferring to change an existing one). When neither can do it,
+ * the builder proposes the missing extension point instead of changing Jig (`ExtensionProposal`).
  * Documented in docs/reference/builder.md.
  */
 export type BuildOrigin = "tools" | "addon" | "chat" | "suggestion" | "settings";
@@ -39,27 +40,15 @@ export interface BuildFile {
   deleted: number;
 }
 
-/** A level-3 change: Jig's own source, in a worktree of its repository. */
-export interface AppChange {
-  stage: "proposed" | "working" | "preview" | "accepted";
-  repo: string;
-  reason?: string;
-  plan?: string;
-  worktree?: string;
-  branch?: string;
-  /** The commit the worktree started from. */
-  base?: string;
-  /** Copy of your Jig home used by the preview instance. */
-  home?: string;
-  files?: string[];
-  /** Changed files in protected paths (launcher, builder core): Accept needs your explicit OK. */
-  protectedFiles?: string[];
-  checks?: { ok: boolean; output: string; at: string };
-  needsInstall?: boolean;
-  previewRunning?: boolean;
-  mergeCommit?: string;
-  /** Accepted, but Jig wasn't restarted (JIG_NO_RESTART). */
-  restartPending?: boolean;
+/**
+ * What the builder writes when no slot can do the request (D-074: Jig never edits its own code): the
+ * extension point Jig is missing, for you to add to Jig's source yourself.
+ */
+export interface ExtensionProposal {
+  /** Why no layout change, setting or add-on can do it. */
+  reason: string;
+  /** The new slot or API, what it would let add-ons do, and how the request would then be built. */
+  proposal: string;
 }
 
 export interface BuildJob {
@@ -79,7 +68,7 @@ export interface BuildJob {
   worktree?: string;
   branch?: string;
   kind?: BuildKind;
-  level?: 1 | 2 | 3;
+  level?: 1 | 2;
   addonId?: string;
   summary?: string;
   staged?: { layoutOps?: LayoutOp[]; layout?: Layout; settings?: DeepPartial<JigConfig> };
@@ -87,7 +76,8 @@ export interface BuildJob {
   permissions?: string[];
   problems?: string[];
   validationRounds: number;
-  app?: AppChange;
+  /** Set when the request needs a new extension point in Jig (kind "app"). */
+  proposal?: ExtensionProposal;
   log: BuildLogEntry[];
   error?: string;
 }

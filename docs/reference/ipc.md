@@ -11,7 +11,7 @@ exceptions return `internal` (and are logged).
 
 | Method | Args | Result | Notes |
 |---|---|---|---|
-| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `safeMode`, `startedAfterFailure`, `preview?` |
+| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `safeMode`, `startedAfterFailure` (set by the launcher after a failed update) |
 | `iconThemes.list` / `iconThemes.rescan` | — | `{ themes, vscodeSetting?, vscodeMatch? }` | file icon themes found, VS Code's `workbench.iconTheme` and the matching theme (`docs/reference/file-icons.md`) |
 | `iconThemes.get` | `{ id }` | `{ id, label, theme }` | a file icon theme with `jig-icons:` URLs |
 | `iconThemes.active` | — | `{ id, label, theme } \| null` | the theme chosen in Settings (`null` = Jig's icons) |
@@ -19,7 +19,6 @@ exceptions return `internal` (and are logged).
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
 | `updates.apply` | — | `{ restarting }` | pull + build + restart, or open the release page; `update_failed`, `no_source` |
-| `app.undoLastChange` | — | `{ goal }` | reverts the last accepted level-3 change, rebuilds, restarts; `nothing_to_undo`, `build_failed` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |
@@ -73,10 +72,8 @@ exceptions return `internal` (and are logged).
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
 | `builds.list` | — | `BuildJob[]` | newest first (`docs/reference/builder.md`) |
 | `builds.start` | `{ goal, origin, targetAddonId?, originSessionId? }` | `BuildJob` | starts a builder session |
-| `builds.accept` | `{ id, confirmProtected? }` | `BuildJob` | `not_ready`, `accept_failed`; level 3: `needs_confirmation` (protected files), `build_failed` |
+| `builds.accept` | `{ id }` | `BuildJob` | `not_ready`, `accept_failed` |
 | `builds.discard` | `{ id }` | `BuildJob` | |
-| `builds.startAppChange` | `{ id }` | `BuildJob` | level 3: you agreed to the proposal; `no_source`, `not_ready` |
-| `builds.openPreview` | `{ id }` | — | level 3: starts the preview instance |
 | `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
 | `learning.state` | — | `LearningState` | suggestions, recent runs, last/next run, activity stats (`docs/reference/learning.md`) |
 | `learning.runNow` | — | `PatternRun` | look for patterns now; no AI call when nothing repeats; `busy` |

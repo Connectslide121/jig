@@ -60,7 +60,7 @@ jig/
 │       ├── main/                  host modules, one folder per domain
 │       ├── preload/               the window.jig bridge
 │       └── renderer/              the React UI
-├── apps/launcher/                 restarts Jig after a change to its code, with fallback (phase 10)
+├── apps/launcher/                 restarts Jig after an update from source, with fallback
 ├── packages/
 │   ├── sdk/                       @jig/sdk — add-on manifest schema, slot ids, add-on API types
 │   ├── themes/                    @jig/themes — theme model, built-in themes, VS Code mapping
@@ -275,7 +275,8 @@ own system prompt and the `jig-builder` MCP server. It follows the **levels** st
 2. **Add-on** — first it **reads the catalog of existing add-ons** (manifests + READMEs) and decides
    whether to **change an existing add-on** (preferred when it is a natural fit) or create a new one.
    Work happens in a git worktree of `~/.jig/addons` under `~/.jig/work/`.
-3. **App source** — only when 1 and 2 cannot do it (see below).
+3. **Extension proposal** — when 1 and 2 cannot do it, the builder doesn't change Jig: it proposes
+   the missing slot or API (see below).
 
 Before anything reaches the user, the host validates: manifest schema, bundling, design-token check,
 and a smoke load. Failures go back to the builder session to fix (bounded retries). Then the user sees
@@ -283,16 +284,10 @@ a **preview** (the add-on loaded from the worktree, marked "Preview") and choose
 commit in `~/.jig/addons`, add-on goes live) or **Discard** (worktree deleted). Progress is shown as a
 card in the chat that asked, and in the Builds view.
 
-**Level 3** (`docs/reference/self-modification.md`, `main/builder/appChange.ts`, `main/selfmod/`,
-`apps/launcher/`). Jig knows where its own source repo is (Settings → Builder, default: the repo it runs
-from). The builder works in a git worktree
-of it, runs the repo's checks, launches the changed app as a **separate preview instance** (with a
-copy of the state directory), and on Accept merges, rebuilds and restarts through a small **launcher**
-that keeps the previous working build and offers "start previous version" if the new one fails to
-start. The launcher and the builder core are protected: the AI changes them only after an explicit
-confirmation. Where it makes sense, a level-3 change adds a new slot. Jig writes a "ready" file once its
-window has loaded; the launcher falls back to the previous build, then to safe mode (your add-ons
-off), and Jig shows a banner with **Undo the last change to Jig**.
+**No self-editing (D-074).** Jig never changes its own source. When no slot can do a request, the
+builder calls `propose_extension_point { reason, proposal }`; the build ends ("needs you") with the
+proposal — why the existing slots and API aren't enough, and the smallest new slot or API that would let
+the request be built as an add-on — which you can copy and implement in Jig's repository yourself.
 
 ## 10. Learning — activity, patterns, suggestions
 
@@ -335,7 +330,8 @@ also examples for the builder.
 binary, node-pty) need real files. Built-in add-ons ship in `resources/addons`. An installed Jig opens
 **Get started** on its first start: version checks of Claude Code, git, gh, az (+ Azure DevOps
 extension) and `code` — never a login. Updates: from a git clone, pull + build + restart through the
-launcher; installed, the latest GitHub release page. Guide: `docs/guides/packaging.md`; reference:
+launcher (`apps/launcher`: waits for Jig's "ready" file, falls back to the previous build, then safe
+mode with your add-ons off, and Jig shows a banner); installed, the latest GitHub release page. Guide: `docs/guides/packaging.md`; reference:
 `docs/reference/setup.md`.
 
 ## 13. Testing

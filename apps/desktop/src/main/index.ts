@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { app, BrowserWindow, Menu } from "electron";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAppHandlers } from "./app";
-import { startBuilder, stopBuilder } from "./builder";
+import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
@@ -67,7 +67,7 @@ async function start() {
   });
 }
 
-/** The launcher waits for this file to know the new build started (docs/reference/self-modification.md). */
+/** The launcher waits for this file to know the new build started (docs/reference/setup.md → Updates). */
 async function reportReady() {
   const file = process.env.JIG_READY_FILE;
   if (!file) return;
@@ -76,7 +76,6 @@ async function reportReady() {
 
 app.on("will-quit", () => {
   stopTerminals();
-  stopBuilder();
 });
 
 app.on("window-all-closed", () => {

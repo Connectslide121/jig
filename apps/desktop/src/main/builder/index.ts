@@ -5,14 +5,10 @@ import { getEngine } from "../engine";
 import { setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
-import { restarter, sourceRepo } from "../selfmod";
 import { registerSessionKind, sessionManager } from "../sessions";
-import { jigHome, paths } from "../state/paths";
+import { paths } from "../state/paths";
+import { BUILDER_PROMPT } from "./prompt";
 import { BuildService } from "./service";
-
-export function stopBuilder(): void {
-  service?.stop();
-}
 
 let service: BuildService | undefined;
 
@@ -55,19 +51,6 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
     },
     layout: { get: getLayout, set: (layout) => setLayout(layout, "host") },
     config: { get: getConfig, update: updateConfig },
-    app: {
-      sourceRepo,
-      commands: () => {
-        const b = getConfig().builder;
-        return { check: b.checkCommand, build: b.buildCommand, install: b.installCommand };
-      },
-      home: jigHome(),
-      workDir: paths.work(),
-      appBuildsDir: paths.appBuilds(),
-      electron: process.execPath,
-      // JIG_NO_RESTART (tests): accept without restarting; Jig says a restart is pending.
-      restart: restarter(),
-    },
     onChange: (jobs) => emit("builds.changed", jobs),
     notify: (n) => emit("notify", n),
   });
@@ -75,7 +58,7 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
   await s.load();
 
   registerSessionKind("builder", {
-    appendSystemPrompt: (meta) => s.promptFor(meta),
+    appendSystemPrompt: () => BUILDER_PROMPT,
     mcpServers: (meta) => {
       if (getEngine().kind !== "claude" || !meta.buildId) return undefined;
       const tools = s.toolsFor(meta.buildId).map((t) =>
@@ -114,10 +97,7 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
     return s.list();
   });
   handle("builds.start", (input) => s.start(input));
-  handle("builds.accept", ({ id, confirmProtected }) => s.accept(id, { confirmProtected }));
-  handle("builds.startAppChange", ({ id }) => s.startAppChange(id));
-  handle("builds.openPreview", ({ id }) => s.openPreview(id));
-  handle("app.undoLastChange", () => s.undoLastAppChange());
+  handle("builds.accept", ({ id }) => s.accept(id));
   handle("builds.discard", ({ id }) => s.discard(id));
   handle("builds.diff", ({ id, path }) => s.diff(id, path));
 }

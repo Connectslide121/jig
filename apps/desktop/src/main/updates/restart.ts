@@ -3,7 +3,7 @@ import { cp, mkdir, rm, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 
 /**
- * Before a level-3 change goes live, the running build is kept as "previous"
+ * Before an update from source goes live, the running build is kept as "previous"
  * (`~/.jig/app-builds/previous`), so the launcher can fall back to it. Then Jig restarts through the
  * launcher (apps/launcher/launcher.mjs, shipped next to the main bundle).
  */

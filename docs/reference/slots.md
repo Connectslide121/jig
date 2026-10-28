@@ -28,5 +28,5 @@ Code that shows a context menu appends what add-ons contribute: Jig's own menus 
 `context.project` and `context.message`; add-ons that show lists of repos or files pass a target to
 `ctx.menu(items, event, target)` so other add-ons' `context.repo`/`context.file` entries appear too.
 
-When a slot can't do what a request needs, the builder may add a new one (level 3, phase 10) — slots
-are the extension points, and adding slots is how Jig grows.
+When a slot can't do what a request needs, the builder proposes a new one instead of changing Jig
+(D-074); you add it to Jig's source. Slots are the extension points, and adding slots is how Jig grows.

@@ -1,5 +1,5 @@
 import { describePermission } from "@jig/sdk";
-import { Check, ExternalLink, MessageSquare, Shield, X } from "lucide-react";
+import { Check, Copy, ExternalLink, MessageSquare, Shield, X } from "lucide-react";
 import { useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
 import { call, errorMessage } from "../../lib/host";
@@ -20,24 +20,9 @@ function describeOp(op: LayoutOp): string {
 }
 
 export async function acceptBuild(job: BuildJob): Promise<void> {
-  const protectedFiles = job.app?.protectedFiles ?? [];
-  if (
-    protectedFiles.length &&
-    !(await confirmDialog({
-      title: "Accept a change to protected files?",
-      message: `This change touches Jig's launcher or builder core:\n${protectedFiles.join("\n")}\n\nIf it is wrong, Jig may not restart properly (the launcher then falls back to the previous build).`,
-      confirmLabel: "Accept protected change",
-      danger: true,
-    }))
-  )
-    return;
   try {
-    await call("builds.accept", { id: job.id, confirmProtected: protectedFiles.length > 0 });
-    notify({
-      title: job.app ? "Accepted — Jig restarts with the change" : "Accepted",
-      message: job.summary,
-      tone: "success",
-    });
+    await call("builds.accept", { id: job.id });
+    notify({ title: "Accepted", message: job.summary, tone: "success" });
   } catch (error) {
     notify({ title: "Couldn't accept", message: errorMessage(error), tone: "danger" });
   }
@@ -150,105 +135,39 @@ function FileRow({
   );
 }
 
-/** Level 3: the proposal, the worktree's checks, the preview instance and the changed files. */
-function AppChangePanel({ job }: { job: BuildJob }) {
-  const app = job.app!;
-  const [busy, setBusy] = useState(false);
-  const run = async (fn: () => Promise<unknown>, failure: string) => {
-    setBusy(true);
-    try {
-      await fn();
-    } catch (error) {
-      notify({ title: failure, message: errorMessage(error), tone: "danger" });
-    } finally {
-      setBusy(false);
-    }
-  };
+/** The extension point Jig is missing for this request: for you to add to Jig's source (D-074). */
+function ProposalPanel({ job }: { job: BuildJob }) {
+  const proposal = job.proposal!;
+  const text = `## Extension point for: ${job.goal}\n\n**Why no slot can do it:** ${proposal.reason}\n\n${proposal.proposal}\n`;
   return (
-    <>
-      <Card className="flex flex-col gap-2 p-4 text-sm" data-testid="app-change">
-        <div className="font-medium text-warning">
-          This needs a change to Jig's own source code (level 3).
+    <Card className="flex flex-col gap-3 p-4 text-sm" data-testid="build-proposal">
+      <div className="font-medium text-warning">No extension point can do this yet.</div>
+      <div className="text-muted">
+        Jig doesn't change its own code. This is what the builder would add to Jig so the request can be built
+        as an add-on — add it to Jig's source yourself (or with Claude Code in your Jig clone), then ask
+        again.
+      </div>
+      {proposal.reason && (
+        <div>
+          <span className="text-muted">Why: </span>
+          <span className="selectable">{proposal.reason}</span>
         </div>
-        {app.reason && (
-          <div>
-            <span className="text-muted">Why no slot can do it: </span>
-            <span className="selectable">{app.reason}</span>
-          </div>
-        )}
-        {app.plan && (
-          <div>
-            <span className="text-muted">Plan: </span>
-            <span className="selectable">{app.plan}</span>
-          </div>
-        )}
-        <div className="text-muted">
-          The builder works in a git worktree of {app.repo || "Jig's repository"}, runs its checks, and you
-          try the result in a separate preview window before anything changes. Accept merges it and restarts
-          Jig; if the new build doesn't start, Jig falls back to the previous one.
-        </div>
-        {app.stage === "proposed" && job.status !== "discarded" && (
-          <div>
-            <Button
-              variant="primary"
-              disabled={busy}
-              onClick={() => void run(() => call("builds.startAppChange", { id: job.id }), "Couldn't start")}
-              data-testid="build-start-app"
-            >
-              Let the builder change Jig's code
-            </Button>
-          </div>
-        )}
-        {app.stage === "preview" && job.status === "preview" && (
-          <div className="flex items-center gap-2">
-            <Button
-              icon={ExternalLink}
-              disabled={busy || app.previewRunning}
-              onClick={() =>
-                void run(() => call("builds.openPreview", { id: job.id }), "Couldn't open the preview")
-              }
-              data-testid="build-open-preview"
-            >
-              {app.previewRunning ? "Preview instance is open" : "Open preview instance"}
-            </Button>
-            <span className="text-xs text-hint">
-              Uses a copy of your Jig home; your real data isn't touched.
-            </span>
-          </div>
-        )}
-        {app.stage === "accepted" && app.restartPending && (
-          <div className="text-success">Accepted. Restart Jig to use the change.</div>
-        )}
-      </Card>
-      {app.protectedFiles?.length ? (
-        <Card className="p-3 text-sm text-danger" data-testid="app-protected">
-          Touches protected files (launcher / builder core): {app.protectedFiles.join(", ")}. Accept asks you
-          to confirm explicitly.
-        </Card>
-      ) : null}
-      {app.checks && (
-        <Card className="p-3 text-sm">
-          <div className="flex items-center gap-2">
-            <Badge tone={app.checks.ok ? "success" : "danger"}>
-              {app.checks.ok ? "Checks pass" : "Checks fail"}
-            </Badge>
-            <span className="text-xs text-hint">{new Date(app.checks.at).toLocaleString()}</span>
-          </div>
-          <details className="mt-2">
-            <summary className="cursor-default text-xs text-muted">Output</summary>
-            <CodeBlock code={app.checks.output || "(no output)"} />
-          </details>
-        </Card>
       )}
-      {app.files?.length ? (
-        <Card className="overflow-hidden" data-testid="build-files">
-          <div className="border-b border-line px-3 py-2 text-sm font-medium">{app.files.length} files</div>
-          {app.files.map((path) => (
-            <FileRow key={path} job={job} path={path} />
-          ))}
-        </Card>
-      ) : null}
-    </>
+      {proposal.proposal && <Markdown text={proposal.proposal} />}
+      <div>
+        <Button
+          size="sm"
+          icon={Copy}
+          onClick={() => {
+            void navigator.clipboard.writeText(text);
+            notify({ title: "Proposal copied", tone: "success" });
+          }}
+          data-testid="build-copy-proposal"
+        >
+          Copy proposal
+        </Button>
+      </div>
+    </Card>
   );
 }
 
@@ -276,7 +195,7 @@ export function BuildTab({ params }: TabProps) {
             The builder is waiting. Open its chat to answer or ask it to continue.
           </Card>
         )}
-        {job.app && <AppChangePanel job={job} />}
+        {job.proposal && <ProposalPanel job={job} />}
         {job.summary && (
           <Card className="p-4">
             <Markdown text={job.summary} />

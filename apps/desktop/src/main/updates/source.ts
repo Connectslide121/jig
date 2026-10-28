@@ -1,7 +1,30 @@
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
 import { git } from "../addons/repo";
-import { snapshotBuild } from "../selfmod/restart";
-import { runCommand } from "../selfmod/run";
-import { needsInstall } from "../selfmod/workspace";
+import { snapshotBuild } from "./restart";
+import { runCommand } from "./run";
+
+const exists = (p: string) =>
+  stat(p).then(
+    () => true,
+    () => false,
+  );
+
+/** A git clone of Jig (AGENTS.md and apps/desktop at its root). */
+export async function isJigRepo(dir: string): Promise<boolean> {
+  if (!dir) return false;
+  const [desktop, agents] = await Promise.all([
+    exists(join(dir, "apps", "desktop", "package.json")),
+    exists(join(dir, "AGENTS.md")),
+  ]);
+  if (!desktop || !agents) return false;
+  return (await git(dir, ["rev-parse", "--show-toplevel"])).code === 0;
+}
+
+/** True when the change touches dependencies (npm install needed). */
+export function needsInstall(paths: string[]): boolean {
+  return paths.some((p) => /(^|\/)package(-lock)?\.json$/.test(p.replaceAll("\\", "/")));
+}
 
 /**
  * Updating Jig when it runs from a git clone: fetch, fast-forward pull, install when dependencies

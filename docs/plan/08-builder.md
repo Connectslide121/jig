@@ -26,6 +26,6 @@ validated preview that you can accept (committed) or discard.
 
 ## Notes
 
-- Level 3 (`propose_app_change`) records the request and waits; phase 10 implements it.
+- When no slot can do it, the builder proposes the missing extension point (`propose_extension_point`, phase 10, D-074).
 - Tested with the scripted fake builder that drives the real tools (unit: `main/builder/service.test.ts`,
   e2e: `e2e/builder.spec.ts`). A real build with Claude Code must be tried on Jon's machine.

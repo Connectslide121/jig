@@ -34,7 +34,7 @@ export interface BuilderEnv {
     kind: BuildKind;
     addonId?: string;
     reason?: string;
-    plan?: string;
+    proposal?: string;
   }) => Promise<string>;
 }
 
@@ -203,16 +203,23 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
       },
     },
     {
-      name: "propose_app_change",
+      name: "propose_extension_point",
       description:
-        "Level 3: the request needs a change to Jig's own source code (no slot can do it). Explain why and what you'd change.",
-      shape: { reason: z.string(), plan: z.string() },
-      handler: async ({ reason, plan }) =>
+        "No layout change, setting or add-on can do the request with the existing slots and add-on API. You can't change Jig's code: describe the missing extension point instead (the user adds it to Jig's source), then stop.",
+      shape: {
+        reason: z.string().describe("Why the existing slots and API can't do it"),
+        proposal: z
+          .string()
+          .describe(
+            "Markdown: the new slot or API (name, what it receives, where it shows), a sketch of its TypeScript types, and how the request would then be built as an add-on",
+          ),
+      },
+      handler: async ({ reason, proposal }) =>
         env.finish({
-          summary: `Needs a change to Jig itself: ${String(reason)}\n\nPlan: ${String(plan)}`,
+          summary: `Needs a new extension point in Jig: ${String(reason)}`,
           kind: "app",
           reason: String(reason),
-          plan: String(plan),
+          proposal: String(proposal),
         }),
     },
     {

@@ -84,3 +84,17 @@ test("Change this with AI on an add-on view starts a build about that add-on", a
   await page.getByTestId("settings-nav-addons").click();
   await expect(page.getByTestId("addon-repos")).toContainText("your copy");
 });
+
+test("when no slot can do it, the builder proposes an extension point instead of changing Jig", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+Shift+B");
+  await page.getByTestId("build-goal").fill("change jig itself: draw in the window frame");
+  await page.getByTestId("build-submit").click();
+  const proposal = page.getByTestId("build-proposal");
+  await expect(proposal).toContainText("No extension point can do this yet", { timeout: 20000 });
+  await expect(proposal).toContainText("window.decorations");
+  await expect(page.getByTestId("build-accept")).toHaveCount(0);
+  await page.getByTestId("build-copy-proposal").click();
+  await expect(page.getByTestId("toast").last()).toContainText("Proposal copied");
+});

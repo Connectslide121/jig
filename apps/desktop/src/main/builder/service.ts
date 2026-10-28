@@ -10,8 +10,7 @@ import { JigError } from "../../shared/ipc";
 import type { Layout } from "../../shared/layout";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
-import { APP_BUILDER_PROMPT, type AppChangeOptions, AppChanges } from "./appChange";
-import { BUILDER_PROMPT, builderFirstMessage } from "./prompt";
+import { builderFirstMessage } from "./prompt";
 import { allViews, applyLayoutOps, type BuilderTool, builderTools, folderExists } from "./tools";
 import { validateAddon } from "./validate";
 import {
@@ -48,8 +47,6 @@ export interface BuildServiceOptions {
   layout: { get(): Promise<Layout>; set(layout: Layout): Promise<unknown> };
   config: { get(): JigConfig; update(patch: DeepPartial<JigConfig>): Promise<unknown> };
   onChange: (jobs: BuildJob[]) => void;
-  /** Level 3 (changing Jig's own source); without it, level-3 proposals can't be started. */
-  app?: Omit<AppChangeOptions, "get" | "update" | "sessions" | "notify">;
   notify?: (input: {
     title: string;
     message?: string;
@@ -66,38 +63,13 @@ export class BuildService {
   /** Tools per job, kept so the session's tool calls reach the right job. */
   private tools = new Map<string, BuilderTool[]>();
 
-  private readonly appChanges?: AppChanges;
-
-  constructor(private readonly options: BuildServiceOptions) {
-    if (options.app)
-      this.appChanges = new AppChanges({
-        ...options.app,
-        get: (id) => this.get(id),
-        update: (id, patch, text, tone) => this.update(id, patch, text, tone),
-        sessions: options.sessions,
-        notify: options.notify,
-      });
-  }
-
-  private level3(): AppChanges {
-    if (!this.appChanges) throw new JigError("not_available", "Changing Jig itself isn't available here");
-    return this.appChanges;
-  }
-
-  /** The builder's instructions for a session: level 3 sessions get the source-change rules. */
-  promptFor(meta: SessionMeta): string {
-    const job = this.jobs.find((j) => j.id === meta.buildId);
-    return job?.app && job.app.stage !== "proposed" ? APP_BUILDER_PROMPT : BUILDER_PROMPT;
-  }
+  constructor(private readonly options: BuildServiceOptions) {}
 
   async load(): Promise<void> {
     if (this.loaded) return;
     this.jobs = (await readJson(this.options.file, FileSchema)).jobs;
     // A builder can't survive a restart: jobs that were working wait for you now.
-    for (const job of this.jobs) {
-      if (job.status === "working") job.status = "needs_you";
-      if (job.app) job.app.previewRunning = false;
-    }
+    for (const job of this.jobs) if (job.status === "working") job.status = "needs_you";
     this.loaded = true;
   }
 
@@ -133,15 +105,6 @@ export class BuildService {
 
   /** Tools for the builder session of a job (MCP server and fake engine). */
   toolsFor(jobId: string): BuilderTool[] {
-    const job = this.jobs.find((j) => j.id === jobId);
-    if (job?.app && job.app.stage !== "proposed") {
-      let app = this.tools.get(`${jobId}:app`);
-      if (!app) {
-        app = this.level3().tools(jobId);
-        this.tools.set(`${jobId}:app`, app);
-      }
-      return app;
-    }
     let tools = this.tools.get(jobId);
     if (!tools) {
       tools = builderTools({
@@ -283,30 +246,33 @@ export class BuildService {
 
   private async finish(
     jobId: string,
-    input: { summary: string; kind: BuildKind; addonId?: string; reason?: string; plan?: string },
+    input: { summary: string; kind: BuildKind; addonId?: string; reason?: string; proposal?: string },
   ): Promise<string> {
     const job = this.get(jobId);
     if (input.kind === "app") {
-      // The add-ons worktree isn't needed for a change to Jig's source.
+      // Jig doesn't change its own code (D-074): the job ends with the extension point it is missing.
       if (job.worktree && job.branch)
         await removeWorktree(this.options.addonsRepo, job.worktree, job.branch).catch(() => {});
-      const repo = (await this.options.app?.sourceRepo()) ?? "";
       this.update(
         jobId,
         {
           kind: "app",
-          level: 3,
           summary: input.summary,
           status: "needs_you",
           worktree: undefined,
           branch: undefined,
           files: [],
-          app: { stage: "proposed", repo, reason: input.reason, plan: input.plan },
+          proposal: { reason: input.reason ?? "", proposal: input.proposal ?? "" },
         },
-        "This needs a change to Jig itself (level 3). Let the builder change Jig's code, or discard.",
+        "No slot can do this yet: the builder proposes a new extension point for Jig.",
         "warning",
       );
-      return "Recorded. Jig will ask the user whether to change its own source; stop here.";
+      this.options.notify?.({
+        title: "A build needs a new extension point in Jig",
+        message: job.goal,
+        tone: "warning",
+      });
+      return "Recorded. The user will see your proposal and may add the extension point to Jig themselves. Stop here.";
     }
     if (input.kind === "nothing") {
       this.update(
@@ -370,34 +336,15 @@ export class BuildService {
     return "Done. The add-on is loaded as a preview; the user will accept or discard it.";
   }
 
-  /** You agreed to a level-3 change: the builder starts working on Jig's source. */
-  startAppChange(jobId: string): Promise<BuildJob> {
-    return this.level3().start(jobId);
-  }
-
-  openPreview(jobId: string): Promise<void> {
-    return this.level3().openPreview(jobId);
-  }
-
-  undoLastAppChange(): Promise<{ goal: string }> {
-    return this.level3().undoLast();
-  }
-
-  stop(): void {
-    this.appChanges?.stopPreviews();
-  }
-
   async diff(jobId: string, path: string): Promise<string> {
     const job = this.get(jobId);
-    if (job.app) return this.appChanges ? this.appChanges.diff(jobId, path) : "";
     if (!job.worktree) return "";
     return fileDiff(job.worktree, path);
   }
 
-  async accept(jobId: string, options: { confirmProtected?: boolean } = {}): Promise<BuildJob> {
+  async accept(jobId: string): Promise<BuildJob> {
     const job = this.get(jobId);
     if (job.status !== "preview") throw new JigError("not_ready", "This build isn't ready to accept");
-    if (job.app) return this.level3().accept(jobId, options.confirmProtected === true);
     try {
       if (job.kind === "layout" && job.staged?.layoutOps?.length) {
         const views = allViews(this.options.addons.list()).map((v) => v.id);
@@ -430,7 +377,6 @@ export class BuildService {
   async discard(jobId: string): Promise<BuildJob> {
     const job = this.get(jobId);
     if (job.status === "accepted" || job.status === "discarded") return job;
-    if (job.app) await this.appChanges?.discard(jobId);
     if (job.addonId && job.status === "preview")
       await this.options.addons.setPreview(job.addonId, undefined).catch(() => {});
     if (job.worktree && job.branch)
@@ -444,7 +390,6 @@ export class BuildService {
   /** Files of a build (refreshed from git). */
   async files(jobId: string) {
     const job = this.get(jobId);
-    if (job.app) return [];
     return job.worktree ? changedFiles(job.worktree) : [];
   }
 }

@@ -35,14 +35,12 @@ export const ConfigSchema = z.object({
         .default("default"),
     })
     .prefault({}),
-  builder: z
+  updates: z
     .object({
-      /** Jig's own source repository for level-3 changes; empty = the repo Jig runs from (development). */
+      /** Jig's source repository for "Pull, build and restart"; empty = the repo Jig runs from (development). */
       sourcePath: z.string().default(""),
-      /** Run in the worktree before you see a level-3 change. */
-      checkCommand: z.string().default("npm run check"),
       buildCommand: z.string().default("npm run build"),
-      /** Run when a level-3 change touches package.json / package-lock.json. */
+      /** Run when an update touches package.json / package-lock.json. */
       installCommand: z.string().default("npm install"),
     })
     .prefault({}),

@@ -1,8 +1,8 @@
-# Builder reference (levels 1 and 2)
+# Builder reference
 
 Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, validation),
-`apps/desktop/src/shared/builds.ts` (types), `apps/desktop/src/renderer/features/builder/` (UI). Level 3
-(Jig's own source): `docs/reference/self-modification.md`.
+`apps/desktop/src/shared/builds.ts` (types), `apps/desktop/src/renderer/features/builder/` (UI). Jig never
+edits its own source (D-074): when no slot fits, the builder proposes an extension point.
 
 ## Entry points (all menus, no commands)
 
@@ -25,7 +25,7 @@ Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, valid
    own system prompt (`main/builder/prompt.ts`) and the `jig-builder` MCP tools. It isn't listed under
    Sessions; open it from the build ("Builder chat") to follow along or answer its questions.
 2. **Decide, lightest level first** (the instructions say so, D-004/D-005): layout/settings, else an
-   add-on — reading the catalog first and **preferring to change an existing add-on** — else level 3.
+   add-on — reading the catalog first and **preferring to change an existing add-on** — else it proposes the missing extension point (no code change to Jig).
 3. **Validate.** `finish` runs the checks; problems go back to the builder (at most 3 rounds, then the
    job fails): manifest schema, UI and host bundles build, every export the manifest names exists, design
    tokens only (`checkTokens`), a README.
@@ -47,8 +47,7 @@ Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, valid
 | `validate { id }` | the checks above |
 | `stage_layout { ops }` | `move`/`hide`/`show` a view, `resize`/`collapse`/`expand` a region |
 | `stage_settings { patch }` | a partial `config.json`, validated |
-| `propose_app_change { reason, plan }` | level 3 needed: the job waits for you (see self-modification.md) |
-| `run_checks` / `finish_app_change { summary }` | level-3 sessions only: run the repo's checks; commit, check, build, preview |
+| `propose_extension_point { reason, proposal }` | no slot can do it: the job ends (`needs_you`, kind `app`) with `job.proposal` — the Build tab shows it with **Copy proposal**; you add the slot to Jig yourself |
 | `finish { summary, kind, addonId? }` | validate and go to preview |
 
 The same tools are plain functions for the fake engine: with `JIG_ENGINE=fake` a scripted builder

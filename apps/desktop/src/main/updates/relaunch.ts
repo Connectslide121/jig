@@ -5,14 +5,14 @@ import { getConfig } from "../config";
 import { logger } from "../log";
 import { jigHome } from "../state/paths";
 import { restartWithLauncher } from "./restart";
-import { isJigRepo } from "./workspace";
+import { isJigRepo } from "./source";
 
-const log = logger("selfmod");
+const log = logger("updates");
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Jig's source repository: Settings → Builder, else the repository Jig runs from (development). */
+/** Jig's source repository: Settings → Updates, else the repository Jig runs from (development). */
 export async function sourceRepo(): Promise<string | undefined> {
-  const configured = getConfig().builder.sourcePath;
+  const configured = getConfig().updates.sourcePath;
   if (configured) return configured;
   if (app.isPackaged) return undefined;
   const running = join(app.getAppPath(), "..", "..");

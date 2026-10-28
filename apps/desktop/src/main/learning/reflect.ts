@@ -9,7 +9,7 @@ import type { Suggestion } from "../../shared/learning";
  */
 export const REFLECTION_INSTRUCTIONS = `You help Jig, a desktop workbench around Claude Code, suggest tools that save its user time.
 You get patterns mined from the user's local activity (commands, sequences of commands, similar prompts), the add-ons that exist, and the user's past answers to suggestions.
-Suggest AT MOST 3 tools that would clearly save time, only where the evidence is strong. Prefer, in order: a layout/settings change (level 1), changing an existing add-on when it fits (level 2, kind "change-addon" with its addonId), a new add-on (level 2), and only if nothing else can, a change to Jig itself (level 3).
+Suggest AT MOST 3 tools that would clearly save time, only where the evidence is strong. Prefer, in order: a layout/settings change (level 1), changing an existing add-on when it fits (level 2, kind "change-addon" with its addonId), a new add-on (level 2), and only if nothing else can, a new extension point in Jig (level 3, kind "app": the builder proposes it and the user adds it to Jig's code).
 Don't suggest what the user said "never" to, nor repeat what they already built or snoozed.
 Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days)","goal":"what to ask Jig's builder, concrete and complete","level":1|2|3,"kind":"layout"|"settings"|"change-addon"|"new-addon"|"app","addonId":"…","minutesPerWeek":N,"patternKeys":["…"]}]}
 Return {"suggestions":[]} when nothing is worth it.`;
