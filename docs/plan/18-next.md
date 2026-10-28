@@ -224,12 +224,29 @@ Each project keeps its own **links, in groups**: e.g. "Stage" with its resource 
 
 ## 8. Releases: start versioning, and keep at it (a new built-in add-on)
 
-Jon doesn't version his repos yet. The add-on's first job is to **get him started**, and its second is
-to **keep him disciplined**, proactively but quietly.
+For everyone, not only Jon. It **starts versioning** where there is none (Jon's repos today), **adopts
+what already works** where there is one, and then **keeps the discipline**, proactively but quietly.
+
+**What runs on what:**
+- **Everything ongoing is plain code, with no AI:** reading versions, tags and commits, the badges,
+  watching pipeline runs, reminders, and writing files, commits and tags.
+- **Claude is used only at moments you start, and only where judgement or writing is needed:**
+  - the setup chat, once per repository;
+  - the bump suggestion and the notes, once per release, when you click Release;
+  - Write for commit messages, which already exists.
+- **Nothing calls an AI in the background** for releases.
 
 ### Getting started, once per repository
-- **A setup chat** ("Set up versioning for podium"). Claude looks at the repository first (stack, how
-  it's deployed, pipelines, history), then asks only what it can't work out.
+- **Detection first, without AI:** version files, tag patterns, a `CHANGELOG.md`, conventional
+  commits, and tools such as GitVersion, Nerdbank.GitVersioning, semantic-release, release-please or
+  versioning steps in pipelines.
+- **A setup chat** ("Set up versioning for podium"). Claude gets what detection found and looks at
+  the repository (stack, how it's deployed, pipelines, history), then asks only what it can't work
+  out.
+  - **Versioning already in place → adopt it.** The policy describes what the team already does (its
+    scheme, tag format, changelog style and tools). Nothing is changed unless you ask. A tool such as
+    GitVersion stays in charge of the number, and the add-on reads it instead of bumping files.
+  - **No versioning yet → start it,** as below.
 - **It proposes rules with reasons, and you adjust them:**
   - the scheme: SemVer for APIs and libraries, CalVer for sites and apps that just ship;
   - the one place the version lives (`Directory.Build.props`, `.csproj`, `package.json`, a `VERSION`
@@ -241,7 +258,8 @@ to **keep him disciplined**, proactively but quietly.
   - when to release (e.g. "before every prod deploy", weekly).
 - **The rules are saved as the repository's release policy.** Proposed: `.jig/release.json`, committed,
   so colleagues get the same rules and the add-on helps them too. To confirm.
-- **A baseline release** (`1.0.0`, "first versioned release") marks the starting point.
+- **Starting fresh:** a baseline release (`1.0.0`, "first versioned release") marks the starting
+  point. Adopting needs no baseline: the latest existing tag is the start.
 
 ### Staying disciplined
 - **Unreleased work is visible:** a badge in Git and Repos ("14 commits unreleased, 3 weeks"), and the
