@@ -174,7 +174,7 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "stage_layout",
       description:
-        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region }]. View ids come from the catalog.',
+        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "below", view, host } | { op: "resize", region, size } | { op: "collapse" | "expand", region }]. "below" shows view as a collapsible section under host, in the same tab; "move" puts a section back in its own tab. View ids come from the catalog.',
       shape: {
         ops: z.array(
           z.object({

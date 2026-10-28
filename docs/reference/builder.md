@@ -51,7 +51,7 @@ edits its own source (D-074): when no slot fits, the builder proposes an extensi
 | `finish { summary, kind, addonId? }` | validate and go to preview |
 
 The same tools are plain functions for the fake engine: with `JIG_ENGINE=fake` a scripted builder
-(`main/engine/fakeBuilder.ts`) runs the real pipeline — "move …" → layout, "compact" → settings, a
+(`main/engine/fakeBuilder.ts`) runs the real pipeline — "below"/"under" → Pipelines as a section below Git, "move …" → layout, "compact" → settings, a
 target add-on → changes it, anything else → a new add-on (with a deliberate token problem first when
 the goal says "broken").
 

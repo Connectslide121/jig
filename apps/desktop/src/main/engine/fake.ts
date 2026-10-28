@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right)\b/.test(lower)
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git)\b/.test(lower)
         ) {
           // "switch to the light theme" / "move the terminals to the right": Claude configures Jig.
           const call = async (name: string, input: Record<string, unknown>) => {
@@ -400,7 +400,17 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/terminals? to the right/.test(lower)) {
+          if (/pipelines (?:below|under) git/.test(lower)) {
+            await call("jig_get_layout", {});
+            await call("jig_change_layout", {
+              ops: [{ op: "below", view: "addon.pipelines.pipelines", host: "addon.git.git" }],
+            });
+            await stream(
+              `${msg}:text:0`,
+              "Pipelines now shows below Git, as a section you can collapse.",
+              signal,
+            );
+          } else if (/terminals? to the right/.test(lower)) {
             await call("jig_get_layout", {});
             await call("jig_change_layout", {
               ops: [{ op: "move", view: "jig.terminals", region: "right" }],

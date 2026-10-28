@@ -21,6 +21,10 @@ Create `~/.jig/addons/hello/addon.json`:
 }
 ```
 
+A view can also start as a collapsible section below another view, in that view's tab, instead of
+its own tab: add `"under": "addon.git.git"` (or `jig.sessions`, …), as the Repos add-on does. The user
+can move it to its own tab from its ⋯ menu (`docs/reference/layout.md` → sections).
+
 `~/.jig/addons/hello/ui.tsx`:
 
 ```tsx

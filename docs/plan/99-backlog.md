@@ -7,8 +7,6 @@ Ideas and deferred work. Each entry says why it is here.
   that has been used for a while.
 - **Split main area** (side-by-side tabs). Deferred: tabs first.
 - **Drag-and-drop layout editing.** Menus move views first; drag later.
-- **File tree and editor** (Monaco with `@shikijs/monaco`). Viewing is done (the Preview tab, phase
-  14); Jig opens files in the user's editor for editing.
 - **Diff review with anchored comments sent to the chat** (ThinkRail's best feature).
 - **Sharing add-ons with colleagues**.
 - **Sandboxed iframe runtime** for add-ons written by other people.
