@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from "electron";
 import { publishActivity } from "../activity/bus";
+import { getConfig, onConfigChange } from "../config";
 import { emit, handle } from "../ipc/router";
 import { paths } from "../state/paths";
 import { ProjectStore } from "./store";
@@ -12,8 +13,14 @@ export function projectStore(): ProjectStore {
 }
 
 export function startProjects(): void {
-  store = new ProjectStore(paths.projects());
+  store = new ProjectStore(paths.projects(), () => getConfig().projects.repoScanDepth);
   store.onChange((state) => emit("projects.changed", state));
+  let depth = getConfig().projects.repoScanDepth;
+  onConfigChange((config) => {
+    if (config.projects.repoScanDepth === depth) return;
+    depth = config.projects.repoScanDepth;
+    void store?.refresh();
+  });
 
   handle("projects.list", () => projectStore().state());
   handle("projects.add", async ({ path }, ctx) => {

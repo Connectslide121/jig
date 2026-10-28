@@ -24,7 +24,9 @@ command:
   `usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true })`; Claude Code fetches
   the windows from Anthropic's usage endpoint with its own sign-in. Nothing is sent to Claude, so it
   uses none of your limits. The process is closed right after (45 s timeout).
-- During chats Claude Code emits `rate_limit_event` messages; the normalizer turns them into
+- During chats Claude Code emits `rate_limit_event` messages — information about your subscription's
+  limits (close to a limit, limit reached), not a restriction. Jig adds no limits of its own; it only
+  reads these to update the meter sooner; the normalizer turns them into
   `rate_limit` engine events. A warning (`allowed_warning`) or a limit reached (`rejected`) shows in the
   card at once and triggers a refresh 5 s later.
 

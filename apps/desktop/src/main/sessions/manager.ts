@@ -343,6 +343,16 @@ export class SessionManager {
     this.emit(live, [{ op: "upsert", item }]);
   }
 
+  /** Replaces a transcript item by id (e.g. a change card after Undo). */
+  async updateItem(id: string, item: ChatItem): Promise<void> {
+    const live = await this.live(id);
+    const index = live.state.items.findIndex((i) => i.id === item.id);
+    if (index < 0) throw new JigError("not_found", "That message isn't in this chat");
+    live.state.items[index] = item;
+    this.emit(live, [{ op: "upsert", item }]);
+    this.scheduleSave(live, true);
+  }
+
   async removeQueued(id: string, queuedId: string): Promise<void> {
     const live = await this.live(id);
     live.queue = live.queue.filter((q) => q.id !== queuedId);

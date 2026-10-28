@@ -148,6 +148,12 @@ header ring, card on hover). Jig asks Claude Code for the data behind `/usage` (
 process, every 5 minutes and after chats) and listens to Claude Code's rate-limit events; it never reads
 the login itself. Reference: `docs/reference/usage.md`.
 
+**Configuring Jig from a chat.** Claude can read and change everything already configurable — settings
+(theme, fonts, density, file icons, terminal, learning, workspace depth…), layout, add-ons on/off,
+project names and colours, and install themes — through tools on the `jig` MCP server. Changes go
+through Claude Code's permission prompt and leave a card with Undo in the chat; billing and
+program-running settings are Settings-only. Reference: `docs/reference/configure.md`.
+
 ## 5. Projects, sessions and terminals
 
 - **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds

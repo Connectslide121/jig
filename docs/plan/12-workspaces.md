@@ -10,8 +10,8 @@ at the workspace root or inside one repository.
 
 ## Checklist
 
-- [x] Find the git repositories inside a project folder that isn't one (two levels deep, cached;
-      "Look for repositories inside again")
+- [x] Find the git repositories inside a project folder that isn't one (three levels deep by default,
+      configurable 1–5; cached; "Look for repositories inside again")
 - [x] `ProjectInfo.repos`, `AddonProject.repos`, focus repository (`focusRepo`, `projects.setFocusRepo`)
 - [x] Git view for workspaces: one section per repository (changed first and open), branch, ↑↓,
       commit box and changes per repository, Fetch all; history/commit/diff tabs per repository
@@ -26,4 +26,4 @@ at the workspace root or inside one repository.
 
 - A folder that is itself a repository stays a single-repository project (nested repositories inside
   it are not listed).
-- Later: a setting for the search depth if two levels isn't enough; sessions in a git worktree.
+- Later: sessions in a git worktree.

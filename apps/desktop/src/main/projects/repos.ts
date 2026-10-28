@@ -5,8 +5,8 @@ import type { ProjectRepo } from "../../shared/projects";
 /** Folders never searched for repositories. */
 const SKIP = new Set(["node_modules", "bin", "obj", "dist", "build", "out", "target", "vendor"]);
 
-/** How deep under a workspace folder Jig looks for repositories (`repos/api`, `repos/client-a/api`). */
-export const REPO_SCAN_DEPTH = 2;
+/** How deep under a workspace folder Jig looks for repositories by default (`repos/client-a/backend/api` = 3). */
+export const REPO_SCAN_DEPTH = 3;
 
 const isRepo = (dir: string) =>
   stat(join(dir, ".git")).then(

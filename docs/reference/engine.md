@@ -110,3 +110,9 @@ asking a prompt-less Claude Code process — no message is sent to Claude, and J
 which the session manager hands to the usage service instead of the transcript. Details:
 `docs/reference/usage.md`.
 
+## Jig's tools in every chat
+
+The `jig` MCP server (`engine/jigTools.ts`) has `jig_list_addons`, `jig_request_build`, and the
+configuration tools other modules register with `registerJigTools` (settings, themes, layout, add-ons,
+projects — `docs/reference/configure.md`). Tools marked `readOnly` run without a permission prompt.
+

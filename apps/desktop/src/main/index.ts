@@ -4,6 +4,7 @@ import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, star
 import { registerAppHandlers } from "./app";
 import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
+import { startConfigure } from "./configure";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
@@ -60,6 +61,7 @@ async function start() {
   await startAddons();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
+  startConfigure();
   await startLearning();
   await createMainWindow();
   await reportReady();

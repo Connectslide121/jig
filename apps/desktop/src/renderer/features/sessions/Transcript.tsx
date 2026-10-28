@@ -4,6 +4,7 @@ import type { ChatItem } from "../../../shared/engine";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { BuildCard } from "../builder/BuildCard";
+import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { PermissionCard } from "./PermissionCard";
 import { ToolCard } from "./ToolCard";
@@ -117,6 +118,8 @@ const Item = memo(function Item({
       );
     case "build":
       return <BuildCard buildId={item.buildId} />;
+    case "change":
+      return <ChangeCard item={item} sessionId={sessionId} />;
     case "notice": {
       const Icon = item.tone === "danger" ? CircleAlert : item.tone === "warning" ? TriangleAlert : Info;
       return (

@@ -53,6 +53,7 @@ suggestions); each is documented here when it lands._
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
 | `learning.model` | `haiku` | model for the reflection step |
 | `appearance.fileIconTheme` | `"vscode"` | file icons: `vscode` (same as VS Code), `jig`, or a theme id (`docs/reference/file-icons.md`) |
+| `projects.repoScanDepth` | `3` | how many folder levels a workspace project is searched for repositories (1–5) |
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |

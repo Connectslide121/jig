@@ -12,6 +12,29 @@ export interface JigToolHandlers {
   requestBuild: (input: { goal: string; addonId?: string; sessionId: string }) => Promise<string>;
 }
 
+/** More tools on the `jig` server, registered by other modules (configure: settings, themes, layout…). */
+export interface JigTool {
+  name: string;
+  description: string;
+  shape: z.ZodRawShape;
+  /** Only reads: runs without asking the user (D-077). */
+  readOnly?: boolean;
+  handler: (args: Record<string, unknown>, meta: SessionMeta) => Promise<string>;
+}
+
+let extraTools: JigTool[] = [];
+
+export function registerJigTools(tools: JigTool[]): void {
+  const names = new Set(tools.map((t) => t.name));
+  extraTools = [...extraTools.filter((t) => !names.has(t.name)), ...tools];
+}
+
+/** True for `jig` tools that only read (`mcp__jig__jig_get_settings`, …): Jig doesn't ask before them. */
+export function isReadOnlyJigTool(toolName: string): boolean {
+  const name = /^mcp__jig__(.+)$/.exec(toolName)?.[1];
+  return name === "jig_list_addons" || extraTools.some((t) => t.name === name && t.readOnly);
+}
+
 let handlers: JigToolHandlers = {
   listAddons: async () => "No add-ons are installed yet.",
   requestBuild: async () => "Jig's builder is not available in this version yet.",
@@ -27,7 +50,7 @@ export function jigMcpServer(meta: SessionMeta) {
     name: "jig",
     version: "1.0.0",
     instructions:
-      "Tools of Jig, the desktop app this session runs in. Use jig_request_build when the user wants a new tool, button, view, menu entry, layout change or other change to Jig itself.",
+      "Tools of Jig, the desktop app this session runs in. To change how Jig looks or behaves where it is already configurable (settings, theme, fonts, file icons, layout, add-ons on/off, project names and colours) use the jig_get_*/jig_list_* tools to look and the jig_update_*/jig_change_*/jig_set_* tools to change it directly. Use jig_request_build only for something new (a tool, button, view, menu entry).",
     tools: [
       tool(
         "jig_list_addons",
@@ -37,12 +60,21 @@ export function jigMcpServer(meta: SessionMeta) {
       ),
       tool(
         "jig_request_build",
-        "Ask Jig's builder to create or change a tool in Jig (a layout/setting change, an add-on, or as a last resort Jig's own code). The user sees a preview and accepts or discards it. Describe the goal in the user's words plus any detail you know.",
+        "Ask Jig's builder to create or change a tool in Jig (an add-on, or when no extension point exists, a proposal for one). The user sees a preview and accepts or discards it. For settings, themes and layout use the jig_update_settings / jig_change_layout tools instead. Describe the goal in the user's words plus any detail you know.",
         {
           goal: z.string().describe("What the user wants, in plain language"),
           addonId: z.string().optional().describe("An existing add-on to change, if the user named one"),
         },
         async ({ goal, addonId }) => text(await handlers.requestBuild({ goal, addonId, sessionId: meta.id })),
+      ),
+      ...extraTools.map((t) =>
+        tool(t.name, t.description, t.shape, async (args) => {
+          try {
+            return text(await t.handler(args as Record<string, unknown>, meta));
+          } catch (error) {
+            return { ...text(`Error: ${(error as Error).message}`), isError: true };
+          }
+        }),
       ),
     ],
   });
@@ -60,6 +92,9 @@ export function jigToolHandlers(
         addonId: args.addonId as string | undefined,
         sessionId: meta.id,
       }),
+    ...Object.fromEntries(
+      extraTools.map((t) => [t.name, (args: Record<string, unknown>) => t.handler(args, meta)]),
+    ),
   };
 }
 
@@ -70,6 +105,6 @@ export function jigContext(meta: SessionMeta, projectName: string | undefined): 
     projectName
       ? `The current project is "${projectName}" at ${meta.cwd}.`
       : `The working directory is ${meta.cwd}.`,
-    "Jig adds two tools (MCP server `jig`): jig_list_addons and jig_request_build. When the user asks for a new tool, button, view, menu entry or a change to Jig itself, call jig_request_build with a clear goal instead of editing Jig's files yourself.",
+    "Jig adds tools (MCP server `jig`). When the user wants Jig configured — settings, theme, fonts, density, file icons, layout (move/hide/show/resize views), add-ons on or off, a project's name or colour — use jig_get_settings / jig_list_themes / jig_get_layout to look and jig_update_settings / jig_change_layout / jig_set_addon_enabled / jig_update_project / jig_install_theme to change it; the user approves each change and can undo it from the chat. When they ask for something new (a tool, button, view, menu entry), call jig_request_build with a clear goal. Never edit Jig's files yourself.",
   ].join("\n");
 }

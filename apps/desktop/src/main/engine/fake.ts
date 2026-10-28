@@ -80,6 +80,35 @@ export class FakeEngine implements Engine {
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
         if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
+        } else if (
+          options.toolHandlers?.jig_update_settings &&
+          /\b(theme|light mode|dark mode|terminals? to the right)\b/.test(lower)
+        ) {
+          // "switch to the light theme" / "move the terminals to the right": Claude configures Jig.
+          const call = async (name: string, input: Record<string, unknown>) => {
+            const toolId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${name}`, input });
+            const output = await options.toolHandlers![name]!(input).catch(
+              (e: Error) => `Error: ${e.message}`,
+            );
+            onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          };
+          if (/terminals? to the right/.test(lower)) {
+            await call("jig_get_layout", {});
+            await call("jig_change_layout", {
+              ops: [{ op: "move", view: "jig.terminals", region: "right" }],
+            });
+            await stream(`${msg}:text:0`, "I moved the terminals to the right sidebar.", signal);
+          } else {
+            await call("jig_list_themes", {});
+            const themeId = lower.includes("dark") ? "jig-dark" : "jig-light";
+            await call("jig_update_settings", { patch: { appearance: { themeId, density: "compact" } } });
+            await stream(
+              `${msg}:text:0`,
+              `I switched Jig to ${themeId === "jig-dark" ? "Jig Dark" : "Jig Light"} with compact density.`,
+              signal,
+            );
+          }
         } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).
           const file = /(\S+\.(?:png|jpe?g|gif|webp|svg))\b/i.exec(text)![1]!;

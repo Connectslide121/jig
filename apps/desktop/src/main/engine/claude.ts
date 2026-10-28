@@ -4,6 +4,7 @@ import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
+import { isReadOnlyJigTool } from "./jigTools";
 import { Normalizer } from "./normalize";
 import { AsyncQueue } from "./queue";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
@@ -41,6 +42,8 @@ export class ClaudeEngine implements Engine {
         abortController: abort,
         stderr: (data) => log.debug(`claude stderr: ${data.trimEnd()}`),
         canUseTool: async (toolName, toolInput, ctx) => {
+          // Jig's own read-only tools (settings, themes, layout) don't need the user's OK.
+          if (isReadOnlyJigTool(toolName)) return { behavior: "allow", updatedInput: toolInput };
           const decision = await options.askPermission(
             {
               requestId: ctx.toolUseID ?? randomUUID(),

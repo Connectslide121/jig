@@ -12,7 +12,7 @@ import {
   type ProjectsState,
 } from "../../shared/projects";
 import { readJson, writeJson } from "../state/jsonStore";
-import { findRepos } from "./repos";
+import { findRepos, REPO_SCAN_DEPTH } from "./repos";
 
 /**
  * Registered projects (`~/.jig/projects.json`). A project is a folder: a git repository, or a workspace
@@ -25,7 +25,11 @@ export class ProjectStore {
   /** Repositories found inside workspace folders, by folder path. */
   private repoCache = new Map<string, Promise<ProjectRepo[]>>();
 
-  constructor(private readonly file: string) {}
+  constructor(
+    private readonly file: string,
+    /** How deep to look for repositories inside a workspace (Settings → Projects). */
+    private readonly repoDepth: () => number = () => REPO_SCAN_DEPTH,
+  ) {}
 
   private async load(): Promise<ProjectsFile> {
     this.data ??= await readJson(this.file, ProjectsFileSchema);
@@ -62,10 +66,11 @@ export class ProjectStore {
     const isGitRepo = Boolean(git);
     let repos: ProjectRepo[] = [];
     if (exists && !isGitRepo) {
-      let found = this.repoCache.get(project.path);
+      const key = `${this.repoDepth()}:${project.path}`;
+      let found = this.repoCache.get(key);
       if (!found) {
-        found = findRepos(project.path);
-        this.repoCache.set(project.path, found);
+        found = findRepos(project.path, this.repoDepth());
+        this.repoCache.set(key, found);
       }
       repos = await found;
     }
@@ -73,10 +78,16 @@ export class ProjectStore {
     return { ...project, focusRepo, exists, isGitRepo, repos };
   }
 
+  /** Tells listeners again (e.g. the search depth changed, so workspaces list other repositories). */
+  async refresh(): Promise<void> {
+    const state = await this.state();
+    for (const listener of this.listeners) listener(state);
+  }
+
   /** Looks for the repositories inside a workspace folder again (repos added or removed). */
   async rescanRepos(id: string): Promise<ProjectsState> {
     const project = await this.get(id);
-    this.repoCache.delete(project.path);
+    for (const key of this.repoCache.keys()) if (key.endsWith(`:${project.path}`)) this.repoCache.delete(key);
     return this.save(await this.load());
   }
 

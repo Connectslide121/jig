@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { findRepos } from "./repos";
 
 describe("findRepos", () => {
-  it("finds repositories one and two levels down, not inside repos or build folders", async () => {
+  it("finds repositories up to three levels down by default, not inside repos or build folders", async () => {
     const root = await mkdtemp(join(tmpdir(), "jig-ws-"));
     const repo = async (...parts: string[]) => mkdir(join(root, ...parts, ".git"), { recursive: true });
     await repo("webshop");
@@ -13,7 +13,8 @@ describe("findRepos", () => {
     await repo("client-a", "portal");
     await repo("client-a", "functions");
     await repo("webshop", "vendor-copy"); // inside a repo: not listed
-    await repo("deep", "er", "still"); // three levels: too deep
+    await repo("deep", "er", "still"); // three levels: found by default
+    await repo("way", "too", "deep", "down"); // four levels: not by default
     await repo("node_modules", "pkg");
     await repo(".hidden");
     await mkdir(join(root, "worktree"), { recursive: true });
@@ -23,9 +24,12 @@ describe("findRepos", () => {
       "Api",
       "client-a/functions",
       "client-a/portal",
+      "deep/er/still",
       "webshop",
       "worktree",
     ]);
+    expect((await findRepos(root, 2)).map((r) => r.name)).not.toContain("deep/er/still");
+    expect((await findRepos(root, 4)).map((r) => r.name)).toContain("way/too/deep/down");
     expect((await findRepos(root))[0]?.path).toBe(join(root, "Api"));
     expect((await findRepos(root, 1)).map((r) => r.name)).toEqual(["Api", "webshop", "worktree"]);
   });

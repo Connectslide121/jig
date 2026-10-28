@@ -473,7 +473,8 @@ Jon opens his repos folder as one workspace in VS Code so he can look across rep
 Git status, script and pipeline whatever he works on. Jig does the same: a project folder that isn't a
 repository lists the repositories inside it — **two levels deep** (covers `repos/api` and
 `repos/client-a/api`; Jon didn't say which layout he uses), not inside repositories, hidden and build
-folders skipped, cached until "Look for repositories again". Chats start at the workspace root (or in
+folders skipped, cached until "Look for repositories again". _Update: Jon's repos are in subfolders,
+so the default is now three levels, configurable 1–5 in Settings → Layout (`projects.repoScanDepth`)._ Chats start at the workspace root (or in
 one repository from its menu). The Git view shows all repositories like VS Code's Source Control with
 several repositories; one **focus repository** (set by clicking it, saved in `projects.json`) drives
 the status bar and the Tools-menu Git actions, so the active project never has to change. Repositories
@@ -488,3 +489,14 @@ limits are used), every 5 minutes, after chat turns and on Claude Code's rate-li
 lives in the status bar (always visible) and as a ring in the chat header; both show a card on hover and
 refresh on click. The SDK method is experimental: if it changes, the meter says "usage n/a" and nothing
 else breaks.
+
+### D-077 — Claude configures Jig through tools: approved, shown and undoable; some settings stay manual
+**Decided by:** Jon (configure anything configurable from the chat) and Claude, on my own (how) · **Date:** 2026-10-28
+Chats get tools to read and change everything already configurable: settings, themes (including
+installing from Open VSX), layout, add-ons on/off, project name and colour. Changes apply at once rather
+than as a builder preview, because they are small and reversible: Claude Code's permission prompt is
+the OK (vision #6), and every change leaves a card in the chat with Undo (the inverse is stored with the
+card, so it survives restarts). Read-only tools run without a prompt so Claude can look before it acts.
+Three settings stay Settings-only — `engine.allowApiKey` (billing), `engine.claudePath` (which program
+runs as Claude Code) and `updates.*` (shell commands Jig runs) — so a chat can never change billing or
+make Jig run other programs.

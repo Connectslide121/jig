@@ -25,6 +25,7 @@ export function LayoutSettings() {
           </Button>
         </SettingRow>
       ))}
+      <WorkspaceDepthRow />
       <SettingRow label="Reset layout" description="Put every view back where it started. Open tabs stay.">
         <Button
           size="sm"
@@ -35,6 +36,31 @@ export function LayoutSettings() {
         </Button>
       </SettingRow>
     </SettingsSection>
+  );
+}
+
+/** How deep a workspace project (a folder of repositories) is searched for repositories. */
+function WorkspaceDepthRow() {
+  const depth = useConfig((s) => s.config?.projects.repoScanDepth);
+  if (depth === undefined) return null;
+  return (
+    <SettingRow
+      label="Workspace search depth"
+      description="For a project that is a folder of repositories: how many folder levels Jig looks into (repos\client\api is 2)."
+    >
+      <Select
+        value={String(depth)}
+        aria-label="Workspace search depth"
+        data-testid="workspace-depth"
+        onChange={(e) => void updateConfig({ projects: { repoScanDepth: Number(e.target.value) } })}
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <option key={n} value={n}>
+            {n} {n === 1 ? "level" : "levels"}
+          </option>
+        ))}
+      </Select>
+    </SettingRow>
   );
 }
 

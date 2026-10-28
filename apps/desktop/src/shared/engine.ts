@@ -112,7 +112,25 @@ export type ChatItem =
     }
   | { kind: "notice"; id: string; at: string; text: string; tone: "info" | "warning" | "danger" }
   /** A build this chat asked for (jig_request_build); the card follows the build's status. */
-  | { kind: "build"; id: string; at: string; buildId: string };
+  | { kind: "build"; id: string; at: string; buildId: string }
+  | {
+      /** Claude changed Jig's configuration from this chat (settings, layout, add-ons, a project). */
+      kind: "change";
+      id: string;
+      at: string;
+      summary: string;
+      details: string[];
+      /** How to put things back; absent when the change can't be undone. */
+      undo?: ConfigUndo;
+      undone?: boolean;
+    };
+
+/** What Undo applies for a `change` item. */
+export type ConfigUndo =
+  | { type: "settings"; patch: Record<string, unknown> }
+  | { type: "layout"; layout: unknown }
+  | { type: "addon"; id: string; enabled: boolean }
+  | { type: "project"; id: string; name?: string; color?: string };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =

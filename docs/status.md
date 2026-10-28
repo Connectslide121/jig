@@ -111,11 +111,15 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   (.docx/.xlsx/.pptx) and text files into the message box, or pick them with the paperclip. They show as
   thumbnails or chips (remove with ×), go to Claude with your message (PDFs as documents, Office files
   as text Jig extracts), and stay in the transcript (click to open).
+- **Configure Jig from a chat:** ask Claude to change the theme, fonts, density, file icons, layout,
+  add-ons on/off, a project's name or colour, or to find and install a theme. You approve each change
+  (Claude Code's prompt) and a card in the chat shows what changed, with Undo. Billing and
+  program-running settings stay in Settings only.
 - **Plan usage, always visible:** the status bar shows `5h 42% · wk 18%` and each chat header has a ring
   for the 5-hour window; hover either for a card with every window, a bar each and when it resets (click
   to refresh). The numbers come from Claude Code's own `/usage` data.
 - **Workspaces:** add your repos folder as a project (Add project…) — Jig finds the repositories inside
-  (two levels deep). The Git view lists every repository's changes in one panel (changed first, each with
+  (three levels deep; Settings → Layout → Workspace search depth). The Git view lists every repository's changes in one panel (changed first, each with
   its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
   actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
@@ -202,6 +206,9 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Configuring from a real chat**: ask Claude Code (real login) to "switch to a light theme and make it
+  compact" and "move the terminals to the right"; check the permission prompts, the change cards and
+  Undo, and that "allow API keys" is refused.
 - **Plan usage with your real login** (only the fake engine ran here): the status bar numbers and the
   card should match `/usage` in Claude Code; check the reset times, the per-model weekly windows of your
   plan, and that it updates after a chat. If it says "usage n/a" while you're signed in with a

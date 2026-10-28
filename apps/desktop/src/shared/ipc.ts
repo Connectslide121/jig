@@ -121,6 +121,8 @@ export interface HostMethods {
     result: ChatAttachment;
   };
   "sessions.interrupt": { args: { id: string }; result: void };
+  /** Undoes a change Claude made to Jig's configuration from a chat (a `change` card). */
+  "sessions.undoChange": { args: { sessionId: string; itemId: string }; result: void };
   "sessions.answerPermission": {
     args: { id: string; requestId: string; decision: PermissionDecision };
     result: void;

@@ -50,6 +50,12 @@ export const ConfigSchema = z.object({
       firstRunDone: z.boolean().default(false),
     })
     .prefault({}),
+  projects: z
+    .object({
+      /** How many folder levels Jig searches for repositories inside a workspace (`repos/client/api` = 3). */
+      repoScanDepth: z.number().int().min(1).max(5).default(3),
+    })
+    .prefault({}),
   terminal: z
     .object({
       /** Shell executable; empty = PowerShell on Windows, $SHELL elsewhere. */
@@ -101,4 +107,42 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
         : value;
   }
   return out as T;
+}
+
+/**
+ * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
+ * program runs as Claude Code, and shell commands Jig runs (updates). D-077.
+ */
+export const PROTECTED_SETTINGS = ["engine.claudePath", "engine.allowApiKey", "updates"] as const;
+
+/** Dotted paths of the leaves a patch sets (`{ appearance: { themeId } }` → `appearance.themeId`). */
+export function patchPaths(patch: unknown, prefix = ""): string[] {
+  if (typeof patch !== "object" || patch === null || Array.isArray(patch)) return prefix ? [prefix] : [];
+  return Object.entries(patch as Record<string, unknown>).flatMap(([k, v]) =>
+    v === undefined ? [] : patchPaths(v, prefix ? `${prefix}.${k}` : k),
+  );
+}
+
+/** The settings a patch touches that only the Settings page may change. */
+export function protectedIn(patch: unknown): string[] {
+  return patchPaths(patch).filter((path) =>
+    PROTECTED_SETTINGS.some((p) => path === p || path.startsWith(`${p}.`)),
+  );
+}
+
+/** A patch that restores `before` for every leaf `patch` changes (for Undo). */
+export function inversePatch<T>(before: T, patch: DeepPartial<T>): DeepPartial<T> {
+  const out: Record<string, unknown> = {};
+  for (const path of patchPaths(patch)) {
+    const keys = path.split(".");
+    let value: unknown = before;
+    for (const k of keys) value = (value as Record<string, unknown> | undefined)?.[k];
+    let node = out;
+    keys.slice(0, -1).forEach((k) => {
+      node[k] = (node[k] as Record<string, unknown>) ?? {};
+      node = node[k] as Record<string, unknown>;
+    });
+    node[keys.at(-1)!] = value;
+  }
+  return out as DeepPartial<T>;
 }

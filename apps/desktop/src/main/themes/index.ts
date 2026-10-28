@@ -18,6 +18,11 @@ export function themeService(): ThemeService {
 
 let icons: FileIconService | undefined;
 
+export function fileIconService(): FileIconService {
+  if (!icons) throw new Error("Themes not started");
+  return icons;
+}
+
 export async function startThemes(extra?: () => Promise<ThemeEntry[]>): Promise<void> {
   service = new ThemeService({ themesDir: paths.themes(), extensionDirs: vscodeExtensionDirs(), extra });
   const fileIcons = new FileIconService({
