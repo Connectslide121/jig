@@ -26,6 +26,8 @@ export function runCommand(
       shell: true,
       env: { ...process.env, ...options.env, FORCE_COLOR: "0", CI: "1" },
       windowsHide: true,
+      // Its own process group on macOS/Linux, so a timeout can end the build and not only the shell.
+      detached: process.platform !== "win32",
     });
     const add = (d: Buffer) => {
       output = (output + d.toString()).slice(-KEEP);
@@ -35,7 +37,7 @@ export function runCommand(
     const timer = setTimeout(
       () => {
         timedOut = true;
-        child.kill();
+        killTree(child.pid);
       },
       options.timeoutMs ?? 20 * 60_000,
     );
@@ -48,4 +50,16 @@ export function runCommand(
       resolve({ ok: code === 0 && !timedOut, code, output, timedOut });
     });
   });
+}
+
+/** Ends a command and everything it started (npm runs node, which runs the build…). */
+function killTree(pid: number | undefined): void {
+  if (!pid) return;
+  try {
+    if (process.platform === "win32")
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true }).on("error", () => {});
+    else process.kill(-pid, "SIGTERM");
+  } catch {
+    // Already gone.
+  }
 }

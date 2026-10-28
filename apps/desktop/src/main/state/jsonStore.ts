@@ -29,6 +29,23 @@ export async function readJson<S extends z.ZodType>(
 
 const queues = new Map<string, Promise<void>>();
 
+/**
+ * Windows: an antivirus scanner or the search indexer can hold a file for a moment, so replacing it
+ * fails with EPERM/EBUSY/EACCES. Try again a few times before giving up.
+ */
+async function renameWithRetry(from: string, to: string, attempts = 6): Promise<void> {
+  for (let i = 1; ; i++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (i >= attempts || !["EPERM", "EBUSY", "EACCES"].includes(code ?? "")) throw error;
+      await new Promise((r) => setTimeout(r, 20 * 2 ** i));
+    }
+  }
+}
+
 /** Writes JSON atomically (temp file + rename). Writes to the same file are serialised. */
 export function writeJson(file: string, value: unknown): Promise<void> {
   const previous = queues.get(file) ?? Promise.resolve();
@@ -36,7 +53,7 @@ export function writeJson(file: string, value: unknown): Promise<void> {
     await mkdir(dirname(file), { recursive: true });
     const temp = `${file}.${process.pid}.tmp`;
     await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-    await rename(temp, file);
+    await renameWithRetry(temp, file);
   });
   queues.set(
     file,

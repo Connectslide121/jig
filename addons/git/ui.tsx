@@ -870,6 +870,8 @@ function RepoSection({
             title="Switch branch"
             onClick={(e) => {
               e.stopPropagation();
+              // Working with this repository's branches makes it the focus, like clicking its row.
+              if (!focused) void ctx.projects.setFocusRepo(repo.id, repo.path);
               void switchBranchMenu(ctx, repo, e.currentTarget, reload);
             }}
             data-testid={`git-repo-branch-${repo.name}`}
