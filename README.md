@@ -106,7 +106,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 </table>
 
 And more: paste screenshots and drop PDF, Word, Excel and PowerPoint files into a chat; permission
-cards with Allow once / Always / Deny; queue messages while Claude works; resizable panes; a scripts
+cards with Allow once / Always / Deny; queue messages while Claude works; next-message suggestions;
+restore files to before any message and fork a chat; Ask Claude when a script fails; desktop
+notifications when a chat needs you; resizable panes; a scripts
 runner with groups; Azure DevOps pipelines; a Tools menu with keyboard shortcuts.
 
 ## Build your own tools

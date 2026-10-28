@@ -125,6 +125,13 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
+- **Ask Claude about a failed script:** when a script exits with an error, a toast offers **Ask Claude**:
+  a new chat opens in the script's folder with the command, exit code and the end of the output typed
+  in. Failed terminals also get a ✨ button in the list, and any terminal's menu has "Ask Claude about
+  this output".
+- **Desktop notifications:** while Jig is in the background, a system notification tells you a chat
+  needs you, finished or failed (click it to go there; the taskbar button flashes when it needs you).
+  Settings → Claude Code → Desktop notifications.
 - **Claude in Git:** the commit box's **Write** button asks Claude for the commit message (from the
   diff, in the style of the repo's recent commits). Right-click a changed file → **Explain this change
   with Claude**, or a workspace repository → **Review changes with Claude**: a new chat opens with the
@@ -229,6 +236,8 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Desktop notifications on Windows**: put Jig in the background during a long turn; a Windows
+  notification should appear when it finishes (and the taskbar button flash on a permission prompt).
 - **Restore files and fork with your real Claude Code**: let Claude edit a file, then Restore files to
   before that message (the preview should list it); fork a chat and check the fork remembers the
   conversation while the original doesn't see the fork's messages.

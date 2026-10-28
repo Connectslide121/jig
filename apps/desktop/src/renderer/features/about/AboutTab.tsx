@@ -590,7 +590,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="terminals"
             title="Terminals & scripts"
-            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups."
+            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. When one fails, Ask Claude opens a chat with its output."
           />
           <Section
             id="configure"

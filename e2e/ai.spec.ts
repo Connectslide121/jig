@@ -116,3 +116,26 @@ test("Git: Claude writes the commit message, and explains a change in a new chat
     /^Explain the changes in cart\.ts \(git diff\)/,
   );
 });
+
+test("A failed script offers Ask Claude, with its output in a new chat", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "app");
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    join(dir, "package.json"),
+    JSON.stringify({
+      name: "app",
+      scripts: { check: `node -e "console.error('Error: the cart total is wrong'); process.exit(3)"` },
+    }),
+  );
+  await hostCall(page, "projects.add", { path: dir });
+  await page.getByTestId("project-app").dblclick();
+  await page.getByTestId("script-run-check").click();
+
+  const toast = page.getByTestId("toast").filter({ hasText: "failed" });
+  await expect(toast).toContainText("Exit code 3", { timeout: 15000 });
+  await toast.getByRole("button", { name: "Ask Claude" }).click();
+  const input = page.getByTestId("composer-input");
+  await expect(input).toHaveValue(/failed with exit code 3/);
+  await expect(input).toHaveValue(/Error: the cart total is wrong/);
+  await expect(page.getByTestId("terminal-ask-claude")).toBeVisible();
+});

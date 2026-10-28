@@ -45,3 +45,13 @@ UI: the project dashboard's Scripts card (run/stop/restart, groups), and the sta
 
 On Windows, stopping a script closes its pseudo console, which ends the processes attached to it; check
 that dev servers (node, dotnet) really stop (`docs/status.md`).
+
+## Ask Claude about output
+
+When a terminal that runs a command (a script, not an interactive shell or a private terminal) goes
+from running to exited with a non-zero code, a toast offers **Ask Claude** and **Show output**; a failed
+terminal also has a ✨ button in the list, and every non-private terminal has "Ask Claude about this
+output" in its menu. It opens a new chat in the terminal's folder (when it is inside the project) with
+the request typed in, not sent: the title, command, exit code and the last 120 lines of output (colour
+and cursor codes removed, at most 12 000 characters). Code: `features/terminals/askClaude.ts`.
+

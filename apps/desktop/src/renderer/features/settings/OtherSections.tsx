@@ -152,6 +152,16 @@ export function EngineSettings() {
         />
       </SettingRow>
       <SettingRow
+        label="Desktop notifications"
+        description="A system notification (and a flashing taskbar button) when a chat needs you, finishes or fails while Jig is in the background. Click it to go to the chat."
+      >
+        <Switch
+          label="Desktop notifications"
+          checked={config.notifications.desktop}
+          onChange={(desktop) => void updateConfig({ notifications: { desktop } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="File checkpoints"
         description="Claude Code keeps a copy of each file before changing it, so you can restore files to how they were before any of your messages (the message's menu)."
       >

@@ -215,6 +215,8 @@ export interface HostEvents {
   "projects.changed": ProjectsState;
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };
+  /** Show this chat (a desktop notification about it was clicked). */
+  "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };
   "terminals.changed": TerminalInfo[];
   "scripts.changed": ProjectScripts;

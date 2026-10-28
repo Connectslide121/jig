@@ -1,5 +1,5 @@
-import { app } from "electron";
-import type { PermissionMode, SessionMeta } from "../../shared/engine";
+import { app, BrowserWindow, Notification } from "electron";
+import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
@@ -11,6 +11,7 @@ import { paths } from "../state/paths";
 import { isInside } from "../themes/sources";
 import { usageService } from "../usage";
 import { SessionManager } from "./manager";
+import { notificationFor } from "./notify";
 
 let manager: SessionManager | undefined;
 
@@ -83,6 +84,7 @@ export function startSessions(): void {
     onRateLimit: (event) => usageService().rateLimit(event),
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
+      for (const u of updates) if (u.op === "meta") notifyStatus(u.meta);
       for (const u of updates)
         if (u.op === "meta" && u.meta.kind && u.meta.status === "working")
           kindHooks.get(u.meta.kind)?.onWorking?.(u.meta);
@@ -100,6 +102,29 @@ export function startSessions(): void {
       ),
   });
   const m = manager;
+
+  // A system notification when a chat needs you or finishes while Jig is in the background.
+  const lastStatus = new Map<string, SessionStatus>();
+  function notifyStatus(meta: SessionMeta) {
+    const previous = lastStatus.get(meta.id);
+    lastStatus.set(meta.id, meta.status);
+    const note = notificationFor(previous, meta);
+    const windows = BrowserWindow.getAllWindows();
+    if (!note || !getConfig().notifications.desktop || windows.some((w) => w.isFocused())) return;
+    if (meta.status === "needs_you") for (const w of windows) w.flashFrame(true);
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title: note.title, body: note.body });
+    n.on("click", () => {
+      const w = windows[0];
+      if (w) {
+        if (w.isMinimized()) w.restore();
+        w.show();
+        w.focus();
+      }
+      emit("sessions.reveal", { sessionId: meta.id });
+    });
+    n.show();
+  }
 
   handle("sessions.list", () => m.list());
   handle("sessions.get", ({ id }) => m.snapshot(id));

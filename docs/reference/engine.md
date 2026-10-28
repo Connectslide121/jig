@@ -118,6 +118,13 @@ The fake engine answers "I see N image(s)." and "I read <names>."
   so it continues under a new id and the original is untouched.
 - The fake engine: "write <file>" writes a file and records a checkpoint; a fork gets a new id.
 
+## Desktop notifications
+
+`main/sessions/notify.ts` decides: when a chat (not a builder session) goes from working to needs-you,
+idle or error, and `notifications.desktop` is on and no Jig window is focused, the host shows a system
+notification (needs-you also flashes the taskbar button). Clicking it focuses Jig and sends
+`sessions.reveal`, which opens the chat.
+
 ## Context window and compacting
 
 After every turn the session manager calls `EngineSession.contextUsage()`: the Claude engine asks

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Power, RotateCw, SquareTerminal, X } from "lucide-react";
+import { Pencil, Plus, Power, RotateCw, Sparkles, SquareTerminal, X } from "lucide-react";
 import type { TerminalInfo } from "../../../shared/terminals";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, type MenuEntry, promptDialog } from "../../ui";
@@ -6,11 +6,21 @@ import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
 import { newTerminal } from "./actions";
+import { askClaudeAboutTerminal } from "./askClaude";
 import { useTerminals } from "./store";
 import { XTerm } from "./XTerm";
 
 export function terminalMenu(t: TerminalInfo): MenuEntry[] {
   return [
+    ...(t.private
+      ? []
+      : [
+          {
+            label: "Ask Claude about this output",
+            icon: Sparkles,
+            onSelect: () => void askClaudeAboutTerminal(t),
+          },
+        ]),
     {
       label: "Rename…",
       icon: Pencil,
@@ -95,6 +105,19 @@ export function TerminalsView(_props: ViewProps) {
               <span className="min-w-0 flex-1 truncate" title={t.command ?? t.cwd}>
                 {t.title}
               </span>
+              {t.status === "exited" && t.exitCode !== 0 && !t.private && (
+                <IconButton
+                  icon={Sparkles}
+                  size="sm"
+                  label="Ask Claude about this failure"
+                  data-testid="terminal-ask-claude"
+                  className="size-5 text-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void askClaudeAboutTerminal(t);
+                  }}
+                />
+              )}
               <IconButton
                 icon={X}
                 size="sm"

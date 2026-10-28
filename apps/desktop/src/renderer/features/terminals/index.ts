@@ -2,11 +2,13 @@ import { KeyRound, SquareTerminal } from "lucide-react";
 import { createElement, useEffect } from "react";
 import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerStatusItem, registerView } from "../../workbench/registry";
+import { notify } from "../../workbench/toasts";
 import { registerDashboardWidget } from "../projects/widgets";
 import { RunningScripts } from "../scripts/RunningScripts";
 import { ScriptsPanel } from "../scripts/ScriptsPanel";
-import { claudeLogin, newTerminal } from "./actions";
-import { routeTerminalData, setTerminals } from "./store";
+import { claudeLogin, newTerminal, showTerminal } from "./actions";
+import { askClaudeAboutTerminal, newlyFailed } from "./askClaude";
+import { routeTerminalData, setTerminals, useTerminals } from "./store";
 import { TerminalsHeaderActions, TerminalsView } from "./TerminalsView";
 
 export function registerTerminals(): void {
@@ -55,6 +57,19 @@ export function useTerminalsSync(): void {
   useEffect(() => {
     void call("terminals.list").then(setTerminals);
   }, []);
-  useHostEvent("terminals.changed", setTerminals);
+  useHostEvent("terminals.changed", (list) => {
+    const failed = newlyFailed(useTerminals.getState().terminals, list);
+    setTerminals(list);
+    for (const t of failed)
+      notify({
+        title: `${t.title} failed`,
+        message: `Exit code ${t.exitCode}.`,
+        tone: "danger",
+        actions: [
+          { label: "Ask Claude", run: () => void askClaudeAboutTerminal(t) },
+          { label: "Show output", run: () => showTerminal(t.id) },
+        ],
+      });
+  });
   useHostEvent("terminals.data", ({ id, data }) => routeTerminalData(id, data));
 }

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useHostEvent } from "../../lib/host";
 import { useProjects } from "../../workbench/projects";
 import { registerAction, registerTabType, registerView } from "../../workbench/registry";
+import { workbench } from "../../workbench/store";
 import { newSession } from "./actions";
 import { ChatTab } from "./ChatTab";
 import { SessionsHeaderActions, SessionsView } from "./SessionsView";
@@ -43,4 +44,5 @@ export function useSessionsSync(): void {
     void loadSessions();
   }, []);
   useHostEvent("sessions.update", ({ sessionId, updates }) => applySessionUpdates(sessionId, updates));
+  useHostEvent("sessions.reveal", ({ sessionId }) => workbench.openTab("jig.chat", { sessionId }));
 }

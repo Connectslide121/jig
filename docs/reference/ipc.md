@@ -100,6 +100,7 @@ exceptions return `internal` (and are logged).
 | `projects.changed` | `ProjectsState` | after any project change |
 | `notify` | `{ title, message?, tone? }` | a host notification, shown as a toast |
 | `sessions.update` | `{ sessionId, updates: ChatUpdate[] }` | transcript/metadata/queue changes of a session |
+| `sessions.reveal` | `{ sessionId }` | show this chat (its desktop notification was clicked) |
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
