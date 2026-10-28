@@ -812,3 +812,33 @@ glance in the Repos section below.
 
 A new workspace with no focus repository lists all. Clicking a repository there focuses it (status bar,
 Git actions) and keeps listing all; only the picker narrows the list.
+
+### D-101 — Answers for phase 18 (Jon's list)
+**Decided by:** Jon · **Date:** 2026-10-28
+
+Settled before building:
+- **Files:**
+  - its own tab in the left sidebar;
+  - what it shows is chosen per project from the panel, like Git: a default folder plus others,
+    with the picker and eye button.
+- **Editing:**
+  - Preview's code and text files are always editable;
+  - if the file changes on disk while you have unsaved edits, Jig asks: Keep mine / Load theirs /
+    Show diff.
+- **Projects:**
+  - managed by you, not folders;
+  - one default workspace each, and a new chat can start in any;
+  - per project: model, effort and permission mode, project instructions (appended), starter prompts;
+  - Git, Files and Home follow the active project, and the Chats list shows all projects grouped;
+  - chats without a project go in a "No project" group;
+  - no migration, since Jig had never been used.
+- **Learning 2:**
+  - Claude saves evidence on its own and shows a card with Remove;
+  - the check-in is off by default and offered once;
+  - at most one coaching tip a week.
+- **Workflows:**
+  - stored in Jig, per project;
+  - steps are marked manual, auto or ask me;
+  - triggers run while Jig is open, and "Move to the cloud" turns a workflow into a routine or an Azure
+    DevOps pipeline.
+- **Scripts and Pipelines:** hide, reorder and dividers from the panel, the same for every project.
