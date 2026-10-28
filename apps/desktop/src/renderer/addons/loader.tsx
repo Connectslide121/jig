@@ -68,6 +68,8 @@ async function mount(addon: AddonInfo): Promise<void> {
   const ctx = makeContext(addon);
   const owner = addon.id;
   const cleanups: Array<() => void> = [];
+  // Known as mounted before anything registers, so unmounting after a failure part-way cleans up.
+  mounted.set(owner, { hash: addon.uiUrl, cleanups });
   const missing: string[] = [];
   const component = (name: string, what: string) => {
     const c = module[name];
@@ -202,7 +204,6 @@ async function mount(addon: AddonInfo): Promise<void> {
     link.href = addon.cssUrl;
     document.head.appendChild(link);
   }
-  mounted.set(owner, { hash: addon.uiUrl, cleanups });
   if (missing.length)
     useAddons.setState((s) => ({
       loadErrors: {
@@ -212,8 +213,17 @@ async function mount(addon: AddonInfo): Promise<void> {
     }));
 }
 
-/** Mounts, remounts (on change) and unmounts add-ons to match the host's list. */
-export async function syncAddons(addons: AddonInfo[]): Promise<void> {
+/**
+ * Mounts, remounts (on change) and unmounts add-ons to match the host's list. Runs one sync at a time:
+ * a change arriving while an add-on's code loads would otherwise mount it twice.
+ */
+let syncing: Promise<void> = Promise.resolve();
+export function syncAddons(addons: AddonInfo[]): Promise<void> {
+  syncing = syncing.then(() => doSync(addons)).catch(() => {});
+  return syncing;
+}
+
+async function doSync(addons: AddonInfo[]): Promise<void> {
   useAddons.setState({ addons });
   const active = new Map(
     addons.filter((a) => a.enabled && a.uiUrl && a.errors.length === 0).map((a) => [a.id, a]),

@@ -1,5 +1,5 @@
 import { Archive, MessageSquarePlus, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
 import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
@@ -24,10 +24,49 @@ export function SessionsView() {
   const { projects, activeId } = useProjects();
   const activeTab = useWorkbench((s) => s.layout?.main.tabs.find((t) => t.id === s.layout?.main.active));
   const [showArchived, setShowArchived] = useState(false);
+  // Re-render every 30 s so "3 min" stays true.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   const visible = metas.filter((m) => showArchived || !m.archived);
-  if (projects.length === 0) return <Empty title="No projects yet">Add a project to start a session.</Empty>;
   const groups = [...projects].sort((a, b) => (a.id === activeId ? -1 : b.id === activeId ? 1 : 0));
   const open = (m: SessionMeta) => workbench.openTab("jig.chat", { sessionId: m.id });
+  const row = (m: SessionMeta) => (
+    <ListRow
+      key={m.id}
+      data-testid={`session-${m.title}`}
+      selected={activeTab?.type === "jig.chat" && activeTab.params.sessionId === m.id}
+      onClick={() => open(m)}
+      onContextMenu={contextMenu(() => sessionMenu(m))}
+      leading={<StatusDot status={m.status} />}
+      className={cn("pl-4", m.archived && "opacity-60")}
+      trailing={
+        <>
+          <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
+          <IconButton
+            icon={MoreHorizontal}
+            label="Session options"
+            size="sm"
+            className="hidden group-hover:inline-flex"
+            onClick={(e) => {
+              e.stopPropagation();
+              openMenuAt(e.currentTarget, sessionMenu(m), true);
+            }}
+          />
+        </>
+      }
+    >
+      {m.title}
+    </ListRow>
+  );
+  // Chats of projects that were removed: still listed so they can be opened, stopped or deleted.
+  const orphans = visible
+    .filter((m) => m.kind !== "builder" && !projects.some((p) => p.id === m.projectId))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (projects.length === 0 && orphans.length === 0)
+    return <Empty title="No projects yet">Add a project to start a session.</Empty>;
   return (
     <div className="flex h-full flex-col" data-testid="sessions-view">
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
@@ -50,37 +89,19 @@ export function SessionsView() {
                 />
               </div>
               {list.length === 0 && <div className="px-6 pb-1 text-xs text-hint">No sessions</div>}
-              {list.map((m) => (
-                <ListRow
-                  key={m.id}
-                  data-testid={`session-${m.title}`}
-                  selected={activeTab?.type === "jig.chat" && activeTab.params.sessionId === m.id}
-                  onClick={() => open(m)}
-                  onContextMenu={contextMenu(() => sessionMenu(m))}
-                  leading={<StatusDot status={m.status} />}
-                  className={cn("pl-4", m.archived && "opacity-60")}
-                  trailing={
-                    <>
-                      <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
-                      <IconButton
-                        icon={MoreHorizontal}
-                        label="Session options"
-                        size="sm"
-                        className="hidden group-hover:inline-flex"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openMenuAt(e.currentTarget, sessionMenu(m), true);
-                        }}
-                      />
-                    </>
-                  }
-                >
-                  {m.title}
-                </ListRow>
-              ))}
+              {list.map(row)}
             </div>
           );
         })}
+        {orphans.length > 0 && (
+          <div className="mb-2" data-testid="sessions-orphans">
+            <div className="flex h-7 items-center gap-1.5 px-2 text-xs font-medium text-muted">
+              <span className="size-2 rounded-full bg-hint" />
+              <span className="min-w-0 flex-1 truncate">Removed projects</span>
+            </div>
+            {orphans.map(row)}
+          </div>
+        )}
       </div>
       {metas.some((m) => m.archived) && (
         <button

@@ -42,7 +42,11 @@ export function ensureTranscript(id: string): Promise<void> {
   return pending;
 }
 
+/** Sessions deleted here: a late update from the host must not bring them back to the list. */
+const deleted = new Set<string>();
+
 export function applySessionUpdates(sessionId: string, updates: ChatUpdate[]): void {
+  if (deleted.has(sessionId)) return;
   useSessions.setState((s) => {
     let metas = s.metas;
     let transcripts = s.transcripts;
@@ -61,6 +65,7 @@ export function applySessionUpdates(sessionId: string, updates: ChatUpdate[]): v
 }
 
 export function forgetSession(id: string): void {
+  deleted.add(id);
   useSessions.setState((s) => {
     const metas = { ...s.metas };
     const transcripts = { ...s.transcripts };

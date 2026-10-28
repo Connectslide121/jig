@@ -42,6 +42,8 @@ function placements() {
 }
 
 export function setLayoutFromHost(layout: Layout): void {
+  // The host's layout is newer than a local change still waiting to be saved: don't overwrite it.
+  clearTimeout(saveTimer);
   useWorkbench.setState({ layout: normalizeLayout(layout, placements()) });
 }
 

@@ -198,6 +198,8 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
   const { data } = useHostCall<PipelineSettings>("settings");
   const [org, setOrg] = useState("");
   const [projects, setProjects] = useState<string[]>([]);
+  // What is typed in the project-names box, as typed (spaces included); `projects` is parsed from it.
+  const [projectsText, setProjectsText] = useState("");
   const [available, setAvailable] = useState<string[]>();
   const [status, setStatus] = useState<{ ok: boolean; message: string }>();
   const [busy, setBusy] = useState(false);
@@ -205,6 +207,7 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
     if (data) {
       setOrg(data.org);
       setProjects(data.projects);
+      setProjectsText(data.projects.join(", "));
     }
   }, [data]);
   const save = async (next: PipelineSettings) => {
@@ -284,9 +287,17 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
             </div>
           ) : (
             <Input
-              value={projects.join(", ")}
+              value={projectsText}
               placeholder="Project names, separated by commas"
-              onChange={(e) => setProjects(e.target.value.split(",").map((s) => s.trim()))}
+              onChange={(e) => {
+                setProjectsText(e.target.value);
+                setProjects(
+                  e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                );
+              }}
               data-testid="pipelines-projects"
             />
           )}

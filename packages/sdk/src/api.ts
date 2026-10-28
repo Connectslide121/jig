@@ -95,6 +95,8 @@ export interface AddonUiContext {
     restart(projectId: string, scriptId: string): Promise<void>;
     runGroup(projectId: string, groupId: string): Promise<void>;
     running(): RunningScript[];
+    /** Called when a project's scripts or groups change (rescan, a group added). Returns unsubscribe. */
+    onChange(listener: (projectId: string) => void): () => void;
     /** Shows a running script's terminal. */
     show(terminalId: string): void;
   };

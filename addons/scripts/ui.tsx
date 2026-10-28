@@ -13,7 +13,10 @@ type Listing = { scripts: AddonScript[]; groups: AddonScriptGroup[] };
 
 function useListings(ctx: AddonUiContext, projects: AddonProject[]) {
   const [data, setData] = useState<Record<string, Listing | { error: string }>>({});
+  const [version, setVersion] = useState(0);
   const key = projects.map((p) => p.id).join(",");
+  // Groups made on the dashboard, a rescan: list again.
+  useEffect(() => ctx.scripts.onChange(() => setVersion((v) => v + 1)), [ctx]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the project list changes.
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +34,7 @@ function useListings(ctx: AddonUiContext, projects: AddonProject[]) {
     return () => {
       cancelled = true;
     };
-  }, [ctx, key]);
+  }, [ctx, key, version]);
   return data;
 }
 

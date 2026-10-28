@@ -125,6 +125,8 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
+- **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
+  "Removed projects", where they can be opened or deleted.
 - **Ask Claude about a failed script:** when a script exits with an error, a toast offers **Ask Claude**:
   a new chat opens in the script's folder with the command, exit code and the end of the output typed
   in. Failed terminals also get a ✨ button in the list, and any terminal's menu has "Ask Claude about

@@ -46,7 +46,7 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DiffView } from "./DiffView";
 import { ImageDiff } from "./ImageDiff";
 import { cleanMessage, commitMessagePrompt } from "./lib/message";
@@ -243,7 +243,7 @@ function FileRow({
       <FileIcon path={change.path} className="size-3.5" />
       <span className="min-w-0 truncate text-fg">{short(change.path)}</span>
       <span className="min-w-0 flex-1 truncate text-hint">{folder(change.path)}</span>
-      <span className="hidden items-center group-hover:flex">
+      <span className="hidden items-center group-focus-within:flex group-hover:flex">
         {group !== "staged" && (
           <IconButton
             icon={Undo2}
@@ -395,7 +395,10 @@ function BranchList({
       tabIndex={0}
       data-testid={`git-branch-${b.name}`}
       onClick={() => ctx.openTab("history", { ...where(project), ref: b.name, title: `History: ${b.name}` })}
-      onKeyDown={(e) => e.key === "Enter" && ctx.openTab("history", { ...where(project), ref: b.name })}
+      onKeyDown={(e) =>
+        e.key === "Enter" &&
+        ctx.openTab("history", { ...where(project), ref: b.name, title: `History: ${b.name}` })
+      }
       onContextMenu={(e) => {
         e.preventDefault();
         ctx.menu(branchMenu(ctx, project, b, reload), e.nativeEvent);
@@ -413,7 +416,7 @@ function BranchList({
         icon={MoreHorizontal}
         size="sm"
         label="Branch options"
-        className="hidden size-5 group-hover:inline-flex"
+        className="hidden size-5 group-focus-within:inline-flex group-hover:inline-flex"
         onClick={(e) => {
           e.stopPropagation();
           ctx.menu(branchMenu(ctx, project, b, reload), e.currentTarget);
@@ -880,7 +883,7 @@ function RepoSection({
         <span className="flex-1" />
         {entry?.error && <Badge tone="danger">error</Badge>}
         {!status && !entry?.error && <Spinner size="sm" />}
-        <span className="hidden items-center group-hover:flex">
+        <span className="hidden items-center group-focus-within:flex group-hover:flex">
           <IconButton
             icon={MoreHorizontal}
             size="sm"
@@ -1021,7 +1024,7 @@ async function switchBranchMenu(
       {
         label: "Create branch…",
         icon: "git-branch-plus",
-        onSelect: () => void createBranch(ctx).then(reload),
+        onSelect: () => void createBranch(ctx, project).then(reload),
       },
     ],
     at,
@@ -1128,8 +1131,11 @@ export function HistoryTab({ ctx, params }: AddonTabProps) {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  // Each load has a number; a reset (new branch or filter) always runs and makes older loads stale.
+  const request = useRef(0);
   const load = async (reset: boolean) => {
-    if (!project || loading || (done && !reset)) return;
+    if (!project || (!reset && (loading || done))) return;
+    const n = ++request.current;
     setLoading(true);
     try {
       const skip = reset ? 0 : commits.length;
@@ -1140,13 +1146,14 @@ export function HistoryTab({ ctx, params }: AddonTabProps) {
         limit: PAGE,
         filter: applied,
       });
+      if (n !== request.current) return;
       setCommits((c) => (reset ? page : [...c, ...page]));
       setDone(page.length < PAGE);
       setError(undefined);
     } catch (e) {
-      setError((e as Error).message);
+      if (n === request.current) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (n === request.current) setLoading(false);
     }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the branch or filter changes.
@@ -1287,7 +1294,13 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                 }
                 onKeyDown={(e) =>
                   e.key === "Enter" &&
-                  ctx.openTab("diff", { ...where(project), path: f.path, commit: commit.hash })
+                  ctx.openTab("diff", {
+                    ...where(project),
+                    path: f.path,
+                    commit: commit.hash,
+                    title: `${short(f.path)} @ ${commit.short}`,
+                    fileIcon: f.path,
+                  })
                 }
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -1538,8 +1551,9 @@ export async function switchBranch(ctx: AddonUiContext) {
   await switchBranchMenu(ctx, p, anchor);
 }
 
-export async function createBranch(ctx: AddonUiContext) {
-  const p = activeRepo(ctx);
+/** Creates a branch in `repo` (the repository whose menu was used), else in the focus repository. */
+export async function createBranch(ctx: AddonUiContext, repo?: RepoProject) {
+  const p = repo ?? activeRepo(ctx);
   if (!p) return;
   const name = await ctx.prompt({
     title: "Create branch",

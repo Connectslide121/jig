@@ -43,9 +43,13 @@ function useShortcuts() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
+      // Not behind a dialog (Ctrl+W must not close the tab under "Delete session?").
+      if (document.querySelector('[aria-modal="true"]')) return;
       for (const action of Object.values(useRegistry.getState().actions)) {
         if (action.shortcut && matchesShortcut(action.shortcut, event)) {
           event.preventDefault();
+          // Holding a key repeats only cycling through tabs, not "new chat" or "close tab".
+          if (event.repeat && !/Tab$/.test(action.shortcut)) return;
           void action.run();
           return;
         }

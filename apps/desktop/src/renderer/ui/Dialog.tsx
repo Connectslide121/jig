@@ -78,6 +78,12 @@ interface Pending {
 }
 const usePending = create<{ pending: Pending | undefined }>(() => ({ pending: undefined }));
 
+/** Shows a dialog; one already open is answered "cancel" first, so its caller isn't left waiting. */
+function show(next: Pending) {
+  usePending.getState().pending?.resolve(undefined);
+  usePending.setState({ pending: next });
+}
+
 /** Asks a yes/no question. Resolves `true` when confirmed. */
 export function confirmDialog(options: {
   title: string;
@@ -86,13 +92,11 @@ export function confirmDialog(options: {
   danger?: boolean;
 }): Promise<boolean> {
   return new Promise((resolve) =>
-    usePending.setState({
-      pending: {
-        kind: "confirm",
-        confirmLabel: "OK",
-        ...options,
-        resolve: (value) => resolve(value !== undefined),
-      },
+    show({
+      kind: "confirm",
+      confirmLabel: "OK",
+      ...options,
+      resolve: (value) => resolve(value !== undefined),
     }),
   );
 }
@@ -105,9 +109,7 @@ export function promptDialog(options: {
   initial?: string;
   placeholder?: string;
 }): Promise<string | undefined> {
-  return new Promise((resolve) =>
-    usePending.setState({ pending: { kind: "prompt", confirmLabel: "OK", ...options, resolve } }),
-  );
+  return new Promise((resolve) => show({ kind: "prompt", confirmLabel: "OK", ...options, resolve }));
 }
 
 /** Mount once at the root. */

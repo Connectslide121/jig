@@ -63,7 +63,7 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |
 | `openSettings()` | this add-on's settings page |
-| `scripts.list/run/stop/restart/runGroup(projectId, …)`, `scripts.running()`, `scripts.show(terminalId)` | discovered scripts and their terminals (`docs/reference/terminals.md`) |
+| `scripts.list/run/stop/restart/runGroup(projectId, …)`, `scripts.running()`, `scripts.show(terminalId)`, `scripts.onChange(listener)` (scripts or groups of a project changed; returns unsubscribe) | discovered scripts and their terminals (`docs/reference/terminals.md`) |
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
 | `notify({ title, message?, tone? })` | toast |

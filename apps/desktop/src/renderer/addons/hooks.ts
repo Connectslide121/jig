@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAddon } from "./context";
 
-/** Calls a host.ts export and keeps the result; `reload()` calls again. Re-runs when `args` change. */
+/**
+ * Calls a host.ts export and keeps the result; `reload()` calls again. Re-runs when `args` change, and
+ * never returns data of earlier `args` (another project's files must not show while the new load runs).
+ */
 export function useHostCall<T = unknown>(method: string, args?: unknown, options: { skip?: boolean } = {}) {
   const ctx = useAddon();
-  const [data, setData] = useState<T>();
+  const [result, setResult] = useState<{ key: string; value: T }>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(!options.skip);
   const key = JSON.stringify(args ?? null);
@@ -16,7 +19,7 @@ export function useHostCall<T = unknown>(method: string, args?: unknown, options
     try {
       const value = await ctx.host.call<T>(method, args);
       if (n === counter.current) {
-        setData(value);
+        setResult({ key, value });
         setError(undefined);
       }
     } catch (e) {
@@ -28,6 +31,7 @@ export function useHostCall<T = unknown>(method: string, args?: unknown, options
   useEffect(() => {
     if (!options.skip) void reload();
   }, [reload, options.skip]);
+  const data = result?.key === key ? result.value : undefined;
   return { data, error, loading, reload };
 }
 

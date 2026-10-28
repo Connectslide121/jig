@@ -5,6 +5,7 @@ import { call } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { updateLayout, workbench } from "../../workbench/store";
+import { useSessions } from "../sessions/store";
 import { projectColorLabel } from "./colors";
 
 export async function renameProject(project: ProjectInfo): Promise<void> {
@@ -21,7 +22,13 @@ export async function removeProject(project: ProjectInfo): Promise<void> {
   });
   if (!ok) return;
   await call("projects.remove", { id: project.id });
-  updateLayout((l) => closeTabsWhere(l, (t) => t.params.projectId === project.id));
+  // Its chats stop (no project to run in) and their tabs close; they stay under "Removed projects".
+  const chats = Object.values(useSessions.getState().metas).filter((m) => m.projectId === project.id);
+  await Promise.all(chats.map((m) => call("sessions.stop", { id: m.id }).catch(() => {})));
+  const ids = new Set(chats.map((m) => m.id));
+  updateLayout((l) =>
+    closeTabsWhere(l, (t) => t.params.projectId === project.id || ids.has(String(t.params.sessionId))),
+  );
 }
 
 export function projectMenu(project: ProjectInfo): MenuEntry[] {

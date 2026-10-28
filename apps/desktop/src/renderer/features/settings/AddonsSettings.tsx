@@ -1,6 +1,6 @@
 import { describePermission } from "@jig/sdk";
 import { FolderOpen, History, Puzzle, RefreshCw, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AddonCommit, AddonInfo } from "../../../shared/addons";
 import { requestBuild } from "../../addons/buildRequests";
 import { iconByName } from "../../addons/context";
@@ -14,7 +14,14 @@ import { SettingsSection } from "./parts";
 
 function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => void }) {
   const [commits, setCommits] = useState<AddonCommit[]>();
-  if (!commits) void call("addons.history", { id: addon.id }).then(setCommits);
+  useEffect(() => {
+    void call("addons.history", { id: addon.id })
+      .then(setCommits)
+      .catch((error) => {
+        setCommits([]);
+        notify({ title: "Couldn't read the history", message: errorMessage(error), tone: "danger" });
+      });
+  }, [addon.id]);
   const rollback = async (commit: AddonCommit) => {
     const ok = await confirmDialog({
       title: `Roll ${addon.name} back?`,

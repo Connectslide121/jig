@@ -126,6 +126,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         if (started[0]) (await import("../features/terminals/actions")).showTerminal(started[0].id);
       },
       running: () => runningScripts(useTerminals.getState().terminals),
+      onChange: (listener) => window.jig.on("scripts.changed", (p) => listener(p.projectId)),
       show: (terminalId) =>
         void import("../features/terminals/actions").then((m) => m.showTerminal(terminalId)),
     },

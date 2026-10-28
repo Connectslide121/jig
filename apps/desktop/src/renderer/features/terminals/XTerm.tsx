@@ -35,7 +35,9 @@ export function XTerm({ id, active }: { id: string; active: boolean }) {
       .then((buffer) => {
         if (!disposed) t.write(buffer);
       })
-      .finally(() => setTerminalWriter(id, (data) => t.write(data)));
+      .finally(() => {
+        if (!disposed) setTerminalWriter(id, (data) => t.write(data));
+      });
     const input = t.onData((data) => void call("terminals.write", { id, data }).catch(() => {}));
     const resize = t.onResize(
       ({ cols, rows }) => void call("terminals.resize", { id, cols, rows }).catch(() => {}),

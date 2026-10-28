@@ -125,6 +125,7 @@ export function ToolsMenuHost() {
                   tabIndex={-1}
                   data-testid={`tool-${action.id}`}
                   onMouseEnter={() => setIndex(i)}
+                  ref={i === index ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
                   onClick={() => run(action)}
                   className={cn(
                     "flex h-7 cursor-default items-center gap-2 rounded-md px-2",
