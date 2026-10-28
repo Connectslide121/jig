@@ -582,7 +582,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="git"
             title="Git"
-            lead="Every repository of the workspace in one list: stage, commit, push, pull, branches, stashes and diffs — side by side or inline, with image diffs."
+            lead="Every repository of the workspace in one list: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs."
             shot={{ src: git, alt: "The Git view with changes in several repositories" }}
           />
           <Section

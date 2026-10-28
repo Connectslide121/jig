@@ -203,5 +203,16 @@ test("screenshots for the About page", async () => {
   // Settings → Appearance.
   await key("Control+,");
   await shot("settings");
+
+  // What Jig can do: the overview, then the extension slots with one opened.
+  await key("Control+Alt+B"); // close the right sidebar: the page needs the room
+  await page.getByTestId("about-button").click();
+  await page.waitForTimeout(800);
+  await shot("about");
+  await page.getByTestId("about-nav-slots").click();
+  await page.waitForTimeout(900);
+  await page.getByTestId("about-slot-view").locator("button").first().click();
+  await page.waitForTimeout(500);
+  await shot("slots");
   await app.close();
 });

@@ -79,8 +79,9 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
 - A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot
-  needs an example in `SLOT_EXAMPLES`. When the UI changes noticeably, regenerate the page's screenshots
-  (`docs/reference/about.md`).
+  needs an example in `SLOT_EXAMPLES`. A headline feature also gets a line in `README.md`, which is the
+  project's landing page (and a new slot a row in its slot table). When the UI changes noticeably,
+  regenerate the screenshots (`docs/reference/about.md`); the README uses the same files.
 
 ## Testing rules
 

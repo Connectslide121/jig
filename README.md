@@ -1,35 +1,199 @@
-# Jig
+<p align="center">
+  <img src="apps/desktop/build/icon.png" alt="Jig" width="112">
+</p>
 
-> A **jig** is a custom tool you make yourself so a repetitive job gets faster and more precise.
+<h1 align="center">Jig</h1>
 
-Jig is a personal desktop workbench around **Claude Code**: several agent sessions across several
-projects in one window, the tools you miss from VS Code (repos, pipelines, scripts, terminals), styled
-your way with any VS Code theme. And it **builds its own tools**: ask from anywhere for a new tool or a
-change, or let Jig notice what you repeat and suggest one.
+<p align="center">
+  <b>Your desktop workbench around Claude Code — that builds its own tools.</b><br>
+  Chats, all your repositories, git, terminals and scripts in one window.<br>
+  Ask for a tool you're missing, and Jig makes it.
+</p>
 
-- Runs the official Claude Code on **your own Claude subscription** — Jig never touches your login.
-- **Menus, not commands** — everything is a visible button or menu item.
-- Builds the **lightest thing that works**: a layout tweak, then an add-on (changing an existing one
-  first), and only as a last resort a change to Jig's own code — always previewed, always reversible.
+<p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="#build-your-own-tools">Build your own tools</a> ·
+  <a href="#extension-slots">Extension slots</a> ·
+  <a href="docs/README.md">Docs</a>
+</p>
 
-## Status
+<p align="center">
+  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
+</p>
 
-Early development. See [`docs/status.md`](docs/status.md) for what works today and
-[`docs/plan/`](docs/plan/README.md) for the roadmap.
+> In woodworking, a **jig** is a custom tool you make yourself so a repetitive job gets faster and
+> more precise. Jig does the same for your work with Claude Code.
 
-## Getting started (development)
+## Why Jig
 
-Requirements: Node.js ≥ 22.12, git, and Claude Code signed in with your Claude account
-(run `claude` once and `/login`).
+If you live in Claude Code, your day is spread over terminals, an editor for git and diffs, a browser
+for pipelines and a few scripts you keep retyping. Jig puts it in one place:
+
+- **The real Claude Code.** Every chat is an official Claude Code session, with your CLAUDE.md files,
+  skills, MCP servers, plugins and **your own subscription**. Jig adds a workbench around it; it
+  doesn't replace the agent.
+- **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
+  needs you.
+- **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel for
+  all of them, every repo's scripts, and chats that can look at another repo for inspiration.
+- **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
+  an add-on. You review it before it's kept.
+- **Configure it by talking.** "Use a darker theme", "move Git to the right": Claude changes Jig's
+  settings and layout for you, with an Undo on every change.
+- **Menus, not commands.** Everything is a visible button or menu item. No syntax to remember.
+
+## A tour
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/dashboard.jpg" alt="Workspace dashboard">
+      <b>Workspaces.</b> Add your repos folder once. Jig finds the repositories inside (three levels
+      deep), lists every repo's scripts and runs them in real terminals.
+    </td>
+    <td width="50%" valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/git.jpg" alt="Git view and diff">
+      <b>Git for every repo.</b> Changes of all repositories in one panel: stage, commit, push, pull,
+      branches, history, side-by-side or inline diffs, image diffs.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/configure.jpg" alt="Claude changing Jig's theme from a chat">
+      <b>Claude configures Jig.</b> Ask in any chat to change the theme, fonts, layout or add-ons. Each
+      change shows as a card with Undo. Billing settings are never touched from a chat.
+    </td>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/build.jpg" alt="The builder with a new add-on ready to review">
+      <b>The builder.</b> "A button that runs the tests of the active project" becomes an add-on.
+      You see the files and a live preview, then Accept or Discard.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg" alt="A suggestion based on repeated actions">
+      <b>Suggestions.</b> Jig notices what you repeat (locally, on your machine) and suggests a tool
+      for it, with an estimate of the time it saves.
+    </td>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg" alt="Plan usage card">
+      <b>Your limits, always visible.</b> The 5-hour and weekly windows of your Claude plan in the
+      status bar, plus how full each chat's context window is, with a Compact button.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/settings.jpg" alt="Appearance settings">
+      <b>Styled your way.</b> Jig Dark and Jig Light, any VS Code colour theme (from your VS Code or the
+      marketplace) and VS Code file icon themes like Material Icon Theme.
+    </td>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/about.jpg" alt="The What Jig can do page">
+      <b>Everything in one page.</b> "What Jig can do" shows every feature, the extension slots, your
+      add-ons and skills, with examples you can try in one click.
+    </td>
+  </tr>
+</table>
+
+And more: paste screenshots and drop PDF, Word, Excel and PowerPoint files into a chat; permission
+cards with Allow once / Always / Deny; queue messages while Claude works; resizable panes; a scripts
+runner with groups; Azure DevOps pipelines; a Tools menu with keyboard shortcuts.
+
+## Build your own tools
+
+Ask from the Tools menu, a chat, a suggestion or a slot on the "What Jig can do" page. The builder
+(itself a Claude Code session) picks the lightest thing that works:
+
+| | What it makes | Example |
+|---|---|---|
+| **1. Layout and settings** | Moves views, changes defaults | "Put the Git view on the right and the terminals at the bottom" |
+| **2. An add-on** | Views, tabs, buttons, menus, watchers: React components plus optional host code | "A view with my Azure DevOps pipelines and their last run" |
+| **3. A proposal** | When no extension point fits, a written proposal for a new slot. You add it to Jig's code yourself | "Let add-ons add columns to the Repos overview" |
+
+Every build is previewed and kept only when you accept it. **Jig never edits its own source code:**
+it grows through add-ons and the extension points you choose to add.
+
+## Extension slots
+
+Add-ons are folders in `~/.jig/addons` with an `addon.json`, React components and optional host code.
+They can plug into 16 places:
+
+<p align="center">
+  <img src="apps/desktop/src/renderer/features/about/shots/slots.jpg" alt="The extension slots on the What Jig can do page" width="900">
+</p>
+
+| Slot | Where it shows | Slot | Where it shows |
+|---|---|---|---|
+| `view` | a sidebar or the bottom panel | `context.file` | right-click menu of a file |
+| `workbench.tab` | a tab in the main area | `context.project` | right-click menu of a project |
+| `topbar.item` | the top bar | `context.repo` | right-click menu of a repository |
+| `statusbar.item` | the status bar | `context.message` | menu of a chat message |
+| `dashboard.widget` | the project dashboard | `chat.toolbar` | a button above the composer |
+| `tools.action` | the Tools menu, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
+| `prompt` | a reusable prompt button | `watcher` | host code on an interval |
+| `settings.page` | a page in Settings | `theme` | a colour theme |
+
+Built in: **Git**, **Repos**, **Scripts** and **Pipelines** (Azure DevOps) are add-ons too, written
+against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
+reference: [`docs/reference/slots.md`](docs/reference/slots.md),
+[`docs/reference/addon-api.md`](docs/reference/addon-api.md).
+
+## Your subscription, your credentials
+
+- Jig runs the official **Claude Code** through the Claude Agent SDK. You sign in to Claude Code
+  yourself (`claude`, then `/login`). **Jig never reads, stores or forwards your Claude login.**
+- By default `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` are removed from chat sessions, so usage goes
+  to your Claude plan, not to pay-as-you-go API billing.
+- git, GitHub and Azure work with your own `git`, `gh` and `az`. Jig stores no tokens.
+- Everything Jig keeps (settings, layout, chats, add-ons, the activity it learns from) is in `~/.jig`
+  on your machine.
+
+## Get started
+
+**You need:** Windows 10/11 (macOS and Linux work for development), [Node.js](https://nodejs.org)
+22.12 or newer, git, and [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in with
+your Claude account.
+
+**Install** (builds the Windows installer on your machine):
+
+```powershell
+git clone https://github.com/Connectslide121/jig.git
+cd jig
+npm install
+npm run dist     # → apps/desktop/release/Jig-Setup-<version>.exe
+```
+
+On first start, **Get started** checks Claude Code, git, gh, az and VS Code and links what's missing.
+Later, **Jig menu → Check for updates…** pulls, builds and restarts. Details:
+[`docs/guides/packaging.md`](docs/guides/packaging.md).
+
+**Or run it from source:**
 
 ```bash
 npm install
-npm run dev
+npm run dev                    # Electron with hot reload
+JIG_ENGINE=fake npm run dev    # try it without Claude Code: a scripted fake engine
 ```
 
-More in [`docs/guides/developing.md`](docs/guides/developing.md).
+Then **Add project…**, pick a repository or your whole repos folder, and press **Ctrl+N** for a chat.
 
-## Documentation
+## Develop
 
-Everything is in [`docs/`](docs/README.md): vision, architecture, the plan, decisions, reference and
-guides.
+```bash
+npm run check    # typecheck, lint, unit tests, design-token check — before every commit
+npm run e2e      # build, then Playwright drives the real app (Linux: xvfb-run)
+```
+
+Electron + React + TypeScript, Tailwind with design tokens, Vitest and Playwright. Start with
+[`AGENTS.md`](AGENTS.md) (the rules, for people and coding agents alike), then
+[`docs/vision.md`](docs/vision.md), [`docs/architecture.md`](docs/architecture.md) and
+[`docs/status.md`](docs/status.md). All documentation: [`docs/`](docs/README.md).
+
+The screenshots here and on the "What Jig can do" page are generated from the real app with a demo
+workspace: `JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts`.
+
+## Status
+
+A personal project, built for one developer's daily work and growing from there. All planned
+phases are done ([plan](docs/plan/README.md)); what works and what still needs testing on a real
+Windows machine is in [`docs/status.md`](docs/status.md).

@@ -35,4 +35,7 @@ JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts
 npm run build   # bundle the new screenshots
 ```
 
+`about.jpg` and `slots.jpg` (the page itself) are only used by the repository's `README.md`, which
+shows the same screenshots as the project's landing page.
+
 The spec builds a demo workspace (`<tmp>/jig-demo`) with four repositories and uses the fake engine.
