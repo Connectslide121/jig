@@ -187,6 +187,17 @@ test("screenshots for the About page", async () => {
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(OUT, "usage.jpg"), type: "jpeg", quality: 82 });
 
+  // Context window: a big read fills it; hover the meter (the Compact button shows from 70%).
+  await page.mouse.move(10, 400);
+  await page.getByTestId("composer-input").fill("now read the big file");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("compact-button")).toBeVisible({ timeout: 15000 });
+  await page.getByTestId("context-meter").hover();
+  await expect(page.getByTestId("context-card")).toBeVisible();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(OUT, "context.jpg"), type: "jpeg", quality: 82 });
+  await page.mouse.move(10, 400);
+
   // Builder: a new add-on ready to review, then a proposal.
   await key("Control+Shift+B");
   await page.getByTestId("build-goal").fill("A button that runs the tests of the active project");

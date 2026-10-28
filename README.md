@@ -22,7 +22,8 @@
 </p>
 
 > In woodworking, a **jig** is a custom tool you make yourself so a repetitive job gets faster and
-> more precise. Jig does the same for your work with Claude Code.
+> more precise. Jig does the same for your work with Claude Code. The logo is one: a corner jig, a
+> fence that holds the piece exactly where it should be.
 
 ## Why Jig
 
@@ -77,20 +78,28 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg" alt="Plan usage card">
-      <b>Your limits, always visible.</b> The 5-hour and weekly windows of your Claude plan in the
-      status bar, plus how full each chat's context window is, with a Compact button.
+      <b>Your plan limits, always visible.</b> The 5-hour and weekly windows of your Claude plan, in
+      the status bar and on a ring in every chat. Hover for when each one resets.
     </td>
   </tr>
   <tr>
+    <td valign="top">
+      <img src="apps/desktop/src/renderer/features/about/shots/context.jpg" alt="Context window breakdown with a Compact button">
+      <b>Context window and Compact.</b> How full each chat's context is and what fills it, as Claude
+      Code reports it. From 70% a <b>Compact</b> button appears; one click runs Claude Code's /compact.
+    </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/settings.jpg" alt="Appearance settings">
       <b>Styled your way.</b> Jig Dark and Jig Light, any VS Code colour theme (from your VS Code or the
       marketplace) and VS Code file icon themes like Material Icon Theme.
     </td>
-    <td valign="top">
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/about.jpg" alt="The What Jig can do page">
-      <b>Everything in one page.</b> "What Jig can do" shows every feature, the extension slots, your
-      add-ons and skills, with examples you can try in one click.
+      <b>Everything in one page.</b> "What Jig can do" is the welcome screen and always one click away
+      in the <b>Jig menu</b> (the logo, top left): every feature, the extension slots, your add-ons and
+      skills, keyboard shortcuts, and examples you can try in one click.
     </td>
   </tr>
 </table>
@@ -176,6 +185,7 @@ JIG_ENGINE=fake npm run dev    # try it without Claude Code: a scripted fake eng
 ```
 
 Then **Add project…**, pick a repository or your whole repos folder, and press **Ctrl+N** for a chat.
+Lost? The welcome screen and the **Jig menu** (top left) show everything Jig can do.
 
 ## Develop
 
