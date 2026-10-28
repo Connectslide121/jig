@@ -6,6 +6,7 @@ import {
   FolderPlus,
   Keyboard,
   LayoutDashboard,
+  MessageSquarePlus,
   PanelBottom,
   PanelLeft,
   PanelRight,
@@ -150,12 +151,25 @@ export function Topbar() {
       <button
         type="button"
         data-testid="tools-button"
+        title="Every action in Jig (Ctrl+K)"
         className="no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-fg hover:bg-hover"
         onClick={(e) => openToolsMenu(e.currentTarget)}
       >
         <Wrench className="size-4 text-muted" />
         Tools
       </button>
+      {project && (
+        <button
+          type="button"
+          data-testid="topbar-new-chat"
+          title="New chat (Ctrl+N)"
+          className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
+          onClick={() => runAction("jig.newSession")}
+        >
+          <MessageSquarePlus className="size-4 text-accent" />
+          New chat
+        </button>
+      )}
       <div className="flex-1" />
       <TopbarItems />
       <IconButton

@@ -57,11 +57,34 @@ All operations are pure (they return a new layout). In the renderer, `updateLayo
 | Kind | Id | What |
 |---|---|---|
 | view | `jig.projects` | project list (left) |
-| tab type | `jig.project` | project dashboard (`params.projectId`) |
+| tab type | `jig.project` | project dashboard: the project's Home (`params.projectId`) |
 | tab type | `jig.settings` | Settings (`params.section`: appearance, layout, engine, terminal, learning, about, or an add-on's page) |
 
 Later phases add `jig.sessions`, `jig.chat`, `jig.terminals`, … and each add-on's views as
 `addon.<addon-id>.<view-id>`.
+
+## The main area with no tab open
+
+- **With an active project:** the project's **Home** (`features/home/Home.tsx`), also the project
+  dashboard tab.
+  - A box to start a chat: Enter sends the message in a new chat.
+  - Starter prompts, and **Try several ways…**.
+  - The project's recent chats with their status.
+  - "Next steps" tiles: new chat, Git, scripts, standup, routines, artifacts, build a tool, What Jig
+    can do.
+  - The add-ons' dashboard widgets.
+- **With no project:** the "What Jig can do" page, with Add project….
+
+## Tab status
+
+A tab type can report a status with `useStatus(params)`, shown as a dot on the tab:
+- `working` (pulsing blue);
+- `attention` (amber, needs you);
+- `error` (red);
+- `unread` (accent: a chat finished a turn you haven't looked at).
+
+Chat tabs report it from the chat's status and the turns seen while the tab showed
+(`useSeenTurns`, in memory).
 
 ## Menus and shortcuts
 
@@ -71,6 +94,8 @@ middle-click or `×` closes; right-click → Close, Close others, Close all; dra
 
 | Shortcut | Action (also in the Tools menu) |
 |---|---|
+| `Ctrl+K` | Tools: every action, searchable |
+| `Ctrl+N` | new chat (also the **New chat** button in the top bar) |
 | `Ctrl+,` | Settings |
 | `Ctrl+B` / `Ctrl+Alt+B` / `Ctrl+J` | toggle left sidebar / right sidebar / bottom panel |
 | `Ctrl+W` | close tab |

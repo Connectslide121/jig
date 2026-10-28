@@ -7,7 +7,7 @@ import { useWorkbench, workbench } from "../../workbench/store";
 import { projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
 import { sessionMenu } from "./menus";
-import { StatusDot } from "./status";
+import { STATUS_LABEL, StatusDot } from "./status";
 import { useSessions } from "./store";
 
 function relative(iso: string): string {
@@ -44,10 +44,18 @@ export function SessionsView() {
       className={cn("pl-4", m.archived && "opacity-60")}
       trailing={
         <>
-          <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
+          {m.status === "needs_you" || m.status === "error" ? (
+            <span
+              className={cn("group-hover:hidden", m.status === "needs_you" ? "text-warning" : "text-danger")}
+            >
+              {STATUS_LABEL[m.status]}
+            </span>
+          ) : (
+            <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
+          )}
           <IconButton
             icon={MoreHorizontal}
-            label="Session options"
+            label="Chat options"
             size="sm"
             className="hidden group-hover:inline-flex"
             onClick={(e) => {
@@ -66,7 +74,7 @@ export function SessionsView() {
     .filter((m) => m.kind !== "builder" && !projects.some((p) => p.id === m.projectId))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   if (projects.length === 0 && orphans.length === 0)
-    return <Empty title="No projects yet">Add a project to start a session.</Empty>;
+    return <Empty title="No projects yet">Add a project to start a chat.</Empty>;
   return (
     <div className="flex h-full flex-col" data-testid="sessions-view">
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
@@ -81,7 +89,7 @@ export function SessionsView() {
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 <IconButton
                   icon={MessageSquarePlus}
-                  label={`New session in ${project.name}`}
+                  label={`New chat in ${project.name}`}
                   size="sm"
                   data-testid={`new-session-${project.name}`}
                   className="opacity-0 group-hover:opacity-100"
@@ -121,7 +129,7 @@ export function SessionsHeaderActions() {
   return (
     <IconButton
       icon={MessageSquarePlus}
-      label="New session (Ctrl+N)"
+      label="New chat (Ctrl+N)"
       size="sm"
       data-testid="new-session"
       disabled={!activeId}

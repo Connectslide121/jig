@@ -3,7 +3,9 @@ import { useState } from "react";
 import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
+import { Home } from "../features/home/Home";
 import { cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
+import { useActiveProject } from "./projects";
 import { useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
 
@@ -13,6 +15,35 @@ function useTabTitle(tab: LayoutTab): string {
   const def = useRegistry((s) => s.tabTypes[tab.type]);
   const hookTitle = (def?.useTitle ?? noTitle)(tab.params);
   return def ? hookTitle || def.title(tab.params) : tab.type;
+}
+
+const noStatus = () => undefined;
+const STATUS_TITLE = {
+  working: "Claude is working",
+  attention: "Needs you",
+  error: "Stopped with an error",
+  unread: "Finished — not seen yet",
+};
+
+/** A dot on a tab when something there wants a look (a chat working, waiting for you, done). */
+function TabStatusDot({ tab }: { tab: LayoutTab }) {
+  const def = useRegistry((s) => s.tabTypes[tab.type]);
+  const status = (def?.useStatus ?? noStatus)(tab.params);
+  if (!status) return null;
+  return (
+    <span
+      title={STATUS_TITLE[status]}
+      data-testid="tab-status"
+      data-status={status}
+      className={cn(
+        "size-2 shrink-0 rounded-full",
+        status === "working" && "animate-pulse bg-info",
+        status === "attention" && "bg-warning",
+        status === "error" && "bg-danger",
+        status === "unread" && "bg-accent",
+      )}
+    />
+  );
 }
 
 function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; index: number }) {
@@ -77,6 +108,7 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
     >
       {active && <span className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
       {filePath ? <FileIcon path={filePath} className="size-3.5" /> : <Icon className="size-3.5 shrink-0" />}
+      <TabStatusDot tab={tab} />
       <span className="min-w-0 flex-1 truncate">{title}</span>
       <button
         type="button"
@@ -96,9 +128,13 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
   );
 }
 
-/** With no tab open, the main area shows the "What Jig can do" page (with Add project…). */
+/**
+ * With no tab open: the active project's Home (start a chat, recent chats, next steps), or the
+ * "What Jig can do" page with Add project… when there is no project yet.
+ */
 function EmptyMain() {
-  return <AboutPage welcome />;
+  const project = useActiveProject();
+  return project ? <Home project={project} /> : <AboutPage welcome />;
 }
 
 /** Tab bodies stay mounted once opened, so chats and terminals keep their state when you switch. */

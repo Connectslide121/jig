@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-28 (phases 0–16: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
+_Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
 
@@ -145,6 +145,20 @@ _Last updated: 2026-10-28 (phases 0–16: every phase of the plan is done; the l
     - Ctrl+F finds in the chat.
   - **With the fake engine, try:** "/usage", "make a todo list", "make a plan", "use a subagent",
     "start a background job", "edit README.md", "! ls".
+- **Easier to reach (UI/UX sweep, D-094):**
+  - **Starting and finding chats:**
+    - **Home:** with no tab open, a project shows a box that starts a chat, starter prompts, recent
+      chats with their status, and "Next steps" tiles. It is also the project dashboard.
+    - **New chat** is a button in the top bar.
+    - **Ctrl+K** opens the Tools menu.
+    - **Tabs** show a dot when their chat works, needs you, failed, or finished while you looked
+      elsewhere.
+  - **In a chat:**
+    - **Empty chats** show starter prompts and the message box's shortcuts.
+    - **Hovering a message** shows Edit (your messages) and Copy without opening a menu.
+    - **After a turn that changed files**, a bar shows them with **Review**, **Walk me through** and
+      **Undo changes**.
+  - **Wording:** "chat" everywhere you see it, instead of a mix of "session" and "chat".
 - **Icons for add-ons:** add-ons use Jig's own icon set, Lucide:
   - names in `addon.json`, imports from `lucide-react`, and `<Icon name>` for icons chosen at runtime;
   - Settings → Add-ons warns about icon names Lucide doesn't have.

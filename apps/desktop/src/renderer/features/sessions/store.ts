@@ -17,6 +17,11 @@ interface SessionsState {
 /** Sessions in the renderer: every session's metadata, and transcripts of the open ones. */
 export const useSessions = create<SessionsState>(() => ({ metas: {}, transcripts: {}, loaded: false }));
 
+/** How many turns of each chat you have seen (its tab was showing): newer ones are "unread". */
+export const useSeenTurns = create<Record<string, number>>(() => ({}));
+export const markSeen = (id: string, turns: number) =>
+  useSeenTurns.setState((s) => (s[id] === turns ? s : { ...s, [id]: turns }));
+
 export async function loadSessions(): Promise<void> {
   const list = await call("sessions.list");
   useSessions.setState({ metas: Object.fromEntries(list.map((m) => [m.id, m])), loaded: true });

@@ -220,7 +220,7 @@ export class SessionManager {
       id: randomUUID(),
       projectId: input.projectId,
       cwd: input.cwd,
-      title: input.title ?? "New session",
+      title: input.title ?? "New chat",
       createdAt: at,
       updatedAt: at,
       model: input.model,
@@ -388,7 +388,7 @@ export class SessionManager {
     live.state.items.push(item);
     const meta = live.state.meta;
     const title =
-      meta.turns === 0 && meta.title === "New session"
+      meta.turns === 0 && (meta.title === "New chat" || meta.title === "New session")
         ? summarize(text || attachments[0]?.name || "Attachment")
         : meta.title;
     live.state.meta = {
@@ -797,5 +797,5 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /** A short title from the first message. */
 export function summarize(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
-  return line.length > 60 ? `${line.slice(0, 57).trimEnd()}…` : line || "New session";
+  return line.length > 60 ? `${line.slice(0, 57).trimEnd()}…` : line || "New chat";
 }

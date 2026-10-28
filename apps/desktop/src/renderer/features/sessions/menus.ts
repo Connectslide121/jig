@@ -164,14 +164,14 @@ export function permissionMenu(meta: SessionMeta): MenuEntry[] {
 }
 
 export async function renameSession(meta: SessionMeta): Promise<void> {
-  const title = await promptDialog({ title: "Rename session", initial: meta.title, confirmLabel: "Rename" });
+  const title = await promptDialog({ title: "Rename chat", initial: meta.title, confirmLabel: "Rename" });
   if (title) await call("sessions.rename", { id: meta.id, title });
 }
 
 export async function deleteSession(meta: SessionMeta): Promise<void> {
   const ok = await confirmDialog({
     title: `Delete “${meta.title}”?`,
-    message: "Removes the session from Jig. Claude Code's own transcript file stays on disk.",
+    message: "Removes the chat from Jig. Claude Code's own transcript file stays on disk.",
     confirmLabel: "Delete",
     danger: true,
   });

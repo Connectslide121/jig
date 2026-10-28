@@ -2,8 +2,9 @@
 
 An in-app tab (`jig.about`, `renderer/features/about/`) that explains Jig with screenshots and live
 data. Open it from the "Jig" menu (top left), the `?` in the top bar, Tools → What Jig can do or
-Settings → About. With no tab open, the main area shows the same page (`AboutPage welcome`, with Add
-project… when there are no projects). `workbench.openTab("jig.about", { section: "slots" })` opens it at a section.
+Settings → About. With no tab open and no project yet, the main area shows the same page
+(`AboutPage welcome`, with Add project…). Once there is a project, the main area shows the project's
+Home instead (`docs/reference/layout.md`), which links here. `workbench.openTab("jig.about", { section: "slots" })` opens it at a section.
 
 ## Live data
 

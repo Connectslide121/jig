@@ -1,8 +1,18 @@
-import { ChevronDown, ChevronUp, ListTodo, Search, Square, SquareTerminal, Users, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ListTodo,
+  Search,
+  Sparkles,
+  Square,
+  SquareTerminal,
+  Users,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
-import { cn, IconButton } from "../../ui";
+import { cn, IconButton, Kbd } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { TodoList, toolSummary } from "./ToolCard";
 
@@ -178,6 +188,69 @@ export function FindBar({
         disabled={!matches.length}
       />
       <IconButton icon={X} size="sm" label="Close (Esc)" onClick={onClose} />
+    </div>
+  );
+}
+
+const STARTERS = [
+  "Explain how this project is organised",
+  "Review my uncommitted changes for bugs",
+  "Write tests for the code I changed",
+  "Make a plan before changing anything: ",
+];
+
+const TIPS: Array<[string, string]> = [
+  ["/", "commands and skills"],
+  ["@", "mention a file"],
+  ["!", "run a shell command"],
+  ["#", "remember in CLAUDE.md"],
+  ["Shift+Tab", "plan or accept edits"],
+];
+
+/** An empty chat: where it runs, things to ask, and the message box's shortcuts. */
+export function ChatWelcome({
+  title,
+  cwd,
+  onPick,
+}: {
+  title: string;
+  cwd: string;
+  onPick: (text: string) => void;
+}) {
+  return (
+    <div
+      className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8"
+      data-testid="chat-welcome"
+    >
+      <div className="flex max-w-xl flex-col items-center gap-4 text-center">
+        <div>
+          <div className="text-base font-medium text-fg">{title}</div>
+          <div className="mt-1 text-sm text-muted">
+            Claude Code runs in <span className="font-mono text-xs">{cwd}</span> with your CLAUDE.md files,
+            skills and MCP servers.
+          </div>
+        </div>
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {STARTERS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onPick(s)}
+              className="flex h-7 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted hover:border-accent hover:text-fg"
+            >
+              <Sparkles className="size-3 text-accent" />
+              {s.replace(/: $/, "…")}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-2xs text-hint">
+          {TIPS.map(([key, what]) => (
+            <span key={key} className="flex items-center gap-1">
+              <Kbd>{key}</Kbd> {what}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

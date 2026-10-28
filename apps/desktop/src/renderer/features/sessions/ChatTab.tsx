@@ -5,12 +5,13 @@ import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui"
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { UsageRing } from "../usage";
-import { BackgroundTasks, FindBar, TodoPanel } from "./ChatPanels";
+import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
+import { fillComposer } from "./drafts";
 import { modelLabel, openModelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
 import { STATUS_LABEL, StatusDot } from "./status";
-import { ensureTranscript, useSessions } from "./store";
+import { ensureTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
 
 function LoginBanner() {
@@ -50,6 +51,10 @@ export function ChatTab({ params, active }: TabProps) {
   useEffect(() => {
     if (id) void ensureTranscript(id).catch(() => {});
   }, [id]);
+  // What you have seen: the tab's dot shows a finished turn you haven't looked at yet.
+  useEffect(() => {
+    if (active && meta) markSeen(id, meta.turns);
+  }, [active, id, meta?.turns, meta]);
   // Ctrl+F finds in the chat that is showing.
   useEffect(() => {
     if (!active) return;
@@ -62,7 +67,7 @@ export function ChatTab({ params, active }: TabProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [active]);
-  if (!meta) return loaded ? <Empty icon={MessageSquareX} title="This session was deleted" /> : <Spinner />;
+  if (!meta) return loaded ? <Empty icon={MessageSquareX} title="This chat was deleted" /> : <Spinner />;
   const tokens =
     meta.usage.inputTokens +
     meta.usage.cacheReadTokens +
@@ -92,7 +97,7 @@ export function ChatTab({ params, active }: TabProps) {
         {meta.turns > 0 && (
           <span
             className="text-2xs text-hint"
-            title="Tokens used in this session, and Claude Code's cost estimate"
+            title="Tokens used in this chat, and Claude Code's cost estimate"
           >
             {formatTokens(tokens)} tokens{meta.costUsd > 0 ? ` · ≈ $${meta.costUsd.toFixed(2)}` : ""}
           </span>
@@ -123,7 +128,7 @@ export function ChatTab({ params, active }: TabProps) {
         />
         <IconButton
           icon={MoreHorizontal}
-          label="Session options"
+          label="Chat options"
           size="sm"
           onClick={(e) => openMenuAt(e.currentTarget, sessionMenu(meta), true)}
         />
@@ -141,16 +146,11 @@ export function ChatTab({ params, active }: TabProps) {
       {meta.needsLogin && <LoginBanner />}
       {transcript ? (
         transcript.items.length === 0 ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-muted">
-            <div>
-              <div className="text-base font-medium text-fg">
-                New session{project ? ` in ${project.name}` : ""}
-              </div>
-              <div className="mt-1">
-                Claude Code runs in {meta.cwd} with your CLAUDE.md files, skills and MCP servers.
-              </div>
-            </div>
-          </div>
+          <ChatWelcome
+            title={`New chat${project ? ` in ${project.name}` : ""}`}
+            cwd={meta.cwd}
+            onPick={(text) => fillComposer(id, text)}
+          />
         ) : (
           <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
         )

@@ -575,6 +575,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
                 "Edit and send again: rewind the chat (and the files) to before any message",
+                "After a turn that changed files: Review, Walk me through or Undo, right there",
+                "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
               ]}
             />

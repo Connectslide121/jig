@@ -33,7 +33,7 @@ export function filterActions(
   });
   const groups = new Map<string, ActionDef[]>();
   for (const action of matches) groups.set(action.group, [...(groups.get(action.group) ?? []), action]);
-  const order = ["Build", "Sessions", "Projects", "Terminals", "Git", "Layout", "Appearance", "Jig"];
+  const order = ["Chats", "Claude", "Build", "Projects", "Terminals", "Git", "Layout", "Appearance", "Jig"];
   const rank = (g: string) => (order.includes(g) ? order.indexOf(g) : order.length);
   return [...groups.entries()]
     .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))

@@ -7,12 +7,12 @@ import { workbench } from "../../workbench/store";
 import { newSession } from "./actions";
 import { ChatTab } from "./ChatTab";
 import { SessionsHeaderActions, SessionsView } from "./SessionsView";
-import { applySessionUpdates, loadSessions, useSessions } from "./store";
+import { applySessionUpdates, loadSessions, useSeenTurns, useSessions } from "./store";
 
 export function registerSessions(): void {
   registerView({
     id: "jig.sessions",
-    title: "Sessions",
+    title: "Chats",
     icon: MessagesSquare,
     defaultRegion: "left",
     component: SessionsView,
@@ -24,13 +24,23 @@ export function registerSessions(): void {
     title: () => "Chat",
     useTitle: (params) => useSessions((s) => s.metas[String(params.sessionId)]?.title ?? ""),
     icon: MessageSquare,
+    useStatus: (params) => {
+      const id = String(params.sessionId);
+      const meta = useSessions((s) => s.metas[id]);
+      const seen = useSeenTurns((s) => s[id]);
+      if (!meta) return undefined;
+      if (meta.status === "needs_you") return "attention";
+      if (meta.status === "working" || meta.status === "starting") return "working";
+      if (meta.status === "error") return "error";
+      return seen !== undefined && meta.turns > seen ? "unread" : undefined;
+    },
     component: ChatTab,
     owner: "core",
   });
   registerAction({
     id: "jig.newSession",
-    title: "New session",
-    group: "Sessions",
+    title: "New chat",
+    group: "Chats",
     icon: MessageSquarePlus,
     shortcut: "Mod+N",
     visible: () => Boolean(useProjects.getState().activeId),

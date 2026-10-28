@@ -32,7 +32,7 @@ export function registerTerminals(): void {
   registerAction({
     id: "jig.claudeLogin",
     title: "Sign in to Claude Code…",
-    group: "Sessions",
+    group: "Chats",
     icon: KeyRound,
     keywords: ["login", "account"],
     run: () => void claudeLogin(),

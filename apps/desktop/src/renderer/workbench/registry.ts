@@ -32,6 +32,8 @@ export interface TabProps {
   active: boolean;
 }
 
+export type TabStatus = "working" | "attention" | "error" | "unread";
+
 export interface TabTypeDef {
   type: string;
   title: (params: Record<string, unknown>) => string;
@@ -40,6 +42,8 @@ export interface TabTypeDef {
   icon: LucideIcon;
   /** Icon depending on the tab's params (e.g. a file type); falls back to `icon`. */
   iconFor?: (params: Record<string, unknown>) => LucideIcon | undefined;
+  /** A state worth seeing from the tab bar (a chat that works, needs you or finished unseen). */
+  useStatus?: (params: Record<string, unknown>) => TabStatus | undefined;
   /** A file the tab shows: its icon comes from the file icon theme (wins over `icon`). */
   filePath?: (params: Record<string, unknown>) => string | undefined;
   component: ComponentType<TabProps>;

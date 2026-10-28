@@ -11,6 +11,7 @@ import {
   RefreshCw,
   RotateCcw,
   Settings,
+  Wrench,
   X,
 } from "lucide-react";
 import { cycleTab, defaultLayout, findView } from "../../shared/layout";
@@ -18,6 +19,7 @@ import { call, errorMessage } from "../lib/host";
 import { useProjects } from "./projects";
 import { registerAction, useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
+import { openToolsMenu } from "./ToolsMenu";
 import { notify } from "./toasts";
 
 /** Adds a project via the folder picker and opens its dashboard. */
@@ -65,6 +67,14 @@ export function registerCoreActions(): void {
       const project = projects.find((p) => p.id === activeId);
       if (project) void call("app.openPath", { path: project.path });
     },
+  });
+  registerAction({
+    id: "jig.tools",
+    title: "Tools: every action",
+    group: "Jig",
+    icon: Wrench,
+    shortcut: "Mod+K",
+    run: () => openToolsMenu(),
   });
   registerAction({
     id: "jig.settings",

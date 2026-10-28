@@ -66,7 +66,7 @@ test("Fork chat continues a chat as a separate branch", async ({ page, jigHome }
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("chat-status")).toHaveText("Idle", { timeout: 15000 });
 
-  await page.getByRole("button", { name: "Session options" }).click();
+  await page.getByRole("button", { name: "Chat options" }).click();
   await page.getByTestId("session-fork").click();
   const fork = page.locator("[data-tab-id]:not(.hidden)").getByTestId("chat");
   await expect(fork).toContainText("Forked from “first idea”");
@@ -222,7 +222,7 @@ test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome
   await page.getByTestId("composer-input").fill("please write notes.txt");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("chat")).toContainText("I wrote notes.txt.", { timeout: 15000 });
-  await page.getByRole("button", { name: "Session options" }).click();
+  await page.getByRole("button", { name: "Chat options" }).click();
   await page.getByTestId("session-to-tool").click();
   await expect(page.getByTestId("build-goal")).toHaveValue(
     /I asked: please write notes\.txt\n- Claude changed .*notes\.txt/,

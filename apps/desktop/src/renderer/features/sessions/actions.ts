@@ -18,7 +18,7 @@ export async function newSession(
   if (!id) {
     notify({
       title: "Add a project first",
-      message: "A session runs Claude Code in a project folder.",
+      message: "A chat runs Claude Code in a project folder.",
       tone: "warning",
     });
     return undefined;
@@ -33,7 +33,7 @@ export async function newSession(
     workbench.openTab("jig.chat", { sessionId: meta.id });
     return meta.id;
   } catch (error) {
-    notify({ title: "Couldn't start a session", message: errorMessage(error), tone: "danger" });
+    notify({ title: "Couldn't start a chat", message: errorMessage(error), tone: "danger" });
     return undefined;
   }
 }

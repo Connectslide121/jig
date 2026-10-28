@@ -33,6 +33,17 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 
 ## Beyond the terminal
 
+- **An empty chat** shows where Claude runs, starter prompts (a click puts one in the box) and the
+  message box's shortcuts.
+- **Message actions on hover:**
+  - your messages: Edit and send again, Copy, and ⋯ (rewind, restore files, add-on entries);
+  - Claude's answers: Copy and ⋯.
+- **After a turn that changed files**, a bar lists them with +/− counts. Each file opens in Preview,
+  and the bar has **Review** (Git), **Walk me through** (a tour) and **Undo changes** (restore files to
+  before your message, after confirming). `turnChanges()` in `Transcript.tsx` computes it.
+- **A tool waiting for your permission** says "waiting for you" instead of a spinner, and can't go to
+  the background until it runs.
+
 - **Find in chat** (Ctrl+F, or 🔍 in the header): matches in messages, tool calls, outputs and plans,
   newest first; Enter / Shift+Enter step, the transcript scrolls to each.
 - **Jump to latest** when you've scrolled up.

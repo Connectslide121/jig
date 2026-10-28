@@ -103,6 +103,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
+- Say **chat** in user-facing text, never "session" (that's the code's word). Frequent actions go
+  where you are (a button, a hover action); rare ones in ⋯ menus and Tools (D-094).
 - A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot
   needs an example in `SLOT_EXAMPLES`. A headline feature also gets a line in `README.md`, which is the
   project's landing page (and a new slot a row in its slot table). When the UI changes noticeably,

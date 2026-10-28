@@ -683,3 +683,27 @@ Jig's UI uses Lucide (`lucide-react`), and add-ons share the same copy, so their
 
 No second icon library, so the look stays consistent and add-ons stay small.
 
+### D-094 — A Home to start work from, and "chat" everywhere
+**Decided by:** Claude, on my own (Jon asked for a UI/UX sweep: easier to reach, not everything behind
+menus) · **Date:** 2026-10-28
+
+What the sweep found, and what changed:
+- **The long "What Jig can do" page was the empty main area even after you had a project.** Daily
+  work starts with a chat, so with a project the main area is now a **Home**:
+  - a box that starts a chat;
+  - recent chats, next steps, and the dashboard widgets.
+
+  It replaces the project dashboard's own page, so there is one place. "What Jig can do" stays the
+  first-run page and is one click away.
+- **Starting a chat was only Ctrl+N or a small +.** **New chat** is now a labelled button in the top
+  bar, and Ctrl+K opens Tools.
+- **You couldn't tell from the tabs which chat needs you.** Tabs now show status dots.
+- **Small but frequent actions were behind ⋯ menus.**
+  - Edit and Copy on a message show on hover.
+  - After a turn, its changed files come with Review, Walk me through and Undo.
+- **The UI said both "session" and "chat".** User-facing text now says "chat" (new chats are titled
+  "New chat"); code and IPC names keep "session".
+
+Kept in menus on purpose: rarely used chat actions (MCP servers, folders, export, fork, archive), and
+everything in the Tools menu.
+

@@ -4,24 +4,32 @@ import {
   ChevronRight,
   CircleAlert,
   Copy,
+  FilePen,
+  GitBranch,
   History,
   Info,
+  Map as MapIcon,
   MoreHorizontal,
   Pencil,
   SquareTerminal,
   TriangleAlert,
   Undo2,
 } from "lucide-react";
-import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
-import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
+import { Button, cn, FileIcon, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
+import { useRegistry } from "../../workbench/registry";
+import { workbench } from "../../workbench/store";
 import { BuildCard } from "../builder/BuildCard";
+import { openPreview } from "../preview/actions";
+import { startTour } from "../tour/actions";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { PermissionCard } from "./PermissionCard";
 import { restoreFiles, rewindChat } from "./restore";
-import { ToolCard } from "./ToolCard";
+import { useSessions } from "./store";
+import { diffCounts, ToolCard } from "./ToolCard";
 
 /** A message's menu: Copy, plus entries add-ons contribute (`context.message`). */
 function messageMenu(sessionId: string, text: string, own: MenuEntry[] = []): MenuEntry[] {
@@ -131,10 +139,16 @@ const Item = memo(function Item({
   item,
   sessionId,
   nested,
+  waiting,
+  changes,
 }: {
   item: ChatItem;
   sessionId: string;
   nested?: ChatItem[];
+  /** A tool call waiting for your permission. */
+  waiting?: boolean;
+  /** Files this turn changed (on its result line). */
+  changes?: TurnChanges;
 }) {
   switch (item.kind) {
     case "user":
@@ -146,13 +160,25 @@ const Item = memo(function Item({
               {item.text}
             </div>
           )}
-          <div className="absolute -top-2 right-0 hidden group-focus-within/message:block group-hover/message:block">
+          <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-focus-within/message:flex group-hover/message:flex">
+            <IconButton
+              icon={Pencil}
+              size="sm"
+              label="Edit and send again (Claude forgets what came after)"
+              data-testid="user-message-edit"
+              onClick={() => void rewindChat(sessionId, item.id, false)}
+            />
+            <IconButton
+              icon={Copy}
+              size="sm"
+              label="Copy"
+              onClick={() => void navigator.clipboard.writeText(item.text)}
+            />
             <IconButton
               icon={MoreHorizontal}
               size="sm"
               label="Message options"
               data-testid="user-message-menu"
-              className="bg-elevated shadow-card"
               onClick={(e) => openMenuAt(e.currentTarget, userMessageMenu(sessionId, item), true)}
             />
           </div>
@@ -164,12 +190,18 @@ const Item = memo(function Item({
           <Markdown text={item.text} />
           {item.streaming && !item.text && <Spinner size="sm" />}
           {!item.streaming && item.text && (
-            <div className="absolute -top-2 right-0 hidden group-hover/message:block">
+            <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-hover/message:flex">
+              <IconButton
+                icon={Copy}
+                size="sm"
+                label="Copy"
+                data-testid="assistant-copy"
+                onClick={() => void navigator.clipboard.writeText(item.text)}
+              />
               <IconButton
                 icon={MoreHorizontal}
                 size="sm"
                 label="Message options"
-                className="bg-elevated shadow-card"
                 onClick={(e) => openMenuAt(e.currentTarget, messageMenu(sessionId, item.text), true)}
               />
             </div>
@@ -180,7 +212,7 @@ const Item = memo(function Item({
       return <Thinking item={item} />;
     case "tool":
       return (
-        <ToolCard item={item} sessionId={sessionId}>
+        <ToolCard item={item} sessionId={sessionId} waiting={waiting}>
           {nested && nested.length > 0
             ? nested.map((child) => <Item key={child.id} item={child} sessionId={sessionId} />)
             : null}
@@ -190,24 +222,27 @@ const Item = memo(function Item({
       return <PermissionCard item={item} sessionId={sessionId} />;
     case "result":
       return (
-        <div
-          className={cn("flex items-center gap-2 text-2xs", item.ok ? "text-hint" : "text-danger")}
-          data-testid="turn-result"
-        >
-          {!item.ok && <CircleAlert className="size-3" />}
-          <span>{item.ok ? "Done" : (item.error ?? "Failed")}</span>
-          <span>· {formatDuration(item.durationMs)}</span>
-          {item.usage && (
-            <span>
-              ·{" "}
-              {formatTokens(
-                item.usage.inputTokens + item.usage.cacheReadTokens + item.usage.cacheWriteTokens,
-              )}{" "}
-              in / {formatTokens(item.usage.outputTokens)} out
-            </span>
-          )}
-          {item.costUsd !== undefined && item.costUsd > 0 && <span>· ≈ ${item.costUsd.toFixed(3)}</span>}
-        </div>
+        <>
+          <div
+            className={cn("flex items-center gap-2 text-2xs", item.ok ? "text-hint" : "text-danger")}
+            data-testid="turn-result"
+          >
+            {!item.ok && <CircleAlert className="size-3" />}
+            <span>{item.ok ? "Done" : (item.error ?? "Failed")}</span>
+            <span>· {formatDuration(item.durationMs)}</span>
+            {item.usage && (
+              <span>
+                ·{" "}
+                {formatTokens(
+                  item.usage.inputTokens + item.usage.cacheReadTokens + item.usage.cacheWriteTokens,
+                )}{" "}
+                in / {formatTokens(item.usage.outputTokens)} out
+              </span>
+            )}
+            {item.costUsd !== undefined && item.costUsd > 0 && <span>· ≈ ${item.costUsd.toFixed(3)}</span>}
+          </div>
+          {changes && <ChangesBar changes={changes} sessionId={sessionId} />}
+        </>
       );
     case "build":
       return <BuildCard buildId={item.buildId} />;
@@ -235,6 +270,105 @@ const Item = memo(function Item({
     }
   }
 });
+
+const EDIT_TOOLS = new Set(["Edit", "MultiEdit", "Write", "NotebookEdit"]);
+
+export interface TurnChanges {
+  /** Your message that started the turn (restore files to before it). */
+  userItemId: string;
+  canUndo: boolean;
+  files: Array<{ path: string; added: number; removed: number }>;
+}
+
+/** The files each turn changed, keyed by the turn's result item. */
+export function turnChanges(items: ChatItem[]): Map<string, TurnChanges> {
+  const out = new Map<string, TurnChanges>();
+  let user: Extract<ChatItem, { kind: "user" }> | undefined;
+  let files = new Map<string, { added: number; removed: number }>();
+  for (const item of items) {
+    if (item.kind === "user") {
+      user = item;
+      files = new Map();
+    } else if (item.kind === "tool" && item.status === "done" && EDIT_TOOLS.has(item.name)) {
+      const path = String(item.input.file_path ?? item.input.notebook_path ?? "");
+      if (!path) continue;
+      const counts = item.diff ? diffCounts(item.diff) : { added: 0, removed: 0 };
+      const was = files.get(path) ?? { added: 0, removed: 0 };
+      files.set(path, { added: was.added + counts.added, removed: was.removed + counts.removed });
+    } else if (item.kind === "result" && user && files.size) {
+      out.set(item.id, {
+        userItemId: user.id,
+        canUndo: Boolean(user.messageId),
+        files: [...files].map(([path, c]) => ({ path, ...c })),
+      });
+      files = new Map();
+    }
+  }
+  return out;
+}
+
+/** After a turn that changed files: which ones, and what to do next. */
+function ChangesBar({ changes, sessionId }: { changes: TurnChanges; sessionId: string }) {
+  const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
+  const hasGit = useRegistry((s) => Boolean(s.views["addon.git.git"]));
+  const added = changes.files.reduce((n, f) => n + f.added, 0);
+  const removed = changes.files.reduce((n, f) => n + f.removed, 0);
+  const name = (p: string) => p.split(/[\\/]/).pop() ?? p;
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line bg-surface px-2 py-1.5 text-xs"
+      data-testid="turn-changes"
+    >
+      <FilePen className="size-3.5 shrink-0 text-muted" />
+      <span className="text-fg">
+        Changed {changes.files.length} file{changes.files.length === 1 ? "" : "s"}
+      </span>
+      <span className="font-mono text-2xs">
+        <span className="text-success">+{added}</span> <span className="text-danger">−{removed}</span>
+      </span>
+      {changes.files.slice(0, 4).map((f) => (
+        <button
+          key={f.path}
+          type="button"
+          title={f.path}
+          onClick={() => openPreview(f.path)}
+          className="flex items-center gap-1 rounded-sm px-1 text-muted hover:bg-hover hover:text-fg"
+        >
+          <FileIcon path={f.path} className="size-3.5" />
+          {name(f.path)}
+        </button>
+      ))}
+      {changes.files.length > 4 && <span className="text-hint">+{changes.files.length - 4} more</span>}
+      <span className="flex-1" />
+      {hasGit && (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={GitBranch}
+          onClick={() => workbench.showView("addon.git.git")}
+        >
+          Review
+        </Button>
+      )}
+      {cwd && (
+        <Button size="sm" variant="ghost" icon={MapIcon} onClick={() => void startTour(cwd)}>
+          Walk me through
+        </Button>
+      )}
+      {changes.canUndo && (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Undo2}
+          data-testid="turn-undo"
+          onClick={() => void restoreFiles(sessionId, changes.userItemId)}
+        >
+          Undo changes
+        </Button>
+      )}
+    </div>
+  );
+}
 
 /** Subagent items (with a parent tool) are shown inside their parent's tool card. */
 export function groupItems(items: ChatItem[]): Array<{ item: ChatItem; children: ChatItem[] }> {
@@ -269,6 +403,16 @@ export function Transcript({
   const ref = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const [away, setAway] = useState(false);
+  const changes = useMemo(() => turnChanges(items), [items]);
+  const pending = useMemo(
+    () =>
+      new Set(
+        items.flatMap((i) =>
+          i.kind === "permission" && i.status === "pending" ? [i.request.requestId] : [],
+        ),
+      ),
+    [items],
+  );
   useLayoutEffect(() => {
     const el = ref.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
@@ -306,7 +450,13 @@ export function Transcript({
                 highlight === item.id && "outline-2 outline-offset-4 outline-accent",
               )}
             >
-              <Item item={item} sessionId={sessionId} nested={children} />
+              <Item
+                item={item}
+                sessionId={sessionId}
+                nested={children}
+                waiting={item.kind === "tool" && pending.has(item.id)}
+                changes={item.kind === "result" ? changes.get(item.id) : undefined}
+              />
             </div>
           ))}
         </div>

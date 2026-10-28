@@ -117,14 +117,14 @@ export function EngineSettings() {
       />
       <TextSetting
         label="Default model"
-        description="Model alias or id for new sessions (e.g. sonnet, opus). Empty = Claude Code's default."
+        description="Model alias or id for new chats (e.g. sonnet, opus). Empty = Claude Code's default."
         value={e.defaultModel}
         placeholder="(Claude Code default)"
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
       <SettingRow
         label="Default permission mode"
-        description="How new sessions ask before editing files or running commands."
+        description="How new chats ask before editing files or running commands."
       >
         <Select
           value={e.defaultPermissionMode}
@@ -173,7 +173,7 @@ export function EngineSettings() {
       </SettingRow>
       <SettingRow
         label="Allow API keys"
-        description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from sessions, so usage always comes from your Claude plan. On: a key in your environment switches sessions to pay-as-you-go billing."
+        description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from chats, so usage always comes from your Claude plan. On: a key in your environment switches chats to pay-as-you-go billing."
       >
         <Switch
           label="Allow API keys"

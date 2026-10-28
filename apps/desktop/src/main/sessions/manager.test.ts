@@ -216,7 +216,7 @@ describe("SessionManager", () => {
   it("summarises titles", () => {
     expect(summarize("  fix   the\nbug ")).toBe("fix the bug");
     expect(summarize("x".repeat(100))).toHaveLength(58);
-    expect(summarize("")).toBe("New session");
+    expect(summarize("")).toBe("New chat");
   });
 
   it("a chat deleted while Claude works stays deleted (its last events are ignored)", async () => {

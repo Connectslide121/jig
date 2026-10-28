@@ -13,7 +13,7 @@ import { hideView, type Layout, moveView, type SideRegion, setRegion, showView }
  */
 export const CORE_VIEWS: Array<{ id: string; title: string; region: SideRegion }> = [
   { id: "jig.projects", title: "Projects", region: "left" },
-  { id: "jig.sessions", title: "Sessions", region: "left" },
+  { id: "jig.sessions", title: "Chats", region: "left" },
   { id: "jig.terminals", title: "Terminals", region: "bottom" },
   { id: "jig.builds", title: "Builds", region: "bottom" },
   { id: "jig.suggestions", title: "Suggestions", region: "right" },

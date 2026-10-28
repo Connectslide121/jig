@@ -324,10 +324,13 @@ const BACKGROUNDABLE = new Set(["Bash", "Task", "Agent"]);
 export function ToolCard({
   item,
   sessionId,
+  waiting,
   children,
 }: {
   item: ToolItem;
   sessionId?: string;
+  /** Waiting for your permission: it hasn't started, so it can't go to the background. */
+  waiting?: boolean;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -363,12 +366,17 @@ export function ToolCard({
           {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
           <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
           {item.diff && <DiffCount diff={item.diff} />}
-          {item.status === "running" && <Elapsed since={item.at} />}
-          {item.status === "running" && <Spinner size="sm" />}
+          {item.status === "running" && !waiting && <Elapsed since={item.at} />}
+          {item.status === "running" &&
+            (waiting ? (
+              <span className="text-2xs text-warning">waiting for you</span>
+            ) : (
+              <Spinner size="sm" />
+            ))}
           {item.status === "done" && <CircleCheck className="size-3.5 shrink-0 text-success" />}
           {item.status === "error" && <CircleAlert className="size-3.5 shrink-0 text-danger" />}
         </button>
-        {item.status === "running" && sessionId && BACKGROUNDABLE.has(item.name) && (
+        {item.status === "running" && !waiting && sessionId && BACKGROUNDABLE.has(item.name) && (
           <IconButton
             icon={ArrowDownToLine}
             size="sm"
