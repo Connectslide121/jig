@@ -1,4 +1,5 @@
 import { BrowserWindow, dialog } from "electron";
+import { publishActivity } from "../activity/bus";
 import { emit, handle } from "../ipc/router";
 import { paths } from "../state/paths";
 import { ProjectStore } from "./store";
@@ -30,6 +31,12 @@ export function startProjects(): void {
   });
   handle("projects.update", ({ id, ...patch }) => projectStore().update(id, patch));
   handle("projects.remove", ({ id }) => projectStore().remove(id));
-  handle("projects.setActive", ({ id }) => projectStore().setActive(id));
+  handle("projects.setActive", async ({ id }) => {
+    const state = await projectStore().setActive(id);
+    const project = state.projects.find((p) => p.id === id);
+    if (project)
+      publishActivity({ kind: "project.switch", text: `switch to ${project.name}`, projectId: id });
+    return state;
+  });
   handle("projects.reorder", ({ ids }) => projectStore().reorder(ids));
 }

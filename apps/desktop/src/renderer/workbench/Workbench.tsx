@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAddonsSync } from "../addons/loader";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
+import { useLearningSync } from "../features/learning";
 import { useSessionsSync } from "../features/sessions";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
@@ -58,6 +59,7 @@ export function Workbench() {
   useTerminalsSync();
   useAddonsSync();
   useBuildsSync();
+  useLearningSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);
   return (

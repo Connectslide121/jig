@@ -213,9 +213,25 @@ export class FakeEngine implements Engine {
     };
   }
 
+  /** Pattern reflection: one suggestion for the strongest pattern in the prompt. */
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
-    return JSON.stringify({ suggestions: [], echo: prompt.length });
+    const first = /key: (\S+) \| (\w+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
+    if (!first) return JSON.stringify({ suggestions: [] });
+    const [, key, kind, summary, count, days] = first;
+    return JSON.stringify({
+      suggestions: [
+        {
+          title: `A button for “${summary!.slice(0, 50)}”`,
+          why: `You did this ${count} times on ${days} days (${kind}).`,
+          goal: `A Tools-menu action and a status bar button that runs: ${summary}`,
+          level: 2,
+          kind: "new-addon",
+          minutesPerWeek: Number(count) * 2,
+          patternKeys: [key],
+        },
+      ],
+    });
   }
 }

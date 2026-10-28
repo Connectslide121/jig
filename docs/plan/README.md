@@ -20,7 +20,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 6 | [Add-on system](06-addon-system.md) | ✅ | slots, manifest, UI + host runtime, hot reload, management UI |
 | 7 | [Built-in add-ons](07-builtin-addons.md) | ✅ | Git tab, Repos overview, Pipelines (Azure DevOps), Scripts |
 | 8 | [Builder — levels 1 & 2](08-builder.md) | ✅ | "Build something…" changes layout/settings or creates/changes an add-on, with preview + accept |
-| 9 | [Learning & suggestions](09-learning.md) | ⬜ | activity log, pattern mining, "Look for patterns now", Monday 10:00 run, inbox |
+| 9 | [Learning & suggestions](09-learning.md) | ✅ | activity log, pattern mining, "Look for patterns now", Monday 10:00 run, inbox |
 | 10 | [Builder — level 3 (app source)](10-self-modification.md) | ⬜ | app changes in a worktree, preview instance, launcher with rollback |
 | 11 | [Packaging & Windows](11-packaging.md) | ⬜ | Windows installer, first-run checks, updates |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |

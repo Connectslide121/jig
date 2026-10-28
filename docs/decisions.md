@@ -335,3 +335,24 @@ still open its chat). Keeps a stuck builder from looping on your quota.
 While a build waits, its add-on is loaded from the worktree in place of the live one (views say
 "(preview)"), so you try the real thing before accepting. Accept merges the branch into
 `~/.jig/addons` (history, rollback); Discard deletes worktree and branch.
+
+### D-056 — No AI call when nothing repeats
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Mining runs first, without AI; the Claude Code query only happens when at least one pattern passes the
+thresholds. A quiet week costs no quota. Thresholds: commands 5× on 2 days, sequences 3× on 2 days,
+similar prompts 3× on 2 days, over the last 28 days (`packages/learning/src/mine.ts`).
+
+### D-057 — The first start doesn't run the weekly reflection at once
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+On the very first launch there is nothing recorded yet, so the first run is the next scheduled one
+(Monday 10:00). After that, a missed scheduled run happens at the next launch (D-008).
+
+### D-058 — "Not now" snoozes for 14 days; a pattern gets one suggestion
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Snoozed suggestions come back after two weeks. A pattern that already has a suggestion (new, snoozed or
+built) isn't given to the next reflection again; "Never" blocks the pattern permanently.
+
+### D-059 — Reflection uses a small model and no tools
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+The weekly reflection is one Claude Code request with no tools, no settings sources and `haiku` by
+default (Settings → Learning → Model), so it is cheap and can't touch files.

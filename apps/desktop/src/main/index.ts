@@ -5,6 +5,7 @@ import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
+import { startLearning } from "./learning";
 import { logger } from "./log";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
@@ -52,6 +53,7 @@ async function start() {
   await startAddons();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
+  await startLearning();
   await createMainWindow();
 
   app.on("activate", () => {

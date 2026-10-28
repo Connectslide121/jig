@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { z } from "zod";
 
@@ -37,6 +37,20 @@ export function writeJson(file: string, value: unknown): Promise<void> {
     const temp = `${file}.${process.pid}.tmp`;
     await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     await rename(temp, file);
+  });
+  queues.set(
+    file,
+    next.catch(() => {}),
+  );
+  return next;
+}
+
+/** Appends one line to a log file (JSONL). Appends to the same file are serialised. */
+export function appendLine(file: string, line: string): Promise<void> {
+  const previous = queues.get(file) ?? Promise.resolve();
+  const next = previous.then(async () => {
+    await mkdir(dirname(file), { recursive: true });
+    await appendFile(file, `${line.replace(/\n/g, " ")}\n`, "utf8");
   });
   queues.set(
     file,

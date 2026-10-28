@@ -88,6 +88,15 @@ _Last updated: 2026-10-27, second session (phases 2–3)._
   - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
     "compact", "a pomodoro timer").
 
+- **Phase 9 (done): learning and suggestions.**
+  - Jig records locally what you do (prompts, commands in sessions and terminals, scripts, add-on
+    actions, git operations, project switches) in `~/.jig/activity`; pause, exclusions, retention and
+    delete-all in Settings → Learning.
+  - **Look for patterns now** (light bulb in the top bar → Suggestions, or Tools) and every Monday at
+    10:00 (catch-up at launch): repeated commands, sequences and similar prompts are found without AI;
+    only then one small Claude Code request picks at most 3 suggestions with evidence.
+  - **Build it** starts the builder; **Not now** hides it for 14 days; **Never** blocks the pattern.
+
 ## How to try it
 
 ```bash
@@ -124,6 +133,9 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **A real pattern run**: after a few days of use, press Look for patterns now and check the
+  suggestions make sense (and that "Never" sticks). The weekly run on Monday 10:00 (or at the next
+  launch after it).
 - **A real build with Claude Code**: Tools → Build something… → e.g. "a status bar button that runs
   npm test in the active project". Check that the builder reads the catalog, prefers changing an
   existing add-on when you name one, passes validation, that the preview works, and Accept/Discard.

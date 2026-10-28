@@ -1,11 +1,12 @@
-import { Eye, FolderOpen, RotateCcw } from "lucide-react";
+import { Eye, FolderOpen, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { defaultLayout } from "../../../shared/layout";
 import { call } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
-import { Badge, Button, Input, Select, Spinner, Switch, Textarea } from "../../ui";
+import { Badge, Button, confirmDialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
 import { hiddenViews } from "../../workbench/actions";
 import { updateLayout, useWorkbench, workbench } from "../../workbench/store";
+import { lookForPatterns, useLearning } from "../learning/store";
 import { SettingRow, SettingsSection } from "./parts";
 
 export function LayoutSettings() {
@@ -224,6 +225,7 @@ export function LearningSettings() {
         value={l.model}
         onSave={(model) => void updateConfig({ learning: { model } })}
       />
+      <LearningActions />
       <div className="flex flex-col gap-2 px-4 py-3">
         <div className="text-sm">Never record activity containing</div>
         <div className="text-xs text-muted">
@@ -249,6 +251,62 @@ export function LearningSettings() {
         />
       </div>
     </SettingsSection>
+  );
+}
+
+function LearningActions() {
+  const state = useLearning((s) => s.state);
+  const info = useConfig((s) => s.info);
+  return (
+    <>
+      <SettingRow
+        label="Look for patterns now"
+        description={
+          state?.lastRun
+            ? `Last run ${new Date(state.lastRun).toLocaleString()}. Uses one short Claude Code request only when something repeats.`
+            : "Uses one short Claude Code request only when something repeats."
+        }
+      >
+        <Button size="sm" icon={Search} busy={state?.running} onClick={() => void lookForPatterns()}>
+          Look now
+        </Button>
+      </SettingRow>
+      <SettingRow
+        label="Recorded activity"
+        description={
+          state
+            ? `${state.stats.events} events over ${state.stats.days} days (${Math.round(state.stats.bytes / 1024)} KB), only on this computer.`
+            : ""
+        }
+      >
+        <Button
+          size="sm"
+          icon={FolderOpen}
+          onClick={() => info && void call("app.openPath", { path: `${info.jigHome}/activity` })}
+        >
+          Open
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          icon={Trash2}
+          data-testid="delete-activity"
+          onClick={async () => {
+            if (
+              await confirmDialog({
+                title: "Delete all recorded activity?",
+                message: "Suggestions you already have stay.",
+                confirmLabel: "Delete",
+                danger: true,
+              })
+            )
+              await call("learning.clearActivity");
+          }}
+        >
+          Delete all
+        </Button>
+      </SettingRow>
+    </>
   );
 }
 

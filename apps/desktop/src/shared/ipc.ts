@@ -12,6 +12,7 @@ import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type { ChatUpdate, PermissionDecision, PermissionMode, SessionMeta, SessionSnapshot } from "./engine";
 import type { Layout } from "./layout";
+import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type { JigTheme, OpenVsxExtension, ThemeSummary } from "./themes";
@@ -125,6 +126,16 @@ export interface HostMethods {
   "builds.discard": { args: { id: string }; result: BuildJob };
   /** The patch of one file a build changed. */
   "builds.diff": { args: { id: string; path: string }; result: string };
+  "learning.state": { args: void; result: LearningState };
+  /** Look for patterns now (no AI call when nothing repeats enough). */
+  "learning.runNow": { args: void; result: PatternRun };
+  "learning.answer": { args: { id: string; answer: SuggestionAnswer }; result: void };
+  "learning.clearActivity": { args: void; result: void };
+  /** Activity that happens in the renderer (add-on actions). */
+  "learning.record": {
+    args: { kind: "addon.action"; text: string; projectId?: string; detail?: Record<string, string> };
+    result: void;
+  };
 }
 
 /** Event topic → payload type. */
@@ -142,6 +153,7 @@ export interface HostEvents {
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];
   "builds.changed": BuildJob[];
+  "learning.changed": LearningState;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** A notification from the host, shown as a toast. */

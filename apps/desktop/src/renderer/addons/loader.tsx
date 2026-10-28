@@ -84,6 +84,11 @@ async function mount(addon: AddonInfo): Promise<void> {
       return undefined;
     }
     return (...args: unknown[]) => {
+      void call("learning.record", {
+        kind: "addon.action",
+        text: `${addon.id}: ${name}`,
+        detail: { addon: addon.id },
+      }).catch(() => {});
       try {
         const result = (fn as (...a: unknown[]) => unknown)(ctx, ...args);
         if (result instanceof Promise)

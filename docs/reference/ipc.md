@@ -66,6 +66,11 @@ exceptions return `internal` (and are logged).
 | `builds.start` | `{ goal, origin, targetAddonId?, originSessionId? }` | `BuildJob` | starts a builder session |
 | `builds.accept` / `builds.discard` | `{ id }` | `BuildJob` | `not_ready`, `accept_failed` |
 | `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
+| `learning.state` | — | `LearningState` | suggestions, recent runs, last/next run, activity stats (`docs/reference/learning.md`) |
+| `learning.runNow` | — | `PatternRun` | look for patterns now; no AI call when nothing repeats; `busy` |
+| `learning.answer` | `{ id, answer: "build" \| "snooze" \| "never" }` | — | |
+| `learning.clearActivity` | — | — | deletes the activity log |
+| `learning.record` | `{ kind: "addon.action", text, projectId?, detail? }` | — | activity from the renderer |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 
 ## Events
@@ -84,3 +89,4 @@ exceptions return `internal` (and are logged).
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
+| `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted |

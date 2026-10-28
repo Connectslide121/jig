@@ -19,6 +19,8 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
 | `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
+| `activity/YYYY-MM-DD.jsonl` | JSON lines `{ at, kind, text, projectId?, detail? }` | the local activity log (`docs/reference/learning.md`) |
+| `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ projects: [{ id, name, path, color, addedAt }], activeId }` |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only |

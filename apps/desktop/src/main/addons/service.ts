@@ -5,6 +5,7 @@ import { addonViewId, checkTokens, intervalMs, uiExports } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
+import { publishActivity } from "../activity/bus";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
 import { bundleHost, bundleUi } from "./bundle";
@@ -16,6 +17,13 @@ import { commitAll, ensureRepo, history, rollback } from "./repo";
 const log = logger("addons");
 
 const StateSchema = z.object({ disabled: z.array(z.string()).default([]) });
+
+/** Git operations of the built-in Git add-on, recorded in the activity log. */
+const GIT_OPERATIONS = new Set(
+  ["commit", "push", "pull", "fetch", "switchBranch", "createBranch", "stage", "unstage", "discard"].map(
+    (m) => `git:${m}`,
+  ),
+);
 
 export interface AddonServiceOptions {
   builtinDir: string | undefined;
@@ -227,6 +235,8 @@ export class AddonService {
     const l = this.get(id);
     if (!l.info.enabled) throw new JigError("disabled", `${l.info.name} is switched off`);
     if (!l.host) throw new JigError("no_host", `${l.info.name} has no host code`);
+    if (GIT_OPERATIONS.has(`${id}:${method}`))
+      publishActivity({ kind: "git", text: `git ${method}`, detail: { addon: id } });
     try {
       return await l.host.call(method, args);
     } catch (error) {
