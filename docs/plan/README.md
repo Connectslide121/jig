@@ -23,6 +23,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 9 | [Learning & suggestions](09-learning.md) | ✅ | activity log, pattern mining, "Look for patterns now", Monday 10:00 run, inbox |
 | 10 | [Extension proposals (no self-editing)](10-extension-proposals.md) | ✅ | when no slot fits, the builder proposes the missing extension point; Jig never edits its own code |
 | 11 | [Packaging & Windows](11-packaging.md) | ✅ | Windows installer, first-run checks, updates |
+| 12 | [Workspaces](12-workspaces.md) | ✅ | a folder of repositories works as one project: Git, scripts, repos and chats across all of them |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

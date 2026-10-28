@@ -6,19 +6,24 @@ import {
   PROJECT_COLORS,
   type Project,
   type ProjectInfo,
+  type ProjectRepo,
   type ProjectsFile,
   ProjectsFileSchema,
   type ProjectsState,
 } from "../../shared/projects";
 import { readJson, writeJson } from "../state/jsonStore";
+import { findRepos } from "./repos";
 
 /**
- * Registered projects (`~/.jig/projects.json`). A project is a folder, normally a git repository.
- * No Electron imports, so it is unit-tested with a temporary file.
+ * Registered projects (`~/.jig/projects.json`). A project is a folder: a git repository, or a workspace
+ * folder with repositories inside (found once and cached; `rescanRepos` refreshes). No Electron
+ * imports, so it is unit-tested with a temporary file.
  */
 export class ProjectStore {
   private data: ProjectsFile | undefined;
   private listeners = new Set<(state: ProjectsState) => void>();
+  /** Repositories found inside workspace folders, by folder path. */
+  private repoCache = new Map<string, Promise<ProjectRepo[]>>();
 
   constructor(private readonly file: string) {}
 
@@ -42,7 +47,52 @@ export class ProjectStore {
 
   async state(): Promise<ProjectsState> {
     const data = await this.load();
-    return { projects: await Promise.all(data.projects.map(describe)), activeId: data.activeId };
+    return {
+      projects: await Promise.all(data.projects.map((p) => this.describe(p))),
+      activeId: data.activeId,
+    };
+  }
+
+  private async describe(project: Project): Promise<ProjectInfo> {
+    const [folder, git] = await Promise.all([
+      stat(project.path).catch(() => undefined),
+      stat(join(project.path, ".git")).catch(() => undefined),
+    ]);
+    const exists = Boolean(folder?.isDirectory());
+    const isGitRepo = Boolean(git);
+    let repos: ProjectRepo[] = [];
+    if (exists && !isGitRepo) {
+      let found = this.repoCache.get(project.path);
+      if (!found) {
+        found = findRepos(project.path);
+        this.repoCache.set(project.path, found);
+      }
+      repos = await found;
+    }
+    const focusRepo = repos.some((r) => r.path === project.focusRepo) ? project.focusRepo : undefined;
+    return { ...project, focusRepo, exists, isGitRepo, repos };
+  }
+
+  /** Looks for the repositories inside a workspace folder again (repos added or removed). */
+  async rescanRepos(id: string): Promise<ProjectsState> {
+    const project = await this.get(id);
+    this.repoCache.delete(project.path);
+    return this.save(await this.load());
+  }
+
+  /** The repository of a workspace that Git actions and the status bar use. */
+  async setFocusRepo(id: string, repo: string | undefined): Promise<ProjectsState> {
+    const data = await this.load();
+    const project = await this.get(id);
+    if (repo) {
+      const info = await this.describe(project);
+      if (!info.repos.some((r) => r.path === repo))
+        throw new JigError("not_found", "That repository isn't part of this project");
+    }
+    return this.save({
+      ...data,
+      projects: data.projects.map((p) => (p.id === id ? { ...p, focusRepo: repo } : p)),
+    });
   }
 
   async get(id: string): Promise<Project> {
@@ -115,12 +165,4 @@ export class ProjectStore {
     );
     return this.save({ ...data, projects });
   }
-}
-
-async function describe(project: Project): Promise<ProjectInfo> {
-  const [folder, git] = await Promise.all([
-    stat(project.path).catch(() => undefined),
-    stat(join(project.path, ".git")).catch(() => undefined),
-  ]);
-  return { ...project, exists: Boolean(folder?.isDirectory()), isGitRepo: Boolean(git) };
 }

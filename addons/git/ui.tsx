@@ -8,6 +8,7 @@ import type {
 import {
   Badge,
   Button,
+  CountBadge,
   cn,
   Empty,
   FileIcon,
@@ -33,6 +34,7 @@ import {
   CloudDownload,
   Copy,
   ExternalLink,
+  FolderSearch,
   GitBranch,
   GitCompare,
   History,
@@ -84,9 +86,24 @@ async function run(
   }
 }
 
-function useProject(projectId: unknown): AddonProject | undefined {
-  const list = useProjectList();
-  return list.find((p) => p.id === projectId);
+/** A repository of a workspace project, seen as a project of its own (its path and name). */
+type RepoProject = AddonProject & { repoPath?: string };
+
+function repoView(project: RepoProject, repo: { path: string; name: string }): RepoProject {
+  return { ...project, path: repo.path, name: repo.name, isGitRepo: true, repos: [], repoPath: repo.path };
+}
+
+/** Tab params that point at a project, or at one repository of a workspace project. */
+function where(project: RepoProject): { projectId: string; repo?: string } {
+  return { projectId: project.id, ...(project.repoPath ? { repo: project.repoPath } : {}) };
+}
+
+/** The project a tab is about: the project, or one of its repositories (`params.repo`). */
+function useProject(projectId: unknown, repo?: unknown): RepoProject | undefined {
+  const project = useProjectList().find((p) => p.id === projectId);
+  if (!project || typeof repo !== "string") return project;
+  const found = project.repos.find((r) => r.path === repo);
+  return found ? repoView(project, found) : undefined;
 }
 
 /** Refreshes `reload` whenever git state changes in `cwd` (watcher) or the window regains focus. */
@@ -138,7 +155,7 @@ function FileRow({
   onChanged,
 }: {
   ctx: AddonUiContext;
-  project: AddonProject;
+  project: RepoProject;
   change: FileChange;
   group: Group;
   onChanged: () => void;
@@ -146,7 +163,7 @@ function FileRow({
   const cwd = project.path;
   const open = () =>
     ctx.openTab("diff", {
-      projectId: project.id,
+      ...where(project),
       path: change.path,
       staged: group === "staged",
       untracked: group === "untracked",
@@ -199,7 +216,7 @@ function FileRow({
     <div
       role="button"
       tabIndex={0}
-      data-testid={`git-file-${group}-${change.path}`}
+      data-testid={`git-file-${group}-${project.repoPath ? `${project.name}/` : ""}${change.path}`}
       onClick={open}
       onKeyDown={(e) => e.key === "Enter" && open()}
       onContextMenu={(e) => {
@@ -257,7 +274,7 @@ function ChangeGroup({
   title: string;
   changes: FileChange[];
   group: Group;
-  project: AddonProject;
+  project: RepoProject;
   onChanged: () => void;
   actions?: React.ReactNode;
 }) {
@@ -295,7 +312,7 @@ function ChangeGroup({
 
 function branchMenu(
   ctx: AddonUiContext,
-  project: AddonProject,
+  project: RepoProject,
   branch: Branch,
   reload: () => void,
 ): MenuItemInput[] {
@@ -305,7 +322,7 @@ function branchMenu(
       label: "History",
       icon: "history",
       onSelect: () =>
-        ctx.openTab("history", { projectId: project.id, ref: branch.name, title: `History: ${branch.name}` }),
+        ctx.openTab("history", { ...where(project), ref: branch.name, title: `History: ${branch.name}` }),
     },
     ...(!branch.current
       ? [
@@ -324,7 +341,7 @@ function branchMenu(
             icon: "git-compare",
             onSelect: () =>
               ctx.openTab("compare", {
-                projectId: project.id,
+                ...where(project),
                 branch: branch.name,
                 title: `Compare: ${branch.name}`,
               }),
@@ -349,7 +366,7 @@ function BranchList({
   branches,
   reload,
 }: {
-  project: AddonProject;
+  project: RepoProject;
   branches: Branch[];
   reload: () => void;
 }) {
@@ -363,10 +380,8 @@ function BranchList({
       role="button"
       tabIndex={0}
       data-testid={`git-branch-${b.name}`}
-      onClick={() =>
-        ctx.openTab("history", { projectId: project.id, ref: b.name, title: `History: ${b.name}` })
-      }
-      onKeyDown={(e) => e.key === "Enter" && ctx.openTab("history", { projectId: project.id, ref: b.name })}
+      onClick={() => ctx.openTab("history", { ...where(project), ref: b.name, title: `History: ${b.name}` })}
+      onKeyDown={(e) => e.key === "Enter" && ctx.openTab("history", { ...where(project), ref: b.name })}
       onContextMenu={(e) => {
         e.preventDefault();
         ctx.menu(branchMenu(ctx, project, b, reload), e.nativeEvent);
@@ -416,7 +431,7 @@ function CommitBox({
   status,
   reload,
 }: {
-  project: AddonProject;
+  project: RepoProject;
   status: Status;
   reload: () => void;
 }) {
@@ -459,11 +474,139 @@ function CommitBox({
   );
 }
 
+/** The commit box and the change groups of one repository. */
+function RepoChanges({
+  ctx,
+  project,
+  status,
+  reload,
+}: {
+  ctx: AddonUiContext;
+  project: RepoProject;
+  status: Status;
+  reload: () => void;
+}) {
+  const cwd = project.path;
+  const changes = changeCount(status);
+  return (
+    <>
+      {changes > 0 ? (
+        <CommitBox project={project} status={status} reload={reload} />
+      ) : (
+        <div className="px-3 py-2 text-xs text-muted">No changes.</div>
+      )}
+      <div className="px-1">
+        <ChangeGroup
+          title="Conflicts"
+          changes={status.conflicted}
+          group="conflicted"
+          project={project}
+          onChanged={reload}
+        />
+        <ChangeGroup
+          title="Staged"
+          changes={status.staged}
+          group="staged"
+          project={project}
+          onChanged={reload}
+          actions={
+            <IconButton
+              icon={Minus}
+              size="sm"
+              label="Unstage all"
+              onClick={() =>
+                void run(
+                  ctx,
+                  "Unstaged",
+                  "unstage",
+                  { cwd, paths: status.staged.map((c) => c.path) },
+                  true,
+                ).then(reload)
+              }
+            />
+          }
+        />
+        <ChangeGroup
+          title="Changes"
+          changes={status.unstaged}
+          group="unstaged"
+          project={project}
+          onChanged={reload}
+          actions={
+            <IconButton
+              icon={Plus}
+              size="sm"
+              label="Stage all"
+              onClick={() =>
+                void run(
+                  ctx,
+                  "Staged",
+                  "stage",
+                  { cwd, paths: status.unstaged.map((c) => c.path) },
+                  true,
+                ).then(reload)
+              }
+            />
+          }
+        />
+        <ChangeGroup
+          title="Untracked"
+          changes={status.untracked}
+          group="untracked"
+          project={project}
+          onChanged={reload}
+          actions={
+            <IconButton
+              icon={Plus}
+              size="sm"
+              label="Stage all"
+              onClick={() =>
+                void run(
+                  ctx,
+                  "Staged",
+                  "stage",
+                  { cwd, paths: status.untracked.map((c) => c.path) },
+                  true,
+                ).then(reload)
+              }
+            />
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+const changeCount = (status: Status) =>
+  status.staged.length + status.unstaged.length + status.untracked.length + status.conflicted.length;
+
 export function GitView({ ctx }: AddonComponentProps) {
   const project = useActiveProject();
-  const cwd = project?.path;
-  const st = useHostCall<Status>("status", { cwd }, { skip: !cwd || !project?.isGitRepo });
-  const br = useHostCall<Branch[]>("branches", { cwd }, { skip: !cwd || !project?.isGitRepo });
+  if (!project)
+    return (
+      <Empty icon={GitBranch} title="No project">
+        Pick a project in the top bar.
+      </Empty>
+    );
+  if (project.isGitRepo) return <RepoPanel ctx={ctx} project={project} />;
+  if (project.repos.length > 0) return <WorkspaceGit ctx={ctx} project={project} />;
+  return (
+    <Empty icon={GitBranch} title={`${project.name} is not a git repository`}>
+      <span className="flex flex-col items-center gap-2">
+        No repositories were found inside it either (Jig looks two folders deep).
+        <Button size="sm" icon={RefreshCw} onClick={() => void ctx.projects.rescanRepos(project.id)}>
+          Look again
+        </Button>
+      </span>
+    </Empty>
+  );
+}
+
+/** One repository: branch bar, commit box, changes and branches. */
+function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject }) {
+  const cwd = project.path;
+  const st = useHostCall<Status>("status", { cwd });
+  const br = useHostCall<Branch[]>("branches", { cwd });
   const reload = useMemo(
     () => () => {
       void st.reload();
@@ -471,20 +614,11 @@ export function GitView({ ctx }: AddonComponentProps) {
     },
     [st.reload, br.reload],
   );
-  useLiveRefresh(project?.isGitRepo ? cwd : undefined, reload);
-  if (!project)
-    return (
-      <Empty icon={GitBranch} title="No project">
-        Pick a project in the top bar.
-      </Empty>
-    );
-  if (!project.isGitRepo) return <Empty icon={GitBranch} title={`${project.name} is not a git repository`} />;
+  useLiveRefresh(cwd, reload);
   if (st.error) return <div className="p-3 text-xs text-danger">{st.error}</div>;
   const status = st.data;
   if (!status) return <Spinner className="m-3" />;
   const b = status.branch;
-  const changes =
-    status.staged.length + status.unstaged.length + status.untracked.length + status.conflicted.length;
   return (
     <div className="flex h-full flex-col" data-testid="git-view">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line px-2">
@@ -524,7 +658,7 @@ export function GitView({ ctx }: AddonComponentProps) {
           label="History"
           onClick={() =>
             ctx.openTab("history", {
-              projectId: project.id,
+              ...where(project),
               ref: b.head ?? "HEAD",
               title: `History: ${b.head ?? "HEAD"}`,
             })
@@ -533,90 +667,246 @@ export function GitView({ ctx }: AddonComponentProps) {
         <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={reload} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
-        {changes > 0 ? (
-          <CommitBox project={project} status={status} reload={reload} />
-        ) : (
-          <div className="px-3 py-2 text-xs text-muted">No changes.</div>
-        )}
-        <div className="px-1">
-          <ChangeGroup
-            title="Conflicts"
-            changes={status.conflicted}
-            group="conflicted"
-            project={project}
-            onChanged={reload}
-          />
-          <ChangeGroup
-            title="Staged"
-            changes={status.staged}
-            group="staged"
-            project={project}
-            onChanged={reload}
-            actions={
-              <IconButton
-                icon={Minus}
-                size="sm"
-                label="Unstage all"
-                onClick={() =>
-                  void run(
-                    ctx,
-                    "Unstaged",
-                    "unstage",
-                    { cwd, paths: status.staged.map((c) => c.path) },
-                    true,
-                  ).then(reload)
-                }
-              />
-            }
-          />
-          <ChangeGroup
-            title="Changes"
-            changes={status.unstaged}
-            group="unstaged"
-            project={project}
-            onChanged={reload}
-            actions={
-              <IconButton
-                icon={Plus}
-                size="sm"
-                label="Stage all"
-                onClick={() =>
-                  void run(
-                    ctx,
-                    "Staged",
-                    "stage",
-                    { cwd, paths: status.unstaged.map((c) => c.path) },
-                    true,
-                  ).then(reload)
-                }
-              />
-            }
-          />
-          <ChangeGroup
-            title="Untracked"
-            changes={status.untracked}
-            group="untracked"
-            project={project}
-            onChanged={reload}
-            actions={
-              <IconButton
-                icon={Plus}
-                size="sm"
-                label="Stage all"
-                onClick={() =>
-                  void run(
-                    ctx,
-                    "Staged",
-                    "stage",
-                    { cwd, paths: status.untracked.map((c) => c.path) },
-                    true,
-                  ).then(reload)
-                }
-              />
-            }
-          />
-        </div>
+        <RepoChanges ctx={ctx} project={project} status={status} reload={reload} />
         {br.data && <BranchList project={project} branches={br.data} reload={reload} />}
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------------------------------------
+// Workspace: every repository of a folder of repositories (D-075)
+
+type RepoStatus = { cwd: string; status?: Status; error?: string };
+
+/** Reloads when git state changes in any of `cwds` (watchers) or the window regains focus. */
+function useLiveRefreshAll(cwds: string[], reload: () => void) {
+  const ctx = useAddon();
+  const key = cwds.join("\n");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for `cwds`.
+  useEffect(() => {
+    for (const cwd of cwds) void ctx.host.call("watchRepo", { cwd }).catch(() => {});
+    const onFocus = () => reload();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [key, ctx, reload]);
+  useAddonEvent("changed", (payload) => {
+    if (cwds.includes((payload as { cwd?: string })?.cwd ?? "")) reload();
+  });
+}
+
+function repoMenu(
+  ctx: AddonUiContext,
+  repo: RepoProject,
+  status: Status | undefined,
+  reload: () => void,
+): Array<MenuItemInput | { separator: true }> {
+  const cwd = repo.path;
+  const head = status?.branch.head ?? "HEAD";
+  return [
+    {
+      label: "History",
+      icon: "history",
+      onSelect: () => ctx.openTab("history", { ...where(repo), ref: head, title: `History: ${repo.name}` }),
+    },
+    {
+      label: "Fetch",
+      icon: "cloud-download",
+      onSelect: () => void run(ctx, `Fetched ${repo.name}`, "fetch", { cwd }).then(reload),
+    },
+    {
+      label: "Pull",
+      icon: "arrow-down-to-line",
+      onSelect: () => void run(ctx, `Pulled ${repo.name}`, "pull", { cwd }).then(reload),
+    },
+    {
+      label: "Push",
+      icon: "arrow-up-from-line",
+      onSelect: () => void run(ctx, `Pushed ${repo.name}`, "push", { cwd }).then(reload),
+    },
+    { separator: true },
+    {
+      label: "New chat in this repository",
+      icon: "message-square-plus",
+      onSelect: () => void ctx.openChat({ projectId: repo.id, cwd }),
+    },
+    {
+      label:
+        repo.focusRepo === cwd
+          ? "Focused (status bar and Git actions)"
+          : "Focus (status bar and Git actions)",
+      icon: "crosshair",
+      checked: repo.focusRepo === cwd,
+      onSelect: () => void ctx.projects.setFocusRepo(repo.id, cwd),
+    },
+    { label: "Copy path", icon: "copy", onSelect: () => ctx.copy(cwd) },
+    { label: "Open folder", icon: "folder-open", onSelect: () => ctx.openPath(cwd) },
+  ];
+}
+
+function RepoSection({
+  ctx,
+  repo,
+  entry,
+  reload,
+  open,
+  onToggle,
+}: {
+  ctx: AddonUiContext;
+  repo: RepoProject;
+  entry: RepoStatus | undefined;
+  reload: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const status = entry?.status;
+  const count = status ? changeCount(status) : 0;
+  const focused = repo.focusRepo === repo.path;
+  const b = status?.branch;
+  return (
+    <div className="border-b border-line last:border-b-0" data-testid={`git-repo-${repo.name}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => {
+          onToggle();
+          if (!focused) void ctx.projects.setFocusRepo(repo.id, repo.path);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && onToggle()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          ctx.menu(repoMenu(ctx, repo, status, reload), e.nativeEvent, {
+            slot: "context.repo",
+            project: repo,
+          });
+        }}
+        className="group flex h-8 cursor-default items-center gap-1.5 px-2 text-xs hover:bg-hover"
+      >
+        {open ? (
+          <ChevronDown className="size-3.5 shrink-0 text-hint" />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0 text-hint" />
+        )}
+        <span
+          className={cn("min-w-0 truncate font-medium", focused ? "text-accent" : "text-fg")}
+          title={repo.path}
+        >
+          {repo.name}
+        </span>
+        {b && (
+          <button
+            type="button"
+            className="flex min-w-0 shrink items-center gap-0.5 rounded-sm px-1 text-muted hover:bg-active hover:text-fg"
+            title="Switch branch"
+            onClick={(e) => {
+              e.stopPropagation();
+              void switchBranchMenu(ctx, repo, e.currentTarget, reload);
+            }}
+            data-testid={`git-repo-branch-${repo.name}`}
+          >
+            <GitBranch className="size-3 shrink-0" />
+            <span className="truncate">{b.head ?? "—"}</span>
+          </button>
+        )}
+        {b && b.ahead > 0 && <span className="shrink-0 text-2xs text-muted">↑{b.ahead}</span>}
+        {b && b.behind > 0 && <span className="shrink-0 text-2xs text-muted">↓{b.behind}</span>}
+        <span className="flex-1" />
+        {entry?.error && <Badge tone="danger">error</Badge>}
+        {!status && !entry?.error && <Spinner size="sm" />}
+        <span className="hidden items-center group-hover:flex">
+          <IconButton
+            icon={MoreHorizontal}
+            size="sm"
+            label={`${repo.name} options`}
+            onClick={(e) => {
+              e.stopPropagation();
+              ctx.menu(repoMenu(ctx, repo, status, reload), e.currentTarget);
+            }}
+          />
+        </span>
+        {count > 0 && <CountBadge count={count} />}
+      </div>
+      {open && (
+        <div className="pb-1">
+          {entry?.error ? (
+            <div className="px-3 py-1 text-xs text-danger">{entry.error}</div>
+          ) : status ? (
+            <RepoChanges ctx={ctx} project={repo} status={status} reload={reload} />
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A workspace project: every repository's changes in one list, changed ones first (like VS Code's Source Control). */
+function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonProject }) {
+  const repos = useMemo(() => project.repos.map((r) => repoView(project, r)), [project]);
+  const cwds = useMemo(() => repos.map((r) => r.path), [repos]);
+  const all = useHostCall<RepoStatus[]>("statusAll", { cwds });
+  const reload = all.reload;
+  useLiveRefreshAll(cwds, reload);
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const byCwd = new Map((all.data ?? []).map((e) => [e.cwd, e]));
+  const changed = (r: RepoProject) => {
+    const st = byCwd.get(r.path)?.status;
+    return st ? changeCount(st) > 0 || st.branch.ahead > 0 || st.branch.behind > 0 : false;
+  };
+  const sorted = [...repos].sort((a, b) => Number(changed(b)) - Number(changed(a)));
+  const dirty = repos.filter((r) => {
+    const st = byCwd.get(r.path)?.status;
+    return st && changeCount(st) > 0;
+  }).length;
+  const fetchAll = async () => {
+    setBusy(true);
+    await Promise.all(cwds.map((cwd) => ctx.host.call("fetch", { cwd }).catch(() => undefined)));
+    setBusy(false);
+    ctx.notify({ title: `Fetched ${cwds.length} repositories`, tone: "success" });
+    reload();
+  };
+  return (
+    <div className="flex h-full flex-col" data-testid="git-workspace">
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line px-2">
+        <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="font-medium">{repos.length} repositories</span>
+          <span className="text-muted">{all.data ? ` · ${dirty} with changes` : ""}</span>
+        </span>
+        <IconButton
+          icon={CloudDownload}
+          size="sm"
+          label="Fetch all"
+          disabled={busy}
+          onClick={() => void fetchAll()}
+        />
+        <IconButton
+          icon={FolderSearch}
+          size="sm"
+          label="Look for repositories again"
+          onClick={() => void ctx.projects.rescanRepos(project.id)}
+        />
+        <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={reload} />
+      </div>
+      {all.error && <div className="p-3 text-xs text-danger">{all.error}</div>}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {sorted.map((repo) => {
+          const entry = byCwd.get(repo.path);
+          const st = entry?.status;
+          const auto = st ? changeCount(st) > 0 : false;
+          const open = toggled[repo.path] ?? auto;
+          return (
+            <RepoSection
+              key={repo.path}
+              ctx={ctx}
+              repo={repo}
+              entry={entry}
+              reload={reload}
+              open={open}
+              onToggle={() => setToggled((t) => ({ ...t, [repo.path]: !open }))}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -624,7 +914,7 @@ export function GitView({ ctx }: AddonComponentProps) {
 
 async function switchBranchMenu(
   ctx: AddonUiContext,
-  project: AddonProject,
+  project: RepoProject,
   at: HTMLElement,
   reload?: () => void,
 ) {
@@ -676,10 +966,10 @@ async function switchBranchMenu(
 // Status bar
 
 export function BranchStatus({ ctx }: AddonComponentProps) {
-  const project = useActiveProject();
-  const st = useHostCall<Status>("status", { cwd: project?.path }, { skip: !project?.isGitRepo });
-  useLiveRefresh(project?.isGitRepo ? project.path : undefined, st.reload);
-  if (!project?.isGitRepo || !st.data) return null;
+  const project = focusOf(useActiveProject());
+  const st = useHostCall<Status>("status", { cwd: project?.path }, { skip: !project });
+  useLiveRefresh(project?.path, st.reload);
+  if (!project || !st.data) return null;
   const b = st.data.branch;
   return (
     <button
@@ -688,7 +978,8 @@ export function BranchStatus({ ctx }: AddonComponentProps) {
       onClick={() => ctx.showView("git")}
       data-testid="git-status-branch"
     >
-      <GitBranch className="size-3" /> {b.head}
+      <GitBranch className="size-3" /> {project.repoPath ? `${project.name}: ` : ""}
+      {b.head}
       {b.ahead > 0 && <span>↑{b.ahead}</span>}
       {b.behind > 0 && <span>↓{b.behind}</span>}
     </button>
@@ -698,8 +989,8 @@ export function BranchStatus({ ctx }: AddonComponentProps) {
 // ------------------------------------------------------------------------------------------------
 // History tab
 
-function CommitRow({ ctx, project, commit }: { ctx: AddonUiContext; project: AddonProject; commit: Commit }) {
-  const open = () => ctx.openTab("commit", { projectId: project.id, hash: commit.hash, title: commit.short });
+function CommitRow({ ctx, project, commit }: { ctx: AddonUiContext; project: RepoProject; commit: Commit }) {
+  const open = () => ctx.openTab("commit", { ...where(project), hash: commit.hash, title: commit.short });
   return (
     <div
       role="button"
@@ -737,13 +1028,12 @@ function CommitRow({ ctx, project, commit }: { ctx: AddonUiContext; project: Add
   );
 }
 
-function commitMenu(ctx: AddonUiContext, project: AddonProject, commit: Commit): MenuItemInput[] {
+function commitMenu(ctx: AddonUiContext, project: RepoProject, commit: Commit): MenuItemInput[] {
   return [
     {
       label: "Show commit",
       icon: "git-commit-horizontal",
-      onSelect: () =>
-        ctx.openTab("commit", { projectId: project.id, hash: commit.hash, title: commit.short }),
+      onSelect: () => ctx.openTab("commit", { ...where(project), hash: commit.hash, title: commit.short }),
     },
     { label: "Copy hash", icon: "copy", onSelect: () => ctx.copy(commit.hash) },
     {
@@ -754,7 +1044,7 @@ function commitMenu(ctx: AddonUiContext, project: AddonProject, commit: Commit):
   ];
 }
 
-async function openOnRemote(ctx: AddonUiContext, project: AddonProject, commit: Commit) {
+async function openOnRemote(ctx: AddonUiContext, project: RepoProject, commit: Commit) {
   const remote = await ctx.host.call<string | undefined>("remoteUrl", { cwd: project.path });
   const url = remote && commitUrl(remote, commit.hash);
   if (url) ctx.openExternal(url);
@@ -764,7 +1054,7 @@ async function openOnRemote(ctx: AddonUiContext, project: AddonProject, commit: 
 const PAGE = 200;
 
 export function HistoryTab({ ctx, params }: AddonTabProps) {
-  const project = useProject(params.projectId);
+  const project = useProject(params.projectId, params.repo);
   const ref = String(params.ref ?? "HEAD");
   const [filter, setFilter] = useState("");
   const [applied, setApplied] = useState("");
@@ -847,7 +1137,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
 }
 
 export function CommitTab({ ctx, params }: AddonTabProps) {
-  const project = useProject(params.projectId);
+  const project = useProject(params.projectId, params.repo);
   const hash = String(params.hash ?? "");
   const { data, error } = useHostCall<{ commit: Commit; files: NumstatEntry[] }>(
     "show",
@@ -897,9 +1187,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                   key={p}
                   type="button"
                   className="font-mono text-xs text-accent hover:underline"
-                  onClick={() =>
-                    ctx.openTab("commit", { projectId: project.id, hash: p, title: p.slice(0, 7) })
-                  }
+                  onClick={() => ctx.openTab("commit", { ...where(project), hash: p, title: p.slice(0, 7) })}
                 >
                   {p.slice(0, 7)}
                 </button>
@@ -924,7 +1212,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                 data-testid={`git-commit-file-${f.path}`}
                 onClick={() =>
                   ctx.openTab("diff", {
-                    projectId: project.id,
+                    ...where(project),
                     path: f.path,
                     commit: commit.hash,
                     title: `${short(f.path)} @ ${commit.short}`,
@@ -933,7 +1221,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
                 }
                 onKeyDown={(e) =>
                   e.key === "Enter" &&
-                  ctx.openTab("diff", { projectId: project.id, path: f.path, commit: commit.hash })
+                  ctx.openTab("diff", { ...where(project), path: f.path, commit: commit.hash })
                 }
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -977,7 +1265,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
 // Diff tab
 
 export function DiffTab({ ctx, params }: AddonTabProps) {
-  const project = useProject(params.projectId);
+  const project = useProject(params.projectId, params.repo);
   const args = {
     cwd: project?.path,
     path: String(params.path ?? ""),
@@ -1065,7 +1353,7 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
 // Compare tab
 
 export function CompareTab({ ctx, params }: AddonTabProps) {
-  const project = useProject(params.projectId);
+  const project = useProject(params.projectId, params.repo);
   const branch = String(params.branch ?? "");
   const { data, error } = useHostCall<{
     current: string;
@@ -1110,8 +1398,27 @@ export function CompareTab({ ctx, params }: AddonTabProps) {
 // ------------------------------------------------------------------------------------------------
 // Tools-menu actions and menus
 
-function activeRepo(ctx: AddonUiContext): AddonProject | undefined {
+/** The repository Git actions use: the active project, or a workspace's focus repository. */
+function focusOf(project: AddonProject | undefined): RepoProject | undefined {
+  if (!project) return undefined;
+  if (project.isGitRepo) return project;
+  const repo = project.repos.find((r) => r.path === project.focusRepo);
+  return repo ? repoView(project, repo) : undefined;
+}
+
+function activeRepo(ctx: AddonUiContext): RepoProject | undefined {
   const project = ctx.projects.active();
+  const focus = focusOf(project);
+  if (focus) return focus;
+  if (project && project.repos.length > 0) {
+    ctx.showView("git");
+    ctx.notify({
+      title: "Pick a repository first",
+      message: "Click its name in the Git view.",
+      tone: "info",
+    });
+    return undefined;
+  }
   if (!project?.isGitRepo) {
     ctx.notify({
       title: project ? `${project.name} is not a git repository` : "No project selected",
@@ -1131,7 +1438,7 @@ export async function openHistory(ctx: AddonUiContext) {
   if (!project) return;
   const status = await ctx.host.call<Status>("status", { cwd: project.path });
   const ref = status.branch.head ?? "HEAD";
-  ctx.openTab("history", { projectId: project.id, ref, title: `History: ${ref}` });
+  ctx.openTab("history", { ...where(project), ref, title: `History: ${ref}` });
 }
 
 export function openProjectHistory(ctx: AddonUiContext, target: { project: AddonProject }) {

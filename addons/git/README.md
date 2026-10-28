@@ -21,3 +21,10 @@ instead of a text diff — the working copy against the index, staged against `H
 against its parent — with their pixel and file sizes; the image button opens the file in Jig's image
 tab. The two sides of a text diff can be resized by dragging the line between them.
 
+**Workspaces** (a project that is a folder of repositories, D-075): the view lists every repository
+in one panel — changed ones first and open, each with its branch (click to switch), ↑↓, change count,
+its own commit box and change groups; right-click or `⋯` for History, Fetch, Pull, Push, **New chat in
+this repository**, Focus, Copy path. Clicking a repository makes it the **focus repository**: the status
+bar shows `repo: branch`, and the Tools-menu Git actions (Fetch, Pull, Push, Switch/Create branch,
+History) use it. **Fetch all** and **Look for repositories again** are in the header.
+

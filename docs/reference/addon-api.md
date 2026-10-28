@@ -55,7 +55,9 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `addon` | `{ id, name }` |
 | `host.call(method, args)` | calls an export of `host.ts` |
 | `on(topic, listener)` | events from `api.emit` in host code |
-| `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists }` |
+| `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }` — `repos` lists the repositories inside a workspace project (`[{ path, name }]`, empty for a single repository) |
+| `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | workspaces: set the focus repository (status bar, Git actions); look for repositories again |
+| `openChat({ projectId?, cwd? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository) |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |

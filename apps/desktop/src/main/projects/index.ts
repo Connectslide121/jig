@@ -39,4 +39,6 @@ export function startProjects(): void {
     return state;
   });
   handle("projects.reorder", ({ ids }) => projectStore().reorder(ids));
+  handle("projects.rescanRepos", ({ id }) => projectStore().rescanRepos(id));
+  handle("projects.setFocusRepo", ({ id, repo }) => projectStore().setFocusRepo(id, repo));
 }

@@ -122,8 +122,18 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
   }
 }
 
-export async function discoverScripts(root: string, platform = process.platform): Promise<Script[]> {
+/**
+ * Scripts of a project folder. For a workspace, `repos` are its repositories: each is searched from its
+ * own root too, so scripts deep inside a repository (`client-a/api/src/functions`) are found.
+ */
+export async function discoverScripts(
+  root: string,
+  platform = process.platform,
+  repos: string[] = [],
+): Promise<Script[]> {
   const out: Script[] = [];
   await scan(root, root, 0, out, platform);
-  return out.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name));
+  for (const repo of repos) await scan(root, repo, 0, out, platform);
+  const unique = [...new Map(out.map((s) => [s.id, s])).values()];
+  return unique.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name));
 }

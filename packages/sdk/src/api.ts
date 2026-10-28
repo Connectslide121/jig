@@ -10,6 +10,13 @@ export interface AddonProject {
   path: string;
   isGitRepo: boolean;
   exists: boolean;
+  /**
+   * A workspace (a folder that isn't a repository) lists the git repositories inside it; empty for a
+   * single repository. `name` is the path relative to the project (`client-a/api`).
+   */
+  repos: Array<{ path: string; name: string }>;
+  /** Workspaces: the repository Git actions and the status bar use. */
+  focusRepo?: string;
 }
 
 export type NotifyTone = "info" | "success" | "warning" | "danger";
@@ -58,7 +65,13 @@ export interface AddonUiContext {
     active(): AddonProject | undefined;
     list(): AddonProject[];
     setActive(projectId: string): Promise<void>;
+    /** Workspaces: sets the repository Git actions and the status bar use. */
+    setFocusRepo(projectId: string, repoPath: string | undefined): Promise<void>;
+    /** Workspaces: looks for the repositories inside the folder again. */
+    rescanRepos(projectId: string): Promise<void>;
   };
+  /** Starts a new chat and opens it: in the active project (or `projectId`), in `cwd` if given (a folder inside it). */
+  openChat(options?: { projectId?: string; cwd?: string }): Promise<void>;
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
   /** Opens an image file (absolute path) in Jig's image tab. */

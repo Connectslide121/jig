@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarize } from "./host";
+import { repoItems, summarize } from "./host";
 
 describe("summarize", () => {
   it("reads branch, upstream, ahead/behind and counts changed files", () => {
@@ -21,5 +21,28 @@ describe("summarize", () => {
       behind: 0,
       dirty: 3,
     });
+  });
+});
+
+describe("repoItems", () => {
+  it("lists repository projects and the repositories inside workspace projects", () => {
+    const base = { exists: true, repos: [] as Array<{ path: string; name: string }> };
+    expect(
+      repoItems([
+        { ...base, id: "a", name: "shop", path: "/r/shop", isGitRepo: true },
+        {
+          ...base,
+          id: "w",
+          name: "repos",
+          path: "/r",
+          isGitRepo: false,
+          repos: [{ path: "/r/client-a/api", name: "client-a/api" }],
+        },
+        { ...base, id: "x", name: "gone", path: "/gone", isGitRepo: true, exists: false },
+      ]),
+    ).toEqual([
+      { projectId: "a", name: "shop", path: "/r/shop" },
+      { projectId: "w", name: "repos/client-a/api", path: "/r/client-a/api", repoPath: "/r/client-a/api" },
+    ]);
   });
 });

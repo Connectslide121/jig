@@ -145,9 +145,12 @@ saying "make me a button that…" in any chat starts the builder. These are the 
 
 ## 5. Projects, sessions and terminals
 
-- **Project** = a folder, normally a git repo. Registered in `projects.json` with a display name,
-  colour and icon. The project switcher lists them; every view is scoped to the active project unless
-  it is a cross-project view (e.g. Repos overview).
+- **Project** = a folder: a git repo, or a **workspace** — a folder of repositories (D-075). Jig finds
+  the repositories inside a workspace (two levels deep, cached) and exposes them as `ProjectInfo.repos`
+  / `AddonProject.repos`; the Git view shows all of them, scripts are searched in each, and a
+  **focus repository** (`focusRepo`) drives the status bar and Git actions. Registered in
+  `projects.json` with a display name and colour. The project switcher lists them; every view is
+  scoped to the active project unless it is a cross-project view (e.g. Repos overview).
 - **Session** = one Claude Code conversation in a project, optionally in its own **git worktree**
   (_planned_) so parallel agents don't collide. Several sessions run at once; the session list shows
   status (idle / working / needs permission / error) for every project at a glance.

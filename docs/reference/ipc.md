@@ -37,15 +37,17 @@ exceptions return `internal` (and are logged).
 | `window.minimize` / `window.toggleMaximize` / `window.close` | — | — | for custom window controls |
 | `layout.get` | — | `Layout` | `~/.jig/layout.json` (see `docs/reference/layout.md`) |
 | `layout.set` | `Layout` | `Layout` | saves the renderer's layout (no event back to the renderer) |
-| `projects.list` | — | `ProjectsState` | `{ projects: ProjectInfo[], activeId }`; `ProjectInfo` adds `exists`, `isGitRepo` |
+| `projects.list` | — | `ProjectsState` | `{ projects: ProjectInfo[], activeId }`; `ProjectInfo` adds `exists`, `isGitRepo`, `repos` (the repositories inside a workspace folder) |
 | `projects.add` | `{ path? }` | `Project \| undefined` | without `path`: folder picker; adding a known folder returns it; `not_a_folder` |
 | `projects.update` | `{ id, name?, color? }` | `ProjectsState` | colour is a token name (`accent`, `info`, `success`, `warning`, `danger`, `muted`) |
 | `projects.remove` | `{ id }` | `ProjectsState` | forgets the project; the folder is never touched |
 | `projects.setActive` | `{ id }` | `ProjectsState` | |
 | `projects.reorder` | `{ ids }` | `ProjectsState` | |
+| `projects.rescanRepos` | `{ id }` | `ProjectsState` | workspaces: look for the repositories inside again (the list is cached) |
+| `projects.setFocusRepo` | `{ id, repo? }` | `ProjectsState` | workspaces: the repository the status bar and Git actions use; `not_found` if it isn't one of the project's |
 | `sessions.list` | — | `SessionMeta[]` | newest first (see `docs/reference/engine.md`) |
 | `sessions.get` | `{ id }` | `SessionSnapshot` | `{ meta, items, queue }` |
-| `sessions.create` | `{ projectId, title? }` | `SessionMeta` | runs in the project folder with the default model/permission mode |
+| `sessions.create` | `{ projectId, title?, cwd? }` | `SessionMeta` | runs in the project folder (or `cwd`, a folder inside it — e.g. one repository of a workspace) with the default model/permission mode |
 | `sessions.send` | `{ id, text, attachments? }` | — | starts a turn, or queues while Claude works; `attachments` come from `sessions.addAttachment` (text may be empty then) |
 | `sessions.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment { path, mime, name, kind }` | keeps pasted/dropped bytes (base64) or copies a file into `attachments/<session>/`: images, PDFs, .docx/.xlsx/.pptx, text files (`docs/reference/engine.md` → Attachments); `not_supported`, `too_large`, `not_found`, `unreadable` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |

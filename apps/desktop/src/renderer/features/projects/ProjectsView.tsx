@@ -1,4 +1,4 @@
-import { FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
+import { FolderGit2, FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { addProject } from "../../workbench/actions";
@@ -39,6 +39,16 @@ export function ProjectsView() {
             <>
               {!project.exists && <FolderX className="size-3.5 text-danger" aria-label="Folder not found" />}
               {project.isGitRepo && <GitBranch className="size-3.5" aria-label="Git repository" />}
+              {project.repos.length > 0 && (
+                <span
+                  className="flex items-center gap-0.5 text-2xs text-hint"
+                  title={`Workspace: ${project.repos.length} git repositories inside`}
+                  data-testid={`project-repos-${project.name}`}
+                >
+                  <FolderGit2 className="size-3.5" />
+                  {project.repos.length}
+                </span>
+              )}
               <IconButton
                 icon={MoreHorizontal}
                 label="Project options"

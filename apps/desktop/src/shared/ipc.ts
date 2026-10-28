@@ -94,10 +94,15 @@ export interface HostMethods {
   "projects.update": { args: { id: string; name?: string; color?: ProjectColor }; result: ProjectsState };
   "projects.remove": { args: { id: string }; result: ProjectsState };
   "projects.setActive": { args: { id: string | undefined }; result: ProjectsState };
+  /** Workspaces: look for the repositories inside the folder again. */
+  "projects.rescanRepos": { args: { id: string }; result: ProjectsState };
+  /** Workspaces: the repository Git actions and the status bar use (`undefined` = none). */
+  "projects.setFocusRepo": { args: { id: string; repo?: string }; result: ProjectsState };
   "projects.reorder": { args: { ids: string[] }; result: ProjectsState };
   "sessions.list": { args: void; result: SessionMeta[] };
   "sessions.get": { args: { id: string }; result: SessionSnapshot };
-  "sessions.create": { args: { projectId: string; title?: string }; result: SessionMeta };
+  /** `cwd`: a folder inside the project (e.g. one repository of a workspace); default the project folder. */
+  "sessions.create": { args: { projectId: string; title?: string; cwd?: string }; result: SessionMeta };
   /** Sends a message (with files kept by `sessions.addAttachment`), or queues it while Claude works. */
   "sessions.send": { args: { id: string; text: string; attachments?: ChatAttachment[] }; result: void };
   /**

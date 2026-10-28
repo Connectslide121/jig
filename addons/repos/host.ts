@@ -6,6 +6,8 @@ export interface RepoState {
   projectId: string;
   name: string;
   path: string;
+  /** Set for a repository inside a workspace project (its path). */
+  repoPath?: string;
   branch?: string;
   upstream?: string;
   ahead: number;
@@ -53,8 +55,26 @@ export function summarize(
   return state;
 }
 
-async function inspect(api: AddonHostApi, p: AddonProject): Promise<RepoState> {
-  const base: RepoState = { projectId: p.id, name: p.name, path: p.path, ahead: 0, behind: 0, dirty: 0 };
+type RepoItem = { projectId: string; name: string; path: string; repoPath?: string };
+
+/** Every repository: projects that are repositories, and the repositories inside workspace projects. */
+export function repoItems(projects: AddonProject[]): RepoItem[] {
+  return projects
+    .filter((p) => p.exists)
+    .flatMap((p): RepoItem[] =>
+      p.isGitRepo
+        ? [{ projectId: p.id, name: p.name, path: p.path }]
+        : (p.repos ?? []).map((r) => ({
+            projectId: p.id,
+            name: `${p.name}/${r.name}`,
+            path: r.path,
+            repoPath: r.path,
+          })),
+    );
+}
+
+async function inspect(api: AddonHostApi, p: RepoItem): Promise<RepoState> {
+  const base: RepoState = { ...p, ahead: 0, behind: 0, dirty: 0 };
   try {
     const out = await git(api, p.path, ["status", "--porcelain=v2", "--branch", "-z"]);
     const gitDir = (await git(api, p.path, ["rev-parse", "--absolute-git-dir"])).trim();
@@ -81,8 +101,7 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>
 }
 
 export async function overview(_: unknown, api: AddonHostApi): Promise<RepoState[]> {
-  const projects = (await api.projects()).filter((p) => p.isGitRepo && p.exists);
-  return pool(projects, 6, (p) => inspect(api, p));
+  return pool(repoItems(await api.projects()), 6, (p) => inspect(api, p));
 }
 
 export async function fetch({ path }: { path: string }, api: AddonHostApi) {
@@ -100,8 +119,7 @@ export async function push({ path }: { path: string }, api: AddonHostApi) {
 }
 
 export async function fetchAll(_: unknown, api: AddonHostApi) {
-  const projects = (await api.projects()).filter((p) => p.isGitRepo && p.exists);
-  const results = await pool(projects, 4, async (p) => {
+  const results = await pool(repoItems(await api.projects()), 4, async (p) => {
     try {
       await fetch({ path: p.path }, api);
       return undefined;

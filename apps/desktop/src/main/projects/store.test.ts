@@ -71,4 +71,30 @@ describe("ProjectStore", () => {
     await rm(join(root, "beta"), { recursive: true });
     expect((await store.state()).projects[0]?.exists).toBe(false);
   });
+
+  it("workspaces: lists the repositories inside, keeps a focus repository, and rescans", async () => {
+    const store = new ProjectStore(file);
+    const ws = join(root, "repos");
+    await mkdir(join(ws, "api", ".git"), { recursive: true });
+    await mkdir(join(ws, "client-a", "portal", ".git"), { recursive: true });
+    const { project } = await store.add(ws);
+    let info = (await store.state()).projects.find((p) => p.id === project.id)!;
+    expect(info).toMatchObject({ isGitRepo: false, focusRepo: undefined });
+    expect(info.repos.map((r) => r.name)).toEqual(["api", "client-a/portal"]);
+    const portal = join(ws, "client-a", "portal");
+    await store.setFocusRepo(project.id, portal);
+    info = (await store.state()).projects.find((p) => p.id === project.id)!;
+    expect(info.focusRepo).toBe(portal);
+    await expect(store.setFocusRepo(project.id, join(root, "elsewhere"))).rejects.toMatchObject({
+      code: "not_found",
+    });
+    // A new repo shows up after a rescan (the list is cached).
+    await mkdir(join(ws, "web", ".git"), { recursive: true });
+    expect((await store.state()).projects.find((p) => p.id === project.id)!.repos).toHaveLength(2);
+    info = (await store.rescanRepos(project.id)).projects.find((p) => p.id === project.id)!;
+    expect(info.repos.map((r) => r.name)).toEqual(["api", "client-a/portal", "web"]);
+    // A single repository has no inner repos.
+    const single = (await store.state()).projects.find((p) => p.name === "alpha");
+    expect(single?.repos ?? []).toEqual([]);
+  });
 });

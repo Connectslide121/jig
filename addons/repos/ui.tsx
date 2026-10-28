@@ -73,8 +73,13 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
   const ctx = useAddon();
   const open = async () => {
     await ctx.projects.setActive(repo.projectId);
+    if (repo.repoPath) await ctx.projects.setFocusRepo(repo.projectId, repo.repoPath);
     ctx.showView("addon.git.git");
   };
+  // A repository inside a workspace is offered to other add-ons' menus as a project of its own.
+  const target =
+    project &&
+    (repo.repoPath ? { ...project, path: repo.path, name: repo.name, isGitRepo: true, repos: [] } : project);
   const menu = (at: MouseEvent | HTMLElement) =>
     ctx.menu(
       [
@@ -94,10 +99,15 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
           icon: "arrow-up-from-line",
           onSelect: () => void act(ctx, `Pushed ${repo.name}`, "push", repo.path),
         },
+        {
+          label: "New chat in this repository",
+          icon: "message-square-plus",
+          onSelect: () => void ctx.openChat({ projectId: repo.projectId, cwd: repo.path }),
+        },
         { label: "Open in Explorer", icon: "folder-open", onSelect: () => ctx.openPath(repo.path) },
       ],
       at,
-      project ? { slot: "context.repo", project } : undefined,
+      target ? { slot: "context.repo", project: target } : undefined,
     );
   return (
     <div
@@ -185,7 +195,7 @@ export function ReposView({ ctx }: AddonComponentProps) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
         {repos.map((r) => (
-          <RepoRow key={r.projectId} repo={r} project={projects.find((p) => p.id === r.projectId)} />
+          <RepoRow key={r.path} repo={r} project={projects.find((p) => p.id === r.projectId)} />
         ))}
       </div>
     </div>

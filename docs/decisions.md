@@ -466,3 +466,15 @@ smallest slot or API that would make it an add-on), which can be copied. Removed
 ready heartbeat, fallback and safe mode — now used by "Pull, build and restart" updates — under
 Settings → Updates (`config.updates`). Supersedes D-060, D-061, D-063, D-064 and the level-3 part of
 D-004.
+
+### D-075 — Workspaces: a folder of repositories is one project, with a focus repository
+**Decided by:** Jon (the workstyle) and Claude, on my own (the details) · **Date:** 2026-10-28
+Jon opens his repos folder as one workspace in VS Code so he can look across repositories and see every
+Git status, script and pipeline whatever he works on. Jig does the same: a project folder that isn't a
+repository lists the repositories inside it — **two levels deep** (covers `repos/api` and
+`repos/client-a/api`; Jon didn't say which layout he uses), not inside repositories, hidden and build
+folders skipped, cached until "Look for repositories again". Chats start at the workspace root (or in
+one repository from its menu). The Git view shows all repositories like VS Code's Source Control with
+several repositories; one **focus repository** (set by clicking it, saved in `projects.json`) drives
+the status bar and the Tools-menu Git actions, so the active project never has to change. Repositories
+are not registered as projects of their own.

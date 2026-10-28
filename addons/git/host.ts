@@ -59,6 +59,19 @@ export async function status({ cwd }: Cwd, api: AddonHostApi) {
   );
 }
 
+/** The status of several repositories at once (a workspace); one failing doesn't hide the others. */
+export async function statusAll({ cwds }: { cwds: string[] }, api: AddonHostApi) {
+  return Promise.all(
+    (cwds ?? []).map(async (cwd) => {
+      try {
+        return { cwd, status: await status({ cwd }, api) };
+      } catch (error) {
+        return { cwd, error: (error as Error).message };
+      }
+    }),
+  );
+}
+
 export async function branches({ cwd }: Cwd, api: AddonHostApi) {
   return parseBranches(
     await git(api, cwd, ["for-each-ref", `--format=${BRANCH_FORMAT}`, "refs/heads", "refs/remotes"]),

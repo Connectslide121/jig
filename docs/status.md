@@ -111,6 +111,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   (.docx/.xlsx/.pptx) and text files into the message box, or pick them with the paperclip. They show as
   thumbnails or chips (remove with ×), go to Claude with your message (PDFs as documents, Office files
   as text Jig extracts), and stay in the transcript (click to open).
+- **Workspaces:** add your repos folder as a project (Add project…) — Jig finds the repositories inside
+  (two levels deep). The Git view lists every repository's changes in one panel (changed first, each with
+  its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
+  actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
+  repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **File icon themes:** files and folders (Git, tabs, chat tool cards, builds, add-ons via `FileIcon`) use
   the icon theme your VS Code uses — e.g. Material Icon Theme — or any VS Code icon theme you pick in
   Settings → Appearance → File icons (or install from Open VSX); "Jig" keeps Jig's own icons.
@@ -194,6 +199,9 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Your real repos folder as a workspace**: check that every repository is found (Projects shows the
+  count; if one is missing tell me how deep it is), that the Git view stays fast with all of them, that
+  file watching keeps it up to date on Windows, and that the scripts list isn't too long.
 - **File icons with your VS Code**: Settings → Appearance → File icons should say "Same as VS Code
   (Material Icon Theme)" and the samples, Git list and tabs should match VS Code. Also try VS Code's
   default Seti (a font-based theme: only tested with unit tests) and a light colour theme (Material's

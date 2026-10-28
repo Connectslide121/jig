@@ -1,5 +1,6 @@
 import { app } from "electron";
 import type { PermissionMode, SessionMeta } from "../../shared/engine";
+import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
@@ -7,6 +8,7 @@ import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { paths } from "../state/paths";
+import { isInside } from "../themes/sources";
 import { SessionManager } from "./manager";
 
 let manager: SessionManager | undefined;
@@ -93,12 +95,14 @@ export function startSessions(): void {
 
   handle("sessions.list", () => m.list());
   handle("sessions.get", ({ id }) => m.snapshot(id));
-  handle("sessions.create", async ({ projectId, title }) => {
+  handle("sessions.create", async ({ projectId, title, cwd }) => {
     const project = await projectStore().get(projectId);
+    if (cwd && !isInside(cwd, project.path))
+      throw new JigError("invalid_args", "A chat's folder must be inside its project");
     const { engine } = getConfig();
     return m.create({
       projectId,
-      cwd: project.path,
+      cwd: cwd || project.path,
       title,
       model: engine.defaultModel,
       permissionMode: engine.defaultPermissionMode as PermissionMode,

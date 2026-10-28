@@ -31,8 +31,14 @@ async function saveGroups(projectId: string, groups: ScriptGroup[]) {
 }
 
 export async function projectScripts(projectId: string): Promise<ProjectScripts> {
-  const project = await projectStore().get(projectId);
-  return { projectId, scripts: await discoverScripts(project.path), groups: await groupsFor(projectId) };
+  const info = (await projectStore().state()).projects.find((p) => p.id === projectId);
+  if (!info) throw new JigError("not_found", "Project not found");
+  const repos = info.repos.map((r) => r.path);
+  return {
+    projectId,
+    scripts: await discoverScripts(info.path, process.platform, repos),
+    groups: await groupsFor(projectId),
+  };
 }
 
 function runningTerminal(projectId: string, scriptId: string) {

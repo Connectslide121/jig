@@ -4,8 +4,8 @@ import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { useSessions } from "./store";
 
-/** Creates a session in a project and opens it. */
-export async function newSession(projectId?: string): Promise<string | undefined> {
+/** Creates a session in a project (in `cwd`, a folder inside it, when given) and opens it. */
+export async function newSession(projectId?: string, cwd?: string): Promise<string | undefined> {
   const id = projectId ?? useProjects.getState().activeId;
   if (!id) {
     notify({
@@ -16,7 +16,7 @@ export async function newSession(projectId?: string): Promise<string | undefined
     return undefined;
   }
   try {
-    const meta = await call("sessions.create", { projectId: id });
+    const meta = await call("sessions.create", { projectId: id, cwd });
     useSessions.setState((s) => ({
       metas: { ...s.metas, [meta.id]: meta },
       transcripts: { ...s.transcripts, [meta.id]: { items: [], queue: [] } },

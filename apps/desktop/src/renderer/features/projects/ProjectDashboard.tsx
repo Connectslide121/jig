@@ -1,4 +1,4 @@
-import { FolderOpen, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
+import { FolderGit2, FolderOpen, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
 import { call } from "../../lib/host";
 import { Badge, Button, Card, cn, Empty, IconButton, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
@@ -25,6 +25,11 @@ export function ProjectDashboard({ params }: TabProps) {
               {project.isGitRepo && (
                 <Badge tone="info">
                   <GitBranch className="mr-1 size-3" /> git
+                </Badge>
+              )}
+              {project.repos.length > 0 && (
+                <Badge tone="info">
+                  <FolderGit2 className="mr-1 size-3" /> workspace · {project.repos.length} repositories
                 </Badge>
               )}
               {!project.exists && <Badge tone="danger">folder not found</Badge>}

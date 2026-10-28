@@ -57,4 +57,20 @@ describe("discoverScripts", () => {
   it("returns nothing for a missing folder", async () => {
     expect(await discoverScripts(join(tmpdir(), "does-not-exist-jig"))).toEqual([]);
   });
+
+  it("in a workspace, searches each repository from its own root (deeper scripts are found)", async () => {
+    const { mkdir, mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const ws = await mkdtemp(join(tmpdir(), "jig-ws-scripts-"));
+    const repo = join(ws, "client-a", "api");
+    await mkdir(join(repo, "tools", "seed"), { recursive: true });
+    await writeFile(
+      join(repo, "tools", "seed", "package.json"),
+      JSON.stringify({ scripts: { seed: "node seed.js" } }),
+    );
+    expect(await discoverScripts(ws, "linux")).toEqual([]);
+    const found = await discoverScripts(ws, "linux", [repo]);
+    expect(found.map((s) => `${s.folder}:${s.name}`)).toEqual(["client-a/api/tools/seed:seed"]);
+  });
 });

@@ -36,6 +36,8 @@ const toProject = (p: ReturnType<typeof useProjects.getState>["projects"][number
   path: p.path,
   isGitRepo: p.isGitRepo,
   exists: p.exists,
+  repos: p.repos ?? [],
+  focusRepo: p.focusRepo,
 });
 
 function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry[] {
@@ -83,6 +85,15 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       setActive: async (projectId) => {
         await call("projects.setActive", { id: projectId });
       },
+      setFocusRepo: async (projectId, repo) => {
+        await call("projects.setFocusRepo", { id: projectId, repo });
+      },
+      rescanRepos: async (projectId) => {
+        await call("projects.rescanRepos", { id: projectId });
+      },
+    },
+    openChat: async (options = {}) => {
+      await (await import("../features/sessions/actions")).newSession(options.projectId, options.cwd);
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
     openImage: (path) => void workbench.openTab("jig.image", { path }),

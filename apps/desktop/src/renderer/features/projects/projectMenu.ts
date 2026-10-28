@@ -1,4 +1,4 @@
-import { FolderOpen, LayoutDashboard, Palette, Pencil, Trash2 } from "lucide-react";
+import { FolderOpen, FolderSearch, LayoutDashboard, Palette, Pencil, Trash2 } from "lucide-react";
 import { closeTabsWhere } from "../../../shared/layout";
 import { PROJECT_COLORS, type ProjectInfo } from "../../../shared/projects";
 import { call } from "../../lib/host";
@@ -37,6 +37,15 @@ export function projectMenu(project: ProjectInfo): MenuEntry[] {
       icon: FolderOpen,
       onSelect: () => void call("app.openPath", { path: project.path }),
     },
+    ...(!project.isGitRepo
+      ? [
+          {
+            label: "Look for repositories inside again",
+            icon: FolderSearch,
+            onSelect: () => void call("projects.rescanRepos", { id: project.id }),
+          },
+        ]
+      : []),
     ...(extra.length ? [{ separator: true } as const, ...extra] : []),
     { separator: true },
     { label: "Rename…", icon: Pencil, onSelect: () => void renameProject(project), testId: "project-rename" },
