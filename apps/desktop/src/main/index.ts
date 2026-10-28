@@ -1,10 +1,12 @@
 import { writeFile } from "node:fs/promises";
-import { app, BrowserWindow, Menu } from "electron";
+import { app, Menu } from "electron";
 import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
+import { appWindows } from "./appWindows";
 import { startAttempts } from "./attempts";
+import { startBrowser, stopBrowser } from "./browser";
 import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { startConfigure } from "./configure";
@@ -35,7 +37,7 @@ if (!app.requestSingleInstanceLock({ jigHome: jigHome() })) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    const [window] = BrowserWindow.getAllWindows();
+    const [window] = appWindows();
     if (window) {
       if (window.isMinimized()) window.restore();
       window.focus();
@@ -59,6 +61,7 @@ async function start() {
   startSessions();
   startAttempts();
   startTerminals();
+  startBrowser();
   registerScriptHandlers();
   registerFileHandlers();
   registerAboutHandlers();
@@ -77,7 +80,7 @@ async function start() {
   await reportReady();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createMainWindow();
+    if (appWindows().length === 0) void createMainWindow();
   });
 }
 
@@ -90,6 +93,7 @@ async function reportReady() {
 
 app.on("will-quit", () => {
   stopTerminals();
+  stopBrowser();
   stopUsage();
 });
 

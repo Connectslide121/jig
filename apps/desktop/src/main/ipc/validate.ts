@@ -54,6 +54,29 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "sessions.create": z.object({ projectId: id, title: z.string().max(500).optional(), cwd: path.optional() }),
   "sessions.send": z.object({ id, text, attachments: z.array(attachment).max(50).optional() }),
   "sessions.rewindFiles": z.object({ id, itemId: id, dryRun: z.boolean() }),
+  "browser.navigate": z.object({
+    url: z.string().max(8192).optional(),
+    action: z.enum(["back", "forward", "reload"]).optional(),
+  }),
+  "browser.input": z.discriminatedUnion("type", [
+    z.object({
+      type: z.enum(["mouseDown", "mouseUp", "mouseMove"]),
+      x: z.number().finite(),
+      y: z.number().finite(),
+      button: z.enum(["left", "right"]).optional(),
+      clickCount: int.min(1).max(3).optional(),
+    }),
+    z.object({
+      type: z.literal("wheel"),
+      x: z.number().finite(),
+      y: z.number().finite(),
+      deltaX: z.number().finite(),
+      deltaY: z.number().finite(),
+    }),
+    z.object({ type: z.enum(["keyDown", "keyUp"]), key: z.string().min(1).max(40) }),
+    z.object({ type: z.literal("text"), text: z.string().max(10_000) }),
+  ]),
+  "browser.resize": z.object({ width: int.min(200).max(4000), height: int.min(200).max(4000) }),
   "terminals.create": z.object({
     projectId: id.optional(),
     cwd: path.optional(),

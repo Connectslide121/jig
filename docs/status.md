@@ -130,6 +130,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 - **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
   see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
   server's output.
+- **Claude's browser:** Claude opens your dev server (or any http/https/file page) in a real browser
+  inside Jig, reads it, clicks and types, takes screenshots that show in the chat, and reads the
+  console. The **Claude's browser** view (right sidebar, or Tools → Open Claude's browser) shows the
+  page live with an address bar, back/forward/reload, desktop/tablet/phone sizes and the console; click
+  and type on it to take over. Try it with the fake engine: `browse file:///path/to/page.html`.
 - **Images from tools:** screenshots and charts that a tool returns (an MCP browser, a plotting tool)
   show as thumbnails in the chat instead of "[image]".
 - **Guided tours of changes:** Git → ✨ → Walk me through the changes (also a workspace repo's menu
@@ -229,6 +234,10 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **Claude's browser with a real chat:** ask Claude to start your dev server and check a page. Check
+  that the view follows, that clicks and typing on the picture reach the page (also on a HiDPI
+  screen), that screenshots show in the chat, and that the browser window doesn't keep Jig running
+  after you close it.
 - **A real pattern run**: after a few days of use, press Look for patterns now and check the
   suggestions make sense (and that "Never" sticks). The weekly run on Monday 10:00 (or at the next
   launch after it).

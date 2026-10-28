@@ -13,10 +13,14 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 - [x] File previews: Markdown + Mermaid, HTML, PDF, CSV/Excel, JSON, notebooks, media, Office, code
 - [x] Try several ways (parallel attempts in worktrees, judged by Claude)
 - [x] Guided change tours; turn a chat into a tool; write my standup
+- [x] Claude's terminals (`jig_terminal_*`) and images from tools in the chat
+- [x] Claude's browser: an offscreen page Claude drives (`jig_browser_*`), live view you can take
+      over, console, screenshots in the chat (D-090)
 - [x] Tests: unit for every parser and git operation, e2e per feature (`e2e/ai.spec.ts`,
-      `e2e/preview.spec.ts`)
+      `e2e/preview.spec.ts`, `e2e/browser.spec.ts`)
 
 ## Later
 
+- Claude's browser: several tabs, recording a session as a GIF, network requests in the console pane.
 - Tours of a commit or a branch (not only uncommitted changes).
 - Attempts that start from uncommitted work (a stash applied in each worktree).

@@ -7,6 +7,7 @@ import {
   FolderPlus,
   Gauge,
   GitBranch,
+  Globe,
   Keyboard,
   Lightbulb,
   type LucideIcon,
@@ -35,6 +36,7 @@ import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "../builder/BuildDialog";
 import { newSession } from "../sessions/actions";
 import { BUILD_EXAMPLES, CONFIGURE_EXAMPLES, CONFIGURE_TOOLS, SLOT_EXAMPLES } from "./content";
+import browserShot from "./shots/browser.jpg";
 import build from "./shots/build.jpg";
 import chat from "./shots/chat.jpg";
 import configure from "./shots/configure.jpg";
@@ -50,6 +52,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
   { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
+  { id: "browser", title: "Claude's browser", icon: Globe },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
   { id: "terminals", title: "Terminals & scripts", icon: SquareTerminal },
@@ -617,6 +620,25 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             />
           </Section>
           <Section
+            id="browser"
+            title="Claude's browser"
+            lead="Claude checks its own web work in a real browser inside Jig: it opens your dev server, reads the page, clicks and types like a person, takes screenshots (they show in the chat) and reads the console. You watch it live in the Claude's browser view and can take over with your mouse and keyboard at any time."
+            shot={{
+              src: browserShot,
+              alt: "Claude checking a shop page in its browser, with a screenshot in the chat",
+            }}
+          >
+            <Bullets
+              items={[
+                "Ask a chat to “open the app and check the login form”",
+                "Screenshots come back to Claude and show as thumbnails in the chat",
+                "Console errors are counted in the view, and Claude reads them too",
+                "Desktop, tablet and phone sizes for responsive checks",
+                "Its own cookies and storage, apart from Jig; downloads and camera/location requests are refused",
+              ]}
+            />
+          </Section>
+          <Section
             id="previews"
             title="Previews"
             lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as a tree, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
@@ -639,7 +661,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="terminals"
             title="Terminals & scripts"
-            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. When one fails, Ask Claude opens a chat with its output."
+            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. When one fails, Ask Claude opens a chat with its output. When Claude starts a dev server or watcher, it runs in a terminal here (“Claude: …”) that you can see and stop."
           />
           <Section
             id="configure"

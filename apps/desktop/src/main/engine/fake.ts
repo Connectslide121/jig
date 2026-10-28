@@ -5,7 +5,14 @@ import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
 import { contextFrom } from "./normalize";
-import { type Engine, type EngineSession, type OneShotOptions, outputText, type StartOptions } from "./types";
+import {
+  type Engine,
+  type EngineSession,
+  type OneShotOptions,
+  outputImages,
+  outputText,
+  type StartOptions,
+} from "./types";
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
@@ -134,6 +141,30 @@ export class FakeEngine implements Engine {
               signal,
             );
           }
+        } else if (options.toolHandlers?.jig_browser_open && /^browse\s+\S+/i.test(text.trim())) {
+          // "browse <url>": Claude opens the page in its browser, reads it and takes a screenshot.
+          const url = /^browse\s+(\S+)/i.exec(text.trim())![1]!;
+          const call = async (name: string, input: Record<string, unknown>) => {
+            const toolId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${name}`, input });
+            const result = await options.toolHandlers![name]!(input).catch(
+              (e: Error) => `Error: ${e.message}`,
+            );
+            const output = outputText(result);
+            const images = outputImages(result);
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output,
+              isError: output.startsWith("Error"),
+              ...(images?.length ? { imageData: images } : {}),
+            });
+            return output;
+          };
+          const page = await call("jig_browser_open", { url });
+          if (/\[1\]/.test(page)) await call("jig_browser_click", { ref: 1 });
+          await call("jig_browser_screenshot", {});
+          await stream(`${msg}:text:0`, "I opened the page in my browser and took a screenshot.", signal);
         } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).
           const file = /(\S+\.(?:png|jpe?g|gif|webp|svg))\b/i.exec(text)![1]!;

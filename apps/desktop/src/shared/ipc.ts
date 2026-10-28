@@ -11,6 +11,7 @@
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo } from "./addons";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
+import type { BrowserInput, BrowserState, ConsoleEntry } from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type {
@@ -196,6 +197,20 @@ export interface HostMethods {
   "terminals.close": { args: { id: string }; result: void };
   /** Opens a private terminal running Claude Code so you can sign in (`/login`). */
   "terminals.claudeLogin": { args: { projectId?: string }; result: TerminalInfo };
+  /** Claude's browser: an offscreen page Claude (and you) drive; see docs/reference/browser.md. */
+  "browser.state": { args: void; result: BrowserState };
+  /** Starts (`on`) or stops sending `browser.frame` events to this view. */
+  "browser.watch": { args: { on: boolean }; result: void };
+  /** Opens `url`, or goes back/forward/reloads. */
+  "browser.navigate": {
+    args: { url?: string; action?: "back" | "forward" | "reload" };
+    result: BrowserState;
+  };
+  /** Mouse, wheel and keyboard input from the live view, in page pixels. */
+  "browser.input": { args: BrowserInput; result: void };
+  "browser.resize": { args: { width: number; height: number }; result: BrowserState };
+  "browser.console": { args: { clear?: boolean }; result: ConsoleEntry[] };
+  "browser.close": { args: void; result: void };
   "scripts.list": { args: { projectId: string }; result: ProjectScripts };
   "scripts.run": { args: { projectId: string; scriptId: string }; result: TerminalInfo };
   "scripts.stop": { args: { projectId: string; scriptId: string }; result: void };
@@ -251,6 +266,11 @@ export interface HostEvents {
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };
+  "browser.state": BrowserState;
+  /** A JPEG of the page (base64), sent only while a view watches. */
+  "browser.frame": { data: string; width: number; height: number };
+  /** Show Claude's browser (Claude started using it). */
+  "browser.reveal": void;
   "terminals.changed": TerminalInfo[];
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];

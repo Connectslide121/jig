@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import { copyFile, cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { strToU8, zipSync } from "fflate";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
@@ -259,5 +259,36 @@ test("screenshots for the About page", async () => {
   await page.getByTestId("attempts-judge").click();
   await expect(page.getByTestId("attempts-verdict")).toBeVisible();
   await shot("attempts");
+
+  // Claude's browser: Claude checks the shop on a phone-sized page.
+  const shopPage = join(ws, "webshop", "public", "index.html");
+  await mkdir(join(ws, "webshop", "public"), { recursive: true });
+  await writeFile(
+    shopPage,
+    `<!doctype html><html><head><title>Webshop</title><meta name="viewport" content="width=device-width"><style>
+body{font-family:system-ui,sans-serif;margin:0;background:#faf7f2;color:#2b2622}
+header{background:#2b2622;color:#f4b860;padding:16px 20px;font-weight:700;font-size:20px}
+main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px #0002}
+.price{color:#8a5a12;font-weight:600}button{background:#e8a33d;border:0;border-radius:8px;padding:10px 14px;font-weight:600;margin-top:8px}
+.total{font-size:18px;font-weight:700;margin-top:10px}</style></head><body>
+<header>Webshop</header><main>
+<div class="card"><div>Oak cutting board</div><div class="price">€34.00</div><button onclick="add(34)">Add to cart</button></div>
+<div class="card"><div>Walnut spoon set</div><div class="price">€18.50</div><button onclick="add(18.5)">Add to cart</button></div>
+<div class="card"><div>Cart</div><div class="total" id="total">€0.00</div><input placeholder="Discount code" style="padding:8px;border:1px solid #ccc;border-radius:6px;width:90%"></div>
+</main><script>let t=0;function add(p){t+=p;document.getElementById('total').textContent='€'+t.toFixed(2)}</script></body></html>`,
+  );
+  await hostCall(page, "browser.resize", { width: 390, height: 844 });
+  await page.keyboard.press("Control+N");
+  await page
+    .locator("[data-tab-id]:not(.hidden)")
+    .getByTestId("composer-input")
+    .fill(`browse ${pathToFileURL(shopPage).href}`);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("tool-images").first()).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByTestId("browser-frame")).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(800);
+  await shot("browser");
   await app.close();
 });

@@ -613,3 +613,17 @@ from TypeScript alone. The router now accepts calls only from Jig's own page (ma
 or the dev server) and only plain-object arguments. The methods that reach the file system, programs,
 URLs, prompts or terminals have exact schemas. `app.openPath` no longer runs executables. Schemas live
 in one file next to the router, so a new risky method gets one there (AGENTS.md).
+
+### D-090 — Claude's browser is an offscreen page inside Jig
+**Decided by:** Jon ("go ahead") on Claude's proposal · **Date:** 2026-10-28
+Claude should check the web UI it builds itself: open the dev server, click through, take screenshots,
+read the console. Jig gives it one real Chromium page, owned by the main process as a hidden offscreen
+window with its own session (no Node, sandboxed, downloads and permission requests refused, only
+http/https/file). Claude drives it with `jig_browser_*` tools on the `jig` MCP server, sending real
+input events rather than synthetic DOM events, so pages behave as with a person; screenshots come back
+as tool images and show in the chat. The user watches the same page live in the Claude's browser view
+(frames only while it is visible) and can take over with mouse and keyboard. We chose this over an
+external Playwright MCP server because it needs no install, the user sees what Claude does, and the
+page lives in Jig's own Electron (`docs/reference/browser.md`). Hidden helper windows are excluded from
+"all windows" (events, focus, quitting) through `main/appWindows.ts`.
+

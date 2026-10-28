@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, type WebContents } from "electron";
+import { ipcMain, type WebContents } from "electron";
 import {
   type CallResponse,
   CHANNEL_CALL,
@@ -10,6 +10,7 @@ import {
   type MethodName,
   type MethodResult,
 } from "../../shared/ipc";
+import { appWindows } from "../appWindows";
 import { logger } from "../log";
 import { invalidArgs, isAllowedOrigin } from "./validate";
 
@@ -80,7 +81,7 @@ const localListeners = new Set<Listener>();
 
 /** Sends an event to every window (and to in-host listeners). */
 export function emit<T extends EventTopic>(topic: T, payload: HostEvents[T]): void {
-  for (const window of BrowserWindow.getAllWindows()) {
+  for (const window of appWindows()) {
     if (!window.isDestroyed()) window.webContents.send(CHANNEL_EVENT, topic, payload);
   }
   for (const listener of localListeners) listener(topic, payload);

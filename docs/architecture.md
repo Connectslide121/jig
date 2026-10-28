@@ -158,6 +158,12 @@ program-running settings are Settings-only. Reference: `docs/reference/configure
 notebooks, media, Office text and code. Binary content is served through `jig-file:` with per-folder
 grants, never from arbitrary paths. Reference: `docs/reference/preview.md`.
 
+**Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
+(`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in Claude's browser: one offscreen
+Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools
+with real input events and shown live in a view the user can take over. Hidden helper windows are kept
+out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.
+
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 

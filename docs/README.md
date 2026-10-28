@@ -8,7 +8,7 @@
 | [decisions.md](decisions.md) | Every decision, who made it and why — review the "Claude, on my own" ones |
 | [plan/](plan/README.md) | The phased plan as checklists, with status per phase |
 | [brand/](brand/) | The logo and brand colours |
-| [reference/](reference/) | Contracts: IPC methods, state files, slots, add-on API, design tokens, engine, builder, learning, setup & updates, plan usage, configuring Jig from a chat, the What Jig can do page, file previews, AI features |
+| [reference/](reference/) | Contracts: IPC methods, state files, slots, add-on API, design tokens, engine, builder, learning, setup & updates, plan usage, configuring Jig from a chat, the What Jig can do page, file previews, AI features, Claude's browser |
 | [guides/](guides/) | How-tos: developing, testing, writing add-ons, themes, packaging & Windows |
 | [reference/reference-repos.md](reference/reference-repos.md) | Code to read for each part (ThinkRail) and the Agent SDK references |
 

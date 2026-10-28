@@ -1,7 +1,8 @@
-import { app, BrowserWindow, Notification } from "electron";
+import { app, Notification } from "electron";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
+import { appWindows } from "../appWindows";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
@@ -110,7 +111,7 @@ export function startSessions(): void {
     const previous = lastStatus.get(meta.id);
     lastStatus.set(meta.id, meta.status);
     const note = notificationFor(previous, meta);
-    const windows = BrowserWindow.getAllWindows();
+    const windows = appWindows();
     if (!note || !getConfig().notifications.desktop || windows.some((w) => w.isFocused())) return;
     if (meta.status === "needs_you") for (const w of windows) w.flashFrame(true);
     if (!Notification.isSupported()) return;

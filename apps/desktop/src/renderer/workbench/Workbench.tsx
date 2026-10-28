@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAddonsSync } from "../addons/loader";
 import { AttemptsDialogHost } from "../features/attempts";
+import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { StandupHost } from "../features/digest";
@@ -66,6 +67,7 @@ export function Workbench() {
   useShellState();
   useSessionsSync();
   useTerminalsSync();
+  useBrowserReveal();
   useAddonsSync();
   useBuildsSync();
   useLearningSync();

@@ -91,6 +91,13 @@ settings, add-on permissions.
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
 | `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code for `/login` |
+| `browser.state` | — | `BrowserState` | Claude's browser: open, url, title, loading, back/forward, size, error count (`docs/reference/browser.md`) |
+| `browser.watch` | `{ on }` | — | start/stop `browser.frame` events for a view |
+| `browser.navigate` | `{ url? , action? }` | `BrowserState` | open a URL (http, https, file), or `back` / `forward` / `reload` |
+| `browser.input` | `BrowserInput` | — | mouse, wheel, key or text from the live view, in page pixels |
+| `browser.resize` | `{ width, height }` | `BrowserState` | 200–4000 px |
+| `browser.console` | `{ clear? }` | `ConsoleEntry[]` | console messages and load errors |
+| `browser.close` | — | — | closes the page |
 | `scripts.list` | `{ projectId }` | `ProjectScripts` | discovered scripts + saved groups |
 | `scripts.run` / `scripts.stop` / `scripts.restart` | `{ projectId, scriptId }` | `TerminalInfo` / — / `TerminalInfo` | |
 | `scripts.saveGroup` | `{ projectId, group: { id?, name, scriptIds } }` | `ProjectScripts` | create or update |
@@ -126,6 +133,10 @@ settings, add-on permissions.
 | `sessions.reveal` | `{ sessionId }` | show this chat (its desktop notification was clicked) |
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
+| `terminals.reveal` | `{ id }` | show this terminal (Claude started it from a chat) |
+| `browser.state` | `BrowserState` | Claude's browser loaded, navigated, resized or logged an error |
+| `browser.frame` | `{ data, width, height }` | a JPEG of the page (base64), only while a view watches |
+| `browser.reveal` | — | Claude opened a page: show the Claude's browser view |
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |

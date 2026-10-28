@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow, screen, shell } from "electron";
 import { z } from "zod";
+import { closeHelpersIfAlone } from "./appWindows";
 import { logger } from "./log";
 import { readJson, writeJson } from "./state/jsonStore";
 import { paths } from "./state/paths";
@@ -81,6 +82,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   window.on("move", saveState);
   window.on("maximize", saveState);
   window.on("unmaximize", saveState);
+  // Hidden helper windows (Claude's browser) must not keep Jig running after its last window closes.
+  window.on("closed", closeHelpersIfAlone);
 
   // Links open in the user's browser, never inside Jig.
   window.webContents.setWindowOpenHandler(({ url }) => {
