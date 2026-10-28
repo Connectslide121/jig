@@ -49,7 +49,9 @@ What a project is:
   - project instructions, appended to Claude's system prompt for this project's chats (append only,
     never replacing the preset);
   - starter prompts on its Home.
-- **The rule: the left panel follows the active project, the right panel is global** (decided, D-102).
+- **A guideline, not a hard rule: the left panel follows the active project, the right panel is global**
+  (D-102). It is a meaningful default for where things go, and exceptions are fine when they make
+  sense (like Repos).
   - **Follow the project:** Git, Files and Home.
   - **Chats:** the active project's chats come first, pinned at the top; the other projects are
     listed below, still grouped, and you can drag chats between them.

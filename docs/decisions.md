@@ -846,7 +846,8 @@ Settled before building:
 ### D-102 — Left follows the active project, right is global
 **Decided by:** Jon · **Date:** 2026-10-28
 
-The default rule for the redone projects (phase 18):
+A guideline for the redone projects (phase 18), not a hard rule. It gives where things go a meaning,
+and exceptions are fine when they make sense:
 - **Left panel follows the active project:** Git, Files and Home.
 - **Right panel is global:** Scripts, Pipelines, Suggestions, Claude's browser.
 
@@ -854,6 +855,6 @@ Details:
 - **Chats** shows the active project's chats first (pinned on top), then the other projects grouped
   below, still draggable. This replaces "every project, grouped" from D-101.
 - **Repos** stays below Git on the left and stays global, the one exception.
-- **A view keeps its behaviour wherever you move it.** The rule decides only where views start. New
-  views, add-ons included, should follow it: project-scoped views start on the left, global ones on
-  the right.
+- **A view keeps its behaviour wherever you move it.** The guideline decides only where views start.
+  New views, add-ons included, lean on it: project-scoped views usually start on the left, global
+  ones on the right, unless something else makes more sense.
