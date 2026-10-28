@@ -707,7 +707,10 @@ export class FakeEngine implements Engine {
       rate_limits: {
         five_hour: { utilization: 42, resets_at: at((2 * 60 + 13) * 60_000) },
         seven_day: { utilization: 18, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
-        seven_day_opus: { utilization: 31, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+        // Per-model weekly limits come named by the server (today's plans: Fable).
+        model_scoped: [
+          { display_name: "Fable", utilization: 31, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+        ],
       },
     };
   }

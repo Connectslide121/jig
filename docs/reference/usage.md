@@ -5,10 +5,10 @@ visible:
 
 - **Status bar** (right): `5h 42% · wk 18%`, coloured when a window passes 75 % (warning) or 90 %
   (danger), or when Claude Code reports a limit was reached.
-- **Chat header**: a ring that fills with the 5-hour window, next to the model menu.
+- **Chat header**: a ring that fills with the 5-hour window.
 
 Hovering either shows a card with every window (current session, this week for all models, per-model
-weekly windows such as Opus), a bar each, when it resets ("Resets in 2 h 13 min · 14:13"), extra usage
+weekly windows, named as the server names them, e.g. "This week (Fable)" from `model_scoped`), a bar each, when it resets ("Resets in 2 h 13 min · 14:13"), extra usage
 when your plan has it, and when the numbers were updated. Clicking refreshes.
 
 Code: `shared/usage.ts` (types, `planUsageFrom`, `formatResetIn`, `usageTone`, tested),
@@ -50,5 +50,5 @@ error until Jig is updated (the rest of Jig is unaffected).
 | `usage.refresh` | `PlanUsage` | asks Claude Code now |
 | event `usage.changed` | `PlanUsage` | after every refresh or rate-limit event |
 
-The fake engine (`JIG_ENGINE=fake`) reports 42 % (5 h), 18 % (week) and 31 % (Opus);
+The fake engine (`JIG_ENGINE=fake`) reports 42 % (5 h), 18 % (week) and 31 % (Fable, a per-model weekly limit as the server names it);
 `JIG_FAKE_USAGE=unavailable` acts like an API-key login, and a JSON value replaces the answer.

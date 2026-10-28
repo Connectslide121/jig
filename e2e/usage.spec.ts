@@ -16,7 +16,8 @@ test("plan usage is always in the status bar and on the chat header, with a card
   await expect(card.getByTestId("usage-window-five_hour")).toContainText("42%");
   await expect(card.getByTestId("usage-window-five_hour")).toContainText(/Resets in 2 h 1[23] min/);
   await expect(card.getByTestId("usage-window-seven_day")).toContainText("This week (all models)");
-  await expect(card.getByTestId("usage-window-seven_day_opus")).toContainText("31%");
+  await expect(card.getByTestId("usage-window-model:Fable")).toContainText("This week (Fable)");
+  await expect(card.getByTestId("usage-window-model:Fable")).toContainText("31%");
   await expect(card).toContainText("Max");
   await page.mouse.move(600, 300);
   await expect(card).toHaveCount(0);
