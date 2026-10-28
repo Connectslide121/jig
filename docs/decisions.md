@@ -549,3 +549,13 @@ The J from D-080 read as "J Jig" next to the name in the top bar. Of four abstra
 holding a square piece in its corner. It is the most literal picture of a jig and stays clear at 16 px;
 the clamps and the round-piece variants looked like the "copy" and "profile" icons when small. The
 rest of D-080 stands: geometry on a 1024 grid in Jig's own colours, amber the only brand colour.
+
+### D-083 — AI features use Claude Code's own capabilities first
+**Decided by:** Jon (add AI features; they fit the project best) and Claude, on my own (which and how) ·
+**Date:** 2026-10-28
+New AI features build on what Claude Code already does instead of re-implementing it: next-message
+suggestions are Claude Code's prompt suggestions (nearly free, they reuse the prompt cache), restoring
+files uses its file checkpoints, forking a chat uses its session fork. Where Jig asks Claude for
+something itself (a commit message, a review), it goes through Claude Code too (a one-shot query or a
+chat opened with a draft), never the API directly. Each feature has a visible button or menu entry, and
+the ones that change behaviour have a setting (`engine.promptSuggestions`, `engine.fileCheckpoints`).

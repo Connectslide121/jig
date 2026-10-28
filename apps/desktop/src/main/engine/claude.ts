@@ -35,6 +35,8 @@ export class ClaudeEngine implements Engine {
         settingSources: ["user", "project", "local"],
         systemPrompt: { type: "preset", preset: "claude_code", append: options.appendSystemPrompt },
         includePartialMessages: true,
+        promptSuggestions: options.promptSuggestions,
+        enableFileCheckpointing: options.fileCheckpoints,
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         // biome-ignore lint/suspicious/noExplicitAny: the SDK's MCP server config type is opaque here.

@@ -177,6 +177,9 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
           text: "Compacting the conversation…",
         });
       break;
+    case "suggestion":
+      meta({ suggestion: event.text });
+      break;
     case "compacted": {
       // Replaces the "Compacting…" line when there is one.
       const pending = [...state.items]

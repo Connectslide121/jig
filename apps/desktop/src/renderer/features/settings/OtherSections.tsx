@@ -142,6 +142,26 @@ export function EngineSettings() {
         </Select>
       </SettingRow>
       <SettingRow
+        label="Suggest the next message"
+        description="After a turn, Claude Code proposes what you might send next (shown above the message box; Tab takes it). Nearly free: it reuses the conversation's cache."
+      >
+        <Switch
+          label="Suggest the next message"
+          checked={e.promptSuggestions}
+          onChange={(promptSuggestions) => void updateConfig({ engine: { promptSuggestions } })}
+        />
+      </SettingRow>
+      <SettingRow
+        label="File checkpoints"
+        description="Claude Code keeps a copy of each file before changing it, so you can restore files to how they were before any of your messages (the message's menu)."
+      >
+        <Switch
+          label="File checkpoints"
+          checked={e.fileCheckpoints}
+          onChange={(fileCheckpoints) => void updateConfig({ engine: { fileCheckpoints } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="Allow API keys"
         description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from sessions, so usage always comes from your Claude plan. On: a key in your environment switches sessions to pay-as-you-go billing."
       >

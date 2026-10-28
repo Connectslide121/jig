@@ -1,4 +1,4 @@
-import { ArrowUp, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Paperclip, Sparkles, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ChatAttachment, QueuedMessage, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
@@ -36,6 +36,7 @@ export function Composer({
   const prompts = Object.values(usePrompts());
   const toolbar = Object.values(useRegistry((s) => s.chatToolbar));
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
+  const suggestion = busy ? undefined : meta.suggestion;
 
   useEffect(() => {
     if (active) ref.current?.focus();
@@ -122,6 +123,29 @@ export function Composer({
             ))}
           </div>
         )}
+        {suggestion && (
+          <div className="flex min-w-0 items-center gap-1" data-testid="suggestion">
+            <button
+              type="button"
+              title="Claude Code's suggestion for your next message — click to edit it, or Tab in the empty box"
+              onClick={() => {
+                setText(suggestion);
+                ref.current?.focus();
+              }}
+              className="flex h-6 min-w-0 items-center gap-1.5 rounded-full border border-line bg-accent-soft px-2.5 text-xs text-fg hover:border-accent"
+            >
+              <Sparkles className="size-3 shrink-0 text-accent" />
+              <span className="truncate">{suggestion}</span>
+            </button>
+            <IconButton
+              icon={ArrowUp}
+              size="sm"
+              label="Send this suggestion"
+              data-testid="suggestion-send"
+              onClick={() => void send(suggestion)}
+            />
+          </div>
+        )}
         {(prompts.length > 0 || toolbar.length > 0) && (
           <div className="flex flex-wrap items-center gap-1.5">
             {toolbar.map((item) => (
@@ -179,14 +203,21 @@ export function Composer({
               value={text}
               data-testid="composer-input"
               placeholder={
-                busy ? "Claude is working — your message will be sent after this turn" : "Message Claude…"
+                busy
+                  ? "Claude is working — your message will be sent after this turn"
+                  : suggestion
+                    ? `${suggestion}  (Tab to use)`
+                    : "Message Claude…"
               }
               onChange={(e) => setText(e.target.value)}
               onPaste={(e) => {
                 if (takeFiles(e.clipboardData.files)) e.preventDefault();
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                if (e.key === "Tab" && !e.shiftKey && !text && suggestion) {
+                  e.preventDefault();
+                  setText(suggestion);
+                } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   void send();
                 } else if (e.key === "Escape" && busy) {

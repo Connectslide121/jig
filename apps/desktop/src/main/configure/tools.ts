@@ -44,7 +44,8 @@ export interface ConfigureDeps {
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
 export const SETTINGS_GUIDE = `appearance.themeId: colour theme id (see jig_list_themes); followSystem: switch between lightThemeId and darkThemeId with the OS; density: compact|comfortable; radius: sharp|soft|round; uiFont / monoFont: font family names; fontSize: 11–18; fileIconTheme: "vscode" (same as VS Code) | "jig" | an icon theme id from jig_list_themes.
-engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions.
+engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message.
+notifications.desktop: true|false, a system notification when a chat needs the user or finishes while Jig is in the background.
 terminal.shell: shell for new terminals ("" = PowerShell on Windows; e.g. "pwsh.exe", "cmd.exe", "C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe").
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it.
@@ -81,7 +82,12 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const { engine, updates: _u, ...rest } = deps.config();
         const visible = {
           ...rest,
-          engine: { defaultModel: engine.defaultModel, defaultPermissionMode: engine.defaultPermissionMode },
+          engine: {
+            defaultModel: engine.defaultModel,
+            defaultPermissionMode: engine.defaultPermissionMode,
+            promptSuggestions: engine.promptSuggestions,
+            fileCheckpoints: engine.fileCheckpoints,
+          },
         };
         return `${JSON.stringify(visible, null, 2)}\n\nWhat they mean:\n${SETTINGS_GUIDE}`;
       },

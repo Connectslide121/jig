@@ -26,6 +26,10 @@ export interface StartOptions {
   env: Record<string, string | undefined>;
   /** Path to the user's own `claude` binary; empty = the one shipped with the SDK. */
   claudePath: string;
+  /** Claude Code suggests the next message after each turn (`suggestion` events). */
+  promptSuggestions?: boolean;
+  /** Claude Code keeps copies of files before editing them (`rewindFiles`). */
+  fileCheckpoints?: boolean;
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */

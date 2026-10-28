@@ -48,6 +48,7 @@ extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
 | `tool_use { id, name, input, parentId? }` / `tool_result { toolUseId, output, isError }` | assistant / user messages; `parentId` = a subagent's Task tool |
 | `permission { request }` / `permission_resolved { requestId, status }` | `canUseTool` |
 | `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference) |
+| `suggestion { text }` | `prompt_suggestion` (with `promptSuggestions: true`, setting `engine.promptSuggestions`): kept as `SessionMeta.suggestion` until the next send; the composer shows it as a chip and as placeholder (Tab takes it). The fake engine suggests from the second turn on |
 | `compacted { trigger: manual \| auto, preTokens, postTokens? }` | `system/compact_boundary` (shown as "Conversation compacted (157k → 21k tokens)") |
 | `status`, `notice`, `error { code? }`, `exit` | status messages ("Compacting…"), errors, process end |
 

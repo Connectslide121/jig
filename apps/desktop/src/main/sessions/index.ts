@@ -59,6 +59,8 @@ export function startSessions(): void {
         claudePath: engine.claudePath,
         allowApiKey: engine.allowApiKey,
         env: sessionEnv(process.env, engine.allowApiKey),
+        promptSuggestions: engine.promptSuggestions,
+        fileCheckpoints: engine.fileCheckpoints,
       };
     },
     appendSystemPrompt: (meta) =>

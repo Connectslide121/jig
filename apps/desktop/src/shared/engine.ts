@@ -65,6 +65,8 @@ export interface SessionMeta {
   /** `builder` sessions run a build job (hidden from the Sessions list, opened from the build). */
   kind?: "chat" | "builder";
   buildId?: string;
+  /** Claude Code's suggestion for your next message (after a turn; cleared when you send). */
+  suggestion?: string;
   /** The context window after the last turn (kept while no Claude Code process runs). */
   context?: ContextUsage;
 }
@@ -205,6 +207,8 @@ export type EngineEvent =
     }
   | { type: "status"; status: "compacting" | "requesting" | null }
   | { type: "notice"; text: string; tone: "info" | "warning" | "danger" }
+  /** Claude Code suggests the user's next message (prompt suggestions). */
+  | { type: "suggestion"; text: string }
   /** Claude Code compacted the conversation (`/compact`, or automatically when the window was full). */
   | { type: "compacted"; trigger: "manual" | "auto"; preTokens: number; postTokens?: number }
   | { type: "error"; message: string; code?: "not_signed_in" | "process" | "billing" | "rate_limit" }

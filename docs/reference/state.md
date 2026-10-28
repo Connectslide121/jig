@@ -46,6 +46,9 @@ suggestions); each is documented here when it lands._
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `""` | model for new sessions; empty = Claude Code's default |
 | `engine.defaultPermissionMode` | `default` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
+| `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
+| `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
+| `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere |
 | `learning.recording` | `true` | record activity locally |
 | `learning.retentionDays` | `90` | delete activity older than this |

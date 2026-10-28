@@ -72,6 +72,10 @@ export class Normalizer {
           },
         ];
       }
+      case "prompt_suggestion":
+        return typeof message.suggestion === "string" && message.suggestion.trim()
+          ? [{ type: "suggestion", text: message.suggestion.trim() }]
+          : [];
       case "auth_status":
         return message.error ? [{ type: "error", message: message.error, code: "not_signed_in" }] : [];
       default:

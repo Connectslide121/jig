@@ -32,6 +32,8 @@ export class FakeEngine implements Engine {
     // Scripted context window: grows each turn ("read the big file" adds a lot), /compact shrinks it.
     const CONTEXT_MAX = 200_000;
     let contextTokens = 18_000;
+    let turnsDone = 0;
+    let suggestTimer: NodeJS.Timeout | undefined;
     const sleep = (ms: number, signal: AbortSignal) =>
       new Promise<void>((resolve, reject) => {
         const t = setTimeout(resolve, ms);
@@ -224,6 +226,17 @@ export class FakeEngine implements Engine {
           });
           return;
         }
+        if (options.promptSuggestions && turnsDone > 0)
+          // What Claude Code would propose next (it skips the first turn, like the real one).
+          suggestTimer = setTimeout(
+            () =>
+              onEvent({
+                type: "suggestion",
+                text: lower.includes("test") ? "Commit these changes" : "Now write tests for this",
+              }),
+            this.delayMs,
+          );
+        turnsDone++;
         onEvent({
           type: "result",
           ok: true,
@@ -283,6 +296,7 @@ export class FakeEngine implements Engine {
       },
       close() {
         closed = true;
+        clearTimeout(suggestTimer);
         turn?.abort();
         onEvent({ type: "exit" });
       },

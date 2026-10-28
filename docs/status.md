@@ -125,6 +125,9 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
+- **Next-message suggestions:** after a turn Claude Code proposes what you might send next. It shows
+  as a chip above the message box (click to edit it, the arrow sends it) and as the box's placeholder
+  (Tab takes it). Settings → Claude Code → Suggest the next message.
 - **Context window and Compact:** each chat header shows how full the context window is (a small bar
   and %); hover for what fills it (messages, tools, system prompt, …), click for **Compact
   conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a

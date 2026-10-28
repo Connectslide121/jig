@@ -33,6 +33,16 @@ export const ConfigSchema = z.object({
       defaultPermissionMode: z
         .enum(["default", "acceptEdits", "plan", "bypassPermissions"])
         .default("default"),
+      /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
+      promptSuggestions: z.boolean().default(true),
+      /** Claude Code keeps a copy of files before it edits them, so a chat can restore them later. */
+      fileCheckpoints: z.boolean().default(true),
+    })
+    .prefault({}),
+  notifications: z
+    .object({
+      /** A system notification when a chat needs you or finishes while Jig isn't in front. */
+      desktop: z.boolean().default(true),
     })
     .prefault({}),
   updates: z

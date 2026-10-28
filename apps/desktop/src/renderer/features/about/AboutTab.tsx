@@ -561,6 +561,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Tool calls with diffs and file previews",
                 "Your plan usage on the ring in the chat header",
                 "How full the context window is, with a breakdown on hover and Compact on click",
+                "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
               ]}
             />
           </Section>

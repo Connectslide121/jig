@@ -55,7 +55,13 @@ export interface SessionManagerOptions {
   attachmentsDir: string;
   engine: Engine;
   /** Settings at the time a Claude Code process starts. */
-  engineSettings: () => { claudePath: string; allowApiKey: boolean; env: Record<string, string | undefined> };
+  engineSettings: () => {
+    claudePath: string;
+    allowApiKey: boolean;
+    env: Record<string, string | undefined>;
+    promptSuggestions?: boolean;
+    fileCheckpoints?: boolean;
+  };
   appendSystemPrompt: (meta: SessionMeta) => string;
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   toolHandlers?: (
@@ -216,6 +222,8 @@ export class SessionManager {
         appendSystemPrompt: this.options.appendSystemPrompt(meta),
         env: settings.env,
         claudePath: settings.claudePath,
+        promptSuggestions: settings.promptSuggestions,
+        fileCheckpoints: settings.fileCheckpoints,
         mcpServers: this.options.mcpServers?.(meta),
         toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
@@ -311,6 +319,7 @@ export class SessionManager {
       title,
       status: "working",
       lastError: undefined,
+      suggestion: undefined,
       updatedAt: new Date().toISOString(),
     };
     updates.push({ op: "meta", meta: live.state.meta });

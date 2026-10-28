@@ -259,4 +259,12 @@ describe("Normalizer", () => {
     });
     expect(contextFrom({ totalTokens: 50, maxTokens: 200 }, "t").percent).toBe(25);
   });
+
+  it("passes Claude Code's prompt suggestions on", () => {
+    const n = new Normalizer();
+    expect(
+      n.handle({ type: "prompt_suggestion", suggestion: " Run the tests ", uuid: "u", session_id: "s" }),
+    ).toEqual([{ type: "suggestion", text: "Run the tests" }]);
+    expect(n.handle({ type: "prompt_suggestion", suggestion: "  " })).toEqual([]);
+  });
 });
