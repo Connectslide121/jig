@@ -34,6 +34,8 @@ a past session.
 - [x] Prompt buttons in the composer toolbar (registry ready; the `prompt` slot feeds it in phase 6)
 - [x] Code blocks highlighted with the active theme
 - [x] `docs/reference/engine.md`
+- [x] Context window meter in the chat header (Claude Code's `/context` data after each turn, breakdown
+      on hover) and Compact (Claude Code's `/compact`, with or without instructions; a button from 70%)
 
 ## Notes
 

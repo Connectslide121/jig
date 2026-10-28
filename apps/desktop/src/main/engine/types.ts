@@ -1,4 +1,10 @@
-import type { EngineEvent, PermissionDecision, PermissionMode, PermissionRequest } from "../../shared/engine";
+import type {
+  ContextUsage,
+  EngineEvent,
+  PermissionDecision,
+  PermissionMode,
+  PermissionRequest,
+} from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import type { EnginePart } from "../sessions/attachments";
 
@@ -34,6 +40,8 @@ export interface EngineSession {
   interrupt(): Promise<void>;
   setModel(model: string): Promise<void>;
   setPermissionMode(mode: PermissionMode): Promise<void>;
+  /** How full the context window is now (Claude Code's `/context` data; nothing is sent to Claude). */
+  contextUsage(): Promise<ContextUsage | undefined>;
   /** Ends the Claude Code process. */
   close(): void;
 }

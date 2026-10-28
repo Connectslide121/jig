@@ -1,22 +1,27 @@
 import {
   ChevronDown,
   CircleHelp,
+  Download,
   Eye,
   FolderPlus,
+  Keyboard,
   LayoutDashboard,
   PanelBottom,
   PanelLeft,
   PanelRight,
+  Puzzle,
   Settings,
+  Stethoscope,
   Wrench,
 } from "lucide-react";
+import { openAbout } from "../features/about";
 import { projectDotClass } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, openMenuAt } from "../ui";
 import { addProject, hiddenViews, openSettings } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
-import { useRegistry } from "./registry";
+import { runAction, useRegistry } from "./registry";
 import { useWorkbench, workbench } from "./store";
 import { openToolsMenu } from "./ToolsMenu";
 
@@ -90,6 +95,20 @@ function TopbarItems() {
   );
 }
 
+/** The "Jig" menu at the left of the top bar: help, setup and updates, always one click away. */
+function jigMenu(): MenuEntry[] {
+  return [
+    { label: "What Jig can do", icon: CircleHelp, onSelect: () => openAbout(), testId: "jig-menu-about" },
+    { label: "Keyboard shortcuts", icon: Keyboard, onSelect: () => openAbout("shortcuts") },
+    { label: "Extension slots", icon: Puzzle, onSelect: () => openAbout("slots") },
+    { separator: true },
+    { label: "Check your setup…", icon: Stethoscope, onSelect: () => runAction("jig.setup") },
+    { label: "Check for updates…", icon: Download, onSelect: () => runAction("jig.updates") },
+    { separator: true },
+    { label: "Settings", icon: Settings, onSelect: () => openSettings() },
+  ];
+}
+
 export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
@@ -99,7 +118,18 @@ export function Topbar() {
         "drag topbar-insets flex h-10 shrink-0 items-center gap-1 border-b border-line bg-titlebar px-2 text-sm",
       )}
     >
-      {!mac && <span className="mr-1 ml-1 font-semibold tracking-tight text-accent">Jig</span>}
+      <button
+        type="button"
+        data-testid="jig-menu"
+        title="Jig"
+        className={cn(
+          "no-drag flex h-7 items-center rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
+          !mac && "ml-0.5",
+        )}
+        onClick={(e) => openMenuAt(e.currentTarget, jigMenu())}
+      >
+        Jig
+      </button>
       <button
         type="button"
         data-testid="project-switcher"
@@ -137,7 +167,7 @@ export function Topbar() {
         icon={CircleHelp}
         label="What Jig can do"
         data-testid="about-button"
-        onClick={() => workbench.openTab("jig.about")}
+        onClick={() => openAbout()}
       />
       <IconButton
         icon={Settings}

@@ -6,6 +6,7 @@ import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { UsageRing } from "../usage";
 import { Composer } from "./Composer";
+import { ContextMeter } from "./ContextMeter";
 import { modelLabel, modelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, useSessions } from "./store";
@@ -69,6 +70,7 @@ export function ChatTab({ params, active }: TabProps) {
           {STATUS_LABEL[meta.status]}
         </span>
         <div className="flex-1" />
+        <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
         {meta.authSource !== "api_key" && <UsageRing />}
         {meta.turns > 0 && (

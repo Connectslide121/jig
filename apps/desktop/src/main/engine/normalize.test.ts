@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authSourceFrom, Normalizer, toolOutputText } from "./normalize";
+import { authSourceFrom, contextFrom, Normalizer, toolOutputText } from "./normalize";
 
 const stream = (event: unknown, parent: string | null = null) => ({
   type: "stream_event",
@@ -215,5 +215,48 @@ describe("Normalizer", () => {
     expect(toolOutputText("x")).toBe("x");
     expect(toolOutputText([{ type: "text", text: "a" }, { type: "image" }])).toBe("a\n[image]");
     expect(toolOutputText(undefined)).toBe("");
+  });
+
+  it("turns a compact boundary into a compacted event", () => {
+    const n = new Normalizer();
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "compact_boundary",
+        compact_metadata: { trigger: "auto", pre_tokens: 150_000, post_tokens: 20_000 },
+      }),
+    ).toEqual([{ type: "compacted", trigger: "auto", preTokens: 150_000, postTokens: 20_000 }]);
+  });
+
+  it("reads Claude Code's context breakdown", () => {
+    const c = contextFrom(
+      {
+        totalTokens: 50_000,
+        maxTokens: 200_000,
+        percentage: 25,
+        categories: [
+          { name: "Free space", tokens: 120_000, kind: "free" },
+          { name: "System tools", tokens: 12_000, kind: "used" },
+          { name: "Messages", tokens: 38_000, kind: "used" },
+          { name: "Autocompact buffer", tokens: 30_000, kind: "buffer" },
+          { name: "MCP tools (deferred)", tokens: 5_000, kind: "deferred" },
+          { name: "Empty", tokens: 0, kind: "used" },
+        ],
+      },
+      "t",
+    );
+    expect(c).toEqual({
+      usedTokens: 50_000,
+      maxTokens: 200_000,
+      percent: 25,
+      at: "t",
+      categories: [
+        { name: "Messages", tokens: 38_000, kind: "used" },
+        { name: "System tools", tokens: 12_000, kind: "used" },
+        { name: "Free space", tokens: 120_000, kind: "free" },
+        { name: "Autocompact buffer", tokens: 30_000, kind: "buffer" },
+      ],
+    });
+    expect(contextFrom({ totalTokens: 50, maxTokens: 200 }, "t").percent).toBe(25);
   });
 });

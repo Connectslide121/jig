@@ -1,12 +1,11 @@
-import { CircleHelp, FolderPlus, Settings, Sparkles, Wrench, X } from "lucide-react";
+import { Settings, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
-import { Button, cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
-import { addProject } from "./actions";
+import { AboutPage } from "../features/about/AboutTab";
+import { cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
 import { useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
-import { openToolsMenu } from "./ToolsMenu";
 
 const noTitle = () => "";
 /** The tab's title; `useTitle` hooks re-render it when the title changes. */
@@ -97,37 +96,9 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
   );
 }
 
+/** With no tab open, the main area shows the "What Jig can do" page (with Add project…). */
 function EmptyMain() {
-  return (
-    <div
-      className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center"
-      data-testid="main-empty"
-    >
-      <div className="text-xl font-semibold text-fg">Jig</div>
-      <div className="max-w-md text-sm text-muted">
-        Your workbench around Claude Code. Add a project to start, or open the Tools menu to see everything
-        Jig can do.
-      </div>
-      <div className="flex gap-2">
-        <Button variant="primary" icon={FolderPlus} onClick={() => void addProject()}>
-          Add project…
-        </Button>
-        <Button icon={Wrench} onClick={(e) => openToolsMenu(e.currentTarget)}>
-          Tools
-        </Button>
-        <Button
-          icon={CircleHelp}
-          onClick={() => workbench.openTab("jig.about")}
-          data-testid="main-empty-about"
-        >
-          What Jig can do
-        </Button>
-        <Button variant="ghost" icon={Settings} onClick={() => workbench.openTab("jig.settings")}>
-          Settings
-        </Button>
-      </div>
-    </div>
-  );
+  return <AboutPage welcome />;
 }
 
 /** Tab bodies stay mounted once opened, so chats and terminals keep their state when you switch. */

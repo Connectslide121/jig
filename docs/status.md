@@ -123,8 +123,12 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
   actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
-- **What Jig can do** (the `?` in the top bar, Tools → What Jig can do, the welcome screen, Settings →
-  About): a page with screenshots of each part, a live grid of the 16 extension slots (which of your
+- **Context window and Compact:** each chat header shows how full the context window is (a small bar
+  and %); hover for what fills it (messages, tools, system prompt, …), click for **Compact
+  conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a
+  **Compact** button shows next to it; the chat's ⋯ menu has the same entries.
+- **What Jig can do** (the "Jig" menu at the top left, the `?` in the top bar, Tools → What Jig can do,
+  Settings → About; it is also what the main area shows when no tab is open): a page with screenshots of each part, a live grid of the 16 extension slots (which of your
   add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
   gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
   the project's), build examples that open the Build dialog, and every keyboard shortcut.
@@ -211,6 +215,9 @@ Things the cloud build environment couldn't verify:
   image?" — Claude should describe it (the image goes as an image block; only the fake engine was used
   here). Then attach a real PDF and a Word/Excel/PowerPoint file you use at work and ask for a summary;
   also try copying a file in Explorer and pasting it into the message box.
+- **Context meter with your real Claude Code**: after a few turns the % in the chat header should match
+  `/context` in the CLI for the same session; Compact should shrink it and show "Conversation compacted
+  (… → … tokens)".
 - **The What Jig can do page**: open it with the `?` in the top bar; check your skills from
   `~/.claude/skills` are listed and that the screenshots look right on your screen.
 - **Configuring from a real chat**: ask Claude Code (real login) to "switch to a light theme and make it

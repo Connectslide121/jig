@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronDown,
   FolderGit2,
+  FolderPlus,
   Gauge,
   GitBranch,
   Keyboard,
@@ -23,7 +24,7 @@ import { PROTECTED_SETTINGS } from "../../../shared/config";
 import { useAddons } from "../../addons/loader";
 import { call } from "../../lib/host";
 import { Badge, Button, Card, CodeBlock, cn, Kbd } from "../../ui";
-import { openSettings } from "../../workbench/actions";
+import { addProject, openSettings } from "../../workbench/actions";
 import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
@@ -190,7 +191,22 @@ function Overview() {
           and tools you build yourself by asking for them. Claude can even change Jig's settings for you.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="primary" icon={MessageSquare} onClick={() => void newSession()}>
+          {projects.length === 0 && (
+            <Button
+              variant="primary"
+              icon={FolderPlus}
+              onClick={() => void addProject()}
+              data-testid="about-add-project"
+            >
+              Add project…
+            </Button>
+          )}
+          <Button
+            variant={projects.length ? "primary" : "secondary"}
+            icon={MessageSquare}
+            disabled={projects.length === 0}
+            onClick={() => void newSession()}
+          >
             New chat
           </Button>
           <Button
@@ -481,6 +497,11 @@ function useScrollSpy(root: React.RefObject<HTMLDivElement | null>): string {
 }
 
 export function AboutTab({ params }: TabProps) {
+  return <AboutPage section={typeof params.section === "string" ? params.section : undefined} />;
+}
+
+/** The page, as a tab or as the main area's welcome screen when no tab is open (`welcome`). */
+export function AboutPage({ section, welcome }: { section?: string; welcome?: boolean }) {
   const scroller = useRef<HTMLDivElement>(null);
   const current = useScrollSpy(scroller);
   const go = (id: string) =>
@@ -488,11 +509,11 @@ export function AboutTab({ params }: TabProps) {
   // Opened at a section (e.g. from Settings → About).
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the requested section changes.
   useEffect(() => {
-    if (typeof params.section === "string") go(params.section);
-  }, [params.section]);
+    if (section) go(section);
+  }, [section]);
 
   return (
-    <div className="flex h-full" data-testid="about">
+    <div className="flex h-full" data-testid={welcome ? "main-empty" : "about"}>
       <Pane
         id="jig.about.nav"
         edge="right"
@@ -536,6 +557,7 @@ export function AboutTab({ params }: TabProps) {
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
                 "Your plan usage on the ring in the chat header",
+                "How full the context window is, with a breakdown on hover and Compact on click",
               ]}
             />
           </Section>

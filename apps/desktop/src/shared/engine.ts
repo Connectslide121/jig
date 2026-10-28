@@ -26,6 +26,18 @@ export interface Usage {
   cacheWriteTokens: number;
 }
 
+/** How full a session's context window is, as Claude Code's `/context` reports it. */
+export interface ContextUsage {
+  usedTokens: number;
+  maxTokens: number;
+  /** 0–100. */
+  percent: number;
+  /** What fills it (system prompt, tools, messages, …), largest first; `free`/`buffer` are the rest. */
+  categories: Array<{ name: string; tokens: number; kind: "used" | "free" | "buffer" }>;
+  /** When it was measured (after the last turn). */
+  at: string;
+}
+
 export interface SessionMeta {
   id: string;
   projectId: string;
@@ -53,6 +65,8 @@ export interface SessionMeta {
   /** `builder` sessions run a build job (hidden from the Sessions list, opened from the build). */
   kind?: "chat" | "builder";
   buildId?: string;
+  /** The context window after the last turn (kept while no Claude Code process runs). */
+  context?: ContextUsage;
 }
 
 export interface PermissionRequest {
@@ -191,6 +205,8 @@ export type EngineEvent =
     }
   | { type: "status"; status: "compacting" | "requesting" | null }
   | { type: "notice"; text: string; tone: "info" | "warning" | "danger" }
+  /** Claude Code compacted the conversation (`/compact`, or automatically when the window was full). */
+  | { type: "compacted"; trigger: "manual" | "auto"; preTokens: number; postTokens?: number }
   | { type: "error"; message: string; code?: "not_signed_in" | "process" | "billing" | "rate_limit" }
   | {
       /** Claude Code reported plan rate-limit state (a warning, or a window used up). */

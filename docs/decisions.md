@@ -512,3 +512,15 @@ an opt-in Playwright spec with the fake engine and a demo workspace, so they can
 UI changes instead of being taken by hand. Examples act instead of just describing: "Try in a chat"
 opens a chat with the text in the composer (not sent, so nothing happens without you) and build
 examples open the Build dialog. Skills are found by reading only SKILL.md front matter.
+
+### D-079 — Context window from Claude Code's /context; Compact is Claude Code's /compact; About is the welcome screen
+**Decided by:** Jon (show context usage, a quick Compact button; the about page as the empty state and
+always in a menu) and Claude, on my own (how) · **Date:** 2026-10-28
+The context meter uses Claude Code's own `/context` data (`getContextUsage`), read after each turn, so
+the number matches the CLI and includes system prompt, tools and memory files, not only messages;
+Jig does not estimate tokens itself. Compact sends Claude Code's `/compact` as a message (so it queues
+like one and Claude Code does the summarising; Jig adds no slash command of its own, AGENTS.md). The
+button appears from 70% so it is there when it matters without crowding the header; the meter's menu
+and the ⋯ menu always have it. The welcome screen is the What Jig can do page, and a "Jig" menu (the
+logo at the top left) holds help, setup, updates and settings, so the page is one click away in every
+state.

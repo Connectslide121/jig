@@ -262,12 +262,22 @@ export class SessionManager {
     if (event.type === "result" || event.type === "exit") this.options.onTurnEnd?.(live.state.meta);
     if (event.type === "result") {
       this.scheduleSave(live, true);
+      void this.refreshContext(live);
       const next = live.queue.shift();
       if (next) {
         this.emit(live, [{ op: "queue", queue: live.queue }]);
         void this.startTurn(live, next.text, next.attachments);
       }
     }
+  }
+
+  /** Asks Claude Code how full the context window is and keeps it on the session. */
+  private async refreshContext(live: Live) {
+    const context = await live.engine?.contextUsage().catch(() => undefined);
+    if (!context) return;
+    live.state.meta = { ...live.state.meta, context };
+    this.emit(live, [{ op: "meta", meta: live.state.meta }]);
+    this.scheduleSave(live);
   }
 
   private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = []) {

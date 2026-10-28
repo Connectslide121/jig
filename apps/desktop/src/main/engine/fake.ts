@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
+import { contextFrom } from "./normalize";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
 /**
@@ -28,6 +29,9 @@ export class FakeEngine implements Engine {
     let turn: AbortController | undefined;
     const queue: string[] = [];
     let closed = false;
+    // Scripted context window: grows each turn ("read the big file" adds a lot), /compact shrinks it.
+    const CONTEXT_MAX = 200_000;
+    let contextTokens = 18_000;
     const sleep = (ms: number, signal: AbortSignal) =>
       new Promise<void>((resolve, reject) => {
         const t = setTimeout(resolve, ms);
@@ -77,6 +81,17 @@ export class FakeEngine implements Engine {
             slashCommands: ["/compact", "/clear"],
           });
         }
+        if (lower.startsWith("/compact")) {
+          onEvent({ type: "status", status: "compacting" });
+          await sleep(this.delayMs * 10, signal);
+          const preTokens = contextTokens;
+          contextTokens = 21_000;
+          onEvent({ type: "status", status: null });
+          onEvent({ type: "compacted", trigger: "manual", preTokens, postTokens: contextTokens });
+          onEvent({ type: "result", ok: true, durationMs: Date.now() - started, numTurns: 0 });
+          return;
+        }
+        contextTokens = Math.min(CONTEXT_MAX, contextTokens + (lower.includes("big file") ? 130_000 : 9_000));
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
         if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
@@ -252,6 +267,19 @@ export class FakeEngine implements Engine {
       },
       async setPermissionMode(mode) {
         permissionMode = mode;
+      },
+      async contextUsage() {
+        const messages = contextTokens - 15_000;
+        return contextFrom({
+          totalTokens: contextTokens,
+          maxTokens: CONTEXT_MAX,
+          categories: [
+            { name: "System prompt", tokens: 3_000, kind: "used" },
+            { name: "System tools", tokens: 12_000, kind: "used" },
+            { name: "Messages", tokens: messages, kind: "used" },
+            { name: "Free space", tokens: CONTEXT_MAX - contextTokens, kind: "free" },
+          ],
+        });
       },
       close() {
         closed = true;

@@ -5,7 +5,7 @@ import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { isReadOnlyJigTool } from "./jigTools";
-import { Normalizer } from "./normalize";
+import { contextFrom, Normalizer } from "./normalize";
 import { AsyncQueue } from "./queue";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
@@ -118,6 +118,23 @@ export class ClaudeEngine implements Engine {
       },
       setModel: (model) => q.setModel(model || undefined),
       setPermissionMode: (mode: PermissionMode) => q.setPermissionMode(mode),
+      async contextUsage() {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+          const r = await Promise.race([
+            q.getContextUsage({ detail: "summary" }),
+            new Promise<undefined>((resolve) => {
+              timer = setTimeout(() => resolve(undefined), 15_000);
+            }),
+          ]);
+          return r ? contextFrom(r) : undefined;
+        } catch (error) {
+          log.debug("Context usage unavailable", error);
+          return undefined;
+        } finally {
+          clearTimeout(timer);
+        }
+      },
       close() {
         input.close();
         abort.abort();

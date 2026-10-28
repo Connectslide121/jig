@@ -154,7 +154,10 @@ project names and colours, and install themes — through tools on the `jig` MCP
 through Claude Code's permission prompt and leave a card with Undo in the chat; billing and
 program-running settings are Settings-only. Reference: `docs/reference/configure.md`.
 
-**What Jig can do.** A core tab explains Jig with bundled screenshots and live data: the slots from
+**Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
+chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
+
+**What Jig can do.** A core tab (also the main area's welcome screen, and in the "Jig" menu) explains Jig with bundled screenshots and live data: the slots from
 `@jig/sdk`, the add-ons that use them, your Claude Code skills (`about.skills`, front matter only), the
 registered shortcuts. Its examples start a build or open a chat with a draft. Reference:
 `docs/reference/about.md`.

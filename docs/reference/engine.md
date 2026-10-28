@@ -12,7 +12,7 @@ interface Engine {
   start(options: StartOptions, onEvent: (e: EngineEvent) => void): EngineSession;
   oneShot(prompt: string, options: OneShotOptions): Promise<string>; // no tools, one turn (phase 9)
 }
-interface EngineSession { send(text); interrupt(); setModel(m); setPermissionMode(m); close(); }
+interface EngineSession { send(text); interrupt(); setModel(m); setPermissionMode(m); contextUsage(); close(); }
 ```
 
 - **`ClaudeEngine`** (`claude.ts`): `query()` from `@anthropic-ai/claude-agent-sdk` in streaming-input
@@ -48,7 +48,8 @@ extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
 | `tool_use { id, name, input, parentId? }` / `tool_result { toolUseId, output, isError }` | assistant / user messages; `parentId` = a subagent's Task tool |
 | `permission { request }` / `permission_resolved { requestId, status }` | `canUseTool` |
 | `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference) |
-| `status`, `notice`, `error { code? }`, `exit` | status/compact messages, errors, process end |
+| `compacted { trigger: manual \| auto, preTokens, postTokens? }` | `system/compact_boundary` (shown as "Conversation compacted (157k → 21k tokens)") |
+| `status`, `notice`, `error { code? }`, `exit` | status messages ("Compacting…"), errors, process end |
 
 ## Sessions (`main/sessions/manager.ts`)
 
@@ -101,6 +102,20 @@ do. Files picked with the paperclip that are code or text **inside the project**
 `@path` mentions (Claude Code reads the current version and can edit it). The user item keeps
 `attachments: [{ path, mime, name, kind }]` (older transcripts: `images`); queued messages keep theirs.
 The fake engine answers "I see N image(s)." and "I read <names>."
+
+## Context window and compacting
+
+After every turn the session manager calls `EngineSession.contextUsage()`: the Claude engine asks
+Claude Code for its `/context` data (`getContextUsage({ detail: "summary" })`, nothing is sent to
+Claude) and `contextFrom()` keeps the total, the window size, the percentage and the categories (used
+ones largest first, then free space and the autocompact buffer; deferred tool schemas are dropped). It
+is stored as `SessionMeta.context`, so the last value shows after a restart until the next turn.
+
+Compacting is Claude Code's own `/compact`, sent as a message (`sessions.send` with `/compact` or
+`/compact <what to keep>`), so it queues behind a running turn like any message. The chat header shows
+the context meter (hover: breakdown; click: Compact / Compact with instructions…) and a **Compact**
+button from 70%; the session ⋯ menu has the same entries. The fake engine counts 9k tokens a turn
+(130k for "big file") and compacts to 21k.
 
 ## Plan usage
 

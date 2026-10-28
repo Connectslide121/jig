@@ -177,6 +177,24 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
           text: "Compacting the conversation…",
         });
       break;
+    case "compacted": {
+      // Replaces the "Compacting…" line when there is one.
+      const pending = [...state.items]
+        .reverse()
+        .find((i) => i.kind === "notice" && i.id.startsWith("compact-") && i.text.endsWith("…"));
+      const k = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+      const size = event.preTokens
+        ? ` (${k(event.preTokens)}${event.postTokens !== undefined ? ` → ${k(event.postTokens)}` : ""} tokens)`
+        : "";
+      upsert({
+        kind: "notice",
+        id: pending?.id ?? `compact-${Date.now()}`,
+        at: now(),
+        tone: "info",
+        text: `${event.trigger === "auto" ? "Context was full: conversation compacted automatically" : "Conversation compacted"}${size}.`,
+      });
+      break;
+    }
     case "notice":
       upsert({
         kind: "notice",

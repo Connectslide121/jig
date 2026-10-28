@@ -1,4 +1,4 @@
-import type { AuthSource, EngineEvent, Usage } from "../../shared/engine";
+import type { AuthSource, ContextUsage, EngineEvent, Usage } from "../../shared/engine";
 
 /**
  * Claude Code SDK messages → Jig engine events. Pure and stateful per session (it tracks streamed
@@ -92,8 +92,17 @@ export class Normalizer {
         },
       ];
     if (m.subtype === "status") return [{ type: "status", status: m.status ?? null }];
-    if (m.subtype === "compact_boundary")
-      return [{ type: "notice", tone: "info", text: "Conversation compacted." }];
+    if (m.subtype === "compact_boundary") {
+      const c = m.compact_metadata ?? {};
+      return [
+        {
+          type: "compacted",
+          trigger: c.trigger === "auto" ? "auto" : "manual",
+          preTokens: Number(c.pre_tokens) || 0,
+          postTokens: typeof c.post_tokens === "number" ? c.post_tokens : undefined,
+        },
+      ];
+    }
     return [];
   }
 
@@ -200,4 +209,23 @@ export class Normalizer {
     });
     return events;
   }
+}
+
+/** Claude Code's context breakdown (`getContextUsage`) → what Jig shows. */
+export function contextFrom(r: Msg, at = new Date().toISOString()): ContextUsage {
+  const usedTokens = Number(r.totalTokens) || 0;
+  const maxTokens = Number(r.maxTokens) || Number(r.rawMaxTokens) || 0;
+  const percent =
+    typeof r.percentage === "number" ? r.percentage : maxTokens ? (usedTokens / maxTokens) * 100 : 0;
+  const categories = (Array.isArray(r.categories) ? r.categories : [])
+    .filter((c: Msg) => c.kind !== "deferred" && Number(c.tokens) > 0)
+    .map((c: Msg) => ({
+      name: String(c.name),
+      tokens: Number(c.tokens),
+      kind: c.kind === "free" || c.kind === "buffer" ? c.kind : ("used" as const),
+    }))
+    .sort((a: { kind: string; tokens: number }, b: { kind: string; tokens: number }) =>
+      a.kind === b.kind ? b.tokens - a.tokens : a.kind === "used" ? -1 : b.kind === "used" ? 1 : 0,
+    );
+  return { usedTokens, maxTokens, percent: Math.max(0, Math.min(100, Math.round(percent))), categories, at };
 }

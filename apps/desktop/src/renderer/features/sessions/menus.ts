@@ -4,6 +4,7 @@ import { closeTabsWhere } from "../../../shared/layout";
 import { call } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
 import { updateLayout } from "../../workbench/store";
+import { compactMenu } from "./ContextMeter";
 import { forgetSession } from "./store";
 
 export const MODEL_CHOICES = [
@@ -78,6 +79,7 @@ export async function deleteSession(meta: SessionMeta): Promise<void> {
 export function sessionMenu(meta: SessionMeta): MenuEntry[] {
   return [
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
+    ...compactMenu(meta),
     {
       label: "Stop Claude Code process",
       icon: Power,
