@@ -18,7 +18,7 @@ import { openAbout } from "../features/about";
 import { projectDotClass } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
-import { cn, ErrorBoundary, IconButton, openMenuAt } from "../ui";
+import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt } from "../ui";
 import { addProject, hiddenViews, openSettings } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { runAction, useRegistry } from "./registry";
@@ -123,11 +123,12 @@ export function Topbar() {
         data-testid="jig-menu"
         title="Jig"
         className={cn(
-          "no-drag flex h-7 items-center rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
+          "no-drag flex h-7 items-center gap-1.5 rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
           !mac && "ml-0.5",
         )}
         onClick={(e) => openMenuAt(e.currentTarget, jigMenu())}
       >
+        <JigLogo className="size-4" />
         Jig
       </button>
       <button

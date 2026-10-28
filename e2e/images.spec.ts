@@ -32,9 +32,9 @@ test("Git shows a changed image before and after, and opens it in an image tab",
   await page.getByTestId("git-file-unstaged-logo.png").click();
   const diff = page.getByTestId("git-image-diff");
   await expect(diff.getByTestId("git-image-before").getByTestId("image-size")).toHaveText("1 × 1 px");
-  await expect(diff.getByTestId("git-image-after").getByTestId("image-size")).toHaveText("512 × 512 px");
+  await expect(diff.getByTestId("git-image-after").getByTestId("image-size")).toHaveText("1024 × 1024 px");
   await page.getByRole("button", { name: "Open the image" }).click();
-  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("512 × 512 px");
+  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1024 × 1024 px");
   await expect(page.getByTestId("tab-jig.image")).toContainText("logo.png");
 });
 
@@ -49,7 +49,7 @@ test("an image Claude reads shows as a thumbnail in its tool card", async ({ pag
   const thumb = page.getByTestId("tool-card").getByTestId("image-thumb");
   await expect(thumb).toBeVisible({ timeout: 15000 });
   await thumb.getByRole("img").click();
-  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("512 × 512 px");
+  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1024 × 1024 px");
   // Non-images are refused by the host.
   const refused = await hostCall(page, "files.image", { path: join(dir, "notes.txt") });
   expect(refused).toMatchObject({ ok: false, error: { code: "not_image" } });

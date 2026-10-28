@@ -44,6 +44,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     minHeight: 500,
     show: false,
     title: "Jig",
+    // Taskbar/window icon when Jig runs from a clone (packaged builds have it in the executable too).
+    icon: join(here, "../../build/icon.png"),
     backgroundColor: "#1e1f22", // jig-tokens-ignore-line — first paint before the theme loads
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
     titleBarOverlay:

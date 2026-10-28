@@ -524,3 +524,12 @@ button appears from 70% so it is there when it matters without crowding the head
 and the ⋯ menu always have it. The welcome screen is the What Jig can do page, and a "Jig" menu (the
 logo at the top left) holds help, setup, updates and settings, so the page is one click away in every
 state.
+
+### D-080 — The logo is redrawn as geometry; amber is the only brand colour
+**Decided by:** Jon (the logo design, keep the amber/graphite style) and Claude, on my own (how) ·
+**Date:** 2026-10-28
+Jon picked a generated image (a J of a bar and a hook with a gap, amber on graphite). It is redrawn as
+exact shapes on a 1024 grid instead of shipping the raster: crisp at every size, in Jig's exact theme
+colours (the image's orange was off), and the same shapes give the in-app SVG logo, which takes the
+theme's accent and canvas colours. The window icon is set too, so Jig running from a clone shows it.
+Amber stays the only brand colour; the other colours are reserved for status (docs/brand/README.md).

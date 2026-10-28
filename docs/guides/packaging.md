@@ -19,7 +19,10 @@ installer — handy for a quick try). On Linux/macOS `npm run dist` makes `relea
 `release/mac/` (unsigned, for testing).
 
 Config: `apps/desktop/electron-builder.yml`. The icon is generated: `npm run icon --workspace
-@jig/desktop` writes `apps/desktop/build/icon.png` (electron-builder makes the `.ico`).
+@jig/desktop` draws Jig's logo into `apps/desktop/build/icon.png` (1024×1024; electron-builder makes
+the `.ico`/`.icns`). The window uses the same file, so Jig shows its icon in the taskbar also when it
+runs from a clone. The logo's shapes live in two places that must match: `scripts/make-icon.mjs` and
+`src/renderer/ui/JigLogo.tsx` (the in-app logo); `docs/brand/` has the design it was drawn from.
 
 What is inside (`resources/`):
 

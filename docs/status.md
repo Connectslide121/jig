@@ -123,6 +123,8 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   its branch, commit box and changes); click a repository to focus it (status bar, Tools → Git
   actions). Chats start at the workspace root, or in one repository (right-click it → New chat in this
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
+- **Jig's logo:** the amber J on graphite is the app icon (installer, taskbar, window) and appears in
+  the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Context window and Compact:** each chat header shows how full the context window is (a small bar
   and %); hover for what fills it (messages, tools, system prompt, …), click for **Compact
   conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a

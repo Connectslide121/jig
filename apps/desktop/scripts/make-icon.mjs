@@ -1,45 +1,65 @@
-// Draws Jig's app icon (build/icon.png, 512×512) without any image tooling: a rounded square in Jig's
-// accent colour with a white "J"-shaped jig (a bracket and a bar). electron-builder converts it to .ico
-// / .icns. Run: node scripts/make-icon.mjs
+// Draws Jig's app icon (build/icon.png, 1024×1024) without any image tooling: Jig's logo — an amber
+// "J" made of a bar and a hook with a thin gap, like a piece held in a jig — on a graphite rounded
+// square. The shapes are the same as `renderer/ui/JigLogo.tsx` (one 1024 grid). electron-builder makes
+// the .ico / .icns from it. Run: node scripts/make-icon.mjs
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 import { appDir } from "./build-config.mjs";
 
-const size = 512;
+const size = 1024;
 const px = Buffer.alloc(size * size * 4);
-const accent = [0x4f, 0x8c, 0xff];
-const ink = [0xff, 0xff, 0xff];
+const graphite = [0x1e, 0x1f, 0x22]; // Jig Dark canvas
+const amber = [0xe0, 0xa4, 0x58]; // Jig Dark accent
 
-function inRoundRect(x, y, x0, y0, x1, y1, r) {
-  if (x < x0 || x > x1 || y < y0 || y > y1) return false;
-  const cx = Math.max(x0 + r, Math.min(x, x1 - r));
-  const cy = Math.max(y0 + r, Math.min(y, y1 - r));
-  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+const inRect = (x, y, x0, y0, x1, y1) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+const inDisc = (x, y, cx, cy, r) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+/** A rectangle with its own radius per corner: top-left, top-right, bottom-right, bottom-left. */
+function inRoundRect(x, y, x0, y0, x1, y1, [tl, tr, br, bl]) {
+  if (!inRect(x, y, x0, y0, x1, y1)) return false;
+  for (const [r, cx, cy, left, top] of [
+    [tl, x0 + tl, y0 + tl, true, true],
+    [tr, x1 - tr, y0 + tr, false, true],
+    [br, x1 - br, y1 - br, false, false],
+    [bl, x0 + bl, y1 - bl, true, false],
+  ])
+    if (r && (left ? x < cx : x > cx) && (top ? y < cy : y > cy) && !inDisc(x, y, cx, cy, r)) return false;
+  return true;
+}
+
+// The logo on a 1024 grid (JigLogo.tsx uses the same numbers).
+const square = (x, y) => inRoundRect(x, y, 32, 32, 992, 992, [216, 216, 216, 216]);
+const bar = (x, y) => inRoundRect(x, y, 576, 161, 763, 599, [28, 28, 8, 8]);
+function hook(x, y) {
+  if (y < 604) return false;
+  if (x > 576 && y < 621) return false; // the gap under the bar
+  if (inRect(x, y, 433, 0, 576, 628) || inDisc(x, y, 504.5, 628, 71.5)) return false; // inside the U
+  if (!inRect(x, y, 260, 0, 763, 598) && !inDisc(x, y, 511.5, 598, 251.5)) return false;
+  // Slightly rounded tops of the two arms.
+  return (
+    (x > 433 && x < 576) ||
+    inRoundRect(x, y, 260, 604, 433, size, [14, 8, 0, 0]) ||
+    inRoundRect(x, y, 576, 621, 763, size, [8, 10, 0, 0])
+  );
 }
 
 for (let y = 0; y < size; y++) {
   for (let x = 0; x < size; x++) {
-    // 4× supersampling for smooth edges.
+    // 4×4 supersampling for smooth edges.
     let bg = 0;
     let fg = 0;
     for (let sy = 0; sy < 4; sy++)
       for (let sx = 0; sx < 4; sx++) {
         const fx = x + (sx + 0.5) / 4;
         const fy = y + (sy + 0.5) / 4;
-        if (!inRoundRect(fx, fy, 24, 24, 488, 488, 104)) continue;
+        if (!square(fx, fy)) continue;
         bg++;
-        const stem = inRoundRect(fx, fy, 290, 140, 350, 350, 0);
-        const hook =
-          inRoundRect(fx, fy, 150, 290, 350, 400, 55) && !inRoundRect(fx, fy, 210, 230, 290, 340, 30);
-        const bar = inRoundRect(fx, fy, 170, 112, 400, 168, 28);
-        if (stem || hook || bar) fg++;
+        if (bar(fx, fy) || hook(fx, fy)) fg++;
       }
     const i = (y * size + x) * 4;
-    const a = bg / 16;
     const f = bg ? fg / bg : 0;
-    for (let c = 0; c < 3; c++) px[i + c] = Math.round(accent[c] * (1 - f) + ink[c] * f);
-    px[i + 3] = Math.round(a * 255);
+    for (let c = 0; c < 3; c++) px[i + c] = Math.round(graphite[c] * (1 - f) + amber[c] * f);
+    px[i + 3] = Math.round((bg / 16) * 255);
   }
 }
 

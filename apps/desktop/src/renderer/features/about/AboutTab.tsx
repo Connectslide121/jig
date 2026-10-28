@@ -23,7 +23,7 @@ import type { SkillInfo } from "../../../shared/about";
 import { PROTECTED_SETTINGS } from "../../../shared/config";
 import { useAddons } from "../../addons/loader";
 import { call } from "../../lib/host";
-import { Badge, Button, Card, CodeBlock, cn, Kbd } from "../../ui";
+import { Badge, Button, Card, CodeBlock, cn, JigLogo, Kbd } from "../../ui";
 import { addProject, openSettings } from "../../workbench/actions";
 import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
@@ -183,43 +183,46 @@ function Overview() {
   const repos = projects.reduce((n, p) => n + (p.repos?.length ?? 0), 0);
   return (
     <section id="about-overview" data-section="overview" className="pb-8">
-      <div className="rounded-xl border border-line bg-accent-soft p-6">
-        <div className="text-2xs font-semibold tracking-wide text-accent uppercase">What Jig can do</div>
-        <h1 className="mt-1 text-2xl font-semibold text-fg">Your workbench around Claude Code</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Chats with the real Claude Code, all your repositories, git, terminals and scripts in one window —
-          and tools you build yourself by asking for them. Claude can even change Jig's settings for you.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {projects.length === 0 && (
+      <div className="flex gap-6 rounded-xl border border-line bg-accent-soft p-6">
+        <div className="min-w-0 flex-1">
+          <div className="text-2xs font-semibold tracking-wide text-accent uppercase">What Jig can do</div>
+          <h1 className="mt-1 text-2xl font-semibold text-fg">Your workbench around Claude Code</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            Chats with the real Claude Code, all your repositories, git, terminals and scripts in one window —
+            and tools you build yourself by asking for them. Claude can even change Jig's settings for you.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {projects.length === 0 && (
+              <Button
+                variant="primary"
+                icon={FolderPlus}
+                onClick={() => void addProject()}
+                data-testid="about-add-project"
+              >
+                Add project…
+              </Button>
+            )}
             <Button
-              variant="primary"
-              icon={FolderPlus}
-              onClick={() => void addProject()}
-              data-testid="about-add-project"
+              variant={projects.length ? "primary" : "secondary"}
+              icon={MessageSquare}
+              disabled={projects.length === 0}
+              onClick={() => void newSession()}
             >
-              Add project…
+              New chat
             </Button>
-          )}
-          <Button
-            variant={projects.length ? "primary" : "secondary"}
-            icon={MessageSquare}
-            disabled={projects.length === 0}
-            onClick={() => void newSession()}
-          >
-            New chat
-          </Button>
-          <Button
-            icon={Wand2}
-            onClick={() => openBuildDialog({ goal: "", origin: "tools" })}
-            data-testid="about-build"
-          >
-            Build something…
-          </Button>
-          <Button variant="ghost" onClick={() => void workbench.openTab("jig.setup")}>
-            Check your setup
-          </Button>
+            <Button
+              icon={Wand2}
+              onClick={() => openBuildDialog({ goal: "", origin: "tools" })}
+              data-testid="about-build"
+            >
+              Build something…
+            </Button>
+            <Button variant="ghost" onClick={() => void workbench.openTab("jig.setup")}>
+              Check your setup
+            </Button>
+          </div>
         </div>
+        <JigLogo variant="icon" className="size-20" />
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="about-stats">
         <Stat value={projects.length} label={`projects · ${repos} repos`} />

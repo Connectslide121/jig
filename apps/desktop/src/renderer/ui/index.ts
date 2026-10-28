@@ -8,6 +8,7 @@ export * from "./ErrorBoundary";
 export * from "./FileIcon";
 export * from "./ImagePreview";
 export * from "./Input";
+export * from "./JigLogo";
 export * from "./ListRow";
 export * from "./Markdown";
 export * from "./Menu";
