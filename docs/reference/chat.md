@@ -27,7 +27,7 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 | Ctrl+B background | ⤓ on a running Bash or Task card moves it to the background; background commands and agents are listed above the box with Stop |
 | `/mcp` | chat ⋯ → MCP servers…: status (connected, failed, needs sign-in, off), tools, on/off, reconnect. A server that fails at start adds a notice in the chat |
 | `/add-dir` | chat ⋯ → Folders for this chat…: other folders Claude may use (Claude Code restarts with them at the next message) |
-| `/model`, effort | the model menu lists Claude Code's models (`sessions.models`) and an Effort submenu for models that support it (`sessions.setEffort`, applied to the running session) |
+| `/model`, effort | the model menu (bottom row of the message box, next to the permission mode) lists Claude Code's models (`sessions.models`) and an Effort submenu for models that support it (`sessions.setEffort`, applied to the running session) |
 | `/export` | chat ⋯ → Export as Markdown… (`shared/chatExport.ts`) |
 | `/context`, `/compact`, `/usage` | the context meter, Compact, the plan usage ring (`docs/reference/engine.md`) |
 

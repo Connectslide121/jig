@@ -721,3 +721,11 @@ which took the right sidebar. Now:
 
 Not done: a second, separate headless engine (Playwright). Electron's offscreen page is already a full
 Chromium, shares the live view and needs nothing installed.
+
+### D-096 — Model and permission mode live in the message box
+**Decided by:** Jon (the header wrapped them and they configure the AI, so they belong with the input)
+· **Date:** 2026-10-28
+
+The model/effort and permission-mode menus moved from the chat header into the bottom row of the
+message box, after the +, attach and "try several ways" buttons and before Send. The text area now
+spans the full width above that row. The header keeps the title, status, context, usage, find and ⋯.

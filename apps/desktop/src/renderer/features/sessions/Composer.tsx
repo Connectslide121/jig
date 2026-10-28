@@ -3,6 +3,7 @@ import {
   AtSign,
   BookmarkPlus,
   Bot,
+  ChevronDown,
   Download,
   FolderPlus,
   History,
@@ -40,7 +41,7 @@ import { ComposerPicker, type PickerItem } from "./ComposerPicker";
 import { chatCommands, TERMINAL_ONLY } from "./commands";
 import { historyStep, inputMode, nextPermissionMode, replaceToken, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
-import { exportChat, modelMenu, permissionMenu } from "./menus";
+import { exportChat, modelLabel, modelMenu, openModelMenu, permissionMenu } from "./menus";
 import { usePrompts } from "./prompts";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
@@ -510,7 +511,88 @@ export function Composer({
             className="px-1 pt-1"
             onRemove={(file) => setFiles((list) => list.filter((f) => f !== file))}
           />
-          <div className="flex items-end gap-2">
+          <textarea
+            ref={ref}
+            rows={1}
+            value={text}
+            data-testid="composer-input"
+            placeholder={
+              busy
+                ? "Claude is working — Enter queues your message, Ctrl+Enter sends it now"
+                : suggestion
+                  ? `${suggestion}  (Tab to use)`
+                  : "Message Claude…  / commands · @ files · ! shell · # remember"
+            }
+            onChange={(e) => {
+              setTextState(e.target.value);
+              setCaret(e.target.selectionStart);
+              setClosedAt(undefined);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+            onPaste={(e) => {
+              if (takeFiles(e.clipboardData.files)) e.preventDefault();
+            }}
+            onKeyDown={(e) => {
+              const el = e.currentTarget;
+              if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const step = e.key === "ArrowDown" ? 1 : -1;
+                  setSelected((i) => (i + step + items.length) % Math.max(items.length, 1));
+                  return;
+                }
+                if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey)) {
+                  e.preventDefault();
+                  const item = items[selected];
+                  if (item) pick(item);
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setClosedAt(tokenKey);
+                  return;
+                }
+              }
+              if (e.key === "Tab" && e.shiftKey) {
+                e.preventDefault();
+                void call("sessions.setPermissionMode", {
+                  id: meta.id,
+                  mode: nextPermissionMode(meta.permissionMode),
+                });
+              } else if (e.key === "Tab" && !text && suggestion) {
+                e.preventDefault();
+                setText(suggestion);
+              } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                submit(busy && (e.ctrlKey || e.metaKey));
+              } else if (e.key === "Escape" && busy) {
+                e.preventDefault();
+                void call("sessions.interrupt", { id: meta.id });
+              } else if (
+                (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                !e.shiftKey &&
+                (e.key === "ArrowUp"
+                  ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
+                  : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
+              ) {
+                const step = historyStep(
+                  userHistory,
+                  history.index,
+                  e.key === "ArrowUp" ? "up" : "down",
+                  history.index === -1 ? text : history.draft,
+                );
+                if (!step) return;
+                e.preventDefault();
+                setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
+                setText(step.text);
+                // A recalled "/command" doesn't open the picker; typing does.
+                const recalled = tokenAt(step.text, step.text.length);
+                setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
+              }
+            }}
+            className="max-h-80 min-h-7 w-full resize-none bg-transparent px-1.5 py-1 text-sm text-fg outline-none placeholder:text-hint"
+          />
+          <div className="flex items-center gap-1">
             <IconButton
               icon={Plus}
               label="Commands, files, shell, memory and chat settings"
@@ -530,87 +612,41 @@ export function Composer({
                 onClick={() => openAttemptsDialog({ task: text, projectId: meta.projectId })}
               />
             )}
-            <textarea
-              ref={ref}
-              rows={1}
-              value={text}
-              data-testid="composer-input"
-              placeholder={
-                busy
-                  ? "Claude is working — Enter queues your message, Ctrl+Enter sends it now"
-                  : suggestion
-                    ? `${suggestion}  (Tab to use)`
-                    : "Message Claude…  / commands · @ files · ! shell · # remember"
+            <div className="flex-1" />
+            <button
+              type="button"
+              data-testid="model-menu"
+              onClick={(e) => void openModelMenu(e.currentTarget, meta)}
+              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-xs text-muted hover:bg-hover hover:text-fg"
+              title={
+                meta.activeModel
+                  ? `Model and effort · Claude Code reports: ${meta.activeModel}`
+                  : "Model and effort"
               }
-              onChange={(e) => {
-                setTextState(e.target.value);
-                setCaret(e.target.selectionStart);
-                setClosedAt(undefined);
-              }}
-              onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-              onPaste={(e) => {
-                if (takeFiles(e.clipboardData.files)) e.preventDefault();
-              }}
-              onKeyDown={(e) => {
-                const el = e.currentTarget;
-                if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                    e.preventDefault();
-                    const step = e.key === "ArrowDown" ? 1 : -1;
-                    setSelected((i) => (i + step + items.length) % Math.max(items.length, 1));
-                    return;
-                  }
-                  if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey)) {
-                    e.preventDefault();
-                    const item = items[selected];
-                    if (item) pick(item);
-                    return;
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setClosedAt(tokenKey);
-                    return;
-                  }
-                }
-                if (e.key === "Tab" && e.shiftKey) {
-                  e.preventDefault();
-                  void call("sessions.setPermissionMode", {
-                    id: meta.id,
-                    mode: nextPermissionMode(meta.permissionMode),
-                  });
-                } else if (e.key === "Tab" && !text && suggestion) {
-                  e.preventDefault();
-                  setText(suggestion);
-                } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submit(busy && (e.ctrlKey || e.metaKey));
-                } else if (e.key === "Escape" && busy) {
-                  e.preventDefault();
-                  void call("sessions.interrupt", { id: meta.id });
-                } else if (
-                  (e.key === "ArrowUp" || e.key === "ArrowDown") &&
-                  !e.shiftKey &&
-                  (e.key === "ArrowUp"
-                    ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
-                    : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
-                ) {
-                  const step = historyStep(
-                    userHistory,
-                    history.index,
-                    e.key === "ArrowUp" ? "up" : "down",
-                    history.index === -1 ? text : history.draft,
-                  );
-                  if (!step) return;
-                  e.preventDefault();
-                  setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
-                  setText(step.text);
-                  // A recalled "/command" doesn't open the picker; typing does.
-                  const recalled = tokenAt(step.text, step.text.length);
-                  setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
-                }
-              }}
-              className="max-h-80 min-h-7 flex-1 resize-none bg-transparent py-1 text-sm text-fg outline-none placeholder:text-hint"
-            />
+            >
+              {modelLabel(meta)} <ChevronDown className="size-3" />
+            </button>
+            <button
+              type="button"
+              data-testid="permission-menu"
+              onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
+              className={cn(
+                "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-xs hover:bg-hover",
+                meta.permissionMode === "bypassPermissions"
+                  ? "text-danger"
+                  : meta.permissionMode === "default"
+                    ? "text-muted hover:text-fg"
+                    : "text-accent",
+              )}
+              title="What Claude may do without asking (Shift+Tab to switch)"
+            >
+              {meta.permissionMode === "plan" ? (
+                <ListChecks className="size-3" />
+              ) : (
+                <Shield className="size-3" />
+              )}
+              {PERMISSION_MODE_LABELS[meta.permissionMode]} <ChevronDown className="size-3" />
+            </button>
             {busy && (
               <Button
                 size="md"

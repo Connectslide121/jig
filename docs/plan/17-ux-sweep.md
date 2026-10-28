@@ -12,6 +12,8 @@
       Review / Walk me through / Undo; "waiting for you" on tools that wait for permission
 - [x] "chat" in all user-facing text; "Needs you" in the Chats list
 - [x] Tests: `turnChanges` unit test, `e2e/ux.spec.ts`
+- [x] Model and permission mode moved from the chat header into the message box's bottom row (they
+      configure the next message; the header was cramped and wrapped them)
 - [x] Claude's browser stays headless: the view no longer pops up by itself (setting
       `browser.showWhenUsed`); screenshots of the whole page and at several sizes in one call (D-095)
 

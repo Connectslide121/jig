@@ -1,6 +1,5 @@
-import { ChevronDown, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
+import { LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { PERMISSION_MODE_LABELS } from "../../../shared/engine";
 import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
@@ -9,7 +8,7 @@ import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
 import { fillComposer } from "./drafts";
-import { modelLabel, openModelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
+import { renameSession, sessionMenu } from "./menus";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
@@ -96,29 +95,12 @@ export function ChatTab({ params, active }: TabProps) {
         {meta.authSource !== "api_key" && <UsageRing />}
         {meta.turns > 0 && (
           <span
-            className="text-2xs text-hint"
+            className="whitespace-nowrap text-2xs text-hint"
             title="Tokens used in this chat, and Claude Code's cost estimate"
           >
             {formatTokens(tokens)} tokens{meta.costUsd > 0 ? ` · ≈ $${meta.costUsd.toFixed(2)}` : ""}
           </span>
         )}
-        <button
-          type="button"
-          data-testid="model-menu"
-          onClick={(e) => void openModelMenu(e.currentTarget, meta)}
-          className="flex h-6 items-center gap-1 rounded-md px-2 text-xs text-muted hover:bg-hover hover:text-fg"
-          title={meta.activeModel ? `Claude Code reports: ${meta.activeModel}` : undefined}
-        >
-          {modelLabel(meta)} <ChevronDown className="size-3" />
-        </button>
-        <button
-          type="button"
-          data-testid="permission-menu"
-          onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
-          className="flex h-6 items-center gap-1 rounded-md px-2 text-xs text-muted hover:bg-hover hover:text-fg"
-        >
-          {PERMISSION_MODE_LABELS[meta.permissionMode]} <ChevronDown className="size-3" />
-        </button>
         <IconButton
           icon={Search}
           label="Find in this chat (Ctrl+F)"
