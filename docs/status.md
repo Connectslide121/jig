@@ -125,6 +125,11 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   repository). Scripts of every repository show on the dashboard; the Repos view lists them all.
 - **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
+- **Claude in Git:** the commit box's **Write** button asks Claude for the commit message (from the
+  diff, in the style of the repo's recent commits). Right-click a changed file → **Explain this change
+  with Claude**, or a workspace repository → **Review changes with Claude**: a new chat opens with the
+  request typed in, ready to send. Add-ons can do the same with `ctx.ai.ask` (permission `ai`); the
+  builder knows about it.
 - **Restore files and fork:** hover one of your messages → ⋯ → **Restore files to before this
   message…** shows which files Claude changed since then and puts them back (Claude Code's file
   checkpoints; Settings → Claude Code → File checkpoints). The chat's ⋯ menu → **Fork chat** continues

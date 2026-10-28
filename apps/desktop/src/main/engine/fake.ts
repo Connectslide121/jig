@@ -371,6 +371,8 @@ export class FakeEngine implements Engine {
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
+    if (/commit message/i.test(prompt))
+      return "Apply the discount in the cart total\n\nSum the items with reduce and take the discount off the total.";
     const first = /key: (\S+) \| (\w+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
     if (!first) return JSON.stringify({ suggestions: [] });
     const [, key, kind, summary, count, days] = first;

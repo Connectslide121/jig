@@ -55,7 +55,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
     <td width="50%" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/git.jpg?v=2" alt="Git view and diff">
       <b>Git for every repo.</b> Changes of all repositories in one panel: stage, commit, push, pull,
-      branches, history, side-by-side or inline diffs, image diffs.
+      branches, history, side-by-side or inline diffs, image diffs. <b>Write</b> asks Claude for the
+      commit message; any change or repo can be explained or reviewed by Claude in one click.
     </td>
   </tr>
   <tr>

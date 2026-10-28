@@ -212,6 +212,9 @@ export class ClaudeEngine implements Engine {
 
   async oneShot(prompt: string, options: OneShotOptions): Promise<string> {
     let text = "";
+    // A one-shot answer never takes this long; without a limit a hung process would block its caller.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), options.timeoutMs ?? 180_000);
     const q = query({
       prompt,
       options: {
@@ -224,13 +227,21 @@ export class ClaudeEngine implements Engine {
         persistSession: false,
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
+        abortController: abort,
       },
     });
-    for await (const message of q) {
-      if (message.type === "result") {
-        if (message.subtype !== "success") throw new Error(message.errors?.join("\n") || message.subtype);
-        text = message.result;
+    try {
+      for await (const message of q) {
+        if (message.type === "result") {
+          if (message.subtype !== "success") throw new Error(message.errors?.join("\n") || message.subtype);
+          text = message.result;
+        }
       }
+    } catch (error) {
+      if (abort.signal.aborted) throw new Error("Claude Code didn't answer in time");
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
     return text;
   }

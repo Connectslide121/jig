@@ -5,7 +5,7 @@
   "description": "Branches, working changes and commits of the active project, with history per branch, commit details and diffs in the main window.",
   "version": "1.0.0",
   "icon": "git-branch",
-  "permissions": ["exec:git", "fs:read"],
+  "permissions": ["exec:git", "fs:read", "ai"],
   "contributes": {
     "views": [
       { "id": "git", "title": "Git", "icon": "git-branch", "region": "left", "component": "GitView" }

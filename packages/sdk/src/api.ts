@@ -70,8 +70,17 @@ export interface AddonUiContext {
     /** Workspaces: looks for the repositories inside the folder again. */
     rescanRepos(projectId: string): Promise<void>;
   };
-  /** Starts a new chat and opens it: in the active project (or `projectId`), in `cwd` if given (a folder inside it). */
-  openChat(options?: { projectId?: string; cwd?: string }): Promise<void>;
+  /**
+   * Starts a new chat and opens it: in the active project (or `projectId`), in `cwd` if given (a folder
+   * inside it), with `draft` in the message box (not sent: the user reads it and presses Enter).
+   */
+  openChat(options?: { projectId?: string; cwd?: string; draft?: string }): Promise<void>;
+  /**
+   * Asks Claude a one-shot question through the user's Claude Code and returns the answer text. No
+   * tools and a single turn, so it can only answer (summaries, commit messages, explanations). Uses the
+   * user's plan. Needs the `ai` permission. `cwd`: the folder it runs in (default Jig's data folder).
+   */
+  ai: { ask(prompt: string, options?: { cwd?: string }): Promise<string> };
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
   /** Opens an image file (absolute path) in Jig's image tab. */

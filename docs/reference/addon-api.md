@@ -57,7 +57,8 @@ design-token warnings (the builder must fix them; the add-on still loads).
 | `on(topic, listener)` | events from `api.emit` in host code |
 | `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }` — `repos` lists the repositories inside a workspace project (`[{ path, name }]`, empty for a single repository) |
 | `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | workspaces: set the focus repository (status bar, Git actions); look for repositories again |
-| `openChat({ projectId?, cwd? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository) |
+| `openChat({ projectId?, cwd?, draft? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent |
+| `ai.ask(prompt, { cwd? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |
@@ -112,7 +113,8 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
 
 Permissions are shown to you (Settings → Add-ons, and in the builder's preview) and enforced by this
-API. Host code is code you accepted, not a sandbox (D-007): it could import Node modules directly.
+API. `ai` lets an add-on ask Claude (`ctx.ai.ask`); the host checks it again (`ai.ask` IPC), so an
+add-on without it gets an error even if its UI calls the method directly. Host code is code you accepted, not a sandbox (D-007): it could import Node modules directly.
 
 ## Lifecycle
 

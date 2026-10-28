@@ -559,3 +559,12 @@ files uses its file checkpoints, forking a chat uses its session fork. Where Jig
 something itself (a commit message, a review), it goes through Claude Code too (a one-shot query or a
 chat opened with a draft), never the API directly. Each feature has a visible button or menu entry, and
 the ones that change behaviour have a setting (`engine.promptSuggestions`, `engine.fileCheckpoints`).
+
+### D-084 — Add-ons can ask Claude (`ctx.ai.ask`, permission `ai`)
+**Decided by:** Claude, on my own · **Date:** 2026-10-28
+Add-ons get a one-shot question to Claude through Claude Code (`oneShot`: no tools, one turn), behind a
+new `ai` permission that is shown before an add-on is accepted and checked again in the host. No tools
+means an answer can never change anything, so the permission only costs plan usage. It makes
+AI-powered tools a normal thing to build (the builder's instructions mention it), and the Git add-on
+uses it first, for commit messages. Anything that needs tools or a conversation opens a chat with a
+draft instead (`ctx.openChat({ draft })`), so you see and send the request yourself.

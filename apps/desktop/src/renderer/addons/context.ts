@@ -93,7 +93,17 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       },
     },
     openChat: async (options = {}) => {
-      await (await import("../features/sessions/actions")).newSession(options.projectId, options.cwd);
+      await (await import("../features/sessions/actions")).newSession(
+        options.projectId,
+        options.cwd,
+        options.draft,
+      );
+    },
+    ai: {
+      async ask(prompt, options = {}) {
+        if (!has(addon, "ai")) throw new Error(`${addon.name} needs the "ai" permission`);
+        return call("ai.ask", { addonId: id, prompt, cwd: options.cwd }) as Promise<string>;
+      },
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
     openImage: (path) => void workbench.openTab("jig.image", { path }),

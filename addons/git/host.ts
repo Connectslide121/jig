@@ -181,6 +181,35 @@ export async function image(
   return { dataUrl: `data:${mime};base64,${base64}`, bytes };
 }
 
+/** Longest diff sent to Claude for a commit message: enough for any reviewable commit. */
+const MESSAGE_DIFF_LIMIT = 60_000;
+
+/**
+ * What Claude needs to write a commit message: the diff that would be committed (staged, or every
+ * change when nothing is staged, as the Commit button does), the names of new files, and the
+ * subjects of recent commits (to match the repository's style).
+ */
+export async function messageContext({ cwd }: Cwd, api: AddonHostApi) {
+  const stagedNames = (await git(api, cwd, ["diff", "--cached", "--name-only"])).trim();
+  const staged = stagedNames.length > 0;
+  let diff = await git(
+    api,
+    cwd,
+    staged ? ["diff", "--cached", "--no-ext-diff"] : ["diff", "--no-ext-diff", "HEAD"],
+    {
+      ok: [0, 128],
+    },
+  );
+  const untracked = staged
+    ? ""
+    : (await git(api, cwd, ["ls-files", "--others", "--exclude-standard"])).trim();
+  if (untracked) diff += `\n\nNew files:\n${untracked}`;
+  const truncated = diff.length > MESSAGE_DIFF_LIMIT;
+  if (truncated) diff = `${diff.slice(0, MESSAGE_DIFF_LIMIT)}\n[… diff cut here]`;
+  const recent = (await git(api, cwd, ["log", "-12", "--pretty=format:%s"], { ok: [0, 128] })).trim();
+  return { staged, diff: diff.trim(), recent, truncated };
+}
+
 export async function stage({ cwd, paths }: Cwd & { paths: string[] }, api: AddonHostApi) {
   await git(api, cwd, ["add", "--", ...paths]);
 }

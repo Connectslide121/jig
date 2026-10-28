@@ -43,11 +43,13 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  Sparkles,
   Undo2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DiffView } from "./DiffView";
 import { ImageDiff } from "./ImageDiff";
+import { cleanMessage, commitMessagePrompt } from "./lib/message";
 
 import {
   type Branch,
@@ -209,6 +211,18 @@ function FileRow({
           },
         ]
       : []),
+    {
+      label: "Explain this change with Claude",
+      icon: "sparkles",
+      onSelect: () =>
+        void ctx.openChat({
+          projectId: project.id,
+          cwd,
+          draft: `Explain the ${group === "untracked" ? "new file" : "changes in"} ${change.path} (${
+            group === "staged" ? "git diff --cached" : group === "untracked" ? "untracked" : "git diff"
+          }): what changed, why it might have been done, and anything that looks risky.`,
+        }),
+    },
     { label: "Copy path", icon: "copy", onSelect: () => ctx.copy(change.path) },
     { label: "Open file", icon: "external-link", onSelect: () => ctx.openPath(`${cwd}/${change.path}`) },
   ];
@@ -438,7 +452,33 @@ function CommitBox({
   const ctx = useAddon();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [writing, setWriting] = useState(false);
   const staged = status.staged.length;
+  const changes = staged + status.unstaged.length + status.untracked.length;
+  /** Claude writes the message from the diff, in the style of the recent commits. */
+  const write = async () => {
+    setWriting(true);
+    try {
+      const c = await ctx.host.call<{ staged: boolean; diff: string; recent: string; truncated: boolean }>(
+        "messageContext",
+        { cwd: project.path },
+      );
+      if (!c.diff) {
+        ctx.notify({
+          title: "Nothing to describe",
+          message: "There are no changes to commit.",
+          tone: "warning",
+        });
+        return;
+      }
+      const answer = await ctx.ai.ask(commitMessagePrompt(c), { cwd: project.path });
+      setMessage(cleanMessage(answer));
+    } catch (error) {
+      ctx.notify({ title: "Couldn't write the message", message: (error as Error).message, tone: "danger" });
+    } finally {
+      setWriting(false);
+    }
+  };
   const commit = async () => {
     setBusy(true);
     if (staged === 0) await run(ctx, "Staged everything", "stage", { cwd: project.path, paths: ["."] }, true);
@@ -459,17 +499,32 @@ function CommitBox({
         }}
         data-testid="git-commit-message"
       />
-      <Button
-        variant="primary"
-        size="sm"
-        icon={Check}
-        busy={busy}
-        disabled={!message.trim()}
-        onClick={() => void commit()}
-        data-testid="git-commit"
-      >
-        {staged > 0 ? `Commit ${staged} staged` : "Commit all changes"}
-      </Button>
+      <div className="flex gap-1.5">
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={Sparkles}
+          busy={writing}
+          disabled={changes === 0 || writing}
+          onClick={() => void write()}
+          title="Claude writes the message from your changes (through your Claude Code)"
+          data-testid="git-write-message"
+        >
+          Write
+        </Button>
+        <Button
+          className="flex-1"
+          variant="primary"
+          size="sm"
+          icon={Check}
+          busy={busy}
+          disabled={!message.trim()}
+          onClick={() => void commit()}
+          data-testid="git-commit"
+        >
+          {staged > 0 ? `Commit ${staged} staged` : "Commit all changes"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -725,6 +780,17 @@ function repoMenu(
       onSelect: () => void run(ctx, `Pushed ${repo.name}`, "push", { cwd }).then(reload),
     },
     { separator: true },
+    {
+      label: "Review changes with Claude",
+      icon: "sparkles",
+      onSelect: () =>
+        void ctx.openChat({
+          projectId: repo.id,
+          cwd,
+          draft:
+            "Review my uncommitted changes in this repository (git status, git diff and git diff --cached). Point out bugs, risky changes, missing tests and anything unfinished, most important first. Don't change any files.",
+        }),
+    },
     {
       label: "New chat in this repository",
       icon: "message-square-plus",

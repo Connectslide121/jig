@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
@@ -84,4 +85,34 @@ test("Fork chat continues a chat as a separate branch", async ({ page, jigHome }
     }
   ).value;
   expect(snap.items.some((i) => i.text?.includes("second idea"))).toBe(false);
+});
+
+test("Git: Claude writes the commit message, and explains a change in a new chat", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git("init", "-q", "-b", "main");
+  git("config", "user.name", "Ann Demo");
+  git("config", "user.email", "ann@example.com");
+  await writeFile(join(dir, "cart.ts"), "export const total = 1;\n");
+  git("add", ".");
+  git("commit", "-q", "-m", "Add cart");
+  await writeFile(join(dir, "cart.ts"), "export const total = 2;\n");
+  await hostCall(page, "projects.add", { path: dir });
+
+  await page.keyboard.press("Control+Shift+G");
+  await expect(page.getByTestId("git-file-unstaged-cart.ts")).toBeVisible();
+  await page.getByTestId("git-write-message").click();
+  await expect(page.getByTestId("git-commit-message")).toHaveValue(
+    /^Apply the discount in the cart total\n\n/,
+  );
+
+  await page.getByTestId("git-file-unstaged-cart.ts").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Explain this change with Claude" }).click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(
+    /^Explain the changes in cart\.ts \(git diff\)/,
+  );
 });

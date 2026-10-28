@@ -59,6 +59,8 @@ export interface EngineSession {
 }
 
 export interface OneShotOptions {
+  /** Gives up after this long (default 3 minutes). */
+  timeoutMs?: number;
   cwd: string;
   model: string;
   appendSystemPrompt: string;

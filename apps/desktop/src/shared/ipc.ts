@@ -59,6 +59,8 @@ export interface HostMethods {
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
+  /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
+  "ai.ask": { args: { addonId: string; prompt: string; cwd?: string }; result: string };
   "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "usage.get": { args: void; result: PlanUsage };
