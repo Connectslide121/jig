@@ -74,6 +74,15 @@ export interface HostMethods {
   /** Files and folders of a project folder matching a fuzzy query (`@` mentions); folders end with `/`. */
   "files.search": { args: { root: string; query: string; limit?: number }; result: string[] };
   "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
+  /**
+   * Saves a text file (the Preview tab's editor): inside a workspace, or a file opened in Preview.
+   * `expectedMtimeMs`: refuse with `changed` if the file changed on disk since. Errors: `not_allowed`,
+   * `not_a_file`, `changed`, `write_failed`.
+   */
+  "files.write": {
+    args: { path: string; text: string; expectedMtimeMs?: number };
+    result: { size: number; mtimeMs: number };
+  };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
   /** "Write my standup": Claude summarises your commits, uncommitted work and chats since the last working day (or a week). */
   "digest.standup": {

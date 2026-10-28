@@ -660,6 +660,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Right-click a file in Git → Preview, or the eye on a chat tool card",
                 "Links between Markdown files open their preview",
                 "Preview / Source switch, and Ask Claude about the file",
+                "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "Tools → Preview a file… for anything else",
               ]}
             />

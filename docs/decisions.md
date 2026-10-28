@@ -913,3 +913,18 @@ core code beyond `useWorkspaceList()`, and the builder can change it like any ad
 - **Ignored files are shown, dimmed,** as in VS Code, and the filter leaves them out.
 - **No file operations** (new, rename, delete). Claude and your editor do those; the explorer is for
   finding and looking. They can be added later.
+
+### D-106 — Editing in Preview: CodeMirror, saves guarded by the file's time
+**Decided by:** Claude, on my own (Jon: always editable; ask on conflicts) · **Date:** 2026-10-28
+
+- **CodeMirror 6, not Monaco:** it is much smaller, and its languages load on demand. Its colours are
+  Jig's tokens (keywords accent, strings success, numbers warning, …), so it matches every theme
+  without its own palette. It isn't the theme's exact token colours, which Shiki keeps for read-only
+  code.
+- **`files.write` writes only where Jig already works:** inside a workspace, or a file you opened in
+  Preview. Add-on UI shares the renderer, so a write anywhere would be too much. Saves pass the time
+  the file was read (`expectedMtimeMs`), so a change on disk is never overwritten silently.
+- **Conflicts ask:** Keep mine / Load theirs / Show diff. The diff is a small LCS line diff
+  (`shared/lineDiff.ts`), with no dependency.
+- **Not done:** a warning when closing a tab with unsaved edits. Edits live in the tab, so closing
+  drops them. That is the next small improvement if it bites.

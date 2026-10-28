@@ -1,16 +1,20 @@
-import { Code, Eye, FileX, FolderOpen, Play, Sparkles, SquareArrowOutUpRight } from "lucide-react";
+import { Code, Eye, FileX, FolderOpen, Play, Save, Sparkles, SquareArrowOutUpRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { unifiedDiff } from "../../../shared/lineDiff";
 import { type FilePreview, HAS_SOURCE, type PreviewKind } from "../../../shared/preview";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn, Empty, FileIcon, IconButton, Markdown, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import type { TabProps } from "../../workbench/registry";
+import { notify } from "../../workbench/toasts";
 import { newSession } from "../sessions/actions";
 import { openPreview } from "./actions";
+import { CodeEditor } from "./CodeEditor";
 import { linkedPath } from "./paths";
 import {
   CsvView,
   DiffFileView,
+  DiffLines,
   DocumentView,
   Frame,
   HtmlView,
@@ -170,6 +174,12 @@ export function PreviewTab({ params, active }: TabProps) {
   const [source, setSource] = useState(false);
   const [scripts, setScripts] = useState(false);
   const projects = useProjects((s) => s.projects);
+  // Your unsaved edits (undefined = none), and the file on disk when it changed under them.
+  const [draft, setDraft] = useState<string>();
+  const [theirs, setTheirs] = useState<FilePreview>();
+  const [showDiff, setShowDiff] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const dirty = draft !== undefined && draft !== preview?.text?.replaceAll("\r\n", "\n");
 
   const load = useCallback(async () => {
     try {
@@ -182,19 +192,53 @@ export function PreviewTab({ params, active }: TabProps) {
   useEffect(() => {
     void load();
   }, [load]);
-  // Follow the file while the tab is visible: Claude (or you) may be editing it.
+  // Follow the file while the tab is visible: Claude (or you) may be editing it. With unsaved edits,
+  // a change on disk doesn't replace them: the bar asks what to do.
   useEffect(() => {
-    if (!active || !preview) return;
+    if (!active || !preview || theirs) return;
     const timer = setInterval(() => {
       void call("files.stat", { path })
-        .then((s) => {
+        .then(async (s) => {
           if (!s) setError(`${path} was deleted or moved`);
-          else if (s.mtimeMs !== preview.mtimeMs || s.size !== preview.size) void load();
+          else if (s.mtimeMs !== preview.mtimeMs || s.size !== preview.size) {
+            if (dirty) setTheirs(await call("files.preview", { path }));
+            else void load();
+          }
         })
         .catch(() => {});
     }, 1500);
     return () => clearInterval(timer);
-  }, [active, preview, path, load]);
+  }, [active, preview, path, load, dirty, theirs]);
+
+  /** Saves your edits; `over` is the disk version you chose to overwrite (Keep mine). */
+  const save = async (over?: FilePreview) => {
+    if (!preview || draft === undefined || saving) return;
+    const crlf = (preview.text ?? "").includes("\r\n");
+    setSaving(true);
+    try {
+      await call("files.write", {
+        path,
+        text: crlf ? draft.replaceAll("\n", "\r\n") : draft,
+        expectedMtimeMs: (over ?? preview).mtimeMs,
+      });
+      setDraft(undefined);
+      setTheirs(undefined);
+      setShowDiff(false);
+      await load();
+    } catch (e) {
+      if ((e as { code?: string }).code === "changed") setTheirs(await call("files.preview", { path }));
+      else notify({ title: "Not saved", message: errorMessage(e), tone: "danger" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const loadTheirs = () => {
+    if (!theirs) return;
+    setPreview(theirs);
+    setDraft(undefined);
+    setTheirs(undefined);
+    setShowDiff(false);
+  };
 
   const ask = () => {
     if (!preview) return;
@@ -216,6 +260,12 @@ export function PreviewTab({ params, active }: TabProps) {
       </div>
     );
   const folder = preview.path.slice(0, preview.path.length - preview.name.length).replace(/[\\/]$/, "");
+  // Code and text files are always editable (D-101); kinds with a rendered form, in Source.
+  const editable =
+    preview.text !== undefined &&
+    !preview.truncated &&
+    !preview.binary &&
+    (preview.kind === "text" || (source && HAS_SOURCE.has(preview.kind)));
   return (
     <div className="flex h-full flex-col" data-testid="preview" data-kind={preview.kind}>
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -231,6 +281,19 @@ export function PreviewTab({ params, active }: TabProps) {
         </span>
         {error && <span className="truncate text-xs text-warning">{error}</span>}
         <div className="flex-1" />
+        {editable && dirty && (
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Save}
+            disabled={saving}
+            onClick={() => void save()}
+            data-testid="preview-save"
+            title="Save (Ctrl+S)"
+          >
+            Save
+          </Button>
+        )}
         {HAS_SOURCE.has(preview.kind) && (
           <div className="flex rounded-md border border-line p-0.5" role="tablist">
             {[
@@ -281,8 +344,50 @@ export function PreviewTab({ params, active }: TabProps) {
           onClick={() => void call("app.showItemInFolder", { path: preview.path })}
         />
       </header>
+      {theirs && (
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-warning-soft px-3 py-1.5 text-xs"
+          data-testid="preview-conflict"
+        >
+          <span className="min-w-0 flex-1 text-fg">
+            This file changed on disk (Claude, or another program) while you have unsaved edits.
+          </span>
+          <Button size="sm" onClick={() => void save(theirs)} data-testid="conflict-keep">
+            Keep mine
+          </Button>
+          <Button size="sm" onClick={loadTheirs} data-testid="conflict-theirs">
+            Load theirs
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowDiff(!showDiff)}
+            data-testid="conflict-diff"
+          >
+            {showDiff ? "Hide diff" : "Show diff"}
+          </Button>
+        </div>
+      )}
+      {theirs && showDiff && (
+        <div
+          className="max-h-1/2 shrink-0 overflow-auto border-b border-line"
+          data-testid="conflict-diff-view"
+        >
+          <div className="px-3 pt-2 text-2xs text-hint">Lines marked − are on disk; + are yours.</div>
+          <DiffLines text={unifiedDiff(theirs.text ?? "", draft ?? "") || " (the same)"} className="p-3" />
+        </div>
+      )}
       <div className="min-h-0 flex-1">
-        <Viewer preview={preview} source={source} scripts={scripts} />
+        {editable ? (
+          <CodeEditor
+            path={preview.path}
+            value={preview.text ?? ""}
+            onChange={(text) => setDraft(text)}
+            onSave={() => void save()}
+          />
+        ) : (
+          <Viewer preview={preview} source={source} scripts={scripts} />
+        )}
       </div>
     </div>
   );

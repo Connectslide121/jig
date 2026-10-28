@@ -17,3 +17,30 @@ describe("readImage", () => {
     await expect(readImage(join(dir, "missing.png"))).rejects.toMatchObject({ code: "not_found" });
   });
 });
+
+describe("writeTextFile", () => {
+  it("saves inside allowed folders, refuses others, and refuses when the file changed meanwhile", async () => {
+    const { readFile, stat, readdir } = await import("node:fs/promises");
+    const { writeTextFile } = await import("./index");
+    const dir = await mkdtemp(join(tmpdir(), "jig-write-"));
+    const file = join(dir, "a.ts");
+    await writeFile(file, "one\n");
+    const allowed = (p: string) => p.startsWith(dir);
+    const { mtimeMs } = await stat(file);
+    const saved = await writeTextFile(file, "two\r\n", mtimeMs, allowed);
+    expect(await readFile(file, "utf8")).toBe("two\r\n");
+    expect(saved.size).toBe(5);
+    // Nothing left behind next to the file.
+    expect(await readdir(dir)).toEqual(["a.ts"]);
+    // Someone (Claude) changed it since: refused.
+    await expect(writeTextFile(file, "three", mtimeMs - 10_000, allowed)).rejects.toMatchObject({
+      code: "changed",
+    });
+    await expect(writeTextFile("/elsewhere/x.ts", "x", undefined, allowed)).rejects.toMatchObject({
+      code: "not_allowed",
+    });
+    // A new file is fine.
+    await writeTextFile(join(dir, "b.ts"), "new", undefined, allowed);
+    expect(await readFile(join(dir, "b.ts"), "utf8")).toBe("new");
+  });
+});

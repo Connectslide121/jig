@@ -29,6 +29,21 @@ Kinds with a rendered and a raw form (Markdown, HTML, JSON, notebooks, SVG, diag
 have a **Preview / Source** switch. Every preview has **Ask Claude**: a new chat with a request suited to
 the file (review a document, summarise data, explain code), typed in and not sent.
 
+## Editing
+
+Code and text files are **always editable** in the Preview tab (D-101). Kinds with a rendered form
+(Markdown, HTML, JSON, SVG, diagrams, tables, diffs, notebooks) are editable in **Source**.
+- **The editor** is CodeMirror 6 (`CodeEditor.tsx`), coloured by Jig's tokens, so it follows the theme.
+  It has line numbers, folding, bracket matching and **find** (`Ctrl+F`). The file's language loads
+  on demand (`@codemirror/language-data`).
+- **Saving:** `Ctrl+S`, or **Save** in the header while there are unsaved edits. It goes through
+  `files.write`, inside a workspace or a file you opened in Preview. Windows line endings are kept.
+- **A change on disk while you have unsaved edits** (Claude edits the file) doesn't replace them. A
+  bar asks: **Keep mine** (save over it), **Load theirs** (drop your edits), **Show diff** (− on
+  disk, + yours, `shared/lineDiff.ts`). Saving also refuses when the file changed since you opened it.
+- Files cut at 2 MB stay read-only. It is for quick fixes, not a VS Code replacement: no language
+  servers.
+
 ## How it works
 
 - `files.preview { path }` (host, `main/files/preview.ts`) returns the kind, size and change time, the

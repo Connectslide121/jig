@@ -138,6 +138,11 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
+- **Editing in Preview:** code and text files are editable (Markdown, HTML, JSON… in Source).
+  - CodeMirror in the theme's colours, with find (`Ctrl+F`); `Ctrl+S` or Save writes the file.
+  - If the file changes on disk while you have unsaved edits, a bar asks: Keep mine / Load theirs /
+    Show diff.
+  - Gap: closing the tab drops unsaved edits without asking.
 - **Files** (left sidebar, `Ctrl+Shift+E`): the project's files as a tree.
   - Changed files in git colours with their letter; ignored ones dimmed.
   - A filter; click for Preview; right-click to open in VS Code, ask Claude about the file, or copy
