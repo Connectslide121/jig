@@ -222,6 +222,29 @@ Each project keeps its own **links, in groups**: e.g. "Stage" with its resource 
   - In the left panel as a collapsible **section below Projects** (D-099), not its own tab.
   - On the project's Home, as a Links card.
 
+## 8. Finish: everything documented (last step of the phase)
+
+When the items above are built, finish the phase by bringing every document up to date with all the
+new features. Each item already updates its own reference docs as it goes (AGENTS.md "Keep the docs
+true"). This step checks the whole picture again:
+- **`README.md`:** headline features, the slot table, the screenshots (regenerated, `?v=` bumped).
+- **`AGENTS.md`:** new conventions and "never do X" rules from this phase. For example, D-102 (left
+  follows the project, right is global) for where views start, link types, and workflow steps.
+- **`docs/`:**
+  - `status.md` (what works, how to try it, what needs testing on Windows), `architecture.md`,
+    `vision.md` if a principle moved (e.g. light editing);
+  - every `docs/reference/*.md` touched (layout, state, ipc, learning, preview, configure, builder,
+    slots, addon-api);
+  - `guides/testing.md` (new fake-engine triggers);
+  - the `docs/README.md` index;
+  - `decisions.md`, and this plan with its phase status.
+- **The "What Jig can do" page** (`features/about/`): a line and a screenshot per new feature, and
+  slot examples.
+- **The guide artifact** for new users, https://claude.ai/artifact/MMdEDPypuhxyyS8Tw1eJr2:
+  - read it with the Artifact tool (`action: "read"`), since the local copy from earlier sessions is
+    gone;
+  - add every new feature with screenshots, and publish to the same URL.
+
 ## Checklist
 
 - [ ] File explorer view (tree, icons, git colours, Preview on click, context menu, live refresh)
@@ -244,3 +267,6 @@ Each project keeps its own **links, in groups**: e.g. "Stage" with its resource 
 - [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals
 - [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
+- [ ] Finish: README, AGENTS.md, all docs (status, architecture, references, guides, index,
+      decisions, plan), the About page and screenshots, and the guide artifact updated with every new
+      feature
