@@ -178,3 +178,52 @@ test("Try several ways: parallel attempts in worktrees, Claude judges, keep one"
   expect(git("worktree", "list").trim().split("\n")).toHaveLength(1);
   expect(git("branch", "--list", "jig/*").trim()).toBe("");
 });
+
+test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
+  git("init", "-q", "-b", "main");
+  git("config", "user.name", "Ann Demo");
+  git("config", "user.email", "ann@example.com");
+  await writeFile(join(dir, "cart.ts"), "export const total = 1;\n");
+  git("add", ".");
+  git("commit", "-q", "-m", "Add cart");
+  await writeFile(join(dir, "cart.ts"), "export const total = 2;\nconsole.log(total);\n");
+  await writeFile(join(dir, "discount.ts"), "export const off = 0.1;\n");
+  await hostCall(page, "projects.add", { path: dir });
+
+  // Check before committing finds the debug output.
+  await page.keyboard.press("Control+Shift+G");
+  await page.getByTestId("git-claude-menu").click();
+  await page.getByRole("menuitem", { name: "Check before committing" }).click();
+  await expect(page.getByTestId("git-findings")).toContainText("A console.log is left in.");
+
+  // A guided tour of the changes.
+  await page.getByTestId("git-claude-menu").click();
+  await page.getByRole("menuitem", { name: "Walk me through the changes" }).click();
+  const tour = page.getByTestId("tour");
+  await expect(tour.getByTestId("tour-current")).toContainText("Step 1 of 2", { timeout: 15000 });
+  await expect(tour.getByTestId("tour-hunk")).toContainText("+export const total = 2;");
+  await tour.getByTestId("tour-next").click();
+  await expect(tour.getByTestId("tour-current")).toContainText("discount.ts");
+  await expect(tour.getByTestId("tour-hunk")).toContainText("+export const off = 0.1;");
+
+  // Standup.
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("Write my standup");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("standup-text")).toContainText("scripted standup");
+  await page.keyboard.press("Escape");
+
+  // Turn a chat into a tool: the builder gets what happened, in order.
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("composer-input").fill("please write notes.txt");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("chat")).toContainText("I wrote notes.txt.", { timeout: 15000 });
+  await page.getByRole("button", { name: "Session options" }).click();
+  await page.getByTestId("session-to-tool").click();
+  await expect(page.getByTestId("build-goal")).toHaveValue(
+    /I asked: please write notes\.txt\n- Claude changed .*notes\.txt/,
+  );
+});

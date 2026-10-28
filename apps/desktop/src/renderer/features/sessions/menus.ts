@@ -1,12 +1,27 @@
-import { Archive, ArchiveRestore, Bot, Check, GitFork, Pencil, Power, Shield, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Bot,
+  Check,
+  GitFork,
+  Map as MapIcon,
+  Pencil,
+  Power,
+  Shield,
+  Trash2,
+  Wand2,
+} from "lucide-react";
 import { PERMISSION_MODE_LABELS, PERMISSION_MODES, type SessionMeta } from "../../../shared/engine";
 import { closeTabsWhere } from "../../../shared/layout";
 import { call, errorMessage } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
 import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openBuildDialog } from "../builder/BuildDialog";
+import { startTour } from "../tour/actions";
 import { compactMenu } from "./ContextMeter";
-import { ensureTranscript, forgetSession } from "./store";
+import { chatRecipe } from "./recipe";
+import { ensureTranscript, forgetSession, useSessions } from "./store";
 
 export const MODEL_CHOICES = [
   { id: "", label: "Default model" },
@@ -82,6 +97,20 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
     ...compactMenu(meta),
     {
+      label: "Walk me through the changes",
+      icon: MapIcon,
+      disabled: meta.turns === 0,
+      onSelect: () => void startTour(meta.cwd, `Changes made in the chat "${meta.title}"`),
+      testId: "session-tour",
+    },
+    {
+      label: "Turn this chat into a tool…",
+      icon: Wand2,
+      disabled: meta.turns === 0,
+      onSelect: () => void chatToTool(meta),
+      testId: "session-to-tool",
+    },
+    {
       label: "Fork chat",
       icon: GitFork,
       disabled: !meta.engineSessionId,
@@ -124,4 +153,14 @@ export async function forkSession(meta: SessionMeta): Promise<void> {
   } catch (error) {
     notify({ title: "Couldn't fork the chat", message: errorMessage(error), tone: "danger" });
   }
+}
+
+/**
+ * Hands what you did in a chat to the builder, to make it a tool you can run again (a button, an
+ * action, a watcher…): your requests, the commands run and the files touched, in order.
+ */
+export async function chatToTool(meta: SessionMeta): Promise<void> {
+  await ensureTranscript(meta.id);
+  const items = useSessions.getState().transcripts[meta.id]?.items ?? [];
+  openBuildDialog({ goal: chatRecipe(meta.title, items), origin: "chat" });
 }

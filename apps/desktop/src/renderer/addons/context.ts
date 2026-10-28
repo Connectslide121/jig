@@ -104,6 +104,10 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         if (!has(addon, "ai")) throw new Error(`${addon.name} needs the "ai" permission`);
         return call("ai.ask", { addonId: id, prompt, cwd: options.cwd }) as Promise<string>;
       },
+      async tour(cwd, options = {}) {
+        if (!has(addon, "ai")) throw new Error(`${addon.name} needs the "ai" permission`);
+        await (await import("../features/tour/actions")).startTour(cwd, options.focus);
+      },
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
     openImage: (path) => void workbench.openTab("jig.image", { path }),

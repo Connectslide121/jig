@@ -43,12 +43,15 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   Undo2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DiffView } from "./DiffView";
 import { ImageDiff } from "./ImageDiff";
+import { checkPrompt, type Finding, parseFindings } from "./lib/check";
 import { cleanMessage, commitMessagePrompt } from "./lib/message";
 
 import {
@@ -459,6 +462,8 @@ function CommitBox({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [writing, setWriting] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [findings, setFindings] = useState<Finding[]>();
   const staged = status.staged.length;
   const changes = staged + status.unstaged.length + status.untracked.length;
   /** Claude writes the message from the diff, in the style of the recent commits. */
@@ -485,6 +490,45 @@ function CommitBox({
       setWriting(false);
     }
   };
+  /** Claude looks over the changes for things that shouldn't be committed. */
+  const check = async () => {
+    setChecking(true);
+    try {
+      const c = await ctx.host.call<{ staged: boolean; diff: string; recent: string; truncated: boolean }>(
+        "messageContext",
+        { cwd: project.path },
+      );
+      if (!c.diff) return;
+      setFindings(parseFindings(await ctx.ai.ask(checkPrompt(c), { cwd: project.path })));
+    } catch (error) {
+      ctx.notify({ title: "Couldn't check the changes", message: (error as Error).message, tone: "danger" });
+    } finally {
+      setChecking(false);
+    }
+  };
+  const claudeMenu = (anchor: HTMLElement) =>
+    ctx.menu(
+      [
+        { label: "Check before committing", icon: "shield-check", onSelect: () => void check() },
+        {
+          label: "Walk me through the changes",
+          icon: "map",
+          onSelect: () => void ctx.ai.tour(project.path).catch(() => {}),
+        },
+        {
+          label: "Review in a chat",
+          icon: "message-square",
+          onSelect: () =>
+            void ctx.openChat({
+              projectId: project.id,
+              cwd: project.path,
+              draft:
+                "Review my uncommitted changes in this repository (git status, git diff and git diff --cached). Point out bugs, risky changes, missing tests and anything unfinished, most important first. Don't change any files.",
+            }),
+        },
+      ],
+      anchor,
+    );
   const commit = async () => {
     setBusy(true);
     if (staged === 0) await run(ctx, "Staged everything", "stage", { cwd: project.path, paths: ["."] }, true);
@@ -519,6 +563,17 @@ function CommitBox({
           Write
         </Button>
         <Button
+          size="sm"
+          variant="secondary"
+          icon={Sparkles}
+          busy={checking}
+          disabled={changes === 0 || checking}
+          onClick={(e) => claudeMenu(e.currentTarget)}
+          title="More from Claude: check before committing, a tour of the changes, a review"
+          aria-label="More from Claude"
+          data-testid="git-claude-menu"
+        />
+        <Button
           className="flex-1"
           variant="primary"
           size="sm"
@@ -531,6 +586,54 @@ function CommitBox({
           {staged > 0 ? `Commit ${staged} staged` : "Commit all changes"}
         </Button>
       </div>
+      {findings && (
+        <div
+          className="flex flex-col gap-1 rounded-md border border-line bg-surface p-2 text-xs"
+          data-testid="git-findings"
+        >
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className={cn("size-3.5", findings.length ? "text-warning" : "text-success")} />
+            <span className="flex-1 font-medium text-fg">
+              {findings.length
+                ? `Claude found ${findings.length} thing${findings.length === 1 ? "" : "s"} to look at`
+                : "Claude found nothing to worry about"}
+            </span>
+            <button
+              type="button"
+              aria-label="Close"
+              className="text-hint hover:text-fg"
+              onClick={() => setFindings(undefined)}
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+          {findings.map((f, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: findings have no id.
+            <div key={i} className="flex gap-1.5 pl-5">
+              <span
+                className={
+                  f.severity === "high"
+                    ? "text-danger"
+                    : f.severity === "medium"
+                      ? "text-warning"
+                      : "text-hint"
+                }
+              >
+                ●
+              </span>
+              <span className="min-w-0">
+                {f.file && (
+                  <span className="font-mono text-muted">
+                    {f.file}
+                    {f.line ? `:${f.line}` : ""}{" "}
+                  </span>
+                )}
+                <span className="text-fg">{f.message}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -786,6 +889,11 @@ function repoMenu(
       onSelect: () => void run(ctx, `Pushed ${repo.name}`, "push", { cwd }).then(reload),
     },
     { separator: true },
+    {
+      label: "Walk me through the changes",
+      icon: "map",
+      onSelect: () => void ctx.ai.tour(cwd).catch(() => {}),
+    },
     {
       label: "Review changes with Claude",
       icon: "sparkles",

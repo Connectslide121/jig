@@ -48,6 +48,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "overview", title: "Overview", icon: BookOpen },
   { id: "chats", title: "Chats", icon: MessageSquare },
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
+  { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
@@ -582,6 +583,22 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "A focus repo for new chats and the Git view",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch and changes",
+              ]}
+            />
+          </Section>
+          <Section
+            id="claude-extras"
+            title="Claude around your work"
+            lead="Claude helps outside the chat too: tours of your changes, checks before you commit, a standup written from what you actually did, and tools made from things you did by hand."
+          >
+            <Bullets
+              items={[
+                "Walk me through the changes: steps in a sensible order, each next to its diff",
+                "Check before committing: secrets, debug output, unfinished code",
+                "Write: a commit message in your repository's style",
+                "Turn this chat into a tool: the builder makes it a one-click tool",
+                "Write my standup: Done / Next / Blockers from commits and chats",
+                "Ask Claude about a failed script or any previewed file",
               ]}
             />
           </Section>

@@ -36,6 +36,7 @@ import type {
   OpenVsxExtension,
   ThemeSummary,
 } from "./themes";
+import type { Tour } from "./tour";
 import type { PlanUsage } from "./usage";
 
 export const CHANNEL_CALL = "jig:call";
@@ -65,6 +66,14 @@ export interface HostMethods {
   /** Size and change time of a file (`null`: gone); the Preview tab polls it to follow edits. */
   "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
+  /** "Write my standup": Claude summarises your commits, uncommitted work and chats since the last working day (or a week). */
+  "digest.standup": {
+    args: { period: "workday" | "week" };
+    result: { text: string; since: string; repos: number; chats: number };
+  };
+  /** A guided tour of the uncommitted changes of the repository `cwd` is in (`focus`: what they're for). */
+  "tour.create": { args: { cwd: string; focus?: string }; result: Tour };
+  "tour.get": { args: { id: string }; result: Tour };
   /** "Try several ways": the same task in 2–4 chats, each in its own git worktree (docs/reference/attempts.md). */
   "attempts.start": {
     args: { projectId: string; repo: string; task: string; hints: string[] };

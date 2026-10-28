@@ -127,6 +127,15 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Removing a project** stops its chats and closes their tabs; they stay in the Sessions view under
   "Removed projects", where they can be opened or deleted.
+- **Guided tours of changes:** Git → ✨ → Walk me through the changes (also a workspace repo's menu
+  and the chat's ⋯). Claude orders the uncommitted changes for understanding and explains each step
+  next to its highlighted diff; ←/→ to move.
+- **Check before committing:** Git → ✨ → Check before committing. Claude lists secrets, debug output,
+  unfinished code or likely bugs in the changes, under the commit box.
+- **Turn a chat into a tool:** the chat's ⋯ → Turn this chat into a tool…. The builder gets what you did
+  (requests, commands, changed files) to make something you can run with one click.
+- **Write my standup:** Tools → Write my standup…. Done / Next / Blockers from your commits in every
+  repository, uncommitted work and the chats you had since the last working day (or a week), with Copy.
 - **Try several ways:** the split button in the message box (or Tools → Try a task several ways…)
   starts 2–4 chats on the same task. Each works in its own git worktree from your last commit, from a
   different angle (simplest, cleanest, most thorough, unconventional; all editable). The Attempts tab

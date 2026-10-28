@@ -596,3 +596,12 @@ one-shot question with no tools, so it can only read the diffs. Keeping an attem
 the working copy uncommitted, after `git apply --check`: you review and commit as usual, and nothing is
 merged or committed behind your back. Attempt chats run in *Accept edits*, since they edit Jig's copy,
 not yours.
+
+### D-088 — Tours, pre-commit checks and standups are one-shot answers; a chat becomes a tool through the builder
+**Decided by:** Jon (original AI features) and Claude, on my own (which and how) · **Date:** 2026-10-28
+Tours, checks and standups only read (diffs, git logs, chat titles), so they are one-shot questions
+with no tools that return JSON or Markdown Jig shows in its own UI: fast, nothing changes, nothing to
+approve. A tour is ordered for understanding and pinned to hunks, which is what a reviewer needs and
+what a plain chat answer can't show. "Turn this chat into a tool" reuses the builder instead of a new
+mechanism: Jig writes the goal from the transcript (requests, commands, changed files) and the builder
+picks the shape, so a manual workflow becomes a button the way any other tool does.

@@ -25,6 +25,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 11 | [Packaging & Windows](11-packaging.md) | ✅ | Windows installer, first-run checks, updates |
 | 12 | [Workspaces](12-workspaces.md) | ✅ | a folder of repositories works as one project: Git, scripts, repos and chats across all of them |
 | 13 | [What Jig can do](13-about-page.md) | ✅ | an in-app page (also the welcome screen and in the Jig menu): features with screenshots, live extension slots, add-ons, skills, configure examples, shortcuts |
+| 14 | [AI features and previews](14-ai-features.md) | ✅ | suggestions, checkpoints, forks, parallel attempts, tours, checks, standups, previews for every file Claude writes |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

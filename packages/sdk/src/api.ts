@@ -80,7 +80,14 @@ export interface AddonUiContext {
    * tools and a single turn, so it can only answer (summaries, commit messages, explanations). Uses the
    * user's plan. Needs the `ai` permission. `cwd`: the folder it runs in (default Jig's data folder).
    */
-  ai: { ask(prompt: string, options?: { cwd?: string }): Promise<string> };
+  ai: {
+    ask(prompt: string, options?: { cwd?: string }): Promise<string>;
+    /**
+     * Opens a guided tour of the uncommitted changes of the repository `cwd` is in: Claude orders the
+     * changes for understanding and explains each step next to its diff. `focus` says what they're for.
+     */
+    tour(cwd: string, options?: { focus?: string }): Promise<void>;
+  };
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
   /** Opens an image file (absolute path) in Jig's image tab. */

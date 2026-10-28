@@ -3,6 +3,7 @@ import { useAddonsSync } from "../addons/loader";
 import { AttemptsDialogHost } from "../features/attempts";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
+import { StandupHost } from "../features/digest";
 import { useLearningSync } from "../features/learning";
 import { useSessionsSync } from "../features/sessions";
 import { useFirstRun } from "../features/setup";
@@ -94,6 +95,7 @@ export function Workbench() {
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />
+        <StandupHost />
         <DialogHost />
       </ErrorBoundary>
       <ErrorBoundary label="Notifications">

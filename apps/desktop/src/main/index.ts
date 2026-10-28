@@ -8,6 +8,7 @@ import { startAttempts } from "./attempts";
 import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { startConfigure } from "./configure";
+import { registerDigestHandlers } from "./digest";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
@@ -21,6 +22,7 @@ import { registerSetupHandlers } from "./setup";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
+import { registerTourHandlers } from "./tour";
 import { startUsage, stopUsage } from "./usage";
 import { createMainWindow } from "./window";
 
@@ -61,6 +63,8 @@ async function start() {
   registerFileHandlers();
   registerAboutHandlers();
   registerAiHandlers();
+  registerTourHandlers();
+  registerDigestHandlers();
   registerSetupHandlers();
   startUsage();
   await startThemes(addonThemes);

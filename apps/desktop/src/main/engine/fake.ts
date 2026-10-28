@@ -371,6 +371,29 @@ export class FakeEngine implements Engine {
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
+    if (/Check these changes before they are committed/.test(prompt)) {
+      const debug = /^\+.*console\.log/m.test(prompt);
+      return JSON.stringify({
+        findings: debug
+          ? [{ severity: "medium", file: "cart.ts", line: 1, message: "A console.log is left in." }]
+          : [],
+      });
+    }
+    if (/Write my standup update/.test(prompt))
+      return "**Done**\n- Worked on the shop (scripted standup).\n\n**Next**\n- Keep going.\n\n**Blockers**\n- None.";
+    if (/guided tour of the code changes/.test(prompt)) {
+      const files = [...prompt.matchAll(/^diff --git a\/(.+?) b\//gm)].map((m) => m[1]!);
+      return JSON.stringify({
+        title: "Scripted tour",
+        overview: "The fake engine walks through each changed file in order.",
+        steps: files.map((file, i) => ({
+          title: `Step ${i + 1}: ${file}`,
+          file,
+          line: 1,
+          explanation: `What changed in ${file}, and why it matters.`,
+        })),
+      });
+    }
     if (/Several attempts were made/.test(prompt))
       return JSON.stringify({
         winner: 2,
