@@ -48,6 +48,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig, clicks
   through it, takes screenshots and reads the console, while you watch live and can take over. Its
   dev servers run in Jig terminals you can see.
+- **Routines and artifacts.** Your Claude Code routines in one tab (schedules, runs, logs, Run now),
+  and Claude's published artifacts open right in Jig.
 - **Configure it by talking.** "Use a darker theme", "move Git to the right": Claude changes Jig's
   settings and layout for you, with an Undo on every change.
 - **Menus for everything.** Claude Code's shortcuts (`/`, `@`, `!`, `#`, Shift+Tab) work, and every

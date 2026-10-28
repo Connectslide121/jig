@@ -32,6 +32,8 @@ in this order:
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
+| contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
+| "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" | a plan to approve (ExitPlanMode); the reply says the mode after approval |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |
@@ -57,6 +59,8 @@ More behaviour:
 - **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups and
   commit messages.
 - **The builder:** its sessions run a scripted build (`fakeBuilder.ts`).
+- **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
+  (`fakeCloud.ts`) with two routines, one past run and two artifacts.
 
 `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).

@@ -5,6 +5,7 @@ import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, star
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
 import { appWindows } from "./appWindows";
+import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
 import { startBrowser, stopBrowser } from "./browser";
 import { startBuilder } from "./builder";
@@ -18,6 +19,7 @@ import { startLearning } from "./learning";
 import { logger } from "./log";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
+import { registerRoutineHandlers } from "./routines";
 import { registerScriptHandlers } from "./scripts";
 import { startSessions } from "./sessions";
 import { registerSetupHandlers } from "./setup";
@@ -62,6 +64,8 @@ async function start() {
   startAttempts();
   startTerminals();
   startBrowser();
+  registerRoutineHandlers();
+  registerArtifactHandlers();
   registerScriptHandlers();
   registerFileHandlers();
   registerAboutHandlers();

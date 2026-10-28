@@ -74,6 +74,11 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "sessions.mcpReconnect": z.object({ id, name: z.string().min(1).max(200) }),
   "files.search": z.object({ root: path, query: z.string().max(500), limit: int.min(1).max(200).optional() }),
   "sessions.rewindFiles": z.object({ id, itemId: id, dryRun: z.boolean() }),
+  "artifacts.fetch": z.object({ url: z.string().max(500) }),
+  "routines.run": z.object({ id }),
+  "routines.setEnabled": z.object({ id, enabled: z.boolean() }),
+  "routines.runs": z.object({ id }),
+  "routines.runLog": z.object({ sessionId: id }),
   "browser.navigate": z.object({
     url: z.string().max(8192).optional(),
     action: z.enum(["back", "forward", "reload"]).optional(),

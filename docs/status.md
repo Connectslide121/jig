@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-28 (phases 0–15: every phase of the plan is done; the latest are Claude's browser and the chat at Claude Code's level)._
+_Last updated: 2026-10-28 (phases 0–16: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
 
@@ -145,6 +145,16 @@ _Last updated: 2026-10-28 (phases 0–15: every phase of the plan is done; the l
     - Ctrl+F finds in the chat.
   - **With the fake engine, try:** "/usage", "make a todo list", "make a plan", "use a subagent",
     "start a background job", "edit README.md", "! ls".
+- **Routines** (Tools → Routines): your Claude Code routines, the prompts Claude Code runs on a
+  schedule on the web.
+  - The list shows each one's schedule in words, its last run and an on/off switch.
+  - For the selected routine: **Run now**, its runs, and each run's messages.
+  - **New routine…** and **Change with Claude…** open a chat; in any chat you can also ask Claude to
+    make one.
+  - Jig asks Claude Code for them, a small model call each time, so the tab loads on demand.
+- **Artifacts:** when Claude publishes a page in a chat, its card has **Open in Jig** (Preview) and
+  **Open on claude.ai**. Tools → Artifacts lists those, and on request every artifact on your claude.ai
+  account; Claude Code reads one back to open it in Jig.
 - **Claude's browser:** Claude opens your dev server (or any http/https/file page) in a real browser
   inside Jig, reads it, clicks and types, takes screenshots that show in the chat, and reads the
   console. The **Claude's browser** view (right sidebar, or Tools → Open Claude's browser) shows the
@@ -252,6 +262,11 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **Routines and artifacts with your real account:** the Routines tab lists your routines (check the
+  schedule words and prompts), on/off and Run now work, runs and their logs show, and a routine Claude
+  makes in a chat appears after the reload. Artifacts: Claude's Artifact tool exists in your Claude
+  Code, Open in Jig shows the page, Load from claude.ai lists yours and opens one. If the tools are
+  missing, the tabs should say so clearly.
 - **The chat with a real Claude Code:**
   - the `/` list shows your skills and plugin commands;
   - `/usage` and custom commands print their output;

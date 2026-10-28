@@ -1,13 +1,16 @@
 import {
   ArrowDownToLine,
+  CalendarClock,
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  ExternalLink,
   Eye,
   FilePen,
   FileSearch,
   FileText,
   Globe,
+  LayoutTemplate,
   ListTodo,
   LoaderCircle,
   type LucideIcon,
@@ -20,11 +23,14 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { artifactFromTool } from "../../../shared/artifacts";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
 import { call } from "../../lib/host";
-import { CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
+import { Button, CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
+import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openArtifactOnline, openLocalArtifact, openRemoteArtifact } from "../artifacts/actions";
 import { openImage, useImageFile } from "../files";
 import { openPreview } from "../preview/actions";
 import { DiffLines } from "../preview/viewers";
@@ -44,6 +50,8 @@ const ICONS: Record<string, LucideIcon> = {
   WebFetch: Globe,
   WebSearch: Globe,
   TodoWrite: ListTodo,
+  RemoteTrigger: CalendarClock,
+  Artifact: LayoutTemplate,
   Task: Users,
   Agent: Users,
 };
@@ -72,6 +80,14 @@ export function toolSummary(name: string, input: Record<string, unknown>): strin
     case "Task":
     case "Agent":
       return [str(input.subagent_type), str(input.description)].filter(Boolean).join(": ");
+    case "RemoteTrigger": {
+      const body = (input.body ?? {}) as Record<string, unknown>;
+      return [str(input.action), str(body.name), str(input.trigger_id)].filter(Boolean).join(" · ");
+    }
+    case "Artifact":
+      return [str(input.action) ?? "publish", str(input.title) ?? path ?? str(input.url)]
+        .filter(Boolean)
+        .join(" · ");
     case "TodoWrite": {
       const todos = Array.isArray(input.todos) ? (input.todos as Array<{ status?: string }>) : [];
       return `${todos.filter((t) => t.status === "completed").length} of ${todos.length} done`;
@@ -154,6 +170,47 @@ function OutputPeek({ text, error }: { text: string; error: boolean }) {
         <div className="text-hint">… {lines.length - shown.length} more lines</div>
       )}
     </pre>
+  );
+}
+
+/** Routines and artifacts Claude made with Claude Code's own tools: open them in Jig. */
+function CloudToolActions({ item }: { item: ToolItem }) {
+  if (item.status !== "done") return null;
+  if (item.name === "RemoteTrigger")
+    return (
+      <div className="flex gap-1.5 px-2 pb-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={CalendarClock}
+          onClick={() => workbench.openTab("jig.routines")}
+        >
+          Open Routines
+        </Button>
+      </div>
+    );
+  const artifact = artifactFromTool(item);
+  if (!artifact) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2" data-testid="artifact-actions">
+      <Button
+        size="sm"
+        variant="secondary"
+        icon={Eye}
+        data-testid="artifact-open-jig"
+        onClick={() =>
+          artifact.path
+            ? openLocalArtifact(artifact.path)
+            : void openRemoteArtifact(artifact.url, artifact.title)
+        }
+      >
+        Open in Jig
+      </Button>
+      <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => openArtifactOnline(artifact.url)}>
+        Open on claude.ai
+      </Button>
+      <span className="truncate font-mono text-2xs text-hint">{artifact.url}</span>
+    </div>
   );
 }
 
@@ -343,6 +400,7 @@ export function ToolCard({
         <TodoList todos={item.input.todos as Todo[]} className="px-3 pb-2" />
       )}
       {!custom && !open && item.task && <TaskLine task={item.task} />}
+      <CloudToolActions item={item} />
       {!custom && !open && item.diff && (
         <div className="mx-2 mb-2 overflow-hidden rounded-sm border border-line" data-testid="tool-diff">
           <DiffLines

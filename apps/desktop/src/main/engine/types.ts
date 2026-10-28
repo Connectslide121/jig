@@ -12,6 +12,7 @@ import type {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import type { EnginePart } from "../sessions/attachments";
+import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 
 /**
  * The one engine contract. `ClaudeEngine` runs the official Claude Code through the Agent SDK;
@@ -95,11 +96,23 @@ export interface OneShotOptions {
   claudePath: string;
 }
 
+export interface ToolCallOptions {
+  cwd: string;
+  env: Record<string, string | undefined>;
+  claudePath: string;
+  timeoutMs?: number;
+}
+
 export interface Engine {
   readonly kind: "claude" | "fake";
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession;
   /** A single non-interactive query with no tools (pattern reflection, phase 9). Returns the text. */
   oneShot(prompt: string, options: OneShotOptions): Promise<string>;
+  /**
+   * Has Claude Code call one of its own tools (routines, artifacts) with an exact input, in a hidden
+   * session where only that call is allowed (D-092). Claude Code uses its own sign-in.
+   */
+  callTool(request: ToolCallRequest, options: ToolCallOptions): Promise<ToolCallResult>;
   /**
    * Your plan's usage as Claude Code's `/usage` reports it (5-hour and weekly windows). Claude Code
    * fetches it with its own login; no message is sent to Claude.

@@ -74,6 +74,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   - A tool may return images (`ToolOutput`); they show in the chat.
   - Tell Claude when to use a tool in `jigContext` (`main/engine/jigTools.ts`).
   - Give the fake engine a way to call new tools, so e2e tests cover them.
+- **Claude Code's cloud features** (routines, artifacts) are reached only through Claude Code's own
+  tools: in chats, or with `callClaudeTool` (a guarded single-tool call, D-092). Never call claude.ai
+  APIs or load claude.ai inside Jig.
 - **Jig's windows:** use `appWindows()` (`main/appWindows.ts`), never `BrowserWindow.getAllWindows()`,
   for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
   (Claude's browser) are marked with `markHelperWindow`.

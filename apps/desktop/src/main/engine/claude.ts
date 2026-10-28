@@ -5,9 +5,10 @@ import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { isReadOnlyJigTool } from "./jigTools";
-import { commandFrom, contextFrom, Normalizer } from "./normalize";
+import { commandFrom, contextFrom, Normalizer, toolOutputText } from "./normalize";
 import { AsyncQueue } from "./queue";
-import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
+import { isRequestedCall, type ToolCallRequest, type ToolCallResult, toolCallPrompt } from "./toolCall";
+import type { Engine, EngineSession, OneShotOptions, StartOptions, ToolCallOptions } from "./types";
 
 const log = logger("engine");
 
@@ -278,5 +279,90 @@ export class ClaudeEngine implements Engine {
       clearTimeout(timer);
     }
     return text;
+  }
+
+  async callTool(request: ToolCallRequest, options: ToolCallOptions): Promise<ToolCallResult> {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), options.timeoutMs ?? 90_000);
+    const refuse = "Jig only allows the exact call it asked for.";
+    const q = query({
+      prompt: toolCallPrompt(request),
+      options: {
+        cwd: options.cwd,
+        model: "haiku",
+        settingSources: [],
+        tools: [request.tool],
+        maxTurns: 3,
+        persistSession: false,
+        env: options.env,
+        pathToClaudeCodeExecutable: options.claudePath || undefined,
+        abortController: abort,
+        stderr: (data) => log.debug(`claude stderr (tool call): ${data.trimEnd()}`),
+        // Both gates check the call: the hook runs for every tool use, canUseTool when Claude Code asks.
+        hooks: {
+          PreToolUse: [
+            {
+              hooks: [
+                async (input) => {
+                  const call = input as { tool_name?: string; tool_input?: unknown };
+                  const ok = isRequestedCall(request, call.tool_name ?? "", call.tool_input);
+                  return {
+                    hookSpecificOutput: {
+                      hookEventName: "PreToolUse" as const,
+                      permissionDecision: ok ? ("allow" as const) : ("deny" as const),
+                      permissionDecisionReason: ok ? undefined : refuse,
+                    },
+                  };
+                },
+              ],
+            },
+          ],
+        },
+        canUseTool: async (toolName, toolInput) =>
+          isRequestedCall(request, toolName, toolInput)
+            ? { behavior: "allow", updatedInput: toolInput }
+            : { behavior: "deny", message: refuse },
+      },
+    });
+    let result: ToolCallResult | undefined;
+    try {
+      for await (const message of q) {
+        const m = message as {
+          type: string;
+          parent_tool_use_id?: string | null;
+          tool_use_result?: unknown;
+          message?: { content?: unknown };
+        };
+        if (m.type === "user" && !m.parent_tool_use_id && Array.isArray(m.message?.content)) {
+          for (const block of m.message.content as Array<{
+            type?: string;
+            is_error?: boolean;
+            content?: unknown;
+          }>)
+            if (block?.type === "tool_result")
+              result = {
+                ok: !block.is_error,
+                text: toolOutputText(block.content),
+                structured: m.tool_use_result,
+              };
+        }
+        if (m.type === "result") break;
+      }
+    } catch (error) {
+      if (abort.signal.aborted) throw new Error("Claude Code didn't answer in time");
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      try {
+        q.close();
+      } catch {
+        // Already closed.
+      }
+    }
+    if (!result)
+      throw new Error(
+        `Claude Code didn't run ${request.tool}. It may not be available with your Claude Code version or sign-in.`,
+      );
+    return result;
   }
 }

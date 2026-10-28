@@ -14,6 +14,7 @@ import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
 import type { ToolOutput } from "../engine/types";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { routinesChanged } from "../routines";
 import { paths } from "../state/paths";
 import { isInside } from "../themes/sources";
 import { usageService } from "../usage";
@@ -93,6 +94,18 @@ export function startSessions(): void {
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
       for (const u of updates) if (u.op === "meta") notifyStatus(u.meta);
+      // Claude changed a routine from the chat: the Routines tab reloads.
+      if (
+        updates.some(
+          (u) =>
+            u.op === "upsert" &&
+            u.item.kind === "tool" &&
+            u.item.name === "RemoteTrigger" &&
+            u.item.status === "done" &&
+            ["create", "update", "run"].includes(String(u.item.input.action)),
+        )
+      )
+        routinesChanged();
       for (const u of updates)
         if (u.op === "meta" && u.meta.kind && u.meta.status === "working")
           kindHooks.get(u.meta.kind)?.onWorking?.(u.meta);

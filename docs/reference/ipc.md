@@ -95,6 +95,12 @@ settings, add-on permissions.
 | `sessions.background` / `sessions.stopTask` | `{ id, toolUseId? }` / `{ id, taskId }` | `boolean` / — | move running work to the background; stop a background task |
 | `sessions.export` | `{ id }` | `string \| undefined` | saves the chat as Markdown (asks where) |
 | `files.search` | `{ root, query, limit? }` | `string[]` | fuzzy file/folder search inside a project (`@` mentions) |
+| `routines.list` | `{ refresh? }` | `{ at, routines: Routine[] }` | Claude Code routines via its RemoteTrigger tool (cached 5 min; `docs/reference/routines.md`) |
+| `routines.run` / `routines.setEnabled` | `{ id }` / `{ id, enabled }` | — | run now; switch on or off |
+| `routines.runs` / `routines.runLog` | `{ id }` / `{ sessionId }` | `RoutineRun[]` / `RoutineLogEntry[]` | a routine's runs; a run's messages |
+| `artifacts.fromChats` | — | `ChatArtifact[]` | artifacts your chats published, from the transcripts (`docs/reference/artifacts.md`) |
+| `artifacts.list` | `{ refresh? }` | `{ at, artifacts: RemoteArtifact[] }` | your claude.ai artifacts via Claude Code's Artifact tool (cached 5 min) |
+| `artifacts.fetch` | `{ url }` | `{ path }` | reads a claude.ai artifact through Claude Code into `~/.jig/cache/artifacts/` for Preview |
 | `terminals.list` | — | `TerminalInfo[]` | see `docs/reference/terminals.md` |
 | `terminals.create` | `{ projectId?, cwd?, command?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command` |
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
@@ -144,6 +150,7 @@ settings, add-on permissions.
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
 | `terminals.reveal` | `{ id }` | show this terminal (Claude started it from a chat) |
+| `routines.changed` | — | routines changed (from the tab or a chat): reload when shown |
 | `browser.state` | `BrowserState` | Claude's browser loaded, navigated, resized or logged an error |
 | `browser.frame` | `{ data, width, height }` | a JPEG of the page (base64), only while a view watches |
 | `browser.reveal` | — | Claude opened a page: show the Claude's browser view |

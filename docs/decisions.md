@@ -650,3 +650,26 @@ Technical choices:
 - **Model list and commands** come from the running Claude Code (it starts for the chat when you
   first open them), so new models and skills appear without a Jig update.
 
+### D-092 — Routines and artifacts go through Claude Code's own tools
+**Decided by:** Jon (asked for routines and artifacts in Jig); how, by Claude, on my own · **Date:** 2026-10-28
+
+Claude Code manages routines (`RemoteTrigger`) and artifacts (`Artifact`) with its own claude.ai
+sign-in. Jig must never read or forward that login (principle 2), and must not sign in to claude.ai
+itself. So it can't call those services directly or show claude.ai pages inside the app.
+
+Instead:
+- **Chats** use the tools as they are. Jig adds cards with Open Routines / Open in Jig.
+- **Tabs** use `Engine.callTool`: a hidden Claude Code session limited to one tool, told to make one
+  exact call. A `PreToolUse` hook and `canUseTool` both refuse anything else, and Jig reads the tool's
+  raw result.
+- **The cost** is a small model call (Haiku) per tab action, so tabs load on demand and cache for five
+  minutes.
+- **Creating and editing routines** happens in a chat, because Claude knows the service's fields and
+  you approve the call.
+- **Artifacts open in Jig's Preview:** from the local file Claude published, or from the page Claude
+  Code reads back. **Open on claude.ai** always goes to your browser.
+
+Rejected:
+- Embedding claude.ai in a web view: it needs a claude.ai login inside Jig.
+- Calling the APIs with Claude Code's stored token: it reads credentials.
+

@@ -10,6 +10,7 @@
 
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo } from "./addons";
+import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { BrowserInput, BrowserState, ConsoleEntry } from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
@@ -32,6 +33,7 @@ import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectColor, ProjectsState } from "./projects";
+import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type {
@@ -247,6 +249,18 @@ export interface HostMethods {
   "browser.resize": { args: { width: number; height: number }; result: BrowserState };
   "browser.console": { args: { clear?: boolean }; result: ConsoleEntry[] };
   "browser.close": { args: void; result: void };
+  /** Claude Code routines (through Claude Code's RemoteTrigger tool; each call costs a small model call). */
+  "routines.list": { args: { refresh?: boolean }; result: { at: string; routines: Routine[] } };
+  "routines.run": { args: { id: string }; result: void };
+  "routines.setEnabled": { args: { id: string; enabled: boolean }; result: void };
+  "routines.runs": { args: { id: string }; result: RoutineRun[] };
+  "routines.runLog": { args: { sessionId: string }; result: RoutineLogEntry[] };
+  /** Artifacts your chats published (from the transcripts; no model call). */
+  "artifacts.fromChats": { args: void; result: ChatArtifact[] };
+  /** Your artifacts on claude.ai (through Claude Code's Artifact tool; a small model call). */
+  "artifacts.list": { args: { refresh?: boolean }; result: { at: string; artifacts: RemoteArtifact[] } };
+  /** Reads a claude.ai artifact through Claude Code and saves a copy to open in Preview. */
+  "artifacts.fetch": { args: { url: string }; result: { path: string } };
   "scripts.list": { args: { projectId: string }; result: ProjectScripts };
   "scripts.run": { args: { projectId: string; scriptId: string }; result: TerminalInfo };
   "scripts.stop": { args: { projectId: string; scriptId: string }; result: void };
@@ -303,6 +317,8 @@ export interface HostEvents {
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };
   "browser.state": BrowserState;
+  /** Routines changed (from Jig or a chat): reload them. */
+  "routines.changed": void;
   /** A JPEG of the page (base64), sent only while a view watches. */
   "browser.frame": { data: string; width: number; height: number };
   /** Show Claude's browser (Claude started using it). */

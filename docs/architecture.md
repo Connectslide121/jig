@@ -208,6 +208,17 @@ out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser
 
 Each has a menu entry. Reference: `docs/reference/ai-features.md`.
 
+**Routines and artifacts.** Claude Code's cloud features, without Jig touching the claude.ai login
+(D-092):
+- In chats, Claude uses its own `RemoteTrigger` and `Artifact` tools, and Jig adds cards to open the
+  results.
+- The Routines and Artifacts tabs use `Engine.callTool`: a hidden Claude Code session that may make
+  exactly one call to one tool, with a `PreToolUse` hook and `canUseTool` both checking it. It costs a
+  small model call, so the tabs load on demand.
+- Artifacts open in the Preview tab, never as claude.ai inside Jig.
+
+References: `docs/reference/routines.md`, `docs/reference/artifacts.md`.
+
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 

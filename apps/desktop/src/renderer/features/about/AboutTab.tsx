@@ -607,6 +607,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Turn this chat into a tool: the builder makes it a one-click tool",
                 "Write my standup: Done / Next / Blockers from commits and chats",
                 "Ask Claude about a failed script or any previewed file",
+                "Routines (Tools → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Claude to make one",
+                "Artifacts: pages Claude publishes open in Jig's Preview, from a chat or from your claude.ai account",
               ]}
             />
           </Section>

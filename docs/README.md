@@ -24,6 +24,8 @@ root [`README.md`](../README.md).
 | [chat.md](reference/chat.md) | The chat next to Claude Code's terminal: `/` `@` `!` `#`, history, modes, rewind, todos, plans, diffs, subagents, MCP, effort |
 | [ai-features.md](reference/ai-features.md) | AI features around the chats: tours, checks, commit messages, standup, failed scripts, notifications |
 | [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
+| [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
+| [artifacts.md](reference/artifacts.md) | Opening Claude's artifacts in Jig, from chats and from claude.ai |
 | [browser.md](reference/browser.md) | Claude's browser: the offscreen page, its tools and the live view |
 | [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
 | [preview.md](reference/preview.md) | File previews and the `jig-file:` protocol |

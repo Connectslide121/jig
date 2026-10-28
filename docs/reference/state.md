@@ -20,6 +20,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
+| `cache/artifacts/<id>.html` | HTML | claude.ai artifacts Claude Code read back, for the Preview tab (safe to delete) |
 | `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
 | `app-builds/previous/` | build snapshot | the build that ran before the last "Pull, build and restart" (launcher fallback) |

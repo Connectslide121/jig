@@ -17,6 +17,8 @@ that can only answer. Each feature has a visible button or menu entry (D-083).
 | Turn this chat into a tool | chat ⋯ | the Build dialog with what happened in the chat (requests, commands, changed files) |
 | Claude's terminals | the Terminals panel ("Claude: …") | `jig_terminal_run/read/list/stop` (`docs/reference/terminals.md`) |
 | Claude's browser | the Claude's browser view (right), Tools | `jig_browser_*` (`docs/reference/browser.md`) |
+| Routines | Tools → Routines, cards in chats | Claude Code's RemoteTrigger (`docs/reference/routines.md`) |
+| Open artifacts in Jig | artifact cards in chats, Tools → Artifacts | Claude Code's Artifact tool (`docs/reference/artifacts.md`) |
 | Images from tools | tool cards in the chat | screenshots and charts a tool returns are saved and shown |
 | Ask Claude about a failed script | failure toast, terminal list ✨, terminal menu | a chat with the command, exit code and output |
 | Ask Claude about a file | Preview tab | a chat with a request suited to the file kind |

@@ -11,7 +11,9 @@ import type {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
+import { FakeCloud } from "./fakeCloud";
 import { contextFrom, patchText } from "./normalize";
+import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 import {
   type Engine,
   type EngineSession,
@@ -180,6 +182,56 @@ export class FakeEngine implements Engine {
               text: `**/${command.name}** (fake): ${command.description}.${effort ? ` Effort: ${effort}.` : ""}`,
             });
           else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
+        } else if (lower.includes("routine")) {
+          // Claude makes a routine with Claude Code's RemoteTrigger tool (it asks first, like any change).
+          const toolId = `tool-${randomUUID()}`;
+          const input = {
+            action: "create",
+            body: {
+              name: "Daily standup notes",
+              cron_expression: "45 8 * * 1-5",
+              prompt: "Write my standup notes",
+            },
+          };
+          onEvent({ type: "tool_use", id: toolId, name: "RemoteTrigger", input });
+          const decision = await options.askPermission(
+            { requestId: toolId, toolName: "RemoteTrigger", input, canAlwaysAllow: false },
+            signal,
+          );
+          if (decision.behavior === "allow") {
+            const result = this.cloud.call({ tool: "RemoteTrigger", input });
+            onEvent({ type: "tool_result", toolUseId: toolId, output: result.text, isError: !result.ok });
+            await stream(
+              `${msg}:text:0`,
+              "I created the routine **Daily standup notes** (weekdays at 08:45).",
+              signal,
+            );
+          } else {
+            onEvent({ type: "tool_result", toolUseId: toolId, output: "Denied", isError: true });
+            await stream(`${msg}:text:0`, "OK, no routine.", signal);
+          }
+        } else if (lower.includes("publish an artifact")) {
+          // Claude writes a page and publishes it with Claude Code's Artifact tool.
+          const path = join(options.cwd, "release-notes.html");
+          await writeFile(
+            path,
+            "<title>Release notes</title><style>body{font-family:sans-serif;padding:24px}</style><h1>Release notes</h1><p>Discount codes at checkout.</p>",
+          );
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Artifact",
+            input: { file_path: path, icon: "notes" },
+          });
+          await sleep(this.delayMs * 2, signal);
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: `Published ${path} at https://claude.ai/artifact/fakeReleaseNotes (Version 1).`,
+            isError: false,
+          });
+          await stream(`${msg}:text:0`, "I published the release notes as an artifact.", signal);
         } else if (lower.includes("todo list")) {
           // Claude keeps a todo list (TodoWrite) and works through it.
           const todos = (done: number) =>
@@ -656,6 +708,14 @@ export class FakeEngine implements Engine {
         seven_day_opus: { utilization: 31, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
       },
     };
+  }
+
+  /** Routines and artifacts "in the cloud", for the Routines and Artifacts tabs (one store per app run). */
+  private cloud = new FakeCloud();
+
+  async callTool(request: ToolCallRequest): Promise<ToolCallResult> {
+    await new Promise((r) => setTimeout(r, this.delayMs));
+    return this.cloud.call(request);
   }
 
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {

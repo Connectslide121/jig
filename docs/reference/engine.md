@@ -33,6 +33,14 @@ interface EngineSession {
   → The fake engine.
 - `normalize.ts` turns SDK messages into `EngineEvent`s and ignores anything it doesn't know.
 
+- **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
+  an exact input, for Jig's routines and artifacts tabs.
+  - It runs a hidden session: Haiku, no settings, only that tool, at most 3 turns, not persisted.
+  - A `PreToolUse` hook and `canUseTool` both allow only that exact call (`isRequestedCall`).
+  - It returns the tool's text and structured result.
+  - The fake engine answers from `fakeCloud.ts`.
+  - See D-092.
+
 ## Credentials and billing
 
 - Jig never reads, stores or forwards Claude credentials, and has no login screen.
