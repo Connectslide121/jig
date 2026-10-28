@@ -3,12 +3,15 @@ import type { IPty } from "@lydell/node-pty";
 import { JigError } from "../../shared/ipc";
 import type { TerminalInfo } from "../../shared/terminals";
 import { logger } from "../log";
-import { commandArgs, interactiveArgs, LineTracker } from "./shell";
+import { altScreenAfter, commandArgs, interactiveArgs, isRecordable, LineTracker } from "./shell";
 
 const log = logger("terminals");
 
 /** Scrollback kept per terminal so a reloaded window can redraw it (characters). */
 const SCROLLBACK_CHARS = 400_000;
+/** Output kept to check that a typed line was echoed, and how long to wait for the echo. */
+const RECENT_CHARS = 8_000;
+const ECHO_WAIT_MS = 250;
 /** Output is batched for the renderer at most this often (ms). */
 const FLUSH_MS = 16;
 
@@ -32,6 +35,9 @@ interface Live {
   pending: string;
   timer?: NodeJS.Timeout;
   lines?: LineTracker;
+  /** The last output (to check a typed line was echoed) and whether a full-screen program shows. */
+  recent: string;
+  altScreen: boolean;
 }
 
 export interface CreateTerminal {
@@ -96,7 +102,7 @@ export class TerminalManager {
       createdAt: new Date().toISOString(),
       private: input.private || undefined,
     };
-    const live: Live = { info, buffer: "", pending: "" };
+    const live: Live = { info, buffer: "", pending: "", recent: "", altScreen: false };
     this.terminals.set(info.id, live);
     try {
       live.pty = this.options.spawn(file, args, {
@@ -115,7 +121,14 @@ export class TerminalManager {
       return live.info;
     }
     if (!input.command && !input.file && !input.private && this.options.onCommand) {
-      live.lines = new LineTracker((line) => this.options.onCommand?.(live.info, line));
+      // Decide a moment after Enter, so the shell's echo of pasted text has arrived.
+      live.lines = new LineTracker((line) => {
+        const alt = live.altScreen;
+        setTimeout(() => {
+          if (isRecordable(line, live.recent, alt || live.altScreen))
+            this.options.onCommand?.(live.info, line);
+        }, ECHO_WAIT_MS);
+      });
     }
     live.pty.onData((data) => this.push(live, data));
     live.pty.onExit(({ exitCode }) => {
@@ -130,6 +143,8 @@ export class TerminalManager {
   }
 
   private push(live: Live, data: string) {
+    live.recent = (live.recent + data).slice(-RECENT_CHARS);
+    live.altScreen = altScreenAfter(live.altScreen, data);
     live.buffer += data;
     if (live.buffer.length > SCROLLBACK_CHARS) live.buffer = live.buffer.slice(-SCROLLBACK_CHARS);
     live.pending += data;

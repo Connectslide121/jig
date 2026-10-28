@@ -162,6 +162,11 @@ describe("AddonService", () => {
     expect(s.list()[0]?.name).toBe("Hello v2");
     await s.storageSet("hello", "count", 3);
     expect(await s.storageGet("hello", "count")).toBe(3);
+    // Quick writes keep every key; unknown or path-like ids are refused.
+    await Promise.all([s.storageSet("hello", "a", 1), s.storageSet("hello", "b", 2)]);
+    expect([await s.storageGet("hello", "a"), await s.storageGet("hello", "b")]).toEqual([1, 2]);
+    await expect(s.storageSet("../config", "updates", {})).rejects.toThrow(/not found/);
+    await expect(s.storageGet("nope", "x")).rejects.toThrow(/not found/);
     expect(changes.length).toBeGreaterThan(2);
     s.stop();
   });

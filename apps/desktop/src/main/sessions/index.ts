@@ -157,7 +157,15 @@ export function startSessions(): void {
   handle("sessions.rewindFiles", ({ id, itemId, dryRun }) => m.rewindFiles(id, itemId, dryRun));
   handle("sessions.delete", ({ id }) => m.delete(id));
 
-  app.on("before-quit", () => {
-    void m.shutdown();
+  // Wait for the last session writes before quitting (once; the second quit goes through).
+  let quitting = false;
+  app.on("before-quit", (event) => {
+    if (quitting) return;
+    quitting = true;
+    event.preventDefault();
+    void m
+      .shutdown()
+      .catch(() => {})
+      .finally(() => app.quit());
   });
 }

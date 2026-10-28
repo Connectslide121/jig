@@ -254,20 +254,36 @@ export class AddonService {
     await this.reload(id);
   }
 
+  /** An add-on's storage file: only for add-ons Jig knows, so an id can't point anywhere else. */
   private storageFile(id: string) {
+    if (!/^[a-z0-9][a-z0-9.-]*$/.test(id) || id.includes("..") || !this.loaded.has(id))
+      throw new JigError("not_found", `Add-on ${id} not found`);
     return join(this.options.dataDir, `${id}.json`);
   }
 
+  /** Storage reads and writes of one add-on run one after another, so quick sets don't lose keys. */
+  private storageQueue = new Map<string, Promise<unknown>>();
+  private inOrder<T>(id: string, work: () => Promise<T>): Promise<T> {
+    const result = (this.storageQueue.get(id) ?? Promise.resolve()).then(work, work);
+    this.storageQueue.set(
+      id,
+      result.catch(() => {}),
+    );
+    return result;
+  }
+
   async storageGet(id: string, key: string): Promise<unknown> {
-    const data = await readJson(this.storageFile(id), z.record(z.string(), z.unknown()));
-    return data[key];
+    const file = this.storageFile(id);
+    return this.inOrder(id, async () => (await readJson(file, z.record(z.string(), z.unknown())))[key]);
   }
 
   async storageSet(id: string, key: string, value: unknown): Promise<void> {
     const file = this.storageFile(id);
-    const data = await readJson(file, z.record(z.string(), z.unknown()));
-    data[key] = value;
-    await writeJson(file, data);
+    await this.inOrder(id, async () => {
+      const data = await readJson(file, z.record(z.string(), z.unknown()));
+      data[key] = value;
+      await writeJson(file, data);
+    });
   }
 
   async history(id: string): Promise<AddonCommit[]> {

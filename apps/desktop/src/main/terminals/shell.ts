@@ -93,3 +93,35 @@ export class LineTracker {
     }
   }
 }
+
+/** Words that look like credentials: keys, tokens, long random strings. */
+const SECRET =
+  /(sk-ant-|sk-[a-z0-9]{8}|ghp_|gho_|github_pat_|xox[bp]-|AKIA[0-9A-Z]{12}|eyJ[\w-]{10,}\.|(pass(word)?|pwd|secret|token|api[_-]?key)\s*[=:])|\b[A-Za-z0-9+/_#-]{32,}={0,2}(\s|$)/i;
+
+export function looksSecret(line: string): boolean {
+  return SECRET.test(line);
+}
+
+/** Tracks whether a full-screen program (the alternate screen: claude, vim, less, …) is showing. */
+export function altScreenAfter(current: boolean, output: string): boolean {
+  let state = current;
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point.
+  for (const m of output.matchAll(/\x1b\[\?(1049|1047|47)([hl])/g)) state = m[2] === "h";
+  return state;
+}
+
+/**
+ * Whether a line typed into a terminal may go to the activity log: the shell echoed it (password
+ * prompts don't echo), no full-screen program was showing, and it doesn't look like a secret.
+ */
+export function isRecordable(line: string, recentOutput: string, altScreen: boolean): boolean {
+  if (altScreen || looksSecret(line)) return false;
+  const shown = recentOutput
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point.
+    .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point.
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point.
+    .replace(/[\x00-\x08\x0b-\x1f]/g, "");
+  return shown.includes(line);
+}

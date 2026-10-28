@@ -214,4 +214,44 @@ describe("SessionManager", () => {
     expect(summarize("x".repeat(100))).toHaveLength(58);
     expect(summarize("")).toBe("New session");
   });
+
+  it("a chat deleted while Claude works stays deleted (its last events are ignored)", async () => {
+    const m = manager(new FakeEngine(20));
+    const session = await create(m);
+    await m.send(session.id, "slow please");
+    await until(async () => (await metaOf(m, session.id)).status === "working");
+    await m.delete(session.id);
+    const before = updates.length;
+    await new Promise((r) => setTimeout(r, 800));
+    expect(updates.length).toBe(before);
+    await expect(readFile(join(dir, `${session.id}.json`), "utf8")).rejects.toThrow();
+    expect(await m.list()).toEqual([]);
+  });
+
+  it("a message right after Stop runs in a new process the old one's exit can't disturb", async () => {
+    const m = manager(new FakeEngine(20));
+    const session = await create(m);
+    await m.send(session.id, "slow please");
+    await until(async () => (await metaOf(m, session.id)).status === "working");
+    await m.stopProcess(session.id);
+    expect((await metaOf(m, session.id)).status).toBe("idle");
+    await m.send(session.id, "hello again");
+    await until(
+      async () => (await metaOf(m, session.id)).turns >= 1 && (await metaOf(m, session.id)).status === "idle",
+      5000,
+    );
+    const items = (await m.snapshot(session.id)).items;
+    expect(items.filter((i) => i.kind === "assistant").at(-1)).toMatchObject({
+      text: expect.stringContaining("hello again"),
+    });
+    expect(m.runningCount()).toBe(1);
+  });
+
+  it("two quick sends start one turn and queue the other", async () => {
+    const m = manager(new FakeEngine(5));
+    const session = await create(m);
+    await Promise.all([m.send(session.id, "first"), m.send(session.id, "second")]);
+    expect((await m.snapshot(session.id)).queue.map((q) => q.text)).toEqual(["second"]);
+    await until(async () => (await metaOf(m, session.id)).turns === 2, 5000);
+  });
 });

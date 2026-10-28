@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { commandArgs, defaultShell, interactiveArgs, LineTracker, shellFamily } from "./shell";
+import {
+  altScreenAfter,
+  commandArgs,
+  defaultShell,
+  interactiveArgs,
+  isRecordable,
+  LineTracker,
+  looksSecret,
+  shellFamily,
+} from "./shell";
 
 const none = () => undefined;
 
@@ -47,5 +56,30 @@ describe("LineTracker", () => {
     t.feed("\x1b[Aignored? \x1b[B");
     t.feed("echo hi\n");
     expect(lines).toEqual(["git status", "npm run dev", "ls -la", "echo hi"]);
+  });
+});
+
+describe("what terminal input may be recorded", () => {
+  it("needs the shell to have echoed the line", () => {
+    expect(isRecordable("npm test", "PS C:\\repo> \x1b[93mnpm\x1b[0m test\r\n", false)).toBe(true);
+    // A password prompt doesn't echo what you type.
+    expect(isRecordable("hunter22", "[sudo] password for ann: ", false)).toBe(false);
+  });
+
+  it("never records inside full-screen programs or secret-looking lines", () => {
+    expect(isRecordable("hello", "hello", true)).toBe(false);
+    expect(
+      isRecordable("export ANTHROPIC_API_KEY=sk-ant-abc", "export ANTHROPIC_API_KEY=sk-ant-abc", false),
+    ).toBe(false);
+    expect(looksSecret("curl -H token=abc")).toBe(true);
+    expect(looksSecret("Xk9fQ2mL7pR4tV8wY1zB3nC6dF0hJ5sA2gE")).toBe(true);
+    expect(looksSecret("git commit -m 'Fix the cart total'")).toBe(false);
+    expect(looksSecret("npm run build")).toBe(false);
+  });
+
+  it("follows the alternate screen", () => {
+    expect(altScreenAfter(false, "\x1b[?1049h")).toBe(true);
+    expect(altScreenAfter(true, "bye\x1b[?1049l$ ")).toBe(false);
+    expect(altScreenAfter(true, "plain output")).toBe(true);
   });
 });

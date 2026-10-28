@@ -26,6 +26,8 @@ const log = logger("sessions");
 
 /** Most transcript items kept in the cache file (Claude Code keeps the full history itself). */
 const MAX_ITEMS = 3000;
+/** Longest time unsaved changes wait while a turn streams. */
+const SAVE_MAX_WAIT_MS = 2000;
 
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
@@ -89,6 +91,12 @@ interface Live {
   permissions: Map<string, { resolve: (d: PermissionDecision) => void; request: PermissionRequest }>;
   saveTimer?: NodeJS.Timeout;
   loaded: boolean;
+  /** Identifies the current Claude Code process: events from a stopped or replaced one are ignored. */
+  engineToken?: object;
+  /** Deleted: nothing is emitted or saved for it any more (a late event can't bring it back). */
+  deleted?: boolean;
+  lastSave?: number;
+  saving?: Promise<void>;
 }
 
 /**
@@ -140,20 +148,32 @@ export class SessionManager {
     return join(this.options.dir, `${id}.json`);
   }
 
-  private scheduleSave(live: Live, immediate = false) {
+  /**
+   * Saves the session file 500 ms after the last change, but at least every 2 s while changes keep
+   * coming (a long streamed turn), so a crash loses little.
+   */
+  private scheduleSave(live: Live, immediate = false): Promise<void> | undefined {
+    if (live.deleted) return undefined;
     clearTimeout(live.saveTimer);
-    const save = () =>
-      writeJson(this.file(live.state.meta.id), {
+    live.saveTimer = undefined;
+    const save = () => {
+      if (live.deleted) return Promise.resolve();
+      live.lastSave = Date.now();
+      live.saving = writeJson(this.file(live.state.meta.id), {
         meta: live.state.meta,
         items: live.state.items.slice(-MAX_ITEMS),
         queue: live.queue,
       }).catch((error) => log.error("Saving session failed", error));
-    if (immediate) void save();
-    else live.saveTimer = setTimeout(save, 500);
+      return live.saving;
+    };
+    if (immediate || Date.now() - (live.lastSave ?? Date.now()) > SAVE_MAX_WAIT_MS) return save();
+    live.lastSave ??= Date.now();
+    live.saveTimer = setTimeout(() => void save(), 500);
+    return undefined;
   }
 
   private emit(live: Live, updates: ChatUpdate[]) {
-    if (updates.length === 0) return;
+    if (updates.length === 0 || live.deleted) return;
     this.options.onUpdate(live.state.meta.id, updates);
     this.scheduleSave(live);
   }
@@ -212,6 +232,8 @@ export class SessionManager {
 
   private startEngine(live: Live): EngineSession {
     if (live.engine) return live.engine;
+    const token = {};
+    live.engineToken = token;
     const meta = live.state.meta;
     const settings = this.options.engineSettings();
     const session = this.options.engine.start(
@@ -243,7 +265,10 @@ export class SessionManager {
             });
           }),
       },
-      (event) => this.handleEvent(live, event),
+      (event) => {
+        // A process that was stopped or replaced may still send its last events (its exit above all).
+        if (live.engineToken === token) this.handleEvent(live, event);
+      },
     );
     live.engine = session;
     return session;
@@ -293,15 +318,27 @@ export class SessionManager {
   }
 
   private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = []) {
+    // Busy from now on, before any await: a second send right away is queued, not started twice.
+    live.state.meta = { ...live.state.meta, status: "starting" };
     let data: EnginePart[] = [];
     try {
       data = await readAttachments(this.options.attachmentsDir, live.state.meta.id, attachments);
     } catch (error) {
+      // Keep the message in the transcript (it's no longer in the queue), say why it wasn't sent, and
+      // go on with the next queued message.
+      const kept: ChatItem = { kind: "user", id: `user-${randomUUID()}`, text, at: new Date().toISOString() };
+      live.state.items.push(kept);
+      this.emit(live, [{ op: "upsert", item: kept }]);
       this.handleEvent(live, {
         type: "error",
         code: "process",
-        message: `Attachments: ${(error as Error).message}`,
+        message: `Not sent — attachments: ${(error as Error).message}`,
       });
+      const next = live.queue.shift();
+      if (next) {
+        this.emit(live, [{ op: "queue", queue: live.queue }]);
+        void this.startTurn(live, next.text, next.attachments);
+      }
       return;
     }
     const item: ChatItem = {
@@ -498,29 +535,36 @@ export class SessionManager {
     this.stop(await this.live(id));
   }
 
+  /** Ends the Claude Code process now: its pending prompts are cancelled and the turn ends here. */
   private stop(live: Live) {
-    live.engine?.close();
-    live.engine = undefined;
+    if (!live.engine) return;
+    const engine = live.engine;
+    this.handleEvent(live, { type: "exit" });
+    live.engineToken = undefined;
+    engine.close();
   }
 
   async delete(id: string): Promise<void> {
     const live = await this.live(id);
+    live.deleted = true;
     this.stop(live);
     clearTimeout(live.saveTimer);
     this.sessions.delete(id);
+    await live.saving;
     await rm(this.file(id), { force: true });
     await removeAttachments(this.options.attachmentsDir, id).catch(() => {});
   }
 
-  /** Ends every Claude Code process (app quit). */
+  /** Ends every Claude Code process and writes what isn't saved yet (app quit). */
   async shutdown(): Promise<void> {
+    const writes: Array<Promise<void> | undefined> = [];
     for (const live of this.sessions.values()) {
+      const unsaved = Boolean(live.saveTimer) || Boolean(live.engine);
       this.stop(live);
-      if (live.saveTimer) {
-        clearTimeout(live.saveTimer);
-        this.scheduleSave(live, true);
-      }
+      writes.push(live.saving);
+      if (unsaved || live.saveTimer) writes.push(this.scheduleSave(live, true));
     }
+    await Promise.all(writes);
   }
 
   runningCount(): number {

@@ -57,6 +57,8 @@ describe.skipIf(process.platform === "win32")("TerminalManager", () => {
     m.resize(t.id, 120, 40);
     m.write(t.id, "echo typed-$((40+2))\r");
     await until(() => (output[t.id] ?? "").includes("typed-42"));
+    // Recorded once the shell has echoed it (a moment after Enter).
+    await until(() => commands.length > 0);
     expect(commands).toEqual(["echo typed-$((40+2))"]);
     m.rename(t.id, "My shell");
     expect(m.get(t.id).title).toBe("My shell");
