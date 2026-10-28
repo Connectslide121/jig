@@ -1,4 +1,5 @@
 import {
+  ArrowDownToLine,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -8,19 +9,25 @@ import {
   FileText,
   Globe,
   ListTodo,
+  LoaderCircle,
   type LucideIcon,
   Plug,
   Search,
+  SquareCheck,
+  Square as SquareIcon,
   SquareTerminal,
   Users,
   Wrench,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
+import { call } from "../../lib/host";
 import { CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
+import { notify } from "../../workbench/toasts";
 import { openImage, useImageFile } from "../files";
 import { openPreview } from "../preview/actions";
+import { DiffLines } from "../preview/viewers";
 import { useToolRenderers } from "./toolRenderers";
 
 type ToolItem = Extract<ChatItem, { kind: "tool" }>;
@@ -64,7 +71,11 @@ export function toolSummary(name: string, input: Record<string, unknown>): strin
       return str(input.query) ?? "";
     case "Task":
     case "Agent":
-      return str(input.description) ?? "";
+      return [str(input.subagent_type), str(input.description)].filter(Boolean).join(": ");
+    case "TodoWrite": {
+      const todos = Array.isArray(input.todos) ? (input.todos as Array<{ status?: string }>) : [];
+      return `${todos.filter((t) => t.status === "completed").length} of ${todos.length} done`;
+    }
     default:
       return "";
   }
@@ -79,7 +90,8 @@ export function toolLabel(name: string): string {
 function Detail({ item }: { item: ToolItem }) {
   const { input, output, name } = item;
   const blocks: ReactNode[] = [];
-  if (name === "Bash" && str(input.command))
+  if (item.diff) blocks.push(<DiffLines key="diff" text={item.diff} className="p-1 text-2xs leading-4" />);
+  else if (name === "Bash" && str(input.command))
     blocks.push(<CodeBlock key="cmd" code={str(input.command)!} lang="bash" />);
   else if ((name === "Edit" || name === "MultiEdit") && str(input.old_string) !== undefined)
     blocks.push(
@@ -116,6 +128,35 @@ function Detail({ item }: { item: ToolItem }) {
   return <div className="px-2 pb-1">{blocks}</div>;
 }
 
+function DiffCount({ diff }: { diff: string }) {
+  const { added, removed } = diffCounts(diff);
+  return (
+    <span className="shrink-0 font-mono text-2xs">
+      <span className="text-success">+{added}</span> <span className="text-danger">−{removed}</span>
+    </span>
+  );
+}
+
+/** The first lines of a command's output, under its card (click the card for all of it). */
+function OutputPeek({ text, error }: { text: string; error: boolean }) {
+  const lines = text.trimEnd().split("\n");
+  const shown = lines.slice(0, 4);
+  return (
+    <pre
+      className={cn(
+        "selectable mx-2 mb-2 overflow-hidden border-l-2 pl-2 font-mono text-2xs leading-4 whitespace-pre-wrap",
+        error ? "border-danger text-danger" : "border-line text-muted",
+      )}
+      data-testid="tool-output-peek"
+    >
+      {shown.join("\n")}
+      {lines.length > shown.length && (
+        <div className="text-hint">… {lines.length - shown.length} more lines</div>
+      )}
+    </pre>
+  );
+}
+
 const IMAGE_TOOLS = new Set(["Read", "Write"]);
 const FILE_TOOLS = new Set(["Read", "Write", "Edit", "MultiEdit"]);
 
@@ -134,8 +175,106 @@ function ImageThumb({ path }: { path: string }) {
   );
 }
 
-export function ToolCard({ item, children }: { item: ToolItem; children?: ReactNode }) {
+/** Seconds since a tool started, while it runs (shown after a few seconds). */
+function Elapsed({ since }: { since: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.floor((now - new Date(since).getTime()) / 1000);
+  if (seconds < 3) return null;
+  return (
+    <span className="shrink-0 text-2xs text-hint tabular-nums">
+      {seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`}
+    </span>
+  );
+}
+
+/** How many lines an edit added and removed. */
+export function diffCounts(diff: string): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("+")) added++;
+    else if (line.startsWith("-")) removed++;
+  }
+  return { added, removed };
+}
+
+interface Todo {
+  content?: string;
+  activeForm?: string;
+  status?: "pending" | "in_progress" | "completed";
+}
+
+/** Claude's todo list (TodoWrite) as a checklist. */
+export function TodoList({ todos, className }: { todos: Todo[]; className?: string }) {
+  return (
+    <ul className={cn("flex flex-col gap-0.5 text-xs", className)} data-testid="todo-list">
+      {todos.map((t, i) => (
+        <li
+          // biome-ignore lint/suspicious/noArrayIndexKey: todos have no ids.
+          key={i}
+          className={cn(
+            "flex items-start gap-1.5",
+            t.status === "completed"
+              ? "text-hint line-through"
+              : t.status === "in_progress"
+                ? "text-fg"
+                : "text-muted",
+          )}
+          data-status={t.status}
+        >
+          {t.status === "completed" ? (
+            <SquareCheck className="mt-px size-3.5 shrink-0 text-success" />
+          ) : t.status === "in_progress" ? (
+            <LoaderCircle className="mt-px size-3.5 shrink-0 animate-spin text-accent" />
+          ) : (
+            <SquareIcon className="mt-px size-3.5 shrink-0" />
+          )}
+          <span className={cn(t.status === "in_progress" && "font-medium")}>
+            {t.status === "in_progress" ? (t.activeForm ?? t.content) : t.content}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+/** A subagent's progress: tool uses, tokens, time, what it's doing, and its summary. */
+function TaskLine({ task }: { task: NonNullable<ToolItem["task"]> }) {
+  const parts = [
+    task.toolUses !== undefined ? `${task.toolUses} tool use${task.toolUses === 1 ? "" : "s"}` : undefined,
+    task.tokens !== undefined ? `${k(task.tokens)} tokens` : undefined,
+    task.durationMs !== undefined ? `${(task.durationMs / 1000).toFixed(1)} s` : undefined,
+    task.status === "running" && task.lastTool ? `now: ${task.lastTool}` : undefined,
+    task.background ? "in the background" : undefined,
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-col gap-0.5 px-2 pb-1.5 text-2xs text-muted" data-testid="task-progress">
+      {parts.length > 0 && <div>{parts.join(" · ")}</div>}
+      {task.summary && <div className="text-xs text-fg">{task.summary}</div>}
+    </div>
+  );
+}
+
+const DIFF_PREVIEW_LINES = 14;
+const BACKGROUNDABLE = new Set(["Bash", "Task", "Agent"]);
+
+export function ToolCard({
+  item,
+  sessionId,
+  children,
+}: {
+  item: ToolItem;
+  sessionId?: string;
+  children?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
+  const [allDiff, setAllDiff] = useState(false);
   const custom = useToolRenderers()[item.name];
   const Icon = ICONS[item.name] ?? (item.name.startsWith("mcp__") ? Plug : Wrench);
   const summary = toolSummary(item.name, item.input);
@@ -166,10 +305,29 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
           <span className="shrink-0 font-medium text-fg">{toolLabel(item.name)}</span>
           {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
           <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
+          {item.diff && <DiffCount diff={item.diff} />}
+          {item.status === "running" && <Elapsed since={item.at} />}
           {item.status === "running" && <Spinner size="sm" />}
           {item.status === "done" && <CircleCheck className="size-3.5 shrink-0 text-success" />}
           {item.status === "error" && <CircleAlert className="size-3.5 shrink-0 text-danger" />}
         </button>
+        {item.status === "running" && sessionId && BACKGROUNDABLE.has(item.name) && (
+          <IconButton
+            icon={ArrowDownToLine}
+            size="sm"
+            label="Move to the background: Claude goes on while this keeps running (Ctrl+B in Claude Code)"
+            data-testid="tool-background"
+            onClick={() =>
+              void call("sessions.background", { id: sessionId, toolUseId: item.id }).then((moved) => {
+                if (!moved)
+                  notify({
+                    title: "It can't move to the background",
+                    message: "It may have finished already.",
+                  });
+              })
+            }
+          />
+        )}
         {previewPath && (
           <IconButton
             icon={Eye}
@@ -181,6 +339,30 @@ export function ToolCard({ item, children }: { item: ToolItem; children?: ReactN
         )}
       </div>
       {custom && !open ? <div className="px-2 pb-2">{custom.render(item)}</div> : null}
+      {!custom && !open && item.name === "TodoWrite" && Array.isArray(item.input.todos) && (
+        <TodoList todos={item.input.todos as Todo[]} className="px-3 pb-2" />
+      )}
+      {!custom && !open && item.task && <TaskLine task={item.task} />}
+      {!custom && !open && item.diff && (
+        <div className="mx-2 mb-2 overflow-hidden rounded-sm border border-line" data-testid="tool-diff">
+          <DiffLines
+            text={allDiff ? item.diff : item.diff.split("\n").slice(0, DIFF_PREVIEW_LINES).join("\n")}
+            className="max-h-96 overflow-auto p-1 text-2xs leading-4"
+          />
+          {!allDiff && item.diff.split("\n").length > DIFF_PREVIEW_LINES && (
+            <button
+              type="button"
+              className="w-full border-t border-line py-0.5 text-2xs text-muted hover:bg-hover hover:text-fg"
+              onClick={() => setAllDiff(true)}
+            >
+              Show all {item.diff.split("\n").length} lines
+            </button>
+          )}
+        </div>
+      )}
+      {!custom && !open && item.name === "Bash" && item.status !== "running" && item.output && (
+        <OutputPeek text={item.output} error={item.status === "error"} />
+      )}
       {!custom && imagePath && item.status === "done" && <ImageThumb path={imagePath} />}
       {item.images && item.images.length > 0 && (
         <div className="flex flex-wrap gap-1" data-testid="tool-images">

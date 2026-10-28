@@ -33,6 +33,10 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **The real Claude Code.** Every chat is an official Claude Code session, with your CLAUDE.md files,
   skills, MCP servers, plugins and **your own subscription**. Jig adds a workbench around it; it
   doesn't replace the agent.
+- **Everything Claude Code's terminal does, with menus.**
+  - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
+  - Todo lists, plan approval, diffs, subagent progress and background tasks.
+  - Rewind and edit, effort levels, MCP status.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you.
 - **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel for

@@ -3,24 +3,36 @@ import {
   ArchiveRestore,
   Bot,
   Check,
+  Download,
+  FolderPlus,
+  Gauge,
   GitFork,
   Map as MapIcon,
   Pencil,
+  Plug,
   Power,
   Shield,
   Trash2,
   Wand2,
 } from "lucide-react";
-import { PERMISSION_MODE_LABELS, PERMISSION_MODES, type SessionMeta } from "../../../shared/engine";
+import {
+  EFFORT_LEVELS,
+  type EffortLevel,
+  type ModelInfo,
+  PERMISSION_MODE_LABELS,
+  PERMISSION_MODES,
+  type SessionMeta,
+} from "../../../shared/engine";
 import { closeTabsWhere } from "../../../shared/layout";
 import { call, errorMessage } from "../../lib/host";
-import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
+import { confirmDialog, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
 import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openBuildDialog } from "../builder/BuildDialog";
 import { startTour } from "../tour/actions";
 import { compactMenu } from "./ContextMeter";
 import { chatRecipe } from "./recipe";
+import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { ensureTranscript, forgetSession, useSessions } from "./store";
 
 export const MODEL_CHOICES = [
@@ -30,21 +42,76 @@ export const MODEL_CHOICES = [
   { id: "haiku", label: "Haiku" },
 ];
 
-export function modelLabel(meta: SessionMeta): string {
-  return MODEL_CHOICES.find((m) => m.id === meta.model)?.label ?? meta.model;
+/** The models Claude Code offers, asked once (it starts Claude Code for the chat if needed). */
+let models: ModelInfo[] | undefined;
+let loadingModels: Promise<ModelInfo[] | undefined> | undefined;
+function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
+  if (models) return Promise.resolve(models);
+  loadingModels ??= call("sessions.models", { id: sessionId })
+    .then((list) => {
+      models = list;
+      return list;
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      loadingModels = undefined;
+    });
+  return loadingModels;
 }
 
+/** "default" is how Claude Code names its default; Jig stores it as an empty model. */
+const modelId = (value: string) => (value === "default" ? "" : value);
+
+export function modelLabel(meta: SessionMeta): string {
+  const known = models?.find((m) => modelId(m.value) === meta.model);
+  const name = known?.displayName ?? MODEL_CHOICES.find((m) => m.id === meta.model)?.label ?? meta.model;
+  return meta.effort ? `${name} · ${meta.effort}` : name;
+}
+
+const EFFORT_LABELS: Record<EffortLevel, string> = {
+  low: "Low — quick answers",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Extra high",
+  max: "Max — thinks the longest",
+};
+
 export function modelMenu(meta: SessionMeta): MenuEntry[] {
-  const known = MODEL_CHOICES.some((m) => m.id === meta.model);
+  const choices = models
+    ? models.map((m) => ({ id: modelId(m.value), label: m.displayName, description: m.description }))
+    : MODEL_CHOICES;
+  const known = choices.some((m) => m.id === meta.model);
+  const current = models?.find((m) => modelId(m.value) === meta.model);
+  const efforts = current ? (current.efforts ?? []) : [...EFFORT_LEVELS];
   return [
     { heading: "Model" },
-    ...MODEL_CHOICES.map((m) => ({
+    ...choices.map((m) => ({
       label: m.label,
       checked: m.id === meta.model,
+      testId: `model-${m.id || "default"}`,
       onSelect: () => void call("sessions.setModel", { id: meta.id, model: m.id }),
     })),
     ...(known ? [] : [{ label: meta.model, checked: true, icon: Check }]),
     { separator: true },
+    {
+      label: `Effort: ${meta.effort ? EFFORT_LABELS[meta.effort].split(" —")[0] : "model default"}`,
+      icon: Gauge,
+      disabled: efforts.length === 0,
+      testId: "effort-menu",
+      submenu: [
+        {
+          label: "Model default",
+          checked: !meta.effort,
+          onSelect: () => void call("sessions.setEffort", { id: meta.id }),
+        },
+        ...efforts.map((level) => ({
+          label: EFFORT_LABELS[level],
+          checked: meta.effort === level,
+          testId: `effort-${level}`,
+          onSelect: () => void call("sessions.setEffort", { id: meta.id, effort: level }),
+        })),
+      ],
+    },
     {
       label: "Other model…",
       icon: Bot,
@@ -59,6 +126,28 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
       },
     },
   ];
+}
+
+/** Opens the model menu with Claude Code's own model list (waits briefly for it the first time). */
+export async function openModelMenu(anchor: HTMLElement, meta: SessionMeta): Promise<void> {
+  await Promise.race([loadModels(meta.id), new Promise((r) => setTimeout(r, 2500))]);
+  openMenuAt(anchor, modelMenu(useSessions.getState().metas[meta.id] ?? meta), true);
+}
+
+/** Saves the chat as a Markdown file. */
+export async function exportChat(meta: SessionMeta): Promise<void> {
+  try {
+    const path = await call("sessions.export", { id: meta.id });
+    if (path)
+      notify({
+        title: "Chat saved",
+        message: path,
+        tone: "success",
+        actions: [{ label: "Show in folder", run: () => void call("app.showItemInFolder", { path }) }],
+      });
+  } catch (error) {
+    notify({ title: "Couldn't save the chat", message: errorMessage(error), tone: "danger" });
+  }
 }
 
 export function permissionMenu(meta: SessionMeta): MenuEntry[] {
@@ -109,6 +198,19 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       disabled: meta.turns === 0,
       onSelect: () => void chatToTool(meta),
       testId: "session-to-tool",
+    },
+    { label: "MCP servers…", icon: Plug, onSelect: () => openMcpDialog(meta.id), testId: "session-mcp" },
+    {
+      label: "Folders for this chat…",
+      icon: FolderPlus,
+      onSelect: () => openFoldersDialog(meta.id),
+      testId: "session-folders",
+    },
+    {
+      label: "Export as Markdown…",
+      icon: Download,
+      onSelect: () => void exportChat(meta),
+      testId: "session-export",
     },
     {
       label: "Fork chat",

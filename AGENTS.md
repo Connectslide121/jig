@@ -68,7 +68,8 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
   `SETTINGS_GUIDE` in `main/configure/tools.ts` and `docs/reference/state.md`; one that decides billing
   or runs programs also goes into `PROTECTED_SETTINGS` (D-077).
 - **Menus, not commands.** Every feature must be reachable from a visible menu or button. Do not add
-  Jig slash commands.
+  Jig slash commands. The chat's `/` picker shows Claude Code's own commands; the few Claude Code
+  names Jig answers itself (`/model`, `/mcp`…) map to existing menus and are also in the + menu (D-091).
 
 ## UI and design rules
 

@@ -26,6 +26,8 @@ export function applyUpdate(items: ChatItem[], update: ChatUpdate): ChatItem[] {
     const i = findIndex(items, update.item.id);
     if (i >= 0) items[i] = update.item;
     else items.push(update.item);
+  } else if (update.op === "reset") {
+    items.splice(0, items.length, ...update.items);
   } else if (update.op === "append") {
     const i = findIndex(items, update.id);
     const item = items[i];
@@ -55,7 +57,22 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         activeModel: event.model,
         authSource: event.authSource,
         needsLogin: false,
+        ...(event.mcpServers ? { mcpServers: event.mcpServers } : {}),
+        resumeAt: undefined,
+        resetPending: undefined,
       });
+      for (const server of event.mcpServers ?? [])
+        if (server.status === "failed" || server.status === "needs-auth")
+          upsert({
+            kind: "notice",
+            id: `mcp-${server.name}`,
+            at: now(),
+            tone: "warning",
+            text:
+              server.status === "needs-auth"
+                ? `The MCP server “${server.name}” needs you to sign in (chat ⋯ → MCP servers).`
+                : `The MCP server “${server.name}” failed to start (chat ⋯ → MCP servers).`,
+          });
       if (event.authSource === "api_key")
         upsert({
           kind: "notice",
@@ -112,9 +129,30 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
           status: event.isError ? "error" : "done",
           output: event.output,
           ...(event.images?.length ? { images: event.images } : {}),
+          ...(event.diff ? { diff: event.diff } : {}),
         });
       break;
     }
+    case "task": {
+      const tool = event.toolUseId ? get(event.toolUseId) : undefined;
+      // Later messages leave out the description: keep the first one.
+      if (tool?.kind === "tool")
+        upsert({
+          ...tool,
+          task: {
+            ...tool.task,
+            ...event.task,
+            description: event.task.description || tool.task?.description || "",
+          },
+        });
+      break;
+    }
+    case "background_tasks":
+      meta({ backgroundTasks: event.tasks });
+      break;
+    case "command_output":
+      upsert({ kind: "assistant", id: event.id, text: event.text, at: now() });
+      break;
     case "permission":
       upsert({
         kind: "permission",
@@ -154,6 +192,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         costUsd: turnCost,
         usage: event.usage,
         error: event.error,
+        ...(event.chainUuid ? { chainUuid: event.chainUuid } : {}),
       });
       const u = state.meta.usage;
       meta({
@@ -206,7 +245,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
     case "notice":
       upsert({
         kind: "notice",
-        id: `notice-${state.items.length}-${Date.now()}`,
+        id: event.key ? `notice-${event.key}` : `notice-${state.items.length}-${Date.now()}`,
         at: now(),
         tone: event.tone,
         text: event.text,

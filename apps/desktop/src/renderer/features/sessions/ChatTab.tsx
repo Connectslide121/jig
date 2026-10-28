@@ -1,13 +1,14 @@
-import { ChevronDown, LogIn, MessageSquareX, MoreHorizontal } from "lucide-react";
-import { useEffect } from "react";
+import { ChevronDown, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { PERMISSION_MODE_LABELS } from "../../../shared/engine";
 import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { UsageRing } from "../usage";
+import { BackgroundTasks, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
-import { modelLabel, modelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
+import { modelLabel, openModelMenu, permissionMenu, renameSession, sessionMenu } from "./menus";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
@@ -43,9 +44,24 @@ export function ChatTab({ params, active }: TabProps) {
   const transcript = useSessions((s) => s.transcripts[id]);
   const loaded = useSessions((s) => s.loaded);
   const project = useProjects((s) => s.projects.find((p) => p.id === meta?.projectId));
+  const [finding, setFinding] = useState(false);
+  const [match, setMatch] = useState<string>();
+  const onMatch = useCallback((m: string | undefined) => setMatch(m), []);
   useEffect(() => {
     if (id) void ensureTranscript(id).catch(() => {});
   }, [id]);
+  // Ctrl+F finds in the chat that is showing.
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFinding(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active]);
   if (!meta) return loaded ? <Empty icon={MessageSquareX} title="This session was deleted" /> : <Spinner />;
   const tokens =
     meta.usage.inputTokens +
@@ -84,7 +100,7 @@ export function ChatTab({ params, active }: TabProps) {
         <button
           type="button"
           data-testid="model-menu"
-          onClick={(e) => openMenuAt(e.currentTarget, modelMenu(meta), true)}
+          onClick={(e) => void openModelMenu(e.currentTarget, meta)}
           className="flex h-6 items-center gap-1 rounded-md px-2 text-xs text-muted hover:bg-hover hover:text-fg"
           title={meta.activeModel ? `Claude Code reports: ${meta.activeModel}` : undefined}
         >
@@ -99,12 +115,29 @@ export function ChatTab({ params, active }: TabProps) {
           {PERMISSION_MODE_LABELS[meta.permissionMode]} <ChevronDown className="size-3" />
         </button>
         <IconButton
+          icon={Search}
+          label="Find in this chat (Ctrl+F)"
+          size="sm"
+          data-testid="find-open"
+          onClick={() => setFinding(true)}
+        />
+        <IconButton
           icon={MoreHorizontal}
           label="Session options"
           size="sm"
           onClick={(e) => openMenuAt(e.currentTarget, sessionMenu(meta), true)}
         />
       </header>
+      {finding && transcript && (
+        <FindBar
+          items={transcript.items}
+          onMatch={onMatch}
+          onClose={() => {
+            setFinding(false);
+            setMatch(undefined);
+          }}
+        />
+      )}
       {meta.needsLogin && <LoginBanner />}
       {transcript ? (
         transcript.items.length === 0 ? (
@@ -119,13 +152,17 @@ export function ChatTab({ params, active }: TabProps) {
             </div>
           </div>
         ) : (
-          <Transcript items={transcript.items} sessionId={id} active={active} />
+          <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
         )
       ) : (
         <div className="flex flex-1 items-center justify-center">
           <Spinner />
         </div>
       )}
+      <div className="flex shrink-0 flex-col gap-1.5 pt-1.5 empty:hidden">
+        {transcript && <TodoPanel items={transcript.items} />}
+        <BackgroundTasks meta={meta} />
+      </div>
       <Composer meta={meta} queue={transcript?.queue ?? []} active={active} />
     </div>
   );

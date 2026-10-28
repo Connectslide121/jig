@@ -13,6 +13,57 @@ export const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
   bypassPermissions: "Don't ask",
 };
 
+/** Claude Code's effort levels (how hard the model thinks), for models that support them. */
+export const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type EffortLevel = (typeof EFFORT_LEVELS)[number];
+
+/** A Claude Code slash command or skill (built in, or from the user, project, a plugin or an MCP server). */
+export interface SlashCommandInfo {
+  name: string;
+  description: string;
+  argumentHint: string;
+  aliases?: string[];
+  /** Claude Code's own command (absent for skills and custom commands). */
+  builtin?: boolean;
+}
+
+/** A model Claude Code offers. */
+export interface ModelInfo {
+  value: string;
+  displayName: string;
+  description: string;
+  efforts?: EffortLevel[];
+}
+
+export interface McpServerInfo {
+  name: string;
+  status: "connected" | "failed" | "needs-auth" | "pending" | "disabled";
+  error?: string;
+  /** Where it is configured (user, project, local, a plugin…). */
+  scope?: string;
+  tools?: number;
+}
+
+/** A subagent or shell command Claude Code runs (in the foreground or the background). */
+export interface TaskInfo {
+  id: string;
+  status: "running" | "completed" | "failed" | "stopped";
+  description: string;
+  summary?: string;
+  tokens?: number;
+  toolUses?: number;
+  durationMs?: number;
+  lastTool?: string;
+  background?: boolean;
+}
+
+export interface BackgroundTask {
+  id: string;
+  description: string;
+  /** `local_bash`, `local_agent`… as Claude Code names them. */
+  type: string;
+}
+
 /** idle = waiting for you; working = Claude is busy; needs_you = a permission/question is waiting. */
 export type SessionStatus = "idle" | "starting" | "working" | "needs_you" | "error";
 
@@ -71,6 +122,18 @@ export interface SessionMeta {
   suggestion?: string;
   /** The context window after the last turn (kept while no Claude Code process runs). */
   context?: ContextUsage;
+  /** Effort level for this chat; empty = the model's default. */
+  effort?: EffortLevel;
+  /** Folders Claude may use besides `cwd` (Claude Code's additional directories, `/add-dir`). */
+  addDirs?: string[];
+  /** Tasks running in the background (shell commands, subagents). */
+  backgroundTasks?: BackgroundTask[];
+  /** MCP servers as Claude Code reported them when it started. */
+  mcpServers?: Array<{ name: string; status: string }>;
+  /** The conversation was rewound: the next start resumes only up to this Claude Code message. */
+  resumeAt?: string;
+  /** Rewound to before the first message: the next message starts a new conversation. */
+  resetPending?: boolean;
 }
 
 /** What restoring files to before a message changes (Claude Code's file checkpoints). */
@@ -120,8 +183,24 @@ export type ChatItem =
       output?: string;
       /** Images the tool returned (screenshots, charts), saved with the chat's attachments. */
       images?: ChatAttachment[];
+      /** What an edit changed, as unified-diff hunks (from Claude Code's structured patch). */
+      diff?: string;
+      /** A subagent's progress (Task/Agent tools). */
+      task?: TaskInfo;
       at: string;
       parentId?: string;
+    }
+  | {
+      /** A shell command you ran from the message box (`!`); its output goes with your next message. */
+      kind: "shell";
+      id: string;
+      at: string;
+      command: string;
+      output: string;
+      exitCode?: number;
+      status: "running" | "done";
+      /** Sent to Claude with a message already. */
+      sent?: boolean;
     }
   | {
       kind: "permission";
@@ -140,6 +219,8 @@ export type ChatItem =
       costUsd?: number;
       usage?: Usage;
       error?: string;
+      /** The last Claude Code message of this turn: rewinding to after this turn resumes here. */
+      chainUuid?: string;
     }
   | { kind: "notice"; id: string; at: string; text: string; tone: "info" | "warning" | "danger" }
   /** A build this chat asked for (jig_request_build); the card follows the build's status. */
@@ -168,7 +249,9 @@ export type ChatUpdate =
   | { op: "upsert"; item: ChatItem }
   | { op: "append"; id: string; text: string }
   | { op: "meta"; meta: SessionMeta }
-  | { op: "queue"; queue: QueuedMessage[] };
+  | { op: "queue"; queue: QueuedMessage[] }
+  /** The whole transcript changed (the conversation was rewound). */
+  | { op: "reset"; items: ChatItem[] };
 
 export interface QueuedMessage {
   id: string;
@@ -203,6 +286,7 @@ export type EngineEvent =
       permissionMode: string;
       authSource: AuthSource;
       slashCommands: string[];
+      mcpServers?: Array<{ name: string; status: string }>;
     }
   | { type: "block_start"; id: string; block: "text" | "thinking"; parentId?: string }
   | { type: "block_delta"; id: string; text: string }
@@ -217,6 +301,7 @@ export type EngineEvent =
       imageData?: Array<{ mime: string; data: string }>;
       /** The same images saved with the chat's attachments (set by the session manager). */
       images?: ChatAttachment[];
+      diff?: string;
     }
   | { type: "permission"; request: PermissionRequest }
   | { type: "permission_resolved"; requestId: string; status: "allowed" | "always" | "denied" | "cancelled" }
@@ -228,9 +313,18 @@ export type EngineEvent =
       usage?: Usage;
       numTurns?: number;
       error?: string;
+      chainUuid?: string;
     }
   | { type: "status"; status: "compacting" | "requesting" | null }
-  | { type: "notice"; text: string; tone: "info" | "warning" | "danger" }
+  /** `key`: a later notice with the same key replaces the earlier one. */
+  | { type: "notice"; text: string; tone: "info" | "warning" | "danger"; key?: string }
+  /** What a Claude Code command printed (`/cost`, `/mcp`, a custom command's output…). */
+  | { type: "command_output"; id: string; text: string }
+  /** A subagent or background command started, progressed or finished. */
+  | { type: "task"; task: TaskInfo; toolUseId?: string }
+  | { type: "background_tasks"; tasks: BackgroundTask[] }
+  /** The slash commands and skills changed (a plugin or skill was added). */
+  | { type: "commands"; commands: SlashCommandInfo[] }
   /** Claude Code suggests the user's next message (prompt suggestions). */
   | { type: "suggestion"; text: string }
   /** Claude Code compacted the conversation (`/compact`, or automatically when the window was full). */

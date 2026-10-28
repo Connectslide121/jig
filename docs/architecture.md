@@ -158,6 +158,10 @@ program-running settings are Settings-only. Reference: `docs/reference/configure
 notebooks, media, Office text and code. Binary content is served through `jig-file:` with per-folder
 grants, never from arbitrary paths. Reference: `docs/reference/preview.md`.
 
+**The chat.** It follows Claude Code's own UI: `/` commands and skills, `@` files, `!` shell, `#`
+memory, history, modes, steering a running turn, rewind, todos, plans, diffs, subagents, background
+tasks, MCP status and effort, all also in menus. Reference: `docs/reference/chat.md`.
+
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in Claude's browser: one offscreen
 Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools

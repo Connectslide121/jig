@@ -1,4 +1,4 @@
-import type { AuthSource, ContextUsage, EngineEvent, Usage } from "../../shared/engine";
+import type { AuthSource, ContextUsage, EngineEvent, SlashCommandInfo, Usage } from "../../shared/engine";
 
 /**
  * Claude Code SDK messages → Jig engine events. Pure and stateful per session (it tracks streamed
@@ -48,7 +48,39 @@ export function toolOutputImages(content: unknown): Array<{ mime: string; data: 
   );
 }
 
+/** Claude Code's structured patch of an Edit/Write → unified-diff hunks (at most `maxLines` lines). */
+export function patchText(result: unknown, maxLines = 400): string | undefined {
+  const r = result as Msg;
+  if (!r || typeof r !== "object") return undefined;
+  const lines: string[] = [];
+  if (Array.isArray(r.structuredPatch) && r.structuredPatch.length) {
+    for (const h of r.structuredPatch) {
+      if (!Array.isArray(h?.lines)) continue;
+      lines.push(`@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@`, ...h.lines.map(String));
+    }
+  } else if (r.type === "create" && typeof r.content === "string") {
+    const body = r.content.replace(/\n$/, "").split("\n");
+    lines.push(`@@ -0,0 +1,${body.length} @@`, ...body.map((l: string) => `+${l}`));
+  }
+  if (!lines.length) return undefined;
+  return lines.length > maxLines
+    ? `${lines.slice(0, maxLines).join("\n")}\n… ${lines.length - maxLines} more lines`
+    : lines.join("\n");
+}
+
+const TASK_STATUS: Record<string, "running" | "completed" | "failed" | "stopped"> = {
+  pending: "running",
+  running: "running",
+  paused: "running",
+  completed: "completed",
+  failed: "failed",
+  killed: "stopped",
+  stopped: "stopped",
+};
+
 export class Normalizer {
+  /** The last message of the main conversation (not a subagent's): where a rewind can resume. */
+  private lastChainUuid: string | undefined;
   /** message id → ordinal counters per block type, for streamed blocks. */
   private streamed = new Map<string, { text: number; thinking: number; byIndex: Map<number, string> }>();
   /** message id → ordinal counters for blocks from complete assistant messages. */
@@ -103,6 +135,13 @@ export class Normalizer {
           permissionMode: m.permissionMode ?? "default",
           authSource: authSourceFrom(m.apiKeySource),
           slashCommands: Array.isArray(m.slash_commands) ? m.slash_commands : [],
+          ...(Array.isArray(m.mcp_servers)
+            ? {
+                mcpServers: m.mcp_servers
+                  .filter((x: Msg) => typeof x?.name === "string")
+                  .map((x: Msg) => ({ name: x.name, status: String(x.status ?? "") })),
+              }
+            : {}),
         },
       ];
     if (m.subtype === "status") return [{ type: "status", status: m.status ?? null }];
@@ -117,7 +156,119 @@ export class Normalizer {
         },
       ];
     }
-    return [];
+    switch (m.subtype) {
+      case "local_command_output":
+        return typeof m.content === "string" && m.content.trim()
+          ? [{ type: "command_output", id: `command-${m.uuid}`, text: m.content }]
+          : [];
+      case "task_started":
+        return [
+          {
+            type: "task",
+            toolUseId: m.tool_use_id,
+            task: {
+              id: m.task_id,
+              status: "running",
+              description: m.description ?? "",
+              background: Boolean(m.is_backgrounded),
+            },
+          },
+        ];
+      case "task_progress":
+        return [
+          {
+            type: "task",
+            toolUseId: m.tool_use_id,
+            task: {
+              id: m.task_id,
+              status: "running",
+              description: m.description ?? "",
+              tokens: m.usage?.total_tokens,
+              toolUses: m.usage?.tool_uses,
+              durationMs: m.usage?.duration_ms,
+              lastTool: m.last_tool_name,
+              ...(m.summary ? { summary: m.summary } : {}),
+            },
+          },
+        ];
+      case "task_notification":
+        return [
+          {
+            type: "task",
+            toolUseId: m.tool_use_id,
+            task: {
+              id: m.task_id,
+              status: m.status === "completed" ? "completed" : m.status === "failed" ? "failed" : "stopped",
+              description: "",
+              ...(m.summary ? { summary: m.summary } : {}),
+              ...(m.usage
+                ? {
+                    tokens: m.usage.total_tokens,
+                    toolUses: m.usage.tool_uses,
+                    durationMs: m.usage.duration_ms,
+                  }
+                : {}),
+            },
+          },
+        ];
+      case "task_updated": {
+        const status = m.patch?.status ? TASK_STATUS[m.patch.status] : undefined;
+        return status
+          ? [{ type: "task", task: { id: m.task_id, status, description: m.patch?.description ?? "" } }]
+          : [];
+      }
+      case "background_tasks_changed":
+        return [
+          {
+            type: "background_tasks",
+            tasks: (Array.isArray(m.tasks) ? m.tasks : [])
+              .filter((t: Msg) => !t.ambient)
+              .map((t: Msg) => ({
+                id: t.task_id,
+                description: t.description ?? "",
+                type: t.task_type ?? "",
+              })),
+          },
+        ];
+      case "commands_changed":
+        return Array.isArray(m.commands) ? [{ type: "commands", commands: m.commands.map(commandFrom) }] : [];
+      case "api_retry":
+        return [
+          {
+            type: "notice",
+            key: "api-retry",
+            tone: "warning",
+            text: `Claude's API ${m.error_status ? `answered ${m.error_status}` : "didn't answer"}; Claude Code retries in ${Math.round((m.retry_delay_ms ?? 0) / 1000)} s (attempt ${m.attempt} of ${m.max_retries}).`,
+          },
+        ];
+      case "informational":
+        return typeof m.content === "string" && m.content.trim()
+          ? [
+              {
+                type: "notice",
+                tone: m.level === "warning" ? "warning" : "info",
+                text: m.content,
+                ...(m.tag ? { key: `info-${m.tag}` } : {}),
+              },
+            ]
+          : [];
+      case "notification":
+        return typeof m.text === "string" &&
+          m.text.trim() &&
+          (m.priority === "high" || m.priority === "immediate")
+          ? [{ type: "notice", tone: "info", text: m.text, key: `notification-${m.key}` }]
+          : [];
+      case "permission_denied":
+        return [
+          {
+            type: "notice",
+            tone: "warning",
+            text: `Not allowed by your permission rules: ${m.tool_name}${m.message ? ` — ${m.message}` : ""}`,
+          },
+        ];
+      default:
+        return [];
+    }
   }
 
   private stream(m: Msg): EngineEvent[] {
@@ -156,6 +307,7 @@ export class Normalizer {
   private assistant(m: Msg): EngineEvent[] {
     const message = m.message ?? {};
     const parentId = m.parent_tool_use_id ?? undefined;
+    if (!parentId && typeof m.uuid === "string") this.lastChainUuid = m.uuid;
     const events: EngineEvent[] = [];
     if (m.error) {
       const login = LOGIN_ERRORS.has(m.error);
@@ -194,17 +346,22 @@ export class Normalizer {
   }
 
   private user(m: Msg): EngineEvent[] {
+    if (!m.parent_tool_use_id && typeof m.uuid === "string" && !m.isReplay) this.lastChainUuid = m.uuid;
     const content = m.message?.content;
     if (!Array.isArray(content)) return [];
-    return content
-      .filter((b: Msg) => b?.type === "tool_result")
-      .map((b: Msg) => ({
+    const results = content.filter((b: Msg) => b?.type === "tool_result");
+    return results.map((b: Msg) => {
+      // One result per message is the norm; the structured result belongs to it.
+      const diff = results.length === 1 ? patchText(m.tool_use_result) : undefined;
+      return {
         type: "tool_result" as const,
         toolUseId: b.tool_use_id,
         output: toolOutputText(b.content),
         isError: Boolean(b.is_error),
         ...(toolOutputImages(b.content).length ? { imageData: toolOutputImages(b.content) } : {}),
-      }));
+        ...(diff ? { diff } : {}),
+      };
+    });
   }
 
   private result(m: Msg): EngineEvent[] {
@@ -221,9 +378,21 @@ export class Normalizer {
       usage: usageFrom(m.usage),
       numTurns: m.num_turns,
       error,
+      ...(this.lastChainUuid ? { chainUuid: this.lastChainUuid } : {}),
     });
     return events;
   }
+}
+
+/** Claude Code's SlashCommand → Jig's. */
+export function commandFrom(c: Msg): SlashCommandInfo {
+  return {
+    name: String(c?.name ?? ""),
+    description: String(c?.description ?? ""),
+    argumentHint: String(c?.argumentHint ?? ""),
+    ...(Array.isArray(c?.aliases) && c.aliases.length ? { aliases: c.aliases.map(String) } : {}),
+    ...(c?.builtin ? { builtin: true } : {}),
+  };
 }
 
 /** Claude Code's context breakdown (`getContextUsage`) → what Jig shows. */

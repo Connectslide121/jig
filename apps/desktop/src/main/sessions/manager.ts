@@ -7,7 +7,10 @@ import type {
   ChatAttachment,
   ChatItem,
   ChatUpdate,
+  EffortLevel,
   EngineEvent,
+  McpServerInfo,
+  ModelInfo,
   PermissionDecision,
   PermissionMode,
   PermissionRequest,
@@ -15,6 +18,7 @@ import type {
   RewindResult,
   SessionMeta,
   SessionSnapshot,
+  SlashCommandInfo,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import type { Engine, EngineSession, ToolOutput } from "../engine/types";
@@ -81,6 +85,8 @@ export interface SessionManagerOptions {
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
+  /** Runs a shell command you typed with `!` in the chat's folder. */
+  runShell?: (cwd: string, command: string) => Promise<{ output: string; exitCode: number }>;
   /** Activity for the learning log (phase 9): prompts and tool calls. */
   onActivity?: (event: {
     kind: "prompt" | "tool";
@@ -113,6 +119,9 @@ interface Live {
 export class SessionManager {
   private sessions = new Map<string, Live>();
   private ready: Promise<void> | undefined;
+  /** Slash commands and skills by folder, and the model list, from the last Claude Code that told us. */
+  private commandCache = new Map<string, SlashCommandInfo[]>();
+  private modelCache: ModelInfo[] | undefined;
 
   constructor(private readonly options: SessionManagerOptions) {}
 
@@ -247,7 +256,10 @@ export class SessionManager {
         cwd: meta.cwd,
         model: meta.model,
         permissionMode: meta.permissionMode,
-        resume: meta.engineSessionId,
+        resume: meta.resetPending ? undefined : meta.engineSessionId,
+        resumeSessionAt: meta.resetPending ? undefined : meta.resumeAt,
+        effort: meta.effort,
+        additionalDirectories: meta.addDirs,
         appendSystemPrompt: this.options.appendSystemPrompt(meta),
         env: settings.env,
         claudePath: settings.claudePath,
@@ -297,6 +309,10 @@ export class SessionManager {
     }
     if (event.type === "rate_limit") {
       this.options.onRateLimit?.(event);
+      return;
+    }
+    if (event.type === "commands") {
+      this.commandCache.set(live.state.meta.cwd, event.commands);
       return;
     }
     if (event.type === "exit") {
@@ -386,8 +402,18 @@ export class SessionManager {
     updates.push({ op: "meta", meta: live.state.meta });
     this.emit(live, updates);
     this.options.onActivity?.({ kind: "prompt", session: live.state.meta, text });
+    // Output of `!` commands you ran since the last message goes with it, as Claude Code sends it.
+    const shells = live.state.items.filter(
+      (i): i is Extract<ChatItem, { kind: "shell" }> => i.kind === "shell" && !i.sent && i.status === "done",
+    );
+    for (const shell of shells) {
+      const sent = { ...shell, sent: true };
+      live.state.items[live.state.items.indexOf(shell)] = sent;
+      this.emit(live, [{ op: "upsert", item: sent }]);
+    }
+    const withShell = shells.length ? `${shells.map(shellContext).join("\n")}\n\n${text}` : text;
     try {
-      const messageId = this.startEngine(live).send(text, data);
+      const messageId = this.startEngine(live).send(withShell, data);
       const sent = { ...item, messageId };
       const at = live.state.items.indexOf(item);
       if (at >= 0) live.state.items[at] = sent;
@@ -397,12 +423,30 @@ export class SessionManager {
     }
   }
 
-  /** Sends a message, or queues it while Claude is busy. */
-  async send(id: string, text: string, attachments: ChatAttachment[] = []): Promise<void> {
+  /**
+   * Sends a message, or queues it while Claude is busy. With `now`, a message sent while Claude works
+   * goes into the running turn instead (Claude reads it at its next step), as typing in Claude Code does.
+   */
+  async send(id: string, text: string, attachments: ChatAttachment[] = [], now = false): Promise<void> {
     const live = await this.live(id);
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
+    if (busy && now && live.engine && attachments.length === 0) {
+      const item: ChatItem = {
+        kind: "user",
+        id: `user-${randomUUID()}`,
+        text: trimmed,
+        at: new Date().toISOString(),
+      };
+      live.state.items.push(item);
+      this.emit(live, [{ op: "upsert", item }]);
+      const messageId = live.engine.send(trimmed, [], "next");
+      const sent = { ...item, messageId };
+      live.state.items[live.state.items.indexOf(item)] = sent;
+      this.emit(live, [{ op: "upsert", item: sent }]);
+      return;
+    }
     if (busy) {
       live.queue.push({ id: randomUUID(), text: trimmed, ...(attachments.length ? { attachments } : {}) });
       this.emit(live, [{ op: "queue", queue: live.queue }]);
@@ -476,6 +520,147 @@ export class SessionManager {
       this.scheduleSave(live);
     }
     return result;
+  }
+
+  /**
+   * Rewinds the conversation to before one of your messages (Claude Code's Esc Esc / rewind): the
+   * transcript drops that message and everything after it, and the next message continues from the
+   * turn before it. With `files`, the files Claude changed since then are restored too. Returns the
+   * message's text, for the message box.
+   */
+  async rewind(id: string, itemId: string, files: boolean): Promise<{ text: string; files?: RewindResult }> {
+    const live = await this.live(id);
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status))
+      throw new JigError("invalid_args", "Wait until Claude has finished, or stop it first.");
+    const index = live.state.items.findIndex((i) => i.id === itemId);
+    const item = live.state.items[index];
+    if (item?.kind !== "user") throw new JigError("not_found", "That message isn't in this chat");
+    let restored: RewindResult | undefined;
+    if (files) {
+      restored = await this.rewindFiles(id, itemId, false);
+      if (!restored.canRewind)
+        throw new JigError("invalid_args", restored.error ?? "Can't restore the files");
+    }
+    const before = live.state.items.slice(0, index);
+    const previous = [...before].reverse().find((i) => i.kind === "result" && i.chainUuid);
+    const earlierMessage = before.some((i) => i.kind === "user");
+    if (earlierMessage && previous?.kind !== "result")
+      throw new JigError(
+        "invalid_args",
+        "This chat is too old to rewind (Jig didn't record where its turns end).",
+      );
+    this.stop(live);
+    live.queue = [];
+    const notice: ChatItem = {
+      kind: "notice",
+      id: `rewind-${Date.now()}`,
+      at: new Date().toISOString(),
+      tone: "info",
+      text: `Rewound to before “${summarize(item.text || "your message")}”${restored ? `; ${restored.filesChanged?.length ?? 0} file(s) restored` : ""}. Claude doesn't remember what came after.`,
+    };
+    live.state.items = [...before, notice];
+    live.state.meta = {
+      ...live.state.meta,
+      resumeAt: previous?.kind === "result" ? previous.chainUuid : undefined,
+      resetPending: earlierMessage ? undefined : true,
+      suggestion: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+    this.emit(live, [
+      { op: "reset", items: live.state.items },
+      { op: "queue", queue: live.queue },
+      { op: "meta", meta: live.state.meta },
+    ]);
+    this.scheduleSave(live, true);
+    return { text: item.text, ...(restored ? { files: restored } : {}) };
+  }
+
+  /** Runs a `!` command in the chat's folder; its output goes to Claude with your next message. */
+  async runShell(id: string, command: string): Promise<void> {
+    const live = await this.live(id);
+    const run = this.options.runShell;
+    if (!run) throw new JigError("invalid_args", "Shell commands aren't available here");
+    const item: Extract<ChatItem, { kind: "shell" }> = {
+      kind: "shell",
+      id: `shell-${randomUUID()}`,
+      at: new Date().toISOString(),
+      command,
+      output: "",
+      status: "running",
+    };
+    live.state.items.push(item);
+    this.emit(live, [{ op: "upsert", item }]);
+    const result = await run(live.state.meta.cwd, command).catch((error: Error) => ({
+      output: error.message,
+      exitCode: 1,
+    }));
+    const done = { ...item, output: result.output, exitCode: result.exitCode, status: "done" as const };
+    const at = live.state.items.findIndex((i) => i.id === item.id);
+    if (at < 0) return;
+    live.state.items[at] = done;
+    this.emit(live, [{ op: "upsert", item: done }]);
+    this.scheduleSave(live);
+  }
+
+  /** Claude Code's slash commands and skills for this chat (starts Claude Code if needed). */
+  async commands(id: string): Promise<SlashCommandInfo[]> {
+    const live = await this.live(id);
+    const cached = this.commandCache.get(live.state.meta.cwd);
+    if (cached && !live.engine) return cached;
+    try {
+      const list = await withTimeout(this.startEngine(live).commands(), 20_000);
+      this.commandCache.set(live.state.meta.cwd, list);
+      return list;
+    } catch (error) {
+      if (cached) return cached;
+      throw error;
+    }
+  }
+
+  /** The models Claude Code offers (asked once, then remembered). */
+  async models(id: string): Promise<ModelInfo[]> {
+    if (this.modelCache) return this.modelCache;
+    const live = await this.live(id);
+    this.modelCache = await withTimeout(this.startEngine(live).models(), 20_000);
+    return this.modelCache;
+  }
+
+  async setEffort(id: string, effort: EffortLevel | undefined): Promise<void> {
+    const live = await this.live(id);
+    await live.engine?.setEffort(effort ?? null);
+    this.setMeta(live, { effort });
+  }
+
+  /** Extra folders Claude may use; Claude Code restarts with them at the next message. */
+  async setDirs(id: string, dirs: string[]): Promise<void> {
+    const live = await this.live(id);
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status))
+      throw new JigError("invalid_args", "Wait until Claude has finished, or stop it first.");
+    this.stop(live);
+    this.setMeta(live, { addDirs: dirs.length ? dirs : undefined });
+  }
+
+  async mcpStatus(id: string): Promise<McpServerInfo[]> {
+    return withTimeout(this.startEngine(await this.live(id)).mcpStatus(), 30_000);
+  }
+
+  async mcpReconnect(id: string, name: string): Promise<void> {
+    await this.startEngine(await this.live(id)).mcpReconnect(name);
+  }
+
+  async mcpToggle(id: string, name: string, enabled: boolean): Promise<void> {
+    await this.startEngine(await this.live(id)).mcpToggle(name, enabled);
+  }
+
+  /** Moves running commands and subagents (or one) to the background, like Ctrl+B in Claude Code. */
+  async background(id: string, toolUseId?: string): Promise<boolean> {
+    const live = await this.live(id);
+    return live.engine ? live.engine.background(toolUseId) : false;
+  }
+
+  async stopTask(id: string, taskId: string): Promise<void> {
+    const live = await this.live(id);
+    await live.engine?.stopTask(taskId);
   }
 
   /** Keeps a pasted, dropped or picked file for the next message of a session. */
@@ -590,6 +775,23 @@ export class SessionManager {
   runningCount(): number {
     return [...this.sessions.values()].filter((l) => l.engine).length;
   }
+}
+
+/** A `!` command as Claude Code puts it in the conversation. */
+export function shellContext(shell: { command: string; output: string; exitCode?: number }): string {
+  return `<bash-input>${shell.command}</bash-input>\n<bash-stdout>${shell.output}</bash-stdout>${
+    shell.exitCode ? `\n<bash-stderr>Exit code ${shell.exitCode}</bash-stderr>` : ""
+  }`;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new JigError("unavailable", "Claude Code didn't answer in time")), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 /** A short title from the first message. */

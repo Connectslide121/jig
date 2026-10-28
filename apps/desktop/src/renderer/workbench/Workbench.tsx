@@ -7,6 +7,7 @@ import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { StandupHost } from "../features/digest";
 import { useLearningSync } from "../features/learning";
 import { useSessionsSync } from "../features/sessions";
+import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
 import { useTerminalsSync } from "../features/terminals";
 import { call, useHostEvent } from "../lib/host";
@@ -97,6 +98,7 @@ export function Workbench() {
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />
+        <SessionDialogsHost />
         <StandupHost />
         <DialogHost />
       </ErrorBoundary>

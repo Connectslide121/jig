@@ -130,6 +130,21 @@ _Last updated: 2026-10-28 (phases 2–11: every phase of the plan is done)._
 - **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
   see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
   server's output.
+- **The chat does what Claude Code does** (`docs/reference/chat.md`):
+  - **Input:**
+    - `/` for Claude Code's commands and skills, `@` for files and folders, `!` for shell commands,
+      `#` to remember something in CLAUDE.md;
+    - ↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send into a running turn.
+  - **What Claude does:**
+    - its todo list as a checklist, and plans with Approve / Keep planning;
+    - diffs on edits, subagent progress, and background tasks with Stop;
+    - Edit and send again / Rewind on your messages.
+  - **Chat settings:**
+    - the model menu with Claude Code's own models and an Effort submenu;
+    - chat ⋯ → MCP servers…, Folders for this chat…, Export as Markdown…;
+    - Ctrl+F finds in the chat.
+  - **With the fake engine, try:** "/usage", "make a todo list", "make a plan", "use a subagent",
+    "start a background job", "edit README.md", "! ls".
 - **Claude's browser:** Claude opens your dev server (or any http/https/file page) in a real browser
   inside Jig, reads it, clicks and types, takes screenshots that show in the chat, and reads the
   console. The **Claude's browser** view (right sidebar, or Tools → Open Claude's browser) shows the
@@ -234,6 +249,15 @@ Things the cloud build environment couldn't verify:
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
 - **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **The chat with a real Claude Code:**
+  - the `/` list shows your skills and plugin commands;
+  - `/usage` and custom commands print their output;
+  - a plan in plan mode shows as a plan card;
+  - subagent progress updates;
+  - Edit and send again continues correctly (the rewind point);
+  - MCP servers show their real status;
+  - the Effort submenu matches your model;
+  - `!` commands run in PowerShell on Windows.
 - **Claude's browser with a real chat:** ask Claude to start your dev server and check a page. Check
   that the view follows, that clicks and typing on the picture reach the page (also on a HiDPI
   screen), that screenshots show in the chat, and that the browser window doesn't keep Jig running

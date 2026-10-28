@@ -4,7 +4,9 @@ import { type ImageData, imageMime, MAX_IMAGE_BYTES } from "../../shared/files";
 import { JigError } from "../../shared/ipc";
 import { handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { isInside } from "../themes/sources";
 import { previewFile, serveFile } from "./preview";
+import { searchFiles } from "./search";
 
 /** Reads an image file for a preview: image types only, at most 25 MB. */
 export async function readImage(path: string): Promise<ImageData> {
@@ -26,6 +28,12 @@ export function registerFileHandlers(): void {
       (await projectStore().list()).map((p) => p.path),
     ),
   );
+  handle("files.search", async ({ root, query, limit }) => {
+    const projects = (await projectStore().list()).map((p) => p.path);
+    if (!projects.some((p) => isInside(root, p)))
+      throw new JigError("invalid_args", "Search works inside your projects only");
+    return searchFiles(root, query, Math.min(limit ?? 50, 200));
+  });
   handle("files.stat", async ({ path }) => {
     const info = await stat(path).catch(() => undefined);
     return info?.isFile() ? { size: info.size, mtimeMs: info.mtimeMs } : null;

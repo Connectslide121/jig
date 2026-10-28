@@ -12,7 +12,11 @@ interface Engine {
   start(options: StartOptions, onEvent: (e: EngineEvent) => void): EngineSession;
   oneShot(prompt: string, options: OneShotOptions): Promise<string>; // no tools, one turn (phase 9)
 }
-interface EngineSession { send(text); interrupt(); setModel(m); setPermissionMode(m); contextUsage(); close(); }
+interface EngineSession {
+  send(text, attachments?, priority?: "next"); interrupt(); setModel(m); setPermissionMode(m); contextUsage();
+  rewindFiles(messageId, dryRun); commands(); models(); setEffort(level | null);
+  mcpStatus(); mcpReconnect(name); mcpToggle(name, on); background(toolUseId?); stopTask(id); close();
+}
 ```
 
 - **`ClaudeEngine`** (`claude.ts`): `query()` from `@anthropic-ai/claude-agent-sdk` in streaming-input
@@ -21,7 +25,9 @@ interface EngineSession { send(text); interrupt(); setModel(m); setPermissionMod
   plugins, hooks, MCP servers work as in the CLI), `systemPrompt: { type: "preset", preset:
   "claude_code", append: <Jig context> }`, `includePartialMessages: true` (streaming),
   `resume: <Claude Code session id>`, `pathToClaudeCodeExecutable` from `engine.claudePath`,
-  `canUseTool` → the permission prompt, `mcpServers: { jig }`.
+  `canUseTool` → the permission prompt, `mcpServers: { jig }`, `effort`, `additionalDirectories`, and
+  `resumeSessionAt` after a rewind. Messages carry `origin: { kind: "human" }`; one sent while Claude
+  works with `priority: "next"` joins the running turn.
 - **`FakeEngine`** (`fake.ts`): scripted replies for tests and `JIG_ENGINE=fake` (see the file header for
   the trigger words: "run", "question", "slow", "fail", "login", "build", and a path ending in an image
 extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
@@ -51,9 +57,20 @@ extension → a `Read` of that image). `JIG_FAKE_DELAY` sets the
 | `result { ok, durationMs, totalCostUsd, usage, error }` | `result` (cost is cumulative; the turn's cost is the difference) |
 | `suggestion { text }` | `prompt_suggestion` (with `promptSuggestions: true`, setting `engine.promptSuggestions`): kept as `SessionMeta.suggestion` until the next send; the composer shows it as a chip and as placeholder (Tab takes it). The fake engine suggests from the second turn on |
 | `compacted { trigger: manual \| auto, preTokens, postTokens? }` | `system/compact_boundary` (shown as "Conversation compacted (157k → 21k tokens)") |
+| `tool_result … diff` | an Edit/Write's `tool_use_result.structuredPatch` (or a new file's content) as unified-diff hunks, at most 400 lines |
+| `result … chainUuid` | the last main-conversation message of the turn (not a subagent's): where a rewind resumes |
+| `command_output { id, text }` | `system/local_command_output` (what `/usage`, a custom command… printed), shown as an answer |
+| `task { task, toolUseId? }` | `task_started/progress/notification/updated`: a subagent's progress on its Task card |
+| `background_tasks { tasks }` | `background_tasks_changed` → `SessionMeta.backgroundTasks` |
+| `commands { commands }` | `commands_changed` → the session manager's command cache |
+| `notice { key? }` | also `api_retry` (one notice, updated), `informational`, high-priority `notification`, `permission_denied` |
+| `init … mcpServers` | servers that failed or need sign-in add a notice |
 | `status`, `notice`, `error { code? }`, `exit` | status messages ("Compacting…"), errors, process end |
 
 ## Sessions (`main/sessions/manager.ts`)
+
+- Chat features on top of a session (commands, `@`, `!`, rewind, steering, effort, MCP, folders,
+  background tasks): `docs/reference/chat.md`.
 
 - A session = one Claude Code conversation in a project: `SessionMeta` (title, project, cwd, model,
   permission mode, status, auth source, usage, cost, Claude Code's session id) and a transcript cache of

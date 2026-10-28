@@ -1,8 +1,8 @@
-import { Check, ShieldAlert, ShieldCheck, X } from "lucide-react";
+import { Check, ListChecks, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
-import type { ChatItem, PermissionDecision } from "../../../shared/engine";
+import type { ChatItem, PermissionDecision, PermissionMode } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
-import { Badge, Button, CodeBlock, cn } from "../../ui";
+import { Badge, Button, CodeBlock, cn, Markdown } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { toolLabel, toolSummary } from "./ToolCard";
 
@@ -120,8 +120,96 @@ function QuestionCard({ item, sessionId }: { item: PermissionItem; sessionId: st
   );
 }
 
+/**
+ * Claude's plan (plan mode's ExitPlanMode), as Claude Code shows it: approve and let Claude edit
+ * without asking, approve and keep being asked, or keep planning with feedback.
+ */
+function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
+  const plan = typeof item.request.input.plan === "string" ? item.request.input.plan : "";
+  const pending = item.status === "pending";
+  const [feedback, setFeedback] = useState("");
+  const approve = async (mode: PermissionMode) => {
+    await call("sessions.setPermissionMode", { id: sessionId, mode }).catch(() => {});
+    await answer(sessionId, item.request.requestId, { behavior: "allow" });
+  };
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-md border p-3",
+        pending ? "border-accent bg-accent-soft" : "border-line",
+      )}
+      data-testid="plan-card"
+    >
+      <div className="flex items-center gap-2 text-sm font-medium text-fg">
+        <ListChecks className="size-4 text-accent" />
+        Claude's plan
+        {!pending && (
+          <Badge tone={item.status === "denied" ? "neutral" : "success"}>
+            {item.status === "denied"
+              ? "kept planning"
+              : item.status === "cancelled"
+                ? "cancelled"
+                : "approved"}
+          </Badge>
+        )}
+      </div>
+      <div className="max-h-96 overflow-y-auto rounded-md bg-raised px-3 py-1">
+        <Markdown text={plan} />
+      </div>
+      {pending && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              icon={Check}
+              onClick={() => void approve("acceptEdits")}
+              data-testid="plan-approve-auto"
+            >
+              Approve, and accept edits
+            </Button>
+            <Button
+              size="sm"
+              icon={ShieldCheck}
+              onClick={() => void approve("default")}
+              data-testid="plan-approve"
+            >
+              Approve, ask before edits
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              placeholder="Or tell Claude what to change in the plan…"
+              className="h-7 min-w-0 flex-1 rounded-md border border-line-strong bg-raised px-2 text-xs outline-none focus:border-focus"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              data-testid="plan-feedback"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              data-testid="plan-keep"
+              onClick={() =>
+                void answer(sessionId, item.request.requestId, {
+                  behavior: "deny",
+                  message: feedback.trim()
+                    ? `The user wants changes to the plan: ${feedback.trim()}`
+                    : "The user wants to keep planning.",
+                })
+              }
+            >
+              Keep planning
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PermissionCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
   if (item.request.toolName === "AskUserQuestion") return <QuestionCard item={item} sessionId={sessionId} />;
+  if (item.request.toolName === "ExitPlanMode") return <PlanCard item={item} sessionId={sessionId} />;
   const { request } = item;
   const pending = item.status === "pending";
   const summary = toolSummary(request.toolName, request.input);

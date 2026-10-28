@@ -52,7 +52,27 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "attempts.keep": z.object({ id, index: int.min(1).max(4) }),
   "projects.add": z.object({ path: path.optional() }),
   "sessions.create": z.object({ projectId: id, title: z.string().max(500).optional(), cwd: path.optional() }),
-  "sessions.send": z.object({ id, text, attachments: z.array(attachment).max(50).optional() }),
+  "sessions.send": z.object({
+    id,
+    text,
+    attachments: z.array(attachment).max(50).optional(),
+    now: z.boolean().optional(),
+  }),
+  "sessions.rewind": z.object({ id, itemId: id, files: z.boolean() }),
+  "sessions.runShell": z.object({ id, command: z.string().min(1).max(10_000) }),
+  "sessions.remember": z.object({
+    id,
+    text: z.string().min(1).max(5000),
+    scope: z.enum(["project", "user"]),
+  }),
+  "sessions.setEffort": z.object({
+    id,
+    effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+  }),
+  "sessions.setDirs": z.object({ id, dirs: z.array(path).max(20) }),
+  "sessions.mcpToggle": z.object({ id, name: z.string().min(1).max(200), enabled: z.boolean() }),
+  "sessions.mcpReconnect": z.object({ id, name: z.string().min(1).max(200) }),
+  "files.search": z.object({ root: path, query: z.string().max(500), limit: int.min(1).max(200).optional() }),
   "sessions.rewindFiles": z.object({ id, itemId: id, dryRun: z.boolean() }),
   "browser.navigate": z.object({
     url: z.string().max(8192).optional(),

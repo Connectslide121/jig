@@ -5,7 +5,7 @@ import type { EngineEvent, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { isReadOnlyJigTool } from "./jigTools";
-import { contextFrom, Normalizer } from "./normalize";
+import { commandFrom, contextFrom, Normalizer } from "./normalize";
 import { AsyncQueue } from "./queue";
 import type { Engine, EngineSession, OneShotOptions, StartOptions } from "./types";
 
@@ -38,6 +38,11 @@ export class ClaudeEngine implements Engine {
         promptSuggestions: options.promptSuggestions,
         enableFileCheckpointing: options.fileCheckpoints,
         forkSession: options.resume ? options.forkSession : undefined,
+        resumeSessionAt: options.resume ? options.resumeSessionAt : undefined,
+        effort: options.effort,
+        additionalDirectories: options.additionalDirectories?.length
+          ? options.additionalDirectories
+          : undefined,
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         // biome-ignore lint/suspicious/noExplicitAny: the SDK's MCP server config type is opaque here.
@@ -91,7 +96,7 @@ export class ClaudeEngine implements Engine {
     })();
 
     return {
-      send(text, attachments = []) {
+      send(text, attachments = [], priority) {
         // Attachments go first, as content blocks (what Claude Code sends for pasted images and PDFs).
         const blocks = attachments.map((part) =>
           part.type === "image"
@@ -116,9 +121,38 @@ export class ClaudeEngine implements Engine {
           message: { role: "user", content },
           parent_tool_use_id: null,
           uuid,
+          origin: { kind: "human" },
+          ...(priority ? { priority } : {}),
         } as SDKUserMessage);
         return uuid;
       },
+      async commands() {
+        return (await q.supportedCommands()).map(commandFrom);
+      },
+      async models() {
+        return (await q.supportedModels()).map((m) => ({
+          value: m.value,
+          displayName: m.displayName,
+          description: m.description,
+          ...(m.supportsEffort && m.supportedEffortLevels?.length
+            ? { efforts: m.supportedEffortLevels }
+            : {}),
+        }));
+      },
+      setEffort: (effort) => q.applyFlagSettings({ effortLevel: effort }),
+      async mcpStatus() {
+        return (await q.mcpServerStatus()).map((s) => ({
+          name: s.name,
+          status: s.status,
+          ...(s.error ? { error: s.error } : {}),
+          ...(s.scope ? { scope: s.scope } : {}),
+          ...(s.tools ? { tools: s.tools.length } : {}),
+        }));
+      },
+      mcpReconnect: (name) => q.reconnectMcpServer(name),
+      mcpToggle: (name, enabled) => q.toggleMcpServer(name, enabled),
+      background: (toolUseId) => q.backgroundTasks(toolUseId),
+      stopTask: (taskId) => q.stopTask(taskId),
       interrupt: async () => {
         await q.interrupt();
       },

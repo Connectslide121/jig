@@ -12,6 +12,10 @@ let activity: string[];
 
 function manager(engine = new FakeEngine(1)) {
   return new SessionManager({
+    runShell: async (_cwd, command) => ({
+      output: `ran ${command}`,
+      exitCode: command.includes("bad") ? 2 : 0,
+    }),
     dir,
     attachmentsDir: join(dir, "attachments"),
     engine,
@@ -253,5 +257,88 @@ describe("SessionManager", () => {
     await Promise.all([m.send(session.id, "first"), m.send(session.id, "second")]);
     expect((await m.snapshot(session.id)).queue.map((q) => q.text)).toEqual(["second"]);
     await until(async () => (await metaOf(m, session.id)).turns === 2, 5000);
+  });
+
+  it("a message sent with now joins the running turn instead of waiting", async () => {
+    const m = manager(new FakeEngine(5));
+    const session = await create(m);
+    await m.send(session.id, "slow");
+    await until(async () => (await metaOf(m, session.id)).status === "working");
+    await m.send(session.id, "also check the footer", [], true);
+    expect((await m.snapshot(session.id)).queue).toEqual([]);
+    await m.interrupt(session.id);
+    await until(async () => (await metaOf(m, session.id)).status !== "working");
+    const users = (await m.snapshot(session.id)).items.filter((i) => i.kind === "user");
+    expect(users.map((u) => u.kind === "user" && u.text)).toEqual(["slow", "also check the footer"]);
+  });
+
+  it("! commands run, show, and go with the next message in Claude Code's format", async () => {
+    const m = manager();
+    const session = await create(m);
+    await m.runShell(session.id, "git status");
+    const shell = (await m.snapshot(session.id)).items.find((i) => i.kind === "shell");
+    expect(shell).toMatchObject({
+      command: "git status",
+      output: "ran git status",
+      exitCode: 0,
+      status: "done",
+    });
+    await m.send(session.id, "what changed?");
+    await until(async () => (await metaOf(m, session.id)).turns === 1);
+    const items = (await m.snapshot(session.id)).items;
+    expect(items.find((i) => i.kind === "shell")).toMatchObject({ sent: true });
+    const reply = items.find((i) => i.kind === "assistant");
+    expect(reply?.kind === "assistant" && reply.text).toContain("<bash-input>git status</bash-input>");
+  });
+
+  it("rewinds the conversation to before a message and resumes at the turn before it", async () => {
+    const m = manager();
+    const session = await create(m);
+    await m.send(session.id, "first");
+    await until(async () => (await metaOf(m, session.id)).turns === 1);
+    await m.send(session.id, "second");
+    await until(async () => (await metaOf(m, session.id)).turns === 2);
+    const snap = await m.snapshot(session.id);
+    const second = snap.items.filter((i) => i.kind === "user")[1]!;
+    const firstResult = snap.items.find((i) => i.kind === "result");
+    const { text } = await m.rewind(session.id, second.id, false);
+    expect(text).toBe("second");
+    const after = await m.snapshot(session.id);
+    expect(after.items.filter((i) => i.kind === "user").map((u) => u.kind === "user" && u.text)).toEqual([
+      "first",
+    ]);
+    expect(after.items.at(-1)).toMatchObject({ kind: "notice" });
+    expect(after.meta.resumeAt).toBe(firstResult?.kind === "result" && firstResult.chainUuid);
+    expect(updates.some((u) => u.updates.some((x) => x.op === "reset"))).toBe(true);
+    // The next message continues from there; the rewind point is used once.
+    await m.send(session.id, "second, again");
+    await until(async () => (await metaOf(m, session.id)).turns === 3);
+    expect((await metaOf(m, session.id)).resumeAt).toBeUndefined();
+  });
+
+  it("rewinding to before the first message starts a new conversation", async () => {
+    const m = manager();
+    const session = await create(m);
+    await m.send(session.id, "first");
+    await until(async () => (await metaOf(m, session.id)).turns === 1);
+    const before = (await metaOf(m, session.id)).engineSessionId;
+    const first = (await m.snapshot(session.id)).items.find((i) => i.kind === "user")!;
+    await m.rewind(session.id, first.id, false);
+    expect((await metaOf(m, session.id)).resetPending).toBe(true);
+    await m.send(session.id, "start over");
+    await until(async () => (await metaOf(m, session.id)).turns === 2);
+    expect((await metaOf(m, session.id)).engineSessionId).not.toBe(before);
+  });
+
+  it("lists commands and models, sets effort and folders", async () => {
+    const m = manager();
+    const session = await create(m);
+    expect((await m.commands(session.id)).map((c) => c.name)).toContain("compact");
+    expect((await m.models(session.id))[0]?.efforts).toContain("high");
+    await m.setEffort(session.id, "high");
+    expect((await metaOf(m, session.id)).effort).toBe("high");
+    await m.setDirs(session.id, ["/tmp/other"]);
+    expect((await metaOf(m, session.id)).addDirs).toEqual(["/tmp/other"]);
+    expect((await m.mcpStatus(session.id)).map((s) => s.status)).toEqual(["connected", "needs-auth"]);
   });
 });

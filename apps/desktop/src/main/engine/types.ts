@@ -1,10 +1,14 @@
 import type {
   ContextUsage,
+  EffortLevel,
   EngineEvent,
+  McpServerInfo,
+  ModelInfo,
   PermissionDecision,
   PermissionMode,
   PermissionRequest,
   RewindResult,
+  SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import type { EnginePart } from "../sessions/attachments";
@@ -39,6 +43,11 @@ export interface StartOptions {
   fileCheckpoints?: boolean;
   /** With `resume`: continue the conversation as a new session (a fork) instead of the original. */
   forkSession?: boolean;
+  /** With `resume`: only resume up to this Claude Code message (the conversation was rewound). */
+  resumeSessionAt?: string;
+  effort?: EffortLevel;
+  /** Folders Claude may use besides `cwd`. */
+  additionalDirectories?: string[];
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */
@@ -52,7 +61,7 @@ export interface EngineSession {
    * Sends a user message (starts a turn), with attachments (images, PDFs, document text) if any.
    * Returns the id Claude Code knows the message by (for `rewindFiles`).
    */
-  send(text: string, attachments?: EnginePart[]): string;
+  send(text: string, attachments?: EnginePart[], priority?: "next"): string;
   /** Restores files Claude changed since `messageId` (file checkpoints); `dryRun` only reports. */
   rewindFiles(messageId: string, dryRun: boolean): Promise<RewindResult>;
   interrupt(): Promise<void>;
@@ -60,6 +69,18 @@ export interface EngineSession {
   setPermissionMode(mode: PermissionMode): Promise<void>;
   /** How full the context window is now (Claude Code's `/context` data; nothing is sent to Claude). */
   contextUsage(): Promise<ContextUsage | undefined>;
+  /** Claude Code's slash commands and skills for this session. */
+  commands(): Promise<SlashCommandInfo[]>;
+  /** The models Claude Code offers, with their effort levels. */
+  models(): Promise<ModelInfo[]>;
+  /** null = the model's default. */
+  setEffort(effort: EffortLevel | null): Promise<void>;
+  mcpStatus(): Promise<McpServerInfo[]>;
+  mcpReconnect(name: string): Promise<void>;
+  mcpToggle(name: string, enabled: boolean): Promise<void>;
+  /** Moves running commands/subagents (or one, by its tool-use id) to the background (Ctrl+B). */
+  background(toolUseId?: string): Promise<boolean>;
+  stopTask(taskId: string): Promise<void>;
   /** Ends the Claude Code process. */
   close(): void;
 }

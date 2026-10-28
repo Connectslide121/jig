@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authSourceFrom, contextFrom, Normalizer, toolOutputText } from "./normalize";
+import { authSourceFrom, contextFrom, Normalizer, patchText, toolOutputText } from "./normalize";
 
 const stream = (event: unknown, parent: string | null = null) => ({
   type: "stream_event",
@@ -294,5 +294,119 @@ describe("Normalizer", () => {
         imageData: [{ mime: "image/png", data: "iVBOR" }],
       },
     ]);
+  });
+});
+
+describe("more Claude Code messages", () => {
+  it("turns command output, tasks, retries and denials into events", () => {
+    const n = new Normalizer();
+    expect(
+      n.handle({ type: "system", subtype: "local_command_output", content: "Cost: $0.12", uuid: "u1" }),
+    ).toEqual([{ type: "command_output", id: "command-u1", text: "Cost: $0.12" }]);
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "task_started",
+        task_id: "t1",
+        tool_use_id: "tool1",
+        description: "Explore",
+      }),
+    ).toEqual([
+      {
+        type: "task",
+        toolUseId: "tool1",
+        task: { id: "t1", status: "running", description: "Explore", background: false },
+      },
+    ]);
+    const [progress] = n.handle({
+      type: "system",
+      subtype: "task_progress",
+      task_id: "t1",
+      tool_use_id: "tool1",
+      description: "Explore",
+      usage: { total_tokens: 900, tool_uses: 3, duration_ms: 1200 },
+      last_tool_name: "Grep",
+    });
+    expect(progress).toMatchObject({ task: { tokens: 900, toolUses: 3, lastTool: "Grep" } });
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "task_notification",
+        task_id: "t1",
+        status: "completed",
+        summary: "Found it",
+      }),
+    ).toMatchObject([{ type: "task", task: { status: "completed", summary: "Found it" } }]);
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "api_retry",
+        attempt: 2,
+        max_retries: 10,
+        retry_delay_ms: 4000,
+        error_status: 529,
+      }),
+    ).toMatchObject([{ type: "notice", key: "api-retry", tone: "warning" }]);
+    expect(
+      n.handle({ type: "system", subtype: "permission_denied", tool_name: "Bash", message: "rm is denied" }),
+    ).toMatchObject([{ type: "notice", text: expect.stringContaining("rm is denied") }]);
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "background_tasks_changed",
+        tasks: [
+          { task_id: "b1", task_type: "local_bash", description: "watch" },
+          { task_id: "x", ambient: true },
+        ],
+      }),
+    ).toEqual([
+      { type: "background_tasks", tasks: [{ id: "b1", description: "watch", type: "local_bash" }] },
+    ]);
+    expect(
+      n.handle({
+        type: "system",
+        subtype: "commands_changed",
+        commands: [{ name: "review", description: "Review", argumentHint: "", builtin: true }],
+      }),
+    ).toEqual([
+      {
+        type: "commands",
+        commands: [{ name: "review", description: "Review", argumentHint: "", builtin: true }],
+      },
+    ]);
+    expect(
+      n.handle({ type: "system", subtype: "notification", text: "low", priority: "low", key: "k" }),
+    ).toEqual([]);
+  });
+
+  it("keeps an edit's structured patch as a diff, and where the turn ended", () => {
+    const n = new Normalizer();
+    n.handle({ type: "assistant", uuid: "a1", parent_tool_use_id: null, message: { id: "m1", content: [] } });
+    const [result] = n.handle({
+      type: "user",
+      uuid: "u2",
+      parent_tool_use_id: null,
+      message: { content: [{ type: "tool_result", tool_use_id: "e1", content: "ok" }] },
+      tool_use_result: {
+        structuredPatch: [{ oldStart: 3, oldLines: 1, newStart: 3, newLines: 1, lines: ["-a", "+b"] }],
+      },
+    });
+    expect(result).toMatchObject({ type: "tool_result", diff: "@@ -3,1 +3,1 @@\n-a\n+b" });
+    // A subagent's message isn't part of the main conversation.
+    n.handle({
+      type: "assistant",
+      uuid: "sub",
+      parent_tool_use_id: "task",
+      message: { id: "m2", content: [] },
+    });
+    expect(n.handle({ type: "result", subtype: "success", duration_ms: 1 })).toMatchObject([
+      { chainUuid: "u2" },
+    ]);
+  });
+
+  it("writes a new file's content as an added hunk", () => {
+    expect(patchText({ type: "create", content: "x\ny\n" })).toBe("@@ -0,0 +1,2 @@\n+x\n+y");
+    expect(patchText({})).toBeUndefined();
+    expect(patchText({ type: "create", content: "a\nb\nc" }, 2)).toBe("@@ -0,0 +1,3 @@\n+a\n… 2 more lines");
   });
 });

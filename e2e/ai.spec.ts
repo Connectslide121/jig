@@ -51,6 +51,7 @@ test("Restore files to before a message puts back what Claude changed", async ({
   const message = page.getByTestId("user-message").first();
   await message.hover();
   await message.getByTestId("user-message-menu").click();
+  await page.getByTestId("rewind-menu").hover();
   await page.getByTestId("restore-files").click();
   await expect(page.getByRole("dialog")).toContainText("Restore 1 file?");
   await expect(page.getByRole("dialog")).toContainText("notes.txt");

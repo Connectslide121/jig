@@ -76,7 +76,6 @@ settings, add-on permissions.
 | `sessions.list` | — | `SessionMeta[]` | newest first (see `docs/reference/engine.md`) |
 | `sessions.get` | `{ id }` | `SessionSnapshot` | `{ meta, items, queue }` |
 | `sessions.create` | `{ projectId, title?, cwd? }` | `SessionMeta` | runs in the project folder (or `cwd`, a folder inside it — e.g. one repository of a workspace) with the default model/permission mode |
-| `sessions.send` | `{ id, text, attachments? }` | — | starts a turn, or queues while Claude works; `attachments` come from `sessions.addAttachment` (text may be empty then) |
 | `sessions.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment { path, mime, name, kind }` | keeps pasted/dropped bytes (base64) or copies a file into `attachments/<session>/`: images, PDFs, .docx/.xlsx/.pptx, text files (`docs/reference/engine.md` → Attachments); `not_supported`, `too_large`, `not_found`, `unreadable` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |
@@ -85,6 +84,17 @@ settings, add-on permissions.
 | `sessions.rename` / `sessions.archive` | `{ id, title }` / `{ id, archived }` | — | |
 | `sessions.stop` | `{ id }` | — | ends the Claude Code process (resumes on the next message) |
 | `sessions.delete` | `{ id }` | — | removes Jig's record; Claude Code's own transcript stays |
+| `sessions.send` | `{ id, text, attachments?, now? }` | — | sends, or queues while Claude works; `now` joins the running turn instead |
+| `sessions.rewind` | `{ id, itemId, files }` | `{ text, files? }` | rewinds the chat to before your message (and with `files`, restores the files); returns the message for the box |
+| `sessions.runShell` | `{ id, command }` | — | a `!` command in the chat's folder; output goes with the next message |
+| `sessions.remember` | `{ id, text, scope: project \| user }` | `{ path }` | appends `- text` to CLAUDE.md |
+| `sessions.commands` / `sessions.models` | `{ id }` | `SlashCommandInfo[]` / `ModelInfo[]` | from Claude Code (starts it for the chat if needed) |
+| `sessions.setEffort` | `{ id, effort? }` | — | `low` … `max`; empty = the model's default |
+| `sessions.setDirs` | `{ id, dirs }` | — | extra folders (restarts Claude Code at the next message) |
+| `sessions.mcpStatus` / `mcpReconnect` / `mcpToggle` | `{ id }` / `{ id, name }` / `{ id, name, enabled }` | `McpServerInfo[]` / — / — | the chat's MCP servers |
+| `sessions.background` / `sessions.stopTask` | `{ id, toolUseId? }` / `{ id, taskId }` | `boolean` / — | move running work to the background; stop a background task |
+| `sessions.export` | `{ id }` | `string \| undefined` | saves the chat as Markdown (asks where) |
+| `files.search` | `{ root, query, limit? }` | `string[]` | fuzzy file/folder search inside a project (`@` mentions) |
 | `terminals.list` | — | `TerminalInfo[]` | see `docs/reference/terminals.md` |
 | `terminals.create` | `{ projectId?, cwd?, command?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command` |
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |

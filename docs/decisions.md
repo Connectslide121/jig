@@ -627,3 +627,26 @@ external Playwright MCP server because it needs no install, the user sees what C
 page lives in Jig's own Electron (`docs/reference/browser.md`). Hidden helper windows are excluded from
 "all windows" (events, focus, quitting) through `main/appWindows.ts`.
 
+### D-091 — The chat does everything Claude Code's terminal does
+**Decided by:** Jon ("at least as good as Claude Code, all the features and more"); the details by Claude, on my own · **Date:** 2026-10-28
+The chat follows Claude Code's own input and output (`docs/reference/chat.md`):
+- **Input:** `/` lists Claude Code's commands and skills, `@` files, `!` shell and `#` memory. The
+  `/` and `@` keys open pickers, with ↑/↓ history and Shift+Tab modes. Typing while Claude works
+  queues the message; Ctrl+Enter sends it into the running turn.
+- **Output:** todo checklists, plan approval, diffs, subagent progress, background tasks, MCP
+  status, and rewinding the conversation.
+
+D-006 still holds:
+- Jig invents no command names. `/model`, `/mcp`, `/add-dir`, `/export`, `/clear`, `/rewind` and
+  `/permissions` are Claude Code's names, mapped to Jig's menus so habits carry over.
+- Every entry of the `/` picker and every input mode is also in the **+** menu or the chat ⋯ menu.
+
+Technical choices:
+- **Rewind** resumes the same Claude Code session at the last message of the turn before
+  (`resumeSessionAt`, recorded on each turn's result). Rewinding to before the first message starts
+  a new conversation.
+- **`!` output** goes to Claude in Claude Code's own `<bash-input>/<bash-stdout>` form with the next
+  message, not as a turn of its own.
+- **Model list and commands** come from the running Claude Code (it starts for the chat when you
+  first open them), so new models and skills appear without a Jig update.
+

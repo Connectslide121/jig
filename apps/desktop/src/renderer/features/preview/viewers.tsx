@@ -251,10 +251,18 @@ export function NotebookView({ preview }: { preview: FilePreview }) {
 }
 
 /** Unified diff text with added and removed lines coloured. */
-export function DiffLines({ text, testId }: { text: string; testId?: string }) {
+export function DiffLines({
+  text,
+  testId,
+  className,
+}: {
+  text: string;
+  testId?: string;
+  className?: string;
+}) {
   const lines = text.split("\n");
   return (
-    <pre className="selectable p-4 font-mono text-xs leading-5" data-testid={testId}>
+    <pre className={cn("selectable p-4 font-mono text-xs leading-5", className)} data-testid={testId}>
       {lines.map((line, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: lines of a file.

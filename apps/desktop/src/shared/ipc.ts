@@ -17,11 +17,15 @@ import type { DeepPartial, JigConfig } from "./config";
 import type {
   ChatAttachment,
   ChatUpdate,
+  EffortLevel,
+  McpServerInfo,
+  ModelInfo,
   PermissionDecision,
   PermissionMode,
   RewindResult,
   SessionMeta,
   SessionSnapshot,
+  SlashCommandInfo,
 } from "./engine";
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
@@ -65,6 +69,8 @@ export interface HostMethods {
   /** A file for the Preview tab: its kind, text or extracted content, and a `jig-file:` address. */
   "files.preview": { args: { path: string }; result: FilePreview };
   /** Size and change time of a file (`null`: gone); the Preview tab polls it to follow edits. */
+  /** Files and folders of a project folder matching a fuzzy query (`@` mentions); folders end with `/`. */
+  "files.search": { args: { root: string; query: string; limit?: number }; result: string[] };
   "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
   /** Claude Code skills on this machine: yours and the active project's (the "What Jig can do" page). */
   /** "Write my standup": Claude summarises your commits, uncommitted work and chats since the last working day (or a week). */
@@ -146,7 +152,37 @@ export interface HostMethods {
   /** `cwd`: a folder inside the project (e.g. one repository of a workspace); default the project folder. */
   "sessions.create": { args: { projectId: string; title?: string; cwd?: string }; result: SessionMeta };
   /** Sends a message (with files kept by `sessions.addAttachment`), or queues it while Claude works. */
-  "sessions.send": { args: { id: string; text: string; attachments?: ChatAttachment[] }; result: void };
+  /** `now`: while Claude works, the message joins the running turn instead of waiting in the queue. */
+  "sessions.send": {
+    args: { id: string; text: string; attachments?: ChatAttachment[]; now?: boolean };
+    result: void;
+  };
+  /** Rewinds the conversation to before a message of yours (and with `files`, the files too). */
+  "sessions.rewind": {
+    args: { id: string; itemId: string; files: boolean };
+    result: { text: string; files?: RewindResult };
+  };
+  /** Runs a `!` command in the chat's folder; the output goes to Claude with the next message. */
+  "sessions.runShell": { args: { id: string; command: string }; result: void };
+  /** Adds a line to CLAUDE.md: the project's (in the chat's folder) or your own (~/.claude). */
+  "sessions.remember": {
+    args: { id: string; text: string; scope: "project" | "user" };
+    result: { path: string };
+  };
+  /** Claude Code's slash commands and skills for this chat. */
+  "sessions.commands": { args: { id: string }; result: SlashCommandInfo[] };
+  "sessions.models": { args: { id: string }; result: ModelInfo[] };
+  "sessions.setEffort": { args: { id: string; effort?: EffortLevel }; result: void };
+  /** Extra folders Claude may use (Claude Code's additional directories). */
+  "sessions.setDirs": { args: { id: string; dirs: string[] }; result: void };
+  "sessions.mcpStatus": { args: { id: string }; result: McpServerInfo[] };
+  "sessions.mcpReconnect": { args: { id: string; name: string }; result: void };
+  "sessions.mcpToggle": { args: { id: string; name: string; enabled: boolean }; result: void };
+  /** Moves running commands/subagents (or the one of `toolUseId`) to the background. */
+  "sessions.background": { args: { id: string; toolUseId?: string }; result: boolean };
+  "sessions.stopTask": { args: { id: string; taskId: string }; result: void };
+  /** Saves the chat as a Markdown file (asks where); returns the path, or nothing when cancelled. */
+  "sessions.export": { args: { id: string }; result: string | undefined };
   /**
    * Keeps a file for the next message: pasted/dropped bytes (`data`, base64, with `name`/`mime`) or a
    * file on disk (`path`). Images (PNG, JPEG, GIF, WebP ≤ 5 MB), PDFs, Word/Excel/PowerPoint

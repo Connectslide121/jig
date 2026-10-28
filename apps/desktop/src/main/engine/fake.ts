@@ -1,10 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import type { EngineEvent, PermissionMode } from "../../shared/engine";
+import type {
+  BackgroundTask,
+  EffortLevel,
+  EngineEvent,
+  McpServerInfo,
+  PermissionMode,
+  SlashCommandInfo,
+} from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
-import { contextFrom } from "./normalize";
+import { contextFrom, patchText } from "./normalize";
 import {
   type Engine,
   type EngineSession,
@@ -13,6 +20,50 @@ import {
   outputText,
   type StartOptions,
 } from "./types";
+
+const FAKE_COMMANDS: SlashCommandInfo[] = [
+  {
+    name: "compact",
+    description: "Clear history but keep a summary in context",
+    argumentHint: "<instructions>",
+    builtin: true,
+  },
+  {
+    name: "usage",
+    description: "Show session cost and plan usage",
+    argumentHint: "",
+    aliases: ["cost"],
+    builtin: true,
+  },
+  {
+    name: "init",
+    description: "Initialize a CLAUDE.md file with codebase documentation",
+    argumentHint: "",
+    builtin: true,
+  },
+  { name: "review", description: "Review a pull request", argumentHint: "<pr>", builtin: true },
+  {
+    name: "explain-code",
+    description: "Explain code with diagrams and analogies (skill)",
+    argumentHint: "<file>",
+  },
+];
+
+const FAKE_MODELS = [
+  {
+    value: "default",
+    displayName: "Default (recommended)",
+    description: "Fake default model",
+    efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
+  },
+  {
+    value: "opus",
+    displayName: "Opus",
+    description: "Most capable",
+    efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
+  },
+  { value: "haiku", displayName: "Haiku", description: "Fastest" },
+];
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
@@ -25,6 +76,10 @@ import {
  * - "login" → behaves like Claude Code that isn't signed in
  * - "build" → calls the jig_request_build tool (needs the jig MCP server)
  * - "write <file>" → writes <file> in the chat's folder (a file checkpoint: restore it from the message)
+ * - "edit <file>" → edits its first line (the chat shows the diff)
+ * - "/name" → a Claude Code command (output) or skill (a reply)
+ * - "todo list", "make a plan", "subagent", "background job" → TodoWrite, ExitPlanMode, Task, a
+ *   background command
  * - anything else → a short markdown reply with a code block
  */
 export class FakeEngine implements Engine {
@@ -48,6 +103,14 @@ export class FakeEngine implements Engine {
     let contextTokens = 18_000;
     let turnsDone = 0;
     let suggestTimer: NodeJS.Timeout | undefined;
+    let effort: EffortLevel | undefined = options.effort;
+    const backgroundTasks = new Map<string, BackgroundTask>();
+    const mcp: McpServerInfo[] = [
+      { name: "github", status: "connected", scope: "user", tools: 12 },
+      { name: "jira", status: "needs-auth", scope: "project" },
+    ];
+    /** Messages sent while a turn runs ("steer"): Claude sees them before it finishes. */
+    const steers: string[] = [];
     const sleep = (ms: number, signal: AbortSignal) =>
       new Promise<void>((resolve, reject) => {
         const t = setTimeout(resolve, ms);
@@ -112,6 +175,178 @@ export class FakeEngine implements Engine {
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
         if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
+        } else if (/^\/\S/.test(text.trim())) {
+          // A Claude Code command or skill: built-ins print something, skills answer like Claude.
+          const name = /^\/(\S+)/.exec(text.trim())![1]!;
+          const command = FAKE_COMMANDS.find((c) => c.name === name || c.aliases?.includes(name));
+          if (!command)
+            onEvent({
+              type: "command_output",
+              id: `command-${randomUUID()}`,
+              text: `Unknown command: /${name}`,
+            });
+          else if (command.builtin)
+            onEvent({
+              type: "command_output",
+              id: `command-${randomUUID()}`,
+              text: `**/${command.name}** (fake): ${command.description}.${effort ? ` Effort: ${effort}.` : ""}`,
+            });
+          else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
+        } else if (lower.includes("todo list")) {
+          // Claude keeps a todo list (TodoWrite) and works through it.
+          const todos = (done: number) =>
+            ["Read the cart code", "Add the discount", "Write the tests"].map((content, i) => ({
+              content,
+              activeForm: ["Reading the cart code", "Adding the discount", "Writing the tests"][i],
+              status: i < done ? "completed" : i === done ? "in_progress" : "pending",
+            }));
+          for (const done of [0, 1, 3]) {
+            const toolId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: toolId, name: "TodoWrite", input: { todos: todos(done) } });
+            await sleep(this.delayMs * 2, signal);
+            onEvent({ type: "tool_result", toolUseId: toolId, output: "Todos updated", isError: false });
+          }
+          await stream(`${msg}:text:0`, "All three steps are done.", signal);
+        } else if (lower.includes("make a plan")) {
+          // Plan mode: Claude proposes a plan and asks to leave plan mode (ExitPlanMode).
+          const toolId = `tool-${randomUUID()}`;
+          const input = {
+            plan: "## Plan\n\n1. Add a `discount` field to the cart\n2. Apply it in `total()`\n3. Test it",
+          };
+          onEvent({ type: "tool_use", id: toolId, name: "ExitPlanMode", input });
+          const decision = await options.askPermission(
+            { requestId: toolId, toolName: "ExitPlanMode", input, canAlwaysAllow: false },
+            signal,
+          );
+          const approved = decision.behavior === "allow";
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: approved ? "User approved the plan" : (decision.message ?? "User rejected the plan"),
+            isError: !approved,
+          });
+          await stream(
+            `${msg}:text:0`,
+            approved
+              ? `Starting on the plan (mode: ${permissionMode}).`
+              : `OK, let's keep planning.${decision.behavior === "deny" && decision.message ? ` You said: ${decision.message}` : ""}`,
+            signal,
+          );
+        } else if (lower.includes("subagent")) {
+          // A subagent (Task tool) with its own tool calls and progress.
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Task",
+            input: {
+              description: "Explore the cart code",
+              subagent_type: "Explore",
+              prompt: "Find the cart",
+            },
+          });
+          const taskId = `task-${randomUUID()}`;
+          onEvent({
+            type: "task",
+            toolUseId: toolId,
+            task: { id: taskId, status: "running", description: "Explore the cart code" },
+          });
+          const inner = `tool-${randomUUID()}`;
+          onEvent({
+            type: "tool_use",
+            id: inner,
+            name: "Grep",
+            input: { pattern: "total" },
+            parentId: toolId,
+          });
+          await sleep(this.delayMs * 2, signal);
+          onEvent({ type: "tool_result", toolUseId: inner, output: "src/cart.ts", isError: false });
+          onEvent({
+            type: "task",
+            toolUseId: toolId,
+            task: {
+              id: taskId,
+              status: "running",
+              description: "",
+              tokens: 5400,
+              toolUses: 1,
+              lastTool: "Grep",
+            },
+          });
+          await sleep(this.delayMs * 2, signal);
+          onEvent({
+            type: "task",
+            toolUseId: toolId,
+            task: {
+              id: taskId,
+              status: "completed",
+              description: "",
+              tokens: 8200,
+              toolUses: 2,
+              durationMs: 3100,
+            },
+          });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: "The cart total is in src/cart.ts.",
+            isError: false,
+          });
+          await stream(`${msg}:text:0`, "The subagent found the cart code in src/cart.ts.", signal);
+        } else if (lower.includes("background job")) {
+          // A long command moved to the background: it keeps running after the turn.
+          const toolId = `tool-${randomUUID()}`;
+          const taskId = `bash-${randomUUID().slice(0, 8)}`;
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Bash",
+            input: { command: "npm run watch", description: "Watch and rebuild", run_in_background: true },
+          });
+          backgroundTasks.set(taskId, { id: taskId, description: "Watch and rebuild", type: "local_bash" });
+          onEvent({ type: "background_tasks", tasks: [...backgroundTasks.values()] });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: `Command running in background with ID: ${taskId}`,
+            isError: false,
+          });
+          await stream(`${msg}:text:0`, "The watcher runs in the background.", signal);
+        } else if (/\bedit\s+\S/.test(lower)) {
+          // An edit with Claude Code's structured patch (the chat shows the diff).
+          const name = /\bedit\s+(\S+)/i.exec(text)![1]!;
+          const path = isAbsolute(name) ? name : join(options.cwd, name);
+          const before = (await readFile(path, "utf8").catch(() => null)) ?? "one\ntwo\nthree\n";
+          if (options.fileCheckpoints) checkpoints.push({ uuid, path, before });
+          const lines = before.split("\n");
+          const old = lines[0] ?? "";
+          const next = `${old} (edited)`;
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Edit",
+            input: { file_path: path, old_string: old, new_string: next },
+          });
+          await writeFile(path, [next, ...lines.slice(1)].join("\n"));
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: `The file ${path} has been updated.`,
+            isError: false,
+            diff: patchText({
+              structuredPatch: [
+                {
+                  oldStart: 1,
+                  oldLines: 2,
+                  newStart: 1,
+                  newLines: 2,
+                  lines: [`-${old}`, `+${next}`, ` ${lines[1] ?? ""}`],
+                },
+              ],
+            }),
+          });
+          await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
           /\b(theme|light mode|dark mode|terminals? to the right)\b/.test(lower)
@@ -267,6 +502,10 @@ export class FakeEngine implements Engine {
           const reply = `${seen ? `I see ${seen} image${seen === "1" ? "" : "s"}. ` : ""}${docs.length ? `I read ${docs.join(", ")}. ` : ""}You said: *${text.slice(0, 200)}*\n\nHere is some code:\n\n\`\`\`ts\nconst answer: number = 42;\nconsole.log("hello", answer);\n\`\`\`\n\n- one\n- two`;
           await stream(`${msg}:text:0`, reply, signal);
         }
+        while (steers.length) {
+          const note = steers.shift()!;
+          await stream(`${msg}:text:steer-${steers.length}`, `Noted while working: “${note}”.`, signal);
+        }
         if (lower.includes("fail")) {
           onEvent({
             type: "result",
@@ -294,6 +533,7 @@ export class FakeEngine implements Engine {
           totalCostUsd: undefined,
           usage: { inputTokens: 100, outputTokens: 20, cacheReadTokens: 0, cacheWriteTokens: 0 },
           numTurns: 1,
+          chainUuid: `chain-${uuid}`,
         });
       } catch {
         onEvent({ type: "result", ok: false, durationMs: Date.now() - started, error: "Interrupted" });
@@ -311,7 +551,7 @@ export class FakeEngine implements Engine {
     };
 
     return {
-      send(text, attachments = []) {
+      send(text, attachments = [], priority) {
         // The fake says what it got: "[1 image] [pdf: spec.pdf] [doc: plan.docx] …".
         const images = attachments.filter((a) => a.type === "image").length;
         const tags = [
@@ -321,9 +561,40 @@ export class FakeEngine implements Engine {
           ),
         ];
         const uuid = randomUUID();
+        if (priority === "next" && turn) {
+          steers.push(text);
+          return uuid;
+        }
         queue.push({ text: tags.length ? `${tags.join(" ")} ${text}` : text, uuid });
         void pump();
         return uuid;
+      },
+      async commands() {
+        return FAKE_COMMANDS;
+      },
+      async models() {
+        return FAKE_MODELS;
+      },
+      async setEffort(next) {
+        effort = next ?? undefined;
+      },
+      async mcpStatus() {
+        return mcp.map((m) => ({ ...m }));
+      },
+      async mcpReconnect(name) {
+        const server = mcp.find((m) => m.name === name);
+        if (server && server.status !== "disabled") server.status = "connected";
+      },
+      async mcpToggle(name, enabled) {
+        const server = mcp.find((m) => m.name === name);
+        if (server) server.status = enabled ? "connected" : "disabled";
+      },
+      async background() {
+        return false;
+      },
+      async stopTask(taskId) {
+        if (!backgroundTasks.delete(taskId)) return;
+        onEvent({ type: "background_tasks", tasks: [...backgroundTasks.values()] });
       },
       async rewindFiles(messageId, dryRun) {
         const from = messageOrder.indexOf(messageId);

@@ -1,4 +1,9 @@
-import { app, Notification } from "electron";
+import { exec } from "node:child_process";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
+import { app, BrowserWindow, dialog, Notification } from "electron";
+import { chatToMarkdown } from "../../shared/chatExport";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
@@ -84,6 +89,7 @@ export function startSessions(): void {
       usageService().refreshIfOlder(60_000);
     },
     onRateLimit: (event) => usageService().rateLimit(event),
+    runShell: (cwd, command) => runShellCommand(cwd, command),
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
       for (const u of updates) if (u.op === "meta") notifyStatus(u.meta);
@@ -143,7 +149,36 @@ export function startSessions(): void {
       permissionMode: engine.defaultPermissionMode as PermissionMode,
     });
   });
-  handle("sessions.send", ({ id, text, attachments }) => m.send(id, text, attachments));
+  handle("sessions.send", ({ id, text, attachments, now }) => m.send(id, text, attachments, now));
+  handle("sessions.rewind", ({ id, itemId, files }) => m.rewind(id, itemId, files));
+  handle("sessions.runShell", ({ id, command }) => m.runShell(id, command));
+  handle("sessions.remember", async ({ id, text, scope }) => {
+    const { meta } = await m.snapshot(id);
+    const path = scope === "user" ? join(homedir(), ".claude", "CLAUDE.md") : join(meta.cwd, "CLAUDE.md");
+    await rememberLine(path, text);
+    return { path };
+  });
+  handle("sessions.commands", ({ id }) => m.commands(id));
+  handle("sessions.models", ({ id }) => m.models(id));
+  handle("sessions.setEffort", ({ id, effort }) => m.setEffort(id, effort));
+  handle("sessions.setDirs", ({ id, dirs }) => m.setDirs(id, dirs));
+  handle("sessions.mcpStatus", ({ id }) => m.mcpStatus(id));
+  handle("sessions.mcpReconnect", ({ id, name }) => m.mcpReconnect(id, name));
+  handle("sessions.mcpToggle", ({ id, name, enabled }) => m.mcpToggle(id, name, enabled));
+  handle("sessions.background", ({ id, toolUseId }) => m.background(id, toolUseId));
+  handle("sessions.stopTask", ({ id, taskId }) => m.stopTask(id, taskId));
+  handle("sessions.export", async ({ id }, ctx) => {
+    const { meta, items } = await m.snapshot(id);
+    const window = BrowserWindow.fromWebContents(ctx.sender);
+    const name = `${meta.title.replace(/[\\/:*?"<>|]+/g, " ").trim() || "chat"}.md`;
+    const options = { title: "Save the chat as Markdown", defaultPath: join(app.getPath("documents"), name) };
+    const picked = window
+      ? await dialog.showSaveDialog(window, options)
+      : await dialog.showSaveDialog(options);
+    if (picked.canceled || !picked.filePath) return undefined;
+    await writeFile(picked.filePath, chatToMarkdown(meta, items));
+    return picked.filePath;
+  });
   handle("sessions.addAttachment", ({ id, ...input }) => m.addAttachment(id, input));
   handle("sessions.interrupt", ({ id }) => m.interrupt(id));
   handle("sessions.answerPermission", ({ id, requestId, decision }) =>
@@ -170,4 +205,48 @@ export function startSessions(): void {
       .catch(() => {})
       .finally(() => app.quit());
   });
+}
+
+/** Output kept from a `!` command (the end, where errors are). */
+const SHELL_OUTPUT_MAX = 30_000;
+
+/**
+ * Runs a `!` command from the message box in the chat's folder: the user's shell (PowerShell on
+ * Windows), the same environment as chats, at most 2 minutes. Output is stdout and stderr together.
+ */
+export function runShellCommand(cwd: string, command: string): Promise<{ output: string; exitCode: number }> {
+  const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/sh";
+  return new Promise((resolve) => {
+    exec(
+      command,
+      {
+        cwd,
+        shell,
+        timeout: 120_000,
+        maxBuffer: 16 * 1024 * 1024,
+        windowsHide: true,
+        env: sessionEnv(process.env, getConfig().engine.allowApiKey) as NodeJS.ProcessEnv,
+      },
+      (error, stdout, stderr) => {
+        let output = [stdout, stderr]
+          .filter((x) => x?.trim())
+          .join("\n")
+          .trimEnd();
+        if (error?.killed) output += "\n(stopped after 2 minutes)";
+        if (output.length > SHELL_OUTPUT_MAX) output = `…\n${output.slice(-SHELL_OUTPUT_MAX)}`;
+        const code = typeof error?.code === "number" ? error.code : error ? 1 : 0;
+        resolve({ output, exitCode: code });
+      },
+    );
+  });
+}
+
+/** Appends a line to a CLAUDE.md file (Claude Code's memory), creating it when needed. */
+export async function rememberLine(path: string, text: string): Promise<void> {
+  const line = text.trim().replace(/^#\s*/, "");
+  if (!line) throw new JigError("invalid_args", "Nothing to remember");
+  await mkdir(dirname(path), { recursive: true });
+  const existing = await readFile(path, "utf8").catch(() => "");
+  const separator = existing && !existing.endsWith("\n") ? "\n" : "";
+  await appendFile(path, `${separator}- ${line}\n`);
 }

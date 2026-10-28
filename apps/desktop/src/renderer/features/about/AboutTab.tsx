@@ -571,6 +571,11 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
                 "Restore files to before any of your messages, and fork a chat to try another approach",
+                "/ for Claude Code's commands and skills, @ for files, ! for shell commands, # to remember in CLAUDE.md",
+                "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
+                "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
+                "Edit and send again: rewind the chat (and the files) to before any message",
+                "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
               ]}
             />
           </Section>
