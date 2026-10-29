@@ -83,6 +83,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     repository by its own name, a sync chip (pull, then push) and its branch; Arrange hides,
     reorders and groups them with dividers, once for all projects; "N to push/pull" in the status
     bar; right-click a project → Open in VS Code / Explorer.
+  - **Notes** (right sidebar; D-147): short notes for the chat you're in (waiting on, where, to-do,
+    note, link), like the notes plugin; Claude reads them before working and writes them too.
   - **Pipelines** (right sidebar): Azure DevOps through your `az` login, every organisation you
     belong to with all its projects by default (D-125); narrow it in Settings → Pipelines; run on a branch, open in the browser, notifications when your runs finish.
   - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups with

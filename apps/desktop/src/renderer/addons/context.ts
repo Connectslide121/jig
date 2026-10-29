@@ -12,12 +12,13 @@ import {
 } from "@jig/sdk";
 import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
+import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
 import { call, errorMessage } from "../lib/host";
 import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } from "../ui";
 import { contributedEntries } from "../workbench/contextMenus";
 import { useProjects } from "../workbench/projects";
-import { workbench } from "../workbench/store";
+import { useWorkbench, workbench } from "../workbench/store";
 import { notify } from "../workbench/toasts";
 
 import { iconByName } from "./icons";
@@ -264,4 +265,23 @@ export function useWorkspaceList(): AddonWorkspace[] {
     exists: w.exists,
     repos: w.repos,
   }));
+}
+
+/** The chat you were last in (its tab in front), kept while another tab is in front. */
+let lastChat: string | undefined;
+
+/**
+ * The chat in front (the focused pane's active tab), or the last one when another tab is in front, so
+ * a side view such as Notes follows the chat you're working in. Re-renders when it changes.
+ */
+export function useActiveChat(): { sessionId: string; title: string; projectId?: string } | undefined {
+  const id = useWorkbench((s) => {
+    const layout = s.layout;
+    const tab = layout?.main.tabs.find((t) => t.id === layout.main.active);
+    return tab?.type === "jig.chat" ? (tab.params.sessionId as string | undefined) : undefined;
+  });
+  if (id) lastChat = id;
+  const sessionId = id ?? lastChat;
+  const meta = useSessions((s) => (sessionId ? s.metas[sessionId] : undefined));
+  return sessionId && meta ? { sessionId, title: meta.title, projectId: meta.projectId } : undefined;
 }

@@ -59,7 +59,7 @@ describe("add-on tools for Claude", () => {
       {
         id: "releases",
         method: "toolChanges",
-        args: { repo: "shop", chat: { cwd: "/repo", projectId: "p1" } },
+        args: { repo: "shop", chat: { cwd: "/repo", projectId: "p1", sessionId: "s1" } },
       },
     ]);
     expect(addonTools([{ ...addon("/x"), enabled: false }], async () => 0)).toEqual([]);

@@ -38,6 +38,13 @@ export {
 } from "../ui";
 export { Pane, usePaneSize, useSplitRatio } from "../workbench/Pane";
 export { ArrangeList } from "./ArrangeList";
-export { useActiveProject, useAddon, useProjectList, useRunningScripts, useWorkspaceList } from "./context";
+export {
+  useActiveChat,
+  useActiveProject,
+  useAddon,
+  useProjectList,
+  useRunningScripts,
+  useWorkspaceList,
+} from "./context";
 export { useAddonEvent, useHostCall, useStorage } from "./hooks";
 export { Icon, iconByName } from "./icons";

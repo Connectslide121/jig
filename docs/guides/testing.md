@@ -52,6 +52,7 @@ in this order:
 | "weekly check-in" | Claude reads the profile and adds a line under "How I release and deploy" (`jig_update_profile`, card with Undo) |
 | "as a workflow" | Claude saves a 4-step workflow "Write release notes" in the chat's project (`addon_workflows_save`) |
 | "since the last release" | Claude calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
+| "remember in the notes" | Claude adds a "Waiting on" note to the chat with the Notes add-on's tool (`addon_notes_add`); it shows in the Notes view |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |

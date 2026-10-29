@@ -402,7 +402,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data|as a workflow)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data|as a workflow|remember in the notes)\b/.test(
             lower,
           )
         ) {
@@ -430,6 +430,10 @@ export class FakeEngine implements Engine {
           } else if (/since the last release/.test(lower)) {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
+          } else if (/remember in the notes/.test(lower)) {
+            // The Notes add-on's tool: a note for this chat (it shows in the Notes view).
+            await call("addon_notes_add", { kind: "wait", text: "the API review from the backend team" });
+            await stream(`${msg}:text:0`, "Noted: this chat waits on the API review.", signal);
           } else if (/in the releases data/.test(lower)) {
             await call("jig_get_addon", { addonId: "releases" });
             await call("jig_set_addon_data", {

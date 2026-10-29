@@ -1,0 +1,84 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "notes",
+  "name": "Notes",
+  "description": "Short notes for the chat you're in: what it waits on, where its work is, steps left, decisions, links. You and Claude write them; Claude reads them before it works.",
+  "version": "1.0.0",
+  "icon": "notebook-pen",
+  "permissions": [],
+  "storage": { "scope": "global" },
+  "contributes": {
+    "views": [
+      {
+        "id": "notes",
+        "title": "Notes",
+        "icon": "notebook-pen",
+        "region": "right",
+        "component": "NotesView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show this chat's notes",
+        "group": "Claude",
+        "icon": "notebook-pen",
+        "run": "showNotes"
+      }
+    ],
+    "tools": [
+      {
+        "id": "list",
+        "description": "This chat's notes (the Notes panel beside the chat): what it waits on, where its work is (repository and branch), steps left for later, decisions and facts, links — each with its id. Read them before starting work in this chat and whenever the user mentions the notes; a 'Waiting on' note that isn't cleared means this work shouldn't go ahead yet.",
+        "readOnly": true,
+        "run": "toolList"
+      },
+      {
+        "id": "add",
+        "description": "Adds a note to this chat's Notes panel, when the user asks and on your own for what this chat must keep in mind about its topic: what it waits on (wait), the branch its work lives on (where: repo and branch), decisions, constraints or facts later work must respect (note), parts deliberately left for later (todo), an address (link). Not a log: no notes for routine progress, files you change, commits to push or what you're doing now. A chat usually holds a handful; one short line each.",
+        "params": {
+          "kind": {
+            "type": "string",
+            "enum": ["wait", "where", "todo", "note", "link"],
+            "description": "wait, where, todo, note or link"
+          },
+          "text": {
+            "type": "string",
+            "description": "The note, one short line; for where and link an optional remark",
+            "optional": true
+          },
+          "repo": {
+            "type": "string",
+            "description": "where: the repository's folder name",
+            "optional": true
+          },
+          "branch": { "type": "string", "description": "where: the branch", "optional": true },
+          "url": { "type": "string", "description": "link: the address", "optional": true }
+        },
+        "readOnly": true,
+        "run": "toolAdd"
+      },
+      {
+        "id": "update",
+        "description": "Changes a note of this chat by its id: its words, repo, branch or url, or ticks a wait cleared / a to-do done (done: true) or opens it again. Update rather than add a near-duplicate.",
+        "params": {
+          "id": { "type": "string", "description": "The note's id, as the list shows it" },
+          "text": { "type": "string", "optional": true },
+          "repo": { "type": "string", "optional": true },
+          "branch": { "type": "string", "optional": true },
+          "url": { "type": "string", "optional": true },
+          "done": { "type": "boolean", "optional": true }
+        },
+        "readOnly": true,
+        "run": "toolUpdate"
+      },
+      {
+        "id": "remove",
+        "description": "Removes a note from this chat by its id, when it's no longer true.",
+        "params": { "id": { "type": "string", "description": "The note's id" } },
+        "readOnly": true,
+        "run": "toolRemove"
+      }
+    ]
+  }
+}

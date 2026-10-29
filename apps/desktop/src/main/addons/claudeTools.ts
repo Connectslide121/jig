@@ -62,7 +62,10 @@ export function addonTools(
           readOnly: t.readOnly,
           handler: async (args, meta) =>
             toolText(
-              await call(a.id, t.run, { ...args, chat: { cwd: meta.cwd, projectId: meta.projectId } }),
+              await call(a.id, t.run, {
+                ...args,
+                chat: { cwd: meta.cwd, projectId: meta.projectId, sessionId: meta.id },
+              }),
             ),
         }),
       ),

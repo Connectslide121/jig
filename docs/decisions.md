@@ -1415,3 +1415,15 @@ group's start button) and Claude, on my own (how) · **Date:** 2026-10-30
 - **Every group shows here**: groups made on a project's dashboard ("+ Group" on Home) used to live
   only there, which is likely why Jon saw no Start button; they now appear as cards too, marked as the
   project's, with the same Start and Stop.
+
+### D-147 — Notes is a built-in add-on: per-chat notes you and Claude write
+**Decided by:** Jon (the notes plugin, built in) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- The notes plugin's model: kinds (wait, where, to-do, note, link), waits and to-dos tick off, Claude
+  writes them on its own for what the chat must keep in mind, never as a log.
+- **Two small add-on API additions** made it possible as an add-on rather than core code: tools
+  receive the calling chat's id (`chat.sessionId`), and views can follow the chat in front
+  (`useActiveChat()` in `@jig/sdk/ui`).
+- **Claude reads the notes with a tool** (`addon_notes_list`, described as "read before working")
+  instead of in every turn's system prompt, which a Claude Code chat fixes when it starts. The
+  writing tools only touch the chat's notes and run without asking.
