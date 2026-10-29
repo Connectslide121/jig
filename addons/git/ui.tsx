@@ -45,6 +45,7 @@ import {
   GitCompare,
   History,
   Image as ImageIcon,
+  MessageSquare,
   Minus,
   MoreHorizontal,
   Plus,
@@ -59,7 +60,6 @@ import { DiffView } from "./DiffView";
 import { ImageDiff } from "./ImageDiff";
 import { checkPrompt, type Finding, parseFindings } from "./lib/check";
 import { cleanMessage, commitMessagePrompt } from "./lib/message";
-
 import {
   type Branch,
   type Commit,
@@ -69,6 +69,7 @@ import {
   relativeTime,
   type Status,
 } from "./lib/parse";
+import { type ReviewComment, reviewPrompt } from "./lib/review";
 import { NO_SHOWN, type Shown, showsAll, toggleExtra, visibleRepos } from "./lib/shown";
 import { type AutoFetchSettings, pollInterval } from "./lib/watch";
 
@@ -1724,6 +1725,38 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
     setMode(m);
     void ctx.storage.set("diffMode", m);
   };
+  // Review comments on the working copy, kept per repository until sent or cleared.
+  const reviewKey = project ? `review:${project.path}` : "";
+  const [review, setReview] = useState<ReviewComment[]>([]);
+  useEffect(() => {
+    if (!reviewKey) return;
+    const load = () => void ctx.storage.get<ReviewComment[]>(reviewKey).then((r) => setReview(r ?? []));
+    load();
+    return ctx.on("review", load);
+  }, [ctx, reviewKey]);
+  const saveReview = async (next: ReviewComment[]) => {
+    setReview(next);
+    await ctx.storage.set(reviewKey, next);
+  };
+  const reviewing = !args.commit && !isImage;
+  const addComment = async (anchor: { side: "old" | "new"; line: number; code: string }) => {
+    const text = await ctx.prompt({
+      title: `Comment on line ${anchor.line}`,
+      message: anchor.code.trim().slice(0, 200) || undefined,
+      confirmLabel: "Add",
+    });
+    if (!text?.trim()) return;
+    await saveReview([
+      ...review,
+      {
+        id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        path: args.path,
+        ...anchor,
+        text: text.trim(),
+        at: new Date().toISOString(),
+      },
+    ]);
+  };
   if (!project) return <Empty title="Project not found" />;
   const where = args.commit
     ? `in ${args.commit.slice(0, 7)}`
@@ -1739,6 +1772,37 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
         <Badge>{where}</Badge>
         {data?.truncated && <Badge tone="warning">large file: 3 lines of context</Badge>}
         <div className="flex-1" />
+        {reviewing && (
+          <Button
+            size="sm"
+            variant={review.length ? "primary" : "ghost"}
+            icon={MessageSquare}
+            title="Click a line number to comment on it; send all comments of this repository to a chat"
+            data-testid="git-review"
+            onClick={(e) =>
+              review.length
+                ? ctx.menu(
+                    [
+                      {
+                        label: `Send ${review.length} comment${review.length === 1 ? "" : "s"} to a new chat`,
+                        icon: "message-square",
+                        onSelect: () =>
+                          void ctx.openChat({ cwd: project.path, draft: reviewPrompt(review, project.name) }),
+                      },
+                      {
+                        label: "Clear the comments",
+                        icon: "trash-2",
+                        onSelect: () => void saveReview([]),
+                      },
+                    ],
+                    e.currentTarget,
+                  )
+                : ctx.notify({ title: "Click a line number in the diff to comment on it" })
+            }
+          >
+            {review.length ? `Review (${review.length})` : "Review"}
+          </Button>
+        )}
         {!isImage && (
           <div className="flex rounded-md border border-line p-0.5">
             {(["split", "inline"] as const).map((m) => (
@@ -1781,7 +1845,14 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
       ) : !data ? (
         <Spinner className="m-4" />
       ) : (
-        <DiffView patch={data.patch} path={args.path} mode={mode} />
+        <DiffView
+          patch={data.patch}
+          path={args.path}
+          mode={mode}
+          comments={reviewing ? review.filter((c) => c.path === args.path) : []}
+          onComment={reviewing ? (a) => void addComment(a) : undefined}
+          onRemoveComment={(id) => void saveReview(review.filter((c) => c.id !== id))}
+        />
       )}
     </div>
   );

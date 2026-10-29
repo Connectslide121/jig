@@ -1,5 +1,5 @@
 import { cn, languageForPath, ResizeHandle, useHighlightedLines, useSplitRatio } from "@jig/sdk/ui";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, MessageSquare, X } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   collapseUnchanged,
@@ -8,6 +8,7 @@ import {
   type SideBySideRow,
   sideBySide,
 } from "./lib/parse";
+import type { ReviewComment } from "./lib/review";
 
 /**
  * A file diff, side by side or inline, highlighted with the active theme's syntax colours. Long runs
@@ -52,7 +53,70 @@ function useWidth() {
   return [ref, width] as const;
 }
 
-export function DiffView({ patch, path, mode }: { patch: string; path: string; mode: "split" | "inline" }) {
+/** Review comments shown under their line. */
+function Comments({ list, onRemove }: { list: ReviewComment[]; onRemove?: (id: string) => void }) {
+  if (!list.length) return null;
+  return (
+    <div className="border-y border-line bg-surface px-3 py-1 font-sans" data-testid="git-review-comments">
+      {list.map((c) => (
+        <div key={c.id} className="flex items-start gap-2 py-0.5 text-xs whitespace-normal">
+          <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 text-fg">{c.text}</span>
+          {onRemove && (
+            <button
+              type="button"
+              className="shrink-0 rounded-sm text-hint hover:text-fg"
+              aria-label="Remove the comment"
+              onClick={() => onRemove(c.id)}
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A line number; with `onClick`, a button that adds a review comment on that line. */
+function LineNo({ n, className, onClick }: { n?: number; className: string; onClick?: () => void }) {
+  if (n === undefined || !onClick) return <span className={cn(className, "select-none")}>{n ?? ""}</span>;
+  return (
+    <button
+      type="button"
+      className={cn(className, "cursor-pointer select-none hover:bg-accent-soft hover:text-accent")}
+      title="Comment on this line"
+      onClick={onClick}
+      data-testid={`git-diff-line-${n}`}
+    >
+      {n}
+    </button>
+  );
+}
+
+export function DiffView({
+  patch,
+  path,
+  mode,
+  comments = [],
+  onComment,
+  onRemoveComment,
+}: {
+  patch: string;
+  path: string;
+  mode: "split" | "inline";
+  /** Review comments on this file. */
+  comments?: ReviewComment[];
+  /** Click on a line number: comment on it. */
+  onComment?: (anchor: { side: "old" | "new"; line: number; code: string }) => void;
+  onRemoveComment?: (id: string) => void;
+}) {
+  const on = (side: "old" | "new", l?: DiffLine) => {
+    const line = side === "old" ? l?.oldNo : l?.newNo;
+    return onComment && l && line !== undefined ? () => onComment({ side, line, code: l.text }) : undefined;
+  };
+  const at = (side: "old" | "new", line?: number) =>
+    line === undefined ? [] : comments.filter((c) => c.side === side && c.line === line);
   const diff = useMemo(() => parseUnifiedDiff(patch), [patch]);
   const lines = useMemo(() => diff.hunks.flatMap((h) => h.lines), [diff]);
   const lang = languageForPath(path);
@@ -116,19 +180,33 @@ export function DiffView({ patch, path, mode }: { patch: string; path: string; m
           ) : (
             <Fragment key={i}>
               {segment.items.map((l, j) => (
-                <div key={j} className={cn("flex whitespace-pre", tone(l.type))}>
-                  <span className="w-12 shrink-0 pr-2 text-right text-hint select-none">{l.oldNo ?? ""}</span>
-                  <span className="w-12 shrink-0 pr-2 text-right text-hint select-none">{l.newNo ?? ""}</span>
-                  <span
-                    className={cn(
-                      "w-4 shrink-0 select-none",
-                      l.type === "add" ? "text-success" : l.type === "del" ? "text-danger" : "text-hint",
-                    )}
-                  >
-                    {l.type === "add" ? "+" : l.type === "del" ? "−" : " "}
-                  </span>
-                  <Code html={htmlFor(l, l.type === "del" ? "old" : "new")} text={l.text} />
-                </div>
+                <Fragment key={j}>
+                  <div className={cn("flex whitespace-pre", tone(l.type))}>
+                    <LineNo
+                      n={l.oldNo}
+                      className="w-12 shrink-0 pr-2 text-right text-hint"
+                      onClick={l.type === "del" ? on("old", l) : undefined}
+                    />
+                    <LineNo
+                      n={l.newNo}
+                      className="w-12 shrink-0 pr-2 text-right text-hint"
+                      onClick={on("new", l)}
+                    />
+                    <span
+                      className={cn(
+                        "w-4 shrink-0 select-none",
+                        l.type === "add" ? "text-success" : l.type === "del" ? "text-danger" : "text-hint",
+                      )}
+                    >
+                      {l.type === "add" ? "+" : l.type === "del" ? "−" : " "}
+                    </span>
+                    <Code html={htmlFor(l, l.type === "del" ? "old" : "new")} text={l.text} />
+                  </div>
+                  <Comments
+                    list={l.type === "del" ? at("old", l.oldNo) : at("new", l.newNo)}
+                    onRemove={onRemoveComment}
+                  />
+                </Fragment>
               ))}
             </Fragment>
           ),
@@ -144,9 +222,11 @@ export function DiffView({ patch, path, mode }: { patch: string; path: string; m
   );
   const cell = (l: DiffLine | undefined, side: "old" | "new") => (
     <div className={cn("flex min-w-0 whitespace-pre", l ? tone(l.type) : "bg-surface")}>
-      <span className="w-12 shrink-0 pr-2 text-right text-hint select-none">
-        {side === "old" ? (l?.oldNo ?? "") : (l?.newNo ?? "")}
-      </span>
+      <LineNo
+        n={side === "old" ? l?.oldNo : l?.newNo}
+        className="w-12 shrink-0 pr-2 text-right text-hint"
+        onClick={side === "old" && l?.type !== "del" ? undefined : on(side, l)}
+      />
       <span className="min-w-0 flex-1 overflow-hidden">
         {l ? <Code html={htmlFor(l, side)} text={l.text} /> : " "}
       </span>
@@ -180,10 +260,19 @@ export function DiffView({ patch, path, mode }: { patch: string; path: string; m
           ) : (
             <Fragment key={i}>
               {segment.items.map((row, j) => (
-                <div key={j} className="grid divide-x divide-line" style={columns}>
-                  {cell(row.left, "old")}
-                  {cell(row.right, "new")}
-                </div>
+                <Fragment key={j}>
+                  <div className="grid divide-x divide-line" style={columns}>
+                    {cell(row.left, "old")}
+                    {cell(row.right, "new")}
+                  </div>
+                  <Comments
+                    list={[
+                      ...(row.left?.type === "del" ? at("old", row.left.oldNo) : []),
+                      ...at("new", row.right?.newNo),
+                    ]}
+                    onRemove={onRemoveComment}
+                  />
+                </Fragment>
               ))}
             </Fragment>
           ),

@@ -6,7 +6,6 @@ Ideas and deferred work. Each entry says why it is here.
   "Try several ways" already runs its attempts in worktrees (phase 14); a per-chat option waits until
   that has been used for a while.
 - **Drag-and-drop layout editing.** Menus move views first; drag later.
-- **Diff review with anchored comments sent to the chat** (ThinkRail's best feature).
 - **Sharing add-ons with colleagues**.
 - **Sandboxed iframe runtime** for add-ons written by other people.
 - **Mobile / remote access** to a running Jig.

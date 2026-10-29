@@ -700,7 +700,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="git"
             title="Git"
-            lead="The repository you work in, plus any you show next to it (or all of them), with Repos below for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes."
+            lead="The repository you work in, plus any you show next to it (or all of them), with Repos below for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
             shot={{ src: git, alt: "The Git view with changes in several repositories" }}
           />
           <Section

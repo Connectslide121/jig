@@ -183,3 +183,24 @@ test("Pipelines asks to be set up and has a settings page", async ({ page }) => 
   await page.getByTestId("pipelines-save").click();
   await expect(page.getByTestId("toast")).toContainText("saved");
 });
+
+test("Git: review comments on diff lines, sent to a chat as one message", async ({ page, jigHome }) => {
+  await setup(page, jigHome);
+  await page.keyboard.press("Control+Shift+G");
+  await page.getByTestId("git-file-unstaged-cart.ts").click({ timeout: 15000 });
+  const diff = page.locator("[data-testid=git-diff]:visible");
+  await diff.getByTestId("git-diff-line-2").last().click();
+  await page.getByTestId("dialog-input").fill("Doubling looks wrong here");
+  await page.getByTestId("dialog-confirm").click();
+  await expect(diff.getByTestId("git-review-comments")).toContainText("Doubling looks wrong here");
+  await expect(diff.getByTestId("git-review")).toHaveText("Review (1)");
+  // The comment stays when switching to the inline view.
+  await diff.getByTestId("git-diff-mode-inline").click();
+  await expect(diff.getByTestId("git-review-comments")).toContainText("Doubling looks wrong here");
+  await diff.getByTestId("git-review").click();
+  await page.getByRole("menuitem", { name: "Send 1 comment to a new chat" }).click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(
+    /\*\*cart\.ts\*\*\n- line 2 `return \(a \+ b\) \* 2;`: Doubling looks wrong here/,
+    { timeout: 15000 },
+  );
+});
