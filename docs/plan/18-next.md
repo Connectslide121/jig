@@ -337,7 +337,7 @@ true"). This step checks the whole picture again:
       pinned chats, drag and drop chats between projects, chats without a project; workspaces and
       Repos unchanged
 - [ ] Scripts and Pipelines: hide, reorder and dividers, from the panel
-- [ ] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
+- [x] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
       side"; draggable divider
 - [ ] Project links: grouped, typed links (icon + default label), managed in the panel and from
       chats (with Undo), optional "Add from Azure…" via `az`

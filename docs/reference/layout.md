@@ -16,7 +16,8 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   "closedSections": [],
   "waitingUnder": [],
   "panes":  { "jig.terminals.list": 240, "addon.git.diff": 0.4, "section:addon.repos.overview": 240 },
-  "main":   { "tabs": [{ "id": "t…", "type": "jig.chat", "params": { "sessionId": "…" } }], "active": "t…" }
+  "main":   { "tabs": [{ "id": "t…", "type": "jig.chat", "params": { "sessionId": "…" } }], "active": "t…",
+              "split": { "right": ["t…"], "focus": "left", "other": "t…" } }
 }
 ```
 
@@ -43,6 +44,14 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
 - **main**: tabs in the main area, in order, and the active one. A tab is `{ id, type, params }`;
   opening a tab whose `type` + `params` already exist focuses that tab instead (`tabKey`). At most
   50 tabs (the oldest is closed). Tab types marked `singleton` (Settings) reuse their one tab.
+- **Split view** (`main.split`, D-107): two panes side by side, each with its own tabs.
+  - `right` lists the right pane's tab ids; `focus` is the pane new tabs open in, and `main.active`
+    is its active tab; `other` is the other pane's active tab.
+  - Open a tab on the other side by right-clicking it → **Open to the side** / Move to the other
+    side, by dragging it to the right part of the main area, or by dropping it on the other pane's
+    tab bar.
+  - The divider's ratio is `panes["main.split"]` (double-click resets). Closing a pane's last tab,
+    or **One pane**, ends the split.
 - The top bar and status bar are fixed; add-ons contribute to them through slots (phase 6).
 
 `normalizeLayout(layout, views)` runs after every change and on load: views that exist but are not
@@ -59,7 +68,8 @@ that is reloading or switched off) are kept in place but never shown; duplicates
 | `setRegion(layout, region, { size?, collapsed?, active? })`, `toggleRegion` | resize, collapse/expand |
 | `reorderView(layout, viewId, index)` | order within a region |
 | `openTab(layout, { type, params })` → `{ layout, tabId }` | open or focus a tab |
-| `closeTab`, `closeOtherTabs`, `closeTabsWhere(predicate)`, `activateTab`, `cycleTab(±1)`, `moveTab`, `updateTabParams` | tab housekeeping |
+| `closeTab`, `closeOtherTabs`, `closeTabsWhere(predicate)`, `activateTab`, `cycleTab(±1)`, `moveTab`, `updateTabParams` | tab housekeeping (split-aware: activating a tab focuses its pane) |
+| `moveTabToPane(layout, tabId, "left" \| "right")`, `unsplit`, `paneOf`, `paneTabs`, `paneActive` | split view |
 
 All operations are pure (they return a new layout). In the renderer, `updateLayout(fn)`
 (`renderer/workbench/store.ts`) applies one, normalises and saves (debounced `layout.set`). Host code

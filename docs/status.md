@@ -138,6 +138,11 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
+- **Split view:** two tabs side by side.
+  - Right-click a tab → Open to the side, or drag it to the right part of the main area (or onto
+    the other pane's tab bar).
+  - Drag the divider to resize; closing a pane's last tab (or One pane) ends the split. It's kept
+    with the layout.
 - **Editing in Preview:** code and text files are editable (Markdown, HTML, JSON… in Source).
   - CodeMirror in the theme's colours, with find (`Ctrl+F`); `Ctrl+S` or Save writes the file.
   - If the file changes on disk while you have unsaved edits, a bar asks: Keep mine / Load theirs /

@@ -1,10 +1,21 @@
-import { Settings, Sparkles, X } from "lucide-react";
-import { useState } from "react";
-import { closeOtherTabs, type LayoutTab, moveTab } from "../../shared/layout";
+import { Columns2, Settings, Sparkles, Square, X } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  closeOtherTabs,
+  type LayoutTab,
+  type MainPane,
+  moveTab,
+  moveTabToPane,
+  paneActive,
+  paneOf,
+  paneTabs,
+  unsplit,
+} from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
 import { Home } from "../features/home/Home";
 import { cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
+import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
 import { useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
@@ -46,7 +57,22 @@ function TabStatusDot({ tab }: { tab: LayoutTab }) {
   );
 }
 
-function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; index: number }) {
+function TabButton({
+  tab,
+  active,
+  focused,
+  index,
+  pane,
+  split,
+}: {
+  tab: LayoutTab;
+  active: boolean;
+  /** Its pane has focus (in a split, the other pane's active tab is shown quieter). */
+  focused: boolean;
+  index: number;
+  pane: MainPane;
+  split: boolean;
+}) {
   const def = useRegistry((s) => s.tabTypes[tab.type]);
   const [dragOver, setDragOver] = useState(false);
   const title = useTabTitle(tab);
@@ -72,8 +98,11 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => {
         setDragOver(false);
+        e.stopPropagation();
         const id = e.dataTransfer.getData("jig/tab");
-        if (id) updateLayout((l) => moveTab(l, id, index));
+        // Dropped on the other pane's tab bar: it moves there, at this place.
+        if (id)
+          updateLayout((l) => moveTab(paneOf(l, id) === pane ? l : moveTabToPane(l, id, pane), id, index));
       }}
       onMouseDown={(e) => {
         if (e.button === 1) {
@@ -93,12 +122,25 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
               { separator: true } as const,
             ]
           : []),
+        {
+          label:
+            pane === "right"
+              ? "Move to the left side"
+              : split
+                ? "Move to the right side"
+                : "Open to the side",
+          icon: Columns2,
+          testId: "tab-open-side",
+          onSelect: () => updateLayout((l) => moveTabToPane(l, tab.id, pane === "right" ? "left" : "right")),
+        },
+        { separator: true },
         { label: "Close", icon: X, onSelect: () => workbench.closeTab(tab.id) },
         { label: "Close others", onSelect: () => updateLayout((l) => closeOtherTabs(l, tab.id)) },
         {
           label: "Close all",
           onSelect: () => updateLayout((l) => ({ ...l, main: { tabs: [], active: undefined } })),
         },
+        ...(split ? [{ label: "One pane", icon: Square, onSelect: () => updateLayout(unsplit) }] : []),
       ])}
       className={cn(
         "group relative flex h-full max-w-56 min-w-24 shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs",
@@ -106,7 +148,9 @@ function TabButton({ tab, active, index }: { tab: LayoutTab; active: boolean; in
         dragOver && "bg-hover",
       )}
     >
-      {active && <span className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
+      {active && (
+        <span className={cn("absolute inset-x-0 top-0 h-0.5", focused ? "bg-accent" : "bg-line-strong")} />
+      )}
       {filePath ? <FileIcon path={filePath} className="size-3.5" /> : <Icon className="size-3.5 shrink-0" />}
       <TabStatusDot tab={tab} />
       <span className="min-w-0 flex-1 truncate">{title}</span>
@@ -156,33 +200,178 @@ function TabBody({ tab, active }: { tab: LayoutTab; active: boolean }) {
   );
 }
 
+/** A drag over the right part of the main area (below the tab bar): drop to open to the side. */
+function atRightEdge(e: React.DragEvent<HTMLElement>): boolean {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return e.clientX > rect.left + rect.width * 0.6 && e.clientY > rect.top + 32;
+}
+
+/** One pane of the main area: its tab bar and its tabs' bodies. */
+function TabPane({
+  pane,
+  tabs,
+  active,
+  focused,
+  split,
+  mounted,
+}: {
+  pane: MainPane;
+  tabs: LayoutTab[];
+  active: string | undefined;
+  focused: boolean;
+  split: boolean;
+  mounted: Set<string>;
+}) {
+  return (
+    <div
+      className="flex h-full min-w-0 flex-1 flex-col"
+      data-testid={`main-pane-${pane}`}
+      // A click anywhere in a pane gives it the focus (where new tabs open).
+      onMouseDownCapture={() => {
+        if (split && !focused && active) workbench.activateTab(active);
+      }}
+    >
+      <div
+        role="tablist"
+        className="flex h-8 shrink-0 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+        onDragOver={(e) => e.dataTransfer.types.includes("jig/tab") && e.preventDefault()}
+        onDrop={(e) => {
+          const id = e.dataTransfer.getData("jig/tab");
+          if (id) updateLayout((l) => moveTabToPane(l, id, pane));
+        }}
+      >
+        {tabs.map((tab) => (
+          <TabButton
+            key={tab.id}
+            tab={tab}
+            pane={pane}
+            split={split}
+            index={useWorkbench.getState().layout?.main.tabs.findIndex((t) => t.id === tab.id) ?? 0}
+            active={tab.id === active}
+            focused={focused}
+          />
+        ))}
+      </div>
+      <div className="min-h-0 flex-1">
+        {tabs
+          .filter((t) => mounted.has(t.id))
+          .map((tab) => (
+            <TabBody key={tab.id} tab={tab} active={tab.id === active} />
+          ))}
+      </div>
+    </div>
+  );
+}
+
 export function MainArea() {
-  const main = useWorkbench((s) => s.layout?.main);
+  const layout = useWorkbench((s) => s.layout);
+  const main = layout?.main;
   const [mounted] = useState(() => new Set<string>());
-  if (!main) return <div className="flex-1" />;
-  if (main.active) mounted.add(main.active);
+  const [ratio, setRatio, resetRatio] = useSplitRatio("main.split", 0.5);
+  const [edge, setEdge] = useState(false);
+  const area = useRef<HTMLDivElement>(null);
+  if (!layout || !main) return <div className="flex-1" />;
+  const split = Boolean(main.split);
+  const leftActive = paneActive(layout, "left");
+  const rightActive = paneActive(layout, "right");
+  for (const id of [leftActive, rightActive]) if (id) mounted.add(id);
   for (const id of mounted) if (!main.tabs.some((t) => t.id === id)) mounted.delete(id);
+  const focus = main.split?.focus ?? "left";
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-canvas">
-      {main.tabs.length > 0 && (
+      {main.tabs.length === 0 ? (
+        <div className="min-h-0 flex-1">
+          <EmptyMain />
+        </div>
+      ) : (
         <div
-          role="tablist"
-          className="flex h-8 shrink-0 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+          ref={area}
+          className="relative flex min-h-0 flex-1"
+          // Drag a tab to the right edge to open it to the side.
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("jig/tab") || split) return;
+            e.preventDefault();
+            setEdge(atRightEdge(e));
+          }}
+          onDragLeave={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const inside =
+              e.clientX > rect.left &&
+              e.clientX < rect.right &&
+              e.clientY > rect.top &&
+              e.clientY < rect.bottom;
+            if (!inside) setEdge(false);
+          }}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData("jig/tab");
+            if (id && !split && atRightEdge(e)) {
+              e.preventDefault();
+              updateLayout((l) => moveTabToPane(l, id, "right"));
+            }
+            setEdge(false);
+          }}
         >
-          {main.tabs.map((tab, index) => (
-            <TabButton key={tab.id} tab={tab} index={index} active={tab.id === main.active} />
-          ))}
+          <div className="flex h-full min-w-0" style={split ? { width: `${ratio * 100}%` } : { flex: 1 }}>
+            <TabPane
+              pane="left"
+              tabs={paneTabs(layout, "left")}
+              active={leftActive}
+              focused={focus === "left"}
+              split={split}
+              mounted={mounted}
+            />
+          </div>
+          {split && (
+            <>
+              {/* biome-ignore lint/a11y/useSemanticElements: a focusable splitter (WAI-ARIA window splitter). */}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-valuenow={Math.round(ratio * 100)}
+                tabIndex={0}
+                title="Drag to resize; double-click for half and half"
+                data-testid="main-split-handle"
+                className="w-1 shrink-0 cursor-col-resize bg-line hover:bg-accent"
+                onDoubleClick={resetRatio}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowLeft") setRatio(ratio - 0.05);
+                  if (e.key === "ArrowRight") setRatio(ratio + 0.05);
+                }}
+                onPointerDown={(e) => {
+                  const rect = area.current?.getBoundingClientRect();
+                  if (!rect) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  document.body.classList.add("jig-resizing");
+                  const move = (ev: PointerEvent) => setRatio((ev.clientX - rect.left) / rect.width);
+                  const up = () => {
+                    window.removeEventListener("pointermove", move);
+                    window.removeEventListener("pointerup", up);
+                    document.body.classList.remove("jig-resizing");
+                  };
+                  window.addEventListener("pointermove", move);
+                  window.addEventListener("pointerup", up);
+                }}
+              />
+              <div className="flex h-full min-w-0 flex-1">
+                <TabPane
+                  pane="right"
+                  tabs={paneTabs(layout, "right")}
+                  active={rightActive}
+                  focused={focus === "right"}
+                  split={split}
+                  mounted={mounted}
+                />
+              </div>
+            </>
+          )}
+          {edge && (
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-1/2 border-2 border-accent bg-accent-soft"
+              data-testid="main-split-drop"
+            />
+          )}
         </div>
       )}
-      <div className="min-h-0 flex-1">
-        {main.tabs.length === 0 ? (
-          <EmptyMain />
-        ) : (
-          main.tabs
-            .filter((t) => mounted.has(t.id))
-            .map((tab) => <TabBody key={tab.id} tab={tab} active={tab.id === main.active} />)
-        )}
-      </div>
     </main>
   );
 }

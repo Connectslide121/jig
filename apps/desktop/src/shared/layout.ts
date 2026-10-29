@@ -50,7 +50,19 @@ export const LayoutSchema = z.object({
   main: z
     .object({
       tabs: z.array(TabSchema).default([]),
+      /** The active tab of the pane that has focus. */
       active: z.string().optional(),
+      /**
+       * Split view (two panes side by side): the tabs in the right pane (ids, in `tabs` order), which
+       * pane has focus, and the active tab of the other pane. Absent = one pane.
+       */
+      split: z
+        .object({
+          right: z.array(z.string()).default([]),
+          focus: z.enum(["left", "right"]).default("left"),
+          other: z.string().optional(),
+        })
+        .optional(),
     })
     .prefault({}),
 });
@@ -170,6 +182,7 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   }
   if (layout.main.active && !layout.main.tabs.some((t) => t.id === layout.main.active))
     layout.main.active = layout.main.tabs[0]?.id;
+  normalizeSplit(layout);
   return layout;
 }
 
@@ -299,11 +312,8 @@ export function openTab(
   const params = tab.params ?? {};
   const key = tabKey({ type: tab.type, params });
   const existing = input.main.tabs.find((t) => tabKey(t) === key);
+  if (existing) return { layout: activateTab(input, existing.id), tabId: existing.id };
   const layout = clone(input);
-  if (existing) {
-    layout.main.active = existing.id;
-    return { layout, tabId: existing.id };
-  }
   const id = tab.id ?? newTabId();
   const activeIndex = layout.main.tabs.findIndex((t) => t.id === layout.main.active);
   layout.main.tabs.splice(activeIndex < 0 ? layout.main.tabs.length : activeIndex + 1, 0, {
@@ -312,23 +322,120 @@ export function openTab(
     params,
   });
   layout.main.active = id;
+  // A new tab opens in the pane that has focus.
+  if (layout.main.split?.focus === "right") layout.main.split.right.push(id);
   while (layout.main.tabs.length > MAX_TABS) {
     const victim = layout.main.tabs.findIndex((t) => !t.pinned && t.id !== id);
     if (victim < 0) break;
     layout.main.tabs.splice(victim, 1);
   }
+  normalizeSplit(layout);
   return { layout, tabId: id };
+}
+
+export type MainPane = "left" | "right";
+
+/** The pane a tab is in (always left without a split). */
+export function paneOf(layout: Layout, tabId: string): MainPane {
+  return layout.main.split?.right.includes(tabId) ? "right" : "left";
+}
+
+/** The tabs of a pane, in order. */
+export function paneTabs(layout: Layout, pane: MainPane): LayoutTab[] {
+  return layout.main.tabs.filter((t) => paneOf(layout, t.id) === pane);
+}
+
+/** The active tab of a pane. */
+export function paneActive(layout: Layout, pane: MainPane): string | undefined {
+  const split = layout.main.split;
+  if (!split) return pane === "left" ? layout.main.active : undefined;
+  return pane === split.focus ? layout.main.active : split.other;
+}
+
+/** A neighbour of `index` in `list` after removing it: the next one, else the previous one. */
+const neighbour = (list: LayoutTab[], index: number) => (list[index + 1] ?? list[index - 1])?.id;
+
+/** Keeps a split consistent: known tabs only, both panes non-empty, actives in their panes. */
+function normalizeSplit(layout: Layout): void {
+  const split = layout.main.split;
+  if (!split) return;
+  const ids = new Set(layout.main.tabs.map((t) => t.id));
+  split.right = layout.main.tabs.filter((t) => split.right.includes(t.id)).map((t) => t.id);
+  const left = layout.main.tabs.filter((t) => !split.right.includes(t.id)).map((t) => t.id);
+  if (!split.right.length || !left.length) {
+    // One pane left: the split ends; the focused tab stays active if it still exists.
+    const keep = [layout.main.active, split.other].find((id) => id && ids.has(id));
+    delete layout.main.split;
+    layout.main.active = keep ?? layout.main.tabs[0]?.id;
+    return;
+  }
+  const focused = split.focus === "right" ? split.right : left;
+  const other = split.focus === "right" ? left : split.right;
+  if (!layout.main.active || !focused.includes(layout.main.active)) layout.main.active = focused[0];
+  if (!split.other || !other.includes(split.other)) split.other = other[0];
+}
+
+/**
+ * Opens a tab in the other pane ("Open to the side", or dropped on the other side): splits the main
+ * area if needed. The tab's old pane keeps its own active tab. A pane's only tab can't leave a split
+ * of one (nothing would be left beside it).
+ */
+export function moveTabToPane(input: Layout, tabId: string, pane: MainPane): Layout {
+  const tabs = input.main.tabs;
+  if (!tabs.some((t) => t.id === tabId)) return input;
+  const from = paneOf(input, tabId);
+  if (from === pane) return activateTab(input, tabId);
+  const layout = clone(input);
+  const fromTabs = paneTabs(layout, from);
+  const fromActive = paneActive(layout, from);
+  const index = fromTabs.findIndex((t) => t.id === tabId);
+  const staysActive = fromActive === tabId ? neighbour(fromTabs, index) : fromActive;
+  if (!layout.main.split) {
+    if (fromTabs.length < 2) return input;
+    layout.main.split = { right: [], focus: "left" };
+  }
+  const split = layout.main.split;
+  if (pane === "right") split.right.push(tabId);
+  else split.right = split.right.filter((id) => id !== tabId);
+  split.focus = pane;
+  split.other = staysActive;
+  layout.main.active = tabId;
+  normalizeSplit(layout);
+  return layout;
+}
+
+/** Ends the split: every tab back in one pane. */
+export function unsplit(input: Layout): Layout {
+  if (!input.main.split) return input;
+  const layout = clone(input);
+  delete layout.main.split;
+  return layout;
 }
 
 /** Closes a tab; the neighbour to the right (else left) becomes active. */
 export function closeTab(input: Layout, tabId: string): Layout {
-  const layout = clone(input);
-  const index = layout.main.tabs.findIndex((t) => t.id === tabId);
+  const index = input.main.tabs.findIndex((t) => t.id === tabId);
   if (index < 0) return input;
+  const layout = clone(input);
+  const pane = paneOf(layout, tabId);
+  const inPane = paneTabs(layout, pane);
+  const next = neighbour(
+    inPane,
+    inPane.findIndex((t) => t.id === tabId),
+  );
   layout.main.tabs.splice(index, 1);
-  if (layout.main.active === tabId) {
-    layout.main.active = (layout.main.tabs[index] ?? layout.main.tabs[index - 1])?.id;
-  }
+  const split = layout.main.split;
+  if (split) {
+    split.right = split.right.filter((id) => id !== tabId);
+    if (split.focus === pane && layout.main.active === tabId) layout.main.active = next;
+    else if (split.focus !== pane && split.other === tabId) split.other = next;
+    if (!next && split.focus === pane) {
+      // Its pane is empty now: focus goes to the other pane.
+      layout.main.active = split.other;
+      split.focus = pane === "left" ? "right" : "left";
+    }
+    normalizeSplit(layout);
+  } else if (layout.main.active === tabId) layout.main.active = next;
   return layout;
 }
 
@@ -336,6 +443,7 @@ export function closeOtherTabs(input: Layout, keepId: string): Layout {
   const layout = clone(input);
   layout.main.tabs = layout.main.tabs.filter((t) => t.id === keepId || t.pinned);
   layout.main.active = keepId;
+  delete layout.main.split;
   return layout;
 }
 
@@ -344,16 +452,25 @@ export function closeTabsWhere(input: Layout, predicate: (tab: LayoutTab) => boo
   return input.main.tabs.filter(predicate).reduce((l, t) => closeTab(l, t.id), input);
 }
 
+/** Activates a tab; in a split, its pane gets the focus (the other pane keeps its tab). */
 export function activateTab(input: Layout, tabId: string): Layout {
   if (!input.main.tabs.some((t) => t.id === tabId)) return input;
   const layout = clone(input);
+  const split = layout.main.split;
+  if (split) {
+    const pane = paneOf(layout, tabId);
+    if (pane !== split.focus) {
+      split.other = layout.main.active;
+      split.focus = pane;
+    }
+  }
   layout.main.active = tabId;
   return layout;
 }
 
-/** Activates the next (+1) or previous (−1) tab, wrapping around. */
+/** Activates the next (+1) or previous (−1) tab of the focused pane, wrapping around. */
 export function cycleTab(input: Layout, delta: 1 | -1): Layout {
-  const tabs = input.main.tabs;
+  const tabs = paneTabs(input, input.main.split?.focus ?? "left");
   if (tabs.length === 0) return input;
   const index = tabs.findIndex((t) => t.id === input.main.active);
   const next = tabs[(index + delta + tabs.length) % tabs.length]!;

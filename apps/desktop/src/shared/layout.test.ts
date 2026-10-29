@@ -12,9 +12,12 @@ import {
   LayoutSchema,
   MAX_TABS,
   moveTab,
+  moveTabToPane,
   moveView,
   normalizeLayout,
   openTab,
+  paneActive,
+  paneTabs,
   placeBelow,
   reorderView,
   setPaneSize,
@@ -262,5 +265,62 @@ describe("sections (a view below another, in the same tab)", () => {
     expect(hidden.sections).toEqual({});
     expect(hidden.hidden).toContain("addon.repos.overview");
     expect(hidden.left.views).toContain("addon.git.git");
+  });
+});
+
+describe("split view", () => {
+  const three = () => {
+    let l = base();
+    for (const n of ["a", "b", "c"]) l = openTab(l, { type: "t", params: { n }, id: n }).layout;
+    return l;
+  };
+  const ids = (l: ReturnType<typeof base>, pane: "left" | "right") => paneTabs(l, pane).map((t) => t.id);
+
+  it("opens a tab to the side: two panes, each keeping its active tab", () => {
+    const split = moveTabToPane(three(), "c", "right");
+    expect(ids(split, "left")).toEqual(["a", "b"]);
+    expect(ids(split, "right")).toEqual(["c"]);
+    expect(split.main.split?.focus).toBe("right");
+    expect(paneActive(split, "right")).toBe("c");
+    expect(paneActive(split, "left")).toBe("b");
+    // Activating a left tab moves the focus; the right pane keeps "c".
+    const left = activateTab(split, "a");
+    expect(left.main.split?.focus).toBe("left");
+    expect(paneActive(left, "right")).toBe("c");
+    // New tabs open in the focused pane.
+    const opened = openTab(split, { type: "t", params: { n: "d" }, id: "d" }).layout;
+    expect(ids(opened, "right")).toEqual(["c", "d"]);
+  });
+
+  it("closing the last tab of a pane ends the split; a lone tab can't leave one pane", () => {
+    const split = moveTabToPane(three(), "c", "right");
+    const closed = closeTab(split, "c");
+    expect(closed.main.split).toBeUndefined();
+    expect(closed.main.active).toBe("b");
+    const one = openTab(base(), { type: "t", params: {}, id: "x" }).layout;
+    expect(moveTabToPane(one, "x", "right")).toBe(one);
+    // Moving the right pane's only tab back ends the split too.
+    const back = moveTabToPane(split, "c", "left");
+    expect(back.main.split).toBeUndefined();
+    expect(back.main.active).toBe("c");
+  });
+
+  it("closing the active tab of the other pane picks its neighbour", () => {
+    let split = moveTabToPane(three(), "c", "right");
+    split = moveTabToPane(split, "b", "right");
+    split = activateTab(split, "a");
+    expect(paneActive(split, "right")).toBe("b");
+    const closed = closeTab(split, "b");
+    expect(paneActive(closed, "right")).toBe("c");
+    expect(closed.main.active).toBe("a");
+  });
+
+  it("survives a saved layout with unknown tabs in the split", () => {
+    const l = LayoutSchema.parse({
+      main: { tabs: [{ id: "a", type: "t" }], active: "a", split: { right: ["gone"], focus: "right" } },
+    });
+    const normal = normalizeLayout(l, views);
+    expect(normal.main.split).toBeUndefined();
+    expect(normal.main.active).toBe("a");
   });
 });

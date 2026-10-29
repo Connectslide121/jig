@@ -928,3 +928,16 @@ core code beyond `useWorkspaceList()`, and the builder can change it like any ad
   (`shared/lineDiff.ts`), with no dependency.
 - **Not done:** a warning when closing a tab with unsaved edits. Edits live in the tab, so closing
   drops them. That is the next small improvement if it bites.
+
+### D-107 — Split view: one tab list, a right-pane list on top
+**Decided by:** Claude, on my own (Jon: two panes side by side; drag to the edge or Open to the side)
+· **Date:** 2026-10-29
+
+`main.tabs` stays the single list of tabs, so opening, closing, the tab limit and every existing
+caller work as before. `main.split` adds which tabs are on the right, which pane has focus, and the
+other pane's active tab. `main.active` is always the focused tab, which is what features mean by
+"the active tab".
+- New tabs open in the focused pane, and clicking anywhere in a pane focuses it.
+- A pane never stays empty: the split ends instead.
+- Two panes only, side by side, as Jon chose; no grid.
+- Tab bodies stay mounted across panes, so a chat keeps its state when moved.
