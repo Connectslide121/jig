@@ -1011,7 +1011,8 @@ Claude, on my own (the details below) · **Date:** 2026-10-29
   suggestion; check-ins add them through `jig_update_profile` (a card with Undo, not read-only).
 - **Friction is recorded where it happens** (session manager, terminals) as activity of kind
   `friction`; the miner turns repeats into patterns like any other, so no new pipeline is needed.
-  Not yet: "long chats with no commit" and "hopping between repositories" (backlog).
+  "Long chats with no commit" and "hopping between projects" came later, derived from the log
+  (`derivedFriction`) rather than recorded.
 - **Suggestion kinds** are a closed list with one action each. Actions that need Claude open a chat
   with a drafted first message instead of acting silently. A workflow suggestion opens the Workflows
   add-on's editor with a draft (tab `addon.workflows.workflow`, params `draft`).

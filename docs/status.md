@@ -109,7 +109,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     - **Notes from chats:** when you mention work you do by hand or outside Jig, frustration or a
       chore, Claude saves a short note; a "Noted for suggestions" card in the chat has Remove.
     - **Friction** is recorded without AI: Stop while Claude works, rewinds, denied permissions,
-      corrections ("no, I meant…"), repeated tool errors, scripts that fail. Pastes per kind and
+      corrections ("no, I meant…"), repeated tool errors, scripts that fail, long chats that end
+      without a commit, and hopping between projects. Pastes per kind and
       "Claude's browser never used for UI work" are signals too.
     - **More kinds of suggestions**, each with its action: workflows (Draft a workflow), Claude Code
       setup, CLAUDE.md additions, routines, tips (at most one a week, with your own examples), and

@@ -8,7 +8,13 @@ import {
   workedText,
 } from "./attribution";
 import { type ActivityEvent, mine } from "./mine";
-import { correctionSignal, frictionPatterns, pastePatterns, unusedToolPatterns } from "./signals";
+import {
+  correctionSignal,
+  derivedFriction,
+  frictionPatterns,
+  pastePatterns,
+  unusedToolPatterns,
+} from "./signals";
 
 const ev = (day: number, kind: ActivityEvent["kind"], text: string, detail?: Record<string, string>) => ({
   at: `2026-10-${String(day).padStart(2, "0")}T10:00:00.000Z`,
@@ -102,5 +108,35 @@ describe("attribution", () => {
   });
   it("estimates active minutes", () => {
     expect(activeMinutes(["2026-10-01T10:00:00Z", "2026-10-01T10:05:00Z", "2026-10-01T11:00:00Z"])).toBe(5);
+  });
+});
+
+describe("derived friction", () => {
+  const at = (day: number, min: number) => new Date(Date.UTC(2026, 9, day, 9, min)).toISOString();
+  const chat = (day: number, id: string) =>
+    Array.from({ length: 16 }, (_, i) => ({
+      at: at(day, i * 5),
+      kind: "prompt" as const,
+      text: "x",
+      projectId: "p",
+      detail: { chat: id },
+    }));
+  it("finds long chats without a commit, and hopping between projects", () => {
+    expect(derivedFriction(chat(1, "a"))).toMatchObject([
+      { detail: { signal: "long-chat" }, text: "16 messages without a commit" },
+    ]);
+    const committed = [
+      ...chat(2, "b"),
+      { at: at(2, 40), kind: "terminal.command" as const, text: "git commit -m x" },
+    ];
+    expect(derivedFriction(committed)).toEqual([]);
+    const hops = Array.from({ length: 7 }, (_, i) => ({
+      at: at(3, i * 2),
+      kind: "project.switch" as const,
+      text: "switch",
+    }));
+    expect(derivedFriction(hops).map((e) => e.detail?.signal)).toEqual(["hopping"]);
+    const patterns = frictionPatterns([...chat(1, "a"), ...chat(4, "c"), ...chat(5, "d")]);
+    expect(patterns.map((p) => p.summary)).toEqual(["A long chat ended without a commit"]);
   });
 });

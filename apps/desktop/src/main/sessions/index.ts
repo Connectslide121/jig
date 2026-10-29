@@ -136,7 +136,7 @@ export function startSessions(): void {
         return;
       }
       if (event.kind === "prompt") {
-        publishActivity({ kind: "prompt", text: event.text, projectId });
+        publishActivity({ kind: "prompt", text: event.text, projectId, detail: { chat: event.session.id } });
         if (correctionSignal(event.text))
           publishActivity({
             kind: "friction",

@@ -63,7 +63,9 @@ start and daily), open the folder, delete all.
   projects, examples, and a score; the top 20 survive. Patterns you said "Never" to, or that already
   have a suggestion, are left out.
 - Learning 2 signals (`signals.ts`): **friction** that repeats (3+ on 2+ days, one pattern per
-  signal; per script for failing scripts), **pastes** per kind (5+ on 2+ days, from `detail.pasted`),
+  signal; per script for failing scripts; plus two found from the log itself, `derivedFriction`: a
+  chat with 15+ messages over an hour and no commit — messages carry `detail.chat` — and 6+ project
+  switches within 30 minutes), **pastes** per kind (5+ on 2+ days, from `detail.pasted`),
   and **tools never used** (5+ UI-related messages on 2+ days in a project where Claude's browser was
   never used).
 

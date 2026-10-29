@@ -22,12 +22,68 @@ const FRICTION_LABEL: Record<string, string> = {
   correction: "You corrected Claude",
   "tool-errors": "Claude's tools failed several times in one turn",
   "script-failed": "A script failed",
+  "long-chat": "A long chat ended without a commit",
+  hopping: "You switched between projects many times in a short while",
 };
+
+const COMMIT = /\bgit commit\b/;
+
+/**
+ * Friction found from the log itself (no recorder needed): a chat with 15+ messages over an hour or
+ * more and no commit anywhere in that time (`detail.chat` of messages), and hopping between projects
+ * (6+ switches within 30 minutes). Returned as `friction` events, so they mine like the others.
+ */
+export function derivedFriction(events: ActivityEvent[]): ActivityEvent[] {
+  const out: ActivityEvent[] = [];
+  const sorted = [...events].sort((a, b) => a.at.localeCompare(b.at));
+  const commits = sorted
+    .filter(
+      (e) =>
+        (e.kind === "git" && /commit/.test(e.text)) ||
+        ((e.kind === "terminal.command" || e.kind === "session.tool") && COMMIT.test(e.text)),
+    )
+    .map((e) => e.at);
+  const chats = new Map<string, ActivityEvent[]>();
+  for (const e of sorted)
+    if (e.kind === "prompt" && e.detail?.chat)
+      chats.set(e.detail.chat, [...(chats.get(e.detail.chat) ?? []), e]);
+  for (const list of chats.values()) {
+    if (list.length < 15) continue;
+    const first = list[0]!.at;
+    const last = list[list.length - 1]!.at;
+    if (new Date(last).getTime() - new Date(first).getTime() < 3_600_000) continue;
+    if (commits.some((c) => c >= first && c <= new Date(new Date(last).getTime() + 3_600_000).toISOString()))
+      continue;
+    out.push({
+      at: last,
+      kind: "friction",
+      text: `${list.length} messages without a commit`,
+      projectId: list[0]!.projectId,
+      detail: { signal: "long-chat" },
+    });
+  }
+  const switches = sorted.filter((e) => e.kind === "project.switch");
+  let lastHop = "";
+  for (let i = 5; i < switches.length; i++) {
+    const start = switches[i - 5]!.at;
+    const end = switches[i]!.at;
+    if (new Date(end).getTime() - new Date(start).getTime() > 30 * 60_000) continue;
+    if (lastHop && new Date(start).getTime() - new Date(lastHop).getTime() < 30 * 60_000) continue;
+    lastHop = end;
+    out.push({
+      at: end,
+      kind: "friction",
+      text: "6 project switches in 30 minutes",
+      detail: { signal: "hopping" },
+    });
+  }
+  return out;
+}
 
 /** Friction that keeps happening: one pattern per signal (3+ times on 2+ days). */
 export function frictionPatterns(events: ActivityEvent[], min = { count: 3, days: 2 }): Pattern[] {
   const groups = new Map<string, ActivityEvent[]>();
-  for (const e of events) {
+  for (const e of [...events, ...derivedFriction(events)]) {
     if (e.kind !== "friction") continue;
     const signal = e.detail?.signal ?? "other";
     // A failing script is its own pattern per script.
