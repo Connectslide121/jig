@@ -420,7 +420,7 @@ export function LinksView() {
                 icon={MoreHorizontal}
                 size="sm"
                 label={`${g.title} options`}
-                className="opacity-0 group-hover:opacity-100"
+                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                 onClick={(e) => openMenuAt(e.currentTarget, groupMenu(g), true)}
               />
             </div>

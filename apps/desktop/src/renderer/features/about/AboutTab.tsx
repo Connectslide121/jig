@@ -432,9 +432,13 @@ function Skills() {
   const activeId = useProjects((s) => s.activeId);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload for the new active project.
   useEffect(() => {
+    let current = true;
     void call("about.skills")
-      .then(setSkills)
-      .catch(() => setSkills([]));
+      .then((s) => current && setSkills(s))
+      .catch(() => current && setSkills([]));
+    return () => {
+      current = false;
+    };
   }, [activeId]);
   return (
     <div className="flex flex-col gap-3" data-testid="about-skills">

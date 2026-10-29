@@ -1,6 +1,7 @@
 import { Gauge, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { formatResetIn, type PlanUsage, type UsageWindow, usageTone } from "../../../shared/usage";
+import { timeAgo } from "../../lib/time";
 import { refreshUsage, useUsage } from "../../stores/usage";
 import { Badge, cn, Tooltip } from "../../ui";
 
@@ -24,12 +25,6 @@ function resetText(resetsAt: string | undefined): string {
   const sameDay = d.toDateString() === new Date().toDateString();
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return `Resets ${formatResetIn(resetsAt)} · ${sameDay ? time : `${d.toLocaleDateString([], { weekday: "short" })} ${time}`}`;
-}
-
-function ago(iso: string | undefined): string {
-  if (!iso) return "";
-  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
-  return min < 1 ? "just now" : min === 1 ? "1 min ago" : `${min} min ago`;
 }
 
 function WindowRow({ w }: { w: UsageWindow }) {
@@ -93,7 +88,7 @@ export function UsageCard({ usage }: { usage: PlanUsage }) {
       )}
       <div className="flex items-center gap-1 border-t border-line pt-2 text-2xs text-hint">
         <span className="flex-1">
-          From Claude Code{usage.updatedAt ? ` · updated ${ago(usage.updatedAt)}` : ""}
+          From Claude Code{usage.updatedAt ? ` · updated ${timeAgo(usage.updatedAt)}` : ""}
           {usage.state === "error" && usage.windows.length > 0 ? " · couldn't refresh" : ""}
         </span>
         <RefreshCw className="size-3" /> click to refresh

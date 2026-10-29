@@ -65,9 +65,13 @@ export function AttemptsTab({ params, active }: TabProps) {
   }, [active, run, working, refresh]);
   useEffect(() => {
     if (!selected) return setDiff(undefined);
+    let current = true;
     void call("attempts.diff", { id, index: selected.index, path: selected.path })
-      .then(setDiff)
-      .catch((e) => setDiff(`Can't show the diff: ${errorMessage(e)}`));
+      .then((d) => current && setDiff(d))
+      .catch((e) => current && setDiff(`Can't show the diff: ${errorMessage(e)}`));
+    return () => {
+      current = false;
+    };
   }, [id, selected]);
 
   if (error) return <Empty title="These attempts no longer exist">{error}</Empty>;

@@ -1107,3 +1107,22 @@ or keep it global) and Claude, on my own (the shape) · **Date:** 2026-10-29
 - The built-in add-ons keep their own keys (`workflows:<projectId>`, `deploys:<path>`): moving them
   would mean migrating data for no visible gain.
 
+
+### D-117 — Sweep rules: unsaved tabs, the focused pane, duplicate add-on tool names
+**Decided by:** Claude, on my own (Jon asked for a sweep of improvements, cleanup and bug fixes) ·
+**Date:** 2026-10-29
+
+- **Unsaved tabs:** a tab reports unsaved work with `setTabDirty(tabId, label)`
+  (`renderer/workbench/dirty.ts`). Closing it asks first, and tab eviction (the tab limit) skips it.
+  Preview is the only tab that edits files today; a new editing tab uses the same call.
+- **The focused pane:** tab bodies get `focused` next to `active`. `active` = showing in its pane
+  (polling, "seen"); `focused` = the pane you work in, so keyboard shortcuts (Ctrl+F, a tour's arrow
+  keys, the message box taking focus) go to one tab only when two panes are side by side.
+- **Removing a worktree chat stops and archives the chat first**, because its folder is about to go
+  (Windows can't delete a folder a running process holds, and the next message would fail).
+- **Add-on tool names:** `addon_<addon>_<tool>` can collide (`a-b`+`c`, `a`+`b_c`); the first add-on
+  keeps the name. Renaming every tool to a collision-free form would change names Claude and
+  permission rules already know, for a case that needs two oddly named add-ons.
+- **Not changed (needs Jon):** an add-on tool's `readOnly` (runs without asking) is still trusted for
+  every add-on, built-in or not. Honouring it only for built-in add-ons would be safer, but it
+  changes how user add-ons behave.

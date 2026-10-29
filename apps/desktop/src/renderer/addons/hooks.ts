@@ -11,7 +11,7 @@ import { useAddon } from "./context";
 export function useHostCall<T = unknown>(method: string, args?: unknown, options: { skip?: boolean } = {}) {
   const ctx = useAddon();
   const [result, setResult] = useState<{ key: string; value: T }>();
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<{ key: string; message: string }>();
   const [loading, setLoading] = useState(!options.skip);
   const key = JSON.stringify(args ?? null);
   const counter = useRef(0);
@@ -26,7 +26,7 @@ export function useHostCall<T = unknown>(method: string, args?: unknown, options
         setError(undefined);
       }
     } catch (e) {
-      if (n === counter.current) setError(e instanceof Error ? e.message : String(e));
+      if (n === counter.current) setError({ key, message: e instanceof Error ? e.message : String(e) });
     } finally {
       if (n === counter.current) setLoading(false);
     }
@@ -39,8 +39,9 @@ export function useHostCall<T = unknown>(method: string, args?: unknown, options
     if (options.skip) return;
     return ctx.on("storage", () => void reload());
   }, [ctx, reload, options.skip]);
+  // Like the data, an error belongs to the `args` it came from.
   const data = result?.key === key ? result.value : undefined;
-  return { data, error, loading, reload };
+  return { data, error: error?.key === key ? error.message : undefined, loading, reload };
 }
 
 /** Listens to an event from the add-on's host code (`api.emit(topic, payload)`). */
@@ -66,10 +67,13 @@ export function useStorage<T>(key: string, initial: T, options?: StorageOptions)
   });
   const where = options?.id ?? active;
   const [value, setValue] = useState<{ where?: string; value: T }>({ value: initial });
+  const latest = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `initial` is only the first value.
   const load = useCallback(async () => {
+    // Only the last read counts (a slow read of the previous project must not win).
+    const n = ++latest.current;
     const v = await ctx.storage.get<T>(key, { scope, id: where });
-    setValue({ where, value: v === undefined ? initial : v });
+    if (n === latest.current) setValue({ where, value: v === undefined ? initial : v });
   }, [ctx, key, scope, where]);
   useEffect(() => {
     void load();
@@ -77,6 +81,7 @@ export function useStorage<T>(key: string, initial: T, options?: StorageOptions)
   }, [ctx, load]);
   const set = useCallback(
     async (next: T) => {
+      latest.current++;
       setValue({ where, value: next });
       await ctx.storage.set(key, next, { scope, id: where });
     },

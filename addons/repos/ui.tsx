@@ -136,7 +136,7 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
         {repo.dirty > 0 && <Badge tone="warning">{repo.dirty} changed</Badge>}
         {repo.ahead > 0 && <Badge tone="info">↑{repo.ahead}</Badge>}
         {repo.behind > 0 && <Badge tone="accent">↓{repo.behind}</Badge>}
-        <span className="hidden items-center group-hover:flex">
+        <span className="hidden items-center group-hover:flex group-focus-within:flex">
           <IconButton
             icon={CloudDownload}
             size="sm"

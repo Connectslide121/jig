@@ -31,7 +31,10 @@ export interface ViewDef {
 export interface TabProps {
   tabId: string;
   params: Record<string, unknown>;
+  /** The tab showing in its pane. */
   active: boolean;
+  /** Showing in the pane you're working in (with two panes side by side, only one is): keys go here. */
+  focused?: boolean;
 }
 
 export type TabStatus = "working" | "attention" | "error" | "unread";

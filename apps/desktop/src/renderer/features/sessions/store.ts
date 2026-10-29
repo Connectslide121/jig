@@ -56,7 +56,7 @@ export function applySessionUpdates(sessionId: string, updates: ChatUpdate[]): v
     let metas = s.metas;
     let transcripts = s.transcripts;
     const current = s.transcripts[sessionId];
-    let items = current ? [...current.items] : undefined;
+    const items = current ? [...current.items] : undefined;
     let queue = current?.queue;
     for (const update of updates) {
       if (update.op === "meta") metas = { ...metas, [sessionId]: update.meta };
@@ -64,7 +64,6 @@ export function applySessionUpdates(sessionId: string, updates: ChatUpdate[]): v
       else if (items) applyUpdate(items, update);
     }
     if (current && items && queue) transcripts = { ...transcripts, [sessionId]: { items, queue } };
-    items = undefined;
     return { metas, transcripts };
   });
 }

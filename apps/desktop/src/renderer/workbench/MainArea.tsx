@@ -184,7 +184,7 @@ function TabButton({
         }}
         className={cn(
           "flex size-5 items-center justify-center rounded-sm hover:bg-hover",
-          active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+          active ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
         )}
       >
         <X className="size-3" />
@@ -199,11 +199,11 @@ function TabButton({
  */
 function EmptyMain() {
   const project = useActiveProject();
-  return project ? <Home project={project} /> : <AboutPage welcome />;
+  return project ? <Home key={project.id} project={project} /> : <AboutPage welcome />;
 }
 
 /** Tab bodies stay mounted once opened, so chats and terminals keep their state when you switch. */
-function TabBody({ tab, active }: { tab: LayoutTab; active: boolean }) {
+function TabBody({ tab, active, focused }: { tab: LayoutTab; active: boolean; focused: boolean }) {
   const def = useRegistry((s) => s.tabTypes[tab.type]);
   if (!def)
     return (
@@ -215,7 +215,7 @@ function TabBody({ tab, active }: { tab: LayoutTab; active: boolean }) {
   return (
     <div className={cn("h-full", !active && "hidden")} data-tab-id={tab.id}>
       <ErrorBoundary label={def.title(tab.params)}>
-        <Body tabId={tab.id} params={tab.params} active={active} />
+        <Body tabId={tab.id} params={tab.params} active={active} focused={active && focused} />
       </ErrorBoundary>
     </div>
   );
@@ -277,7 +277,7 @@ function TabPane({
         {tabs
           .filter((t) => mounted.has(t.id))
           .map((tab) => (
-            <TabBody key={tab.id} tab={tab} active={tab.id === active} />
+            <TabBody key={tab.id} tab={tab} active={tab.id === active} focused={focused} />
           ))}
       </div>
     </div>

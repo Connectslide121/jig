@@ -19,9 +19,11 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { ProjectInfo } from "../../../shared/projects";
 import { call, errorMessage } from "../../lib/host";
+import { timeAgo } from "../../lib/time";
 import { Badge, Button, cn, IconButton, Kbd, openMenuAt, Select } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, useRegistry } from "../../workbench/registry";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openAbout } from "../about";
@@ -42,14 +44,6 @@ const STARTERS = [
   "Write tests for the code I changed",
   "Create a CLAUDE.md for this project",
 ];
-
-function ago(iso: string): string {
-  const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  return `${Math.round(s / 86400)} d ago`;
-}
 
 /** Starts a chat in the project and sends the message right away. */
 async function startChat(projectId: string, text: string, cwd?: string): Promise<void> {
@@ -260,7 +254,7 @@ export function Home({ project }: { project: ProjectInfo }) {
                     {STATUS_LABEL[m.status]}
                   </span>
                 )}
-                <span className="shrink-0 text-2xs text-hint">{ago(m.updatedAt)}</span>
+                <span className="shrink-0 text-2xs text-hint">{timeAgo(m.updatedAt)}</span>
               </button>
             ))}
           </section>
@@ -272,7 +266,7 @@ export function Home({ project }: { project: ProjectInfo }) {
             <QuickAction
               icon={MessageSquare}
               label="New chat"
-              hint="Ctrl+N"
+              hint={formatShortcut("Mod+N")}
               onClick={() => void newSession(project.id)}
               testId="home-new-chat"
             />
@@ -280,7 +274,7 @@ export function Home({ project }: { project: ProjectInfo }) {
               <QuickAction
                 icon={GitBranch}
                 label="Review changes"
-                hint="Ctrl+Shift+G"
+                hint={formatShortcut("Mod+Shift+G")}
                 onClick={() => workbench.showView("addon.git.git")}
               />
             )}

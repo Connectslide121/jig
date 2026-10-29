@@ -153,7 +153,8 @@ export function Region({ region }: { region: SideRegion }) {
             if (e.target === e.currentTarget) setOver("");
           }}
           onDragLeave={(e) => {
-            if (e.target === e.currentTarget) setOver(null);
+            // Left the bar (not just moved from one of its tabs to another).
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
           }}
           onDrop={(e) => {
             const id = e.dataTransfer.getData(VIEW_DRAG);
@@ -180,7 +181,7 @@ export function Region({ region }: { region: SideRegion }) {
                   e.dataTransfer.setData(VIEW_DRAG, view.id);
                   e.dataTransfer.effectAllowed = "move";
                 }}
-                onDragOver={() => setOver(view.id)}
+                onDragOver={(e) => e.dataTransfer.types.includes(VIEW_DRAG) && setOver(view.id)}
                 onDragEnd={() => setOver(null)}
                 onClick={() => workbench.showView(view.id)}
                 onContextMenu={(e) => {

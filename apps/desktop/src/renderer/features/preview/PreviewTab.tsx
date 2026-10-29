@@ -7,6 +7,7 @@ import { Badge, Button, cn, Empty, FileIcon, IconButton, Markdown, Spinner } fro
 import { setTabDirty } from "../../workbench/dirty";
 import { useProjects } from "../../workbench/projects";
 import type { TabProps } from "../../workbench/registry";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { newSession } from "../sessions/actions";
 import { openPreview } from "./actions";
@@ -297,7 +298,7 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
             disabled={saving}
             onClick={() => void save()}
             data-testid="preview-save"
-            title="Save (Ctrl+S)"
+            title={`Save (${formatShortcut("Mod+S")})`}
           >
             Save
           </Button>

@@ -68,7 +68,7 @@ export function ProjectsView() {
                 icon={MoreHorizontal}
                 label="Project options"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100"
+                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   openMenuAt(e.currentTarget, projectMenu(project), true);

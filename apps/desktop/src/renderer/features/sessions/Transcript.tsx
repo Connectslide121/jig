@@ -422,7 +422,12 @@ export function Transcript({
     if (active && el && stick.current) el.scrollTop = el.scrollHeight;
   }, [active]);
   useEffect(() => {
-    if (!highlight) return;
+    if (!highlight) {
+      // Find closed: follow new messages again if you're at the bottom.
+      const el = ref.current;
+      if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      return;
+    }
     stick.current = false;
     ref.current
       ?.querySelector(`[data-item-id="${CSS.escape(highlight)}"]`)

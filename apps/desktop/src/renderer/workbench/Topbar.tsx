@@ -23,6 +23,7 @@ import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt } from "../ui";
 import { addProject, hiddenViews, openSettings } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { runAction, useRegistry } from "./registry";
+import { formatShortcut } from "./shortcuts";
 import { useWorkbench, workbench } from "./store";
 import { openToolsMenu } from "./ToolsMenu";
 
@@ -151,7 +152,7 @@ export function Topbar() {
       <button
         type="button"
         data-testid="tools-button"
-        title="Every action in Jig (Ctrl+K)"
+        title={`Every action in Jig (${formatShortcut("Mod+K")})`}
         className="no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-fg hover:bg-hover"
         onClick={(e) => openToolsMenu(e.currentTarget)}
       >
@@ -162,7 +163,7 @@ export function Topbar() {
         <button
           type="button"
           data-testid="topbar-new-chat"
-          title="New chat (Ctrl+N)"
+          title={`New chat (${formatShortcut("Mod+N")})`}
           className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
           onClick={() => runAction("jig.newSession")}
         >

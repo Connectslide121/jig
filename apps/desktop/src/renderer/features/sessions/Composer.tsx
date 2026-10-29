@@ -33,6 +33,7 @@ import { fuzzyFilter } from "../../../shared/fuzzy";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, FileIcon, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { newSession } from "./actions";
@@ -152,6 +153,10 @@ export function Composer({
   const token = tokenAt(text, caret);
   const tokenKey = token ? `${token.kind}:${token.start}` : undefined;
   const pickerOpen = Boolean(token) && closedAt !== tokenKey;
+  // Asked again each time the menu opens (cached for a moment), so new skills show and an error retries.
+  useEffect(() => {
+    if (!pickerOpen) setCommands(undefined);
+  }, [pickerOpen]);
   useEffect(() => {
     if (pickerOpen && token?.kind === "command" && !commands)
       void chatCommands(meta.id)
@@ -517,7 +522,7 @@ export function Composer({
             data-testid="composer-input"
             placeholder={
               busy
-                ? "Claude is working — Enter queues your message, Ctrl+Enter sends it now"
+                ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
                 : suggestion
                   ? `${suggestion}  (Tab to use)`
                   : "Message Claude…  / commands · @ files · ! shell · # remember"
@@ -660,7 +665,7 @@ export function Composer({
             {busy && text.trim() && !mode && files.length === 0 && (
               <IconButton
                 icon={Zap}
-                label="Send now: Claude reads it at its next step (Ctrl+Enter)"
+                label={`Send now: Claude reads it at its next step (${formatShortcut("Mod+Enter")})`}
                 data-testid="composer-send-now"
                 onClick={() => void send(text, files, true)}
               />
@@ -680,7 +685,7 @@ export function Composer({
         <div className="flex items-center gap-1 text-2xs text-hint">
           <History className="size-3" />
           {busy
-            ? "Enter queues · Ctrl+Enter sends now · Esc stops Claude"
+            ? `Enter queues · ${formatShortcut("Mod+Enter")} sends now · Esc stops Claude`
             : "Enter to send · Shift+Enter new line · / commands · @ files · ! shell · # remember · ↑ earlier messages · Shift+Tab mode"}
         </div>
       </div>

@@ -213,7 +213,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                         : "never run"}
                     </div>
                   </div>
-                  <span className="hidden group-hover:flex">
+                  <span className="hidden group-hover:flex group-focus-within:flex">
                     <IconButton
                       icon={Play}
                       size="sm"

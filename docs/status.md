@@ -196,7 +196,15 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 - **A chat in its own worktree** (Tools → New chat in a worktree…): Claude works on a copy of the
   project's repository on a new branch (`jig/<what it's for>-<id>`), so your working copy isn't
   touched. The chat's ⋯ menu applies its changes to your working copy (uncommitted), opens the folder,
-  or removes the worktree and branch.
+  or removes the worktree and branch (the chat is stopped and archived first; you can still read it).
+- **Unsaved edits are kept safe:** a Preview tab with unsaved changes shows a dot on its tab; closing
+  it (Ctrl+W, Close others, Close all) asks first, and Jig never closes it to make room for new tabs.
+- **Sweep (Oct 29):** four reviews (renderer, main process, built-in add-ons, packages and docs) and
+  their fixes: races in attempts, chats' message queue, add-on hooks and several add-ons (scheduled
+  workflows, review comments, deploy tracking, pipeline tracking); safer inputs (IPC schemas, add-on
+  zip size, browser popups); file saves that keep permissions and symlinks; shortcut labels that say
+  ⌘ on macOS; keyboard access to rows and hover buttons; split view sends keys only to the focused
+  pane.
 - **Claude and add-ons** (D-115): add-ons can give Claude tools (slot `claude.tool`). Releases does:
   ask a chat "what changed since the last release?", "write the notes for 2.5.0", or "release 1.4.0"
   (that one asks first). Claude can also look inside any add-on and read, create, change or delete its
@@ -383,6 +391,9 @@ Things the cloud build environment couldn't verify:
   - Releases: `az pipelines runs list` for production environments; tagging and pushing to Azure
     DevOps; a `Directory.Build.props` / `.csproj` version bump.
   - Workflows: command steps run in `cmd.exe` (`/d /s /c`); a schedule that fires while Jig is open.
+  - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
+    command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
+  - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

@@ -177,7 +177,7 @@ function FolderScripts({
             icon={Play}
             size="sm"
             label="Run"
-            className="opacity-0 group-hover:opacity-100"
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             onClick={() => void safe(ctx, sc.name, () => ctx.scripts.run(project.id, sc.id))}
           />
         )}

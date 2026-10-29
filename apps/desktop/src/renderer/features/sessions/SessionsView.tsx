@@ -12,6 +12,7 @@ import type { SessionMeta } from "../../../shared/engine";
 import { call } from "../../lib/host";
 import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
@@ -86,7 +87,7 @@ export function SessionsView() {
             label={m.pinned ? "Unpin" : "Pin to the top"}
             size="sm"
             data-testid={`session-pin-${m.title}`}
-            className="hidden group-hover:inline-flex"
+            className="hidden group-hover:inline-flex group-focus-within:inline-flex"
             onClick={(e) => {
               e.stopPropagation();
               void call("sessions.setPinned", { id: m.id, pinned: !m.pinned });
@@ -96,7 +97,7 @@ export function SessionsView() {
             icon={MoreHorizontal}
             label="Chat options"
             size="sm"
-            className="hidden group-hover:inline-flex"
+            className="hidden group-hover:inline-flex group-focus-within:inline-flex"
             onClick={(e) => {
               e.stopPropagation();
               openMenuAt(e.currentTarget, sessionMenu(m), true);
@@ -158,7 +159,7 @@ export function SessionsView() {
               label={`New chat in ${title}`}
               size="sm"
               data-testid={`new-session-${title}`}
-              className="opacity-0 group-hover:opacity-100"
+              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
               onClick={() => void newSession(projectId)}
             />
           )}
@@ -210,7 +211,7 @@ export function SessionsHeaderActions() {
   return (
     <IconButton
       icon={MessageSquarePlus}
-      label="New chat (Ctrl+N)"
+      label={`New chat (${formatShortcut("Mod+N")})`}
       size="sm"
       data-testid="new-session"
       disabled={!activeId}

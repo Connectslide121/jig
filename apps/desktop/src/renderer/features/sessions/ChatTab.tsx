@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { UsageRing } from "../usage";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
@@ -38,7 +39,7 @@ function LoginBanner() {
   );
 }
 
-export function ChatTab({ params, active }: TabProps) {
+export function ChatTab({ params, active, focused }: TabProps) {
   const id = String(params.sessionId ?? "");
   const meta = useSessions((s) => s.metas[id]);
   const transcript = useSessions((s) => s.transcripts[id]);
@@ -54,9 +55,9 @@ export function ChatTab({ params, active }: TabProps) {
   useEffect(() => {
     if (active && meta) markSeen(id, meta.turns);
   }, [active, id, meta?.turns, meta]);
-  // Ctrl+F finds in the chat that is showing.
+  // Ctrl+F finds in the chat you're working in.
   useEffect(() => {
-    if (!active) return;
+    if (!focused) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
@@ -65,7 +66,7 @@ export function ChatTab({ params, active }: TabProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active]);
+  }, [focused]);
   if (!meta) return loaded ? <Empty icon={MessageSquareX} title="This chat was deleted" /> : <Spinner />;
   const tokens =
     meta.usage.inputTokens +
@@ -80,7 +81,10 @@ export function ChatTab({ params, active }: TabProps) {
           type="button"
           className="min-w-0 truncate text-sm font-medium hover:underline"
           onDoubleClick={() => void renameSession(meta)}
-          title="Double-click to rename"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "F2") void renameSession(meta);
+          }}
+          title="Double-click (or Enter) to rename"
         >
           {meta.title}
         </button>
@@ -103,7 +107,7 @@ export function ChatTab({ params, active }: TabProps) {
         )}
         <IconButton
           icon={Search}
-          label="Find in this chat (Ctrl+F)"
+          label={`Find in this chat (${formatShortcut("Mod+F")})`}
           size="sm"
           data-testid="find-open"
           onClick={() => setFinding(true)}
@@ -145,7 +149,7 @@ export function ChatTab({ params, active }: TabProps) {
         {transcript && <TodoPanel items={transcript.items} />}
         <BackgroundTasks meta={meta} />
       </div>
-      <Composer meta={meta} queue={transcript?.queue ?? []} active={active} />
+      <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
     </div>
   );
 }

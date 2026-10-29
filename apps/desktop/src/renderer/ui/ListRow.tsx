@@ -11,18 +11,28 @@ export interface ListRowProps extends HTMLAttributes<HTMLDivElement> {
 
 /** A clickable row in a list (sessions, projects, commits, files…). */
 export const ListRow = forwardRef<HTMLDivElement, ListRowProps>(function ListRow(
-  { selected, leading, trailing, description, disabled, className, children, ...rest },
+  { selected, leading, trailing, description, disabled, className, children, onKeyDown, ...rest },
   ref,
 ) {
+  // A row you can click is reachable with Tab and opens with Enter or Space.
+  const clickable = Boolean(rest.onClick) && !disabled;
   return (
     <div
       ref={ref}
       role="option"
       aria-selected={selected}
       aria-disabled={disabled}
-      tabIndex={-1}
+      tabIndex={clickable ? 0 : -1}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (e.defaultPrevented || !clickable || e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.currentTarget.click();
+        }
+      }}
       className={cn(
-        "group flex min-h-7 cursor-default items-center gap-2 rounded-md px-2 text-sm",
+        "group flex min-h-7 cursor-default items-center gap-2 rounded-md px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-accent",
         selected ? "bg-active text-fg" : "text-fg hover:bg-hover",
         disabled && "pointer-events-none opacity-50",
         className,

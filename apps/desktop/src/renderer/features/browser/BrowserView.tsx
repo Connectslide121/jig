@@ -290,10 +290,14 @@ function NetworkList({ entries }: { entries: NetworkEntry[] }) {
   const [detail, setDetail] = useState<NetworkEntry & { body?: string; bodyNote?: string }>();
   useEffect(() => {
     setDetail(undefined);
-    if (open)
-      void call("browser.networkDetail", { id: open })
-        .then(setDetail)
-        .catch(() => {});
+    if (!open) return;
+    let current = true;
+    void call("browser.networkDetail", { id: open })
+      .then((d) => current && setDetail(d))
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
   }, [open]);
   return (
     <div

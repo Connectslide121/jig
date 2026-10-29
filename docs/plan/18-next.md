@@ -358,3 +358,13 @@ true"). This step checks the whole picture again:
 - [x] Finish: README, AGENTS.md, all docs (status, architecture, references, guides, index,
       decisions, plan), the About page and screenshots, and the guide artifact updated with every new
       feature
+
+### After the phase (additions Jon asked for, and a sweep)
+
+- [x] Chats in their own git worktree (D-114)
+- [x] Add-ons share as a .zip: export and import with a preview (D-113)
+- [x] Review comments on diff lines, sent to a chat
+- [x] Claude tools from add-ons (`claude.tool`), Releases and Workflows tools, add-on data tools,
+      add-on suggestions in chats (D-115)
+- [x] Add-on data scope: global, per project or per repository (D-116)
+- [x] Repo sweep: four reviews and their fixes (unsaved-edit guard, races, safer inputs, a11y, docs)

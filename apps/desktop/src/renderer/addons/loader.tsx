@@ -231,10 +231,14 @@ export function syncAddons(addons: AddonInfo[]): Promise<void> {
 }
 
 async function doSync(addons: AddonInfo[]): Promise<void> {
-  useAddons.setState({ addons });
   const active = new Map(
     addons.filter((a) => a.enabled && a.uiUrl && a.errors.length === 0).map((a) => [a.id, a]),
   );
+  // Load errors of add-ons that are gone or switched off don't stay around.
+  useAddons.setState((s) => ({
+    addons,
+    loadErrors: Object.fromEntries(Object.entries(s.loadErrors).filter(([id]) => active.has(id))),
+  }));
   for (const id of [...mounted.keys()]) {
     const next = active.get(id);
     if (!next || next.uiUrl !== mounted.get(id)?.hash) unmount(id);

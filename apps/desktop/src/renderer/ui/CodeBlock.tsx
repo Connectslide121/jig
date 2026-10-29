@@ -28,7 +28,7 @@ export function CodeBlock({ code, lang, className }: { code: string; lang?: stri
         <button
           type="button"
           aria-label="Copy code"
-          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 hover:text-fg"
+          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-fg"
           onClick={() => {
             void navigator.clipboard.writeText(code);
             setCopied(true);

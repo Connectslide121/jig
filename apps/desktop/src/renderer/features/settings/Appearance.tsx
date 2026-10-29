@@ -108,7 +108,7 @@ function ThemeGrid({ filter }: { filter: string }) {
                   icon={Trash2}
                   label="Remove theme"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     void remove(summary);

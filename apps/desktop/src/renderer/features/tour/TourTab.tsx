@@ -32,7 +32,7 @@ function hunkFor(hunks: string[], line: number | undefined): number {
  * A guided tour of changes: Claude's steps in the order that makes them easy to follow, each with its
  * explanation next to the part of the diff it's about.
  */
-export function TourTab({ params, active }: TabProps) {
+export function TourTab({ params, focused }: TabProps) {
   const id = String(params.tourId ?? "");
   const [tour, setTour] = useState<Tour>();
   const [error, setError] = useState<string>();
@@ -55,7 +55,7 @@ export function TourTab({ params, active }: TabProps) {
     hunkRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [step, highlighted]);
   useEffect(() => {
-    if (!active || !tour) return;
+    if (!focused || !tour) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest("input, textarea, [contenteditable]")) return;
       if (e.key === "ArrowRight" || e.key === "j") setStep((s) => Math.min(tour.steps.length - 1, s + 1));
@@ -63,7 +63,7 @@ export function TourTab({ params, active }: TabProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, tour]);
+  }, [focused, tour]);
 
   if (error)
     return (

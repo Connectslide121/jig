@@ -87,7 +87,10 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       const set = eventListeners.get(id) ?? new Set();
       set.add(wrapped);
       eventListeners.set(id, set);
-      return () => set.delete(wrapped);
+      return () => {
+        set.delete(wrapped);
+        if (set.size === 0 && eventListeners.get(id) === set) eventListeners.delete(id);
+      };
     },
     projects: {
       active() {
