@@ -1,7 +1,7 @@
 import { type FSWatcher, watch } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { addonToolName, addonViewId, checkTokens, intervalMs, uiExports } from "@jig/sdk";
+import { addonToolName, addonViewId, checkTokens, intervalMs, scopeLabel, uiExports } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
@@ -392,6 +392,9 @@ export class AddonService {
           (parts.length ? `\n  Contributes: ${parts.join(", ")}` : "") +
           (info.manifest?.permissions.length
             ? `\n  Permissions: ${info.manifest.permissions.join(", ")}`
+            : "") +
+          (info.manifest?.storage?.scope && info.manifest.storage.scope !== "global"
+            ? `\n  Data: ${scopeLabel(info.manifest.storage.scope)}`
             : ""),
       );
     }

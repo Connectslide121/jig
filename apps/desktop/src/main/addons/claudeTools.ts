@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { type AddonManifest, addonToolName } from "@jig/sdk";
+import { type AddonManifest, addonToolName, scopeLabel } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { ChatItem, ConfigUndo } from "../../shared/engine";
@@ -124,6 +124,7 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
           a.manifest?.permissions.length
             ? `Permissions: ${a.manifest.permissions.join(", ")}`
             : "Permissions: none",
+          `Data: ${scopeLabel(a.manifest?.storage?.scope ?? "global")}${a.manifest?.storage?.scope && a.manifest.storage.scope !== "global" ? ` (keys look like @${a.manifest.storage.scope}(<${a.manifest.storage.scope === "project" ? "project id" : "repository path"}>) <key>; use the full key)` : ""}`,
           c
             ? `Contributes: ${
                 [
@@ -149,7 +150,7 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
       name: "jig_get_addon_data",
       readOnly: true,
       description:
-        "Read the data an add-on stores (its storage, e.g. Workflows' workflows, Releases' deploy log, Pipelines' settings): one key in full, or every key with its value.",
+        "Read the data an add-on stores (its storage, e.g. Workflows' workflows, Releases' deploy log, Pipelines' settings): one key in full, or every key with its value. An add-on whose data is per project or per repository has keys like `@project(<projectId>) <key>` or `@repo(<path>) <key>` (jig_list_projects gives project ids).",
       shape: {
         addonId: z.string(),
         key: z.string().optional().describe("One key; leave out for all of them"),

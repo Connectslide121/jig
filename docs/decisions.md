@@ -1092,3 +1092,18 @@ data) and Claude, on my own (the shape below) · **Date:** 2026-10-29
   (one line each) and tells Claude to offer, once and briefly, a workflow for a repeated step-by-step
   request, an existing add-on that fits, or a build. No extra AI call: it's part of the chat's turn.
 
+### D-116 — An add-on declares where its data lives: global, per project or per repository
+**Decided by:** Jon (the builder should be able to limit an add-on's data to a project, a repository
+or keep it global) and Claude, on my own (the shape) · **Date:** 2026-10-29
+
+- **Manifest:** `"storage": { "scope": "global" | "project" | "repo" }`, default global. "repo" is
+  the active project's default repository (else its folder).
+- **One file per add-on, scope in the key** (`@project(<id>) <key>`, `@repo(<path>) <key>`), so
+  exporting, history, Claude's data tools and Undo keep working unchanged.
+- **The UI follows the active one automatically** (`ctx.storage`, the new `useStorage` hook); an
+  add-on can still reach another scope with `{ scope, id }`. Host code is explicit, because it can't
+  know which project is active.
+- **The builder chooses the scope** (its instructions explain when), and Settings → Add-ons shows it.
+- The built-in add-ons keep their own keys (`workflows:<projectId>`, `deploys:<path>`): moving them
+  would mean migrating data for no visible gain.
+

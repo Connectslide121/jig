@@ -1,3 +1,5 @@
+import type { StorageOptions, StorageScope } from "./storage";
+
 /**
  * The API add-ons are written against. UI components get `ctx: AddonUiContext` as a prop (and via
  * `useAddon()` from `@jig/sdk/ui`); host code gets `api: AddonHostApi`. Reference:
@@ -141,10 +143,17 @@ export interface AddonUiContext {
   /** Sends text to a chat (a new session in the active project unless `sessionId`). Needs `chat`. */
   sendToChat(text: string, options?: { sessionId?: string; send?: boolean }): Promise<void>;
   notify(input: { title: string; message?: string; tone?: NotifyTone }): void;
-  /** Per-add-on storage (JSON), shared with host code. */
+  /**
+   * Per-add-on storage (JSON), shared with host code. With a declared scope (`"storage": { "scope":
+   * "project" }` in addon.json) each project (or repository) has its own copy: the active one unless
+   * `options` say otherwise. `scope` is the declared scope; `useStorage` follows the active one.
+   */
   storage: {
-    get<T = unknown>(key: string): Promise<T | undefined>;
-    set(key: string, value: unknown): Promise<void>;
+    get<T = unknown>(key: string, options?: StorageOptions): Promise<T | undefined>;
+    set(key: string, value: unknown, options?: StorageOptions): Promise<void>;
+    scope: StorageScope;
+    /** The active project id or repository path for the declared scope (undefined for global). */
+    scopeId(): string | undefined;
   };
   openExternal(url: string): void;
   openPath(path: string): void;
@@ -219,9 +228,13 @@ export interface AddonHostApi {
   };
   /** `fetch`, with the `net` permission. */
   fetch(url: string, init?: RequestInit): Promise<Response>;
+  /**
+   * The same storage as the UI. Host code doesn't know the active project, so it reads the global part
+   * unless `options` name the scope and the project id / repository path (e.g. from a tool's `chat`).
+   */
   storage: {
-    get<T = unknown>(key: string): Promise<T | undefined>;
-    set(key: string, value: unknown): Promise<void>;
+    get<T = unknown>(key: string, options?: StorageOptions): Promise<T | undefined>;
+    set(key: string, value: unknown, options?: StorageOptions): Promise<void>;
   };
   notify(input: { title: string; message?: string; tone?: NotifyTone }): void;
   /** Sends an event to this add-on's UI (`ctx.on(topic, …)`). */

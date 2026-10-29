@@ -6,6 +6,9 @@ import {
   addonViewId,
   type MenuItemInput,
   type RunningScript,
+  type StorageOptions,
+  type StorageScope,
+  scopedKey,
 } from "@jig/sdk";
 import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
@@ -56,8 +59,22 @@ function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry
 const has = (addon: AddonInfo, permission: string) =>
   addon.manifest?.permissions.includes(permission) ?? false;
 
+/** The active project id, or its repository (the default Git repository, else its folder). */
+function activeScopeId(scope: StorageScope): string | undefined {
+  if (scope === "global") return undefined;
+  const { projects, activeId } = useProjects.getState();
+  const project = projects.find((p) => p.id === activeId);
+  if (!project) return undefined;
+  return scope === "project" ? project.id : (project.focusRepo ?? project.path);
+}
+
 export function makeContext(addon: AddonInfo): AddonUiContext {
   const id = addon.id;
+  const declared: StorageScope = addon.manifest?.storage?.scope ?? "global";
+  const keyFor = (key: string, options?: StorageOptions) => {
+    const scope = options?.scope ?? declared;
+    return scopedKey(scope, options?.id ?? activeScopeId(scope), key);
+  };
   return {
     addon: { id, name: addon.name },
     host: {
@@ -166,8 +183,19 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     },
     notify: (input) => notify({ title: input.title, message: input.message, tone: input.tone }),
     storage: {
-      get: <T>(key: string) => call("addons.storageGet", { id, key }) as Promise<T | undefined>,
-      set: (key, value) => call("addons.storageSet", { id, key, value }),
+      // With no active project for a scoped add-on: nothing to read, and writing says so.
+      get: async <T>(key: string, options?: StorageOptions) => {
+        let stored: string;
+        try {
+          stored = keyFor(key, options);
+        } catch {
+          return undefined;
+        }
+        return call("addons.storageGet", { id, key: stored }) as Promise<T | undefined>;
+      },
+      set: (key, value, options) => call("addons.storageSet", { id, key: keyFor(key, options), value }),
+      scope: declared,
+      scopeId: () => activeScopeId(declared),
     },
     openExternal: (url) =>
       void call("app.openExternal", { url }).catch((e) =>

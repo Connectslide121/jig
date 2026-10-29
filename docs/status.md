@@ -202,6 +202,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   (that one asks first). Claude can also look inside any add-on and read, create, change or delete its
   stored data (e.g. a workflow, a pipeline arrangement), each change with a card and Undo; the
   add-on's views update.
+  - **Data scope** (D-116): an add-on says whether its data is global, per project or per
+    repository (`"storage": { "scope": "project" }`); the builder chooses it, `useStorage` keeps one
+    copy per project/repository and follows the active one, and Settings → Add-ons shows it.
   - Workflows has tools too: Claude lists, reads, saves, deletes and runs your workflows from a chat.
   - **Claude recommends add-ons in the chat:** it knows your add-ons, and when you ask for something
     step by step that you'll do again (check the code, release notes, user stories, test cases…) it

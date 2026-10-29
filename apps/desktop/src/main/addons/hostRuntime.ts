@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { access, readdir, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { type AddonHostApi, allowsExec } from "@jig/sdk";
+import { type AddonHostApi, allowsExec, scopedKey } from "@jig/sdk";
 import { resolveCommand } from "./winCommand";
 
 /**
@@ -117,9 +117,12 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         return fetch(url, init2);
       },
       storage: {
-        get: (key) => rpc("storage.get", { key }) as Promise<never>,
-        set: async (key, value) => {
-          await rpc("storage.set", { key, value });
+        get: (key, options) =>
+          rpc("storage.get", {
+            key: scopedKey(options?.scope ?? "global", options?.id, key),
+          }) as Promise<never>,
+        set: async (key, value, options) => {
+          await rpc("storage.set", { key: scopedKey(options?.scope ?? "global", options?.id, key), value });
         },
       },
       notify: (input) => void rpc("notify", input),

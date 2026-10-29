@@ -115,6 +115,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   to guess it), workflow step kinds in `addons/workflows/lib/workflow.ts`, suggestion kinds in
   `shared/learning.ts`, a repository's release policy shape in `addons/releases/lib/policy.ts`. Add
   to them there, never ad hoc in a view.
+- **Add-on data has a scope** (D-116): declare `storage.scope` (global, project, repo) and use
+  `useStorage` / `ctx.storage` rather than putting project ids into keys by hand.
 - **A repository's files are the user's.** Built-in add-ons write into a repository only on a user
   action (Release, Set up, Export as skill, Save in Preview) and say which files; `.jig/release.json`
   is meant to be committed and shared.

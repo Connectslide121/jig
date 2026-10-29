@@ -1,4 +1,4 @@
-import { describePermission } from "@jig/sdk";
+import { describePermission, scopeLabel } from "@jig/sdk";
 import {
   FileDown,
   FileUp,
@@ -156,6 +156,9 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
               {addon.source === "builtin" ? "built in" : addon.overridesBuiltin ? "your copy" : "yours"}
             </Badge>
             {addon.version && <span className="text-xs text-hint">{addon.version}</span>}
+            {addon.manifest?.storage?.scope && addon.manifest.storage.scope !== "global" && (
+              <Badge tone="info">data {scopeLabel(addon.manifest.storage.scope)}</Badge>
+            )}
           </div>
           {addon.description && <div className="text-xs text-muted">{addon.description}</div>}
         </div>

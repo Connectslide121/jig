@@ -93,3 +93,10 @@ Jig reloads just this add-on.
   one with a built-in's id becomes your copy of it. Paths outside the add-on's folder are refused.
 - Add-ons run code on your computer: install only those from people you trust.
 
+## Data per project or per repository
+
+Declare `"storage": { "scope": "project" }` (or `"repo"`) in `addon.json` and keep data with
+`useStorage("notes", "")` from `@jig/sdk/ui`: each project (or repository) gets its own copy, and the
+view follows the one you switch to. Leave it out for data that is the same everywhere. Details:
+`docs/reference/addon-api.md` → Where the data lives.
+

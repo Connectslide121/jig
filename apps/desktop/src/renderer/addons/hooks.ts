@@ -1,4 +1,6 @@
+import type { StorageOptions } from "@jig/sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useProjects } from "../workbench/projects";
 import { useAddon } from "./context";
 
 /**
@@ -47,4 +49,38 @@ export function useAddonEvent(topic: string, listener: (payload: unknown) => voi
   const ref = useRef(listener);
   ref.current = listener;
   useEffect(() => ctx.on(topic, (p) => ref.current(p)), [ctx, topic]);
+}
+
+/**
+ * A value in the add-on's storage, kept in sync: `[value, set]`. It follows the add-on's declared scope
+ * (`"storage": { "scope": "project" }`): switching project (or the project's repository) shows that
+ * one's copy. It reloads when the data changes from outside (Claude, host code emitting `storage`).
+ */
+export function useStorage<T>(key: string, initial: T, options?: StorageOptions) {
+  const ctx = useAddon();
+  const scope = options?.scope ?? ctx.storage.scope;
+  // The active project / repository, so a switch reloads.
+  const active = useProjects((s) => {
+    const p = s.projects.find((x) => x.id === s.activeId);
+    return scope === "project" ? p?.id : scope === "repo" ? (p?.focusRepo ?? p?.path) : "";
+  });
+  const where = options?.id ?? active;
+  const [value, setValue] = useState<{ where?: string; value: T }>({ value: initial });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `initial` is only the first value.
+  const load = useCallback(async () => {
+    const v = await ctx.storage.get<T>(key, { scope, id: where });
+    setValue({ where, value: v === undefined ? initial : v });
+  }, [ctx, key, scope, where]);
+  useEffect(() => {
+    void load();
+    return ctx.on("storage", () => void load());
+  }, [ctx, load]);
+  const set = useCallback(
+    async (next: T) => {
+      setValue({ where, value: next });
+      await ctx.storage.set(key, next, { scope, id: where });
+    },
+    [ctx, key, scope, where],
+  );
+  return [value.where === where ? value.value : initial, set] as const;
 }

@@ -22,6 +22,11 @@ export const ManifestSchema = z.object({
   version: z.string().default("0.1.0"),
   icon: Icon,
   permissions: z.array(z.string().refine(isPermission, "unknown permission")).default([]),
+  /**
+   * Where the add-on's data lives (D-116): "global" (one copy), "project" (one per project) or "repo"
+   * (one per repository). `ctx.storage` / `useStorage` use it with the active project or repository.
+   */
+  storage: z.object({ scope: z.enum(["global", "project", "repo"]).default("global") }).prefault({}),
   contributes: z
     .object({
       views: z

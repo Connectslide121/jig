@@ -29,6 +29,7 @@ the same `id` as a built-in add-on replaces it.
   "version": "1.0.0",
   "icon": "rocket",
   "permissions": ["exec:az", "net"],
+  "storage": { "scope": "project" },   // where its data lives: global (default) | project | repo
   "contributes": { "views": [ … ], "actions": [ … ], "watchers": [ … ] }   // docs/reference/slots.md
 }
 ```
@@ -47,6 +48,20 @@ design-token warnings (the builder must fix them; the add-on still loads).
 - Every component gets `ctx: AddonUiContext` as a prop (also `useAddon()`), and renders inside an
   error boundary: a crash shows "Turn off" / "Fix with AI" in its place.
 - Handlers (`actions[].run`, `menus[].run`) are exported functions `(ctx, target?) => void | Promise`.
+
+## Where the data lives (`storage.scope`, D-116)
+
+An add-on declares whether its data is **global** (one copy, the default), **per project** or **per
+repository** (the active project's default repository, else its folder):
+- `useStorage(key, initial)` from `@jig/sdk/ui` → `[value, set]`, following the active project or
+  repository (switching shows that one's copy) and reloading when the data changes from outside.
+- `ctx.storage.get/set(key, value, { scope?, id? })` uses the declared scope and the active
+  project/repository unless told otherwise (`{ scope: "global" }` for an exception, `id` for another
+  project or repository). `ctx.storage.scope` and `ctx.storage.scopeId()` say which.
+- Host code doesn't know the active project: `api.storage.get/set` read the global part unless given
+  `{ scope, id }` (a tool's args carry `chat.projectId`).
+- It is one JSON file per add-on; scoped keys are stored as `@project(<id>) <key>` and
+  `@repo(<path>) <key>` (what Claude's `jig_get_addon_data` shows). Settings → Add-ons shows the scope.
 
 ## Icons
 
