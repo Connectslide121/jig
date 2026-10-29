@@ -110,6 +110,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     cwd: path.optional(),
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
+  "sessions.openSaved": z.object({ sessionId: z.string().regex(/^[\w-]{1,100}$/) }),
   "links.azure": z.object({
     group: z
       .string()

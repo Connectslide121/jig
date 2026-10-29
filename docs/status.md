@@ -78,7 +78,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     repository that changed is looked at again); on Linux by a check every few seconds. Every
     repository is fetched in the background every 5 minutes (Settings → Git), so "behind" stays
     current; it never asks for a login.
-  - **Repos** (a collapsible section at the bottom of the Git panel; its ⋯ menu moves it to its own
+  - **Open a Claude Code chat** (Chats header; D-150): your Claude Code conversations from the
+    terminal, the desktop app or an IDE, filtered by title/folder/branch; opening one brings its
+    history into a chat in No project that continues it as a copy.
+  - **Repos** (click a repository: its commits to pull and push, a commit's files and diffs; D-149)
+    (a collapsible section at the bottom of the Git panel; its ⋯ menu moves it to its own
     tab, and any view can be shown below another the same way), like the Git plugin (D-143): every
     repository by its own name, a sync chip (pull, then push) and its branch; Arrange hides,
     reorders and groups them with dividers, once for all projects; "N to push/pull" in the status
@@ -549,6 +553,10 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   npm test in the active project". Check that the builder reads the catalog, prefers changing an
   existing add-on when you name one, passes validation, that the preview works, and Accept/Discard.
   Open the Builder chat to see what it did.
+- **Open a Claude Code chat** (tested with the fake engine only): check that your real Claude Code
+  chats are listed (the desktop app's Code tab and terminal ones), that the history reads right
+  (long chats with subagents and tools), and that sending a message continues it while the original
+  stays as it was in the desktop app.
 - **Pipelines with your Azure DevOps** (tested with a fake `az` only): check that your repositories'
   pipelines show with their newest run and stages, that the Run form's branch list and parameter
   pickers match the YAML, that Queue run starts the run you picked (try a harmless pipeline or

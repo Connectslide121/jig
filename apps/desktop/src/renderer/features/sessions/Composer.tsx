@@ -8,6 +8,7 @@ import {
   FolderPlus,
   History,
   ListChecks,
+  MessageSquareShare,
   Paperclip,
   Plug,
   Plus,
@@ -44,6 +45,7 @@ import { historyStep, inputMode, nextPermissionMode, replaceToken, tokenAt } fro
 import { registerComposer, takeDraft } from "./drafts";
 import { exportChat, modelLabel, modelMenu, openModelMenu, permissionMenu } from "./menus";
 import { usePrompts } from "./prompts";
+import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
 
@@ -358,6 +360,7 @@ export function Composer({
     { label: "Folders for this chat…", icon: FolderPlus, onSelect: () => openFoldersDialog(meta.id) },
     { label: "Export as Markdown…", icon: Download, onSelect: () => void exportChat(meta) },
     { label: "New chat", icon: SquarePlus, onSelect: () => void newSession(meta.projectId, meta.cwd) },
+    { label: "Open a Claude Code chat…", icon: MessageSquareShare, onSelect: openSavedChatsDialog },
   ];
   const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text ? [i.text] : []));
 

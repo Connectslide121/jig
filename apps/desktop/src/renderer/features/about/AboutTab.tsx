@@ -587,6 +587,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
                 "Restore files to before any of your messages, and fork a chat to try another approach",
+                "Open a chat you had in Claude Code (terminal, desktop app, IDE) and continue it here as a copy",
                 "/ for Claude Code's commands and skills, @ for files, ! for shell commands, # to remember in CLAUDE.md",
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
@@ -809,6 +810,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
                 "An optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
+                "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Pipelines of your repositories: the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
                 "Notes for the chat you're in: what it waits on, where its work is, steps left, decisions — you and Claude write them, Claude reads them before it works",
               ]}

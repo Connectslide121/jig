@@ -262,6 +262,18 @@ export function startSessions(): void {
   handle("sessions.archive", ({ id, archived }) => m.setArchived(id, archived));
   handle("sessions.stop", ({ id }) => m.stopProcess(id));
   handle("sessions.fork", ({ id }) => m.fork(id));
+  handle("sessions.saved", () => m.savedSessions());
+  handle("sessions.openSaved", async ({ sessionId }) => {
+    // The folder and title come from Claude Code's own list, not from the caller.
+    const saved = (await m.savedSessions()).find((s) => s.sessionId === sessionId);
+    if (!saved) throw new JigError("not_found", "Claude Code has no saved chat with that id");
+    const { engine } = getConfig();
+    return m.openSaved({
+      saved,
+      model: engine.defaultModel,
+      permissionMode: engine.defaultPermissionMode as PermissionMode,
+    });
+  });
   handle("sessions.rewindFiles", ({ id, itemId, dryRun }) => m.rewindFiles(id, itemId, dryRun));
   handle("sessions.delete", ({ id }) => m.delete(id));
 

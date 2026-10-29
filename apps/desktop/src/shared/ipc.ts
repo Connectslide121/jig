@@ -25,6 +25,7 @@ import type {
   PermissionDecision,
   PermissionMode,
   RewindResult,
+  SavedClaudeSession,
   SessionMeta,
   SessionSnapshot,
   SlashCommandInfo,
@@ -259,6 +260,10 @@ export interface HostMethods {
   "sessions.stop": { args: { id: string }; result: void };
   /** A new chat that continues this one as a branch (Claude Code's fork). */
   "sessions.fork": { args: { id: string }; result: SessionMeta };
+  /** Conversations Claude Code saved on this machine (D-150). */
+  "sessions.saved": { args: void; result: SavedClaudeSession[] };
+  /** Opens one as a chat in No project (a branch of it; the original stays as it was). */
+  "sessions.openSaved": { args: { sessionId: string }; result: SessionMeta };
   /** Restores files Claude changed since a user message (file checkpoints); `dryRun` only reports. */
   "sessions.rewindFiles": { args: { id: string; itemId: string; dryRun: boolean }; result: RewindResult };
   "sessions.delete": { args: { id: string }; result: void };

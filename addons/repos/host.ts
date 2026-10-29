@@ -1,6 +1,17 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { AddonHostApi, AddonWorkspace } from "@jig/sdk";
+import {
+  type CommitFile,
+  diffTree,
+  hunks,
+  LOG_FORMAT,
+  parseFiles,
+  parseLog,
+  type RepoCommit,
+} from "./lib/commits";
+
+export type { CommitFile, RepoCommit };
 
 export interface RepoState {
   /** The workspace (added folder) the repository is in. */
@@ -168,4 +179,48 @@ export async function openInCode({ path }: { path: string }, api: AddonHostApi) 
       "VS Code's `code` command was not found. In VS Code: Command Palette → \"Shell Command: Install 'code' command in PATH\".",
     );
   if (r.code !== 0) throw new Error(r.stderr.trim() || "VS Code could not be opened");
+}
+
+/**
+ * A repository's commits for its row (D-149): the ones to pull first (on the upstream, not here), then
+ * the branch's latest `limit`, each marked to push (not on the upstream, or on no remote) or pushed.
+ */
+export async function commits(
+  { path, limit = 15 }: { path: string; limit?: number },
+  api: AddonHostApi,
+): Promise<RepoCommit[]> {
+  const run = (args: string[]) => git(api, path, args).catch(() => "");
+  const upstream = (await run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])).trim();
+  const exclude = upstream ? ["--not", "@{u}"] : ["--not", "--remotes"];
+  const [log, local, incoming] = await Promise.all([
+    run(["log", "-n", String(Math.min(limit, 500)), LOG_FORMAT, "HEAD"]),
+    run(["rev-list", "-n", "1000", "HEAD", ...exclude]),
+    upstream ? run(["log", "-n", "50", LOG_FORMAT, "HEAD..@{u}"]) : Promise.resolve(""),
+  ]);
+  const unpushed = new Set(local.split(/\s+/).filter(Boolean));
+  return [
+    ...parseLog(incoming, () => "incoming"),
+    ...parseLog(log, (hash) => (unpushed.has(hash) ? "local" : "pushed")),
+  ];
+}
+
+/** The files a commit changed, with lines added and removed. */
+export async function commitFiles(
+  { path, hash }: { path: string; hash: string },
+  api: AddonHostApi,
+): Promise<CommitFile[]> {
+  const [names, counts] = await Promise.all([
+    git(api, path, [...diffTree(hash), "--name-status"]),
+    git(api, path, [...diffTree(hash), "--numstat"]),
+  ]);
+  return parseFiles(names, counts);
+}
+
+/** One file's diff in a commit, from its first hunk, long ones cut at a whole hunk. */
+export async function commitDiff(
+  { path, hash, file, from }: { path: string; hash: string; file: string; from?: string },
+  api: AddonHostApi,
+): Promise<{ text: string; cut: boolean }> {
+  const paths = from ? [from, file] : [file];
+  return hunks(await git(api, path, [...diffTree(hash), "-p", "-U3", "--", ...paths]));
 }

@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
-import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { EngineEvent, ModelInfo, PermissionMode } from "../../shared/engine";
+import { getSessionMessages, listSessions, query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  EngineEvent,
+  ModelInfo,
+  PermissionMode,
+  SavedClaudeMessage,
+  SavedClaudeSession,
+} from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { isReadOnlyJigTool } from "./jigTools";
@@ -20,6 +26,24 @@ const log = logger("engine");
  */
 export class ClaudeEngine implements Engine {
   readonly kind = "claude" as const;
+
+  /** Claude Code's saved conversations through the Agent SDK (it reads its own transcripts). */
+  async savedSessions({ limit }: { limit: number }): Promise<SavedClaudeSession[]> {
+    const sessions = await listSessions({ limit });
+    return sessions.map((s) => ({
+      sessionId: s.sessionId,
+      title: (s.customTitle || s.summary || s.firstPrompt || "Untitled").trim(),
+      cwd: s.cwd,
+      gitBranch: s.gitBranch,
+      lastModified: s.lastModified,
+      createdAt: s.createdAt,
+      fileSize: s.fileSize,
+    }));
+  }
+
+  async savedMessages(sessionId: string, cwd?: string): Promise<SavedClaudeMessage[]> {
+    return (await getSessionMessages(sessionId, cwd ? { dir: cwd } : {})) as SavedClaudeMessage[];
+  }
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     const input = new AsyncQueue<SDKUserMessage>();

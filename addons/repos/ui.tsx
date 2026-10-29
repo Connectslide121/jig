@@ -18,6 +18,8 @@ import {
 } from "@jig/sdk/ui";
 import {
   Check,
+  ChevronDown,
+  ChevronRight,
   CloudDownload,
   FolderGit2,
   GitBranch,
@@ -27,6 +29,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Commits } from "./Commits";
 import type { RepoState } from "./host";
 import { repoStatus, shortNames } from "./lib/names";
 
@@ -87,7 +90,21 @@ async function act(ctx: AddonUiContext, label: string, method: string, path: str
   await refresh(ctx);
 }
 
-function RepoRow({ repo, name, project }: { repo: RepoState; name: string; project?: AddonProject }) {
+function RepoRow({
+  repo,
+  name,
+  project,
+  expanded,
+  onExpand,
+  arranging,
+}: {
+  repo: RepoState;
+  name: string;
+  project?: AddonProject;
+  expanded: boolean;
+  onExpand: (open: boolean) => void;
+  arranging: boolean;
+}) {
   const ctx = useAddon();
   const [syncing, setSyncing] = useState(false);
   // Work in this repository: the project it belongs to (the active one when its folder holds it)
@@ -124,6 +141,11 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
   const menu = (at: MouseEvent | HTMLElement) =>
     ctx.menu(
       [
+        {
+          label: expanded ? "Hide commits" : "Show commits",
+          icon: "git-commit-horizontal",
+          onSelect: () => onExpand(!expanded),
+        },
         { label: "Open in Git", icon: "git-branch", onSelect: () => void open() },
         { label: "Sync (pull, then push)", icon: "refresh-cw", onSelect: () => void sync() },
         {
@@ -159,15 +181,33 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
         e.preventDefault();
         menu(e.nativeEvent);
       }}
-      className="group flex flex-col rounded-md px-2 hover:bg-hover"
+      className={cn("group flex flex-col rounded-md px-2", expanded ? "bg-hover" : "hover:bg-hover")}
     >
       <div className="flex h-7 items-center gap-2 text-sm">
-        <span className={cn("size-2 shrink-0 rounded-full", DOT[status.tone])} title={status.label} />
+        <span className="relative flex size-3 shrink-0 items-center justify-center">
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              DOT[status.tone],
+              !arranging && "group-hover:invisible",
+              expanded && "invisible",
+            )}
+            title={status.label}
+          />
+          {!arranging &&
+            (expanded ? (
+              <ChevronDown className="absolute size-3.5 text-muted" />
+            ) : (
+              <ChevronRight className="invisible absolute size-3.5 text-muted group-hover:visible" />
+            ))}
+        </span>
         <button
           type="button"
           className="min-w-0 flex-1 truncate text-left font-medium"
-          title={`${repo.path}\n${status.label} · ${ago(repo.lastFetch)}`}
-          onClick={() => void open()}
+          title={`${repo.path}\n${status.label} · ${ago(repo.lastFetch)}\nClick to show its commits`}
+          onClick={() => !arranging && onExpand(!expanded)}
+          aria-expanded={expanded}
+          data-testid={`repo-toggle-${name}`}
         >
           {name}
         </button>
@@ -215,6 +255,7 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
         />
       </div>
       {repo.error && <div className="truncate pb-1 pl-4 text-xs text-danger">{repo.error}</div>}
+      {expanded && !arranging && !repo.error && <Commits ctx={ctx} repo={repo} />}
     </div>
   );
 }
@@ -237,6 +278,8 @@ export function ReposView({ ctx }: AddonComponentProps) {
   const [busy, setBusy] = useState(false);
   const [arranging, setArranging] = useState(false);
   const [arrangement, setArrangement] = useStorage<Arrangement>("arrangement", EMPTY_ARRANGEMENT);
+  // The repository whose commits show under its row (one at a time, like the plugin).
+  const [expanded, setExpanded] = useState<string>();
   const active = projects.find((p) => p.id === ctx.projects.active()?.id);
   // The project a repository belongs to: the active one if its folder holds it, else the first one.
   const ownerOf = (r: RepoState) => {
@@ -310,7 +353,16 @@ export function ReposView({ ctx }: AddonComponentProps) {
           onChange={(next) => void setArrangement(next)}
           arranging={arranging}
           testId="repos-list"
-          renderItem={(r) => <RepoRow repo={r} name={names.get(r.path) ?? r.name} project={ownerOf(r)} />}
+          renderItem={(r) => (
+            <RepoRow
+              repo={r}
+              name={names.get(r.path) ?? r.name}
+              project={ownerOf(r)}
+              expanded={expanded === r.path}
+              onExpand={(open) => setExpanded(open ? r.path : undefined)}
+              arranging={arranging}
+            />
+          )}
         />
       </div>
     </div>

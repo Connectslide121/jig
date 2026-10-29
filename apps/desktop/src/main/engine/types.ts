@@ -8,6 +8,8 @@ import type {
   PermissionMode,
   PermissionRequest,
   RewindResult,
+  SavedClaudeMessage,
+  SavedClaudeSession,
   SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
@@ -122,6 +124,10 @@ export interface Engine {
   /** Available models from a no-prompt Claude Code control request. */
   models(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<ModelInfo[]>;
   planUsage(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<RawUsage>;
+  /** The conversations Claude Code saved on this machine, newest first (D-150). */
+  savedSessions(options: { limit: number }): Promise<SavedClaudeSession[]>;
+  /** A saved conversation's messages in order (Claude Code reads its own transcript). */
+  savedMessages(sessionId: string, cwd?: string): Promise<SavedClaudeMessage[]>;
 }
 
 /** Copies the environment, removing API-key variables unless the user allowed them (D-002). */

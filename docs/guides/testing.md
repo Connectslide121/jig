@@ -31,7 +31,10 @@ On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 ## The fake engine
 
 `JIG_ENGINE=fake` (always on in e2e tests) replaces Claude Code with a script
-(`apps/desktop/src/main/engine/fake.ts`). What it does depends on the message. The first match wins,
+(`apps/desktop/src/main/engine/fake.ts`). Its saved Claude Code chats (Open a Claude Code chat…,
+D-150) are two scripted ones: "Fix the cart total" (`saved-1`, with a transcript: a reminder,
+your message, a reply with an Edit, a subagent's message, the result, a last reply) and "Plan the
+checkout", in `JIG_FAKE_SAVED_CWD` (your home folder by default). What it does depends on the message. The first match wins,
 in this order:
 
 | Message | What happens |

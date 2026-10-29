@@ -40,3 +40,5 @@
 - [x] Notes as a built-in add-on: per-chat notes you and Claude write (D-147)
 - [x] Pipelines like the pipelines plugin: your repositories' pipelines, newest run and stages, a Run
       form with the branch and the YAML's parameters (D-148)
+- [x] Repos: a repository's commits under its row, with files and diffs (D-149)
+- [x] Open a Claude Code chat: saved Claude Code conversations as chats in No project (D-150)

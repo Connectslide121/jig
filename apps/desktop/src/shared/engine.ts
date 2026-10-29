@@ -89,6 +89,34 @@ export interface ContextUsage {
   at: string;
 }
 
+/**
+ * A conversation Claude Code saved on this machine (its CLI, the Claude desktop app's Code tab, an IDE),
+ * which Jig can open as a chat (D-150).
+ */
+export interface SavedClaudeSession {
+  sessionId: string;
+  /** Its /rename title, Claude Code's summary or the first prompt. */
+  title: string;
+  /** The folder it ran in. */
+  cwd?: string;
+  gitBranch?: string;
+  /** ms since the epoch. */
+  lastModified: number;
+  createdAt?: number;
+  fileSize?: number;
+  /** The Jig chat it was opened as, when it was. */
+  chatId?: string;
+}
+
+/** One message of a saved conversation, as Claude Code's transcript has it. */
+export interface SavedClaudeMessage {
+  type: "user" | "assistant" | "system";
+  uuid: string;
+  message: unknown;
+  /** Set for a subagent's message. */
+  parent_tool_use_id: string | null;
+}
+
 export interface SessionMeta {
   id: string;
   /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */
@@ -137,6 +165,8 @@ export interface SessionMeta {
   resumeAt?: string;
   /** Rewound to before the first message: the next message starts a new conversation. */
   resetPending?: boolean;
+  /** Opened from a conversation Claude Code saved (its session id; D-150). */
+  importedFrom?: string;
 }
 
 /** What restoring files to before a message changes (Claude Code's file checkpoints). */

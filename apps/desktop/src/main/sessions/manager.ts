@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readdir, rm } from "node:fs/promises";
+import { readdir, rm, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { type ChatState, reduceEvent } from "../../shared/chat";
@@ -16,6 +17,7 @@ import type {
   PermissionRequest,
   QueuedMessage,
   RewindResult,
+  SavedClaudeSession,
   SessionMeta,
   SessionSnapshot,
   SlashCommandInfo,
@@ -31,6 +33,7 @@ import {
   removeAttachments,
   saveToolImages,
 } from "./attachments";
+import { savedChatItems } from "./savedChat";
 
 const log = logger("sessions");
 
@@ -510,6 +513,69 @@ export class SessionManager {
       context: source.meta.context,
     });
     this.scheduleSave(live, true);
+    return live.state.meta;
+  }
+
+  /**
+   * The conversations Claude Code saved on this machine (D-150), newest first; one already in Jig (as
+   * a chat Jig ran, or opened before) says which chat.
+   */
+  async savedSessions(limit = 300): Promise<SavedClaudeSession[]> {
+    await this.load();
+    const chats = new Map<string, string>();
+    for (const { state } of this.sessions.values()) {
+      if (state.meta.engineSessionId) chats.set(state.meta.engineSessionId, state.meta.id);
+      if (state.meta.importedFrom) chats.set(state.meta.importedFrom, state.meta.id);
+    }
+    return (await this.options.engine.savedSessions({ limit })).map((s) =>
+      chats.has(s.sessionId) ? { ...s, chatId: chats.get(s.sessionId) } : s,
+    );
+  }
+
+  /**
+   * A chat from a conversation Claude Code saved (D-150), in No project: its history, and its first
+   * message continues it as a branch (Claude Code's fork), so the original is left as it was. One
+   * opened before is returned as it is.
+   */
+  async openSaved(input: {
+    saved: SavedClaudeSession;
+    model: string;
+    permissionMode: PermissionMode;
+  }): Promise<SessionMeta> {
+    const { saved } = input;
+    const known = (await this.savedSessions()).find((s) => s.sessionId === saved.sessionId)?.chatId;
+    if (known && this.sessions.has(known)) return (await this.live(known)).state.meta;
+    const messages = await this.options.engine.savedMessages(saved.sessionId, saved.cwd);
+    if (messages.length === 0)
+      throw new JigError("not_found", "Claude Code has no messages saved for that chat");
+    const cwd =
+      saved.cwd && (await stat(saved.cwd).catch(() => undefined))?.isDirectory() ? saved.cwd : homedir();
+    const meta = await this.create({
+      cwd,
+      title: summarize(saved.title) || "Claude Code chat",
+      model: input.model,
+      permissionMode: input.permissionMode,
+    });
+    const live = await this.live(meta.id);
+    const at = new Date(saved.lastModified || Date.now()).toISOString();
+    live.state.items = savedChatItems(messages, meta, at);
+    live.state.items.push({
+      kind: "notice",
+      id: `opened-${Date.now()}`,
+      at: new Date().toISOString(),
+      tone: "info",
+      text:
+        cwd === saved.cwd
+          ? "Opened from Claude Code. What you send here continues it as a copy; the original chat stays as it was."
+          : `Opened from Claude Code. Its folder (${saved.cwd ?? "unknown"}) isn't there any more, so this chat works in your home folder.`,
+    });
+    this.setMeta(live, {
+      engineSessionId: saved.sessionId,
+      forkPending: true,
+      importedFrom: saved.sessionId,
+      turns: live.state.items.filter((i) => i.kind === "user").length,
+    });
+    await this.scheduleSave(live, true);
     return live.state.meta;
   }
 

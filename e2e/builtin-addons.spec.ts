@@ -104,6 +104,22 @@ test("Repos overview lists repositories with their state", async ({ page, jigHom
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("repo-sync-shop")).toContainText("2", { timeout: 15000 });
   await expect(page.getByTestId("repo-shop")).toContainText("main");
+  // Its commits under the row, like the Git plugin: no remote here, so both are still to push.
+  await page.getByTestId("repo-toggle-shop").click();
+  const row = page.getByTestId("repo-shop");
+  await expect(row).toContainText("main · no upstream");
+  await expect(row).toContainText("Fix total");
+  await expect(row).toContainText("Add cart");
+  const fix = row.locator('[data-testid^="repo-commit-"]', { hasText: "Fix total" }).first();
+  await expect(fix).toContainText("↑");
+  // A commit's files with their counts, a file's diff.
+  await fix.getByText("Fix total").click();
+  await expect(fix.getByTestId("repo-commit-file-cart.ts")).toContainText("+1");
+  await fix.getByTestId("repo-commit-file-cart.ts").click();
+  await expect(fix.getByTestId("repo-commit-diff")).toContainText("+  return a + b + 1;");
+  // Clicking the name again closes it.
+  await page.getByTestId("repo-toggle-shop").click();
+  await expect(row).not.toContainText("Fix total");
 });
 
 test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {

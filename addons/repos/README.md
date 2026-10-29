@@ -5,15 +5,20 @@ git repository in the folders you added (a folder that is a repository, and the 
 folder), one row each:
 
 - **Its name** (the folder's own name; a parent folder is added only when two would read the same,
-  `lib/names.ts`; the full path and the last fetch are in its tooltip). Click it: it becomes the
-  active project (for a workspace repository: the workspace, with that repository focused) and its
-  Git view opens.
+  `lib/names.ts`; the full path and the last fetch are in its tooltip). Click it to show its
+  **commits** under the row, like the Git plugin (D-149): its branch → upstream and what's to push
+  or pull, then the commits to pull (↓, blue), the branch's latest marked to push (↑, amber) or
+  pushed (●), with their branches and tags, author and age; **Show more** adds 25. Click a commit for
+  its files (status, +added −removed), a file for its diff (long ones cut at a whole hunk). One
+  repository open at a time; it reads again when the branch moves. Host `commits`, `commitFiles`,
+  `commitDiff`; parsers in `lib/commits.ts`.
 - **A status dot** (green up to date, amber changes, accent to pull or push, red when it can't be
   read) and **pills only when there is something to do**: `↓2 ↑1` and ✎ with the number of changed
   files. Press them to sync: pull when there is something to pull, then push (also a new branch
   without an upstream). Host `sync`. A clean repository shows no pill, so a long list stays calm.
 - **Its branch**, with a branch icon (dimmed without an upstream).
-- ⋯ / right-click: Open in Git, Sync, Fetch, Pull, Push, New chat in this repository, Open in
+- ⋯ / right-click: Show commits, Open in Git (the repository becomes the active project and its
+  Git view opens), Sync, Fetch, Pull, Push, New chat in this repository, Open in
   Explorer, and other add-ons' repository menus.
 
 **Arrange** (header): hide repositories, drag them into your order, add dividers (a titled one groups

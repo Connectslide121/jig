@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import type {
   BackgroundTask,
@@ -7,6 +8,8 @@ import type {
   EngineEvent,
   McpServerInfo,
   PermissionMode,
+  SavedClaudeMessage,
+  SavedClaudeSession,
   SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
@@ -73,6 +76,9 @@ const FAKE_MODELS = [
  * no quota. What it does depends on words in your message; the full list is in
  * docs/guides/testing.md → The fake engine (keep it in step with the branches in `runTurn`).
  */
+/** The fake saved conversation with a transcript (e2e opens it). */
+export const FAKE_SAVED_ID = "saved-1";
+
 export class FakeEngine implements Engine {
   readonly kind = "fake" as const;
   constructor(private readonly delayMs = Number(process.env.JIG_FAKE_DELAY ?? 15)) {}
@@ -801,6 +807,63 @@ export class FakeEngine implements Engine {
    */
   async models() {
     return FAKE_MODELS;
+  }
+
+  /** Two scripted saved conversations (`JIG_FAKE_SAVED_CWD` is their folder; the home folder by default). */
+  async savedSessions(): Promise<SavedClaudeSession[]> {
+    const cwd = process.env.JIG_FAKE_SAVED_CWD ?? homedir();
+    const at = Date.now();
+    return [
+      {
+        sessionId: FAKE_SAVED_ID,
+        title: "Fix the cart total",
+        cwd,
+        gitBranch: "main",
+        lastModified: at - 3_600_000,
+        fileSize: 48_000,
+      },
+      {
+        sessionId: "saved-2",
+        title: "Plan the checkout",
+        cwd,
+        lastModified: at - 3 * 86_400_000,
+        fileSize: 9_000,
+      },
+    ];
+  }
+
+  async savedMessages(sessionId: string): Promise<SavedClaudeMessage[]> {
+    if (sessionId !== FAKE_SAVED_ID)
+      return [
+        {
+          type: "user",
+          uuid: "p1",
+          parent_tool_use_id: null,
+          message: { role: "user", content: "Plan the checkout" },
+        },
+      ];
+    const msg = (
+      type: SavedClaudeMessage["type"],
+      uuid: string,
+      content: unknown,
+      parent: string | null = null,
+    ) => ({
+      type,
+      uuid,
+      parent_tool_use_id: parent,
+      message: { id: `m-${uuid}`, role: type, content },
+    });
+    return [
+      msg("user", "u1", "<system-reminder>Context Claude Code adds.</system-reminder>"),
+      msg("user", "u2", [{ type: "text", text: "The cart total is off by one, fix it" }]),
+      msg("assistant", "a1", [
+        { type: "text", text: "I'll fix the total in cart.ts." },
+        { type: "tool_use", id: "t1", name: "Edit", input: { file_path: "cart.ts" } },
+      ]),
+      msg("assistant", "s1", [{ type: "text", text: "A subagent's note" }], "t1"),
+      msg("user", "u3", [{ type: "tool_result", tool_use_id: "t1", content: "Edited cart.ts" }]),
+      msg("assistant", "a2", [{ type: "text", text: "Fixed: the total no longer adds one." }]),
+    ];
   }
 
   async planUsage(): Promise<RawUsage> {

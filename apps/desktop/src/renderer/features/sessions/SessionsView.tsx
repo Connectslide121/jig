@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   MessageSquarePlus,
+  MessageSquareShare,
   MoreHorizontal,
   Pin,
   PinOff,
@@ -17,6 +18,7 @@ import { useWorkbench, workbench } from "../../workbench/store";
 import { projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
 import { sessionMenu } from "./menus";
+import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { useSessions } from "./store";
 
@@ -209,13 +211,22 @@ export function SessionsView() {
 export function SessionsHeaderActions() {
   const activeId = useProjects((s) => s.activeId);
   return (
-    <IconButton
-      icon={MessageSquarePlus}
-      label={`New chat (${formatShortcut("Mod+N")})`}
-      size="sm"
-      data-testid="new-session"
-      disabled={!activeId}
-      onClick={() => activeId && void newSession(activeId)}
-    />
+    <>
+      <IconButton
+        icon={MessageSquareShare}
+        label="Open a Claude Code chat…"
+        size="sm"
+        data-testid="open-saved-chat"
+        onClick={openSavedChatsDialog}
+      />
+      <IconButton
+        icon={MessageSquarePlus}
+        label={`New chat (${formatShortcut("Mod+N")})`}
+        size="sm"
+        data-testid="new-session"
+        disabled={!activeId}
+        onClick={() => activeId && void newSession(activeId)}
+      />
+    </>
   );
 }

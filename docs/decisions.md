@@ -1451,3 +1451,30 @@ etc") and Claude, on my own (how) · **Date:** 2026-10-30
   branch with the defaults).
 - The add-on now also asks for `exec:git` and `fs:read` (the remote, the branches, the YAML).
 
+### D-149 — Repos shows a repository's commits under its row, like the Git plugin
+**Decided by:** Jon ("the git panel should show the commits somewhere, maybe in the repos panel") and
+Claude, on my own (how) · **Date:** 2026-10-30
+
+- Clicking a repository's name in Repos opens its commits under the row (it used to open the Git
+  view; that is now in its ⋯ menu): the commits to pull, then the branch's latest, each marked to
+  push or pushed, a commit's files and a file's diff, all inline, one repository at a time.
+- Built in the Repos add-on, not by opening the Git add-on's history tab: that tab belongs to a
+  project, and Repos lists repositories that may not be one.
+
+### D-150 — Open a Claude Code chat in Jig
+**Decided by:** Jon ("can we bring our claude code sessions to jig… I'm only interested in a few";
+"the imported chat should go to no project") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **Chats → Open a Claude Code chat…** lists the conversations Claude Code saved on this computer
+  (its terminal, the Claude desktop app's Code tab, an IDE), newest first, with folder, branch, age
+  and size, and a filter. Ones already in Jig say **In Jig** and open that chat.
+- **Through Claude Code, not its files:** the Agent SDK's `listSessions` and `getSessionMessages`
+  read Claude Code's own transcripts (the engine's `savedSessions` / `savedMessages`); the fake
+  engine has two scripted ones.
+- **Opening one** makes a chat in **No project** (Jon drags it to a project) in the conversation's
+  folder, with its history rebuilt through the live chat's normalizer and reducer: what you typed,
+  Claude's replies and thinking, tool calls with results; subagents' inner messages and what Claude
+  Code adds to user messages (reminders, command wrappers) are left out.
+- **As a copy:** its first message resumes the conversation as a branch (Claude Code's fork, like
+  Jig's own Fork), so the original in the desktop app or terminal is never written to by both.
+- The renderer only names a session id; the folder and title come from Claude Code's list.
