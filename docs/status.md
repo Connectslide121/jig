@@ -84,7 +84,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     Explorer.
   - **Pipelines** (right sidebar): Azure DevOps through your `az` login, every organisation you
     belong to with all its projects by default (D-125); narrow it in Settings → Pipelines; run on a branch, open in the browser, notifications when your runs finish.
-  - **Scripts** (right sidebar): every script of every project; Tools → Run a script… (`Ctrl+Shift+R`).
+  - **Scripts** (right sidebar): every script of every project (git worktrees inside a folder are
+    left out, D-127); Tools → Run a script… (`Ctrl+Shift+R`).
 
 - **Phase 8 (done): builder, levels 1 and 2.**
   - Tools → **Build something…** (`Ctrl+Shift+B`), **Change this with AI…** in an add-on view's `⋯`
@@ -441,8 +442,8 @@ epos` as the
       deletion.
     - Files view on `E:
 epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
-    - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them come from git worktrees
-      of one repository (whether to list worktrees is an open question for Jon).
+    - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them came from git worktrees
+      of one repository, which Scripts now leaves out (D-127).
     - Check your setup: Claude Code (bundled), git, gh, az + azure-devops, VS Code `code` all found.
     - Themes: Jig's 2, VS Code's built-in ones and the extensions' (25); file icons follow VS Code's
       Material Icon Theme.

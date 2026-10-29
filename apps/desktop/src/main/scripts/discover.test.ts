@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { discoverScripts } from "./discover";
+import { discoverScripts, isWorktreeGitFile } from "./discover";
 
 async function file(path: string, content = "") {
   await mkdir(join(path, ".."), { recursive: true });
@@ -72,5 +72,25 @@ describe("discoverScripts", () => {
     expect(await discoverScripts(ws, "linux")).toEqual([]);
     const found = await discoverScripts(ws, "linux", [repo]);
     expect(found.map((s) => `${s.folder}:${s.name}`)).toEqual(["client-a/api/tools/seed:seed"]);
+  });
+});
+
+describe("git worktrees", () => {
+  it("tells a worktree's .git file from a submodule's", () => {
+    expect(isWorktreeGitFile("gitdir: E:/repos/shop/.git/worktrees/C1\n")).toBe(true);
+    expect(isWorktreeGitFile(String.raw`gitdir: E:\repos\shop\.git\worktrees\C1`)).toBe(true);
+    expect(isWorktreeGitFile("gitdir: ../.git/modules/lib\n")).toBe(false);
+    expect(isWorktreeGitFile("")).toBe(false);
+  });
+
+  it("leaves out worktrees inside a folder, but not a worktree that is the project itself", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jig-scripts-wt-"));
+    await file(join(root, "shop", "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    await file(join(root, "wt", "C1", "package.json"), JSON.stringify({ scripts: { dev: "vite" } }));
+    await file(join(root, "wt", "C1", ".git"), "gitdir: ../../shop/.git/worktrees/C1\n");
+    const found = await discoverScripts(root, "linux", [join(root, "shop"), join(root, "wt", "C1")]);
+    expect(found.map((s) => `${s.folder}:${s.name}`)).toEqual(["shop:dev"]);
+    const own = await discoverScripts(join(root, "wt", "C1"), "linux");
+    expect(own.map((s) => s.name)).toEqual(["dev"]);
   });
 });

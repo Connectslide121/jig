@@ -1125,7 +1125,7 @@ or keep it global) and Claude, on my own (the shape) · **Date:** 2026-10-29
   permission rules already know, for a case that needs two oddly named add-ons.
 - **Not changed (needs Jon):** an add-on tool's `readOnly` (runs without asking) is still trusted for
   every add-on, built-in or not. Honouring it only for built-in add-ons would be safer, but it
-  changes how user add-ons behave.
+  changes how user add-ons behave. Jon kept it for every add-on: D-128.
 
 ### D-118 — The code editor: complete, in the theme's own syntax colours, without language servers
 **Decided by:** Jon (the editor should be as complete as possible, with highlighting; maybe not
@@ -1262,3 +1262,22 @@ saying Jig was signed in too) and Claude, on my own (how) · **Date:** 2026-10-2
   in → a toast and the terminal closes; not → a toast with Try again.
 - **Get started shows it too** ("Signed in with your Claude subscription" / "Not signed in"), so the
   Claude Code check is only green when Jig's chats can actually run. The fake engine never asks.
+
+### D-127 — Scripts leaves out git worktrees inside a folder
+**Decided by:** Claude, on my own (Jon: "do what's best") · **Date:** 2026-10-29
+
+- On Jon's machine 2,551 of 3,088 scripts came from about 20 worktrees of one repository, each
+  repeating its scripts. Script discovery now skips a folder whose `.git` is a worktree's file
+  (`gitdir: …/worktrees/<name>`, `isWorktreeGitFile`), and workspace repositories that are worktrees.
+- **A worktree you add as a project of its own still shows its scripts** (the project's root is never
+  skipped), so nothing is out of reach. Submodules (`gitdir: …/modules/…`) are unaffected, and the
+  Git view still lists worktrees: they have changes of their own.
+
+### D-128 — Builder-made add-ons may mark their Claude tools read-only; no separate mockup attachment
+**Decided by:** Jon · **Date:** 2026-10-29
+
+- **`readOnly` stays trusted for every add-on**, built-in or yours (D-117's open point): a tool that
+  says it only reads runs without a permission prompt, also when the builder made the add-on. The
+  builder already reviews with you before an add-on is accepted.
+- **Development requests keep one attachment, the zip** (D-123): `mockup.html` isn't attached on its
+  own; it is inside the zip, and you attach that yourself.

@@ -380,3 +380,4 @@ true"). This step checks the whole picture again:
       (D-124)
 - [x] Pipelines: every Azure DevOps organisation you belong to, all projects by default (D-125)
 - [x] Sign-in: `claude auth login`, Jig confirms it and closes the terminal; Get started shows it (D-126)
+- [x] Scripts leaves out git worktrees inside a folder (D-127)

@@ -58,6 +58,19 @@ function script(
   return { id: `${kind}:${folder}:${name}`, name, kind, folder, cwd, command, detail };
 }
 
+/**
+ * A git worktree's `.git` is a file pointing into the main repository's `worktrees/` folder
+ * (`gitdir: …/.git/worktrees/C1`); a submodule's points into `modules/` instead.
+ */
+export function isWorktreeGitFile(content: string): boolean {
+  return /^gitdir:.*[\\/]worktrees[\\/][^\\/]+\s*$/m.test(content);
+}
+
+async function isWorktree(dir: string): Promise<boolean> {
+  const content = await readFile(join(dir, ".git"), "utf8").catch(() => "");
+  return isWorktreeGitFile(content);
+}
+
 async function scan(root: string, dir: string, depth: number, out: Script[], platform: string) {
   let entries: import("node:fs").Dirent[];
   try {
@@ -66,6 +79,9 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
     return;
   }
   const files = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
+  // Worktrees inside a folder repeat their repository's scripts (D-127); one you open as its own
+  // project (the root) still shows them.
+  if (dir !== root && files.has(".git") && (await isWorktree(dir))) return;
 
   if (files.has("package.json")) {
     try {
@@ -124,7 +140,8 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
 
 /**
  * Scripts of a project folder. For a workspace, `repos` are its repositories: each is searched from its
- * own root too, so scripts deep inside a repository (`client-a/api/src/functions`) are found.
+ * own root too, so scripts deep inside a repository (`client-a/api/src/functions`) are found. Git
+ * worktrees inside the folder are left out: they'd repeat their repository's scripts.
  */
 export async function discoverScripts(
   root: string,
@@ -133,7 +150,8 @@ export async function discoverScripts(
 ): Promise<Script[]> {
   const out: Script[] = [];
   await scan(root, root, 0, out, platform);
-  for (const repo of repos) await scan(root, repo, 0, out, platform);
+  for (const repo of repos)
+    if (repo === root || !(await isWorktree(repo))) await scan(root, repo, 0, out, platform);
   const unique = [...new Map(out.map((s) => [s.id, s])).values()];
   return unique.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name));
 }
