@@ -135,7 +135,6 @@ export function Topbar() {
       <button
         type="button"
         data-testid="jig-menu"
-        title="Jig"
         className={cn(
           "no-drag flex h-7 items-center gap-1.5 rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
           !mac && "ml-0.5",
@@ -169,7 +168,6 @@ export function Topbar() {
             type="button"
             key={group}
             className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
-            title={group}
             aria-haspopup="menu"
             data-testid={`tools-group-${group}`}
             onClick={(e) => openMenuAt(e.currentTarget, actionMenu(entries), false, TOPBAR_MENU)}
@@ -193,7 +191,6 @@ export function Topbar() {
         <button
           type="button"
           data-testid="topbar-new-chat"
-          title={`New chat (${formatShortcut("Mod+N")})`}
           className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
           onClick={() => runAction("jig.newSession")}
         >
