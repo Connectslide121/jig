@@ -448,6 +448,9 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
     the folder's own path over and over instead of an error, which kept Git's and Files' watchers
     busy for good. Those watches now close, and the views fall back to checking by themselves
     (`watchLost`), as they also do when a watch fails.
+  - The theme could flip back to the previous one when a theme file and the theme setting changed
+    together: two refreshes overlapped and the slower one, which had read the old setting, won. Only
+    the latest refresh applies now.
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an

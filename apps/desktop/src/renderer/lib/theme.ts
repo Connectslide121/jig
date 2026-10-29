@@ -1,5 +1,5 @@
 import { type JigTheme, jigDark, jigLight, themeCssVariables } from "@jig/themes";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { JigConfig } from "../../shared/config";
 import { useAppearance } from "../stores/appearance";
 import { loadFileIcons } from "../stores/fileIcons";
@@ -25,7 +25,11 @@ const systemDark = () => window.matchMedia("(prefers-color-scheme: dark)").match
  * Mounted once at the root of the app.
  */
 export function useThemeController(): void {
+  // Refreshes overlap (a theme file and the setting change together); only the latest one applies,
+  // so a slower one that read the old setting can't put the old theme back.
+  const latest = useRef(0);
   const refresh = async (config?: JigConfig) => {
+    const run = ++latest.current;
     const settings = config ?? (await call("config.get"));
     const id = activeThemeId(settings.appearance, systemDark());
     let theme: JigTheme;
@@ -36,6 +40,7 @@ export function useThemeController(): void {
       themeError = errorMessage(error);
       theme = systemDark() ? jigDark : jigLight;
     }
+    if (run !== latest.current) return;
     applyTheme(theme, settings.appearance);
     useAppearance.setState({ theme, themeError });
     await setHighlightTheme(theme).catch(() => {});
