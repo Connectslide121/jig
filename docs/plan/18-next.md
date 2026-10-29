@@ -240,7 +240,7 @@ what already works** where there is one, and then **keeps the discipline**, proa
 - **Detection first, without AI:** version files, tag patterns, a `CHANGELOG.md`, conventional
   commits, and tools such as GitVersion, Nerdbank.GitVersioning, semantic-release, release-please or
   versioning steps in pipelines.
-- **A setup chat** ("Set up versioning for podium"). Claude gets what detection found and looks at
+- **A setup chat** ("Set up versioning for shop"). Claude gets what detection found and looks at
   the repository (stack, how it's deployed, pipelines, history), then asks only what it can't work
   out.
   - **Versioning already in place → adopt it.** The policy describes what the team already does (its

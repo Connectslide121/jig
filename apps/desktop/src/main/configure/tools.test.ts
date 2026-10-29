@@ -205,8 +205,8 @@ describe("configure tools", () => {
       permissionMode: "plan",
       starters: ["Plan the next ticket"],
     });
-    await call("jig_create_project", { name: "Podium", path: "/repos/podium", model: "opus" });
-    expect(get().projects.projects.map((p) => p.name)).toEqual(["shop", "Podium"]);
+    await call("jig_create_project", { name: "Shop", path: "/repos/shop", model: "opus" });
+    expect(get().projects.projects.map((p) => p.name)).toEqual(["shop", "Shop"]);
     await call("jig_move_chat", { chatId: "s2", projectId: "p2", pinned: true });
     expect(get().chats.find((c) => c.id === "s2")).toMatchObject({ projectId: "p2", pinned: true });
 

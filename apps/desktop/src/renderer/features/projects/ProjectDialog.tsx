@@ -130,7 +130,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Podium"
+            placeholder="My project"
             data-testid="project-name"
           />
         </Field>

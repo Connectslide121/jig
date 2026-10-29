@@ -50,11 +50,11 @@ describe("parseStatus / folderChanged", () => {
 
 describe("visibleRoots / toggleRoot", () => {
   it("follows the chosen folder, with the ones shown next to it", () => {
-    const known = ["/r", "/r/podium", "/r/elearning"];
+    const known = ["/r", "/r/shop", "/r/elearning"];
     expect(visibleRoots({ extras: {} }, "/r", known)).toEqual(["/r"]);
-    const roots = toggleRoot({ main: "/r/podium", extras: {} }, "/r/podium", "/r/elearning");
-    expect(visibleRoots(roots, "/r", known)).toEqual(["/r/podium", "/r/elearning"]);
-    expect(toggleRoot(roots, "/r/podium", "/r/elearning").extras).toEqual({});
+    const roots = toggleRoot({ main: "/r/shop", extras: {} }, "/r/shop", "/r/elearning");
+    expect(visibleRoots(roots, "/r", known)).toEqual(["/r/shop", "/r/elearning"]);
+    expect(toggleRoot(roots, "/r/shop", "/r/elearning").extras).toEqual({});
     // A folder that's gone falls back to the project's default.
     expect(visibleRoots({ main: "/gone", extras: {} }, "/r", known)).toEqual(["/r"]);
   });

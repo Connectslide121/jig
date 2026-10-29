@@ -1,7 +1,7 @@
 /**
  * Which repositories of a workspace the Git view lists (pure, tested). By default only the focus
  * repository, the one you work in, plus the ones you chose to show next to it (per project and per
- * focus repository, so "podium + elearning" while you integrate them, and podium alone again after).
+ * focus repository, so "shop + elearning" while you integrate them, and shop alone again after).
  * "All repositories" lists every one.
  */
 export interface Shown {

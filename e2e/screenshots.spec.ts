@@ -23,7 +23,7 @@ const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd 
 async function repo(dir: string, files: Record<string, string>) {
   await mkdir(dir, { recursive: true });
   git(dir, "init", "-q", "-b", "main");
-  git(dir, "config", "user.name", "Jon Mendizabal");
+  git(dir, "config", "user.name", "Alex Rivera");
   git(dir, "config", "user.email", "jon@example.com");
   for (const [name, content] of Object.entries(files)) {
     await mkdir(join(dir, name, ".."), { recursive: true });

@@ -7,13 +7,11 @@ describe("organisations", () => {
     expect(orgUrl("https://dev.azure.com/contoso/")).toBe("https://dev.azure.com/contoso");
     expect(orgUrl("https://dev.azure.com/contoso/Shop/_build")).toBe("https://dev.azure.com/contoso");
     // What the accounts API answers: vssps hosts, with a port.
-    expect(orgUrl("https://sprinta.vssps.visualstudio.com:443/")).toBe("https://dev.azure.com/sprinta");
-    expect(orgUrl("https://vssps.dev.azure.com:443/PodiumSystem/")).toBe(
-      "https://dev.azure.com/PodiumSystem",
-    );
+    expect(orgUrl("https://fabrikam.vssps.visualstudio.com:443/")).toBe("https://dev.azure.com/fabrikam");
+    expect(orgUrl("https://vssps.dev.azure.com:443/Northwind/")).toBe("https://dev.azure.com/Northwind");
     expect(orgUrl("https://contoso.visualstudio.com")).toBe("https://dev.azure.com/contoso");
     expect(orgUrl("  ")).toBe("");
-    expect(orgName("https://dev.azure.com/PodiumSystem")).toBe("PodiumSystem");
+    expect(orgName("https://dev.azure.com/Northwind")).toBe("Northwind");
   });
 
   it("reads the settings, including the first version with one organisation", () => {
@@ -32,19 +30,19 @@ describe("organisations", () => {
   it("shows every organisation you belong to once, keeping the projects you chose", () => {
     const settings = {
       allOrgs: true,
-      orgs: [{ org: "https://dev.azure.com/Sprinta", projects: ["Notify"] }],
+      orgs: [{ org: "https://dev.azure.com/Fabrikam", projects: ["Web"] }],
     };
     expect(
       effectiveOrgs(settings, [
-        "https://sprinta.vssps.visualstudio.com:443/",
-        "https://vssps.dev.azure.com/PodiumSystem/",
+        "https://fabrikam.vssps.visualstudio.com:443/",
+        "https://vssps.dev.azure.com/Northwind/",
       ]),
     ).toEqual([
-      { org: "https://dev.azure.com/PodiumSystem" },
-      { org: "https://dev.azure.com/Sprinta", projects: ["Notify"] },
+      { org: "https://dev.azure.com/Fabrikam", projects: ["Web"] },
+      { org: "https://dev.azure.com/Northwind" },
     ]);
-    expect(effectiveOrgs({ ...settings, allOrgs: false }, ["PodiumSystem"])).toEqual([
-      { org: "https://dev.azure.com/Sprinta", projects: ["Notify"] },
+    expect(effectiveOrgs({ ...settings, allOrgs: false }, ["Northwind"])).toEqual([
+      { org: "https://dev.azure.com/Fabrikam", projects: ["Web"] },
     ]);
   });
 

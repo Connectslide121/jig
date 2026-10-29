@@ -67,10 +67,10 @@ describe("ProjectStore", () => {
 
   it("projects are yours: created with a default workspace, preferences, and kept apart from folders", async () => {
     const store = new ProjectStore(file);
-    const { project } = await store.create({ name: " Podium ", path: join(root, "alpha"), model: "opus" });
+    const { project } = await store.create({ name: " Shop ", path: join(root, "alpha"), model: "opus" });
     let state = await store.state();
     expect(state.workspaces.map((w) => w.path)).toEqual([join(root, "alpha")]);
-    expect(state.projects[0]).toMatchObject({ name: "Podium", path: join(root, "alpha"), model: "opus" });
+    expect(state.projects[0]).toMatchObject({ name: "Shop", path: join(root, "alpha"), model: "opus" });
     expect(state.activeId).toBe(project.id);
     // Two projects can share a workspace.
     await store.create({ name: "Integration", path: join(root, "alpha") });
@@ -100,8 +100,8 @@ describe("ProjectStore", () => {
     const first = await store.addWorkspace(join(root, "alpha"));
     const again = await store.addWorkspace(join(root, "alpha"));
     expect(again.workspace.id).toBe(first.workspace.id);
-    await store.create({ name: "Podium", path: join(root, "alpha") });
-    await expect(store.removeWorkspace(first.workspace.id)).rejects.toThrow("Podium uses this folder");
+    await store.create({ name: "Shop", path: join(root, "alpha") });
+    await expect(store.removeWorkspace(first.workspace.id)).rejects.toThrow("Shop uses this folder");
     const beta = await store.addWorkspace(join(root, "beta"));
     const state = await store.removeWorkspace(beta.workspace.id);
     expect(state.workspaces.map((w) => w.path)).toEqual([join(root, "alpha")]);

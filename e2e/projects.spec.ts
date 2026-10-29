@@ -18,7 +18,7 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
   jigHome,
 }) => {
   const repos = join(jigHome, "repos");
-  await mkdir(join(repos, "podium", ".git"), { recursive: true });
+  await mkdir(join(repos, "shop", ".git"), { recursive: true });
   await mkdir(join(repos, "elearning", ".git"), { recursive: true });
   await hostCall(page, "workspaces.add", { path: repos });
 
@@ -26,16 +26,16 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
   await page.getByTestId("view-tab-jig.projects").click();
   await page.getByTestId("projects-new").click();
   const dialog = page.getByTestId("project-dialog");
-  await dialog.getByTestId("project-name").fill("Podium");
+  await dialog.getByTestId("project-name").fill("Shop");
   await expect(dialog.getByTestId("project-workspace")).toHaveValue(repos);
-  await dialog.getByTestId("project-repo").selectOption({ label: "podium" });
+  await dialog.getByTestId("project-repo").selectOption({ label: "shop" });
   await dialog.getByTestId("project-mode").selectOption("plan");
   await dialog.getByTestId("project-instructions").fill("Release notes in Swedish.");
   await dialog.getByTestId("project-starters").fill("Plan the next ticket\nFix the flaky test");
   await dialog.getByTestId("project-save").click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId("project-switcher")).toContainText("Podium");
-  await expect(page.getByTestId("project-Podium")).toContainText("repos · podium");
+  await expect(page.getByTestId("project-switcher")).toContainText("Shop");
+  await expect(page.getByTestId("project-Shop")).toContainText("repos · shop");
 
   // Its Home: its starter prompts, and a chat starts with its defaults.
   const home = page.getByTestId("home").first();
@@ -69,14 +69,14 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
 
   // Pin the first chat: it stays on top of its project.
   await hostCall(page, "sessions.create", { projectId: project.id, title: "Newer chat" });
-  const podium = view.getByTestId("chat-group-Podium");
-  await expect(podium.locator("[data-testid^=session-]").first()).toContainText("Newer chat");
-  await podium.getByTestId(`session-${first!.title}`).hover();
-  await podium.getByTestId(`session-pin-${first!.title}`).click();
-  await expect(podium.locator("[data-testid^=session-]").first()).toContainText(first!.title);
+  const shop = view.getByTestId("chat-group-Shop");
+  await expect(shop.locator("[data-testid^=session-]").first()).toContainText("Newer chat");
+  await shop.getByTestId(`session-${first!.title}`).hover();
+  await shop.getByTestId(`session-pin-${first!.title}`).click();
+  await expect(shop.locator("[data-testid^=session-]").first()).toContainText(first!.title);
 
   // Move it out of the project from its menu.
-  await podium.getByTestId("session-Newer chat").click({ button: "right" });
+  await shop.getByTestId("session-Newer chat").click({ button: "right" });
   await page.getByTestId("session-move").hover();
   await page.getByTestId("session-move-none").click();
   await expect(view.getByTestId("chat-group-No project")).toContainText("Newer chat");

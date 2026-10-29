@@ -796,16 +796,16 @@ Repos stays its own add-on, so it can still be turned off, changed by the builde
 tab. Sections are one level deep.
 
 ### D-100 — Git in a workspace lists the repository you work in, plus the ones you choose
-**Decided by:** Jon (a long list of every repository is hard to scan; show podium while working on
-podium, add elearning while integrating it, per project, reachable from the panel) and Claude, on my
+**Decided by:** Jon (a long list of every repository is hard to scan; show shop while working on
+shop, add elearning while integrating it, per project, reachable from the panel) and Claude, on my
 own (tied to the focus repository) · **Date:** 2026-10-28
 
 A workspace's Git list follows the **focus repository** (D-075), which is the repository you work in:
-- **Picker** (`podium ▾`) at the top of the panel: switches it, or chooses **All repositories**.
+- **Picker** (`shop ▾`) at the top of the panel: switches it, or chooses **All repositories**.
 - **Eye button:** shows others next to it.
 - **Hide button** on a shown repository's row: takes it away again.
 
-The extra repositories are remembered per focus repository, so going back to podium brings its set
+The extra repositories are remembered per focus repository, so going back to shop brings its set
 back, and they are stored per project in the Git add-on's storage. Only the listed repositories are
 watched and checked, which also makes a big workspace cheaper. Every repository is still visible at a
 glance in the Repos section below.

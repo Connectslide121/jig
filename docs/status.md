@@ -440,8 +440,8 @@ epos` as the
       deletion.
     - Files view on `E:
 epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
-    - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them come from the Podium
-      worktrees in `Podium\wt` (whether to list worktrees is an open question for Jon).
+    - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them come from git worktrees
+      of one repository (whether to list worktrees is an open question for Jon).
     - Check your setup: Claude Code (bundled), git, gh, az + azure-devops, VS Code `code` all found.
     - Themes: Jig's 2, VS Code's built-in ones and the extensions' (25); file icons follow VS Code's
       Material Icon Theme.
