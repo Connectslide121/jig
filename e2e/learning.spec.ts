@@ -35,10 +35,13 @@ test("Look for patterns now turns repeated activity into a suggestion; Build it 
   await expect(page.getByTestId("suggestion")).toContainText("times on 3 day(s)");
   await page.getByTestId("suggestion-build").click();
   await expect(page.getByTestId("suggestion")).toContainText("Show the build");
-  // The build's own view may take the sidebar meanwhile (at any moment): come back and try again.
+  // The build's preview view may take the sidebar meanwhile (at any moment): come back and press
+  // it as a DOM click, which doesn't wait for the sidebar to settle.
   await expect(async () => {
     await page.getByTestId("suggestions-badge").click();
-    await page.getByRole("button", { name: "Show the build" }).click({ timeout: 2000 });
+    await page
+      .getByRole("button", { name: "Show the build" })
+      .dispatchEvent("click", undefined, { timeout: 2000 });
   }).toPass({ timeout: 20000 });
   await expect(page.getByTestId("build-tab")).toContainText("Ready to review", { timeout: 20000 });
 });
