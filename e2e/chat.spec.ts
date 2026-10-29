@@ -65,6 +65,8 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
 test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
+  // The default model (opusplan) reads as the picker names it, before the picker was opened.
+  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
   await page.getByTestId("permission-menu").click();
   await page.getByTestId("mode-plan").click();
   await expect(page.getByTestId("permission-menu")).toContainText("Plan only");

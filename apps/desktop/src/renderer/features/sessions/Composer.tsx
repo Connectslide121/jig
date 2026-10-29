@@ -43,7 +43,7 @@ import { ComposerPicker, type PickerItem } from "./ComposerPicker";
 import { chatCommands, TERMINAL_ONLY } from "./commands";
 import { historyStep, inputMode, nextPermissionMode, replaceToken, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
-import { exportChat, modelLabel, modelMenu, openModelMenu, permissionMenu } from "./menus";
+import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
 import { usePrompts } from "./prompts";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
@@ -128,6 +128,7 @@ export function Composer({
   active: boolean;
 }) {
   const [text, setTextState] = useState(() => takeDraft(meta.id));
+  const modelName = useModelLabel(meta);
   const [caret, setCaret] = useState(0);
   const [files, setFiles] = useState<ChatAttachment[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -631,7 +632,7 @@ export function Composer({
                   : "Model and effort"
               }
             >
-              {modelLabel(meta)} <ChevronDown className="block size-3.5 shrink-0" />
+              {modelName} <ChevronDown className="block size-3.5 shrink-0" />
             </button>
             <button
               type="button"

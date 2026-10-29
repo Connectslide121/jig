@@ -18,6 +18,8 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
+import { useEffect } from "react";
+import { create } from "zustand";
 import {
   EFFORT_LEVELS,
   type EffortLevel,
@@ -45,18 +47,46 @@ export const MODEL_CHOICES = [
   { id: "opus", label: "Opus" },
   { id: "sonnet", label: "Sonnet" },
   { id: "haiku", label: "Haiku" },
+  { id: "opusplan", label: "Opus Plan Mode" },
 ];
 
 /** The models Claude Code offers, asked once (it starts Claude Code for the chat if needed). */
 let models: ModelInfo[] | undefined;
 let loadingModels: Promise<ModelInfo[] | undefined> | undefined;
+/** The same list for components, so a label re-renders when it comes. */
+const useModelList = create<{ list?: ModelInfo[] }>(() => ({}));
+const keep = (list: ModelInfo[] | undefined) => {
+  if (!list?.length) return list;
+  models = list;
+  useModelList.setState({ list });
+  return list;
+};
+let askedApp = false;
+/**
+ * Claude Code's model list for the whole app, asked once at the first message box: a no-prompt
+ * request (as Settings does), so no chat's Claude Code is started for it.
+ */
+function ensureModels(): void {
+  if (models || askedApp) return;
+  askedApp = true;
+  void call("engine.models")
+    .then(keep)
+    .catch(() => {
+      askedApp = false;
+    });
+}
+
+/** The chat's model as the picker names it ("Opus Plan Mode", not `opusplan`), with its effort. */
+export function useModelLabel(meta: SessionMeta): string {
+  useModelList((s) => s.list);
+  useEffect(ensureModels, []);
+  return modelLabel(meta);
+}
+
 function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
   if (models) return Promise.resolve(models);
   loadingModels ??= call("sessions.models", { id: sessionId })
-    .then((list) => {
-      models = list;
-      return list;
-    })
+    .then(keep)
     .catch(() => undefined)
     .finally(() => {
       loadingModels = undefined;

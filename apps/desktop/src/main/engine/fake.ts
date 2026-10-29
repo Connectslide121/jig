@@ -69,16 +69,17 @@ const FAKE_MODELS = [
   },
   { value: "sonnet", displayName: "Sonnet", description: "Coding and execution" },
   { value: "haiku", displayName: "Haiku", description: "Fastest" },
+  { value: "opusplan", displayName: "Opus Plan Mode", description: "Opus to plan, Sonnet to execute" },
 ];
+
+/** The fake saved conversation with a transcript (e2e opens it). */
+export const FAKE_SAVED_ID = "saved-1";
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
  * no quota. What it does depends on words in your message; the full list is in
  * docs/guides/testing.md → The fake engine (keep it in step with the branches in `runTurn`).
  */
-/** The fake saved conversation with a transcript (e2e opens it). */
-export const FAKE_SAVED_ID = "saved-1";
-
 export class FakeEngine implements Engine {
   readonly kind = "fake" as const;
   constructor(private readonly delayMs = Number(process.env.JIG_FAKE_DELAY ?? 15)) {}
