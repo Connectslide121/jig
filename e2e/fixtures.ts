@@ -1,6 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test as base, type ElectronApplication, _electron as electron, type Page } from "@playwright/test";
 
@@ -12,6 +12,22 @@ export interface JigFixtures {
   page: Page;
 }
 
+/**
+ * A folder with an `az` that says you're not signed in, first on PATH: tests never reach the real
+ * Azure CLI and its login (Pipelines asks it for every organisation you belong to). Tests that need
+ * az answers put their own fake first.
+ */
+async function signedOutAz(jigHome: string): Promise<string> {
+  const bin = join(jigHome, "fake-bin");
+  await mkdir(bin, { recursive: true });
+  const script = `console.error("ERROR: Please run 'az login' to setup account."); process.exit(1);`;
+  await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${script}\n`);
+  await chmod(join(bin, "az"), 0o755);
+  await writeFile(join(bin, "az-signed-out.cjs"), script);
+  await writeFile(join(bin, "az.cmd"), '@node "%~dp0az-signed-out.cjs" %*\r\n');
+  return bin;
+}
+
 /** Launches the built app with a throwaway JIG_HOME and the fake engine. */
 export async function launchJig(
   jigHome: string,
@@ -19,13 +35,19 @@ export async function launchJig(
 ): Promise<ElectronApplication> {
   const args = [appDir];
   if (process.platform === "linux") args.push("--no-sandbox");
+  const PATH = `${await signedOutAz(jigHome)}${delimiter}${process.env.PATH ?? process.env.Path}`;
   return electron.launch({
     args,
     // Hidden, so a test never fights the user's mouse and focus (JIG_HIDDEN= shows the windows).
-    env: { JIG_HIDDEN: "1", ...process.env, JIG_HOME: jigHome, JIG_ENGINE: "fake", ...env } as Record<
-      string,
-      string
-    >,
+    env: {
+      JIG_HIDDEN: "1",
+      ...process.env,
+      PATH,
+      Path: PATH,
+      JIG_HOME: jigHome,
+      JIG_ENGINE: "fake",
+      ...env,
+    } as Record<string, string>,
   });
 }
 

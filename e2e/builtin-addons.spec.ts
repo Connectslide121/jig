@@ -180,10 +180,17 @@ test("Pipelines asks to be set up and has a settings page", async ({ page }) => 
   await expect(page.getByText("Set up Azure DevOps")).toBeVisible({ timeout: 15000 });
   await page.getByRole("button", { name: "Set up" }).click();
   await expect(page.getByTestId("pipelines-settings")).toBeVisible();
+  // Every organisation of your az login by default; az here says it isn't signed in.
+  await expect(page.getByTestId("pipelines-settings")).toContainText("az login");
   await page.getByTestId("pipelines-org").fill("contoso");
-  await page.getByTestId("pipelines-projects").fill("Web, Api");
+  await page.getByTestId("pipelines-add-org").click();
+  await page.getByTestId("pipelines-projects-contoso").fill("Web, Api");
   await page.getByTestId("pipelines-save").click();
   await expect(page.getByTestId("toast")).toContainText("saved");
+  expect(await hostCall(page, "addons.call", { id: "pipelines", method: "settings" })).toMatchObject({
+    ok: true,
+    value: { allOrgs: true, orgs: [{ org: "https://dev.azure.com/contoso", projects: ["Web", "Api"] }] },
+  });
 });
 
 test("Git: review comments on diff lines, sent to a chat as one message", async ({ page, jigHome }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { latestRuns, normalizeOrg, pipelineUrl, runState, runUrl, toPipeline, toRun } from "./runs";
+import { latestRuns, pipelineUrl, runState, runUrl, toPipeline, toRun } from "./runs";
 
 const azRun = (id: number, def: number, extra: Record<string, unknown> = {}) => ({
   id,
@@ -48,14 +48,11 @@ describe("az pipelines data", () => {
   });
 
   it("builds organisation and web URLs", () => {
-    expect(normalizeOrg("contoso")).toBe("https://dev.azure.com/contoso");
-    expect(normalizeOrg("https://dev.azure.com/contoso/")).toBe("https://dev.azure.com/contoso");
-    expect(normalizeOrg(" ")).toBe("");
     expect(runUrl("contoso", "My Project", 42)).toBe(
       "https://dev.azure.com/contoso/My%20Project/_build/results?buildId=42",
     );
     expect(pipelineUrl("https://contoso.visualstudio.com", "P", 7)).toBe(
-      "https://contoso.visualstudio.com/P/_build?definitionId=7",
+      "https://dev.azure.com/contoso/P/_build?definitionId=7",
     );
   });
 });

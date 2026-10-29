@@ -9,6 +9,7 @@ import {
   IconButton,
   Input,
   Spinner,
+  Switch,
   useAddonEvent,
   useHostCall,
 } from "@jig/sdk/ui";
@@ -21,16 +22,25 @@ import {
   ListOrdered,
   LoaderCircle,
   Play,
+  Plus,
   RefreshCw,
   Rocket,
   Settings,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Settings as PipelineSettings, ProjectPipelines } from "./host";
+import type { OrgPipelines } from "./host";
+import {
+  effectiveOrgs,
+  type OrgSettings,
+  orgName,
+  orgUrl,
+  type Settings as PipelineSettings,
+} from "./lib/orgs";
 import { pipelineUrl, type Run, runState, runUrl } from "./lib/runs";
 
-type Overview = { org: string; projects: ProjectPipelines[] };
+type Overview = { orgs: OrgPipelines[]; error?: string };
 
 function when(iso?: string) {
   if (!iso) return "";
@@ -56,6 +66,7 @@ function StateIcon({ run }: { run?: Run }) {
 
 async function startRun(
   ctx: AddonUiContext,
+  org: string,
   project: string,
   id: number,
   name: string,
@@ -69,7 +80,7 @@ async function startRun(
   });
   if (!branch) return;
   try {
-    const { run } = await ctx.host.call<{ run: Run; url: string }>("run", { project, id, branch, name });
+    const { run } = await ctx.host.call<{ run: Run; url: string }>("run", { org, project, id, branch, name });
     ctx.notify({
       title: `${name} started`,
       message: `Run ${run.buildNumber} on ${branch}. You'll be told when it finishes.`,
@@ -80,7 +91,10 @@ async function startRun(
   }
 }
 
-/** Your arrangement of each Azure DevOps project's pipelines (hidden, order, dividers). */
+/**
+ * Your arrangement of each Azure DevOps project's pipelines (hidden, order, dividers), keyed
+ * `<organisation>/<project>`; arrangements from before several organisations are keyed by project.
+ */
 function useArrangements(ctx: AddonUiContext) {
   const [all, setAll] = useState<Record<string, Arrangement>>();
   useEffect(() => {
@@ -99,6 +113,90 @@ function useArrangements(ctx: AddonUiContext) {
   return [all, set] as const;
 }
 
+function PipelineRow({
+  ctx,
+  org,
+  project,
+  pl,
+  arranging,
+}: {
+  ctx: AddonUiContext;
+  org: string;
+  project: string;
+  pl: OrgPipelines["projects"][number]["pipelines"][number];
+  arranging: boolean;
+}) {
+  const open = () =>
+    ctx.openExternal(pl.latest ? runUrl(org, project, pl.latest.id) : pipelineUrl(org, project, pl.id));
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-testid={`pipeline-${pl.name}`}
+      onClick={() => !arranging && open()}
+      onKeyDown={(e) => e.key === "Enter" && open()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        ctx.menu(
+          [
+            {
+              label: "Run…",
+              icon: "play",
+              onSelect: () => void startRun(ctx, org, project, pl.id, pl.name, pl.latest?.branch),
+            },
+            {
+              label: "Open pipeline in browser",
+              icon: "external-link",
+              onSelect: () => ctx.openExternal(pipelineUrl(org, project, pl.id)),
+            },
+            ...(pl.latest
+              ? [
+                  {
+                    label: "Open latest run",
+                    icon: "external-link",
+                    onSelect: () => ctx.openExternal(runUrl(org, project, pl.latest!.id)),
+                  },
+                ]
+              : []),
+          ],
+          e.nativeEvent,
+        );
+      }}
+      className="group flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
+    >
+      <StateIcon run={pl.latest} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm">{pl.name}</div>
+        <div className="truncate text-xs text-muted">
+          {pl.latest
+            ? `${pl.latest.branch} · ${when(pl.latest.finishTime ?? pl.latest.startTime ?? pl.latest.queueTime)}${pl.latest.requestedBy ? ` · ${pl.latest.requestedBy}` : ""}`
+            : "never run"}
+        </div>
+      </div>
+      <span className="hidden group-hover:flex group-focus-within:flex">
+        <IconButton
+          icon={Play}
+          size="sm"
+          label={`Run ${pl.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            void startRun(ctx, org, project, pl.id, pl.name, pl.latest?.branch);
+          }}
+        />
+        <IconButton
+          icon={ExternalLink}
+          size="sm"
+          label="Open in browser"
+          onClick={(e) => {
+            e.stopPropagation();
+            ctx.openExternal(pipelineUrl(org, project, pl.id));
+          }}
+        />
+      </span>
+    </div>
+  );
+}
+
 export function PipelinesView({ ctx }: AddonComponentProps) {
   const { data, error, loading, reload } = useHostCall<Overview>("overview");
   const [arrangements, setArrangement] = useArrangements(ctx);
@@ -110,19 +208,23 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   }, [reload]);
   if (error) return <div className="p-3 text-xs text-danger">{error}</div>;
   if (!data) return <Spinner className="m-3" />;
-  if (!data.org || data.projects.length === 0)
+  if (data.orgs.length === 0)
     return (
       <Empty icon={Rocket} title="Set up Azure DevOps">
-        <p>Choose your organisation and projects. Jig uses your own az CLI login.</p>
+        <p>Pipelines shows every Azure DevOps organisation your az CLI login belongs to.</p>
+        {data.error && <p className="mt-1 text-warning">{data.error}</p>}
         <Button size="sm" className="mt-2" icon={Settings} onClick={() => ctx.openSettings()}>
           Set up
         </Button>
       </Empty>
     );
+  const several = data.orgs.length > 1;
   return (
     <div className="flex h-full flex-col" data-testid="pipelines-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
-        <span className="min-w-0 flex-1 truncate">{data.org.replace(/^https:\/\//, "")}</span>
+        <span className="min-w-0 flex-1 truncate">
+          {several ? `${data.orgs.length} organisations` : orgName(data.orgs[0]!.org)}
+        </span>
         {loading && <Spinner size="sm" />}
         <Button
           size="sm"
@@ -138,104 +240,38 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
         <IconButton icon={Settings} size="sm" label="Pipelines settings" onClick={() => ctx.openSettings()} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        {data.projects.map((p) => (
-          <div key={p.project} className="mb-2">
-            <div className="px-2 py-1 text-2xs font-semibold tracking-wide text-hint uppercase">
-              {p.project}
-            </div>
-            {p.error && <div className="px-2 text-xs text-danger">{p.error}</div>}
-            {!p.error && p.pipelines.length === 0 && (
-              <div className="px-2 text-xs text-muted">No pipelines.</div>
+        {data.error && <div className="px-2 py-1 text-xs text-warning">{data.error}</div>}
+        {data.orgs.map((o) => (
+          <div key={o.org} className="mb-3" data-testid={`pipelines-org-${orgName(o.org)}`}>
+            {several && (
+              <div className="px-2 pt-1 pb-0.5 text-xs font-semibold text-fg">{orgName(o.org)}</div>
             )}
-            <ArrangeList
-              items={p.pipelines}
-              keyOf={(pl) => String(pl.id)}
-              arrangement={arrangements?.[p.project] ?? EMPTY_ARRANGEMENT}
-              onChange={(next) => setArrangement(p.project, next)}
-              arranging={arranging}
-              testId={`pipelines-project-${p.project}`}
-              renderItem={(pl) => (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  data-testid={`pipeline-${pl.name}`}
-                  onClick={() =>
-                    !arranging &&
-                    ctx.openExternal(
-                      pl.latest
-                        ? runUrl(data.org, p.project, pl.latest.id)
-                        : pipelineUrl(data.org, p.project, pl.id),
-                    )
-                  }
-                  onKeyDown={(e) =>
-                    e.key === "Enter" &&
-                    ctx.openExternal(
-                      pl.latest
-                        ? runUrl(data.org, p.project, pl.latest.id)
-                        : pipelineUrl(data.org, p.project, pl.id),
-                    )
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    ctx.menu(
-                      [
-                        {
-                          label: "Run…",
-                          icon: "play",
-                          onSelect: () => void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch),
-                        },
-                        {
-                          label: "Open pipeline in browser",
-                          icon: "external-link",
-                          onSelect: () => ctx.openExternal(pipelineUrl(data.org, p.project, pl.id)),
-                        },
-                        ...(pl.latest
-                          ? [
-                              {
-                                label: "Open latest run",
-                                icon: "external-link",
-                                onSelect: () => ctx.openExternal(runUrl(data.org, p.project, pl.latest!.id)),
-                              },
-                            ]
-                          : []),
-                      ],
-                      e.nativeEvent,
-                    );
-                  }}
-                  className="group flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
-                >
-                  <StateIcon run={pl.latest} />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm">{pl.name}</div>
-                    <div className="truncate text-xs text-muted">
-                      {pl.latest
-                        ? `${pl.latest.branch} · ${when(pl.latest.finishTime ?? pl.latest.startTime ?? pl.latest.queueTime)}${pl.latest.requestedBy ? ` · ${pl.latest.requestedBy}` : ""}`
-                        : "never run"}
-                    </div>
+            {o.error && <div className="px-2 text-xs text-danger">{o.error}</div>}
+            {o.projects.map((p) => {
+              const key = `${orgName(o.org)}/${p.project}`;
+              return (
+                <div key={p.project} className="mb-2">
+                  <div className="px-2 py-1 text-2xs font-semibold tracking-wide text-hint uppercase">
+                    {p.project}
                   </div>
-                  <span className="hidden group-hover:flex group-focus-within:flex">
-                    <IconButton
-                      icon={Play}
-                      size="sm"
-                      label={`Run ${pl.name}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch);
-                      }}
-                    />
-                    <IconButton
-                      icon={ExternalLink}
-                      size="sm"
-                      label="Open in browser"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        ctx.openExternal(pipelineUrl(data.org, p.project, pl.id));
-                      }}
-                    />
-                  </span>
+                  {p.error && <div className="px-2 text-xs text-danger">{p.error}</div>}
+                  {!p.error && p.pipelines.length === 0 && (
+                    <div className="px-2 text-xs text-muted">No pipelines.</div>
+                  )}
+                  <ArrangeList
+                    items={p.pipelines}
+                    keyOf={(pl) => String(pl.id)}
+                    arrangement={arrangements?.[key] ?? arrangements?.[p.project] ?? EMPTY_ARRANGEMENT}
+                    onChange={(next) => setArrangement(key, next)}
+                    arranging={arranging}
+                    testId={`pipelines-project-${p.project}`}
+                    renderItem={(pl) => (
+                      <PipelineRow ctx={ctx} org={o.org} project={p.project} pl={pl} arranging={arranging} />
+                    )}
+                  />
                 </div>
-              )}
-            />
+              );
+            })}
           </div>
         ))}
       </div>
@@ -243,35 +279,124 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   );
 }
 
-export function PipelinesSettings({ ctx }: AddonComponentProps) {
-  const { data } = useHostCall<PipelineSettings>("settings");
-  const [org, setOrg] = useState("");
-  const [projects, setProjects] = useState<string[]>([]);
-  // What is typed in the project-names box, as typed (spaces included); `projects` is parsed from it.
-  const [projectsText, setProjectsText] = useState("");
+/** One organisation in the settings: all its projects, or the ones you pick. */
+function OrgSettingsRow({
+  ctx,
+  value,
+  onChange,
+  onRemove,
+}: {
+  ctx: AddonUiContext;
+  value: OrgSettings;
+  onChange: (next: OrgSettings) => void;
+  onRemove?: () => void;
+}) {
+  const name = orgName(value.org);
+  // What is typed in the project-names box, as typed (spaces included).
+  const [text, setText] = useState((value.projects ?? []).join(", "));
   const [available, setAvailable] = useState<string[]>();
-  const [status, setStatus] = useState<{ ok: boolean; message: string }>();
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (data) {
-      setOrg(data.org);
-      setProjects(data.projects);
-      setProjectsText(data.projects.join(", "));
-    }
-  }, [data]);
-  const save = async (next: PipelineSettings) => {
-    await ctx.host.call("saveSettings", next);
-    ctx.notify({ title: "Pipelines settings saved", tone: "success" });
-  };
-  const loadProjects = async () => {
+  const chosen = value.projects ?? [];
+  const setProjects = (projects: string[]) =>
+    onChange({ org: value.org, projects: projects.length ? projects : undefined });
+  const load = async () => {
     setBusy(true);
     try {
-      setAvailable(await ctx.host.call<string[]>("listProjects", { org }));
+      setAvailable(await ctx.host.call<string[]>("listProjects", { org: value.org }));
     } catch (error) {
       ctx.notify({ title: "Couldn't list projects", message: (error as Error).message, tone: "danger" });
     } finally {
       setBusy(false);
     }
+  };
+  return (
+    <div
+      className="flex flex-col gap-1 rounded-md border border-line p-3 text-sm"
+      data-testid={`pipelines-org-row-${name}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+        <span className="text-xs text-muted">
+          {chosen.length ? `${chosen.length} projects` : "All projects"}
+        </span>
+        <Button size="sm" variant="ghost" busy={busy} onClick={() => void load()}>
+          Choose projects
+        </Button>
+        {onRemove && <IconButton icon={X} size="sm" label={`Remove ${name}`} onClick={onRemove} />}
+      </div>
+      {available ? (
+        <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+          {available.map((project) => (
+            <label key={project} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={chosen.includes(project)}
+                onChange={(e) =>
+                  setProjects(e.target.checked ? [...chosen, project] : chosen.filter((x) => x !== project))
+                }
+              />
+              {project}
+            </label>
+          ))}
+          <span className="text-xs text-hint">None ticked = every project.</span>
+        </div>
+      ) : (
+        <Input
+          value={text}
+          placeholder="All projects, or names separated by commas"
+          onChange={(e) => {
+            setText(e.target.value);
+            setProjects(
+              e.target.value
+                .split(",")
+                .map((x) => x.trim())
+                .filter(Boolean),
+            );
+          }}
+          aria-label={`Projects of ${name}`}
+          data-testid={`pipelines-projects-${name}`}
+        />
+      )}
+    </div>
+  );
+}
+
+export function PipelinesSettings({ ctx }: AddonComponentProps) {
+  const { data } = useHostCall<PipelineSettings>("settings");
+  const [form, setForm] = useState<PipelineSettings>();
+  const [found, setFound] = useState<{ orgs?: string[]; error?: string }>({});
+  const [adding, setAdding] = useState("");
+  const [status, setStatus] = useState<{ ok: boolean; message: string }>();
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
+  useEffect(() => {
+    if (!form?.allOrgs || found.orgs || found.error) return;
+    void ctx.host.call<string[]>("listOrgs").then(
+      (orgs) => setFound({ orgs }),
+      (error: Error) => setFound({ error: error.message }),
+    );
+  }, [ctx, form?.allOrgs, found]);
+  if (!form) return <Spinner className="m-3" />;
+  const rows = effectiveOrgs(form, form.allOrgs ? (found.orgs ?? []) : []);
+  const listed = (org: string) => form.orgs.some((o) => orgUrl(o.org).toLowerCase() === org.toLowerCase());
+  const update = (next: OrgSettings) =>
+    setForm({
+      ...form,
+      orgs: listed(next.org)
+        ? form.orgs.map((o) => (orgUrl(o.org).toLowerCase() === next.org.toLowerCase() ? next : o))
+        : [...form.orgs, next],
+    });
+  const add = () => {
+    const org = orgUrl(adding);
+    if (!org) return;
+    if (!listed(org)) setForm({ ...form, orgs: [...form.orgs, { org }] });
+    setAdding("");
+  };
+  const save = async () => {
+    await ctx.host.call("saveSettings", form);
+    ctx.notify({ title: "Pipelines settings saved", tone: "success" });
   };
   return (
     <div className="flex flex-col gap-6" data-testid="pipelines-settings">
@@ -293,75 +418,60 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
             </span>
           )}
         </div>
-        <div className="flex flex-col gap-1 text-sm">
-          Organisation
+        <div className="flex items-center gap-2 text-sm" data-testid="pipelines-all-orgs">
+          <Switch
+            label="Every organisation you belong to"
+            checked={form.allOrgs}
+            onChange={(allOrgs) => setForm({ ...form, allOrgs })}
+          />
+          Every organisation your az login belongs to
+        </div>
+        {form.allOrgs && found.error && <div className="text-xs text-warning">{found.error}</div>}
+        {form.allOrgs && !found.orgs && !found.error && <Spinner size="sm" />}
+        <div className="flex flex-col gap-2">
+          {rows.map((o) => (
+            <OrgSettingsRow
+              key={o.org}
+              ctx={ctx}
+              value={o}
+              onChange={update}
+              onRemove={
+                listed(o.org) && !found.orgs?.some((f) => f.toLowerCase() === o.org.toLowerCase())
+                  ? () =>
+                      setForm({
+                        ...form,
+                        orgs: form.orgs.filter((x) => orgUrl(x.org).toLowerCase() !== o.org.toLowerCase()),
+                      })
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2 text-sm">
           <Input
-            value={org}
-            placeholder="https://dev.azure.com/your-org"
-            onChange={(e) => setOrg(e.target.value)}
+            value={adding}
+            placeholder="Add an organisation: https://dev.azure.com/your-org"
+            onChange={(e) => setAdding(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && add()}
             aria-label="Organisation"
             data-testid="pipelines-org"
           />
-        </div>
-        <div className="flex flex-col gap-1 text-sm">
-          <div className="flex items-center gap-2">
-            Projects
-            <Button
-              size="sm"
-              variant="ghost"
-              busy={busy}
-              disabled={!org.trim()}
-              onClick={() => void loadProjects()}
-            >
-              Load from Azure DevOps
-            </Button>
-          </div>
-          {available ? (
-            <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-              {available.map((name) => (
-                <label key={name} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="accent-accent"
-                    checked={projects.includes(name)}
-                    onChange={(e) =>
-                      setProjects((list) =>
-                        e.target.checked ? [...list, name] : list.filter((x) => x !== name),
-                      )
-                    }
-                  />
-                  {name}
-                </label>
-              ))}
-            </div>
-          ) : (
-            <Input
-              value={projectsText}
-              placeholder="Project names, separated by commas"
-              onChange={(e) => {
-                setProjectsText(e.target.value);
-                setProjects(
-                  e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                );
-              }}
-              data-testid="pipelines-projects"
-            />
-          )}
+          <Button
+            size="sm"
+            icon={Plus}
+            disabled={!adding.trim()}
+            onClick={add}
+            data-testid="pipelines-add-org"
+          >
+            Add
+          </Button>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void save({ org, projects })}
-            data-testid="pipelines-save"
-          >
+          <Button variant="primary" size="sm" onClick={() => void save()} data-testid="pipelines-save">
             Save
           </Button>
-          {projects.filter(Boolean).map((p) => (
-            <Badge key={p}>{p}</Badge>
+          {rows.map((o) => (
+            <Badge key={o.org}>{orgName(o.org)}</Badge>
           ))}
         </div>
       </Card>
@@ -373,18 +483,22 @@ export function showPipelines(ctx: AddonUiContext) {
   ctx.showView("pipelines");
 }
 
-/** Tools → Run a pipeline…: a menu of every pipeline. */
+/** Tools → Run a pipeline…: a menu of every pipeline, per organisation and project. */
 export async function runPipelineAction(ctx: AddonUiContext) {
   const data = await ctx.host.call<Overview>("overview");
-  if (!data.org || data.projects.length === 0) return ctx.openSettings();
-  ctx.menu(
-    data.projects.map((p) => ({
+  if (data.orgs.length === 0) return ctx.openSettings();
+  const projectMenus = (o: OrgPipelines) =>
+    o.projects.map((p) => ({
       label: p.project,
       submenu: p.pipelines.map((pl) => ({
         label: pl.name,
-        onSelect: () => void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch),
+        onSelect: () => void startRun(ctx, o.org, p.project, pl.id, pl.name, pl.latest?.branch),
       })),
-    })),
+    }));
+  ctx.menu(
+    data.orgs.length === 1
+      ? projectMenus(data.orgs[0]!)
+      : data.orgs.map((o) => ({ label: orgName(o.org), submenu: projectMenus(o) })),
     document.querySelector<HTMLElement>("[data-testid=tools-button]") ?? document.body,
   );
 }

@@ -1231,3 +1231,21 @@ not a second engine or a local model) and Claude, on my own (how) · **Date:** 2
   unless the request names a URL.
 - **Still Claude Code only** (vision principle 1): pi or a local model were weighed and left out.
 - **Builder and other special chats** keep their own tools and get no tester.
+
+### D-125 — Pipelines shows every Azure DevOps organisation you belong to
+**Decided by:** Jon (all his organisations' pipelines in the view) and Claude, on my own (how) ·
+**Date:** 2026-10-29
+
+- **The organisations come from your own `az` login:** Azure DevOps' profile API (who you are) and
+  accounts API (where you're a member), through `az rest --resource <Azure DevOps>`. No token is
+  stored or held by Jig; `az` does the call.
+- **Default: every organisation, every project.** Settings → Pipelines turns that off, adds
+  organisations by URL, and narrows an organisation to chosen projects (none chosen = all). The
+  first version's single organisation and projects carry over as a listed organisation.
+- **It stays cheap:** organisations and projects are asked for once an hour, pipelines every
+  10 minutes, latest runs on each refresh but not for projects without pipelines, 4 `az` processes
+  at a time (each starts Python). Measured with two organisations and 10 projects: about 25 s the
+  first time, 6 s per refresh.
+- **Runs keep their organisation** (Run…, tracking, links). Arrangements are per organisation and
+  project, falling back to the earlier per-project ones.
+- **e2e tests get a fake `az` that is signed out**, so no test reaches the real Azure CLI login.

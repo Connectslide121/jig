@@ -1,4 +1,5 @@
 /** Azure DevOps run/pipeline data from `az … -o json`, normalised. Pure (tested in runs.test.ts). */
+import { orgUrl } from "./orgs";
 
 export interface Pipeline {
   id: number;
@@ -61,19 +62,12 @@ export function latestRuns(runs: Run[]): Map<number, Run> {
 }
 
 /** `https://dev.azure.com/contoso`, from what people type ("contoso", with a trailing slash, …). */
-export function normalizeOrg(input: string): string {
-  const v = input.trim().replace(/\/+$/, "");
-  if (!v) return "";
-  if (/^https?:\/\//.test(v)) return v;
-  return `https://dev.azure.com/${v}`;
-}
-
 export function runUrl(org: string, project: string, runId: number): string {
-  return `${normalizeOrg(org)}/${encodeURIComponent(project)}/_build/results?buildId=${runId}`;
+  return `${orgUrl(org)}/${encodeURIComponent(project)}/_build/results?buildId=${runId}`;
 }
 
 export function pipelineUrl(org: string, project: string, pipelineId: number): string {
-  return `${normalizeOrg(org)}/${encodeURIComponent(project)}/_build?definitionId=${pipelineId}`;
+  return `${orgUrl(org)}/${encodeURIComponent(project)}/_build?definitionId=${pipelineId}`;
 }
 
 /** One word for a run's state, for the UI and notifications. */

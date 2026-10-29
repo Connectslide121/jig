@@ -378,3 +378,4 @@ true"). This step checks the whole picture again:
 - [x] Delete your own add-ons in Settings → Add-ons (D-122)
 - [x] Testing on a small model: the `jig-tester` subagent in every chat and Tools → Test something…
       (D-124)
+- [x] Pipelines: every Azure DevOps organisation you belong to, all projects by default (D-125)

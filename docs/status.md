@@ -81,8 +81,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     tab, and any view can be shown below another the same way): every project's repo with branch, changes, ahead/behind, last fetch;
     fetch/pull/push (a new branch goes to `origin`, else the remote there is); "N to push/pull" in the status bar; right-click a project → Open in VS Code /
     Explorer.
-  - **Pipelines** (right sidebar): Azure DevOps through your `az` login; set up in Settings →
-    Pipelines; run on a branch, open in the browser, notifications when your runs finish.
+  - **Pipelines** (right sidebar): Azure DevOps through your `az` login, every organisation you
+    belong to with all its projects by default (D-125); narrow it in Settings → Pipelines; run on a branch, open in the browser, notifications when your runs finish.
   - **Scripts** (right sidebar): every script of every project; Tools → Run a script… (`Ctrl+Shift+R`).
 
 - **Phase 8 (done): builder, levels 1 and 2.**
