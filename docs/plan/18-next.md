@@ -336,7 +336,7 @@ true"). This step checks the whole picture again:
 - [x] Projects you manage: create/edit, default workspace and Git repo, per-project preferences,
       pinned chats, drag and drop chats between projects, chats without a project; workspaces and
       Repos unchanged
-- [ ] Scripts and Pipelines: hide, reorder and dividers, from the panel
+- [x] Scripts and Pipelines: hide, reorder and dividers, from the panel
 - [x] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
       side"; draggable divider
 - [ ] Project links: grouped, typed links (icon + default label), managed in the panel and from

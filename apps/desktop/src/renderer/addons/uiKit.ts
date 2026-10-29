@@ -36,6 +36,7 @@ export {
   VirtualList,
 } from "../ui";
 export { Pane, usePaneSize, useSplitRatio } from "../workbench/Pane";
+export { ArrangeList } from "./ArrangeList";
 export { useActiveProject, useAddon, useProjectList, useRunningScripts, useWorkspaceList } from "./context";
 export { useAddonEvent, useHostCall } from "./hooks";
 export { Icon, iconByName } from "./icons";

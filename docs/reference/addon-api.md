@@ -93,7 +93,7 @@ are add-ons':
 `CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
-→ `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists),
+→ `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists), `ArrangeList` (a list the user can arrange: hide items, drag them into an order, group them with dividers; keep its `Arrangement` in `ctx.storage`, with the pure helpers `arrange`, `moveKey`, `toggleHidden`, `addDivider`, `renameDivider`, `removeDivider` from `@jig/sdk`),
 `useHighlightedLines(code, lang)` (theme-highlighted HTML per line, for diffs),
 `languageForPath(path)`, and for resizable layouts `Pane` (`<Pane id edge defaultSize min? max?>`: a flex
 child with a drag handle on `edge`; the size is remembered in `layout.json` under `id` — use

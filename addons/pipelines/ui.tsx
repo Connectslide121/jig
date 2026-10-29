@@ -1,5 +1,6 @@
-import type { AddonComponentProps, AddonUiContext } from "@jig/sdk";
+import { type AddonComponentProps, type AddonUiContext, type Arrangement, EMPTY_ARRANGEMENT } from "@jig/sdk";
 import {
+  ArrangeList,
   Badge,
   Button,
   Card,
@@ -12,10 +13,12 @@ import {
   useHostCall,
 } from "@jig/sdk/ui";
 import {
+  Check,
   CircleCheck,
   CircleDashed,
   CircleX,
   ExternalLink,
+  ListOrdered,
   LoaderCircle,
   Play,
   RefreshCw,
@@ -77,8 +80,25 @@ async function startRun(
   }
 }
 
+/** Your arrangement of each Azure DevOps project's pipelines (hidden, order, dividers). */
+function useArrangements(ctx: AddonUiContext) {
+  const [all, setAll] = useState<Record<string, Arrangement>>();
+  useEffect(() => {
+    void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+  }, [ctx]);
+  const set = (project: string, next: Arrangement) =>
+    setAll((current) => {
+      const updated = { ...(current ?? {}), [project]: next };
+      void ctx.storage.set("arrangement", updated);
+      return updated;
+    });
+  return [all, set] as const;
+}
+
 export function PipelinesView({ ctx }: AddonComponentProps) {
   const { data, error, loading, reload } = useHostCall<Overview>("overview");
+  const [arrangements, setArrangement] = useArrangements(ctx);
+  const [arranging, setArranging] = useState(false);
   useAddonEvent("runs-changed", () => void reload());
   useEffect(() => {
     const t = setInterval(() => void reload(), 30_000);
@@ -100,6 +120,16 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
         <span className="min-w-0 flex-1 truncate">{data.org.replace(/^https:\/\//, "")}</span>
         {loading && <Spinner size="sm" />}
+        <Button
+          size="sm"
+          variant={arranging ? "primary" : "ghost"}
+          icon={arranging ? Check : ListOrdered}
+          onClick={() => setArranging(!arranging)}
+          data-testid="pipelines-arrange"
+          title="Hide pipelines, reorder them, group them with dividers"
+        >
+          {arranging ? "Done" : "Arrange"}
+        </Button>
         <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={() => void reload()} />
         <IconButton icon={Settings} size="sm" label="Pipelines settings" onClick={() => ctx.openSettings()} />
       </div>
@@ -113,85 +143,93 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
             {!p.error && p.pipelines.length === 0 && (
               <div className="px-2 text-xs text-muted">No pipelines.</div>
             )}
-            {p.pipelines.map((pl) => (
-              <div
-                key={pl.id}
-                role="button"
-                tabIndex={0}
-                data-testid={`pipeline-${pl.name}`}
-                onClick={() =>
-                  ctx.openExternal(
-                    pl.latest
-                      ? runUrl(data.org, p.project, pl.latest.id)
-                      : pipelineUrl(data.org, p.project, pl.id),
-                  )
-                }
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  ctx.openExternal(
-                    pl.latest
-                      ? runUrl(data.org, p.project, pl.latest.id)
-                      : pipelineUrl(data.org, p.project, pl.id),
-                  )
-                }
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  ctx.menu(
-                    [
-                      {
-                        label: "Run…",
-                        icon: "play",
-                        onSelect: () => void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch),
-                      },
-                      {
-                        label: "Open pipeline in browser",
-                        icon: "external-link",
-                        onSelect: () => ctx.openExternal(pipelineUrl(data.org, p.project, pl.id)),
-                      },
-                      ...(pl.latest
-                        ? [
-                            {
-                              label: "Open latest run",
-                              icon: "external-link",
-                              onSelect: () => ctx.openExternal(runUrl(data.org, p.project, pl.latest!.id)),
-                            },
-                          ]
-                        : []),
-                    ],
-                    e.nativeEvent,
-                  );
-                }}
-                className="group flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
-              >
-                <StateIcon run={pl.latest} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm">{pl.name}</div>
-                  <div className="truncate text-xs text-muted">
-                    {pl.latest
-                      ? `${pl.latest.branch} · ${when(pl.latest.finishTime ?? pl.latest.startTime ?? pl.latest.queueTime)}${pl.latest.requestedBy ? ` · ${pl.latest.requestedBy}` : ""}`
-                      : "never run"}
+            <ArrangeList
+              items={p.pipelines}
+              keyOf={(pl) => String(pl.id)}
+              arrangement={arrangements?.[p.project] ?? EMPTY_ARRANGEMENT}
+              onChange={(next) => setArrangement(p.project, next)}
+              arranging={arranging}
+              testId={`pipelines-project-${p.project}`}
+              renderItem={(pl) => (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-testid={`pipeline-${pl.name}`}
+                  onClick={() =>
+                    !arranging &&
+                    ctx.openExternal(
+                      pl.latest
+                        ? runUrl(data.org, p.project, pl.latest.id)
+                        : pipelineUrl(data.org, p.project, pl.id),
+                    )
+                  }
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    ctx.openExternal(
+                      pl.latest
+                        ? runUrl(data.org, p.project, pl.latest.id)
+                        : pipelineUrl(data.org, p.project, pl.id),
+                    )
+                  }
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    ctx.menu(
+                      [
+                        {
+                          label: "Run…",
+                          icon: "play",
+                          onSelect: () => void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch),
+                        },
+                        {
+                          label: "Open pipeline in browser",
+                          icon: "external-link",
+                          onSelect: () => ctx.openExternal(pipelineUrl(data.org, p.project, pl.id)),
+                        },
+                        ...(pl.latest
+                          ? [
+                              {
+                                label: "Open latest run",
+                                icon: "external-link",
+                                onSelect: () => ctx.openExternal(runUrl(data.org, p.project, pl.latest!.id)),
+                              },
+                            ]
+                          : []),
+                      ],
+                      e.nativeEvent,
+                    );
+                  }}
+                  className="group flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
+                >
+                  <StateIcon run={pl.latest} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm">{pl.name}</div>
+                    <div className="truncate text-xs text-muted">
+                      {pl.latest
+                        ? `${pl.latest.branch} · ${when(pl.latest.finishTime ?? pl.latest.startTime ?? pl.latest.queueTime)}${pl.latest.requestedBy ? ` · ${pl.latest.requestedBy}` : ""}`
+                        : "never run"}
+                    </div>
                   </div>
+                  <span className="hidden group-hover:flex">
+                    <IconButton
+                      icon={Play}
+                      size="sm"
+                      label={`Run ${pl.name}`}
+                      onClick={(e) => (
+                        e.stopPropagation(), void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch)
+                      )}
+                    />
+                    <IconButton
+                      icon={ExternalLink}
+                      size="sm"
+                      label="Open in browser"
+                      onClick={(e) => (
+                        e.stopPropagation(), ctx.openExternal(pipelineUrl(data.org, p.project, pl.id))
+                      )}
+                    />
+                  </span>
                 </div>
-                <span className="hidden group-hover:flex">
-                  <IconButton
-                    icon={Play}
-                    size="sm"
-                    label={`Run ${pl.name}`}
-                    onClick={(e) => (
-                      e.stopPropagation(), void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch)
-                    )}
-                  />
-                  <IconButton
-                    icon={ExternalLink}
-                    size="sm"
-                    label="Open in browser"
-                    onClick={(e) => (
-                      e.stopPropagation(), ctx.openExternal(pipelineUrl(data.org, p.project, pl.id))
-                    )}
-                  />
-                </span>
-              </div>
-            ))}
+              )}
+            />
           </div>
         ))}
       </div>

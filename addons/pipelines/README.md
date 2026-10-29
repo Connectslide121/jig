@@ -13,3 +13,7 @@ stores no tokens (D-018).
 
 Commands used: `az pipelines list`, `az pipelines runs list`, `az pipelines run`,
 `az pipelines runs show`, `az devops project list`. Parsers in `lib/runs.ts` (tested).
+
+**Arrange** (header button): hide pipelines, drag them into your order, and group them with dividers
+(optionally titled). One arrangement per Azure DevOps project, the same in every Jig project (D-108), kept in the
+add-on's storage (`arrangement`). New pipelines appear after the arranged ones.

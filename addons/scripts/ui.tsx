@@ -1,13 +1,35 @@
-import type {
-  AddonComponentProps,
-  AddonProject,
-  AddonScript,
-  AddonScriptGroup,
-  AddonUiContext,
+import {
+  type AddonComponentProps,
+  type AddonProject,
+  type AddonScript,
+  type AddonScriptGroup,
+  type AddonUiContext,
+  type Arrangement,
+  EMPTY_ARRANGEMENT,
 } from "@jig/sdk";
-import { Badge, Empty, IconButton, Spinner, useProjectList, useRunningScripts } from "@jig/sdk/ui";
-import { ChevronDown, ChevronRight, Layers, Play, RotateCw, Square, SquareTerminal } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrangeList,
+  Badge,
+  Button,
+  Empty,
+  IconButton,
+  Spinner,
+  useProjectList,
+  useRunningScripts,
+  useWorkspaceList,
+} from "@jig/sdk/ui";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  ListOrdered,
+  Play,
+  RotateCw,
+  Square,
+  SquareTerminal,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type Listing = { scripts: AddonScript[]; groups: AddonScriptGroup[] };
 
@@ -46,18 +68,119 @@ async function safe(ctx: AddonUiContext, label: string, fn: () => Promise<void>)
   }
 }
 
-function ProjectScripts({
+/** One entry of a folder's list: a script group or a script. */
+type Item = { kind: "group"; group: AddonScriptGroup } | { kind: "script"; script: AddonScript };
+const itemKey = (i: Item) => (i.kind === "group" ? `g:${i.group.id}` : `s:${i.script.id}`);
+
+/** Your arrangement of each folder's list (hidden, order, dividers), the same in every project. */
+function useArrangements(ctx: AddonUiContext) {
+  const [all, setAll] = useState<Record<string, Arrangement>>();
+  useEffect(() => {
+    void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+  }, [ctx]);
+  const set = (folder: string, next: Arrangement) =>
+    setAll((current) => {
+      const updated = { ...(current ?? {}), [folder]: next };
+      void ctx.storage.set("arrangement", updated);
+      return updated;
+    });
+  return [all, set] as const;
+}
+
+function FolderScripts({
   ctx,
   project,
+  title,
   listing,
+  arrangement,
+  onArrange,
+  arranging,
 }: {
   ctx: AddonUiContext;
   project: AddonProject;
+  title: string;
   listing?: Listing | { error: string };
+  arrangement: Arrangement;
+  onArrange: (next: Arrangement) => void;
+  arranging: boolean;
 }) {
   const [open, setOpen] = useState(true);
   const running = useRunningScripts();
   const runningIds = new Map(running.filter((r) => r.projectId === project.id).map((r) => [r.scriptId, r]));
+  const items: Item[] =
+    listing && "scripts" in listing
+      ? [
+          ...listing.groups.map((group) => ({ kind: "group" as const, group })),
+          ...listing.scripts.map((script) => ({ kind: "script" as const, script })),
+        ]
+      : [];
+  const row = (item: Item) => {
+    if (item.kind === "group") {
+      const g = item.group;
+      return (
+        <div className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover">
+          <Layers className="size-3.5 text-muted" />
+          <span className="flex-1 truncate">{g.name}</span>
+          {!arranging && (
+            <IconButton
+              icon={Play}
+              size="sm"
+              label={`Start ${g.name}`}
+              onClick={() => void safe(ctx, g.name, () => ctx.scripts.runGroup(project.id, g.id))}
+            />
+          )}
+        </div>
+      );
+    }
+    const sc = item.script;
+    const r = runningIds.get(sc.id);
+    return (
+      <div
+        className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover"
+        data-testid={`scripts-addon-${sc.name}`}
+      >
+        <span className={r ? "size-1.5 rounded-full bg-success" : "size-1.5 rounded-full bg-line-strong"} />
+        <button
+          type="button"
+          className="min-w-0 flex-1 truncate text-left"
+          title={sc.detail ?? sc.command}
+          disabled={arranging}
+          onClick={() =>
+            r
+              ? ctx.scripts.show(r.terminalId)
+              : void safe(ctx, sc.name, () => ctx.scripts.run(project.id, sc.id))
+          }
+        >
+          {sc.folder ? <span className="text-hint">{sc.folder}/</span> : null}
+          {sc.name}
+        </button>
+        {arranging ? null : r ? (
+          <>
+            <IconButton
+              icon={RotateCw}
+              size="sm"
+              label="Restart"
+              onClick={() => void safe(ctx, sc.name, () => ctx.scripts.restart(project.id, sc.id))}
+            />
+            <IconButton
+              icon={Square}
+              size="sm"
+              label="Stop"
+              onClick={() => void ctx.scripts.stop(project.id, sc.id)}
+            />
+          </>
+        ) : (
+          <IconButton
+            icon={Play}
+            size="sm"
+            label="Run"
+            className="opacity-0 group-hover:opacity-100"
+            onClick={() => void safe(ctx, sc.name, () => ctx.scripts.run(project.id, sc.id))}
+          />
+        )}
+      </div>
+    );
+  };
   return (
     <div className="mb-2">
       <button
@@ -66,7 +189,7 @@ function ProjectScripts({
         onClick={() => setOpen(!open)}
       >
         {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-        <span className="flex-1 truncate">{project.name}</span>
+        <span className="flex-1 truncate">{title}</span>
         {runningIds.size > 0 && <Badge tone="success">{runningIds.size} running</Badge>}
       </button>
       {open && !listing && <Spinner size="sm" className="mx-4" />}
@@ -75,90 +198,73 @@ function ProjectScripts({
       )}
       {open && listing && "scripts" in listing && (
         <>
-          {listing.groups.map((g) => (
-            <div
-              key={g.id}
-              className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover"
-            >
-              <Layers className="size-3.5 text-muted" />
-              <span className="flex-1 truncate">{g.name}</span>
-              <IconButton
-                icon={Play}
-                size="sm"
-                label={`Start ${g.name}`}
-                onClick={() => void safe(ctx, g.name, () => ctx.scripts.runGroup(project.id, g.id))}
-              />
-            </div>
-          ))}
           {listing.scripts.length === 0 && <div className="px-5 text-xs text-hint">No scripts found.</div>}
-          {listing.scripts.map((s) => {
-            const r = runningIds.get(s.id);
-            return (
-              <div
-                key={s.id}
-                className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover"
-                data-testid={`scripts-addon-${s.name}`}
-              >
-                <span
-                  className={r ? "size-1.5 rounded-full bg-success" : "size-1.5 rounded-full bg-line-strong"}
-                />
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 truncate text-left"
-                  title={s.detail ?? s.command}
-                  onClick={() =>
-                    r
-                      ? ctx.scripts.show(r.terminalId)
-                      : void safe(ctx, s.name, () => ctx.scripts.run(project.id, s.id))
-                  }
-                >
-                  {s.folder ? <span className="text-hint">{s.folder}/</span> : null}
-                  {s.name}
-                </button>
-                {r ? (
-                  <>
-                    <IconButton
-                      icon={RotateCw}
-                      size="sm"
-                      label="Restart"
-                      onClick={() => void safe(ctx, s.name, () => ctx.scripts.restart(project.id, s.id))}
-                    />
-                    <IconButton
-                      icon={Square}
-                      size="sm"
-                      label="Stop"
-                      onClick={() => void ctx.scripts.stop(project.id, s.id)}
-                    />
-                  </>
-                ) : (
-                  <IconButton
-                    icon={Play}
-                    size="sm"
-                    label="Run"
-                    className="opacity-0 group-hover:opacity-100"
-                    onClick={() => void safe(ctx, s.name, () => ctx.scripts.run(project.id, s.id))}
-                  />
-                )}
-              </div>
-            );
-          })}
+          <ArrangeList
+            items={items}
+            keyOf={itemKey}
+            arrangement={arrangement}
+            onChange={onArrange}
+            arranging={arranging}
+            renderItem={row}
+            testId={`scripts-folder-${title}`}
+          />
         </>
       )}
     </div>
   );
 }
 
+/**
+ * Every script Jig finds, one group per folder (workspace), whatever the active project (D-102: the
+ * right side is global). Arrange: hide scripts, drag them into your order, group them with dividers.
+ */
 export function ScriptsView({ ctx }: AddonComponentProps) {
   const projects = useProjectList();
-  const listings = useListings(ctx, projects);
+  const workspaces = useWorkspaceList();
+  // One project per folder lists its scripts (several projects can share a workspace).
+  const folders = useMemo(() => {
+    const seen = new Map<string, AddonProject>();
+    for (const p of projects) if (!seen.has(p.path)) seen.set(p.path, p);
+    return [...seen.values()];
+  }, [projects]);
+  const listings = useListings(ctx, folders);
+  const [arrangements, setArrangement] = useArrangements(ctx);
+  const [arranging, setArranging] = useState(false);
   const active = ctx.projects.active();
-  const ordered = [...projects].sort((a, b) => (a.id === active?.id ? -1 : b.id === active?.id ? 1 : 0));
-  if (projects.length === 0) return <Empty icon={SquareTerminal} title="No projects" />;
+  const ordered = [...folders].sort((a, b) =>
+    a.path === active?.path ? -1 : b.path === active?.path ? 1 : 0,
+  );
+  if (folders.length === 0) return <Empty icon={SquareTerminal} title="No projects" />;
+  const titleOf = (p: AddonProject) => workspaces.find((w) => w.path === p.path)?.name ?? p.name;
   return (
-    <div className="h-full overflow-y-auto p-1" data-testid="scripts-view">
-      {ordered.map((p) => (
-        <ProjectScripts key={p.id} ctx={ctx} project={p} listing={listings[p.id]} />
-      ))}
+    <div className="flex h-full flex-col" data-testid="scripts-view">
+      <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
+        <span className="flex-1">{arranging ? "Hide, reorder and group your scripts" : "Scripts"}</span>
+        <Button
+          size="sm"
+          variant={arranging ? "primary" : "ghost"}
+          icon={arranging ? Check : ListOrdered}
+          onClick={() => setArranging(!arranging)}
+          data-testid="scripts-arrange"
+        >
+          {arranging ? "Done" : "Arrange"}
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-1">
+        {arrangements &&
+          ordered.map((p) => (
+            <FolderScripts
+              key={p.path}
+              ctx={ctx}
+              project={p}
+              title={titleOf(p)}
+              listing={listings[p.id]}
+              arrangement={arrangements[p.path] ?? EMPTY_ARRANGEMENT}
+              onArrange={(next) => setArrangement(p.path, next)}
+              arranging={arranging}
+            />
+          ))}
+      </div>
     </div>
   );
 }

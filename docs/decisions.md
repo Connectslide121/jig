@@ -941,3 +941,16 @@ other pane's active tab. `main.active` is always the focused tab, which is what 
 - A pane never stays empty: the split ends instead.
 - Two panes only, side by side, as Jon chose; no grid.
 - Tab bodies stay mounted across panes, so a chat keeps its state when moved.
+
+### D-108 — Arranging lists is an add-on capability (`ArrangeList`)
+**Decided by:** Claude, on my own (Jon: hide, reorder and dividers in Scripts and Pipelines, from the
+panel, the same in every project) · **Date:** 2026-10-29
+
+Instead of two one-off implementations, `@jig/sdk` has pure helpers (`arrange`, `moveKey`, …) and
+`@jig/sdk/ui` has `ArrangeList`. Scripts and Pipelines use them, and any add-on (or the builder) can.
+- Each panel stores its arrangements in its own storage, one per group: per folder for Scripts, per
+  Azure DevOps project for Pipelines.
+- A divider with nothing visible under it isn't shown.
+- New items appear after the arranged ones, so nothing disappears silently.
+- Scripts is now one group per workspace folder, whatever the active project (the right side is
+  global, D-102).

@@ -74,6 +74,8 @@ interface Pending {
   danger?: boolean;
   initial?: string;
   placeholder?: string;
+  /** A prompt that may be answered with nothing (e.g. an optional title). */
+  allowEmpty?: boolean;
   resolve: (value: string | undefined) => void;
 }
 const usePending = create<{ pending: Pending | undefined }>(() => ({ pending: undefined }));
@@ -108,6 +110,7 @@ export function promptDialog(options: {
   confirmLabel?: string;
   initial?: string;
   placeholder?: string;
+  allowEmpty?: boolean;
 }): Promise<string | undefined> {
   return new Promise((resolve) => show({ kind: "prompt", confirmLabel: "OK", ...options, resolve }));
 }
@@ -152,7 +155,7 @@ function PendingDialog({ pending }: { pending: Pending }) {
           <Button
             data-autofocus
             variant={pending.danger ? "danger" : "primary"}
-            disabled={pending.kind === "prompt" && !value.trim()}
+            disabled={pending.kind === "prompt" && !pending.allowEmpty && !value.trim()}
             onClick={() => finish(pending.kind === "prompt" ? value.trim() : "")}
             data-testid="dialog-confirm"
           >
@@ -166,7 +169,7 @@ function PendingDialog({ pending }: { pending: Pending }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (value.trim()) finish(value.trim());
+            if (value.trim() || pending.allowEmpty) finish(value.trim());
           }}
         >
           <Input

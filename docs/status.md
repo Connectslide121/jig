@@ -138,6 +138,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
+- **Arrange Scripts and Pipelines:** Arrange in each panel's header hides items, lets you drag them
+  into your order and adds dividers (optionally titled). It's the same in every project. Scripts
+  shows one group per folder, whatever the active project.
 - **Split view:** two tabs side by side.
   - Right-click a tab → Open to the side, or drag it to the right part of the main area (or onto
     the other pane's tab bar).
