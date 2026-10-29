@@ -7,7 +7,6 @@ import {
 } from "@jig/sdk";
 import {
   ArrangeList,
-  Badge,
   Button,
   cn,
   Empty,
@@ -163,11 +162,7 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
       className="group flex flex-col rounded-md px-2 hover:bg-hover"
     >
       <div className="flex h-7 items-center gap-2 text-sm">
-        <span
-          className={cn("size-2 shrink-0 rounded-full", DOT[status.tone])}
-          title={status.label}
-          aria-label={status.label}
-        />
+        <span className={cn("size-2 shrink-0 rounded-full", DOT[status.tone])} title={status.label} />
         <button
           type="button"
           className="min-w-0 flex-1 truncate text-left font-medium"
@@ -183,15 +178,15 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
             title={`${status.label}. Sync: pull, then push`}
             onClick={() => void sync()}
             data-testid={`repo-sync-${name}`}
-            className="flex shrink-0 items-center gap-1 disabled:opacity-50"
+            className="group/sync flex shrink-0 cursor-pointer items-center gap-1 disabled:cursor-default disabled:opacity-50"
           >
             {status.sync && (
-              <span className="rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums">
+              <span className="rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums transition-colors group-hover/sync:bg-accent group-hover/sync:text-on-accent">
                 {syncing ? "…" : status.sync}
               </span>
             )}
             {status.changed && (
-              <span className="flex items-center gap-0.5 rounded-full bg-warning-soft px-1.5 text-2xs font-semibold text-warning tabular-nums">
+              <span className="flex items-center gap-0.5 rounded-full bg-warning-soft px-1.5 text-2xs font-semibold text-warning tabular-nums transition-colors group-hover/sync:bg-warning group-hover/sync:text-on-accent">
                 <Pencil className="size-2.5" />
                 {status.changed}
               </span>
