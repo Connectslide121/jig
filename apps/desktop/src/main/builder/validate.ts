@@ -61,6 +61,8 @@ export async function validateAddon(dir: string, nodePaths: string[]): Promise<V
       problems.push(...host.errors.map((e) => `host.ts: ${e}`));
     } else if (manifest.contributes.watchers.length)
       problems.push("addon.json has watchers but there is no host.ts.");
+    else if (manifest.contributes.tools.length)
+      problems.push("addon.json has tools for Claude but there is no host.ts.");
   }
   return {
     ok: problems.length === 0,

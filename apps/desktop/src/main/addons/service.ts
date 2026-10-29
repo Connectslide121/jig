@@ -1,7 +1,7 @@
 import { type FSWatcher, watch } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { addonViewId, checkTokens, intervalMs, uiExports } from "@jig/sdk";
+import { addonToolName, addonViewId, checkTokens, intervalMs, uiExports } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
@@ -217,6 +217,8 @@ export class AddonService {
       }
     } else if (manifest.contributes.watchers.length > 0) {
       errors.push("addon.json has watchers but there is no host.ts");
+    } else if (manifest.contributes.tools.length > 0) {
+      errors.push("addon.json has tools for Claude but there is no host.ts");
     }
     if (warnings.length) info.warnings = warnings.slice(0, 50);
     if (errors.length) {
@@ -281,6 +283,21 @@ export class AddonService {
   async storageGet(id: string, key: string): Promise<unknown> {
     const file = this.storageFile(id);
     return this.inOrder(id, async () => (await readJson(file, z.record(z.string(), z.unknown())))[key]);
+  }
+
+  /** Every key of an add-on's storage with its value (for Claude's add-on data tools). */
+  async storageAll(id: string): Promise<Record<string, unknown>> {
+    const file = this.storageFile(id);
+    return this.inOrder(id, async () => readJson(file, z.record(z.string(), z.unknown())));
+  }
+
+  async storageDelete(id: string, key: string): Promise<void> {
+    const file = this.storageFile(id);
+    await this.inOrder(id, async () => {
+      const data = await readJson(file, z.record(z.string(), z.unknown()));
+      delete data[key];
+      await writeJson(file, data);
+    });
   }
 
   async storageSet(id: string, key: string, value: unknown): Promise<void> {
@@ -366,6 +383,7 @@ export class AddonService {
             ...c.statusbar.map(() => "status bar item"),
             ...c.dashboard.map(() => "dashboard widget"),
             ...c.watchers.map((w) => `watcher every ${w.every}`),
+            ...c.tools.map((t) => `Claude tool ${addonToolName(info.id, t.id)}`),
             ...(c.settings ? ["settings page"] : []),
           ]
         : [];

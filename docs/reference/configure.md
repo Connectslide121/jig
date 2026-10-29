@@ -22,6 +22,13 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_set_project_links { projectId?, groups: [{ title, links }] }` | replaces all links (reorder, regroup, remove); Undo puts the old ones back | yes |
 | `jig_move_chat { chatId?, projectId?, pinned? }` | puts a chat (default: this one) in a project, moves it, takes it out, pins/unpins it | yes |
 | `jig_install_theme { namespace, name }` | installs a theme extension from Open VSX (theme files only) | yes |
+| `jig_get_addon { addonId }` | what an add-on is and contributes, its permissions, files, README, and the keys of its stored data with a preview | no (read-only) |
+| `jig_get_addon_data { addonId, key? }` | an add-on's stored data: one key in full, or all of it | no (read-only) |
+| `jig_set_addon_data { addonId, key, value }` | creates or replaces one key (any JSON); Undo puts back the old value (or deletes a new key) | yes |
+| `jig_delete_addon_data { addonId, key }` | deletes one key; Undo puts it back | yes |
+
+Add-ons also give Claude their own tools (slot `claude.tool`, e.g. Releases' `addon_releases_changes`),
+listed with each add-on by `jig_list_addons`.
 
 "Asks you first" is Claude Code's normal permission prompt (Allow once / Always allow / Deny); Jig
 lets its read-only tools through without asking (`isReadOnlyJigTool` in `engine/claude.ts`).

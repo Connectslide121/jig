@@ -2,7 +2,7 @@ import { JigError } from "../../shared/ipc";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
-import { handle } from "../ipc/router";
+import { emit, handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
 import { knowledgeStore } from "../learning";
 import { projectStore } from "../projects";
@@ -34,6 +34,12 @@ export function startConfigure(): void {
     addCard: (sessionId, item) => sessionManager().addItem(sessionId, item),
     removeEvidence: (id) => knowledgeStore().remove(id),
     setProfile: (text) => knowledgeStore().setProfile(text),
+    setAddonData: async (id, key, value) => {
+      const addons = addonService();
+      if (value === undefined) await addons.storageDelete(id, key);
+      else await addons.storageSet(id, key, value);
+      emit("addons.event", { id, topic: "storage", payload: { key } });
+    },
   };
   registerJigTools(configureTools(deps));
 

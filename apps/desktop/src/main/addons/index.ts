@@ -6,13 +6,16 @@ import { slugify } from "@jig/themes";
 import { app, BrowserWindow, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
-import { setJigToolHandlers } from "../engine/jigTools";
+import { card } from "../configure/tools";
+import { registerJigTools, setAddonTools, setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
+import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
@@ -159,6 +162,8 @@ export async function startAddons(): Promise<void> {
     onChange: (addons) => {
       latest = addons;
       emit("addons.changed", addons);
+      // Add-ons' tools for Claude follow the add-ons (new chats get the current set).
+      setAddonTools(addonTools(addons, (id, method, args) => addonService().call(id, method, args)));
       for (const listener of changeListeners) listener(addons);
     },
   });
@@ -166,6 +171,18 @@ export async function startAddons(): Promise<void> {
   await s.start();
   s.watchFiles();
   setJigToolHandlers({ listAddons: async () => s.catalog() });
+  setAddonTools(addonTools(s.list(), (id, method, args) => s.call(id, method, args)));
+  registerJigTools(
+    addonDataTools({
+      list: () => s.list(),
+      all: (id) => s.storageAll(id),
+      set: (id, key, value) => s.storageSet(id, key, value),
+      remove: (id, key) => s.storageDelete(id, key),
+      changed: (id, key) => emit("addons.event", { id, topic: "storage", payload: { key } }),
+      addCard: (sessionId, item) => sessionManager().addItem(sessionId, item),
+      card,
+    }),
+  );
 
   handle("addons.list", () => s.list());
   handle("addons.setEnabled", ({ id, enabled }) => s.setEnabled(id, enabled));

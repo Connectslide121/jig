@@ -64,7 +64,13 @@ function wrap(addon: AddonInfo, ctx: AddonUiContext, Component: AnyComponent, wh
 async function mount(addon: AddonInfo): Promise<void> {
   const manifest = addon.manifest;
   if (!manifest || !addon.uiUrl) return;
-  const module = (await import(/* @vite-ignore */ addon.uiUrl)) as Record<string, unknown>;
+  // One retry: a reload of every add-on can briefly replace the bundle while it is being fetched.
+  const url = addon.uiUrl;
+  const load = () => import(/* @vite-ignore */ url) as Promise<Record<string, unknown>>;
+  const module = await load().catch(async () => {
+    await new Promise((r) => setTimeout(r, 400));
+    return load();
+  });
   const ctx = makeContext(addon);
   const owner = addon.id;
   const cleanups: Array<() => void> = [];

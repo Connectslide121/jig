@@ -18,7 +18,7 @@ test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page
   await expect(about).toBeVisible();
 
   // Every slot, with the add-ons that use it.
-  await expect(about.getByTestId("about-slots").locator("[data-testid^=about-slot-]")).toHaveCount(16);
+  await expect(about.getByTestId("about-slots").locator("[data-testid^=about-slot-]")).toHaveCount(17);
   const view = about.getByTestId("about-slot-view");
   await expect(view).toContainText("in use");
   await view.locator("button").first().click();

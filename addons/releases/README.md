@@ -29,5 +29,11 @@ Versions, changelogs and release notes per repository, following its **release p
 - **Watchers:** `checkDeploys` (5 min) looks at production pipelines in the policy through `az`;
   `remind` (6 h) sends the weekly reminder when the policy's cadence is `weekly`.
 
+- **Tools for Claude** (slot `claude.tool`), in every chat: `addon_releases_overview`,
+  `addon_releases_changes` (what changed since the last release: commits, pull requests, the suggested
+  version, what's live), `addon_releases_history` (releases with their notes) — these run without
+  asking — and `addon_releases_release`, `addon_releases_record_deploy`, `addon_releases_set_policy`,
+  which ask first. Without `repo`, they use the repository the chat works in.
+
 Pure logic in `lib/` (tested in `lib/release.test.ts`): versions and tags, commits and changelogs,
 version files, the policy, detection, the next version, Claude's prompt and answer, deploys.

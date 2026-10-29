@@ -77,6 +77,34 @@ export const ManifestSchema = z.object({
           }),
         )
         .default([]),
+      /**
+       * Tools Claude can use in every chat (slot `claude.tool`): a named export of `host.ts` called with
+       * the tool's arguments plus `chat` ({ cwd, projectId }) when Claude uses it. `readOnly` tools run
+       * without asking; others ask the user first. On the `jig` MCP server as `addon_<add-on>_<id>`.
+       */
+      tools: z
+        .array(
+          z.object({
+            id: z.string().regex(/^[a-z][a-z0-9_]*$/, "lower-case letters, digits and underscores"),
+            /** When Claude should use it, and what it returns. */
+            description: z.string().min(10),
+            params: z
+              .record(
+                z.string().regex(/^[a-zA-Z_]\w*$/),
+                z.object({
+                  type: z.enum(["string", "number", "boolean", "object", "array"]).default("string"),
+                  description: z.string().default(""),
+                  optional: z.boolean().default(false),
+                  /** Allowed values (strings). */
+                  enum: z.array(z.string()).optional(),
+                }),
+              )
+              .default({}),
+            readOnly: z.boolean().default(false),
+            run: ExportName,
+          }),
+        )
+        .default([]),
       settings: z.object({ title: z.string(), component: ExportName }).optional(),
       themes: z.array(z.object({ label: z.string().optional(), path: z.string() })).default([]),
     })
@@ -122,6 +150,10 @@ function duplicateIds(m: AddonManifest): string[] {
   check(
     "menus",
     c.menus.map((a) => a.id),
+  );
+  check(
+    "tools",
+    c.tools.map((t) => t.id),
   );
   return errors;
 }

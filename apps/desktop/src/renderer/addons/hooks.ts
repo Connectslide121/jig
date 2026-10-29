@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAddon } from "./context";
 
 /**
- * Calls a host.ts export and keeps the result; `reload()` calls again. Re-runs when `args` change, and
+ * Calls a host.ts export and keeps the result; `reload()` calls again. Re-runs when `args` change, or
+ * when the add-on's stored data changes from outside (the `storage` event), and
  * never returns data of earlier `args` (another project's files must not show while the new load runs).
  */
 export function useHostCall<T = unknown>(method: string, args?: unknown, options: { skip?: boolean } = {}) {
@@ -31,6 +32,11 @@ export function useHostCall<T = unknown>(method: string, args?: unknown, options
   useEffect(() => {
     if (!options.skip) void reload();
   }, [reload, options.skip]);
+  // Claude changed this add-on's stored data (jig_set_addon_data): show the new state.
+  useEffect(() => {
+    if (options.skip) return;
+    return ctx.on("storage", () => void reload());
+  }, [ctx, reload, options.skip]);
   const data = result?.key === key ? result.value : undefined;
   return { data, error, loading, reload };
 }

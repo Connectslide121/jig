@@ -252,7 +252,9 @@ export type ConfigUndo =
   /** A note saved for suggestions (Remove deletes it). */
   | { type: "evidence"; id: string }
   /** The profile before Claude changed it. */
-  | { type: "profile"; text: string };
+  | { type: "profile"; text: string }
+  /** One key of an add-on's stored data before Claude changed it (`existed: false`: delete it). */
+  | { type: "addonData"; id: string; key: string; value?: unknown; existed: boolean };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =

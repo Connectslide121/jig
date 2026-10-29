@@ -293,6 +293,64 @@
             "required": ["id", "every", "run"]
           }
         },
+        "tools": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 10
+              },
+              "params": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z_]\\w*$"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "default": "string",
+                      "type": "string",
+                      "enum": ["string", "number", "boolean", "object", "array"]
+                    },
+                    "description": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "optional": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "enum": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "readOnly": {
+                "default": false,
+                "type": "boolean"
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "description", "run"]
+          }
+        },
         "settings": {
           "type": "object",
           "properties": {

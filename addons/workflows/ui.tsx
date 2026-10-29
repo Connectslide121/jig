@@ -195,6 +195,13 @@ export function WorkflowTab({ params, tabId }: AddonTabProps) {
   useEffect(() => {
     if (project) void ctx.scripts.list(project.id).then((r) => setScripts(r.scripts));
   }, [ctx, project]);
+  // Claude changed the stored workflows: show the new version (not while you edit it).
+  useAddonEvent("storage", () => {
+    if (editing || !params.id) return;
+    void ctx.host
+      .call<Workflow[]>("list", { projectId })
+      .then((all) => setWf(all.find((w) => w.id === params.id)));
+  });
 
   if (!wf) return <Spinner className="m-4" />;
   return (

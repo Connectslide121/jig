@@ -41,8 +41,114 @@
       }
     ],
     "watchers": [
-      { "id": "deploys", "every": "5m", "run": "checkDeploys" },
-      { "id": "remind", "every": "6h", "run": "remind" }
+      {
+        "id": "deploys",
+        "every": "5m",
+        "run": "checkDeploys"
+      },
+      {
+        "id": "remind",
+        "every": "6h",
+        "run": "remind"
+      }
+    ],
+    "tools": [
+      {
+        "id": "overview",
+        "description": "Every repository Jig knows with its release style, latest version and how much is unreleased.",
+        "readOnly": true,
+        "run": "toolOverview"
+      },
+      {
+        "id": "changes",
+        "description": "What changed since the last release of a repository: its release policy, the suggested next version, unreleased commits (type, author, work items), merged pull requests and what's live per environment. Use it to answer 'what changed since the last release?' and before writing release notes.",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name (as in the Releases panel) or path; leave out for the one this chat works in",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolChanges"
+      },
+      {
+        "id": "history",
+        "description": "The releases of a repository with their notes (newest first).",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name (as in the Releases panel) or path; leave out for the one this chat works in",
+            "optional": true
+          },
+          "limit": {
+            "type": "number",
+            "description": "How many (default 10)",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolHistory"
+      },
+      {
+        "id": "release",
+        "description": "Make a release following the repository's policy: set the version file, add the changelog section, commit 'Release x', tag with the notes, and push if asked. Write the changelog (Keep a Changelog section) and notes from releases_changes first.",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name (as in the Releases panel) or path; leave out for the one this chat works in",
+            "optional": true
+          },
+          "version": {
+            "description": "The new version, e.g. 1.4.0"
+          },
+          "changelog": {
+            "description": "The changelog section (## [1.4.0] - date \u2026)",
+            "optional": true
+          },
+          "notes": {
+            "description": "Release notes for users (Markdown)",
+            "optional": true
+          },
+          "push": {
+            "type": "boolean",
+            "description": "Push the commit and tag (default false)",
+            "optional": true
+          }
+        },
+        "run": "toolRelease"
+      },
+      {
+        "id": "record_deploy",
+        "description": "Record that the checked-out commit of a repository is deployed to an environment (for deploys done by hand). On a continuous project's production this is the release.",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name (as in the Releases panel) or path; leave out for the one this chat works in",
+            "optional": true
+          },
+          "env": {
+            "description": "The environment, e.g. prod"
+          }
+        },
+        "run": "toolRecordDeploy"
+      },
+      {
+        "id": "set_policy",
+        "description": "Write a repository's release policy (.jig/release.json): style planned|continuous|none, scheme semver|calver, versionFile, managedBy, tagFormat (with {version}), changelog {path}, notes [{audience, language}], commitConvention, cadence, environments, releasePipeline.",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name (as in the Releases panel) or path; leave out for the one this chat works in",
+            "optional": true
+          },
+          "policy": {
+            "type": "object",
+            "description": "The policy as JSON"
+          }
+        },
+        "run": "toolSetPolicy"
+      }
     ]
   }
 }

@@ -8,9 +8,10 @@ import {
   type PullRequest,
   parsePullRequest,
 } from "./lib/commits";
-import { type Deploy, deployAction, shouldRemind } from "./lib/deploys";
+import { type Deploy, deployAction, shouldRemind, whatsLive } from "./lib/deploys";
 import { type Detection, detect } from "./lib/detect";
 import { readVersion, versionFileKind, writeVersion } from "./lib/files";
+import { nextVersion } from "./lib/next";
 import { type Environment, parsePolicy, type ReleasePolicy } from "./lib/policy";
 import { bumpSemVer, compareVersions, nextCalVer, tagFor, versionFromTag } from "./lib/version";
 
@@ -591,4 +592,141 @@ export async function remind(_: unknown, api: AddonHostApi) {
     }
   }
   if (changed) await api.storage.set("reminded", reminded);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Tools for Claude (`contributes.tools`): the same data and actions as the panel, in any chat.
+
+interface ToolArgs {
+  repo?: string;
+  chat?: { cwd?: string; projectId?: string };
+}
+
+/** The repository a tool is about: by name or path, else the one the chat works in. */
+async function resolveRepo(args: ToolArgs, api: AddonHostApi): Promise<RepoItem> {
+  const items = repoItems(await api.workspaces());
+  const want = args.repo?.trim();
+  if (want) {
+    const norm = (p: string) => p.replaceAll("\\", "/").replace(/\/$/, "").toLowerCase();
+    const hit =
+      items.find((r) => norm(r.path) === norm(want)) ??
+      items.find((r) => r.name.toLowerCase() === want.toLowerCase()) ??
+      items.find((r) => r.name.toLowerCase().split("/").pop() === want.toLowerCase());
+    if (hit) return hit;
+    throw new Error(`No repository "${want}". Repositories: ${items.map((r) => r.name).join(", ")}`);
+  }
+  if (args.chat?.cwd) {
+    const top = (await git(api, args.chat.cwd, ["rev-parse", "--show-toplevel"], { ok: [0, 128] })).trim();
+    const norm = (p: string) => p.replaceAll("\\", "/").toLowerCase();
+    const hit = top ? items.find((r) => norm(r.path) === norm(top)) : undefined;
+    if (hit) return hit;
+  }
+  throw new Error(`Say which repository (repo). Repositories: ${items.map((r) => r.name).join(", ")}`);
+}
+
+const STYLE: Record<string, string> = {
+  planned: "planned releases",
+  continuous: "continuous",
+  none: "not tracked",
+};
+
+export async function toolOverview(_: ToolArgs, api: AddonHostApi): Promise<string> {
+  const list = await overview(undefined, api);
+  if (!list.length) return "No git repositories in Jig's workspaces.";
+  return list
+    .map((r) =>
+      r.policy
+        ? `- ${r.name}: ${STYLE[r.policy.style]}, latest ${r.latest?.tag ?? "none"}${r.policy.style === "planned" ? `, ${r.unreleased} unreleased commit(s)${r.oldest ? ` since ${r.oldest.slice(0, 10)}` : ""}` : ""}`
+        : `- ${r.name}: no release policy yet (set one up with releases_set_policy, or in the Releases panel)`,
+    )
+    .join("\n");
+}
+
+export async function toolChanges(args: ToolArgs, api: AddonHostApi): Promise<string> {
+  const repo = await resolveRepo(args, api);
+  const d = await detail({ path: repo.path }, api);
+  const lines = [`${repo.name} (${repo.path})`];
+  if (!d.policy) {
+    lines.push("No release policy yet. What Jig found:", JSON.stringify(d.detection, null, 2));
+  } else {
+    const p = d.policy;
+    lines.push(
+      `Policy: ${STYLE[p.style]}, ${p.scheme}, tags ${p.tagFormat}${p.versionFile ? `, version in ${p.versionFile}` : ""}${p.managedBy ? `, managed by ${p.managedBy}` : ""}${p.changelog ? `, changelog ${p.changelog.path}` : ""}${p.notes?.length ? `, notes for ${p.notes.map((n) => `${n.audience} (${n.language})`).join(", ")}` : ""}`,
+    );
+    if (p.style === "planned") {
+      const next = nextVersion({
+        policy: p,
+        latest: d.latest?.version,
+        fileVersion: d.fileVersion,
+        commits: d.unreleased,
+      });
+      lines.push(
+        `Suggested next version: ${next.version}${next.baseline ? " (first release, the baseline)" : ` (${next.bump})`}`,
+      );
+    }
+  }
+  lines.push(`Latest release: ${d.latest ? `${d.latest.tag} on ${d.latest.date.slice(0, 10)}` : "none"}`);
+  if (d.fileVersion) lines.push(`Version file says: ${d.fileVersion}`);
+  if (d.mismatch) lines.push(`Mismatch: ${d.mismatch}`);
+  lines.push(
+    `Unreleased commits (${d.unreleased.length}):`,
+    ...d.unreleased.map(
+      (c) =>
+        `- ${c.hash.slice(0, 7)} ${c.date.slice(0, 10)} ${c.author}: ${c.subject}${c.breaking ? " [breaking]" : ""}${c.workItems.length ? ` [AB#${c.workItems.join(", AB#")}]` : ""}`,
+    ),
+  );
+  if (d.pullRequests.length)
+    lines.push("Pull requests:", ...d.pullRequests.map((p) => `- #${p.number} ${p.title}`));
+  const live = whatsLive(d.deploys);
+  if (Object.keys(live).length)
+    lines.push(
+      "What's live:",
+      ...Object.values(live).map(
+        (x) => `- ${x.env}: ${x.version ?? x.commit.slice(0, 7)} (${x.at.slice(0, 10)})`,
+      ),
+    );
+  return lines.join("\n");
+}
+
+export async function toolHistory(args: ToolArgs & { limit?: number }, api: AddonHostApi): Promise<string> {
+  const repo = await resolveRepo(args, api);
+  const { policy } = await readPolicy(repo.path);
+  const list = (await releases(api, repo.path, policy?.tagFormat ?? "v{version}")).slice(0, args.limit ?? 10);
+  if (!list.length) return `${repo.name} has no releases yet.`;
+  return list.map((r) => `## ${r.tag} (${r.date.slice(0, 10)})\n${r.message || "(no notes)"}`).join("\n\n");
+}
+
+export async function toolRelease(
+  args: ToolArgs & { version: string; changelog?: string; notes?: string; push?: boolean },
+  api: AddonHostApi,
+): Promise<string> {
+  const repo = await resolveRepo(args, api);
+  const r = await release(
+    {
+      path: repo.path,
+      version: args.version,
+      changelog: args.changelog,
+      notes: args.notes,
+      push: args.push ?? false,
+    },
+    api,
+  );
+  return `Released ${r.tag} in ${repo.name}${r.committed ? " (committed the version file and changelog)" : ""}. ${r.pushed ? "Pushed." : r.pushError ? `Not pushed: ${r.pushError}` : "Not pushed."}`;
+}
+
+export async function toolRecordDeploy(args: ToolArgs & { env: string }, api: AddonHostApi): Promise<string> {
+  const repo = await resolveRepo(args, api);
+  const d = await recordDeploy({ path: repo.path, env: args.env }, api);
+  return `Recorded: ${repo.name} ${d.version ?? d.commit.slice(0, 7)} deployed to ${d.env}.`;
+}
+
+export async function toolSetPolicy(
+  args: ToolArgs & { policy: Record<string, unknown> },
+  api: AddonHostApi,
+): Promise<string> {
+  const repo = await resolveRepo(args, api);
+  const policy = parsePolicy(JSON.stringify(args.policy));
+  if (!policy) throw new Error("That isn't a release policy");
+  await savePolicy({ path: repo.path, policy }, api);
+  return `Saved ${repo.name}/.jig/release.json (${STYLE[policy.style]}, ${policy.scheme}, tags ${policy.tagFormat}). Commit it to share it with the team.`;
 }

@@ -186,6 +186,11 @@ other modules register with `registerJigTools`:
 - **Configuration** (settings, themes, layout, add-ons, projects): `docs/reference/configure.md`.
 - **Terminals** (`jig_terminal_run/read/list/stop`): `docs/reference/terminals.md`.
 - **Claude's browser** (`jig_browser_*`): `docs/reference/browser.md`.
+- **Learning** (`jig_note_evidence`, `jig_read_profile`, `jig_update_profile`): `docs/reference/learning.md`.
+- **Add-ons:** their own tools (`contributes.tools`, slot `claude.tool`, named `addon_<add-on>_<id>`;
+  `setAddonTools` replaces them when add-ons change, so new chats get the current set), and Jig's
+  `jig_get_addon` / `jig_get_addon_data` / `jig_set_addon_data` / `jig_delete_addon_data`
+  (`docs/reference/configure.md`).
 
 Tools marked `readOnly` run without a permission prompt. A tool may return images as well as text
 (`ToolOutput`); they show in the chat. `jigContext` (appended to Claude Code's system prompt) tells

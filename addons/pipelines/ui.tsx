@@ -84,7 +84,11 @@ async function startRun(
 function useArrangements(ctx: AddonUiContext) {
   const [all, setAll] = useState<Record<string, Arrangement>>();
   useEffect(() => {
-    void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+    const load = () =>
+      void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+    load();
+    // Claude changed the stored data.
+    return ctx.on("storage", load);
   }, [ctx]);
   const set = (project: string, next: Arrangement) =>
     setAll((current) => {

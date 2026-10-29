@@ -101,5 +101,5 @@ test("build errors are shown instead of loading a broken add-on", async ({ page,
   await expect(page.getByTestId("view-tab-addon.hello.main")).toHaveCount(0, { timeout: 15000 });
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-addons").click();
-  await expect(page.getByTestId("addon-errors")).toContainText("ui.tsx:1:");
+  await expect(page.getByTestId("addon-hello").getByTestId("addon-errors")).toContainText("ui.tsx:1:");
 });

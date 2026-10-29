@@ -84,7 +84,7 @@ are add-ons':
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
 | `notify({ title, message?, tone? })` | toast |
-| `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code |
+| `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
 | `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added |
 | `confirm({…})`, `prompt({…})` | Jig dialogs |

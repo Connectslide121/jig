@@ -59,7 +59,7 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 
 - **Phase 6 (done): add-on system.**
   - Add-ons are folders with `addon.json` (+ `ui.tsx`, `host.ts`, `README.md`) in `~/.jig/addons`
-    (a git repository) or Jig's built-in `addons/`. They load into 16 slots (views, tabs, top bar,
+    (a git repository) or Jig's built-in `addons/`. They load into 17 slots (views, tabs, top bar,
     status bar, dashboard, Tools actions, context menus, chat toolbar and tool cards, prompts,
     watchers, settings pages, themes); see `docs/guides/writing-addons.md`.
   - Saving a file reloads that add-on; a crash shows "Turn off" in its place, never a broken app.
@@ -197,6 +197,11 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   project's repository on a new branch (`jig/<what it's for>-<id>`), so your working copy isn't
   touched. The chat's ⋯ menu applies its changes to your working copy (uncommitted), opens the folder,
   or removes the worktree and branch.
+- **Claude and add-ons** (D-115): add-ons can give Claude tools (slot `claude.tool`). Releases does:
+  ask a chat "what changed since the last release?", "write the notes for 2.5.0", or "release 1.4.0"
+  (that one asks first). Claude can also look inside any add-on and read, create, change or delete its
+  stored data (e.g. a workflow, a pipeline arrangement), each change with a card and Undo; the
+  add-on's views update.
 - **Drag views between sidebars:** drag a view's tab to reorder it, or onto another sidebar's tabs
   to move it there (the ⋯ menus still work).
 - **Sharing add-ons:** Settings → Add-ons → ⤓ exports an add-on as a `.zip`; **Import add-on…**
@@ -330,7 +335,7 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a
   **Compact** button shows next to it; the chat's ⋯ menu has the same entries.
 - **What Jig can do** (the "Jig" menu at the top left, the `?` in the top bar, Tools → What Jig can do,
-  Settings → About; it is also what the main area shows when no tab is open): a page with screenshots of each part, a live grid of the 16 extension slots (which of your
+  Settings → About; it is also what the main area shows when no tab is open): a page with screenshots of each part, a live grid of the 17 extension slots (which of your
   add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
   gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
   the project's), build examples that open the Build dialog, and every keyboard shortcut.

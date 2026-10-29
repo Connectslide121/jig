@@ -91,6 +91,11 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "Poll pipelines, watch a queue, check a URL",
     snippet: '"watchers": [{ "id": "runs", "every": "5m", "run": "checkRuns" }]',
   },
+  "claude.tool": {
+    idea: "“What changed since the last release?”, “Which pipelines failed today?”",
+    snippet:
+      '"tools": [{ "id": "changes", "description": "Commits since the last release", "params": { "repo": { "optional": true } }, "readOnly": true, "run": "changes" }]',
+  },
   "settings.page": {
     idea: "An add-on's own options",
     snippet: '"settings": { "title": "Pipelines", "component": "PipelineSettings" }',
@@ -127,6 +132,9 @@ export const CONFIGURE_TOOLS: Array<{ name: string; what: string }> = [
   { name: "jig_update_project", what: "Change a project: name, colour, defaults, instructions, starters" },
   { name: "jig_move_chat", what: "Move a chat to another project, or pin it" },
   { name: "jig_add_project_links", what: "Add links to a project (Azure resources, sites, boards)" },
+  { name: "jig_get_addon", what: "Look inside an add-on: what it does, its files and its data" },
+  { name: "jig_set_addon_data", what: "Create or change an add-on's data (e.g. a workflow), with Undo" },
+  { name: "jig_delete_addon_data", what: "Delete an add-on's data, with Undo" },
   { name: "jig_note_evidence", what: "Note work you do by hand, for suggestions (a card you can remove)" },
   { name: "jig_update_profile", what: "Add to what Jig knows about how you work" },
   { name: "jig_request_build", what: "Hand something new to the builder (you review it first)" },

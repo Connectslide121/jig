@@ -137,3 +137,33 @@ test("Releases: on a continuous project, a deploy by hand is the release", async
   expect(git(dir, "tag", "--list").trim()).toBe(`v${version}`);
   expect(git(dir, "rev-list", "-n", "1", `v${version}`).trim()).toBe(git(dir, "rev-parse", "HEAD").trim());
 });
+
+test("Claude uses the Releases tools and changes add-on data, with Undo", async ({ page, jigHome }) => {
+  const dir = await shop(jigHome);
+  await mkdir(join(dir, ".jig"), { recursive: true });
+  await writeFile(join(dir, ".jig", "release.json"), JSON.stringify({ version: 1, style: "planned" }));
+  await hostCall(page, "projects.add", { path: dir });
+  await page.keyboard.press("Control+N");
+  const chat = page.getByTestId("chat");
+
+  // An add-on's tool: what changed since the last release, from the chat's repository.
+  await page.getByTestId("composer-input").fill("what changed since the last release?");
+  await page.keyboard.press("Enter");
+  await expect(chat).toContainText("Here is what changed since the last release.", { timeout: 15000 });
+  await expect(chat).toContainText("addon_releases_changes");
+  await chat.getByText("addon_releases_changes").first().click();
+  await expect(chat).toContainText("feat: discount codes");
+
+  // Jig's add-on data tools: Claude looks inside the add-on and saves data; Undo takes it back.
+  await page.getByTestId("composer-input").fill("save a note in the releases data");
+  await page.keyboard.press("Enter");
+  const card = page.getByTestId("change-card").first();
+  await expect(card).toContainText("Changed Releases's data", { timeout: 15000 });
+  const note = async () =>
+    ((await hostCall(page, "addons.storageGet", { id: "releases", key: "fake-note" })) as { value?: unknown })
+      .value;
+  expect(await note()).toEqual({ text: "from a chat" });
+  await card.getByTestId("change-undo").click();
+  await expect(card).toContainText("Undone");
+  await expect.poll(note).toBeUndefined();
+});

@@ -64,6 +64,8 @@ export interface ConfigureDeps {
   /** Learning 2: a note saved from a chat, and the profile (for Undo of their cards). */
   removeEvidence?(id: string): Promise<unknown>;
   setProfile?(text: string): Promise<unknown>;
+  /** An add-on's stored data (Undo of Claude's changes to it); `undefined` deletes the key. */
+  setAddonData?(id: string, key: string, value: unknown | undefined): Promise<unknown>;
 }
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
@@ -536,6 +538,8 @@ export async function applyUndo(deps: ConfigureDeps, undo: ConfigUndo): Promise<
     await deps.setChatPinned(undo.id, undo.pinned);
   } else if (undo.type === "evidence") await deps.removeEvidence?.(undo.id);
   else if (undo.type === "profile") await deps.setProfile?.(undo.text);
+  else if (undo.type === "addonData")
+    await deps.setAddonData?.(undo.id, undo.key, undo.existed ? undo.value : undefined);
 }
 
 /** A link as Claude gives it. */

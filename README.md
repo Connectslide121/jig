@@ -246,7 +246,7 @@ it grows through add-ons and the extension points you choose to add.
 ## Extension slots
 
 Add-ons are folders in `~/.jig/addons` with an `addon.json`, React components and optional host code.
-They can plug into 16 places:
+They can plug into 17 places:
 
 <p align="center">
   <img src="apps/desktop/src/renderer/features/about/shots/slots.jpg?v=11" alt="The extension slots on the What Jig can do page" width="900">
@@ -262,6 +262,7 @@ They can plug into 16 places:
 | `tools.action` | the Tools menu, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
+| `claude.tool` | a tool Claude can use in every chat | | |
 
 Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases** and
 **Workflows** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·

@@ -76,7 +76,11 @@ const itemKey = (i: Item) => (i.kind === "group" ? `g:${i.group.id}` : `s:${i.sc
 function useArrangements(ctx: AddonUiContext) {
   const [all, setAll] = useState<Record<string, Arrangement>>();
   useEffect(() => {
-    void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+    const load = () =>
+      void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
+    load();
+    // Claude changed the stored data.
+    return ctx.on("storage", load);
   }, [ctx]);
   const set = (folder: string, next: Arrangement) =>
     setAll((current) => {

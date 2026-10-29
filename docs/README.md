@@ -32,7 +32,7 @@ root [`README.md`](../README.md).
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |
 | [usage.md](reference/usage.md) | Plan usage (5-hour and weekly windows) |
 | [layout.md](reference/layout.md) | Layout as data, regions, views and sections, split view, tabs, where views start, shortcuts |
-| [slots.md](reference/slots.md) | The 16 extension slots |
+| [slots.md](reference/slots.md) | The 17 extension slots |
 | [addon-api.md](reference/addon-api.md) | The add-on API (`ctx`), manifest and permissions |
 | [builder.md](reference/builder.md) | The builder: levels, jobs, worktrees, validation, proposals |
 | [learning.md](reference/learning.md) | The activity log, friction and notes from chats, the profile, pattern mining, suggestions and their actions, check-ins, "How you worked" |

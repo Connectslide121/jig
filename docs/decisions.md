@@ -1068,3 +1068,21 @@ work) · **Date:** 2026-10-29
   working copy as uncommitted changes, refusing when it doesn't apply cleanly — you review and commit
   as usual. **Remove** deletes the worktree and the branch; the chat stays.
 
+### D-115 — Add-ons give Claude tools; Claude manages add-ons' data
+**Decided by:** Jon (approved: Claude tools for Releases, and Claude seeing and changing any add-on's
+data) and Claude, on my own (the shape below) · **Date:** 2026-10-29
+
+- **A new slot, `claude.tool`** (manifest key `tools`): `id`, `description`, simple `params` (string,
+  number, boolean, object, array; optional; enum), `readOnly`, `run` (a `host.ts` export). Tools are on
+  the `jig` MCP server as `addon_<add-on>_<id>`, so they share Jig's permission handling: read-only
+  ones run without asking, the rest go through Claude Code's prompt. The host function gets the
+  arguments plus `chat` (`cwd`, `projectId`). Switched-off add-ons and add-ons with errors give none;
+  the set is replaced when add-ons change and new chats get it (a running chat keeps its tools).
+- **Releases is the first user**: overview, changes, history (read-only), release, record_deploy,
+  set_policy (ask first). Without `repo` they use the chat's repository.
+- **Add-on data:** `jig_get_addon` (manifest, files, README, data keys), `jig_get_addon_data`
+  (read-only), `jig_set_addon_data` and `jig_delete_addon_data` (ask first, a change card with Undo:
+  `ConfigUndo` `addonData`). After a change the add-on gets the event `storage`; `useHostCall`
+  reloads by itself, so views follow without each add-on doing anything.
+- The builder can now give an add-on Claude tools too, since it writes manifests with any slot.
+

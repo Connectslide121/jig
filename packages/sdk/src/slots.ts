@@ -17,6 +17,7 @@ export const SLOTS = {
   "chat.toolRenderer": "A custom card for a tool's result in the chat.",
   prompt: "A reusable prompt shown as a button above the composer.",
   watcher: "Host code that runs on an interval (e.g. check pipeline runs).",
+  "claude.tool": "A tool Claude can use in every chat (host code; read-only tools run without asking).",
   "settings.page": "A page in Settings.",
   theme: "A colour theme (Jig or VS Code format JSON).",
 } as const;
@@ -38,6 +39,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   "chat.toolRenderer": "toolRenderers",
   prompt: "prompts",
   watcher: "watchers",
+  "claude.tool": "tools",
   "settings.page": "settings",
   theme: "themes",
 };
@@ -49,3 +51,6 @@ export type ContextSlot = (typeof CONTEXT_SLOTS)[number];
 export const addonViewId = (addonId: string, viewId: string) => `addon.${addonId}.${viewId}`;
 export const addonTabType = (addonId: string, type: string) => `addon.${addonId}.${type}`;
 export const addonActionId = (addonId: string, id: string) => `addon.${addonId}.${id}`;
+/** The name Claude sees for an add-on's tool (`mcp__jig__addon_releases_changes`). */
+export const addonToolName = (addonId: string, toolId: string) =>
+  `addon_${addonId.replace(/[^a-z0-9]/g, "_")}_${toolId}`;

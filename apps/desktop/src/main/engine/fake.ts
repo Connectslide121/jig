@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data)\b/.test(
             lower,
           )
         ) {
@@ -402,7 +402,18 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/by hand on the vm/.test(lower)) {
+          if (/since the last release/.test(lower)) {
+            await call("addon_releases_changes", {});
+            await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
+          } else if (/in the releases data/.test(lower)) {
+            await call("jig_get_addon", { addonId: "releases" });
+            await call("jig_set_addon_data", {
+              addonId: "releases",
+              key: "fake-note",
+              value: { text: "from a chat" },
+            });
+            await stream(`${msg}:text:0`, "I saved a note in the Releases add-on's data.", signal);
+          } else if (/by hand on the vm/.test(lower)) {
             await call("jig_note_evidence", {
               note: "Deploys the webshop by hand: publish, then upload to the VM",
               category: "manual-work",
