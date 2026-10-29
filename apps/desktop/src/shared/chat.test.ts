@@ -103,6 +103,21 @@ describe("reduceEvent", () => {
   });
 });
 
+describe("background tasks", () => {
+  it("drops a background task Claude Code says finished, even without a new list", () => {
+    const s = state();
+    reduceEvent(s, {
+      type: "background_tasks",
+      tasks: [{ id: "t1", description: "grep", type: "local_bash" }],
+    });
+    expect(s.meta.backgroundTasks).toHaveLength(1);
+    reduceEvent(s, { type: "task", task: { id: "t1", status: "running", description: "" } });
+    expect(s.meta.backgroundTasks).toHaveLength(1);
+    reduceEvent(s, { type: "task", task: { id: "t1", status: "completed", description: "" } });
+    expect(s.meta.backgroundTasks).toEqual([]);
+  });
+});
+
 describe("applyUpdate", () => {
   it("upserts and appends", () => {
     const items = applyUpdate([], { op: "upsert", item: { kind: "assistant", id: "a", text: "x", at: "" } });

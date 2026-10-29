@@ -132,7 +132,9 @@ export class FakeEngine implements Engine {
       onEvent({ type: "block_end", id, block, text });
     };
 
-    const runTurn = async (text: string, uuid: string) => {
+    const runTurn = async (sent: string, uuid: string) => {
+      // The script answers what the user typed: add-ons' context (D-151) is left out of the matching.
+      const text = sent.replace(/^<jig-context>[\s\S]*?<\/jig-context>\s*/, "");
       messageOrder.push(uuid);
       const controller = new AbortController();
       turn = controller;

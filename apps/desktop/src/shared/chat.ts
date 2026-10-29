@@ -145,6 +145,9 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
             description: event.task.description || tool.task?.description || "",
           },
         });
+      // Claude Code doesn't always send a new list when a background task ends: a finished one goes.
+      if (event.task.status !== "running" && state.meta.backgroundTasks?.some((t) => t.id === event.task.id))
+        meta({ backgroundTasks: state.meta.backgroundTasks.filter((t) => t.id !== event.task.id) });
       break;
     }
     case "background_tasks":

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
+import { tourFolder } from "../../../shared/tour";
 import { Button, cn, FileIcon, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { useRegistry } from "../../workbench/registry";
@@ -351,7 +352,19 @@ function ChangesBar({ changes, sessionId }: { changes: TurnChanges; sessionId: s
         </Button>
       )}
       {cwd && (
-        <Button size="sm" variant="ghost" icon={MapIcon} onClick={() => void startTour(cwd)}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={MapIcon}
+          onClick={() =>
+            void startTour(
+              tourFolder(
+                cwd,
+                changes.files.map((f) => f.path),
+              ),
+            )
+          }
+        >
           Walk me through
         </Button>
       )}

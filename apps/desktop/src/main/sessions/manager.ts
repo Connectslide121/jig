@@ -121,6 +121,8 @@ interface Live {
   saving?: Promise<void>;
   /** Failed tool calls in the current turn (friction when it reaches 3). */
   toolErrors?: number;
+  /** A turn being started (attachments read, add-ons' context asked): settles once its message is sent. */
+  starting?: Promise<void>;
 }
 
 /**
@@ -151,7 +153,8 @@ export class SessionManager {
           // A process can't survive a restart: anything "working" is idle now.
           const status = data.meta.status === "error" ? "error" : "idle";
           this.sessions.set(data.meta.id, {
-            state: { meta: { ...data.meta, status }, items: data.items },
+            // Nor do its background tasks.
+            state: { meta: { ...data.meta, status, backgroundTasks: undefined }, items: data.items },
             queue: data.queue,
             permissions: new Map(),
             loaded: true,
@@ -332,6 +335,8 @@ export class SessionManager {
     }
     if (event.type === "exit") {
       live.engine = undefined;
+      // Background tasks ran in that Claude Code process: they're gone with it.
+      if (live.state.meta.backgroundTasks?.length) this.setMeta(live, { backgroundTasks: undefined });
       for (const [requestId, pending] of live.permissions) {
         pending.resolve({ behavior: "deny", message: "Session ended" });
         live.permissions.delete(requestId);
@@ -373,7 +378,22 @@ export class SessionManager {
     this.scheduleSave(live);
   }
 
+  /** Starts a turn; while it starts, `live.starting` lets a message sent "now" wait to join it. */
   private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = []) {
+    let started = () => {};
+    const starting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    live.starting = starting;
+    try {
+      await this.beginTurn(live, text, attachments);
+    } finally {
+      if (live.starting === starting) live.starting = undefined;
+      started();
+    }
+  }
+
+  private async beginTurn(live: Live, text: string, attachments: ChatAttachment[]) {
     // Busy from now on, before any await: a second send right away is queued, not started twice.
     live.state.meta = { ...live.state.meta, status: "starting" };
     let data: EnginePart[] = [];
@@ -457,6 +477,8 @@ export class SessionManager {
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
+    // Sent "now" while the turn is still starting: wait until its message has gone, then join it.
+    if (busy && now && !live.engine && live.starting && attachments.length === 0) await live.starting;
     if (busy && now && live.engine && attachments.length === 0) {
       const item: ChatItem = {
         kind: "user",
@@ -753,9 +775,20 @@ export class SessionManager {
     return live.engine ? live.engine.background(toolUseId) : false;
   }
 
+  /** Stops a background task; one Claude Code no longer runs (it ended, or its process did) just leaves the list. */
   async stopTask(id: string, taskId: string): Promise<void> {
     const live = await this.live(id);
-    await live.engine?.stopTask(taskId);
+    const forget = () => {
+      const tasks = live.state.meta.backgroundTasks ?? [];
+      if (tasks.some((t) => t.id === taskId))
+        this.setMeta(live, { backgroundTasks: tasks.filter((t) => t.id !== taskId) });
+    };
+    if (!live.engine) return forget();
+    try {
+      await live.engine.stopTask(taskId);
+    } catch {
+      forget();
+    }
   }
 
   /** Keeps a pasted, dropped or picked file for the next message of a session. */
