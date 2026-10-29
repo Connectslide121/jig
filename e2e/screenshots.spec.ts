@@ -64,6 +64,42 @@ test("screenshots for the About page", async () => {
     "src/cart.ts":
       "export function total(items: number[]) {\n  let sum = 0;\n  for (const i of items) sum += i;\n  return sum;\n}\n",
   });
+  // Releases: a policy, a release, and unreleased work after it.
+  const shop = join(ws, "webshop");
+  await mkdir(join(shop, ".jig"), { recursive: true });
+  await writeFile(
+    join(shop, ".jig", "release.json"),
+    `${JSON.stringify(
+      {
+        version: 1,
+        style: "planned",
+        scheme: "semver",
+        versionFile: "package.json",
+        tagFormat: "v{version}",
+        changelog: { path: "CHANGELOG.md" },
+        notes: [{ audience: "customers", language: "English" }],
+        commitConvention: "conventional",
+        environments: [
+          { name: "stage", deploy: "manual", prerelease: "rc" },
+          { name: "prod", deploy: "manual", production: true },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  git(shop, "add", ".");
+  git(shop, "commit", "-q", "-m", "chore: release policy");
+  git(shop, "tag", "-a", "v1.2.0", "-m", "Release 1.2.0");
+  await writeFile(join(shop, "src", "discount.ts"), "export const codes = ['WELCOME10'];\n");
+  git(shop, "add", ".");
+  git(shop, "commit", "-q", "-m", "feat(checkout): discount codes AB#412");
+  await writeFile(
+    join(shop, "src", "round.ts"),
+    "export const round = (n: number) => Math.round(n * 100) / 100;\n",
+  );
+  git(shop, "add", ".");
+  git(shop, "commit", "-q", "-m", "fix: rounding in totals");
   await repo(join(ws, "orders-api"), {
     "Program.cs": "class Program {}\n",
     "Orders.csproj": "<Project />\n",
@@ -95,6 +131,37 @@ test("screenshots for the About page", async () => {
     );
   }
 
+  // What Jig knows: a profile and notes Claude saved from chats.
+  await writeFile(
+    join(root, "jig", "profile.md"),
+    "# How I work\n\n## Stack\n\n- .NET APIs and Vue front ends on Azure\n\n## How I release and deploy\n\n- Publishes the webshop and uploads it to a VM by hand\n\n## Tools I use outside Jig\n\n- Postman for the orders API\n\n## Preferences\n\n- Short answers, Swedish release notes for customers\n\n## What I already know well\n",
+  );
+  const noteAt = (back: number) => new Date(Date.now() - back * 86_400_000).toISOString();
+  await writeFile(
+    join(root, "jig", "evidence.json"),
+    JSON.stringify({
+      notes: [
+        {
+          id: "n1",
+          at: noteAt(6),
+          category: "manual-work",
+          text: "Deploys the webshop by hand: publish, then upload to the VM",
+        },
+        {
+          id: "n2",
+          at: noteAt(3),
+          category: "outside-jig",
+          text: "Checks the orders API responses in Postman",
+        },
+        {
+          id: "n3",
+          at: noteAt(1),
+          category: "frustration",
+          text: "Release notes for customers take a long time to write",
+        },
+      ],
+    }),
+  );
   const app = await launchJig(join(root, "jig"), {
     HOME: home,
     XDG_CONFIG_HOME: join(home, ".config"),
@@ -315,5 +382,106 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await expect(page.getByTestId("browser-frame")).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(800);
   await shot("browser");
+
+  // Files and editing: the tree, a file open in the editor, and a preview beside it (split view).
+  await key("Control+Alt+B"); // close the right sidebar: two panes need the room
+  await key("Control+Shift+E");
+  const files = page.getByTestId("files-view");
+  await expect(files).toBeVisible({ timeout: 15000 });
+  await files.getByTestId("files-entry-webshop").first().click();
+  await files.getByTestId("files-entry-src").first().click();
+  await files.getByTestId("files-entry-cart.ts").first().click();
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("code-editor")).toBeVisible({
+    timeout: 15000,
+  });
+  await page.locator("[data-tab-id]:not(.hidden) .cm-content").click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("\nexport const freeShippingFrom = 50;\n");
+  await files.getByTestId("files-entry-ARCHITECTURE.md").first().click();
+  await page.waitForTimeout(800);
+  await page.getByTestId("tab-jig.preview").filter({ hasText: "ARCHITECTURE" }).click({ button: "right" });
+  await page.getByTestId("tab-open-side").click();
+  await page
+    .getByTestId("main-pane-left")
+    .getByTestId("tab-jig.preview")
+    .filter({ hasText: "cart.ts" })
+    .click();
+  await page.waitForTimeout(800);
+  await shot("files");
+
+  await page.getByTestId("main-pane-right").getByTestId("tab-jig.preview").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "One pane" }).click();
+
+  // Releases: the webshop's unreleased work, drafted with Claude.
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("show releases");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("releases-repo-repos/webshop").click({ timeout: 15000 });
+  await page.getByTestId("release-prepare").click();
+  await page.getByTestId("release-draft").click();
+  await expect(page.getByTestId("release-reason")).toBeVisible({ timeout: 15000 });
+  await shot("releases");
+
+  // Workflows: a release workflow half-way.
+  const projectId = (
+    (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } }
+  ).value.projects[0]!.id;
+  await hostCall(page, "addons.call", {
+    id: "workflows",
+    method: "save",
+    args: {
+      workflow: {
+        id: "wrelease",
+        name: "Release webshop",
+        goal: "Publish the webshop and put it on the VM, the same way every time",
+        projectId,
+        trigger: { kind: "schedule", every: "week", time: "15:30", day: 5 },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        steps: [
+          {
+            id: "s1",
+            kind: "command",
+            title: "Get the latest",
+            command: "git status --short --branch",
+            cwd: shop,
+            mode: "auto",
+          },
+          {
+            id: "s2",
+            kind: "command",
+            title: "Build",
+            command: "echo Build succeeded",
+            cwd: shop,
+            mode: "auto",
+          },
+          { id: "s3", kind: "check", title: "Upload to the VM", mode: "manual" },
+          {
+            id: "s4",
+            kind: "claude",
+            title: "Write the release notes",
+            prompt: "Write the release notes",
+            mode: "ask",
+          },
+        ],
+      },
+    },
+  });
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("workflows-view").getByText("Release webshop").click({ timeout: 15000 });
+  await page.getByTestId("workflow-run").click();
+  await expect(page.getByTestId("step-done")).toBeVisible({ timeout: 15000 });
+  await page.waitForTimeout(500);
+  await shot("workflows");
+
+  // What Jig knows about me.
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("What Jig knows about me");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("knowledge-tab")).toBeVisible({ timeout: 15000 });
+  await page.waitForTimeout(800);
+  await shot("knowledge");
   await app.close();
 });

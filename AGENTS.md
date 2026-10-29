@@ -87,6 +87,11 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Settings are configurable from chats too.** A new setting goes into `ConfigSchema`, the
   `SETTINGS_GUIDE` in `main/configure/tools.ts` and `docs/reference/state.md`; one that decides billing
   or runs programs also goes into `PROTECTED_SETTINGS` (D-077).
+- **Learning records quietly and safely.** Activity goes through `publishActivity` (`main/activity/bus.ts`),
+  which masks secrets and keeps pastes only as their kind; never record raw pasted content, file
+  contents or credentials (Claude's lines are recorded as hashes). Notes Claude saves
+  (`jig_note_evidence`) are masked and respect the exclusions. Captured network headers are redacted
+  (`redactHeaders`). Nothing calls an AI in the background except the weekly reflection.
 - **Menus, not commands.** Every feature must be reachable from a visible menu or button. Do not add
   Jig slash commands. The chat's `/` picker shows Claude Code's own commands; the few Claude Code
   names Jig answers itself (`/model`, `/mcp`…) map to existing menus and are also in the + menu (D-091).
@@ -103,6 +108,16 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
+- **Where a view starts** (D-102, a guideline): views about the active project start on the left and
+  follow it; views that cover everything start on the right. Pick `region` (and `under`, for a
+  section below another view) by that, and list new ids in `docs/reference/layout.md`.
+- **Typed lists live in one place:** link types in `shared/links.ts` (`LINK_TYPES`: icon, label, how
+  to guess it), workflow step kinds in `addons/workflows/lib/workflow.ts`, suggestion kinds in
+  `shared/learning.ts`, a repository's release policy shape in `addons/releases/lib/policy.ts`. Add
+  to them there, never ad hoc in a view.
+- **A repository's files are the user's.** Built-in add-ons write into a repository only on a user
+  action (Release, Set up, Export as skill, Save in Preview) and say which files; `.jig/release.json`
+  is meant to be committed and shared.
 - Say **chat** in user-facing text, never "session" (that's the code's word). Frequent actions go
   where you are (a button, a hover action); rare ones in ⋯ menus and Tools (D-094).
 - A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot

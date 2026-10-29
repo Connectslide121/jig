@@ -31,7 +31,7 @@ test("Look for patterns now turns repeated activity into a suggestion; Build it 
   await page.getByTestId("look-for-patterns").click();
   await expect(page.getByTestId("suggestion")).toContainText("git pull → npm run dev", { timeout: 15000 });
   await expect(page.getByTestId("suggestions-badge")).toContainText("1");
-  await page.getByText("Evidence").click();
+  await page.getByRole("button", { name: "Evidence" }).click();
   await expect(page.getByTestId("suggestion")).toContainText("times on 3 day(s)");
   await page.getByTestId("suggestion-build").click();
   await expect(page.getByTestId("suggestion")).toContainText("Show the build");

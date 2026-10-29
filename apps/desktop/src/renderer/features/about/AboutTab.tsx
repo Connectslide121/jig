@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronDown,
   Eye,
+  FileCode,
   FolderGit2,
   FolderPlus,
   Gauge,
@@ -10,6 +11,7 @@ import {
   Globe,
   Keyboard,
   Lightbulb,
+  ListChecks,
   type LucideIcon,
   MessageSquare,
   Palette,
@@ -19,6 +21,7 @@ import {
   Split,
   SquareTerminal,
   Tag,
+  UserRound,
   Wand2,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -42,10 +45,14 @@ import build from "./shots/build.jpg";
 import chat from "./shots/chat.jpg";
 import configure from "./shots/configure.jpg";
 import dashboard from "./shots/dashboard.jpg";
+import filesShot from "./shots/files.jpg";
 import git from "./shots/git.jpg";
+import knowledgeShot from "./shots/knowledge.jpg";
+import releasesShot from "./shots/releases.jpg";
 import settings from "./shots/settings.jpg";
 import suggestions from "./shots/suggestions.jpg";
 import usage from "./shots/usage.jpg";
+import workflowsShot from "./shots/workflows.jpg";
 
 const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "overview", title: "Overview", icon: BookOpen },
@@ -54,6 +61,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
   { id: "browser", title: "Claude's browser", icon: Globe },
+  { id: "files", title: "Files & editing", icon: FileCode },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
   { id: "releases", title: "Releases", icon: Tag },
@@ -65,6 +73,8 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "skills", title: "Skills & Claude Code", icon: Sparkles },
   { id: "appearance", title: "Themes & icons", icon: Palette },
   { id: "learning", title: "Suggestions", icon: Lightbulb },
+  { id: "workflows", title: "Workflows", icon: ListChecks },
+  { id: "knowledge", title: "What Jig knows about me", icon: UserRound },
   { id: "usage", title: "Plan usage", icon: Gauge },
   { id: "shortcuts", title: "Keyboard shortcuts", icon: Keyboard },
 ];
@@ -654,6 +664,24 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             />
           </Section>
           <Section
+            id="files"
+            title="Files & editing"
+            lead="The project's files as a tree in the left sidebar (Ctrl+Shift+E), with git colours and a filter. Click a file to open it: code and text are editable right there, in your theme's colours, and Ctrl+S saves. Put two tabs side by side to read one while you edit the other."
+            shot={{
+              src: filesShot,
+              alt: "The file tree, a file being edited and a Markdown preview beside it",
+            }}
+          >
+            <Bullets
+              items={[
+                "Live: the tree follows changes on disk, from you or Claude",
+                "If Claude changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
+                "Split view: right-click a tab → Open to the side, or drag it to the right edge",
+                "Right-click a file to open it in VS Code or ask Claude about it",
+              ]}
+            />
+          </Section>
+          <Section
             id="previews"
             title="Previews"
             lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as a tree, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
@@ -678,6 +706,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="releases"
             title="Releases"
+            shot={{
+              src: releasesShot,
+              alt: "A repository's release policy, its unreleased commits and a release drafted with Claude",
+            }}
             lead="Versions, changelogs and release notes per repository, by rules you set once: Claude looks at the repository and proposes a release policy (or adopts the versioning you already have), saved in the repo so your team shares it. Then Jig keeps you at it, quietly and without AI: what's unreleased, deploys without a version, reminders. Releasing is one action."
           >
             <Bullets
@@ -772,6 +804,30 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               ]}
             />
           </Section>
+          <Section
+            id="workflows"
+            title="Workflows"
+            lead="The things you repeat — a release, a deploy, a Monday routine — as steps per project. Jig does the steps it can (commands, scripts, pipelines, a message to Claude), asks before others, and leaves the rest to you."
+            shot={{
+              src: workflowsShot,
+              alt: "A release workflow half-way: two steps done by Jig, one waiting for you",
+            }}
+          >
+            <Bullets
+              items={[
+                "Run step by step, with each command's output",
+                "On a schedule while Jig is open: alone when Jig can do every step, otherwise it reminds you",
+                "Export as a Claude Code skill, or Move to the cloud as a routine or a pipeline",
+                "Suggestions draft workflows from what you tell Claude you do by hand",
+              ]}
+            />
+          </Section>
+          <Section
+            id="knowledge"
+            title="What Jig knows about me"
+            lead="Everything Jig uses to suggest things, in one page you control: your profile (how you work), the notes Claude saved from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand. It stays on your computer; edit or delete anything."
+            shot={{ src: knowledgeShot, alt: "The profile, notes from chats and activity" }}
+          />
           <Section
             id="usage"
             title="Plan usage"

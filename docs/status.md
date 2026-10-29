@@ -8,9 +8,10 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 2. Clone ThinkRail beside it for reference: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`.
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
-4. Phases 0–17 in `docs/plan/README.md` are ✅. Phase 18 (`docs/plan/18-next.md`) is Jon's list of
-   what to build next — **wait for his go** before starting it. Meanwhile: "Needs testing on your
-   machine" below on Windows (installer, real Claude Code sessions, a real build).
+4. Phases 0–18 in `docs/plan/README.md` are ✅ (phase 18 was Jon's list: file explorer, editing in
+   Preview, projects you manage, arranging panels, split view, project links, Releases, Learning 2
+   with Workflows). What's left of it is in `docs/plan/99-backlog.md`. Next: try phase 18 on Windows
+   ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
@@ -348,6 +349,17 @@ npm run dev          # opens Jig
 ## Needs testing on your machine
 
 Things the cloud build environment couldn't verify:
+
+- **Phase 18 on Windows:**
+  - Files: the watcher on a large repository (live refresh), Open in VS Code.
+  - Editing in Preview: saving CRLF files, a file changed by Claude while you edit.
+  - Releases: `az pipelines runs list` for production environments; tagging and pushing to Azure
+    DevOps; a `Directory.Build.props` / `.csproj` version bump.
+  - Workflows: command steps run in `cmd.exe` (`/d /s /c`); a schedule that fires while Jig is open.
+  - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
+    (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
+    with the real model.
+  - Claude's browser network log on a real dev server (bodies of the first page's requests).
 
 - `npm install` on Windows (Electron download, `@lydell/node-pty` prebuilt binary, the Agent SDK's
   `win32-x64` package).

@@ -26,21 +26,35 @@ root [`README.md`](../README.md).
 | [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
 | [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
 | [artifacts.md](reference/artifacts.md) | Opening Claude's artifacts in Jig, from chats and from claude.ai |
-| [browser.md](reference/browser.md) | Claude's browser: the offscreen page, its tools and the live view |
+| [browser.md](reference/browser.md) | Claude's browser: the offscreen page, its tools, the console and network log, and the live view |
 | [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
-| [preview.md](reference/preview.md) | File previews and the `jig-file:` protocol |
+| [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |
 | [usage.md](reference/usage.md) | Plan usage (5-hour and weekly windows) |
-| [layout.md](reference/layout.md) | Layout as data, regions, views, tabs, shortcuts |
+| [layout.md](reference/layout.md) | Layout as data, regions, views and sections, split view, tabs, where views start, shortcuts |
 | [slots.md](reference/slots.md) | The 16 extension slots |
 | [addon-api.md](reference/addon-api.md) | The add-on API (`ctx`), manifest and permissions |
 | [builder.md](reference/builder.md) | The builder: levels, jobs, worktrees, validation, proposals |
-| [learning.md](reference/learning.md) | The activity log, pattern mining and suggestions |
+| [learning.md](reference/learning.md) | The activity log, friction and notes from chats, the profile, pattern mining, suggestions and their actions, check-ins, "How you worked" |
 | [design-tokens.md](reference/design-tokens.md) | Colour, spacing, type and radius tokens |
 | [file-icons.md](reference/file-icons.md) | File icon themes (VS Code's, Open VSX, Jig's own) |
 | [setup.md](reference/setup.md) | Get started checks, updates and the launcher |
 | [about.md](reference/about.md) | The "What Jig can do" page and how its screenshots are made |
 | [reference-repos.md](reference/reference-repos.md) | Code to read for each part (ThinkRail) and the Agent SDK references |
+
+## Built-in add-ons
+
+Each built-in add-on has a README next to its code (and is also an example of the add-on API):
+
+| Add-on | What it does |
+|---|---|
+| [Git](../addons/git/README.md) | Git for the project's repositories: changes, commits, branches, history, diffs, Claude's help |
+| [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push |
+| [Files](../addons/files/README.md) | The project's file tree with git colours |
+| [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
+| [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |
+| [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
+| [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
 
 ## Guides (how-tos)
 

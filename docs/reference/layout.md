@@ -76,16 +76,39 @@ All operations are pure (they return a new layout). In the renderer, `updateLayo
 (the builder, level 1) writes with `setLayout()` (`main/layout`) and the renderer follows the
 `layout.changed` event.
 
-## Registered ids (core)
+## Registered ids
 
-| Kind | Id | What |
-|---|---|---|
-| view | `jig.projects` | project list (left) |
-| tab type | `jig.project` | project dashboard: the project's Home (`params.projectId`) |
-| tab type | `jig.settings` | Settings (`params.section`: appearance, layout, engine, terminal, learning, about, or an add-on's page) |
+**Where a view starts** (D-102, a guideline, not a rule): views about the active project start on the
+**left** (they follow the project you switch to); views that cover everything start on the **right**
+(global). Long-running output goes to the **bottom**. You can move any view anywhere.
 
-Later phases add `jig.sessions`, `jig.chat`, `jig.terminals`, … and each add-on's views as
-`addon.<addon-id>.<view-id>`.
+| Kind | Id | Starts | What |
+|---|---|---|---|
+| view | `jig.projects` | left | projects and workspaces |
+| view | `jig.links` | left, below Projects | the active project's links (D-109) |
+| view | `jig.sessions` | left | chats, grouped by project |
+| view | `addon.files.files` | left | the project's files (`Ctrl+Shift+E`) |
+| view | `addon.git.git` | left | Git for the project's repository |
+| view | `addon.workflows.workflows` | left | the project's workflows (D-112) |
+| view | `addon.repos.overview` | right, below Git | every repository at a glance |
+| view | `addon.scripts.scripts` | right | scripts of every workspace folder |
+| view | `addon.pipelines.pipelines` | right | Azure DevOps pipelines |
+| view | `addon.releases.releases` | right | releases of every repository (D-110) |
+| view | `jig.suggestions` | right | suggestions (Learning) |
+| view | `jig.browser` | right | Claude's browser |
+| view | `jig.terminals` | bottom | terminals |
+| view | `jig.builds` | bottom | builds of the in-app builder |
+| tab type | `jig.project` | | project dashboard: the project's Home (`params.projectId`) |
+| tab type | `jig.chat` | | a chat (`params.sessionId`) |
+| tab type | `jig.settings` | | Settings (`params.section`: appearance, layout, engine, terminal, learning, workspaces, about, or an add-on's page) |
+| tab type | `jig.preview` / `jig.image` | | a file in Preview (editable for code and text) / an image |
+| tab type | `jig.knowledge` | | What Jig knows about me (D-111) |
+| tab type | `jig.about`, `jig.setup` | | What Jig can do; Get started |
+| tab type | `jig.attempts`, `jig.tour`, `jig.build` | | Try several ways; a change tour; a build |
+| tab type | `jig.routines`, `jig.artifacts` | | Claude Code routines and artifacts |
+| tab type | `addon.git.history` / `commit` / `diff` / `compare` | | Git |
+| tab type | `addon.releases.repo` | | one repository's releases (`params.path`) |
+| tab type | `addon.workflows.workflow` | | a workflow (`params.projectId`, `id`; or `draft`) |
 
 ## The main area with no tab open
 

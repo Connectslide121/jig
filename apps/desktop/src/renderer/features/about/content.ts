@@ -122,6 +122,12 @@ export const CONFIGURE_TOOLS: Array<{ name: string; what: string }> = [
   { name: "jig_change_layout", what: "Move, show and hide views; resize panes" },
   { name: "jig_list_addons", what: "List add-ons" },
   { name: "jig_set_addon_enabled", what: "Turn an add-on on or off" },
-  { name: "jig_update_project", what: "Rename a project or change its colour" },
+  { name: "jig_list_projects", what: "See your projects, their settings and links" },
+  { name: "jig_create_project", what: "Make a project with its folder, defaults and instructions" },
+  { name: "jig_update_project", what: "Change a project: name, colour, defaults, instructions, starters" },
+  { name: "jig_move_chat", what: "Move a chat to another project, or pin it" },
+  { name: "jig_add_project_links", what: "Add links to a project (Azure resources, sites, boards)" },
+  { name: "jig_note_evidence", what: "Note work you do by hand, for suggestions (a card you can remove)" },
+  { name: "jig_update_profile", what: "Add to what Jig knows about how you work" },
   { name: "jig_request_build", what: "Hand something new to the builder (you review it first)" },
 ];
