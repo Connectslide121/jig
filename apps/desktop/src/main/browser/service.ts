@@ -1,6 +1,6 @@
 import { BrowserWindow, type WebContents } from "electron";
-import type { BrowserInput, BrowserState, ConsoleEntry } from "../../shared/browser";
-import { normalizeUrl, VIEWPORTS } from "../../shared/browser";
+import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "../../shared/browser";
+import { isNetworkError, normalizeUrl, redactHeaders, VIEWPORTS } from "../../shared/browser";
 import { markHelperWindow } from "../appWindows";
 import { logger } from "../log";
 import { focusScript, locateScript, SNAPSHOT_SCRIPT } from "./pageScripts";
@@ -10,6 +10,9 @@ const PARTITION = "persist:jig-browser";
 /** Frames sent to a watching view at most this often (ms). */
 const FRAME_MS = 100;
 const MAX_CONSOLE = 300;
+const MAX_NETWORK = 300;
+/** Bodies Claude gets, at most (characters). */
+const MAX_BODY = 20_000;
 
 export interface BrowserEvents {
   state(state: BrowserState): void;
@@ -30,6 +33,9 @@ export class BrowserService {
   private pending: Electron.NativeImage | undefined;
   private frameTimer: NodeJS.Timeout | undefined;
   private console: ConsoleEntry[] = [];
+  private network: NetworkEntry[] = [];
+  private networkIds = new Map<string, string>();
+  private networkSeq = 0;
   private viewport: { width: number; height: number } = { ...VIEWPORTS.desktop };
 
   constructor(private readonly events: BrowserEvents) {}
@@ -50,6 +56,8 @@ export class BrowserService {
       width: this.viewport.width,
       height: this.viewport.height,
       errors: this.console.filter((e) => e.level === "error").length,
+      requests: this.network.length,
+      failedRequests: this.network.filter(isNetworkError).length,
     };
   }
 
@@ -129,7 +137,113 @@ export class BrowserService {
       this.window = undefined;
       this.changed();
     });
+    this.captureNetwork(c);
     return c;
+  }
+
+  /**
+   * The page's requests through Chromium's DevTools protocol (`webContents.debugger`): method, URL,
+   * status, timing and size, headers with credentials redacted. Bodies are fetched only when asked.
+   */
+  private captureNetwork(c: WebContents): void {
+    try {
+      c.debugger.attach("1.3");
+    } catch (error) {
+      log.warn("Network capture unavailable", error);
+      return;
+    }
+    void c.debugger.sendCommand("Network.enable").catch(() => {});
+    const started = new Map<string, number>();
+    // biome-ignore lint/suspicious/noExplicitAny: DevTools protocol payloads.
+    c.debugger.on("message", (_event, method: string, params: any) => {
+      const entry = () => {
+        const id = this.networkIds.get(params.requestId);
+        return id ? this.network.find((e) => e.id === id) : undefined;
+      };
+      if (method === "Network.requestWillBeSent") {
+        // A redirect reuses the request id: the earlier hop stays as it was.
+        const id = String(++this.networkSeq);
+        this.networkIds.set(params.requestId, id);
+        started.set(params.requestId, Number(params.timestamp) * 1000);
+        this.network.push({
+          id,
+          method: String(params.request?.method ?? "GET"),
+          url: String(params.request?.url ?? ""),
+          type: String(params.type ?? "other").toLowerCase(),
+          startedAt: new Date().toISOString(),
+          requestHeaders: redactHeaders(params.request?.headers),
+          postData:
+            typeof params.request?.postData === "string"
+              ? params.request.postData.slice(0, MAX_BODY)
+              : undefined,
+        });
+        if (this.network.length > MAX_NETWORK) {
+          const dropped = this.network.splice(0, this.network.length - MAX_NETWORK);
+          for (const d of dropped)
+            for (const [rid, id2] of this.networkIds) if (id2 === d.id) this.networkIds.delete(rid);
+        }
+        this.networkChanged();
+      } else if (method === "Network.responseReceived") {
+        const e = entry();
+        if (!e) return;
+        e.status = Number(params.response?.status);
+        e.statusText = String(params.response?.statusText ?? "");
+        e.mimeType = String(params.response?.mimeType ?? "");
+        e.responseHeaders = redactHeaders(params.response?.headers);
+      } else if (method === "Network.loadingFinished" || method === "Network.loadingFailed") {
+        const e = entry();
+        if (!e) return;
+        const t0 = started.get(params.requestId);
+        if (t0) e.durationMs = Number(params.timestamp) * 1000 - t0;
+        if (method === "Network.loadingFinished") e.size = Number(params.encodedDataLength) || 0;
+        else e.error = String(params.errorText || "failed");
+        started.delete(params.requestId);
+        this.networkChanged();
+      }
+    });
+  }
+
+  private networkTimer: NodeJS.Timeout | undefined;
+  /** The view's list follows the log (at most twice a second). */
+  private networkChanged(): void {
+    if (this.networkTimer) return;
+    this.networkTimer = setTimeout(() => {
+      this.networkTimer = undefined;
+      this.changed();
+    }, 500);
+  }
+
+  networkEntries(clear = false): NetworkEntry[] {
+    const list = this.network.map((e) => ({ ...e }));
+    if (clear) {
+      this.network = [];
+      this.networkIds.clear();
+      this.changed();
+    }
+    return list;
+  }
+
+  /** One request with its response body (text, at most 20k characters) if Chromium still has it. */
+  async networkDetail(id: string): Promise<NetworkEntry & { body?: string; bodyNote?: string }> {
+    const e = this.network.find((x) => x.id === id);
+    if (!e) throw new Error(`No request #${id} (list them with jig_browser_network)`);
+    const requestId = [...this.networkIds.entries()].find(([, v]) => v === id)?.[0];
+    const c = this.contents;
+    if (!requestId || !c) return { ...e, bodyNote: "The body is no longer available." };
+    try {
+      const r = (await c.debugger.sendCommand("Network.getResponseBody", { requestId })) as {
+        body: string;
+        base64Encoded: boolean;
+      };
+      if (r.base64Encoded) return { ...e, bodyNote: `Binary body (${e.mimeType || "unknown type"}).` };
+      return {
+        ...e,
+        body: r.body.slice(0, MAX_BODY),
+        bodyNote: r.body.length > MAX_BODY ? `Cut at ${MAX_BODY} of ${r.body.length} characters.` : undefined,
+      };
+    } catch {
+      return { ...e, bodyNote: "The body is no longer available (Chromium keeps it only for a while)." };
+    }
   }
 
   private flushFrame(): void {
@@ -350,6 +464,8 @@ export class BrowserService {
     this.window?.destroy();
     this.window = undefined;
     this.console = [];
+    this.network = [];
+    this.networkIds.clear();
     this.changed();
   }
 }

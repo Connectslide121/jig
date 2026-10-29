@@ -119,6 +119,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
       estimate).
     - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
       with 3–5 questions that adds what it learns to your profile.
+    - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
+      bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
+      list — so API calls are debugged there instead of copied from your browser.
 - **Phase 10 (done, reworked): no self-editing.** When no slot can do a request, the build ends with a
   proposal for the missing extension point (why, and the slot or API to add), with **Copy proposal** —
   Jig never changes its own code; you add the slot yourself (D-074).

@@ -32,6 +32,12 @@ in the view at any time.
 - **Console:** console messages and failed loads are kept (the last 300). The view shows the number of
   errors; the terminal icon opens the list in a resizable pane. Electron's own development warnings
   are left out.
+- **Network** (Learning 2f, D-111): the page's requests through Chromium's DevTools protocol
+  (`webContents.debugger`, `Network` domain): method, URL, type, status, time, size and headers, the
+  last 300. Credential headers (`Authorization`, `Cookie`, `Set-Cookie`, API keys) are replaced by
+  `«redacted»`; response bodies are fetched only when asked (at most 20k characters, while Chromium
+  still has them). The view's Network button lists them (click one for headers and body); a badge
+  counts failed requests and HTTP errors.
 - **Sizes:** desktop 1280×800 (default), tablet 820×1180 and phone 390×844, or any size from the tool.
   The window is offscreen, so resizing never moves anything on your screen.
 
@@ -46,6 +52,7 @@ in the view at any time.
 | `jig_browser_press {key}` | no | a key: Enter, Escape, Tab, ArrowDown, a letter… |
 | `jig_browser_screenshot {fullPage?, sizes?}` | yes | PNG of the visible page, returned as an image: Claude sees it and the chat shows it. `fullPage`: the whole page (the window grows to the page's height, at most 8000 px, for the capture). `sizes: ["phone","tablet","desktop"]`: one image per size in one call, then the window goes back to its size. Images are at most 1280 wide and 7900 high |
 | `jig_browser_console {errorsOnly?, clear?}` | yes | the console messages, most recent last |
+| `jig_browser_network {filter?, errorsOnly?, id?, clear?}` | yes | the requests (`#id GET 200 fetch 12ms /api/cart`); with `id`, one request's headers and bodies |
 | `jig_browser_eval {expression}` | no | evaluates an expression in the page and returns it as JSON |
 | `jig_browser_resize {preset \| width, height}` | no | changes the window size |
 | `jig_browser_navigate {action}` | no | back, forward or reload |

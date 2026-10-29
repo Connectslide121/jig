@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { BrowserState } from "../../shared/browser";
-import { VIEWPORTS } from "../../shared/browser";
+import { networkSummary, VIEWPORTS } from "../../shared/browser";
 import type { JigTool } from "../engine/jigTools";
 import type { ToolOutput } from "../engine/types";
 import type { BrowserService } from "./service";
@@ -156,6 +156,44 @@ export function browserTools(browser: () => BrowserService): JigTool[] {
               `[${e.level}] ${e.message}${e.source ? ` (${e.source}${e.line ? `:${e.line}` : ""})` : ""}`,
           )
           .join("\n");
+      },
+    },
+    {
+      name: "jig_browser_network",
+      readOnly: true,
+      description:
+        "The requests the page in Claude's browser made (like the Network tab in DevTools): method, status, type, time, size, URL. Filter by part of the URL, or only failed ones. Pass `id` for one request's headers (credentials redacted), request body and response body. Use it to debug API calls instead of asking the user to copy them from their browser.",
+      shape: {
+        filter: z.string().optional().describe("Part of the URL (e.g. /api/), or a method"),
+        errorsOnly: z.boolean().optional().describe("Only failed requests and HTTP errors (4xx/5xx)"),
+        id: z.string().optional().describe("A request's id from the list, for its detail"),
+        clear: z.boolean().optional().describe("Empty the log after reading it"),
+      },
+      handler: async (args) => {
+        if (args.id) {
+          const d = await browser().networkDetail(String(args.id));
+          const headers = (h?: Record<string, string>) =>
+            Object.entries(h ?? {})
+              .map(([k, v]) => `  ${k}: ${v}`)
+              .join("\n");
+          return [
+            `${d.method} ${d.url}`,
+            d.error
+              ? `Failed: ${d.error}`
+              : `${d.status ?? "pending"} ${d.statusText ?? ""} (${d.mimeType ?? ""})`,
+            d.requestHeaders ? `Request headers:\n${headers(d.requestHeaders)}` : "",
+            d.postData ? `Request body:\n${d.postData}` : "",
+            d.responseHeaders ? `Response headers:\n${headers(d.responseHeaders)}` : "",
+            d.body !== undefined ? `Response body:\n${d.body}` : "",
+            d.bodyNote ?? "",
+          ]
+            .filter(Boolean)
+            .join("\n");
+        }
+        return networkSummary(browser().networkEntries(Boolean(args.clear)), {
+          filter: args.filter as string | undefined,
+          errorsOnly: Boolean(args.errorsOnly),
+        });
       },
     },
     {

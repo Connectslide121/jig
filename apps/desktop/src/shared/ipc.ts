@@ -12,7 +12,7 @@ import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
-import type { BrowserInput, BrowserState, ConsoleEntry } from "./browser";
+import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type {
@@ -286,6 +286,12 @@ export interface HostMethods {
   "browser.input": { args: BrowserInput; result: void };
   "browser.resize": { args: { width: number; height: number }; result: BrowserState };
   "browser.console": { args: { clear?: boolean }; result: ConsoleEntry[] };
+  /** The page's requests (credentials redacted); `networkDetail` adds the response body if still there. */
+  "browser.network": { args: { clear?: boolean }; result: NetworkEntry[] };
+  "browser.networkDetail": {
+    args: { id: string };
+    result: NetworkEntry & { body?: string; bodyNote?: string };
+  };
   "browser.close": { args: void; result: void };
   /** Claude Code routines (through Claude Code's RemoteTrigger tool; each call costs a small model call). */
   "routines.list": { args: { refresh?: boolean }; result: { at: string; routines: Routine[] } };

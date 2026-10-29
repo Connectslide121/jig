@@ -347,7 +347,7 @@ true"). This step checks the whole picture again:
 - [x] Learning 2c: weekly check-in chat (opt-in, frequency setting)
 - [x] Learning 2e: AI vs hand-written lines per commit, time and churn per origin, weekly "How you
       worked" summary
-- [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
+- [x] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals
 - [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
 - [x] Releases add-on: setup chat and release policy per repository, baseline release; unreleased

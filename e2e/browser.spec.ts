@@ -1,4 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect, hostCall, test } from "./fixtures";
@@ -21,7 +23,9 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+N");
 
-  await page.getByTestId("composer-input").fill(`browse ${pathToFileURL(file).href} at phone and desktop`);
+  await page
+    .getByTestId("composer-input")
+    .fill(`browse ${pathToFileURL(file).href} at phone and desktop and check the requests`);
   await page.keyboard.press("Enter");
   const chat = page.getByTestId("chat");
   await expect(chat).toContainText("I opened the page in my browser and took a screenshot.", {
@@ -47,6 +51,10 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await view.getByTestId("browser-console-toggle").click();
   await expect(view.getByTestId("browser-console")).toContainText("added one");
 
+  // The network log: Claude read it, and the view lists the requests.
+  await expect(chat).toContainText("jig_browser_network");
+  expect(JSON.stringify(await hostCall(page, "browser.network", {}))).toContain("index.html");
+
   await page.screenshot({
     path: "/tmp/claude-0/-home-user-jig/4879543c-4011-5b05-8342-5ec17a60e32a/scratchpad/browser.png",
   });
@@ -58,4 +66,46 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await expect
     .poll(async () => JSON.stringify(await hostCall(page, "browser.state")), { timeout: 10000 })
     .toContain("Other page");
+});
+
+test("Claude's browser: the network log shows the page's requests, failed ones and their bodies", async ({
+  page,
+}) => {
+  const server = createServer((req, res) => {
+    if (req.url === "/api/cart") {
+      res.writeHead(500, { "Content-Type": "application/json", "Set-Cookie": "session=secret" });
+      res.end('{"error":"cart is broken"}');
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(
+      "<!doctype html><title>Shop</title><p>Shop</p><script>fetch('/api/cart', { headers: { Authorization: 'Bearer abc' } })</script>",
+    );
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+  try {
+    await hostCall(page, "browser.navigate", { url });
+    await expect
+      .poll(async () => JSON.stringify(await hostCall(page, "browser.network", {})), { timeout: 10000 })
+      .toContain('"status":500');
+    const list = (await hostCall(page, "browser.network", {})) as {
+      value: Array<{ id: string; url: string; requestHeaders: Record<string, string> }>;
+    };
+    const cart = list.value.find((e) => e.url.endsWith("/api/cart"))!;
+    expect(cart.requestHeaders.Authorization).toBe("«redacted»");
+    const detail = JSON.stringify(await hostCall(page, "browser.networkDetail", { id: cart.id }));
+    expect(detail).toContain("cart is broken");
+    expect(detail).not.toContain("session=secret");
+
+    await page.keyboard.press("Control+K");
+    await page.getByTestId("tools-filter").fill("browser");
+    await page.keyboard.press("Enter");
+    const view = page.getByTestId("browser-view");
+    await view.getByTestId("browser-network-toggle").click();
+    await view.getByTestId("browser-request").filter({ hasText: "/api/cart" }).click();
+    await expect(view.getByTestId("browser-network")).toContainText("cart is broken");
+  } finally {
+    server.close();
+  }
 });

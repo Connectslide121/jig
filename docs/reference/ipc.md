@@ -120,6 +120,8 @@ settings, add-on permissions.
 | `browser.input` | `BrowserInput` | — | mouse, wheel, key or text from the live view, in page pixels |
 | `browser.resize` | `{ width, height }` | `BrowserState` | 200–4000 px |
 | `browser.console` | `{ clear? }` | `ConsoleEntry[]` | console messages and load errors |
+| `browser.network` | `{ clear? }` | `NetworkEntry[]` | the page's requests, credentials redacted |
+| `browser.networkDetail` | `{ id }` | `NetworkEntry & { body?, bodyNote? }` | one request with its response body |
 | `browser.close` | — | — | closes the page |
 | `scripts.list` | `{ projectId }` | `ProjectScripts` | discovered scripts + saved groups |
 | `scripts.run` / `scripts.stop` / `scripts.restart` | `{ projectId, scriptId }` | `TerminalInfo` / — / `TerminalInfo` | |

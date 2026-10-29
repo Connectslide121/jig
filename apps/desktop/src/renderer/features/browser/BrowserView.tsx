@@ -1,6 +1,22 @@
-import { ArrowLeft, ArrowRight, Globe, MonitorSmartphone, RotateCw, SquareTerminal, X } from "lucide-react";
+import {
+  ArrowDownUp,
+  ArrowLeft,
+  ArrowRight,
+  Globe,
+  MonitorSmartphone,
+  RotateCw,
+  SquareTerminal,
+  X,
+} from "lucide-react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState, type WheelEvent } from "react";
-import { type BrowserInput, type BrowserState, type ConsoleEntry, VIEWPORTS } from "../../../shared/browser";
+import {
+  type BrowserInput,
+  type BrowserState,
+  type ConsoleEntry,
+  isNetworkError,
+  type NetworkEntry,
+  VIEWPORTS,
+} from "../../../shared/browser";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { Badge, cn, Empty, IconButton, Input, openMenuAt } from "../../ui";
 import { Pane } from "../../workbench/Pane";
@@ -37,18 +53,22 @@ export function BrowserView(_props: ViewProps) {
   const { state, frame } = useBrowser();
   const [address, setAddress] = useState("");
   const [editing, setEditing] = useState(false);
-  const [showConsole, setShowConsole] = useState(false);
+  const [panel, setPanel] = useState<"console" | "network">();
+  const showConsole = panel === "console";
   const [entries, setEntries] = useState<ConsoleEntry[]>([]);
+  const [requests, setRequests] = useState<NetworkEntry[]>([]);
   const image = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (!editing) setAddress(state?.url ?? "");
   }, [state?.url, editing]);
   useEffect(() => {
-    if (showConsole) void call("browser.console", {}).then(setEntries);
-  }, [showConsole]);
+    if (panel === "console") void call("browser.console", {}).then(setEntries);
+    if (panel === "network") void call("browser.network", {}).then(setRequests);
+  }, [panel]);
   useHostEvent("browser.state", () => {
-    if (showConsole) void call("browser.console", {}).then(setEntries);
+    if (panel === "console") void call("browser.console", {}).then(setEntries);
+    if (panel === "network") void call("browser.network", {}).then(setRequests);
   });
 
   const go = async (args: { url?: string; action?: "back" | "forward" | "reload" }) => {
@@ -168,9 +188,22 @@ export function BrowserView(_props: ViewProps) {
           icon={SquareTerminal}
           label="Console"
           active={showConsole}
-          onClick={() => setShowConsole((v) => !v)}
+          onClick={() => setPanel((v) => (v === "console" ? undefined : "console"))}
           data-testid="browser-console-toggle"
         />
+        <IconButton
+          size="sm"
+          icon={ArrowDownUp}
+          label="Network"
+          active={panel === "network"}
+          onClick={() => setPanel((v) => (v === "network" ? undefined : "network"))}
+          data-testid="browser-network-toggle"
+        />
+        {Boolean(state?.failedRequests) && (
+          <span title="Failed requests">
+            <Badge tone="warning">{state?.failedRequests}</Badge>
+          </span>
+        )}
         {Boolean(state?.errors) && (
           <span data-testid="browser-errors">
             <Badge tone="danger">{state?.errors}</Badge>
@@ -242,6 +275,71 @@ export function BrowserView(_props: ViewProps) {
           </div>
         </Pane>
       )}
+      {panel === "network" && (
+        <Pane id="jig.browser.console" edge="top" defaultSize={160} min={60} max={600}>
+          <NetworkList entries={requests} />
+        </Pane>
+      )}
+    </div>
+  );
+}
+
+/** The page's requests (Claude reads the same log with jig_browser_network). Click one for detail. */
+function NetworkList({ entries }: { entries: NetworkEntry[] }) {
+  const [open, setOpen] = useState<string>();
+  const [detail, setDetail] = useState<NetworkEntry & { body?: string; bodyNote?: string }>();
+  useEffect(() => {
+    setDetail(undefined);
+    if (open)
+      void call("browser.networkDetail", { id: open })
+        .then(setDetail)
+        .catch(() => {});
+  }, [open]);
+  return (
+    <div
+      className="h-full overflow-auto border-t border-line font-mono text-xs"
+      data-testid="browser-network"
+    >
+      {entries.length === 0 && <div className="p-2 text-hint">No requests yet.</div>}
+      {entries.map((e) => (
+        <div key={e.id} className="border-b border-line">
+          <button
+            type="button"
+            className={cn(
+              "flex w-full gap-2 px-2 py-0.5 text-left hover:bg-hover",
+              isNetworkError(e) ? "text-danger" : "text-fg",
+            )}
+            onClick={() => setOpen(open === e.id ? undefined : e.id)}
+            data-testid="browser-request"
+          >
+            <span className="w-10 shrink-0 text-muted">{e.method}</span>
+            <span className="w-10 shrink-0">{e.error ? "failed" : (e.status ?? "…")}</span>
+            <span className="w-16 shrink-0 truncate text-muted">{e.type}</span>
+            <span className="min-w-0 flex-1 truncate" title={e.url}>
+              {e.url}
+            </span>
+            <span className="shrink-0 text-hint">
+              {e.durationMs !== undefined ? `${Math.round(e.durationMs)} ms` : ""}
+            </span>
+          </button>
+          {open === e.id && (
+            <div className="selectable bg-surface px-2 py-1 break-all whitespace-pre-wrap text-muted">
+              {e.error && <div className="text-danger">{e.error}</div>}
+              {Object.entries(detail?.responseHeaders ?? {})
+                .slice(0, 20)
+                .map(([k, v]) => (
+                  <div key={k}>
+                    <span className="text-hint">{k}:</span> {v}
+                  </div>
+                ))}
+              {detail?.body && (
+                <div className="mt-1 max-h-40 overflow-auto text-fg">{detail.body.slice(0, 4000)}</div>
+              )}
+              {detail?.bodyNote && <div className="text-hint">{detail.bodyNote}</div>}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

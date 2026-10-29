@@ -10,6 +10,9 @@ export interface BrowserState {
   height: number;
   /** Console errors since the console was last cleared. */
   errors: number;
+  /** Requests in the network log, and how many failed or got an HTTP error. */
+  requests: number;
+  failedRequests: number;
 }
 
 export interface ConsoleEntry {
@@ -50,4 +53,59 @@ export function normalizeUrl(input: string): string {
   if (!["http:", "https:", "file:"].includes(url.protocol))
     throw new Error(`Claude's browser opens http(s) and file pages only, not ${url.protocol}`);
   return url.toString();
+}
+
+/** A request the page made (Claude's browser network log, from Chromium's DevTools protocol). */
+export interface NetworkEntry {
+  id: string;
+  method: string;
+  url: string;
+  /** document, xhr, fetch, script, stylesheet, image… */
+  type: string;
+  status?: number;
+  statusText?: string;
+  mimeType?: string;
+  /** Failed to load (network error, blocked, cancelled). */
+  error?: string;
+  startedAt: string;
+  /** Milliseconds from request to finish. */
+  durationMs?: number;
+  /** Bytes received. */
+  size?: number;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+  postData?: string;
+}
+
+const SECRET_HEADERS =
+  /^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|api-key|x-auth-token|ocp-apim-subscription-key)$/i;
+
+/** Headers with credential values replaced (Claude and the view never see cookies or tokens). */
+export function redactHeaders(headers: Record<string, unknown> | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers ?? {}))
+    out[k] = SECRET_HEADERS.test(k) ? "«redacted»" : String(v).slice(0, 2000);
+  return out;
+}
+
+/** A failed request, or one with an HTTP error status. */
+export const isNetworkError = (e: NetworkEntry) => Boolean(e.error) || (e.status ?? 0) >= 400;
+
+/** The network log as lines for Claude: `#id GET 200 xhr 123ms /api/cart`. */
+export function networkSummary(
+  entries: NetworkEntry[],
+  options: { filter?: string; errorsOnly?: boolean; limit?: number } = {},
+): string {
+  const filter = options.filter?.toLowerCase();
+  const list = entries
+    .filter((e) => !filter || e.url.toLowerCase().includes(filter) || e.method.toLowerCase() === filter)
+    .filter((e) => !options.errorsOnly || isNetworkError(e))
+    .slice(-(options.limit ?? 100));
+  if (!list.length) return "No requests recorded.";
+  return list
+    .map(
+      (e) =>
+        `#${e.id} ${e.method} ${e.error ? `failed (${e.error})` : (e.status ?? "pending")} ${e.type}${e.durationMs !== undefined ? ` ${Math.round(e.durationMs)}ms` : ""}${e.size !== undefined ? ` ${e.size}B` : ""} ${e.url}`,
+    )
+    .join("\n");
 }

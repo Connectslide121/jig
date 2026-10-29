@@ -26,6 +26,8 @@ export function startBrowser(): void {
   handle("browser.input", (event) => browser.input(event));
   handle("browser.resize", ({ width, height }) => browser.resize(width, height));
   handle("browser.console", ({ clear }) => browser.consoleEntries(Boolean(clear)));
+  handle("browser.network", ({ clear }) => browser.networkEntries(Boolean(clear)));
+  handle("browser.networkDetail", ({ id }) => browser.networkDetail(id));
   handle("browser.close", () => browser.close());
 }
 
