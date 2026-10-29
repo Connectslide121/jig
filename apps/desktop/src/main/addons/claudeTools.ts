@@ -73,6 +73,35 @@ export function addonTools(
     .filter((t) => !seen.has(t.name) && Boolean(seen.add(t.name)));
 }
 
+/** Longest text one add-on adds to a turn. */
+export const MAX_CONTEXT = 4000;
+
+/**
+ * What the enabled add-ons want Claude to know this turn (`contributes.context`), each under its
+ * add-on's name. An add-on that fails or takes over 3 s is left out; it never holds a message up.
+ */
+export async function addonContext(
+  addons: AddonInfo[],
+  call: (id: string, method: string, args: unknown) => Promise<unknown>,
+  chat: { cwd: string; projectId?: string; sessionId: string },
+): Promise<string> {
+  const parts = await Promise.all(
+    addons
+      .filter((a) => a.enabled && a.errors.length === 0 && a.manifest?.contributes.context)
+      .map(async (a) => {
+        const timeout = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 3000));
+        const text = await Promise.race([
+          call(a.id, a.manifest!.contributes.context!.run, { chat }).catch(() => undefined),
+          timeout,
+        ]);
+        if (typeof text !== "string" || !text.trim()) return "";
+        const cut = text.length > MAX_CONTEXT ? `${text.slice(0, MAX_CONTEXT)}\n… (cut)` : text.trim();
+        return `From the ${a.name} add-on:\n${cut}`;
+      }),
+  );
+  return parts.filter(Boolean).join("\n\n");
+}
+
 export interface AddonDataDeps {
   list(): AddonInfo[];
   all(id: string): Promise<Record<string, unknown>>;

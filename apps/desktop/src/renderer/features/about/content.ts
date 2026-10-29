@@ -96,6 +96,10 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     snippet:
       '"tools": [{ "id": "changes", "description": "Commits since the last release", "params": { "repo": { "optional": true } }, "readOnly": true, "run": "changes" }]',
   },
+  "claude.context": {
+    idea: "This chat's notes, the open incident, today's on-call: with every message",
+    snippet: '"context": { "run": "context" }',
+  },
   "settings.page": {
     idea: "An add-on's own options",
     snippet: '"settings": { "title": "Pipelines", "component": "PipelineSettings" }',

@@ -1,5 +1,5 @@
 import type { AddonHostApi } from "@jig/sdk";
-import { addNote, KINDS, listing, type Note, type NoteKind, parseLink } from "./lib/notes";
+import { addNote, KINDS, listing, type Note, type NoteKind, parseLink, turnContext } from "./lib/notes";
 
 /**
  * Each chat's notes, kept in the add-on's storage under `chat:<session id>` (global, so a chat keeps
@@ -96,4 +96,10 @@ export async function toolRemove(args: ChatArgs & { id?: string }, api: AddonHos
   if (!(await list({ sessionId }, api)).some((n) => n.id === id)) throw new Error(`There is no note ${id}.`);
   const notes = await change(api, sessionId, (list) => list.filter((n) => n.id !== id));
   return listing(notes, `Removed note ${id}. The notes now:`);
+}
+
+/** contributes.context: the chat's notes and how to keep them, with every message to Claude (D-151). */
+export async function context(args: ChatArgs, api: AddonHostApi): Promise<string> {
+  const sessionId = args.chat?.sessionId;
+  return sessionId ? turnContext(await list({ sessionId }, api)) : "";
 }

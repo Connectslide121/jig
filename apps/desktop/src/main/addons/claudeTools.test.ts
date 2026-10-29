@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
 import type { ChatItem, SessionMeta } from "../../shared/engine";
-import { addonDataTools, addonTools, paramsShape, toolText } from "./claudeTools";
+import { addonContext, addonDataTools, addonTools, paramsShape, toolText } from "./claudeTools";
 
 const meta = { id: "s1", cwd: "/repo", projectId: "p1" } as SessionMeta;
 
@@ -121,5 +121,42 @@ describe("add-on tools for Claude", () => {
     expect(changed).toEqual(["note", "deploys"]);
     await expect(t.jig_get_addon!.handler({ addonId: "nope" }, meta)).rejects.toThrow(/No add-on/);
     expect(t.jig_set_addon_data!.readOnly).toBeFalsy();
+  });
+});
+
+describe("add-ons' context for each turn", () => {
+  const withContext = (id: string, name: string): AddonInfo =>
+    ({
+      id,
+      name,
+      enabled: true,
+      errors: [],
+      manifest: parseManifest({ id, name, contributes: { context: { run: "context" } } }).manifest!,
+    }) as unknown as AddonInfo;
+
+  it("gathers each add-on's text under its name, with the chat, leaving out empty and failing ones", async () => {
+    const calls: unknown[] = [];
+    const text = await addonContext(
+      [
+        withContext("notes", "Notes"),
+        withContext("quiet", "Quiet"),
+        withContext("broken", "Broken"),
+        addon("/x"),
+      ],
+      async (id, method, args) => {
+        calls.push({ id, method, args });
+        if (id === "broken") throw new Error("boom");
+        return id === "notes" ? "This chat has no notes yet." : "";
+      },
+      { cwd: "/repo", sessionId: "s1" },
+    );
+    expect(text).toBe("From the Notes add-on:\nThis chat has no notes yet.");
+    expect(calls).toContainEqual({
+      id: "notes",
+      method: "context",
+      args: { chat: { cwd: "/repo", sessionId: "s1" } },
+    });
+    // An add-on without contributes.context isn't asked.
+    expect(calls.some((c) => (c as { id: string }).id === "releases")).toBe(false);
   });
 });

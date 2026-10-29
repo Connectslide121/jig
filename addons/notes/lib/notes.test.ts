@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addNote, listing, type Note, nextId, noteText, parseLink, sorted } from "./notes";
+import { addNote, listing, type Note, nextId, noteText, parseLink, sorted, turnContext } from "./notes";
 
 const note = (id: string, kind: Note["kind"], text: string, extra: Partial<Note> = {}): Note => ({
   id,
@@ -49,5 +49,17 @@ describe("a chat's notes", () => {
     );
     expect(text).toBe("Added note 2.\n[2] Note: VAT\n[1] Waiting on: API review [cleared]");
     expect(listing([], "Notes:")).toBe("Notes:\n(no notes)");
+  });
+
+  it("tells Claude the notes and how to keep them with every message", () => {
+    const empty = turnContext([]);
+    expect(empty).toContain("This chat has no notes yet.");
+    expect(empty).toContain("addon_notes_add");
+    const text = turnContext([note("1", "wait", "API review"), note("2", "note", "VAT")]);
+    expect(text).toContain("[1] Waiting on: API review");
+    expect(text).toContain("shouldn't go ahead");
+    expect(turnContext([note("1", "wait", "API review", { done: true })])).not.toContain(
+      "shouldn't go ahead",
+    );
   });
 });

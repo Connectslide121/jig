@@ -84,3 +84,21 @@ export function listing(list: readonly Note[], said: string): string {
 export function addNote(list: Note[], fields: Omit<Note, "id" | "createdAt">, now = Date.now()): Note[] {
   return [...list, { ...fields, id: nextId(list), createdAt: now }];
 }
+
+/**
+ * What Claude gets with every message of a chat (D-151): the notes as they stand and how to keep
+ * them, short enough to repeat each turn.
+ */
+export function turnContext(list: readonly Note[]): string {
+  const rule =
+    "Keep this chat's notes current as you work, without being asked: add one (addon_notes_add) the moment the chat starts waiting on someone or something (wait), its work moves to a repository and branch (where), a decision, constraint or fact later work must respect is settled (note), something is deliberately left for later (todo), or an address matters (link). Tick a wait cleared or a to-do done (addon_notes_update, done: true) when it is, and remove notes that are no longer true. One short line each; never a log of progress, files changed or commits. The user sees them in the Notes panel.";
+  if (list.length === 0) return `This chat has no notes yet.\n${rule}`;
+  const open = list.filter((n) => n.kind === "wait" && !isDone(n));
+  return [
+    listing(list, "This chat's notes (the Notes panel beside it):"),
+    ...(open.length
+      ? ["An open 'Waiting on' note means that work shouldn't go ahead until it's cleared."]
+      : []),
+    rule,
+  ].join("\n");
+}

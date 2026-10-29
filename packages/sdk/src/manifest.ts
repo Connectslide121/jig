@@ -110,6 +110,12 @@ export const ManifestSchema = z.object({
           }),
         )
         .default([]),
+      /**
+       * What Claude should know in every turn of a chat (slot `claude.context`, D-151): a named export
+       * of `host.ts` called with `{ chat }` before each message is sent; the text it returns (up to
+       * 4000 characters, '' for nothing) goes with the message, not shown in the transcript.
+       */
+      context: z.object({ run: ExportName }).optional(),
       settings: z.object({ title: z.string(), component: ExportName }).optional(),
       themes: z.array(z.object({ label: z.string().optional(), path: z.string() })).default([]),
     })

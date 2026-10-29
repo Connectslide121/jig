@@ -1478,3 +1478,19 @@ Claude, on my own (how) · **Date:** 2026-10-30
 - **As a copy:** its first message resumes the conversation as a branch (Claude Code's fork, like
   Jig's own Fork), so the original in the desktop app or terminal is never written to by both.
 - The renderer only names a session id; the folder and title come from Claude Code's list.
+
+### D-151 — Add-ons can tell Claude something with every message; Notes does
+**Decided by:** Jon ("I want Claude to be more aware of the notes add-on, so it uses it actively")
+and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **New slot `claude.context`** (`contributes.context: { run }`): host code called with `{ chat }`
+  before each message of a chat; its text goes with the message inside `<jig-context>`, under the
+  add-on's name, not shown in the transcript. Like the output of `!` commands, which already goes
+  with the next message. A chat's system prompt is fixed when Claude Code starts, so per-turn
+  context can only travel with the message.
+- **Guarded:** up to 4000 characters per add-on, 3 s at most, failures left out; chats only (not the
+  builder's or other kinds of session).
+- **Notes uses it** like the notes plugin's every-turn prompt: the notes as they stand, and the rule
+  for keeping them current without being asked. This replaces D-147's "Claude reads them with a
+  tool" (the tool stays, for reading them again).
+

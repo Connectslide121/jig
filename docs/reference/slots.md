@@ -19,6 +19,7 @@ add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced b
 | `chat.toolRenderer` | `toolRenderers` | `tool` (tool name, e.g. `mcp__server__tool`), `component` | `{ ctx, item }` | inside that tool's card in the chat |
 | `prompt` | `prompts` | `id`, `label`, `text`, `send?` | — | button above the composer (inserts or sends the text) |
 | `watcher` | `watchers` | `id`, `every` (`30s`, `5m`, `1h`; min 10 s), `run` | host: `run({}, api)` | background, in the add-on's host process |
+| `claude.context` | `context` | `run` | host: `run({ chat: { cwd, projectId, sessionId } }, api)` before each message of a chat, returns text ('' for nothing; up to 4000 characters; 3 s at most) | goes with the message inside `<jig-context>`, under the add-on's name, not shown in the transcript; chats only, not the builder's (D-151) |
 | `claude.tool` | `tools` | `id` (`a-z0-9_`), `description` (when to use it), `params?` (`{ name: { type?, description?, optional?, enum? } }`), `readOnly?`, `run` | host: `run({ ...args, chat: { cwd, projectId, sessionId } }, api)` (`sessionId`: the chat that called), returns text or JSON | a tool Claude can use in every new chat, `mcp__jig__addon_<add-on>_<id>`; read-only tools run without asking (D-115) |
 | `settings.page` | `settings` | `title`, `component` | `{ ctx }` | Settings, as its own page |
 | `theme` | `themes` | `path`, `label?` | — | Settings → Appearance (Jig or VS Code theme JSON) |

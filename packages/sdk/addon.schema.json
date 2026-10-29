@@ -362,6 +362,16 @@
             "required": ["id", "description", "run"]
           }
         },
+        "context": {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            }
+          },
+          "required": ["run"]
+        },
         "settings": {
           "type": "object",
           "properties": {

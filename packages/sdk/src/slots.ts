@@ -18,6 +18,7 @@ export const SLOTS = {
   prompt: "A reusable prompt shown as a button above the composer.",
   watcher: "Host code that runs on an interval (e.g. check pipeline runs).",
   "claude.tool": "A tool Claude can use in every chat (host code; read-only tools run without asking).",
+  "claude.context": "What Claude should know in every turn of a chat (host code returning text).",
   "settings.page": "A page in Settings.",
   theme: "A colour theme (Jig or VS Code format JSON).",
 } as const;
@@ -40,6 +41,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   prompt: "prompts",
   watcher: "watchers",
   "claude.tool": "tools",
+  "claude.context": "context",
   "settings.page": "settings",
   theme: "themes",
 };

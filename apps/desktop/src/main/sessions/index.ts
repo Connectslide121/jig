@@ -12,7 +12,7 @@ import { publishActivity } from "../activity/bus";
 import { appWindows } from "../appWindows";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
-import { jigContext, jigMcpServer, jigToolHandlers } from "../engine/jigTools";
+import { jigContext, jigMcpServer, jigToolHandlers, turnContext } from "../engine/jigTools";
 import type { ToolOutput } from "../engine/types";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
@@ -90,6 +90,7 @@ export function startSessions(): void {
         fileCheckpoints: engine.fileCheckpoints,
       };
     },
+    turnContext: (meta) => (kindHooks.has(meta.kind ?? "") ? Promise.resolve("") : turnContext(meta)),
     appendSystemPrompt: (meta) =>
       kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
       jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),

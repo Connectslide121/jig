@@ -2,8 +2,8 @@
 
 Short notes for the chat you're in, like the notes plugin (D-147): what it waits on, where its work
 is, steps left for later, decisions and facts, links. You write them in the **Notes** view (right
-sidebar; Tools → Show this chat's notes) and Claude writes them with its tools; Claude reads them
-before it works in the chat.
+sidebar; Tools → Show this chat's notes) and Claude writes them with its tools; Claude gets them
+with every message and keeps them current.
 
 - **Kinds:** ⏳ Waiting on (shown in amber until cleared), 📍 Where (a repository from your
   workspaces and a branch), ☐ To-do, 📝 Note, 🔗 Link (`label https://…`, with Open).
@@ -18,6 +18,8 @@ before it works in the chat.
 - Kept in the add-on's storage as `chat:<chat id>`; every change is announced (`changed`) so the
   view follows Claude's edits.
 
-Unlike the plugin, Claude doesn't get the notes in every turn's system prompt (a Claude Code chat's
-system prompt is fixed when it starts): it reads them with `addon_notes_list`, as its description
-asks.
+- **Every message** (`contributes.context`, D-151): like the plugin, Claude gets the chat's notes
+  with each message you send, with the rule for keeping them (add a wait, where, decision or to-do
+  the moment it comes up, tick them off, remove what's no longer true; never a log). A chat's
+  system prompt is fixed when it starts, so they go with the message instead, not shown in the
+  transcript (`lib/notes.ts` → `turnContext`).

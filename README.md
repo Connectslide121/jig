@@ -267,7 +267,7 @@ They can plug into 17 places:
 | `tools.action` | the Tools menu, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
-| `claude.tool` | a tool Claude can use in every chat | | |
+| `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 
 Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases** and
 **Workflows** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·

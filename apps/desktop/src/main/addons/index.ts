@@ -8,7 +8,13 @@ import type { AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
 import { appWindows } from "../appWindows";
 import { card } from "../configure/tools";
-import { registerJigTools, setAddonSummary, setAddonTools, setJigToolHandlers } from "../engine/jigTools";
+import {
+  registerJigTools,
+  setAddonSummary,
+  setAddonTools,
+  setAddonTurnContext,
+  setJigToolHandlers,
+} from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
@@ -16,7 +22,7 @@ import { mimeFor } from "../protocols";
 import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
-import { addonDataTools, addonTools } from "./claudeTools";
+import { addonContext, addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
@@ -173,6 +179,13 @@ export async function startAddons(): Promise<void> {
   s.watchFiles();
   setJigToolHandlers({ listAddons: async () => s.catalog() });
   setAddonTools(addonTools(s.list(), (id, method, args) => s.call(id, method, args)));
+  setAddonTurnContext((meta) =>
+    addonContext(s.list(), (id, method, args) => s.call(id, method, args), {
+      cwd: meta.cwd,
+      projectId: meta.projectId,
+      sessionId: meta.id,
+    }),
+  );
   setAddonSummary(() =>
     s
       .list()

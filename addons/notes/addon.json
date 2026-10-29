@@ -2,11 +2,13 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "notes",
   "name": "Notes",
-  "description": "Short notes for the chat you're in: what it waits on, where its work is, steps left, decisions, links. You and Claude write them; Claude reads them before it works.",
+  "description": "Short notes for the chat you're in: what it waits on, where its work is, steps left, decisions, links. You and Claude write them; Claude gets them with every message and keeps them current.",
   "version": "1.0.0",
   "icon": "notebook-pen",
   "permissions": [],
-  "storage": { "scope": "global" },
+  "storage": {
+    "scope": "global"
+  },
   "contributes": {
     "views": [
       {
@@ -26,10 +28,13 @@
         "run": "showNotes"
       }
     ],
+    "context": {
+      "run": "context"
+    },
     "tools": [
       {
         "id": "list",
-        "description": "This chat's notes (the Notes panel beside the chat): what it waits on, where its work is (repository and branch), steps left for later, decisions and facts, links — each with its id. Read them before starting work in this chat and whenever the user mentions the notes; a 'Waiting on' note that isn't cleared means this work shouldn't go ahead yet.",
+        "description": "This chat's notes (the Notes panel beside the chat), each with its id. They also come with every message (in <jig-context>); use this to read them again after changing several. A 'Waiting on' note that isn't cleared means that work shouldn't go ahead yet.",
         "readOnly": true,
         "run": "toolList"
       },
@@ -52,8 +57,16 @@
             "description": "where: the repository's folder name",
             "optional": true
           },
-          "branch": { "type": "string", "description": "where: the branch", "optional": true },
-          "url": { "type": "string", "description": "link: the address", "optional": true }
+          "branch": {
+            "type": "string",
+            "description": "where: the branch",
+            "optional": true
+          },
+          "url": {
+            "type": "string",
+            "description": "link: the address",
+            "optional": true
+          }
         },
         "readOnly": true,
         "run": "toolAdd"
@@ -62,12 +75,30 @@
         "id": "update",
         "description": "Changes a note of this chat by its id: its words, repo, branch or url, or ticks a wait cleared / a to-do done (done: true) or opens it again. Update rather than add a near-duplicate.",
         "params": {
-          "id": { "type": "string", "description": "The note's id, as the list shows it" },
-          "text": { "type": "string", "optional": true },
-          "repo": { "type": "string", "optional": true },
-          "branch": { "type": "string", "optional": true },
-          "url": { "type": "string", "optional": true },
-          "done": { "type": "boolean", "optional": true }
+          "id": {
+            "type": "string",
+            "description": "The note's id, as the list shows it"
+          },
+          "text": {
+            "type": "string",
+            "optional": true
+          },
+          "repo": {
+            "type": "string",
+            "optional": true
+          },
+          "branch": {
+            "type": "string",
+            "optional": true
+          },
+          "url": {
+            "type": "string",
+            "optional": true
+          },
+          "done": {
+            "type": "boolean",
+            "optional": true
+          }
         },
         "readOnly": true,
         "run": "toolUpdate"
@@ -75,7 +106,12 @@
       {
         "id": "remove",
         "description": "Removes a note from this chat by its id, when it's no longer true.",
-        "params": { "id": { "type": "string", "description": "The note's id" } },
+        "params": {
+          "id": {
+            "type": "string",
+            "description": "The note's id"
+          }
+        },
         "readOnly": true,
         "run": "toolRemove"
       }

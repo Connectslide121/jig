@@ -53,6 +53,15 @@ export function setAddonSummary(fn: () => string): void {
   addonSummary = fn;
 }
 
+/** What add-ons add to each turn of a chat (`contributes.context`, D-151). */
+let addonTurnContext: (meta: SessionMeta) => Promise<string> = async () => "";
+export function setAddonTurnContext(fn: (meta: SessionMeta) => Promise<string>): void {
+  addonTurnContext = fn;
+}
+export function turnContext(meta: SessionMeta): Promise<string> {
+  return addonTurnContext(meta);
+}
+
 let handlers: JigToolHandlers = {
   listAddons: async () => "No add-ons are installed yet.",
   requestBuild: async () => "Jig's builder is not available in this version yet.",

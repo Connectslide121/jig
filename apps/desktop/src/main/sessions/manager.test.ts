@@ -74,6 +74,34 @@ describe("SessionManager", () => {
     });
   });
 
+  it("sends add-ons' context with each message, without showing it in the transcript", async () => {
+    const sent: string[] = [];
+    class Recording extends FakeEngine {
+      override start(...args: Parameters<FakeEngine["start"]>) {
+        const session = super.start(...args);
+        const send = session.send.bind(session);
+        session.send = (text, parts, priority) => {
+          sent.push(text);
+          return send(text, parts, priority);
+        };
+        return session;
+      }
+    }
+    const m = new SessionManager({
+      ...(manager() as unknown as { options: ConstructorParameters<typeof SessionManager>[0] }).options,
+      engine: new Recording(1),
+      turnContext: async (meta) => `Notes of ${meta.id}`,
+    });
+    const session = await create(m);
+    await m.send(session.id, "Hello there");
+    await until(async () => (await metaOf(m, session.id)).turns === 1);
+    expect(sent[0]).toContain(`<jig-context>`);
+    expect(sent[0]).toContain(`Notes of ${session.id}`);
+    expect(sent[0]?.endsWith("Hello there")).toBe(true);
+    const snap = await m.snapshot(session.id);
+    expect(snap.items[0]).toMatchObject({ kind: "user", text: "Hello there" });
+  });
+
   it("sends pasted images to Claude with the message and shows them on the user item", async () => {
     const m = manager();
     const session = await create(m);
