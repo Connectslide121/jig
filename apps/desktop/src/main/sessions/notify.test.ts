@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionMeta } from "../../shared/engine";
-import { notificationFor } from "./notify";
+import { notificationFor, notificationsAllowed } from "./notify";
 
 const meta = (patch: Partial<SessionMeta>) =>
   ({ title: "Fix the cart", status: "idle", ...patch }) as SessionMeta;
@@ -22,5 +22,14 @@ describe("chat notifications", () => {
     expect(notificationFor("needs_you", meta({ status: "working" }))).toBeUndefined();
     expect(notificationFor("working", meta({ status: "working" }))).toBeUndefined();
     expect(notificationFor("working", meta({ status: "idle", kind: "builder" }))).toBeUndefined();
+  });
+});
+
+describe("notificationsAllowed", () => {
+  it("is off when you turned notifications off, and for a hidden Jig (tests)", () => {
+    expect(notificationsAllowed(true, {})).toBe(true);
+    expect(notificationsAllowed(false, {})).toBe(false);
+    expect(notificationsAllowed(true, { JIG_HIDDEN: "1" })).toBe(false);
+    expect(notificationsAllowed(true, { JIG_HIDDEN: "" })).toBe(true);
   });
 });

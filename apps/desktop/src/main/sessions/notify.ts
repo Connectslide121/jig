@@ -22,3 +22,11 @@ export function notificationFor(
     };
   return undefined;
 }
+
+/**
+ * Whether Jig shows system notifications at all: when they're on, and never from a hidden Jig
+ * (`JIG_HIDDEN`, as tests run it), whose windows always look like they're in the background.
+ */
+export function notificationsAllowed(enabled: boolean, env: Record<string, string | undefined>): boolean {
+  return enabled && !env.JIG_HIDDEN;
+}

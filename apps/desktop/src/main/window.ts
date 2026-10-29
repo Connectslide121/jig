@@ -21,6 +21,9 @@ const WindowStateSchema = z.object({
 /** The window controls' height on Windows/Linux; the top bar takes it (`.topbar-insets`). */
 export const TITLEBAR_HEIGHT = 36;
 
+/** Jig's logo: the window and taskbar icon when Jig runs from a clone, and on notifications. */
+export const APP_ICON = join(here, "../../build/icon.png");
+
 /** Creates the main window, restoring its last size and position. */
 export async function createMainWindow(): Promise<BrowserWindow> {
   const state = await readJson(paths.windowState(), WindowStateSchema);
@@ -47,7 +50,7 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     show: false,
     title: "Jig",
     // Taskbar/window icon when Jig runs from a clone (packaged builds have it in the executable too).
-    icon: join(here, "../../build/icon.png"),
+    icon: APP_ICON,
     backgroundColor: "#1e1f22", // jig-tokens-ignore-line — first paint before the theme loads
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
     titleBarOverlay:

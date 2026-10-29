@@ -19,8 +19,9 @@ import { projectStore } from "../projects";
 import { routinesChanged } from "../routines";
 import { paths } from "../state/paths";
 import { usageService } from "../usage";
+import { APP_ICON } from "../window";
 import { SessionManager } from "./manager";
-import { notificationFor } from "./notify";
+import { notificationFor, notificationsAllowed } from "./notify";
 
 let manager: SessionManager | undefined;
 
@@ -175,10 +176,11 @@ export function startSessions(): void {
     lastStatus.set(meta.id, meta.status);
     const note = notificationFor(previous, meta);
     const windows = appWindows();
-    if (!note || !getConfig().notifications.desktop || windows.some((w) => w.isFocused())) return;
+    if (!note || !notificationsAllowed(getConfig().notifications.desktop, process.env)) return;
+    if (windows.some((w) => w.isFocused())) return;
     if (meta.status === "needs_you") for (const w of windows) w.flashFrame(true);
     if (!Notification.isSupported()) return;
-    const n = new Notification({ title: note.title, body: note.body });
+    const n = new Notification({ title: note.title, body: note.body, icon: APP_ICON });
     n.on("click", () => {
       const w = appWindows()[0];
       if (w) {
