@@ -215,6 +215,7 @@ And more:
   - Queue messages while Claude works, or send one into the running turn with Ctrl+Enter.
   - Next-message suggestions.
   - Restore files to before any message, and fork a chat.
+  - Start a chat in its own git worktree, and apply its changes when you like them.
   - Images from tools.
   - MCP server status, extra folders for a chat, and export to Markdown.
 - **Around the chats:**

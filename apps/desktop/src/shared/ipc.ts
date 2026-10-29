@@ -46,6 +46,7 @@ import type {
 } from "./themes";
 import type { Tour } from "./tour";
 import type { PlanUsage } from "./usage";
+import type { WorktreeChat } from "./worktrees";
 
 export const CHANNEL_CALL = "jig:call";
 export const CHANNEL_EVENT = "jig:event";
@@ -99,6 +100,13 @@ export interface HostMethods {
     result: AttemptRun;
   };
   "attempts.list": { args: void; result: AttemptRun[] };
+  /** Chats in their own git worktree. */
+  "worktrees.list": { args: void; result: WorktreeChat[] };
+  "worktrees.start": { args: { repo: string; name: string; projectId?: string }; result: WorktreeChat };
+  /** Brings the worktree's changes into the repository's working copy (uncommitted). */
+  "worktrees.apply": { args: { sessionId: string }; result: void };
+  /** Removes the worktree and its branch (the chat stays). */
+  "worktrees.remove": { args: { sessionId: string }; result: void };
   "attempts.get": { args: { id: string }; result: AttemptRun };
   "attempts.changes": { args: { id: string }; result: AttemptChanges[] };
   "attempts.diff": { args: { id: string; index: number; path?: string }; result: string };
@@ -397,6 +405,7 @@ export interface HostEvents {
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };
   "attempts.changed": AttemptRun;
+  "worktrees.changed": WorktreeChat[];
   /** Show this terminal (Claude started it from a chat). */
   "terminals.reveal": { id: string };
   /** Show this chat (a desktop notification about it was clicked). */

@@ -62,6 +62,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "learning.checkIn": z.object({ action: z.enum(["enable", "decline", "start", "skip"]) }),
   "addons.inspectPackage": z.object({ path: path.optional() }),
   "addons.importPackage": z.object({ path, replace: z.boolean().optional() }),
+  "worktrees.start": z.object({ repo: path, name: z.string().max(200), projectId: id.optional() }),
   "ai.ask": z.object({ addonId, prompt: z.string().max(200_000), cwd: path.optional() }),
   "attempts.start": z.object({
     projectId: id,

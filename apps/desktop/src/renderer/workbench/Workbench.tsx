@@ -12,6 +12,7 @@ import { useSessionsSync } from "../features/sessions";
 import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
 import { useTerminalsSync } from "../features/terminals";
+import { useWorktreesSync } from "../features/worktrees";
 import { call, useHostEvent } from "../lib/host";
 import { useConfig } from "../stores/config";
 import { useUsageSync } from "../stores/usage";
@@ -74,6 +75,7 @@ export function Workbench() {
   useAddonsSync();
   useBuildsSync();
   useLearningSync();
+  useWorktreesSync();
   useUsageSync();
   useShortcuts();
   const ready = useWorkbench((s) => s.layout !== undefined);

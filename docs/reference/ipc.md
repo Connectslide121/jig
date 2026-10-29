@@ -35,6 +35,9 @@ settings, add-on permissions.
 | `digest.standup` | `{ period: "workday" \| "week" }` | `{ text, since, repos, chats }` | Claude's standup from your commits, uncommitted work and chats |
 | `attempts.start` | `{ projectId, repo, task, hints }` | `AttemptRun` | 2–4 chats on the same task, each in its own git worktree (`docs/reference/attempts.md`) |
 | `attempts.list` / `attempts.get` | — / `{ id }` | `AttemptRun[]` / `AttemptRun` | runs |
+| `worktrees.list` | — | `WorktreeChat[]` | chats that work in their own git worktree |
+| `worktrees.start` | `{ repo, name, projectId? }` | `WorktreeChat` | a worktree on branch `jig/<name>-<id>` from HEAD, and a chat in it (schema) |
+| `worktrees.apply` / `worktrees.remove` | `{ sessionId }` | — | bring its changes into the repository's working copy (uncommitted) / delete the worktree and branch |
 | `attempts.changes` / `attempts.diff` | `{ id }` / `{ id, index, path? }` | `AttemptChanges[]` / `string` | what each attempt changed |
 | `attempts.judge` | `{ id }` | `AttemptVerdict` | Claude compares the attempts (one-shot, no tools) |
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
@@ -176,5 +179,6 @@ settings, add-on permissions.
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
+| `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |
 | `learning.knowledgeChanged` | — | the profile or the notes changed |

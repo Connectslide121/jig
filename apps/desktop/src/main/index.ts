@@ -30,6 +30,7 @@ import { startThemes, themeService } from "./themes";
 import { registerTourHandlers } from "./tour";
 import { startUsage, stopUsage } from "./usage";
 import { createMainWindow } from "./window";
+import { startWorktrees } from "./worktrees";
 
 const log = logger("main");
 
@@ -63,6 +64,7 @@ async function start() {
   startProjects();
   startSessions();
   startAttempts();
+  startWorktrees();
   startTerminals();
   startBrowser();
   registerRoutineHandlers();

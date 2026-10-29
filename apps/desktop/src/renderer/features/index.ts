@@ -17,6 +17,7 @@ import { registerSetup } from "./setup";
 import { registerTerminals } from "./terminals";
 import { registerTour } from "./tour";
 import { registerUsage } from "./usage";
+import { registerWorktrees } from "./worktrees";
 
 /** Registers every core view, tab type and action. Add-ons register theirs at runtime (phase 6). */
 export function registerFeatures(): void {
@@ -38,5 +39,6 @@ export function registerFeatures(): void {
   registerTour();
   registerDigest();
   registerUsage();
+  registerWorktrees();
   registerAbout();
 }

@@ -34,6 +34,7 @@ import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openBuildDialog } from "../builder/BuildDialog";
 import { startTour } from "../tour/actions";
+import { worktreeMenu } from "../worktrees";
 import { compactMenu } from "./ContextMeter";
 import { chatRecipe } from "./recipe";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
@@ -265,6 +266,7 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       onSelect: () => void forkSession(meta),
       testId: "session-fork",
     },
+    ...worktreeMenu(meta),
     {
       label: "Stop Claude Code process",
       icon: Power,

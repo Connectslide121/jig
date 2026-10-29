@@ -1055,3 +1055,16 @@ before changing how things work) · **Date:** 2026-10-29
   a replaced add-on can be rolled back. They run with the normal add-on process isolation; a real
   sandbox for other people's add-ons stays in the backlog.
 
+### D-114 — A chat in its own worktree is a separate action, not an option on every chat
+**Decided by:** Claude, on my own (backlog: "Git worktree per chat"; Jon: add, don't change how things
+work) · **Date:** 2026-10-29
+
+- **New chat in a worktree…** (Tools) next to New chat; normal chats are unchanged. It reuses the
+  worktree helpers of "Try several ways" (`attempts/git.ts`).
+- The worktree lives in `~/.jig/worktrees/<id>` on branch `jig/<name>-<id>` from the repository's
+  HEAD (the project's default repository). Which chats have one is kept in `worktree-chats.json`, so
+  the chat itself (SessionMeta) didn't change.
+- **Apply** brings everything since the start (commits on the branch and uncommitted work) into the
+  working copy as uncommitted changes, refusing when it doesn't apply cleanly — you review and commit
+  as usual. **Remove** deletes the worktree and the branch; the chat stays.
+
