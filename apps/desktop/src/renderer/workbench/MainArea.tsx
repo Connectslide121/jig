@@ -15,6 +15,7 @@ import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
 import { Home } from "../features/home/Home";
 import { cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
+import { confirmClose, useDirtyTabs } from "./dirty";
 import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
 import { useRegistry } from "./registry";
@@ -76,6 +77,7 @@ function TabButton({
   const def = useRegistry((s) => s.tabTypes[tab.type]);
   const [dragOver, setDragOver] = useState(false);
   const title = useTabTitle(tab);
+  const dirty = useDirtyTabs((s) => s.tabs[tab.id] !== undefined);
   const Icon = (def && (def.iconFor?.(tab.params) ?? def.icon)) || Settings;
   const filePath =
     def?.filePath?.(tab.params) ??
@@ -135,10 +137,22 @@ function TabButton({
         },
         { separator: true },
         { label: "Close", icon: X, onSelect: () => workbench.closeTab(tab.id) },
-        { label: "Close others", onSelect: () => updateLayout((l) => closeOtherTabs(l, tab.id)) },
+        {
+          label: "Close others",
+          onSelect: async () => {
+            const others = (useWorkbench.getState().layout?.main.tabs ?? []).filter(
+              (t) => t.id !== tab.id && !t.pinned,
+            );
+            if (await confirmClose(others.map((t) => t.id))) updateLayout((l) => closeOtherTabs(l, tab.id));
+          },
+        },
         {
           label: "Close all",
-          onSelect: () => updateLayout((l) => ({ ...l, main: { tabs: [], active: undefined } })),
+          onSelect: async () => {
+            const all = (useWorkbench.getState().layout?.main.tabs ?? []).map((t) => t.id);
+            if (await confirmClose(all))
+              updateLayout((l) => ({ ...l, main: { tabs: [], active: undefined } }));
+          },
         },
         ...(split ? [{ label: "One pane", icon: Square, onSelect: () => updateLayout(unsplit) }] : []),
       ])}
@@ -153,6 +167,13 @@ function TabButton({
       )}
       {filePath ? <FileIcon path={filePath} className="size-3.5" /> : <Icon className="size-3.5 shrink-0" />}
       <TabStatusDot tab={tab} />
+      {dirty && (
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-fg"
+          title="Unsaved changes"
+          data-testid="tab-dirty"
+        />
+      )}
       <span className="min-w-0 flex-1 truncate">{title}</span>
       <button
         type="button"

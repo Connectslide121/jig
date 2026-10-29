@@ -18,6 +18,7 @@ import {
   updateTabParams,
 } from "../../shared/layout";
 import { call } from "../lib/host";
+import { confirmClose, dirtyTabIds } from "./dirty";
 import { useRegistry } from "./registry";
 
 /**
@@ -74,13 +75,21 @@ export const workbench = {
     }
     let id = "";
     updateLayout((l) => {
-      const result = openTab(l, { type, params });
+      const result = openTab(l, { type, params }, dirtyTabIds());
       id = result.tabId;
       return result.layout;
     });
     return id;
   },
-  closeTab: (tabId: string) => updateLayout((l) => closeTab(l, tabId)),
+  /** Closes a tab (asking first when it has unsaved work). */
+  async closeTab(tabId: string) {
+    if (await confirmClose([tabId])) updateLayout((l) => closeTab(l, tabId));
+  },
+  /** Closes several tabs (asking once if any has unsaved work). */
+  async closeTabs(tabIds: string[]) {
+    if (!tabIds.length || !(await confirmClose(tabIds))) return;
+    updateLayout((l) => tabIds.reduce((acc, id) => closeTab(acc, id), l));
+  },
   activateTab: (tabId: string) => updateLayout((l) => activateTab(l, tabId)),
   moveView: (viewId: string, region: SideRegion) => updateLayout((l) => moveView(l, viewId, region)),
   /** A view dragged onto a region's tab bar, before another view's tab (or at the end). */

@@ -4,6 +4,7 @@ import { unifiedDiff } from "../../../shared/lineDiff";
 import { type FilePreview, HAS_SOURCE, type PreviewKind } from "../../../shared/preview";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn, Empty, FileIcon, IconButton, Markdown, Spinner } from "../../ui";
+import { setTabDirty } from "../../workbench/dirty";
 import { useProjects } from "../../workbench/projects";
 import type { TabProps } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
@@ -167,7 +168,7 @@ function Viewer({ preview, source, scripts }: { preview: FilePreview; source: bo
  * A file, shown the way it's meant to be read: rendered Markdown with diagrams, tables for CSV and
  * Excel, a JSON tree, notebooks, PDFs, media, pages… It follows the file while Claude edits it.
  */
-export function PreviewTab({ params, active }: TabProps) {
+export function PreviewTab({ params, active, tabId }: TabProps) {
   const path = String(params.path ?? "");
   const [preview, setPreview] = useState<FilePreview>();
   const [error, setError] = useState<string>();
@@ -180,6 +181,11 @@ export function PreviewTab({ params, active }: TabProps) {
   const [showDiff, setShowDiff] = useState(false);
   const [saving, setSaving] = useState(false);
   const dirty = draft !== undefined && draft !== preview?.text?.replaceAll("\r\n", "\n");
+  // The tab bar shows it, and closing the tab asks first.
+  useEffect(() => {
+    setTabDirty(tabId, dirty ? (path.split(/[\\/]/).pop() ?? path) : undefined);
+  }, [tabId, dirty, path]);
+  useEffect(() => () => setTabDirty(tabId, undefined), [tabId]);
 
   const load = useCallback(async () => {
     try {
@@ -214,6 +220,7 @@ export function PreviewTab({ params, active }: TabProps) {
   const save = async (over?: FilePreview) => {
     if (!preview || draft === undefined || saving) return;
     const crlf = (preview.text ?? "").includes("\r\n");
+    const saved = draft;
     setSaving(true);
     try {
       await call("files.write", {
@@ -221,10 +228,11 @@ export function PreviewTab({ params, active }: TabProps) {
         text: crlf ? draft.replaceAll("\n", "\r\n") : draft,
         expectedMtimeMs: (over ?? preview).mtimeMs,
       });
-      setDraft(undefined);
       setTheirs(undefined);
       setShowDiff(false);
       await load();
+      // Typing that went on while saving stays.
+      setDraft((d) => (d === saved ? undefined : d));
     } catch (e) {
       if ((e as { code?: string }).code === "changed") setTheirs(await call("files.preview", { path }));
       else notify({ title: "Not saved", message: errorMessage(e), tone: "danger" });
@@ -381,7 +389,7 @@ export function PreviewTab({ params, active }: TabProps) {
         {editable ? (
           <CodeEditor
             path={preview.path}
-            value={preview.text ?? ""}
+            value={draft ?? (preview.text ?? "").replaceAll("\r\n", "\n")}
             onChange={(text) => setDraft(text)}
             onSave={() => void save()}
           />

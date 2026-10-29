@@ -322,6 +322,8 @@ export function newTabId(): string {
 export function openTab(
   input: Layout,
   tab: { type: string; params?: Record<string, unknown>; id?: string },
+  /** Tabs never closed to make room (unsaved work). */
+  keep: Set<string> = new Set(),
 ): { layout: Layout; tabId: string } {
   const params = tab.params ?? {};
   const key = tabKey({ type: tab.type, params });
@@ -339,7 +341,7 @@ export function openTab(
   // A new tab opens in the pane that has focus.
   if (layout.main.split?.focus === "right") layout.main.split.right.push(id);
   while (layout.main.tabs.length > MAX_TABS) {
-    const victim = layout.main.tabs.findIndex((t) => !t.pinned && t.id !== id);
+    const victim = layout.main.tabs.findIndex((t) => !t.pinned && t.id !== id && !keep.has(t.id));
     if (victim < 0) break;
     layout.main.tabs.splice(victim, 1);
   }
