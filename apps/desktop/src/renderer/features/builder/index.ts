@@ -1,9 +1,10 @@
-import { Hammer, Sparkles } from "lucide-react";
+import { FileUp, Hammer, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { setBuildRequestHandler } from "../../addons/buildRequests";
 import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerTabType, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
+import { importAddon } from "../settings/AddonsSettings";
 import { openBuildDialog, startBuild } from "./BuildDialog";
 import { BuildsHeaderActions, BuildsView } from "./BuildsView";
 import { BuildTab } from "./BuildTab";
@@ -36,6 +37,14 @@ export function registerBuilder(): void {
     shortcut: "Mod+Shift+B",
     keywords: ["new tool", "add-on", "ai", "make"],
     run: () => openBuildDialog({ goal: "", origin: "tools" }),
+  });
+  registerAction({
+    id: "jig.importAddon",
+    title: "Import an add-on…",
+    group: "Build",
+    icon: FileUp,
+    keywords: ["share", "install", "zip", "colleague"],
+    run: () => void importAddon(),
   });
   registerAction({
     id: "jig.builds",

@@ -60,6 +60,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "tour.create": z.object({ cwd: path, focus: z.string().max(2000).optional() }),
   "learning.setProfile": z.object({ text: z.string().max(200_000) }),
   "learning.checkIn": z.object({ action: z.enum(["enable", "decline", "start", "skip"]) }),
+  "addons.inspectPackage": z.object({ path: path.optional() }),
+  "addons.importPackage": z.object({ path, replace: z.boolean().optional() }),
   "ai.ask": z.object({ addonId, prompt: z.string().max(200_000), cwd: path.optional() }),
   "attempts.start": z.object({
     projectId: id,

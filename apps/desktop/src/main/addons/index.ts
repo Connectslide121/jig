@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { slugify } from "@jig/themes";
-import { app, protocol, utilityProcess } from "electron";
+import { app, BrowserWindow, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
+import { JigError } from "../../shared/ipc";
 import { setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
@@ -15,7 +16,9 @@ import { fileEntry, type ThemeEntry } from "../themes/sources";
 import { setTokensFile } from "./css";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
+import { commitAll } from "./repo";
 import { AddonService } from "./service";
+import { inspectPackage, installPackage, packAddon } from "./share";
 
 const log = logger("addons");
 const here = dirname(fileURLToPath(import.meta.url));
@@ -175,6 +178,58 @@ export async function startAddons(): Promise<void> {
   });
   handle("addons.history", ({ id }) => s.history(id));
   handle("addons.rollback", ({ id, commit }) => s.rollback(id, commit));
+
+  // Sharing: an add-on as a .zip, and a .zip back in (after you've seen what it is).
+  const window = () => BrowserWindow.getFocusedWindow() ?? undefined;
+  handle("addons.export", async ({ id }) => {
+    const addon = s.list().find((a) => a.id === id);
+    if (!addon) throw new JigError("not_found", "No such add-on");
+    const options = {
+      title: `Save ${addon.name} to share`,
+      defaultPath: `${id}-${addon.version ?? "1.0.0"}.jig-addon.zip`,
+      filters: [{ name: "Jig add-on", extensions: ["zip"] }],
+    };
+    const w = window();
+    const result = w ? await dialog.showSaveDialog(w, options) : await dialog.showSaveDialog(options);
+    if (result.canceled || !result.filePath) return undefined;
+    await writeFile(result.filePath, await packAddon(addon.dir, id));
+    return result.filePath;
+  });
+  handle("addons.inspectPackage", async ({ path }) => {
+    let file = path;
+    if (!file) {
+      const options = {
+        title: "Import an add-on",
+        properties: ["openFile" as const],
+        filters: [{ name: "Jig add-on", extensions: ["zip"] }],
+      };
+      const w = window();
+      const result = w ? await dialog.showOpenDialog(w, options) : await dialog.showOpenDialog(options);
+      if (result.canceled || !result.filePaths[0]) return undefined;
+      file = result.filePaths[0];
+    }
+    const { pkg } = inspectPackage(new Uint8Array(await readFile(file)));
+    const existing = s.list().find((a) => a.id === pkg.id);
+    const { manifest: _m, ...info } = pkg;
+    return {
+      path: file,
+      ...info,
+      exists: (existing ? (existing.source === "user" ? "user" : "builtin") : undefined) as
+        | "user"
+        | "builtin"
+        | undefined,
+    };
+  });
+  handle("addons.importPackage", async ({ path, replace }) => {
+    const pkg = await installPackage(new Uint8Array(await readFile(path)), paths.addons(), { replace });
+    await commitAll(
+      paths.addons(),
+      `Import ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""}`,
+      pkg.id,
+    ).catch(() => undefined);
+    await s.reloadAll();
+    return { id: pkg.id, name: pkg.name };
+  });
 
   app.on("will-quit", () => s.stop());
 }

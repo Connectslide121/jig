@@ -1,5 +1,15 @@
 import { describePermission } from "@jig/sdk";
-import { FolderOpen, History, Puzzle, RefreshCw, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
+import {
+  FileDown,
+  FileUp,
+  FolderOpen,
+  History,
+  Puzzle,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AddonCommit, AddonInfo } from "../../../shared/addons";
 import { requestBuild } from "../../addons/buildRequests";
@@ -67,6 +77,61 @@ function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => vo
   );
 }
 
+async function exportAddon(addon: AddonInfo) {
+  try {
+    const file = await call("addons.export", { id: addon.id });
+    if (file)
+      notify({
+        title: `Saved ${addon.name}`,
+        message: `${file} — send it to a colleague; they use Import add-on….`,
+        tone: "success",
+      });
+  } catch (error) {
+    notify({ title: "Couldn't export", message: errorMessage(error), tone: "danger" });
+  }
+}
+
+/** Import: pick a .zip, see what it is and what it may do, then install it. */
+export async function importAddon(path?: string) {
+  try {
+    const pkg = await call("addons.inspectPackage", { path });
+    if (!pkg) return;
+    if (pkg.errors.length) {
+      notify({
+        title: "This isn't an add-on Jig can install",
+        message: pkg.errors.join("\n"),
+        tone: "danger",
+      });
+      return;
+    }
+    const permissions = pkg.permissions.length
+      ? `It may: ${pkg.permissions.map((p) => describePermission(p)).join("; ")}.`
+      : "It asks for no permissions.";
+    const ok = await confirmDialog({
+      title: `Install ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""}?`,
+      message: [
+        pkg.description ?? "",
+        `${pkg.files.length} file${pkg.files.length === 1 ? "" : "s"}. ${permissions}`,
+        pkg.exists === "user"
+          ? `You already have "${pkg.id}": it is replaced (the old one stays in its history).`
+          : pkg.exists === "builtin"
+            ? `It becomes your copy of the built-in "${pkg.id}".`
+            : "",
+        "Only install add-ons from people you trust: they run code on your computer.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      confirmLabel: pkg.exists === "user" ? "Replace" : "Install",
+      danger: pkg.exists === "user",
+    });
+    if (!ok) return;
+    const done = await call("addons.importPackage", { path: pkg.path, replace: pkg.exists === "user" });
+    notify({ title: `Installed ${done.name}`, tone: "success" });
+  } catch (error) {
+    notify({ title: "Couldn't import", message: errorMessage(error), tone: "danger" });
+  }
+}
+
 function AddonRow({ addon }: { addon: AddonInfo }) {
   const loadError = useAddons((s) => s.loadErrors[addon.id]);
   const canBuild = useRegistry((s) => Boolean(s.actions["jig.build"]));
@@ -104,6 +169,12 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
         {addon.source === "user" && (
           <IconButton icon={History} label="History" onClick={() => setHistory(true)} />
         )}
+        <IconButton
+          icon={FileDown}
+          label={`Export ${addon.name} to share`}
+          data-testid={`addon-export-${addon.id}`}
+          onClick={() => void exportAddon(addon)}
+        />
         <IconButton
           icon={FolderOpen}
           label="Open folder"
@@ -177,6 +248,9 @@ export function AddonsSettings() {
             onClick={() => info && void call("app.openPath", { path: `${info.jigHome}/addons` })}
           >
             Open add-ons folder
+          </Button>
+          <Button size="sm" icon={FileUp} onClick={() => void importAddon()} data-testid="addon-import">
+            Import add-on…
           </Button>
           <Button size="sm" icon={RefreshCw} onClick={() => void call("addons.reload", {})}>
             Reload all

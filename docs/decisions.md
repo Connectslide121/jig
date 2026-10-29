@@ -1042,3 +1042,16 @@ history, open in the plan) · **Date:** 2026-10-29
   `addon.workflows.workflow`, `params.draft`); lines that look like commands become command steps
   ("ask me first"), others checks.
 
+### D-113 — Sharing add-ons as zip files, installed after a trust prompt
+**Decided by:** Claude, on my own (backlog: "sharing add-ons with colleagues"; Jon: add things, ask
+before changing how things work) · **Date:** 2026-10-29
+
+- **A plain `.zip`** of the add-on folder (`<id>-<version>.jig-addon.zip`), so it can go by mail,
+  Teams or a shared drive. No registry or marketplace, nothing online.
+- **Import shows before it installs:** name, version, description, files and permissions; nothing in
+  the package runs during the import. Unsafe paths (`..`, absolute) are refused; packages over 20 MB
+  are refused.
+- **Imported add-ons are like your own:** in `~/.jig/addons/<id>`, recorded in the add-on history, so
+  a replaced add-on can be rolled back. They run with the normal add-on process isolation; a real
+  sandbox for other people's add-ons stays in the backlog.
+

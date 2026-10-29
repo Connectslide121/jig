@@ -81,3 +81,15 @@ Jig reloads just this add-on.
 - Host logs: `api.log(...)` and anything the process prints go to `~/.jig/logs/main.log`.
 - A crashing component shows an inline error with "Turn off" and "Fix with AI"; Jig keeps working.
 - Developer tools: Tools → Toggle developer tools.
+
+## Sharing an add-on
+
+- **Export:** Settings → Add-ons → the ⤓ button on an add-on saves it as `<id>-<version>.jig-addon.zip`
+  (its files, without `.git` and `node_modules`).
+- **Import:** Settings → Add-ons → **Import add-on…** (or Tools → Import an add-on…) picks a `.zip`.
+  Jig shows its name, version, description, file count and permissions before installing it into
+  `~/.jig/addons/<id>` (a zip with its files at the root or in one folder both work). An add-on with
+  the same id is replaced only after you confirm (the old one stays in the history, so Roll back works);
+  one with a built-in's id becomes your copy of it. Paths outside the add-on's folder are refused.
+- Add-ons run code on your computer: install only those from people you trust.
+

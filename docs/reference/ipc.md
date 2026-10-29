@@ -148,6 +148,9 @@ settings, add-on permissions.
 | `learning.worked` | `{ refresh? }` | `WorkedState` | "How you worked", cached an hour |
 | `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
+| `addons.export` | `{ id }` | `string \| undefined` | saves the add-on as a `.zip` (save dialog); without `.git` and `node_modules` |
+| `addons.inspectPackage` | `{ path? }` | package info `\| undefined` | reads a `.zip` (open dialog without `path`): id, name, version, permissions, files, problems, `exists` (schema) |
+| `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 
 ## Events
 

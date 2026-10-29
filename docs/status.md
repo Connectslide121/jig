@@ -193,6 +193,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 - **Review comments on diffs** (Git → a changed file): click a line number to comment on it; the
   comments collect per repository and **Review (N) → Send to a new chat** hands them to Claude as one
   message.
+- **Sharing add-ons:** Settings → Add-ons → ⤓ exports an add-on as a `.zip`; **Import add-on…**
+  shows what a `.zip` is and what it may do, then installs it (replacing yours only after you confirm).
 - **Split view:** two tabs side by side.
   - Right-click a tab → Open to the side, or drag it to the right part of the main area (or onto
     the other pane's tab bar).

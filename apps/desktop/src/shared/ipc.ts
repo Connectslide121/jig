@@ -325,6 +325,28 @@ export interface HostMethods {
   "addons.reload": { args: { id?: string }; result: void };
   "addons.history": { args: { id: string }; result: AddonCommit[] };
   "addons.rollback": { args: { id: string; commit: string }; result: void };
+  /** Saves an add-on as a `.zip` to share (a save dialog); the chosen file, or nothing if cancelled. */
+  "addons.export": { args: { id: string }; result: string | undefined };
+  /** Reads an add-on package (an open dialog when no `path`) without installing it. */
+  "addons.inspectPackage": {
+    args: { path?: string };
+    result:
+      | {
+          path: string;
+          id: string;
+          name: string;
+          version?: string;
+          description?: string;
+          permissions: string[];
+          files: string[];
+          errors: string[];
+          /** You already have an add-on with this id (yours, or a built-in one it would override). */
+          exists?: "user" | "builtin";
+        }
+      | undefined;
+  };
+  /** Installs a package into ~/.jig/addons (replacing yours with `replace`) and loads it. */
+  "addons.importPackage": { args: { path: string; replace?: boolean }; result: { id: string; name: string } };
   "builds.list": { args: void; result: BuildJob[] };
   "builds.start": { args: BuildRequestInput; result: BuildJob };
   /** Applies a build in preview: layout/settings, or merges the add-on into ~/.jig/addons. */
