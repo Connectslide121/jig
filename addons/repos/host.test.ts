@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { repoItems, summarize } from "./host";
+import { pushRemote, repoItems, summarize } from "./host";
 
 describe("summarize", () => {
   it("reads branch, upstream, ahead/behind and counts changed files", () => {
@@ -45,5 +45,13 @@ describe("repoItems", () => {
       { workspaceId: "a", name: "shop", path: "/r/shop" },
       { workspaceId: "w", name: "repos/client-a/api", path: "/r/client-a/api", repoPath: "/r/client-a/api" },
     ]);
+  });
+});
+
+describe("pushRemote", () => {
+  it("pushes a new branch to origin, else to the remote there is", () => {
+    expect(pushRemote(["upstream", "origin"])).toBe("origin");
+    expect(pushRemote(["azure"])).toBe("azure");
+    expect(pushRemote([])).toBeUndefined();
   });
 });

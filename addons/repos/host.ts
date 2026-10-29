@@ -115,10 +115,19 @@ export async function pull({ path }: { path: string }, api: AddonHostApi) {
   await git(api, path, ["pull"], 180_000);
 }
 
+/** Where a branch's first push goes: `origin`, else the repository's only (or first) remote. */
+export function pushRemote(remotes: string[]): string | undefined {
+  return remotes.includes("origin") ? "origin" : remotes[0];
+}
+
 export async function push({ path }: { path: string }, api: AddonHostApi) {
   const state = summarize(await git(api, path, ["status", "--porcelain=v2", "--branch", "-z"]));
   if (state.upstream) await git(api, path, ["push"], 180_000);
-  else if (state.branch) await git(api, path, ["push", "-u", "origin", state.branch], 180_000);
+  else if (state.branch) {
+    const remote = pushRemote((await git(api, path, ["remote"])).split(/\r?\n/).filter(Boolean));
+    if (!remote) throw new Error("This repository has no remote to push to");
+    await git(api, path, ["push", "-u", remote, state.branch], 180_000);
+  }
 }
 
 export async function fetchAll(_: unknown, api: AddonHostApi) {

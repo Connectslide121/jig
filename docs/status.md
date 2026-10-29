@@ -79,7 +79,7 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     current; it never asks for a login.
   - **Repos** (a collapsible section at the bottom of the Git panel; its ⋯ menu moves it to its own
     tab, and any view can be shown below another the same way): every project's repo with branch, changes, ahead/behind, last fetch;
-    fetch/pull/push; "N to push/pull" in the status bar; right-click a project → Open in VS Code /
+    fetch/pull/push (a new branch goes to `origin`, else the remote there is); "N to push/pull" in the status bar; right-click a project → Open in VS Code /
     Explorer.
   - **Pipelines** (right sidebar): Azure DevOps through your `az` login; set up in Settings →
     Pipelines; run on a branch, open in the browser, notifications when your runs finish.
@@ -428,12 +428,14 @@ Things the cloud build environment couldn't verify:
     built-in extensions in a folder named after the build (`Microsoft VS Coded62b1d5da
 esources\…`),
     which Jig now finds (`builtinExtensionsDir`).
-  - **Measured on Jon's machine** (built app, throwaway `JIG_HOME`, real profile, `E:epos` as the
+  - **Measured on Jon's machine** (built app, throwaway `JIG_HOME`, real profile, `E:
+epos` as the
     workspace with 52 repositories):
     - Git view: all 52 repositories listed; **0** git processes from Jig in 60 s of idle (other
       tools on the machine ran ~120 in 30 s); a new file showed in ~0.7 s and left ~0.7 s after
       deletion.
-    - Files view on `E:epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
+    - Files view on `E:
+epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
     - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them come from the Podium
       worktrees in `Podium\wt` (whether to list worktrees is an open question for Jon).
     - Check your setup: Claude Code (bundled), git, gh, az + azure-devops, VS Code `code` all found.
