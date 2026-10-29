@@ -13,6 +13,7 @@ import { outputText, type ToolOutput } from "./types";
  * - "compact" / "setting" → level 1: density compact
  * - "broken" → writes an add-on with a design-token problem first, then fixes it after validation
  * - "jig itself" / "source" → a development request: proposes a new extension point, with a mockup
+ * - "…wants changes: <feedback>… Revise the request" → a new version of the development request
  * - a target add-on → changes that add-on (adds a line to its README and a label)
  * - anything else → a new add-on with a view and a Tools-menu action
  */
@@ -36,6 +37,22 @@ export async function runFakeBuilder(
   const target = /existing add-on "([^"]+)"/.exec(text)?.[1];
   const lower = goal.toLowerCase();
 
+  // Feedback on a development request: a new version that shows the change.
+  const feedback = /wants changes:\n\n([\s\S]*?)\n\nRevise the request/.exec(text)?.[1]?.trim();
+  if (feedback) {
+    const safe = feedback.replace(/[<>&"]/g, "");
+    await call("propose_extension_point", {
+      title: "Title bar items from add-ons",
+      reason: "No slot can change the window frame.",
+      proposal: `Add a \`window.decorations\` slot: add-ons contribute components drawn in the title bar. Also: ${safe}`,
+      userStory:
+        "As a user, I want my add-ons to show things in the title bar so that I see them everywhere.",
+      acceptance: ["An add-on can contribute a title bar item", "It follows the theme", safe],
+      addonPlan: "The add-on contributes a `window.decorations` item.",
+      mockupHtml: `<!doctype html><html><body><header>Jig <button>Build ✓</button></header><p id="change">${safe}</p></body></html>`,
+    });
+    return say("I updated the request: try the new demo.");
+  }
   await call("catalog");
   if (/\b(below|under)\b/.test(lower)) {
     await call("stage_layout", {

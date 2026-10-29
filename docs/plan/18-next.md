@@ -372,4 +372,5 @@ true"). This step checks the whole picture again:
       several cursors, go to line, word wrap and whitespace, status line, Settings → Editor (D-118)
 - [x] Development requests: when no add-on can do it, the builder's proposal becomes a package
       (spec, prompt for Claude Code, mockup, context) that **Email to developers** attaches to a new
-      email to support@sprinta.se (D-119)
+      email to support@sprinta.se (D-119); you try the demo, ask for changes and confirm before
+      sending; the address is fixed (D-120)

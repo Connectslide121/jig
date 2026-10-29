@@ -16,11 +16,10 @@ import { requestBuild } from "../../addons/buildRequests";
 import { iconByName, unknownIcons } from "../../addons/icons";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage } from "../../lib/host";
-import { updateConfig, useConfig } from "../../stores/config";
+import { useConfig } from "../../stores/config";
 import { Badge, Button, confirmDialog, Dialog, Empty, IconButton, Spinner, Switch } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
-import { TextSetting } from "./OtherSections";
 import { SettingsSection } from "./parts";
 
 function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => void }) {
@@ -230,7 +229,6 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
 export function AddonsSettings() {
   const addons = useAddons((s) => s.addons);
   const info = useConfig((s) => s.info);
-  const devEmail = useConfig((s) => s.config?.devRequests.email);
   const builtin = addons.filter((a) => a.source === "builtin");
   const user = addons.filter((a) => a.source === "user");
   return (
@@ -269,20 +267,6 @@ export function AddonsSettings() {
         {builtin.map((a) => (
           <AddonRow key={a.id} addon={a} />
         ))}
-      </SettingsSection>
-      <SettingsSection
-        title="Development requests"
-        description="When something can't be built as an add-on, the builder writes a development request (a spec, a prompt for Claude Code and a mockup). Email to developers sends it here."
-      >
-        {devEmail !== undefined && (
-          <TextSetting
-            label="Send requests to"
-            description="An email address. Only this page can change it."
-            value={devEmail}
-            placeholder="support@sprinta.se"
-            onSave={(email) => void updateConfig({ devRequests: { email } })}
-          />
-        )}
       </SettingsSection>
     </div>
   );

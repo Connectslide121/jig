@@ -11,7 +11,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `window-state.json` | JSON | main window size, position, maximised |
 | `logs/main.log` | text | host log |
 | `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
-| `dev-requests/<build id>/` | `files/` (README.md, SPEC.md, PROMPT.md, mockup.html, context.json), `jig-request-<title>-<id>.zip`, `request.json` (`DevRequestInfo`), the `.eml` draft if one was made | development requests (D-119), written again from the build each time |
+| `dev-requests/<build id>/` | `files/` (README.md, SPEC.md, PROMPT.md, mockup.html, context.json), `jig-request-<title>-<id>.zip`, `request.json` (`DevRequestInfo` and `approvedHash`, the version you confirmed), the `.eml` draft if one was made | development requests (D-119), written again from the build each time |
 | `worktree-chats.json`, `worktrees/<id>/` | `{ chats: WorktreeChat[] }`; git worktrees | chats in their own worktree (New chat in a worktree…), removed from the chat's ⋯ menu |
 | `attempts/<run>.json`, `attempts/<run>/<n>/` | JSON `AttemptRun`; git worktrees | "Try several ways" runs and the attempts' worktrees (removed on Keep or Discard) |
 | `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`). Besides title, model, mode, usage and Claude Code's session id, `meta` keeps the chat's `effort`, extra folders (`addDirs`), background tasks, MCP status, the context window, and after a rewind the point to resume at (`resumeAt`, or `resetPending` to start over) |
@@ -64,7 +64,6 @@ A new state file is documented here in the same commit that adds it.
 | `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
 | `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
-| `devRequests.email` | `support@sprinta.se` | where **Email to developers** sends development requests. Protected: Settings → Add-ons only |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `browser.showWhenUsed` | `true` | open the Claude's browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |

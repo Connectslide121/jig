@@ -90,6 +90,8 @@ export interface BuildJob {
   validationRounds: number;
   /** Set when the request needs a new extension point in Jig (kind "app"). */
   proposal?: ExtensionProposal;
+  /** How many times the builder has written the development request (1, then each revision). */
+  revision?: number;
   log: BuildLogEntry[];
   error?: string;
 }

@@ -2,7 +2,6 @@ import { release } from "node:os";
 import { app } from "electron";
 import { addonService } from "../addons";
 import { buildService } from "../builder";
-import { getConfig } from "../config";
 import { handle } from "../ipc/router";
 import { paths } from "../state/paths";
 import { openMail } from "./mail";
@@ -22,10 +21,11 @@ export function startDevRequests(): void {
         .map((a) => a.id),
       createdAt: new Date().toISOString(),
     }),
-    recipient: () => getConfig().devRequests.email.trim() || "support@sprinta.se",
     openMail,
   });
   handle("devRequests.create", ({ buildId }) => s.create(buildId));
   handle("devRequests.email", ({ buildId }) => s.email(buildId));
   handle("devRequests.prompt", ({ buildId }) => s.prompt(buildId));
+  handle("devRequests.status", ({ buildId }) => s.status(buildId));
+  handle("devRequests.approve", ({ buildId }) => s.approve(buildId));
 }

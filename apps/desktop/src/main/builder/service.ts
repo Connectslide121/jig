@@ -10,7 +10,7 @@ import { JigError } from "../../shared/ipc";
 import type { Layout } from "../../shared/layout";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
-import { builderFirstMessage } from "./prompt";
+import { builderFirstMessage, builderReviseMessage } from "./prompt";
 import { allViews, applyLayoutOps, type BuilderTool, builderTools, folderExists } from "./tools";
 import { validateAddon } from "./validate";
 import {
@@ -258,6 +258,7 @@ export class BuildService {
     const job = this.get(jobId);
     if (input.kind === "app") {
       // Jig doesn't change its own code (D-074): the job ends with the extension point it is missing.
+      const before = job.revision ?? 0;
       if (job.worktree && job.branch)
         await removeWorktree(this.options.addonsRepo, job.worktree, job.branch).catch(() => {});
       this.update(
@@ -270,16 +271,21 @@ export class BuildService {
           branch: undefined,
           files: [],
           proposal: { ...input.extra, reason: input.reason ?? "", proposal: input.proposal ?? "" },
+          revision: before + 1,
         },
-        "No slot can do this yet: the builder wrote a development request for Jig's developers.",
+        before
+          ? `The builder updated the development request (version ${before + 1}).`
+          : "No slot can do this yet: the builder wrote a development request for Jig's developers.",
         "warning",
       );
       this.options.notify?.({
-        title: "This needs a change in Jig: a development request is ready to send",
+        title: before
+          ? "The development request is updated: try the new version"
+          : "This needs a change in Jig: try the request's demo, then send it",
         message: job.goal,
         tone: "warning",
       });
-      return "Recorded. The user sees it as a development request they can email to Jig's developers (spec, prompt and your mockup in a zip). Tell them in one or two sentences, then stop.";
+      return "Recorded. The user tries your mockup in Jig, may ask for changes (you'll get them here) and, when it's right, emails the request to Jig's developers. Tell them in one or two sentences, then stop.";
     }
     if (input.kind === "nothing") {
       this.update(
@@ -382,6 +388,17 @@ export class BuildService {
     }
     if (job.sessionId) await this.options.sessions.stop(job.sessionId).catch(() => {});
     return this.update(jobId, { status: "accepted" }, "Accepted", "success");
+  }
+
+  /** Your feedback on a development request (after trying its demo): the builder revises it. */
+  async reviseRequest(jobId: string, feedback: string): Promise<BuildJob> {
+    const job = this.get(jobId);
+    if (job.kind !== "app" || !job.proposal || !job.sessionId)
+      throw new JigError("invalid_args", "This build has no development request to change");
+    if (job.status === "working") throw new JigError("busy", "The builder is still working on it");
+    this.update(jobId, { status: "working" }, `You asked for changes: ${feedback.trim()}`);
+    await this.options.sessions.send(job.sessionId, builderReviseMessage(feedback));
+    return this.get(jobId);
   }
 
   async discard(jobId: string): Promise<BuildJob> {

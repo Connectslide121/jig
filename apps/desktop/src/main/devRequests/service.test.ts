@@ -32,7 +32,6 @@ describe("DevRequestService", () => {
         addons: ["git"],
         createdAt: "2026-10-29T10:00:00Z",
       }),
-      recipient: () => "support@sprinta.se",
       openMail: async (mail, attachment) => {
         opened.push({ to: mail.to, subject: mail.subject, attachment });
         return "test";
@@ -54,9 +53,24 @@ describe("DevRequestService", () => {
     expect(files[`${top}/PROMPT.md`]).toContain("Add a `titlebar.item` slot.");
     expect(JSON.parse(files[`${top}/context.json`]!)).toMatchObject({ buildId: job.id, addons: ["git"] });
 
+    // Sending needs the version you tried to be confirmed; a revision needs confirming again.
+    expect(await s.status(job.id)).toEqual({
+      approved: false,
+      emailedAt: undefined,
+      to: "support@sprinta.se",
+    });
+    await expect(s.email(job.id)).rejects.toMatchObject({ code: "not_approved" });
+    expect((await s.approve(job.id)).approved).toBe(true);
+    const original = job.proposal;
+    job.proposal = { ...original!, acceptance: ["It works", "It is green"] };
+    expect((await s.status(job.id)).approved).toBe(false);
+    job.proposal = original;
+    expect((await s.status(job.id)).approved).toBe(true);
+
     const sent = await s.email(job.id);
     expect(sent).toMatchObject({ method: "test", to: "support@sprinta.se" });
     expect(sent.info.emailedAt).toBeTruthy();
+    expect((await s.status(job.id)).emailedAt).toBe(sent.info.emailedAt);
     expect(opened).toEqual([
       {
         to: "support@sprinta.se",

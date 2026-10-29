@@ -5,18 +5,29 @@ import {
   ExternalLink,
   FolderOpen,
   Mail,
+  Maximize2,
   MessageSquare,
-  MousePointerClick,
+  RefreshCw,
   Shield,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
-import type { DevRequestInfo, MailMethod } from "../../../shared/devRequest";
+import type { DevRequestStatus, MailMethod } from "../../../shared/devRequest";
 import { call, errorMessage } from "../../lib/host";
 import { timeAgo } from "../../lib/time";
-import { useConfig } from "../../stores/config";
-import { Badge, Button, Card, CodeBlock, confirmDialog, Empty, FileIcon, Markdown, Spinner } from "../../ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CodeBlock,
+  confirmDialog,
+  Empty,
+  FileIcon,
+  Markdown,
+  Spinner,
+  Textarea,
+} from "../../ui";
 import type { TabProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -160,127 +171,263 @@ const MAIL_NEXT: Record<MailMethod, (to: string, zip: string) => string> = {
   test: () => "The email is ready.",
 };
 
+/** The request's clickable demo, live in a sandboxed frame (never same-origin: it can't reach Jig). */
+function RequestDemo({ job }: { job: BuildJob }) {
+  const [demo, setDemo] = useState<{ url: string; path: string }>();
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    let current = true;
+    void (async () => {
+      try {
+        const info = await call("devRequests.create", { buildId: job.id });
+        const path = `${info.folder}/mockup.html`;
+        const preview = await call("files.preview", { path });
+        if (current && preview.url) setDemo({ url: `${preview.url}?v=${job.revision ?? 1}`, path });
+      } catch (e) {
+        if (current) setError(errorMessage(e));
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [job.id, job.revision]);
+  if (error) return <div className="text-xs text-danger">The demo couldn't open: {error}</div>;
+  if (!demo) return <Spinner />;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <iframe
+        key={demo.url}
+        title="Demo of the request"
+        src={demo.url}
+        sandbox="allow-scripts allow-forms"
+        className="h-96 w-full rounded-md border border-line bg-canvas"
+        data-testid="dev-demo"
+      />
+      <div className="flex items-center gap-2 text-xs text-hint">
+        <span className="flex-1">A mockup to show the idea: click around. It isn't the real thing yet.</span>
+        <Button size="sm" variant="ghost" icon={Maximize2} onClick={() => openPreview(demo.path)}>
+          Open in a tab
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 font-medium">
+        <span className="flex size-5 items-center justify-center rounded-full bg-active text-xs">{n}</span>
+        {title}
+      </div>
+      <div className="flex flex-col gap-2 pl-7">{children}</div>
+    </div>
+  );
+}
+
 /**
- * No slot can do this (D-074): the builder wrote a development request (D-119). One button emails
- * it to Jig's developers with a package attached: the spec, a prompt for Claude Code in Jig's
- * repository and a clickable mockup.
+ * No slot can do this (D-074): the builder wrote a development request (D-119). You try its demo,
+ * ask for changes until it's right (the builder writes a new version), confirm it, and only then
+ * email it to Jig's developers with the package attached.
  */
 function DevRequestPanel({ job }: { job: BuildJob }) {
   const p = job.proposal!;
-  const to = useConfig((s) => s.config?.devRequests.email) || "support@sprinta.se";
+  const [status, setStatus] = useState<DevRequestStatus>();
+  const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
-  const [emailedAt, setEmailedAt] = useState<string>();
-  const withPackage = async (use: (info: DevRequestInfo) => void | Promise<void>) => {
-    try {
-      await use(await call("devRequests.create", { buildId: job.id }));
-    } catch (error) {
-      notify({ title: "Couldn't make the request", message: errorMessage(error), tone: "danger" });
-    }
-  };
-  const email = async () => {
+  const working = job.status === "working";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new version needs confirming again.
+  useEffect(() => {
+    void call("devRequests.status", { buildId: job.id })
+      .then(setStatus)
+      .catch(() => {});
+  }, [job.id, job.revision, job.updatedAt]);
+  const act = async (label: string, fn: () => Promise<void>) => {
     setBusy(true);
     try {
-      const { info, method, to: sentTo } = await call("devRequests.email", { buildId: job.id });
-      setEmailedAt(info.emailedAt);
-      const zip = info.zipPath.split(/[\\/]/).pop() ?? "the zip";
-      notify({
-        title: "Development request ready to send",
-        message: MAIL_NEXT[method](sentTo, zip),
-        tone: "success",
-      });
+      await fn();
     } catch (error) {
-      notify({ title: "Couldn't open an email", message: errorMessage(error), tone: "danger" });
+      notify({ title: label, message: errorMessage(error), tone: "danger" });
     } finally {
       setBusy(false);
     }
   };
+  const revise = () =>
+    act("Couldn't send your changes", async () => {
+      await call("builds.reviseRequest", { id: job.id, feedback });
+      setFeedback("");
+    });
+  const approve = () =>
+    act("Couldn't confirm", async () => setStatus(await call("devRequests.approve", { buildId: job.id })));
+  const email = () =>
+    act("Couldn't open an email", async () => {
+      const { info, method, to } = await call("devRequests.email", { buildId: job.id });
+      setStatus((s) => s && { ...s, emailedAt: info.emailedAt });
+      const zip = info.zipPath.split(/[\\/]/).pop() ?? "the zip";
+      notify({
+        title: "Development request ready to send",
+        message: MAIL_NEXT[method](to, zip),
+        tone: "success",
+      });
+    });
+  const to = status?.to ?? "Jig's developers";
   return (
-    <Card className="flex flex-col gap-3 p-4 text-sm" data-testid="build-proposal">
-      <div className="flex items-center gap-2">
-        <Badge tone="warning">Needs a change in Jig</Badge>
-        <span className="font-medium">{p.title || "Development request"}</span>
+    <Card className="flex flex-col gap-4 p-4 text-sm" data-testid="build-proposal">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Badge tone="warning">Needs a change in Jig</Badge>
+          <span className="font-medium">{p.title || "Development request"}</span>
+          {(job.revision ?? 1) > 1 && (
+            <span data-testid="dev-version">
+              <Badge>Version {job.revision}</Badge>
+            </span>
+          )}
+        </div>
+        <div className="text-muted">
+          No add-on can do this with what Jig offers today, and Jig doesn't change its own code. The builder
+          wrote a request for Jig's developers. Try it, change it until it's what you want, then send it.
+        </div>
       </div>
-      <div className="text-muted">
-        No add-on can do this with Jig's extension points today, and Jig doesn't change its own code. The
-        builder wrote a development request: email it to Jig's developers ({to}). They build it with Claude
-        Code from the attached package (a spec, a ready prompt{p.mockupHtml ? " and a clickable mockup" : ""}
-        ); once it's in Jig, ask for your tool again.
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="primary"
-          size="sm"
-          icon={Mail}
-          disabled={busy}
-          onClick={() => void email()}
-          data-testid="build-email-request"
-        >
-          Email to developers
-        </Button>
-        {p.mockupHtml && (
+
+      {working && (
+        <div className="flex items-center gap-2 rounded-md bg-accent-soft p-2" data-testid="dev-working">
+          <Spinner />
+          The builder is updating the request with your changes…
+        </div>
+      )}
+
+      <Step n={1} title="Try it">
+        {p.mockupHtml ? (
+          <RequestDemo job={job} />
+        ) : (
+          <div className="text-muted">This request has no demo; read what it asks for below.</div>
+        )}
+        <details className="rounded-md border border-line p-2" data-testid="dev-spec">
+          <summary className="cursor-pointer text-muted">What will be requested</summary>
+          <div className="mt-2 flex flex-col gap-2">
+            {p.userStory && <div className="selectable italic text-muted">{p.userStory}</div>}
+            {p.reason && (
+              <div>
+                <span className="text-muted">Why an add-on can't do it: </span>
+                <span className="selectable">{p.reason}</span>
+              </div>
+            )}
+            {p.proposal && <Markdown text={p.proposal} />}
+            {p.addonPlan && (
+              <div>
+                <div className="text-muted">Then, as an add-on:</div>
+                <Markdown text={p.addonPlan} />
+              </div>
+            )}
+            {p.acceptance?.length ? (
+              <div>
+                <div className="text-muted">Done when:</div>
+                <ul className="list-disc pl-5">
+                  {p.acceptance.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      </Step>
+
+      <Step n={2} title="Is this what you want?">
+        <Textarea
+          rows={2}
+          value={feedback}
+          placeholder="What should be different? E.g. “show the build number too”, “it should be in the status bar”…"
+          onChange={(e) => setFeedback(e.target.value)}
+          disabled={working}
+          data-testid="dev-feedback"
+        />
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
-            icon={MousePointerClick}
-            onClick={() => void withPackage((info) => openPreview(`${info.folder}/mockup.html`))}
-            data-testid="build-open-mockup"
+            icon={RefreshCw}
+            disabled={working || busy || !feedback.trim()}
+            onClick={() => void revise()}
+            data-testid="dev-revise"
           >
-            Open mockup
+            Change the request
           </Button>
-        )}
-        <Button
-          size="sm"
-          icon={Copy}
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(await call("devRequests.prompt", { buildId: job.id }));
-              notify({
-                title: "Prompt copied",
-                message: "Paste it into Claude Code in your Jig clone.",
-                tone: "success",
-              });
-            } catch (error) {
-              notify({ title: "Couldn't copy", message: errorMessage(error), tone: "danger" });
+          {status?.approved ? (
+            <span data-testid="dev-approved">
+              <Badge tone="success">Confirmed: this is what you want</Badge>
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              icon={Check}
+              disabled={working || busy || !status}
+              onClick={() => void approve()}
+              data-testid="dev-approve"
+            >
+              This is what I want
+            </Button>
+          )}
+        </div>
+      </Step>
+
+      <Step n={3} title="Send it">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Mail}
+            disabled={working || busy || !status?.approved}
+            onClick={() => void email()}
+            data-testid="build-email-request"
+          >
+            Email to developers
+          </Button>
+          <span className="text-xs text-muted">
+            {status?.approved
+              ? `A new email to ${to} opens with the request attached (spec, prompt for Claude Code, demo). You press Send.`
+              : "Confirm the request first (step 2)."}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Copy}
+            onClick={() =>
+              void act("Couldn't copy", async () => {
+                await navigator.clipboard.writeText(await call("devRequests.prompt", { buildId: job.id }));
+                notify({
+                  title: "Prompt copied",
+                  message: "Paste it into Claude Code in your Jig clone.",
+                  tone: "success",
+                });
+              })
             }
-          }}
-          data-testid="build-copy-proposal"
-        >
-          Copy prompt
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={FolderOpen}
-          onClick={() => void withPackage((info) => call("app.showItemInFolder", { path: info.zipPath }))}
-          data-testid="build-show-request"
-        >
-          Show package
-        </Button>
-        {emailedAt && <span className="text-xs text-hint">Email opened {timeAgo(emailedAt)}</span>}
-      </div>
-      {p.userStory && <div className="selectable italic text-muted">{p.userStory}</div>}
-      {p.reason && (
-        <div>
-          <span className="text-muted">Why an add-on can't do it: </span>
-          <span className="selectable">{p.reason}</span>
+            data-testid="build-copy-proposal"
+          >
+            Copy prompt
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={FolderOpen}
+            onClick={() =>
+              void act("Couldn't show the package", async () => {
+                const info = await call("devRequests.create", { buildId: job.id });
+                await call("app.showItemInFolder", { path: info.zipPath });
+              })
+            }
+            data-testid="build-show-request"
+          >
+            Show package
+          </Button>
+          {status?.emailedAt && (
+            <span className="text-xs text-hint" data-testid="dev-emailed">
+              Email opened {timeAgo(status.emailedAt)}
+            </span>
+          )}
         </div>
-      )}
-      {p.proposal && <Markdown text={p.proposal} />}
-      {p.addonPlan && (
-        <div>
-          <div className="text-muted">Then, as an add-on:</div>
-          <Markdown text={p.addonPlan} />
-        </div>
-      )}
-      {p.acceptance?.length ? (
-        <div>
-          <div className="text-muted">Done when:</div>
-          <ul className="list-disc pl-5">
-            {p.acceptance.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      </Step>
     </Card>
   );
 }

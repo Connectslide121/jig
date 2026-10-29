@@ -104,7 +104,7 @@ test("Change this with AI on an add-on view starts a build about that add-on", a
   await expect(page.getByTestId("addon-repos")).toContainText("your copy");
 });
 
-test("when no add-on can do it, the builder writes a development request that one button emails", async ({
+test("when no add-on can do it, you try the request's demo, change it, confirm it and email it", async ({
   jigHome,
 }) => {
   const outbox = join(jigHome, "outbox");
@@ -119,11 +119,27 @@ test("when no add-on can do it, the builder writes a development request that on
   const request = page.getByTestId("build-proposal");
   await expect(request).toContainText("Needs a change in Jig", { timeout: 20000 });
   await expect(request).toContainText("Title bar items from add-ons");
-  await expect(request).toContainText("window.decorations");
-  await expect(request).toContainText("support@sprinta.se");
   await expect(page.getByTestId("build-accept")).toHaveCount(0);
 
-  // One click: a new email to the developers with the package attached.
+  // 1. Try it: the demo runs right there (sandboxed).
+  const demo = page.frameLocator("[data-testid=dev-demo]");
+  await expect(demo.locator("button")).toHaveText("Build ✓");
+  await demo.locator("button").click();
+  await expect(demo.locator("button")).toHaveText("Clicked");
+  // Nothing can be sent before you confirm it.
+  await expect(page.getByTestId("build-email-request")).toBeDisabled();
+
+  // 2. Change it: the builder writes version 2, with a new demo.
+  await page.getByTestId("dev-feedback").fill("Show the build number too");
+  await page.getByTestId("dev-revise").click();
+  await expect(page.getByTestId("dev-version")).toHaveText("Version 2", { timeout: 20000 });
+  await expect(demo.locator("#change")).toHaveText("Show the build number too");
+  await request.getByText("What will be requested").click();
+  await expect(page.getByTestId("dev-spec")).toContainText("Show the build number too");
+
+  // Confirm, then send: a new email to the developers with the package attached.
+  await page.getByTestId("dev-approve").click();
+  await expect(page.getByTestId("dev-approved")).toBeVisible();
   await page.getByTestId("build-email-request").click();
   await expect(page.getByTestId("toast").last()).toContainText("ready to send");
   await expect.poll(async () => (await readdir(outbox)).filter((f) => f.endsWith(".eml")).length).toBe(1);
@@ -132,10 +148,6 @@ test("when no add-on can do it, the builder writes a development request that on
   expect(eml).toContain("To: support@sprinta.se");
   expect(eml).toContain("Subject: Jig development request: Title bar items from add-ons");
   expect(eml).toMatch(/filename="jig-request-title-bar-items-from-add-ons-[\w-]+\.zip"/);
-  await expect(request).toContainText("Email opened");
-
-  // The mockup opens in Preview; the prompt is ready to paste into Claude Code.
-  await page.getByTestId("build-open-mockup").click();
-  await expect(page.locator("[data-tab-id]:not(.hidden)")).toContainText("mockup.html");
+  await expect(page.getByTestId("dev-emailed")).toBeVisible();
   await app.close();
 });

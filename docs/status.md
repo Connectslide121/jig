@@ -95,10 +95,12 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     roll back from Settings → Add-ons); **Discard** leaves nothing behind. Builds view in the bottom panel.
   - **Development requests** (D-119): when no add-on can do it, the build ends with a request for
     Jig's developers: title, user story, why, the proposed extension point, how the tool is then an
-    add-on, acceptance criteria and a clickable mockup. **Email to developers** opens a new email to
-    support@sprinta.se (Settings → Add-ons) with a zip attached (SPEC.md, PROMPT.md to paste into
-    Claude Code in the Jig repository, mockup.html, context.json); also Open mockup, Copy prompt,
-    Show package.
+    add-on, acceptance criteria and a clickable mockup. The Build tab works it out with you (D-120):
+    **1. Try it** (the demo runs right there), **2. Is this what you want?** (say what to change and
+    the builder writes version 2, 3…; **This is what I want** confirms it), **3. Send it**: **Email to
+    developers**, only for the confirmed version, opens a new email to support@sprinta.se (fixed in
+    Jig, not a setting) with a zip attached (SPEC.md, PROMPT.md to paste into Claude Code in the Jig
+    repository, mockup.html, context.json); also Copy prompt and Show package.
   - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
     "compact", "a pomodoro timer").
 

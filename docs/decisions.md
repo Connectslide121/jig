@@ -1164,5 +1164,19 @@ click to support@sprinta.se so other users can send requests) and Claude, on my 
   (`X-Unsent: 1`, which Outlook opens as a new message) and, last, a `mailto:` without the attachment
   and the zip shown in its folder. The user always sees the email and presses Send: Jig sends
   nothing by itself and stores no mail credentials.
-- **The address is a protected setting** (`devRequests.email`, default support@sprinta.se, Settings →
-  Add-ons only), so a chat can't redirect requests.
+- **The address** was first a protected setting; D-120 fixed it in the code.
+
+### D-120 — A development request is tried and confirmed before it's sent; the address is fixed
+**Decided by:** Jon (the address must not be editable, or anyone could change it; the user should try
+a clickable demo, iterate and validate before sending) and Claude, on my own (how) · **Date:** 2026-10-29
+
+- **The address is a constant** (`DEV_REQUEST_EMAIL` in `shared/devRequest.ts`), not a setting: no one
+  can change it from Settings or a chat. Changing it means changing Jig's code.
+- **Three steps in the Build tab:** try the demo (the mockup runs live in a sandboxed frame, never
+  same-origin, so it can't reach Jig), say what to change (the builder session gets the feedback and
+  calls `propose_extension_point` again: version 2, 3…), confirm with **This is what I want**.
+- **Only a confirmed version can be sent.** Confirming stores a hash of the request as written; any
+  revision changes it, so it must be confirmed again, and `devRequests.email` refuses otherwise.
+- **The demo lives in Jig, not on claude.ai.** Publishing it as a claude.ai Artifact would put the
+  user's idea online before they decide to send it; the same HTML goes in the package as
+  `mockup.html` for the developers.

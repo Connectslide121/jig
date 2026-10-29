@@ -240,7 +240,7 @@ Ask from the Tools menu, a chat, a suggestion or a slot on the "What Jig can do"
 |---|---|---|
 | **1. Layout and settings** | Moves views, changes defaults | "Put the Git view on the right and the terminals at the bottom" |
 | **2. An add-on** | Views, tabs, buttons, menus, watchers: React components plus optional host code | "A view with my Azure DevOps pipelines and their last run" |
-| **3. A development request** | When no extension point fits: a package with a spec, a prompt for Claude Code in Jig's repository and a clickable mockup. **Email to developers** opens a new email with it attached (to support@sprinta.se, Settings → Add-ons) | "Let add-ons add columns to the Repos overview" |
+| **3. A development request** | When no extension point fits: a package with a spec, a prompt for Claude Code in Jig's repository and a clickable mockup. You try the demo first and ask for changes until it's right; then **Email to developers** opens a new email to support@sprinta.se with it attached | "Let add-ons add columns to the Repos overview" |
 
 Every build is previewed and kept only when you accept it. **Jig never edits its own source code:**
 it grows through add-ons and the extension points you choose to add.

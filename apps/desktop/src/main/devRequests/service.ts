@@ -1,11 +1,14 @@
+import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import type { BuildJob } from "../../shared/builds";
 import {
+  DEV_REQUEST_EMAIL,
   type DevRequestContext,
   type DevRequestInfo,
+  type DevRequestStatus,
   type MailMethod,
   requestEmail,
   requestPrompt,
@@ -23,12 +26,18 @@ export interface DevRequestDeps {
   dir: string;
   job(id: string): BuildJob;
   context(): DevRequestContext;
-  /** Where requests go (`devRequests.email`). */
-  recipient(): string;
   openMail(mail: Mail, attachment: string, draftsDir: string): Promise<MailMethod>;
 }
 
-const InfoSchema = z.object({ emailedAt: z.string().optional() }).passthrough();
+const InfoSchema = z
+  .object({ emailedAt: z.string().optional(), approvedHash: z.string().optional() })
+  .passthrough();
+
+/** What you confirm: the request as the builder wrote it (a revision changes it). */
+const versionHash = (job: BuildJob) =>
+  createHash("sha256")
+    .update(JSON.stringify([job.goal, job.proposal ?? null]))
+    .digest("hex");
 
 /**
  * Development requests (D-119): the package for a build that needs a change in Jig's source, and the
@@ -44,7 +53,10 @@ export class DevRequestService {
     if (job.kind !== "app" || !p) throw new JigError("not_found", "This build doesn't need a change in Jig");
     const folder = join(this.deps.dir, buildId);
     const infoFile = join(folder, "request.json");
-    const before = await readJson(infoFile, InfoSchema).catch(() => ({ emailedAt: undefined }));
+    const before = await readJson(infoFile, InfoSchema).catch(() => ({
+      emailedAt: undefined,
+      approvedHash: undefined,
+    }));
     const ctx = this.deps.context();
     const title = requestTitle(job.goal, p);
     const spec = requestSpec(job, p, ctx);
@@ -78,14 +90,40 @@ export class DevRequestService {
       createdAt: ctx.createdAt,
       emailedAt: before.emailedAt,
     };
-    await writeJson(infoFile, info);
+    await writeJson(infoFile, { ...info, approvedHash: before.approvedHash });
     return info;
+  }
+
+  private async stored(buildId: string) {
+    return readJson(join(this.deps.dir, buildId, "request.json"), InfoSchema).catch(() => ({
+      emailedAt: undefined,
+      approvedHash: undefined,
+    }));
+  }
+
+  async status(buildId: string): Promise<DevRequestStatus> {
+    const job = this.deps.job(buildId);
+    const s = await this.stored(buildId);
+    return { approved: s.approvedHash === versionHash(job), emailedAt: s.emailedAt, to: DEV_REQUEST_EMAIL };
+  }
+
+  /** "This is what I want": confirms the version of the request you tried. */
+  async approve(buildId: string): Promise<DevRequestStatus> {
+    const info = await this.create(buildId);
+    const job = this.deps.job(buildId);
+    await writeJson(join(this.deps.dir, buildId, "request.json"), {
+      ...info,
+      approvedHash: versionHash(job),
+    });
+    return this.status(buildId);
   }
 
   /** Makes the package and opens a new email to the developers with it attached. */
   async email(buildId: string): Promise<{ info: DevRequestInfo; method: MailMethod; to: string }> {
+    if (!(await this.status(buildId)).approved)
+      throw new JigError("not_approved", "Try the demo and confirm the request before sending it");
     const info = await this.create(buildId);
-    const to = this.deps.recipient();
+    const to = DEV_REQUEST_EMAIL;
     const zipName = info.zipPath.split(/[\\/]/).pop()!;
     const method = await this.deps.openMail(
       requestEmail(info.title, to, zipName),
@@ -93,7 +131,10 @@ export class DevRequestService {
       join(this.deps.dir, buildId),
     );
     const next = { ...info, emailedAt: new Date().toISOString() };
-    await writeJson(join(this.deps.dir, buildId, "request.json"), next);
+    await writeJson(join(this.deps.dir, buildId, "request.json"), {
+      ...next,
+      approvedHash: versionHash(this.deps.job(buildId)),
+    });
     return { info: next, method, to };
   }
 

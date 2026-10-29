@@ -77,7 +77,7 @@ browser.showWhenUsed: true|false, open the Claude's browser view when Claude sta
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it; checkIn: off|weekly|biweekly, a short check-in chat about how the user works (off by default).
 setup.firstRunDone: true|false.
-Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*, devRequests.email (where development requests are emailed).`;
+Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*.`;
 
 const show = (v: unknown) => (typeof v === "string" ? `"${v}"` : JSON.stringify(v));
 

@@ -5,6 +5,17 @@ import type { BuildJob, ExtensionProposal } from "./builds";
  * do what someone asked, Jig packs what the developers need (a spec, a prompt for Claude Code in the
  * Jig repository, a clickable mockup, context) into a zip that one button emails to them.
  */
+/** Where development requests go: Jig's developers. Fixed in the code, so no one can redirect them. */
+export const DEV_REQUEST_EMAIL = "support@sprinta.se";
+
+/** Where a request stands: you confirm the demo and spec before it can be sent. */
+export interface DevRequestStatus {
+  /** You confirmed this version of the request (a revision needs confirming again). */
+  approved: boolean;
+  emailedAt?: string;
+  to: string;
+}
+
 export interface DevRequestInfo {
   /** Same as the build's id. */
   id: string;

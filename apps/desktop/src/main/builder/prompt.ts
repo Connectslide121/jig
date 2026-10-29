@@ -39,6 +39,15 @@ Rules (they are checked):
 - Never read, store or forward credentials or tokens; use the user's own CLIs (git, gh, az) through api.exec.
 - Keep it small and clear; the user reviews the change before accepting it.`;
 
+/** Your feedback on a development request after trying its demo: the builder writes a new version. */
+export function builderReviseMessage(feedback: string): string {
+  return `The user tried the development request and its mockup and wants changes:
+
+${feedback.trim()}
+
+Revise the request: call propose_extension_point again with the complete, updated request (every field, and an updated mockup that shows the change, still one self-contained HTML page). If the change is unclear, ask one short question first. Don't build anything else.`;
+}
+
 export function builderFirstMessage(goal: string, targetAddonId?: string): string {
   return [
     `The user asked: ${goal || "(no description — ask what they want)"}`,

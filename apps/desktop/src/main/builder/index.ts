@@ -100,4 +100,5 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
   handle("builds.accept", ({ id }) => s.accept(id));
   handle("builds.discard", ({ id }) => s.discard(id));
   handle("builds.diff", ({ id, path }) => s.diff(id, path));
+  handle("builds.reviseRequest", ({ id, feedback }) => s.reviseRequest(id, feedback));
 }

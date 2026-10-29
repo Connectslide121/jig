@@ -15,7 +15,7 @@ import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
-import type { DevRequestInfo, MailMethod } from "./devRequest";
+import type { DevRequestInfo, DevRequestStatus, MailMethod } from "./devRequest";
 import type {
   ChatAttachment,
   ChatUpdate,
@@ -372,6 +372,12 @@ export interface HostMethods {
   };
   /** PROMPT.md of the package (to paste into Claude Code in Jig's repository). */
   "devRequests.prompt": { args: { buildId: string }; result: string };
+  /** Whether you confirmed this version of the request, and when it was emailed. */
+  "devRequests.status": { args: { buildId: string }; result: DevRequestStatus };
+  /** "This is what I want": confirms the current version (needed before Email to developers). */
+  "devRequests.approve": { args: { buildId: string }; result: DevRequestStatus };
+  /** Sends your feedback on the request and its demo to the builder, which writes a new version. */
+  "builds.reviseRequest": { args: { id: string; feedback: string }; result: BuildJob };
   "learning.state": { args: void; result: LearningState };
   /** Look for patterns now (no AI call when nothing repeats enough). */
   "learning.runNow": { args: void; result: PatternRun };

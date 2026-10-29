@@ -92,6 +92,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "devRequests.create": z.object({ buildId: id }),
   "devRequests.email": z.object({ buildId: id }),
   "devRequests.prompt": z.object({ buildId: id }),
+  "devRequests.status": z.object({ buildId: id }),
+  "devRequests.approve": z.object({ buildId: id }),
+  "builds.reviseRequest": z.object({ id, feedback: z.string().min(1).max(20_000) }),
   "learning.record": z.object({
     kind: z.literal("addon.action"),
     text: z.string().max(2000),

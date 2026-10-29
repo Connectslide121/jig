@@ -218,6 +218,13 @@ describe("BuildService", () => {
     expect(job.proposal?.proposal).toContain("window.decorations");
     expect(job.level).toBeUndefined();
     expect(job.worktree).toBeUndefined();
+    expect(job.revision).toBe(1);
+    // Feedback after trying the demo: the builder writes version 2.
+    const revised = await service.reviseRequest(job.id, "Show the build number too");
+    expect(revised).toMatchObject({ status: "needs_you", revision: 2 });
+    expect(revised.proposal?.acceptance).toContain("Show the build number too");
+    expect(revised.log.some((l) => l.text.includes("version 2"))).toBe(true);
+    await expect(service.reviseRequest("nope", "x")).rejects.toMatchObject({ code: "not_found" });
     await new Promise((r) => setTimeout(r, 50));
     const saved = JSON.parse(await readFile(join(home, "builds.json"), "utf8")) as { jobs: BuildJob[] };
     expect(saved.jobs[0]?.id).toBe(job.id);
