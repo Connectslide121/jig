@@ -35,6 +35,14 @@ export function quoteForCmd(arg: string): string {
   return escaped.replace(/[()%!^"<>&|]/g, "^$&");
 }
 
+/**
+ * Escapes the program's path for cmd.exe: every metacharacter, spaces included, gets a ^. Not quoted:
+ * cmd takes ^" as a literal quote, so a quoted `C:\Program Files\…` would end at the first space.
+ */
+export function escapeProgramForCmd(path: string): string {
+  return path.replace(/([()\][%!^"`<>&|;, *?])/g, "^$1");
+}
+
 export function resolveCommand(
   command: string,
   args: string[],
@@ -56,6 +64,6 @@ export function resolveCommand(
     };
   }
   if (!found || !/\.(cmd|bat)$/i.test(found)) return { file: found ?? command, args, verbatim: false };
-  const line = [quoteForCmd(found), ...args.map(quoteForCmd)].join(" ");
+  const line = [escapeProgramForCmd(found), ...args.map(quoteForCmd)].join(" ");
   return { file: env.ComSpec ?? "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], verbatim: true };
 }

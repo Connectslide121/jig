@@ -26,7 +26,12 @@ export const execTool: Exec = (command, args) =>
     );
   });
 
-const firstLine = (s: string) => s.trim().split(/\r?\n/)[0]?.trim() ?? "";
+// Skips warnings that tools print first (az: "WARNING: You have 2 update(s) available").
+const firstLine = (s: string) =>
+  s
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l && !/^warning:/i.test(l)) ?? "";
 
 /**
  * What Jig needs on your machine. Only versions are asked for; no tool is asked about its login.

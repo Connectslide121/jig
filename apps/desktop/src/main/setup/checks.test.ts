@@ -9,7 +9,11 @@ describe("runSetupChecks", () => {
       if (command === "/sdk/claude") return { code: 0, stdout: "2.3.4 (Claude Code)\n", stderr: "" };
       if (command === "git") return { code: 0, stdout: "git version 2.50.1.windows.1\n", stderr: "" };
       if (command === "az" && args[0] === "--version")
-        return { code: 0, stdout: "azure-cli 2.80.0\n...", stderr: "" };
+        return {
+          code: 0,
+          stdout: "WARNING: You have 2 update(s) available.\nazure-cli 2.80.0\n...",
+          stderr: "",
+        };
       if (command === "az") return { code: 1, stdout: "", stderr: "not installed" };
       return { code: 127, stdout: "", stderr: "not found" };
     };

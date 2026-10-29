@@ -46,6 +46,30 @@ describe("Windows command resolution", () => {
     expect(out.stdout.trim()).toBe('"a b"');
   });
 
+  it.runIf(process.platform === "win32")(
+    "runs a .cmd whose path has spaces and brackets, with its arguments intact",
+    async () => {
+      const { mkdtemp, writeFile } = await import("node:fs/promises");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+      const dir = join(await mkdtemp(join(tmpdir(), "jig cmd ")), "My Tools (x86)");
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(dir);
+      // Like az.cmd in C:\Program Files\…: prints its arguments one per line.
+      await writeFile(
+        join(dir, "tool.cmd"),
+        "@node -e \"console.log(process.argv.slice(1).join('\\n'))\" -- %*\r\n",
+      );
+      const r = resolveCommand("tool", ["--project", "My Project", "a&b", '"q"'], "win32", {
+        ...process.env,
+        PATH: `${dir};${process.env.PATH ?? process.env.Path}`,
+      });
+      const out = spawnSync(r.file, r.args, { encoding: "utf8", windowsVerbatimArguments: r.verbatim });
+      expect(out.stderr).toBe("");
+      expect(out.stdout.trim().split(/\r?\n/)).toEqual(["--project", "My Project", "a&b", '"q"']);
+    },
+  );
+
   it("escapes quotes, backslashes and cmd metacharacters", () => {
     expect(quoteForCmd("plain")).toBe('^"plain^"');
     expect(quoteForCmd('say "hi"')).toBe('^"say \\^"hi\\^"^"');
