@@ -84,7 +84,9 @@ export interface AddonDataDeps {
 const SKIP = new Set([".git", "node_modules"]);
 
 async function listFiles(dir: string, base = dir, out: string[] = []): Promise<string[]> {
-  for (const name of await readdir(dir).catch(() => [] as string[])) {
+  // Sorted, because readdir's order depends on the file system (NTFS ignores case, ext4 doesn't).
+  const names = (await readdir(dir).catch(() => [] as string[])).sort();
+  for (const name of names) {
     if (SKIP.has(name) || out.length >= 200) continue;
     const full = join(dir, name);
     const s = await stat(full).catch(() => undefined);
