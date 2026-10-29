@@ -103,6 +103,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   or arbitrary values (`w-[13px]`, `text-[#…]`). `npm run check:tokens` enforces this in
   `apps/desktop/src/renderer` and `addons/`.
 - Reuse the base components in `apps/desktop/src/renderer/ui/` before writing new ones.
+- **Menus go through `ui/Menu.tsx`** (`openMenu`, `openMenuAt`, `MenuButton`, `contextMenu`; add-ons
+  through the SDK), never a hand-made dropdown. A submenu opens beside its parent, from its chevron,
+  and never covers it (on the parent's left when there's no room on the right); the parent stays open.
 - Icons are Lucide (`lucide-react`), in Jig and in add-ons (which share Jig's copy; manifests use
   kebab-case names, `<Icon name>` from `@jig/sdk/ui` for runtime names). Don't add another icon set.
 - Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
