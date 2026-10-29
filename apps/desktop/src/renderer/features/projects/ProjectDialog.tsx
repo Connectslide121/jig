@@ -150,7 +150,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
                   (color ?? project?.color) === c ? "border-focus" : "border-transparent hover:border-line",
                 )}
               >
-                <span className={cn("size-3 rounded-full", projectDotClass(c))} />
+                <span className={cn("size-3 rounded-xs", projectDotClass(c))} />
               </button>
             ))}
           </div>

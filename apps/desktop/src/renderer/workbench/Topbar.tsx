@@ -14,7 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { openAbout } from "../features/about";
-import { projectDotClass } from "../features/projects/colors";
+import { ProjectSwatch } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
@@ -42,6 +42,7 @@ function projectMenu(): MenuEntry[] {
     ...projects.map((p) => ({
       label: p.name,
       checked: p.id === activeId,
+      leading: <ProjectSwatch color={p.color} />,
       testId: `project-item-${p.name}`,
       onSelect: () => void call("projects.setActive", { id: p.id }),
     })),
@@ -154,7 +155,7 @@ export function Topbar() {
       >
         {project ? (
           <>
-            <span className={cn("size-2 shrink-0 rounded-full", projectDotClass(project.color))} />
+            <ProjectSwatch color={project.color} />
             <span className="truncate font-medium">{project.name}</span>
           </>
         ) : (

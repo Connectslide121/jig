@@ -112,6 +112,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   and never covers it (on the parent's left when there's no room on the right); the parent stays open.
 - Icons are Lucide (`lucide-react`), in Jig and in add-ons (which share Jig's copy; manifests use
   kebab-case names, `<Icon name>` from `@jig/sdk/ui` for runtime names). Don't add another icon set.
+- **A project is a square, a chat a dot:** show a project with `ProjectSwatch` (`features/projects/colors.tsx`,
+  a rounded square in its colour), in lists, menus (`leading`) and the top bar; round dots are chats'
+  status. Chats are indented under their project.
 - Show files and folders with `FileIcon` (the user's file icon theme), images with `ImagePreview`, and
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.

@@ -46,3 +46,4 @@
 - [x] Usage bars in the status bar, Git Sync like VS Code, Repos rows in columns (D-152)
 - [x] Fixes: a finished background task left "In the background" (with a Stop that did nothing); Walk me
       through in a chat whose folder holds several repositories said "not a git repository"
+- [x] Projects shown as coloured squares (Chats, top bar, project picker), chats as round dots, indented

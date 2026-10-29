@@ -71,7 +71,7 @@ export function SessionsView() {
         e.dataTransfer.effectAllowed = "move";
       }}
       leading={<StatusDot status={m.status} />}
-      className={cn("pl-4", m.archived && "opacity-60")}
+      className={cn("ml-4", m.archived && "opacity-60")}
       trailing={
         <>
           {m.pinned && <Pin className="size-3 shrink-0 text-hint group-hover:hidden" aria-label="Pinned" />}
@@ -151,7 +151,7 @@ export function SessionsView() {
             ) : (
               <ChevronRight className="size-3 shrink-0" />
             )}
-            <span className={cn("size-2 shrink-0 rounded-full", dot)} />
+            <span className={cn("size-2.5 shrink-0 rounded-xs", dot)} />
             <span className="min-w-0 truncate">{title}</span>
             {!isOpen && list.length > 0 && <span className="font-normal text-hint">{list.length}</span>}
           </button>

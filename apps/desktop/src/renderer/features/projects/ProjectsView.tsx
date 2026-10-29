@@ -1,10 +1,10 @@
 import { FolderGit2, FolderInput, FolderPlus, FolderX, GitBranch, MoreHorizontal } from "lucide-react";
 import { call } from "../../lib/host";
-import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
+import { contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
 import { addProject, addWorkspace } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
-import { projectDotClass } from "./colors";
+import { ProjectSwatch } from "./colors";
 import { projectMenu } from "./projectMenu";
 
 export function ProjectsView() {
@@ -44,7 +44,7 @@ export function ProjectsView() {
           onClick={() => void call("projects.setActive", { id: project.id })}
           onDoubleClick={() => workbench.openTab("jig.project", { projectId: project.id })}
           onContextMenu={contextMenu(() => projectMenu(project))}
-          leading={<span className={cn("size-2 rounded-full", projectDotClass(project.color))} />}
+          leading={<ProjectSwatch color={project.color} />}
           description={
             <span className="selectable" title={project.path}>
               {where(project)}

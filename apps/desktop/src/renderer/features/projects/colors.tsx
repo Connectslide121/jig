@@ -1,4 +1,5 @@
 import type { ProjectColor } from "../../../shared/projects";
+import { cn } from "../../ui/cn";
 
 /** Project colours are token names; these map them to (static, so Tailwind sees them) utilities. */
 const dot: Record<ProjectColor, string> = {
@@ -28,3 +29,11 @@ export const projectColorLabel: Record<ProjectColor, string> = {
   danger: "Red",
   muted: "Grey",
 };
+
+/**
+ * A project's mark: a small rounded square in its colour. Chats have round status dots, so a
+ * project never reads as a chat (lists, the top bar, the project picker).
+ */
+export function ProjectSwatch({ color, className }: { color: ProjectColor; className?: string }) {
+  return <span className={cn("inline-block size-2.5 shrink-0 rounded-xs", dot[color], className)} />;
+}

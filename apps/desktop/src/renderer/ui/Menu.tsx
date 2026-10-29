@@ -17,6 +17,8 @@ export interface MenuItem {
   disabled?: boolean;
   danger?: boolean;
   checked?: boolean;
+  /** Shown before the label, after the icon or check (a project's colour). */
+  leading?: ReactNode;
   onSelect?: () => void;
   submenu?: MenuEntry[];
   /** Used by tests (`data-testid`). */
@@ -209,6 +211,7 @@ function MenuList({
                   <Icon className="size-4" />
                 ) : null}
               </span>
+              {entry.leading}
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
               {entry.shortcut && <Kbd>{entry.shortcut}</Kbd>}
               {entry.submenu && <ChevronRight className="size-3.5 text-muted" />}
