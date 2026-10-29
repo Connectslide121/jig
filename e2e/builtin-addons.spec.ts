@@ -113,7 +113,7 @@ test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   await expect(page.getByTestId("scripts-view")).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId("scripts-addon-dev")).toBeVisible({ timeout: 15000 });
-  await page.getByTestId("scripts-addon-dev").getByRole("button", { name: "dev" }).click();
+  await page.getByTestId("scripts-addon-dev").getByRole("button", { name: "Run dev" }).click();
   await expect(page.locator(".jig-xterm:visible .xterm-rows")).toContainText("shop-dev");
 });
 
@@ -142,28 +142,33 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
   await page.getByTestId("dialog-input").fill("Tools");
   await page.getByTestId("dialog-confirm").click();
   for (const name of ["serve", "api"]) {
-    await tree.getByTestId(`scripts-addon-${name}`).getByRole("button").click({ button: "right" });
+    await tree.getByTestId(`scripts-addon-${name}`).click({ button: "right" });
     await page.getByRole("menuitem", { name: "Add to group" }).hover();
     await page.getByRole("menuitem", { name: "Tools" }).click();
   }
   const group = view.getByTestId("scripts-group-Tools");
-  await expect(group).toContainText("tools · serve");
-  await expect(group).toContainText("tools · api");
+  await expect(group.getByTestId("scripts-addon-serve")).toBeVisible();
+  await expect(group.getByTestId("scripts-addon-api")).toBeVisible();
 
   // Start and Stop act on the whole group.
   await view.getByTestId("scripts-group-start-Tools").click();
   await expect(view.getByTestId("scripts-running")).toContainText("serve", { timeout: 15000 });
   await expect(view.getByTestId("scripts-running")).toContainText("api");
-  await expect(group).toContainText("2/2");
+  await expect(group).toContainText("2 of 2 running");
   await view.getByTestId("scripts-group-stop-Tools").click();
   await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
 
   // Hide lint; the eye shows hidden scripts again.
-  await tree.getByTestId("scripts-addon-lint").getByRole("button").click({ button: "right" });
+  await tree.getByTestId("scripts-addon-lint").click({ button: "right" });
   await page.getByRole("menuitem", { name: "Hide it" }).click();
   await expect(tree.getByTestId("scripts-addon-lint")).toHaveCount(0);
   await view.getByTestId("scripts-show-hidden").click();
   await expect(tree.getByTestId("scripts-addon-lint")).toBeVisible();
+
+  // The filter finds a script at once, with where it lives.
+  await view.getByTestId("scripts-filter").fill("lin");
+  await expect(view.getByTestId("scripts-matches")).toContainText("1 found");
+  await expect(view.getByTestId("scripts-matches").getByTestId("scripts-addon-lint")).toBeVisible();
 });
 
 test("Pipelines asks to be set up and has a settings page", async ({ page }) => {

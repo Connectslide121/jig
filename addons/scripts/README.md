@@ -4,19 +4,22 @@ A view with every script Jig discovers in your projects (npm/pnpm/yarn/bun scrip
 the root and `scripts/`, .NET launch profiles, Azure Functions `func start`; D-141), laid out like the
 scripts plugin (D-142):
 
-- **Running** at the top: what runs now, wherever it's from; click to show its terminal, **open** its
-  address (a backend's launch profile), **Stop**.
-- **Groups**: your own sets of scripts from any project ("Certumhub" = its frontend and backend), with
-  **Start** (the ones not running) and **Stop** (the running ones) for the whole group. **New group**
-  in the header; right-click a script → **Add to group**; a group's ⋯ renames, moves or deletes it;
-  right-click a script in a group to take it out. Kept in the add-on's storage (`groups`), the same
-  in every project (`lib/groups.ts`).
-- **Every script** as a tree, per project folder: top folder → git repository (when the top folder
-  holds several, or isn't one) → package or project, tagged **API** (.NET / Functions), **npm** or
-  **script**, with its scripts as chips: ▶ starts one, a green ■ stops it (`lib/tree.ts`). Folders
-  open and close; that is kept (`expanded`). With one top folder in all, it starts open.
-- **Hide** a script from its right-click menu; the eye in the header shows hidden ones again (dimmed),
-  to bring them back. Hidden scripts are kept per folder (`arrangement`, as before groups).
+- **Filter scripts** (top): type to find any script at once, by name, package, folder or command;
+  the matches list flat with where they live.
+- **Running**: what runs now, wherever it's from, in a green box; ⋯ opens its address (a backend's
+  launch profile), shows its terminal or stops it.
+- **Groups**: cards with a **Start** button (**Start the rest** when some already run) and **Stop**,
+  their scripts as rows. Your own groups take scripts from any project ("Certumhub" = its frontend
+  and backend): **New group** in the header, then a script's ⋯ (or right-click) → **Add to group**;
+  a group's ⋯ renames, moves or deletes it. Groups made on a project's dashboard (Home → Scripts →
+  Group) show here too, marked as such, with the same Start and Stop. Your groups are kept in the
+  add-on's storage (`groups`), the same in every project (`lib/groups.ts`).
+- **All scripts**: per project folder, top folder → git repository (when the top folder holds
+  several, or isn't one) → package or project with its kind (API / npm / script), then its scripts
+  as rows: ▶ to run (a green ■ while it runs), its name, what it runs, and ⋯ on hover
+  (`lib/tree.ts`). Folders open and close; that is kept (`expanded`).
+- **Hide** a script from its ⋯; the eye in the header shows hidden ones again (dimmed), to bring
+  them back. Hidden scripts are kept per folder (`arrangement`).
 
 Tools menu: **Run a script…** (`Ctrl+Shift+R`), **Start a script group…** (your groups, then the
 project's dashboard groups), **Stop a running script…**. The status bar's "N running" item and the

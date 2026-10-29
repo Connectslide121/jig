@@ -1404,3 +1404,14 @@ itself) and Claude, on my own (how) · **Date:** 2026-10-30
 - Changing a built-in add-on copies it into the build's worktree as your own copy; that copy is now
   its own commit, kept as the job's `base`, and the files and diffs are compared with it, so only
   what the builder changed shows. Accept still brings the whole copy into your add-ons.
+
+### D-146 — Scripts redesigned: a filter, group cards, scripts as rows
+**Decided by:** Jon ("like the plugin" means its structure; redesign freely; he couldn't find the
+group's start button) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- The plugin's structure stays (running, groups, folder → repository → package); the look is Jig's:
+  a filter on top, a green Running box, groups as cards with a primary **Start** (or **Start the
+  rest**) and **Stop**, and scripts as rows (▶/■, name, what it runs, ⋯) instead of wrapping chips.
+- **Every group shows here**: groups made on a project's dashboard ("+ Group" on Home) used to live
+  only there, which is likely why Jon saw no Start button; they now appear as cards too, marked as the
+  project's, with the same Start and Stop.

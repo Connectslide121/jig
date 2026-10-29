@@ -10,11 +10,11 @@ import {
   toggleHidden,
 } from "@jig/sdk";
 import {
-  Badge,
   Button,
   cn,
   Empty,
   IconButton,
+  SearchInput,
   Spinner,
   useProjectList,
   useRunningScripts,
@@ -22,26 +22,29 @@ import {
   useWorkspaceList,
 } from "@jig/sdk/ui";
 import {
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   Eye,
   EyeOff,
+  FileCode,
+  Folder,
+  FolderGit2,
   FolderPlus,
   Layers,
+  type LucideIcon,
   MoreHorizontal,
+  Package,
   Play,
+  Server,
   Square,
   SquareTerminal,
 } from "lucide-react";
-import { type MouseEvent, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   addMember,
-  groupState,
   memberKey,
   moveGroup,
   newGroup,
-  parseMember,
   removeGroup,
   removeMember,
   renameGroup,
@@ -85,100 +88,107 @@ async function safe(ctx: AddonUiContext, label: string, fn: () => Promise<void>)
   }
 }
 
-/** A script with the project it belongs to, and how to call it in a group or the running list. */
+/** A script with the project it belongs to, and where it lives (package and top folder). */
 interface Located {
   project: AddonProject;
   script: AddonScript;
-  /** "web · dev": the package and the script. */
-  label: string;
+  /** Its package (folder name), e.g. "SavClient". */
+  pkg: string;
+  /** Its top folder (e.g. "Certumhub"), for context. */
+  where: string;
 }
 
-/** Everything the view's parts share: projects, scripts, running, groups and hidden scripts. */
+/** Everything the view's parts share: running scripts, groups and hidden scripts. */
 interface Model {
   ctx: AddonUiContext;
   running: Map<string, RunningScript>;
   find: (member: string) => Located | undefined;
-  /** The script a running terminal belongs to. */
   findRun: (projectId: string, scriptId: string) => Located | undefined;
   groups: ScriptGroup[];
   setGroups: (next: ScriptGroup[]) => void;
-  isHidden: (folder: string, scriptId: string) => boolean;
-  toggleHide: (folder: string, scriptId: string) => void;
+  isHidden: (l: Located) => boolean;
+  toggleHide: (l: Located) => void;
 }
 
 const runKey = (projectId: string, scriptId: string) => `${projectId}|${scriptId}`;
+const isRunning = (m: Model, l: Located) => m.running.has(runKey(l.project.id, l.script.id));
+const run = (m: Model, l: Located) =>
+  safe(m.ctx, l.script.name, () => m.ctx.scripts.run(l.project.id, l.script.id));
+const stop = (m: Model, l: Located) => m.ctx.scripts.stop(l.project.id, l.script.id);
 
-function scriptMenu(m: Model, located: Located, e: MouseEvent, group?: ScriptGroup) {
+/** The add-to-group submenu for a script: your groups (ticked when it's in), and New group…. */
+function groupSubmenu(m: Model, l: Located) {
+  const member = memberKey(l.project.path, l.script.id);
+  return [
+    ...m.groups.map((g) => ({
+      label: g.name,
+      checked: g.members.includes(member),
+      onSelect: () =>
+        m.setGroups(
+          g.members.includes(member)
+            ? removeMember(m.groups, g.id, member)
+            : addMember(m.groups, g.id, member),
+        ),
+    })),
+    ...(m.groups.length ? [{ separator: true as const }] : []),
+    {
+      label: "New group…",
+      icon: "folder-plus",
+      onSelect: async () => {
+        const name = await m.ctx.prompt({
+          title: "New group",
+          message: `Starting with ${l.pkg} · ${l.script.name}.`,
+          confirmLabel: "Create",
+        });
+        if (name?.trim()) m.setGroups(newGroup(m.groups, name, member));
+      },
+    },
+  ];
+}
+
+function scriptMenu(m: Model, l: Located, e: MouseEvent, inGroup?: ScriptGroup) {
   e.preventDefault();
-  const { project, script } = located;
-  const { ctx } = m;
-  const member = memberKey(project.path, script.id);
-  const r = m.running.get(runKey(project.id, script.id));
-  ctx.menu(
+  e.stopPropagation();
+  const r = m.running.get(runKey(l.project.id, l.script.id));
+  m.ctx.menu(
     [
       r
-        ? { label: "Stop", icon: "square", onSelect: () => void ctx.scripts.stop(project.id, script.id) }
-        : {
-            label: "Run",
-            icon: "play",
-            onSelect: () => void safe(ctx, script.name, () => ctx.scripts.run(project.id, script.id)),
-          },
+        ? { label: "Stop", icon: "square", onSelect: () => void stop(m, l) }
+        : { label: "Run", icon: "play", onSelect: () => void run(m, l) },
       ...(r
         ? [
             {
               label: "Show its terminal",
               icon: "square-terminal",
-              onSelect: () => ctx.scripts.show(r.terminalId),
+              onSelect: () => m.ctx.scripts.show(r.terminalId),
             },
           ]
         : []),
-      ...(script.url
+      ...(l.script.url
         ? [
             {
-              label: `Open ${script.url}`,
+              label: `Open ${l.script.url}`,
               icon: "external-link",
-              onSelect: () => ctx.openExternal(script.url!),
+              onSelect: () => m.ctx.openExternal(l.script.url!),
             },
           ]
         : []),
       { separator: true },
-      group
+      inGroup
         ? {
-            label: `Remove from ${group.name}`,
+            label: `Remove from ${inGroup.name}`,
             icon: "x",
-            onSelect: () => m.setGroups(removeMember(m.groups, group.id, member)),
+            onSelect: () =>
+              m.setGroups(removeMember(m.groups, inGroup.id, memberKey(l.project.path, l.script.id))),
           }
-        : {
-            label: "Add to group",
-            icon: "layers",
-            submenu: [
-              ...m.groups.map((g) => ({
-                label: g.name,
-                checked: g.members.includes(member),
-                onSelect: () => m.setGroups(addMember(m.groups, g.id, member)),
-              })),
-              ...(m.groups.length ? [{ separator: true as const }] : []),
-              {
-                label: "New group…",
-                icon: "folder-plus",
-                onSelect: async () => {
-                  const name = await ctx.prompt({
-                    title: "New group",
-                    message: `With ${located.label}.`,
-                    confirmLabel: "Create",
-                  });
-                  if (name?.trim()) m.setGroups(newGroup(m.groups, name, member));
-                },
-              },
-            ],
-          },
-      ...(group
+        : { label: "Add to group", icon: "layers", submenu: groupSubmenu(m, l) },
+      ...(inGroup
         ? []
         : [
             {
-              label: m.isHidden(project.path, script.id) ? "Show it" : "Hide it",
-              icon: m.isHidden(project.path, script.id) ? "eye" : "eye-off",
-              onSelect: () => m.toggleHide(project.path, script.id),
+              label: m.isHidden(l) ? "Show it" : "Hide it",
+              icon: m.isHidden(l) ? "eye" : "eye-off",
+              onSelect: () => m.toggleHide(l),
             },
           ]),
     ],
@@ -186,194 +196,209 @@ function scriptMenu(m: Model, located: Located, e: MouseEvent, group?: ScriptGro
   );
 }
 
-/** A script as a chip: ▶ name to start; while it runs, a green ■ name that stops it. */
-function ScriptChip({
-  m,
-  located,
-  label,
-  group,
-  hidden,
-}: {
-  m: Model;
-  located: Located;
-  label: string;
-  group?: ScriptGroup;
-  hidden?: boolean;
-}) {
-  const { project, script } = located;
-  const { ctx } = m;
-  const r = m.running.get(runKey(project.id, script.id));
+/** ▶ to start, a green ■ to stop: the one button every script row has. */
+function RunButton({ m, l }: { m: Model; l: Located }) {
+  const on = isRunning(m, l);
   return (
-    <span className="inline-flex" data-testid={`scripts-addon-${script.name}`}>
-      <button
-        type="button"
-        title={`${script.detail ?? script.command}\n${project.name}${script.folder ? ` · ${script.folder}` : ""}`}
-        onClick={() =>
-          r
-            ? void ctx.scripts.stop(project.id, script.id)
-            : void safe(ctx, script.name, () => ctx.scripts.run(project.id, script.id))
-        }
-        onContextMenu={(e) => scriptMenu(m, located, e, group)}
-        className={cn(
-          "inline-flex h-6 max-w-full items-center gap-1 truncate rounded-md border px-1.5 text-xs",
-          r ? "border-success bg-success-soft text-success" : "border-line bg-surface text-fg hover:bg-hover",
-          hidden && "opacity-50",
-        )}
-      >
-        {r ? <Square className="size-3 shrink-0" /> : <Play className="size-3 shrink-0" />}
-        <span className="truncate">{label}</span>
-        {hidden && <EyeOff className="size-3 shrink-0 text-hint" />}
-      </button>
-    </span>
+    <button
+      type="button"
+      aria-label={on ? `Stop ${l.script.name}` : `Run ${l.script.name}`}
+      title={on ? "Stop" : "Run"}
+      onClick={(e) => {
+        e.stopPropagation();
+        void (on ? stop(m, l) : run(m, l));
+      }}
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors",
+        on
+          ? "bg-success-soft text-success hover:bg-success hover:text-on-accent"
+          : "text-muted hover:bg-accent-soft hover:text-accent",
+      )}
+    >
+      {on ? <Square className="size-3 fill-current" /> : <Play className="size-3.5 fill-current" />}
+    </button>
   );
 }
 
-/** Scripts running now, wherever they're from: open the address, show the terminal, stop. */
-function RunningList({ m }: { m: Model }) {
-  const runs = [...m.running.values()];
-  if (runs.length === 0) return null;
+/**
+ * One script: run/stop, its name, what it runs (dimmed) or where it lives, and ⋯ on hover for add to
+ * a group, hide and the rest. Right-click opens the same menu.
+ */
+function ScriptRow({
+  m,
+  l,
+  context,
+  inGroup,
+  indent = 0,
+}: {
+  m: Model;
+  l: Located;
+  /** Show where it lives (groups, the running list, filter results) instead of its command. */
+  context?: boolean;
+  inGroup?: ScriptGroup;
+  indent?: number;
+}) {
+  const hidden = !inGroup && m.isHidden(l);
+  const on = isRunning(m, l);
   return (
-    <section className="mb-3" data-testid="scripts-running">
-      <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">Running</div>
-      {runs.map((r) => {
-        const url = m.findRun(r.projectId, r.scriptId)?.script.url;
-        return (
-          <div
-            key={r.terminalId}
-            className="group flex h-7 items-center gap-2 rounded-md px-2 text-sm hover:bg-hover"
-          >
-            <span className="size-1.5 shrink-0 rounded-full bg-success" />
-            <button
-              type="button"
-              className="min-w-0 flex-1 truncate text-left"
-              onClick={() => m.ctx.scripts.show(r.terminalId)}
-            >
-              {r.title}
-            </button>
-            {url && (
-              <IconButton
-                icon={ExternalLink}
-                size="sm"
-                label={`Open ${url}`}
-                onClick={() => m.ctx.openExternal(url)}
-              />
-            )}
-            <IconButton
-              icon={Square}
-              size="sm"
-              label={`Stop ${r.title}`}
-              onClick={() => void m.ctx.scripts.stop(r.projectId, r.scriptId)}
-            />
-          </div>
-        );
-      })}
+    <div
+      className={cn(
+        "group flex h-7 items-center gap-1.5 rounded-md pr-1 hover:bg-hover",
+        hidden && "opacity-50",
+      )}
+      style={{ paddingLeft: 4 + indent * 14 }}
+      onContextMenu={(e) => scriptMenu(m, l, e, inGroup)}
+      data-testid={`scripts-addon-${l.script.name}`}
+    >
+      <RunButton m={m} l={l} />
+      <span className={cn("shrink-0 text-sm text-fg", on && "font-medium")}>{l.script.name}</span>
+      <span
+        className={cn("min-w-0 flex-1 truncate text-xs", context ? "text-muted" : "font-mono text-hint")}
+        title={`${l.script.command}\n${l.project.name}${l.script.folder ? ` · ${l.script.folder}` : ""}`}
+      >
+        {context ? `${l.pkg} · ${l.where}` : (l.script.detail ?? l.script.command)}
+      </span>
+      {hidden && <EyeOff className="size-3 shrink-0 text-hint" />}
+      <span className="invisible flex shrink-0 items-center group-hover:visible group-focus-within:visible">
+        {l.script.url && on && (
+          <IconButton
+            icon={ExternalLink}
+            size="sm"
+            label={`Open ${l.script.url}`}
+            onClick={() => m.ctx.openExternal(l.script.url!)}
+          />
+        )}
+        <IconButton
+          icon={MoreHorizontal}
+          size="sm"
+          label={`${l.script.name} options`}
+          data-testid="script-options"
+          onClick={(e) => scriptMenu(m, l, e, inGroup)}
+        />
+      </span>
+    </div>
+  );
+}
+
+function Section({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+  return (
+    <section className="mb-4" data-testid={testId}>
+      <div className="flex items-center gap-2 px-1 pb-1.5">
+        <span className="text-2xs font-semibold tracking-wide text-hint uppercase">{title}</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      {children}
     </section>
   );
 }
 
-/** One of your groups: Start and Stop for all of it, its scripts as chips. */
-function GroupCard({ m, group, index }: { m: Model; group: ScriptGroup; index: number }) {
-  const { ctx } = m;
-  const members = group.members.map((key) => ({ key, located: m.find(key) }));
-  const isRunning = (key: string) => {
-    const l = m.find(key);
-    return !!l && m.running.has(runKey(l.project.id, l.script.id));
-  };
-  const { running, stopped } = groupState(group, isRunning);
-  const start = () =>
-    void Promise.all(
-      stopped
-        .map(m.find)
-        .map((l) => l && safe(ctx, l.script.name, () => ctx.scripts.run(l.project.id, l.script.id))),
-    );
-  const stop = () =>
-    void Promise.all(running.map(m.find).map((l) => l && ctx.scripts.stop(l.project.id, l.script.id)));
-  const menu = (e: MouseEvent) =>
-    ctx.menu(
-      [
-        {
-          label: "Rename…",
-          icon: "pencil",
-          onSelect: async () => {
-            const name = await ctx.prompt({
-              title: "Rename group",
-              initial: group.name,
-              confirmLabel: "Rename",
-            });
-            if (name) m.setGroups(renameGroup(m.groups, group.id, name));
-          },
-        },
-        {
-          label: "Move up",
-          icon: "arrow-up",
-          disabled: index === 0,
-          onSelect: () => m.setGroups(moveGroup(m.groups, group.id, -1)),
-        },
-        {
-          label: "Move down",
-          icon: "arrow-down",
-          disabled: index === m.groups.length - 1,
-          onSelect: () => m.setGroups(moveGroup(m.groups, group.id, 1)),
-        },
-        { separator: true },
-        {
-          label: "Delete group",
-          icon: "trash-2",
-          danger: true,
-          onSelect: () => m.setGroups(removeGroup(m.groups, group.id)),
-        },
-      ],
-      e.nativeEvent,
-    );
+/** Scripts running now, wherever they're from. */
+function RunningList({ m }: { m: Model }) {
+  const runs = [...m.running.values()];
+  if (runs.length === 0) return null;
   return (
-    <div className="mb-2 rounded-md border border-line p-2" data-testid={`scripts-group-${group.name}`}>
-      <div className="flex items-center gap-1.5">
-        <Layers className="size-3.5 shrink-0 text-muted" />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</span>
-        {running.length > 0 && (
-          <Badge tone="success">
-            {running.length}/{group.members.length}
-          </Badge>
-        )}
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={Play}
-          disabled={stopped.length === 0}
-          onClick={start}
-          data-testid={`scripts-group-start-${group.name}`}
-        >
-          Start
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={Square}
-          disabled={running.length === 0}
-          onClick={stop}
-          data-testid={`scripts-group-stop-${group.name}`}
-        >
-          Stop
-        </Button>
-        <IconButton icon={MoreHorizontal} size="sm" label={`${group.name} options`} onClick={menu} />
-      </div>
-      <div className="mt-1.5 flex flex-wrap gap-1">
-        {members.length === 0 && (
-          <span className="text-xs text-hint">Right-click a script below → Add to group.</span>
-        )}
-        {members.map(({ key, located }) =>
-          located ? (
-            <ScriptChip key={key} m={m} located={located} label={located.label} group={group} />
+    <Section title={`Running · ${runs.length}`} testId="scripts-running">
+      <div className="rounded-lg border border-success bg-success-soft p-1">
+        {runs.map((r) => {
+          const l = m.findRun(r.projectId, r.scriptId);
+          return l ? (
+            <ScriptRow key={r.terminalId} m={m} l={l} context />
           ) : (
-            <button
-              key={key}
-              type="button"
-              title="This script isn't found any more. Click to remove it from the group."
-              className="h-6 rounded-md border border-dashed border-line px-1.5 text-xs text-hint"
-              onClick={() => m.setGroups(removeMember(m.groups, group.id, key))}
-            >
-              {parseMember(key).scriptId.split(":").pop()} (gone)
-            </button>
+            <div key={r.terminalId} className="flex h-7 items-center gap-2 px-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">{r.title}</span>
+              <IconButton
+                icon={Square}
+                size="sm"
+                label={`Stop ${r.title}`}
+                onClick={() => void m.ctx.scripts.stop(r.projectId, r.scriptId)}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
+/** A group: Start / Stop for all of it, its scripts as rows. Yours, or a project's (dashboard). */
+function GroupCard({
+  m,
+  name,
+  members,
+  testId,
+  from,
+  menu,
+  group,
+}: {
+  m: Model;
+  name: string;
+  members: Array<{ key: string; l?: Located }>;
+  testId: string;
+  /** For a project's group: the project whose dashboard it was made on. */
+  from?: string;
+  menu?: (e: MouseEvent) => void;
+  group?: ScriptGroup;
+}) {
+  const found = members.flatMap((x) => (x.l ? [x.l] : []));
+  const startable = found.filter((l) => !isRunning(m, l));
+  const running = found.filter((l) => isRunning(m, l));
+  const all = found.length > 0 && running.length === found.length;
+  const id = testId.replace("scripts-group-", "");
+  return (
+    <div className="mb-2 rounded-lg border border-line bg-surface" data-testid={testId}>
+      <div className="flex items-center gap-2 border-b border-line px-2 py-1.5">
+        <Layers className={cn("size-4 shrink-0", running.length ? "text-success" : "text-muted")} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{name}</div>
+          <div className="truncate text-2xs text-hint">
+            {running.length ? `${running.length} of ${found.length} running` : `${found.length} scripts`}
+            {from ? ` · ${from}'s dashboard group` : ""}
+          </div>
+        </div>
+        {!all && (
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Play}
+            disabled={startable.length === 0}
+            onClick={() => void Promise.all(startable.map((l) => run(m, l)))}
+            data-testid={`scripts-group-start-${id}`}
+          >
+            {running.length ? "Start the rest" : "Start"}
+          </Button>
+        )}
+        {running.length > 0 && (
+          <Button
+            size="sm"
+            icon={Square}
+            onClick={() => void Promise.all(running.map((l) => stop(m, l)))}
+            data-testid={`scripts-group-stop-${id}`}
+          >
+            Stop
+          </Button>
+        )}
+        {menu && <IconButton icon={MoreHorizontal} size="sm" label={`${name} options`} onClick={menu} />}
+      </div>
+      <div className="p-1">
+        {members.length === 0 && (
+          <div className="px-2 py-1.5 text-xs text-hint">Add scripts: a script's ⋯ → Add to group.</div>
+        )}
+        {members.map(({ key, l }) =>
+          l ? (
+            <ScriptRow key={key} m={m} l={l} context inGroup={group} />
+          ) : (
+            <div key={key} className="flex h-7 items-center gap-2 px-2 text-xs text-hint">
+              <span className="min-w-0 flex-1 truncate">{key.split(":").pop()} — not found any more</span>
+              {group && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => m.setGroups(removeMember(m.groups, group.id, key))}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
           ),
         )}
       </div>
@@ -381,65 +406,30 @@ function GroupCard({ m, group, index }: { m: Model; group: ScriptGroup; index: n
   );
 }
 
-const TAGS: Record<PackageNode["kind"], { text: string; tone: "info" | "warning" | "neutral" }> = {
-  api: { text: "API", tone: "info" },
-  npm: { text: "npm", tone: "warning" },
-  script: { text: "script", tone: "neutral" },
+const KINDS: Record<PackageNode["kind"], { icon: LucideIcon; tone: string; text: string }> = {
+  api: { icon: Server, tone: "text-info", text: "API" },
+  npm: { icon: Package, tone: "text-warning", text: "npm" },
+  script: { icon: FileCode, tone: "text-muted", text: "script" },
 };
 
-/** A package or project: its tag and name, then its scripts. */
-function PackageRow({
-  m,
-  project,
-  node,
-  showHidden,
-}: {
-  m: Model;
-  project: AddonProject;
-  node: PackageNode;
-  showHidden: boolean;
-}) {
-  const scripts = node.scripts.filter((s) => showHidden || !m.isHidden(project.path, s.id));
-  if (scripts.length === 0) return null;
-  return (
-    <div className="mb-1.5 pl-6" data-testid={`scripts-package-${node.folder || node.label}`}>
-      <div className="flex items-center gap-1.5 pb-0.5 text-xs">
-        <Badge tone={TAGS[node.kind].tone}>{TAGS[node.kind].text}</Badge>
-        <span className="truncate font-medium" title={node.folder}>
-          {node.label}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {scripts.map((s) => (
-          <ScriptChip
-            key={s.id}
-            m={m}
-            located={{ project, script: s, label: `${node.label} · ${s.name}` }}
-            label={s.name}
-            hidden={m.isHidden(project.path, s.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** A folding row of the tree: its name, a dot when something in it runs, what it holds. */
+/** A folding row of the tree: a top folder or a repository. */
 function Fold({
+  icon: Icon,
   label,
   open,
   onToggle,
   active,
   count,
-  depth,
+  indent,
   testId,
 }: {
+  icon: LucideIcon;
   label: string;
   open: boolean;
   onToggle: () => void;
   active: boolean;
   count: string;
-  depth: number;
+  indent: number;
   testId: string;
 }) {
   return (
@@ -447,81 +437,123 @@ function Fold({
       type="button"
       onClick={onToggle}
       data-testid={testId}
-      className={cn(
-        "flex h-7 w-full items-center gap-1 rounded-md pr-2 text-left text-sm hover:bg-hover",
-        depth ? "pl-5" : "pl-1",
-      )}
+      aria-expanded={open}
+      className="flex h-7 w-full items-center gap-1.5 rounded-md pr-2 text-left hover:bg-hover"
+      style={{ paddingLeft: 4 + indent * 14 }}
     >
-      {open ? (
-        <ChevronDown className="size-3.5 shrink-0 text-muted" />
-      ) : (
-        <ChevronRight className="size-3.5 shrink-0 text-muted" />
+      <ChevronRight className={cn("size-3.5 shrink-0 text-hint transition-transform", open && "rotate-90")} />
+      <Icon className="size-4 shrink-0 text-muted" />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+      {active && (
+        <span className="size-2 shrink-0 rounded-full bg-success" title="Something here is running" />
       )}
-      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-      {active && <span className="size-1.5 shrink-0 rounded-full bg-success" />}
       <span className="shrink-0 text-2xs text-hint">{count}</span>
     </button>
   );
 }
 
+/** A package or project: its kind and name, then its scripts as rows. */
+function PackageBlock({
+  m,
+  node,
+  locate,
+  showHidden,
+  indent,
+}: {
+  m: Model;
+  node: PackageNode;
+  locate: (s: AddonScript) => Located;
+  showHidden: boolean;
+  indent: number;
+}) {
+  const scripts = node.scripts.map(locate).filter((l) => showHidden || !m.isHidden(l));
+  if (scripts.length === 0) return null;
+  const kind = KINDS[node.kind];
+  return (
+    <div className="mb-1" data-testid={`scripts-package-${node.folder || node.label}`}>
+      <div className="flex h-6 items-center gap-1.5 pr-2 text-xs" style={{ paddingLeft: 8 + indent * 14 }}>
+        <kind.icon className={cn("size-3.5 shrink-0", kind.tone)} />
+        <span className="truncate font-medium text-muted" title={node.folder}>
+          {node.label}
+        </span>
+        <span className={cn("shrink-0 text-2xs uppercase", kind.tone)}>{kind.text}</span>
+      </div>
+      {scripts.map((l) => (
+        <ScriptRow key={l.script.id} m={m} l={l} indent={indent + 1} />
+      ))}
+    </div>
+  );
+}
+
 function Tree({
   m,
-  project,
   tops,
+  locate,
   showHidden,
   expanded,
   toggle,
+  prefix,
 }: {
   m: Model;
-  project: AddonProject;
   tops: TopNode[];
+  locate: (s: AddonScript) => Located;
   showHidden: boolean;
   expanded: (key: string) => boolean;
   toggle: (key: string) => void;
+  prefix: string;
 }) {
   const visible = (packages: PackageNode[]) =>
-    packages.filter((p) => p.scripts.some((s) => showHidden || !m.isHidden(project.path, s.id)));
+    packages.filter((p) => p.scripts.some((s) => showHidden || !m.isHidden(locate(s))));
   const active = (packages: PackageNode[]) =>
-    packages.some((p) => p.scripts.some((s) => m.running.has(runKey(project.id, s.id))));
-  const packages = (list: PackageNode[]) =>
+    packages.some((p) => p.scripts.some((s) => isRunning(m, locate(s))));
+  const blocks = (list: PackageNode[], indent: number) =>
     visible(list).map((node) => (
-      <PackageRow key={node.folder} m={m} project={project} node={node} showHidden={showHidden} />
+      <PackageBlock
+        key={node.folder}
+        m={m}
+        node={node}
+        locate={locate}
+        showHidden={showHidden}
+        indent={indent}
+      />
     ));
   return (
     <>
       {tops.map((top) => {
         const all = top.repos.flatMap((r) => r.packages);
         if (visible(all).length === 0) return null;
-        const key = `${project.path}|${top.key}`;
+        const key = `${prefix}|${top.key}`;
         return (
           <div key={top.key}>
             <Fold
+              icon={top.flat ? FolderGit2 : Folder}
               label={top.label}
               open={expanded(key)}
               onToggle={() => toggle(key)}
               active={active(all)}
               count={countText(visible(all))}
-              depth={0}
+              indent={0}
               testId={`scripts-top-${top.label}`}
             />
             {expanded(key) &&
               (top.flat
-                ? packages(all)
+                ? blocks(all, 1)
                 : top.repos.map((repo) => {
                     if (visible(repo.packages).length === 0) return null;
-                    const rk = `${project.path}|${repo.key}`;
+                    const rk = `${prefix}|${repo.key}`;
                     return (
                       <div key={repo.key}>
                         <Fold
+                          icon={FolderGit2}
                           label={repo.label || top.label}
                           open={expanded(rk)}
                           onToggle={() => toggle(rk)}
                           active={active(repo.packages)}
                           count={countText(visible(repo.packages))}
-                          depth={1}
+                          indent={1}
                           testId={`scripts-repo-${repo.label || top.label}`}
                         />
-                        {expanded(rk) && <div className="pl-3">{packages(repo.packages)}</div>}
+                        {expanded(rk) && blocks(repo.packages, 2)}
                       </div>
                     );
                   }))}
@@ -533,9 +565,9 @@ function Tree({
 }
 
 /**
- * Every script Jig finds, like the scripts plugin (D-142): what runs now, your groups (Start and Stop
- * for each), then each folder as a tree of top folder → repository → package, scripts as chips.
- * Right-click a script to add it to a group or hide it. The right side is global (D-102).
+ * Every script Jig finds, structured like the scripts plugin (D-142, D-146): a filter, what runs now,
+ * your groups with Start / Stop (and each project's dashboard groups), then every script by top
+ * folder → repository → package, as rows with what they run. The right side is global (D-102).
  */
 export function ScriptsView({ ctx }: AddonComponentProps) {
   const projects = useProjectList();
@@ -553,6 +585,7 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
   const [arrangements, setArrangements] = useStorage<Record<string, Arrangement>>("arrangement", {});
   const [open, setOpen] = useStorage<Record<string, boolean>>("expanded", {});
   const [showHidden, setShowHidden] = useState(false);
+  const [query, setQuery] = useState("");
   const active = ctx.projects.active();
   const ordered = [...folders].sort((a, b) =>
     a.path === active?.path ? -1 : b.path === active?.path ? 1 : 0,
@@ -563,13 +596,20 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
     for (const project of folders) {
       const listing = listings[project.id];
       if (!listing || !("scripts" in listing)) continue;
+      const title = workspaces.find((w) => w.path === project.path)?.name ?? project.name;
       for (const script of listing.scripts) {
-        const pkg = script.folder ? (script.folder.split("/").pop() ?? script.folder) : project.name;
-        map.set(memberKey(project.path, script.id), { project, script, label: `${pkg} · ${script.name}` });
+        const pkg = script.folder ? (script.folder.split("/").pop() ?? script.folder) : title;
+        const top = script.folder ? (script.folder.split("/")[0] ?? title) : title;
+        map.set(memberKey(project.path, script.id), {
+          project,
+          script,
+          pkg,
+          where: top === pkg ? title : top,
+        });
       }
     }
     return map;
-  }, [folders, listings]);
+  }, [folders, listings, workspaces]);
 
   const m: Model = {
     ctx,
@@ -581,11 +621,11 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
     },
     groups,
     setGroups: (next) => void setGroups(next),
-    isHidden: (folder, id) => (arrangements[folder]?.hidden ?? []).includes(`s:${id}`),
-    toggleHide: (folder, id) =>
+    isHidden: (l) => (arrangements[l.project.path]?.hidden ?? []).includes(`s:${l.script.id}`),
+    toggleHide: (l) =>
       void setArrangements({
         ...arrangements,
-        [folder]: toggleHidden(arrangements[folder] ?? EMPTY_ARRANGEMENT, `s:${id}`),
+        [l.project.path]: toggleHidden(arrangements[l.project.path] ?? EMPTY_ARRANGEMENT, `s:${l.script.id}`),
       }),
   };
 
@@ -601,74 +641,166 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
       tops: listing && "scripts" in listing ? scriptTree(listing.scripts, repos, title) : [],
     };
   });
-  const all = trees.flatMap((t) => t.tops.flatMap((top) => top.repos.flatMap((r) => r.packages)));
+  const allPackages = trees.flatMap((t) => t.tops.flatMap((top) => top.repos.flatMap((r) => r.packages)));
   // One top folder in all: open it from the start.
   const single = trees.length === 1 && trees[0]!.tops.length === 1;
   const expanded = (key: string) => open[key] ?? single;
   const toggle = (key: string) => void setOpen({ ...open, [key]: !expanded(key) });
 
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = words.length
+    ? [...located.values()].filter((l) => {
+        const text =
+          `${l.script.name} ${l.pkg} ${l.where} ${l.script.folder} ${l.script.command}`.toLowerCase();
+        return words.every((w) => text.includes(w)) && (showHidden || !m.isHidden(l));
+      })
+    : [];
+
+  const groupMenu = (g: ScriptGroup, index: number) => (e: MouseEvent) =>
+    ctx.menu(
+      [
+        {
+          label: "Rename…",
+          icon: "pencil",
+          onSelect: async () => {
+            const name = await ctx.prompt({ title: "Rename group", initial: g.name, confirmLabel: "Rename" });
+            if (name) m.setGroups(renameGroup(groups, g.id, name));
+          },
+        },
+        {
+          label: "Move up",
+          icon: "arrow-up",
+          disabled: index === 0,
+          onSelect: () => m.setGroups(moveGroup(groups, g.id, -1)),
+        },
+        {
+          label: "Move down",
+          icon: "arrow-down",
+          disabled: index === groups.length - 1,
+          onSelect: () => m.setGroups(moveGroup(groups, g.id, 1)),
+        },
+        { separator: true },
+        {
+          label: "Delete group",
+          icon: "trash-2",
+          danger: true,
+          onSelect: () => m.setGroups(removeGroup(groups, g.id)),
+        },
+      ],
+      e.nativeEvent,
+    );
+  // Groups made on a project's dashboard show here too, so every group has Start and Stop.
+  const projectGroups = ordered.flatMap((project) => {
+    const listing = listings[project.id];
+    return listing && "groups" in listing ? listing.groups.map((g) => ({ project, g })) : [];
+  });
+
   if (folders.length === 0) return <Empty icon={SquareTerminal} title="No projects" />;
   return (
     <div className="flex h-full flex-col" data-testid="scripts-view">
-      <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
-        <span className="min-w-0 flex-1 truncate">{countText(all) || "Scripts"}</span>
-        <IconButton
-          icon={showHidden ? Eye : EyeOff}
-          size="sm"
-          label={showHidden ? "Leave hidden scripts out" : "Show hidden scripts"}
-          active={showHidden}
-          onClick={() => setShowHidden(!showHidden)}
-          data-testid="scripts-show-hidden"
-        />
-        <IconButton
-          icon={FolderPlus}
-          size="sm"
-          label="New group"
-          data-testid="scripts-new-group"
-          onClick={async () => {
-            const name = await ctx.prompt({
-              title: "New group",
-              message: "Then right-click scripts → Add to group.",
-              confirmLabel: "Create",
-            });
-            if (name?.trim()) m.setGroups(newGroup(groups, name));
-          }}
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-line p-2">
+        <div className="flex items-center gap-1">
+          <span className="min-w-0 flex-1 truncate text-xs text-muted">
+            {countText(allPackages) || "Scripts"}
+          </span>
+          <IconButton
+            icon={showHidden ? Eye : EyeOff}
+            size="sm"
+            label={showHidden ? "Leave hidden scripts out" : "Show hidden scripts"}
+            active={showHidden}
+            onClick={() => setShowHidden(!showHidden)}
+            data-testid="scripts-show-hidden"
+          />
+          <IconButton
+            icon={FolderPlus}
+            size="sm"
+            label="New group"
+            data-testid="scripts-new-group"
+            onClick={async () => {
+              const name = await ctx.prompt({
+                title: "New group",
+                message: "Then add scripts to it from their ⋯ menu (Add to group).",
+                confirmLabel: "Create",
+              });
+              if (name?.trim()) m.setGroups(newGroup(groups, name));
+            }}
+          />
+        </div>
+        <SearchInput
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
+          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+          placeholder="Filter scripts"
+          data-testid="scripts-filter"
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        <RunningList m={m} />
-        {groups.length > 0 && (
-          <section className="mb-3" data-testid="scripts-groups">
-            <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">Groups</div>
-            {groups.map((g, i) => (
-              <GroupCard key={g.id} m={m} group={g} index={i} />
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {words.length ? (
+          <Section title={`${matches.length} found`} testId="scripts-matches">
+            {matches.length === 0 && <div className="px-2 text-xs text-hint">No script matches.</div>}
+            {matches.slice(0, 200).map((l) => (
+              <ScriptRow key={memberKey(l.project.path, l.script.id)} m={m} l={l} context />
             ))}
-          </section>
+          </Section>
+        ) : (
+          <>
+            <RunningList m={m} />
+            {(groups.length > 0 || projectGroups.length > 0) && (
+              <Section title="Groups" testId="scripts-groups">
+                {groups.map((g, i) => (
+                  <GroupCard
+                    key={g.id}
+                    m={m}
+                    name={g.name}
+                    group={g}
+                    members={g.members.map((key) => ({ key, l: m.find(key) }))}
+                    testId={`scripts-group-${g.name}`}
+                    menu={groupMenu(g, i)}
+                  />
+                ))}
+                {projectGroups.map(({ project, g }) => (
+                  <GroupCard
+                    key={`${project.id}:${g.id}`}
+                    m={m}
+                    name={g.name}
+                    from={project.name}
+                    members={g.scriptIds.map((id) => ({
+                      key: id,
+                      l: located.get(memberKey(project.path, id)),
+                    }))}
+                    testId={`scripts-group-${g.name}`}
+                  />
+                ))}
+              </Section>
+            )}
+            <Section title="All scripts">
+              {trees.map((t) => (
+                <div key={t.project.path} className="mb-2">
+                  {trees.length > 1 && (
+                    <div className="px-2 pb-1 text-xs font-medium text-muted">{t.title}</div>
+                  )}
+                  {!t.listing && <Spinner center />}
+                  {t.listing && "error" in t.listing && (
+                    <div className="px-2 text-xs text-danger">{t.listing.error}</div>
+                  )}
+                  {t.listing && "scripts" in t.listing && t.listing.scripts.length === 0 && (
+                    <div className="px-2 text-xs text-hint">No scripts found.</div>
+                  )}
+                  <Tree
+                    m={m}
+                    tops={t.tops}
+                    locate={(s) => located.get(memberKey(t.project.path, s.id))!}
+                    showHidden={showHidden}
+                    expanded={expanded}
+                    toggle={toggle}
+                    prefix={t.project.path}
+                  />
+                </div>
+              ))}
+            </Section>
+          </>
         )}
-        {trees.map((t) => (
-          <section key={t.project.path} className="mb-2">
-            {trees.length > 1 && (
-              <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">
-                {t.title}
-              </div>
-            )}
-            {!t.listing && <Spinner center />}
-            {t.listing && "error" in t.listing && (
-              <div className="px-4 text-xs text-danger">{t.listing.error}</div>
-            )}
-            {t.listing && "scripts" in t.listing && t.listing.scripts.length === 0 && (
-              <div className="px-3 text-xs text-hint">No scripts found.</div>
-            )}
-            <Tree
-              m={m}
-              project={t.project}
-              tops={t.tops}
-              showHidden={showHidden}
-              expanded={expanded}
-              toggle={toggle}
-            />
-          </section>
-        ))}
       </div>
     </div>
   );
@@ -701,15 +833,15 @@ export async function runGroupMenu(ctx: AddonUiContext) {
   if (mine.length === 0 && theirs.length === 0)
     return ctx.notify({
       title: "No script groups yet",
-      message: "In the Scripts view: New group, then right-click scripts → Add to group.",
+      message: "In the Scripts view: New group, then add scripts from their ⋯ menu.",
       tone: "info",
     });
   const projects = ctx.projects.list();
   const startMine = async (g: ScriptGroup) => {
     for (const key of g.members) {
-      const { folder, scriptId } = parseMember(key);
-      const p = projects.find((x) => x.path === folder);
-      if (p) await safe(ctx, g.name, () => ctx.scripts.run(p.id, scriptId));
+      const at = key.indexOf("|");
+      const p = projects.find((x) => x.path === key.slice(0, at));
+      if (p) await safe(ctx, g.name, () => ctx.scripts.run(p.id, key.slice(at + 1)));
     }
   };
   ctx.menu(
