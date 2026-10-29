@@ -379,3 +379,4 @@ true"). This step checks the whole picture again:
 - [x] Testing on a small model: the `jig-tester` subagent in every chat and Tools → Test something…
       (D-124)
 - [x] Pipelines: every Azure DevOps organisation you belong to, all projects by default (D-125)
+- [x] Sign-in: `claude auth login`, Jig confirms it and closes the terminal; Get started shows it (D-126)

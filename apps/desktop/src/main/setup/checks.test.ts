@@ -30,6 +30,30 @@ describe("runSetupChecks", () => {
     expect(calls.every((c) => c.endsWith("--version") || c.includes("extension show"))).toBe(true);
   });
 
+  it("asks Claude Code whether it's signed in, keeping only yes or no and how", async () => {
+    const exec =
+      (signedIn: boolean): Exec =>
+      async (command, args) => {
+        if (command !== "/sdk/claude") return { code: 127, stdout: "", stderr: "" };
+        if (args[0] === "auth")
+          return {
+            code: 0,
+            stdout: JSON.stringify({ loggedIn: signedIn, authMethod: "claude.ai", email: "me@example.com" }),
+            stderr: "",
+          };
+        return { code: 0, stdout: "2.3.4 (Claude Code)\n", stderr: "" };
+      };
+    const [yes] = await runSetupChecks(exec(true), "/sdk/claude", { signIn: true });
+    expect(yes).toMatchObject({ id: "claude", ok: true });
+    expect(yes?.detail).toBe(
+      "2.3.4 (Claude Code). Signed in with your Claude subscription. Jig's chats use this login.",
+    );
+    expect(yes?.detail).not.toContain("example.com");
+    const [no] = await runSetupChecks(exec(false), "/sdk/claude", { signIn: true });
+    expect(no).toMatchObject({ ok: false });
+    expect(no?.detail).toContain("Not signed in");
+  });
+
   it("says when no Claude Code binary is available", async () => {
     const checks = await runSetupChecks(async () => ({ code: 127, stdout: "", stderr: "" }), undefined);
     expect(checks[0]).toMatchObject({ id: "claude", ok: false });

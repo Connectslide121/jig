@@ -3,6 +3,7 @@ import { app, net, shell } from "electron";
 import { JigError } from "../../shared/ipc";
 import { compareVersions, type UpdateInfo } from "../../shared/setup";
 import { getConfig } from "../config";
+import { getEngine } from "../engine";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
 import { paths } from "../state/paths";
@@ -82,7 +83,12 @@ async function checkForUpdates(): Promise<UpdateInfo> {
 }
 
 export function registerSetupHandlers(): void {
-  handle("setup.check", () => runSetupChecks(execTool, claudeBinary(getConfig().engine.claudePath)));
+  // The fake engine never asks the real Claude Code about its login.
+  handle("setup.check", () =>
+    runSetupChecks(execTool, claudeBinary(getConfig().engine.claudePath), {
+      signIn: getEngine().kind !== "fake",
+    }),
+  );
   handle("updates.check", () => checkForUpdates());
   handle("updates.apply", async () => {
     const info = await checkForUpdates();

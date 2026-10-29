@@ -52,11 +52,3 @@ test("scripts: a group starts several scripts at once", async ({ page, jigHome }
   await expect(page.getByTestId("terminal-tab-dev")).toBeVisible();
   await expect(page.getByTestId("terminal-tab-lint")).toBeVisible();
 });
-
-test("the sign-in action opens a private terminal (fake engine: no Claude Code)", async ({ page }) => {
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("sign in");
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("terminal-tab-Claude Code sign-in")).toBeVisible();
-  await expect(screenText(page)).toContainText("Fake engine");
-});

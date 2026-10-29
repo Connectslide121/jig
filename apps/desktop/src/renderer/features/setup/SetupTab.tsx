@@ -1,7 +1,7 @@
 import { CheckCircle2, CircleAlert, CircleDashed, ExternalLink, LogIn, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { SetupCheck, UpdateInfo } from "../../../shared/setup";
-import { call, errorMessage } from "../../lib/host";
+import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, Card, Spinner } from "../../ui";
 import { runAction } from "../../workbench/registry";
@@ -59,6 +59,8 @@ export function SetupTab() {
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => load(), [load]);
+  // Signing in from here changes what the checks say.
+  useHostEvent("claude.signIn", () => load());
   const missing = checks?.filter((c) => !c.ok && !c.optional).length ?? 0;
   return (
     <div className="h-full overflow-y-auto" data-testid="setup-tab">
@@ -67,7 +69,8 @@ export function SetupTab() {
           <h1 className="text-lg font-semibold">Get started</h1>
           <p className="mt-1 text-sm text-muted">
             Jig uses the tools already on your machine with your own logins — Claude Code, git, and optionally
-            the GitHub and Azure CLIs and VS Code. It only asks each for its version; it never reads a login.
+            the GitHub and Azure CLIs and VS Code. It asks each for its version, and Claude Code whether it's
+            signed in; it never reads a login.
           </p>
         </div>
         <Card className="overflow-hidden">

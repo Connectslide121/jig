@@ -6,12 +6,16 @@ import { getEngine, sessionEnv } from "../engine";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { execTool } from "../setup/checks";
+import { type ClaudeSignIn, parseSignIn } from "../setup/signIn";
 import { claudeBinary } from "./claudeBinary";
 import { terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
 import { defaultShell, makeWhich } from "./shell";
 
 let manager: TerminalManager | undefined;
+/** The terminal running Claude Code's sign-in: when it ends, Jig asks whether it worked. */
+let signInTerminal: string | undefined;
 
 export function terminalManager(): TerminalManager {
   if (!manager) throw new Error("Terminals not started");
@@ -31,6 +35,7 @@ export function startTerminals(): void {
       publishActivity({ kind: "terminal.command", text: command, projectId: terminal.projectId }),
     // A script that fails by itself is friction for Learning (not one you stopped).
     onExit: (terminal) => {
+      if (terminal.id === signInTerminal) void afterSignIn(terminal.id);
       if (terminal.scriptId && !terminal.private && terminal.exitCode && terminal.exitCode > 0)
         publishActivity({
           kind: "friction",
@@ -67,23 +72,40 @@ export function startTerminals(): void {
   handle("terminals.rename", ({ id, title }) => m.rename(id, title));
   handle("terminals.kill", ({ id }) => m.kill(id));
   handle("terminals.close", ({ id }) => m.close(id));
+  // Claude Code's own sign-in (`claude auth login`), which ends by itself once you're signed in.
   handle("terminals.claudeLogin", async ({ projectId }) => {
     const cwd = projectId ? (await projectStore().get(projectId)).path : homedir();
+    const title = "Claude Code sign-in";
     // The fake engine never starts the real Claude Code, not even for this.
-    if (getEngine().kind === "fake")
-      return m.create({
-        cwd,
-        projectId,
-        command: "echo Fake engine: this terminal would run Claude Code for /login",
-        title: "Claude Code sign-in",
-        private: true,
-      });
     const binary = claudeBinary(getConfig().engine.claudePath);
     // A private terminal: nothing typed here (the sign-in code) is recorded anywhere.
-    return binary
-      ? m.create({ cwd, projectId, file: binary, args: [], title: "Claude Code sign-in", private: true })
-      : m.create({ cwd, projectId, command: "claude", title: "Claude Code sign-in", private: true });
+    const t =
+      getEngine().kind === "fake"
+        ? m.create({
+            cwd,
+            projectId,
+            command: "echo Fake engine: Claude Code would sign you in here",
+            title,
+            private: true,
+          })
+        : binary
+          ? m.create({ cwd, projectId, file: binary, args: ["auth", "login"], title, private: true })
+          : m.create({ cwd, projectId, command: "claude auth login", title, private: true });
+    signInTerminal = t.id;
+    return t;
   });
+
+  /** The sign-in ended: ask Claude Code whether it worked, say so, and close the terminal if it did. */
+  async function afterSignIn(id: string) {
+    signInTerminal = undefined;
+    const binary = claudeBinary(getConfig().engine.claudePath) ?? "claude";
+    const signIn: ClaudeSignIn =
+      getEngine().kind === "fake"
+        ? { loggedIn: true, method: "the fake engine" }
+        : (parseSignIn((await execTool(binary, ["auth", "status", "--json"])).stdout) ?? { loggedIn: false });
+    emit("claude.signIn", signIn);
+    if (signIn.loggedIn) m.close(id);
+  }
 }
 
 export function stopTerminals(): void {

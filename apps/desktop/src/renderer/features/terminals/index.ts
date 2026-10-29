@@ -73,4 +73,21 @@ export function useTerminalsSync(): void {
   });
   useHostEvent("terminals.data", ({ id, data }) => routeTerminalData(id, data));
   useHostEvent("terminals.reveal", ({ id }) => showTerminal(id));
+  // Claude Code's sign-in ended: say whether it worked (the host closed its terminal if it did).
+  useHostEvent("claude.signIn", ({ loggedIn, method }) =>
+    notify(
+      loggedIn
+        ? {
+            title: "Signed in to Claude Code",
+            message: `${method ? `With ${method}. ` : ""}Jig's chats use this login; the sign-in terminal is closed.`,
+            tone: "success",
+          }
+        : {
+            title: "Not signed in yet",
+            message: "The sign-in ended before you were signed in.",
+            tone: "warning",
+            actions: [{ label: "Try again", run: () => void claudeLogin() }],
+          },
+    ),
+  );
 }

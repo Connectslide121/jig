@@ -26,7 +26,8 @@ export async function claudeLogin(): Promise<void> {
     showTerminal(t.id);
     notify({
       title: "Sign in to Claude Code",
-      message: "Type /login in the terminal and follow the steps. Jig never sees your login.",
+      message:
+        "Follow the steps in the terminal. Jig tells you when you're signed in and closes it; it never sees your login.",
     });
   } catch (error) {
     notify({ title: "Couldn't start Claude Code", message: errorMessage(error), tone: "danger" });

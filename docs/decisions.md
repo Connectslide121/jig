@@ -1249,3 +1249,16 @@ not a second engine or a local model) and Claude, on my own (how) · **Date:** 2
 - **Runs keep their organisation** (Run…, tracking, links). Arrangements are per organisation and
   project, falling back to the earlier per-project ones.
 - **e2e tests get a fake `az` that is signed out**, so no test reaches the real Azure CLI login.
+
+### D-126 — Jig asks Claude Code whether it's signed in, and signs in with `claude auth login`
+**Decided by:** Jon (signing in was confusing: after /login he was left in Claude Code with nothing
+saying Jig was signed in too) and Claude, on my own (how) · **Date:** 2026-10-29
+
+- **Sign in to Claude Code…** runs `claude auth login` (Claude Code's own sign-in, nothing else) in a
+  private terminal, instead of an interactive Claude Code where you type `/login`. It ends by itself.
+- **When it ends, Jig asks Claude Code** `claude auth status --json` and keeps only whether you're
+  signed in and the method ("your Claude subscription"), never the email, organisation or any
+  credential (vision principle 2 holds: Claude Code does the login, Jig only asks yes or no). Signed
+  in → a toast and the terminal closes; not → a toast with Try again.
+- **Get started shows it too** ("Signed in with your Claude subscription" / "Not signed in"), so the
+  Claude Code check is only green when Jig's chats can actually run. The fake engine never asks.

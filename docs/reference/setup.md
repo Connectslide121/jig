@@ -15,8 +15,14 @@ Code: `apps/desktop/src/main/setup/` (checks, IPC), `apps/desktop/src/main/updat
 | `code` | optional | `code --version` |
 
 Programs run without a shell (`.cmd` through `cmd.exe` on Windows), with a 20 s timeout. **No check
-reads, asks about or forwards a login**; Claude Code's sign-in state shows when a session starts (the
-engine's `not_signed_in` error → banner with Sign in).
+reads or forwards a login.** Claude Code is asked whether it's signed in (`claude auth status --json`,
+`setup/signIn.ts`), and only yes/no and the method are kept, never the email or organisation
+(D-126); with the fake engine it isn't asked. A chat that finds Claude Code signed out still shows
+the engine's `not_signed_in` banner with Sign in.
+
+**Sign in to Claude Code…** runs `claude auth login` in a private terminal. When it ends, Jig asks
+`claude auth status` again and emits `claude.signIn`: signed in → a toast says so and the terminal
+closes; not → a toast with Try again. Get started checks again.
 
 `config.setup.firstRunDone` (default `false`): an installed Jig (`AppInfo.packaged`) opens the Get
 started tab until you press **Done**.

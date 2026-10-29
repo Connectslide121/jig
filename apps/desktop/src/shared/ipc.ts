@@ -426,6 +426,8 @@ export interface HostEvents {
   "worktrees.changed": WorktreeChat[];
   /** Show this terminal (Claude started it from a chat). */
   "terminals.reveal": { id: string };
+  /** Claude Code's sign-in terminal ended: whether you're signed in now, and how (never who). */
+  "claude.signIn": { loggedIn: boolean; method?: string };
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };

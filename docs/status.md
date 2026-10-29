@@ -55,7 +55,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - Scripts on the project dashboard: npm/pnpm/yarn/bun scripts, `.ps1`/`.sh`, `dotnet run`/`watch`,
     `func start`, per folder; Run / Stop / Restart; groups such as "Start local" start several at once;
     the status bar shows "N running".
-  - Tools → Sign in to Claude Code… opens a private terminal with Claude Code for `/login`.
+  - Tools → Sign in to Claude Code… runs Claude Code's own sign-in in a private terminal; when you're
+    signed in Jig says so and closes it (D-126). Get started shows whether you're signed in.
 
 - **Phase 6 (done): add-on system.**
   - Add-ons are folders with `addon.json` (+ `ui.tsx`, `host.ts`, `README.md`) in `~/.jig/addons`
@@ -459,6 +460,11 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
     test windows count as in the background. A hidden Jig (`JIG_HIDDEN`) now never notifies, and
     notifications carry Jig's logo. (Restarting Jig never notified about old chats: only a chat
     that stops working does.)
+  - Signing in left you in an interactive Claude Code (first-run theme picker, then a chat) with
+    nothing saying Jig was signed in too: it now runs `claude auth login`, which only signs in, and
+    Jig confirms it and closes the terminal.
+  - Examples and tests used real project names ("Podium" as the New project placeholder); they're
+    neutral now, and AGENTS.md says so.
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
@@ -502,7 +508,9 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 - **Terminals on Windows**: PowerShell starts in the project folder, colours/fonts look right, resizing
   works, and **Stop** on a script really ends the dev server (node/dotnet child processes).
 - **Script discovery** in your real repos (npm/pnpm, `.csproj`, Azure Functions folders).
-- **Sign in to Claude Code…** opens Claude Code in a terminal and `/login` works there.
+- **Sign in to Claude Code…** with a real account: `claude auth login` in the terminal, then the
+  "Signed in" toast, the terminal closing by itself, and Get started saying "Signed in with your
+  Claude subscription".
 - **Routines and artifacts with your real account:** the Routines tab lists your routines (check the
   schedule words and prompts), on/off and Run now work, runs and their logs show, and a routine Claude
   makes in a chat appears after the reload. Artifacts: Claude's Artifact tool exists in your Claude

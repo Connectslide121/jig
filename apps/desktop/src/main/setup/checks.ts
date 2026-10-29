@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { SetupCheck } from "../../shared/setup";
 import { resolveCommand } from "../addons/winCommand";
+import { parseSignIn, signInText } from "./signIn";
 
 export type Exec = (
   command: string,
@@ -34,10 +35,15 @@ const firstLine = (s: string) =>
     .find((l) => l && !/^warning:/i.test(l)) ?? "";
 
 /**
- * What Jig needs on your machine. Only versions are asked for; no tool is asked about its login.
+ * What Jig needs on your machine. Versions, and whether Claude Code is signed in (asked from Claude
+ * Code itself, `signIn`; only yes/no and the method are kept). Other tools aren't asked about logins.
  * `claude` is the Claude Code binary Jig uses (yours or the one shipped with the Agent SDK).
  */
-export async function runSetupChecks(exec: Exec, claude: string | undefined): Promise<SetupCheck[]> {
+export async function runSetupChecks(
+  exec: Exec,
+  claude: string | undefined,
+  options: { signIn?: boolean } = {},
+): Promise<SetupCheck[]> {
   const version = async (command: string, args = ["--version"]) => {
     const r = await exec(command, args);
     return r.code === 0 ? firstLine(r.stdout) || firstLine(r.stderr) : undefined;
@@ -49,6 +55,10 @@ export async function runSetupChecks(exec: Exec, claude: string | undefined): Pr
     version("az"),
     version("code"),
   ]);
+  const signIn =
+    claude && claudeVersion && options.signIn
+      ? parseSignIn((await exec(claude, ["auth", "status", "--json"])).stdout)
+      : undefined;
   const devops = az
     ? (await exec("az", ["extension", "show", "--name", "azure-devops", "--output", "none"])).code === 0
     : false;
@@ -56,14 +66,14 @@ export async function runSetupChecks(exec: Exec, claude: string | undefined): Pr
     {
       id: "claude",
       label: "Claude Code",
-      ok: Boolean(claudeVersion),
+      ok: Boolean(claudeVersion) && signIn?.loggedIn !== false,
       optional: false,
       detail: claudeVersion
-        ? `${claudeVersion}. Sign-in is checked by Claude Code when your first session starts.`
+        ? `${claudeVersion}. ${options.signIn ? signInText(signIn) : "Sign-in is checked by Claude Code when your first session starts."}`
         : claude
           ? `Couldn't run ${claude}.`
           : "Not found: no Claude Code shipped for this platform and none set in Settings → Claude Code.",
-      help: "Sign in once with Sign in to Claude Code… (it opens Claude Code's own /login in a terminal).",
+      help: "Sign in once with Sign in to Claude Code… (Claude Code's own sign-in, in a terminal; Jig never sees your login).",
       url: "https://docs.claude.com/en/docs/claude-code/setup",
     },
     {

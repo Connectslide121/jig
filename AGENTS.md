@@ -123,6 +123,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **A repository's files are the user's.** Built-in add-ons write into a repository only on a user
   action (Release, Set up, Export as skill, Save in Preview) and say which files; `.jig/release.json`
   is meant to be committed and shared.
+- **No real names in examples:** placeholders, sample data, tests and docs use neutral names (Shop,
+  Contoso, Fabrikam), never Jon's projects, companies or colleagues.
 - Say **chat** in user-facing text, never "session" (that's the code's word). Frequent actions go
   where you are (a button, a hover action); rare ones in ⋯ menus and Tools (D-094).
 - A new user-visible feature gets a line on the "What Jig can do" page (`features/about/`); a new slot
