@@ -152,3 +152,11 @@ middle-click or `×` closes; right-click → Close, Close others, Close all; dra
 | `Ctrl+Shift+I` | developer tools |
 
 (On macOS `Ctrl` is `Cmd`, except for `Ctrl+Tab`.)
+
+Top-bar buttons expose each registered action group directly through the shared Menu component. Groups scroll horizontally on narrow windows; the all-tools icon and Ctrl+K retain searchable access to every action. No new view IDs or slots.
+
+Top-bar menus form one menu bar: click to open a group, then hovering another group switches the open menu. Hovering while closed leaves menus closed; Escape, selecting an action or clicking outside ends menu-bar navigation. Panel view tabs use `text-sm` labels, `size-4` icons and `h-7` controls; action-group labels in the top bar use `text-sm`.
+
+Menus survive window blur (including the Windows screenshot overlay). Escape, selecting an action and clicking outside within Jig still dismiss them.
+
+Jig-wide actions appear once in the main Jig logo/name menu; the duplicate Jig group button is omitted. The main menu derives those actions from the existing registry and adds Keyboard shortcuts/Extension slots.

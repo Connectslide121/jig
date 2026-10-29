@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatResetIn, planUsageFrom, usageTone } from "./usage";
+import { formatResetIn, formatUsageAmount, planUsageFrom, usageTone } from "./usage";
 
 const now = new Date("2026-10-28T10:00:00Z");
 
@@ -67,5 +67,16 @@ describe("formatResetIn and usageTone", () => {
       "danger",
       "ok",
     ]);
+  });
+});
+
+describe("formatUsageAmount", () => {
+  it("converts minor units using the currency's decimal places", () => {
+    expect(formatUsageAmount(4000, "EUR")).toBe("€40.00");
+    expect(formatUsageAmount(4003, "EUR")).toBe("€40.03");
+    expect(formatUsageAmount(1250, "USD")).toBe("US$12.50");
+    expect(formatUsageAmount(4000, "JPY")).toContain("4,000");
+    expect(formatUsageAmount(1234, "KWD")).toContain("1.234");
+    expect(formatUsageAmount(4000, "invalid")).toBe("40.00 invalid");
   });
 });

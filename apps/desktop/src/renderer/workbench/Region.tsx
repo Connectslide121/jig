@@ -189,12 +189,12 @@ export function Region({ region }: { region: SideRegion }) {
                   openMenuAt(e.currentTarget, viewMenu(view.id, region));
                 }}
                 className={cn(
-                  "flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium",
+                  "flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium",
                   isActive ? "bg-active text-fg" : "text-muted hover:bg-hover hover:text-fg",
                   over === view.id && "border-l-2 border-accent",
                 )}
               >
-                <Icon className="size-3.5 shrink-0" />
+                <Icon className="size-4 shrink-0" />
                 {(isActive || visible.length <= 3) && <span className="truncate">{view.title}</span>}
               </button>
             );
@@ -266,7 +266,7 @@ function Section({ viewId, region }: { viewId: string; region: SideRegion }) {
           ) : (
             <ChevronDown className="size-3.5 shrink-0" />
           )}
-          <Icon className="size-3.5 shrink-0" />
+          <Icon className="size-4 shrink-0" />
           <span className="truncate">{view.title}</span>
         </button>
         {!closed && HeaderActions && <HeaderActions viewId={viewId} region={region} />}

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
@@ -77,4 +77,58 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   // Ask Claude opens a chat with a request about the file.
   await code.getByTestId("preview-ask").click();
   await expect(page.getByTestId("composer-input")).toHaveValue(/cart\.ts and explain what it does/);
+});
+
+test("Markdown preview renders sanitized HTML and loads relative images", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "readme-demo");
+  await mkdir(dir, { recursive: true });
+  execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+  await copyFile(new URL("../apps/desktop/build/icon.png", import.meta.url), join(dir, "logo.png"));
+  await writeFile(
+    join(dir, "README.md"),
+    '<p align="center"><img src="logo.png?v=2" alt="Shop logo" width="112"></p>\n\n<h1 align="center">Shop README</h1>\n\n<script>document.documentElement.dataset.attacked="yes"</script>\n\n<a href="javascript:alert(1)">unsafe</a>',
+  );
+  await hostCall(page, "projects.add", { path: dir });
+  await page.keyboard.press("Control+Shift+G");
+  const md = await preview(page, "README.md");
+  await expect(md.getByRole("heading", { name: "Shop README" })).toBeVisible();
+  const image = md.getByAltText("Shop logo");
+  await expect(image).toHaveAttribute("width", "112");
+  await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1024);
+  await expect(md.locator("script, iframe")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.dataset.attacked)).toBeUndefined();
+  await expect(md.locator("a").filter({ hasText: "unsafe" })).not.toHaveAttribute("href", /javascript:/);
+});
+
+test("Markdown HTML tables keep spanning rows and balanced image columns", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "table-demo");
+  await mkdir(dir, { recursive: true });
+  execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
+  await copyFile(new URL("../apps/desktop/build/icon.png", import.meta.url), join(dir, "logo.png"));
+  await writeFile(
+    join(dir, "README.md"),
+    '<table><tr><td colspan="2" valign="top">Full width banner</td></tr><tr><td width="50%" valign="top"><img src="logo.png" alt="Left image">Left caption</td><td width="50%" valign="top"><img src="logo.png" alt="Right image">Right caption with a little more text</td></tr></table>\n\n| Left | Center | Right |\n| :--- | :---: | ---: |\n| One | Two | 3 |',
+  );
+  await hostCall(page, "projects.add", { path: dir });
+  await page.keyboard.press("Control+Shift+G");
+  const md = await preview(page, "README.md");
+  await expect(md.getByAltText("Left image")).toBeVisible();
+  await expect
+    .poll(() => md.getByAltText("Left image").evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBe(1024);
+  const table = md.locator("table").first();
+  await expect(table.locator("tr").first().locator("td")).toHaveAttribute("colspan", "2");
+  for (const width of [1000, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const sizes = await table
+      .locator("tr")
+      .nth(1)
+      .locator("td")
+      .evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
+    expect(Math.abs(sizes[0]! - sizes[1]!)).toBeLessThan(2);
+    const box = await table.boundingBox();
+    const wrapper = await table.locator("..").boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(wrapper!.width + 1);
+  }
+  await expect(md.locator("table").last().locator("th").nth(2)).toHaveCSS("text-align", "right");
 });

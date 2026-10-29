@@ -621,21 +621,21 @@ export function Composer({
               type="button"
               data-testid="model-menu"
               onClick={(e) => void openModelMenu(e.currentTarget, meta)}
-              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-xs text-muted hover:bg-hover hover:text-fg"
+              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
               title={
                 meta.activeModel
                   ? `Model and effort · Claude Code reports: ${meta.activeModel}`
                   : "Model and effort"
               }
             >
-              {modelLabel(meta)} <ChevronDown className="size-3" />
+              {modelLabel(meta)} <ChevronDown className="block size-3.5 shrink-0" />
             </button>
             <button
               type="button"
               data-testid="permission-menu"
               onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
               className={cn(
-                "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-xs hover:bg-hover",
+                "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
                 meta.permissionMode === "bypassPermissions"
                   ? "text-danger"
                   : meta.permissionMode === "default"
@@ -645,11 +645,12 @@ export function Composer({
               title="What Claude may do without asking (Shift+Tab to switch)"
             >
               {meta.permissionMode === "plan" ? (
-                <ListChecks className="size-3" />
+                <ListChecks className="block size-3.5 shrink-0" />
               ) : (
-                <Shield className="size-3" />
+                <Shield className="block size-3.5 shrink-0" />
               )}
-              {PERMISSION_MODE_LABELS[meta.permissionMode]} <ChevronDown className="size-3" />
+              {PERMISSION_MODE_LABELS[meta.permissionMode]}{" "}
+              <ChevronDown className="block size-3.5 shrink-0" />
             </button>
             {busy && (
               <Button

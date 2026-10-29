@@ -119,6 +119,8 @@ export interface Engine {
    * Your plan's usage as Claude Code's `/usage` reports it (5-hour and weekly windows). Claude Code
    * fetches it with its own login; no message is sent to Claude.
    */
+  /** Available models from a no-prompt Claude Code control request. */
+  models(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<ModelInfo[]>;
   planUsage(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<RawUsage>;
 }
 

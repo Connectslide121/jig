@@ -191,6 +191,21 @@ test("Pipelines asks to be set up and has a settings page", async ({ page }) => 
     ok: true,
     value: { allOrgs: true, orgs: [{ org: "https://dev.azure.com/contoso", projects: ["Web", "Api"] }] },
   });
+  await page.getByTestId("settings-nav-appearance").click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByRole("button", { name: "Pipelines settings", exact: true }).click();
+  await expect(page.getByTestId("pipelines-settings")).toBeVisible();
+  await expect(page.getByTestId("tab-jig.settings")).toHaveCount(1);
+  // Projects, including empty/erroring ones, can be hidden and restored from Arrange.
+  await page.getByTestId("pipelines-arrange").click();
+  const projects = page.getByTestId("pipelines-projects-contoso");
+  await projects.getByTestId("arrange-toggle-Web").click();
+  await page.getByTestId("pipelines-arrange").click();
+  await expect(projects.getByTestId("arrange-item-Web")).toHaveCount(0);
+  await page.getByTestId("pipelines-arrange").click();
+  await projects.getByTestId("arrange-toggle-Web").click();
+  await page.getByTestId("pipelines-arrange").click();
+  await expect(projects.getByTestId("arrange-item-Web")).toBeVisible();
 });
 
 test("Git: review comments on diff lines, sent to a chat as one message", async ({ page, jigHome }) => {

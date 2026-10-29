@@ -1970,22 +1970,37 @@ export function showGit(ctx: AddonUiContext) {
   ctx.showView("git");
 }
 
-export async function openHistory(ctx: AddonUiContext) {
-  const project = activeRepo(ctx);
-  if (!project) return;
-  const status = await ctx.host.call<Status>("status", { cwd: project.path });
-  const ref = refOf(status.branch.head);
-  ctx.openTab("history", { ...where(project), ref, title: `History: ${ref}` });
+/** Show the current branch’s commits, resolving a project to an inner repository first. */
+export function openHistory(ctx: AddonUiContext) {
+  const project = ctx.projects.active();
+  if (!project) return ctx.notify({ title: "No project selected", tone: "warning" });
+  openProjectHistory(ctx, { project });
 }
 
-export function openProjectHistory(ctx: AddonUiContext, target: { project: AddonProject }) {
-  if (!target.project.isGitRepo)
-    return ctx.notify({ title: `${target.project.name} is not a git repository`, tone: "warning" });
-  ctx.openTab("history", {
-    projectId: target.project.id,
-    ref: "HEAD",
-    title: `History: ${target.project.name}`,
-  });
+export function openProjectHistory(ctx: AddonUiContext, { project }: { project: AddonProject }) {
+  const open = (repo: RepoProject) =>
+    ctx.openTab("history", {
+      ...where(repo),
+      ref: "HEAD",
+      title: `History: ${repo.name}`,
+    });
+  const focused = focusOf(project);
+  if (focused) return open(focused);
+  if (project.repos.length === 1) return open(repoView(project, project.repos[0]!));
+  if (project.repos.length > 1) {
+    return ctx.menu(
+      [
+        { label: "Choose a repository for history", disabled: true },
+        ...project.repos.map((repo) => ({
+          label: repo.name,
+          icon: "folder-git-2",
+          onSelect: () => open(repoView(project, repo)),
+        })),
+      ],
+      document.querySelector<HTMLElement>("[data-testid=project-switcher]") ?? document.body,
+    );
+  }
+  ctx.notify({ title: `${project.name} has no git repositories`, tone: "warning" });
 }
 
 export async function fetch(ctx: AddonUiContext) {
@@ -2057,10 +2072,14 @@ export function GitSettings({ ctx }: AddonComponentProps) {
           />
         </div>
         <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1 text-sm">Every</div>
+          <label className="shrink-0 text-sm" htmlFor="git-autofetch-minutes">
+            Every
+          </label>
           <Select
             value={String(data.minutes)}
             disabled={!data.enabled}
+            id="git-autofetch-minutes"
+            className="max-w-40"
             data-testid="git-autofetch-minutes"
             onChange={(e) => void save({ ...data, minutes: Number(e.target.value) })}
           >

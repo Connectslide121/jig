@@ -19,8 +19,7 @@ installer — handy for a quick try). On Linux/macOS `npm run dist` makes `relea
 `release/mac/` (unsigned, for testing).
 
 Config: `apps/desktop/electron-builder.yml`. The icon is generated: `npm run icon --workspace
-@jig/desktop` draws Jig's logo into `apps/desktop/build/icon.png` (1024×1024; electron-builder makes
-the `.ico`/`.icns`). The window uses the same file, so Jig shows its icon in the taskbar also when it
+@jig/desktop` draws Jig's logo into `apps/desktop/build/icon.png` (1024×1024) and `icon.ico` (256×256; electron-builder makes the macOS `.icns`). The window uses the platform icon, so Jig shows its icon in the taskbar also when it
 runs from a clone. The logo's shapes live in two places that must match: `scripts/make-icon.mjs` and
 `src/renderer/ui/JigLogo.tsx` (the in-app logo); see `docs/brand/`.
 
@@ -70,3 +69,9 @@ There is no silent auto-update (D-067).
 - **No console windows.** Every process Jig starts sets `windowsHide`.
 - **Long paths.** If `npm install` complains about long paths, enable them in Git (`git config --global
   core.longpaths true`).
+
+Windows uses an explicit generated `build/icon.ico` (256px PNG-compressed ICO), alongside the 1024px PNG. Regenerate both with `npm run icon --workspace @jig/desktop`. The packaged window sets the same AppUserModelID as the installer and supplies Jig's icon and executable relaunch path to the Windows shell. Rebuild/reinstall to verify taskbar and shortcut branding; existing pinned shortcuts may retain a cached icon until repinned.
+
+Taskbar follow-up: the Windows taskbar button is registered only at ready-to-show, after its identity and window icon are set. Relaunch metadata uses `Jig.exe,0`, matching the Start-menu shortcut. Hidden browser helpers explicitly skip the taskbar.
+
+Development uses `dev.jig.workbench.development` as its Windows taskbar identity; installed builds retain `dev.jig.workbench`, matching the installer. This prevents development Electron from seeding the installed app’s taskbar group cache.

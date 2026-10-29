@@ -15,6 +15,7 @@ asar: false
 files:
   - dist/**
   - build/icon.png
+  - build/icon.ico
   - package.json
   - "!**/*.map"
   # Only the Claude Code binary for this platform (glibc builds don't need the musl one).
@@ -34,7 +35,7 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: build/icon.png
+  icon: build/icon.ico
 nsis:
   oneClick: false
   perMachine: false

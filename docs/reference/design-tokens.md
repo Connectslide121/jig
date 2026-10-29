@@ -67,3 +67,11 @@ Reuse these before writing new ones; add-ons get the same components as `@jig/sd
 | `Menu`: `openMenu`, `openMenuAt`, `contextMenu`, `MenuButton`, `MenuHost` | every menu and right-click menu; items with icon, shortcut, checked, danger, submenu |
 | `Dialog`, `confirmDialog`, `promptDialog`, `DialogHost` | modal dialogs; promise-based confirm and prompt |
 | `Tooltip`, `Spinner` | |
+
+Menu items use `text-base`; small and regular text buttons use `text-sm`. Icon buttons increase from `size-6/7` to `size-7/8`, with icons from `size-3.5/4` to `size-4/4.5`. Appearance font size still scales every control.
+
+Panel view tabs (Files, Pipelines, etc.) use `h-7`, `text-sm` and `size-4` icons. The top-bar action groups use `text-sm` to keep their labels quieter than panel content.
+
+Regular text buttons use `text-sm` with `leading-none` and a non-shrinking `size-4` icon. Composer model/permission controls use the same text size and `size-3.5` icons. Panel view tabs use `text-sm`; toolbar icon-only buttons keep their larger sizes.
+
+Menu hover/keyboard selection uses bg-accent-soft with an inset ring-accent/60 outline, rather than bg-hover against the elevated menu surface. The ring does not affect layout; disabled items do not receive this highlight. The all-tools picker uses the same treatment.

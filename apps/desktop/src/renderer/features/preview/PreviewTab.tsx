@@ -104,6 +104,7 @@ function Viewer({ preview, source, scripts }: { preview: FilePreview; source: bo
         <Frame>
           <div className="mx-auto max-w-3xl px-8 py-6" data-testid="preview-markdown">
             <Markdown
+              allowHtml
               text={preview.text ?? ""}
               baseUrl={preview.baseUrl}
               onLocalLink={onLocalLink}

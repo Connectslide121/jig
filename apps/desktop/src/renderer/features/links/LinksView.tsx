@@ -263,7 +263,11 @@ function AzureDialog({
       <div className="flex flex-col gap-3">
         <p className="text-xs text-muted">Through your own Azure CLI login (`az`); Jig stores no tokens.</p>
         <div className="grid grid-cols-2 gap-2">
-          <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter" />
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Input is the labelled control. */}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Filter</span>
+            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter" />
+          </label>
           <GroupField project={project} value={groupTitle} onChange={setGroupTitle} />
         </div>
         {error && <div className="text-xs text-danger">{error}</div>}

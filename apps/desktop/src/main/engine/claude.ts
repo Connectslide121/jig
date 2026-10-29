@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { EngineEvent, PermissionMode } from "../../shared/engine";
+import type { EngineEvent, ModelInfo, PermissionMode } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
 import { isReadOnlyJigTool } from "./jigTools";
@@ -200,12 +200,31 @@ export class ClaudeEngine implements Engine {
     };
   }
 
-  async planUsage(options: {
+  async models(options: {
     env: Record<string, string | undefined>;
     claudePath: string;
-  }): Promise<RawUsage> {
-    // A Claude Code process with no prompt: it answers control requests (here the data behind
-    // `/usage`) without sending anything to Claude. Closed right after.
+  }): Promise<ModelInfo[]> {
+    return this.control(options, async (q) =>
+      (await q.supportedModels()).map((m) => ({
+        value: m.value,
+        displayName: m.displayName,
+        description: m.description,
+        ...(m.supportsEffort && m.supportedEffortLevels?.length ? { efforts: m.supportedEffortLevels } : {}),
+      })),
+    );
+  }
+
+  planUsage(options: { env: Record<string, string | undefined>; claudePath: string }): Promise<RawUsage> {
+    return this.control(options, (q) =>
+      q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }),
+    );
+  }
+
+  /** No prompt, tools or persisted chat: only SDK control requests, then close. */
+  private async control<T>(
+    options: { env: Record<string, string | undefined>; claudePath: string },
+    read: (q: ReturnType<typeof query>) => Promise<T>,
+  ): Promise<T> {
     const input = new AsyncQueue<SDKUserMessage>();
     const abort = new AbortController();
     const q = query({
@@ -218,7 +237,7 @@ export class ClaudeEngine implements Engine {
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         abortController: abort,
-        stderr: (data) => log.debug(`claude stderr (usage): ${data.trimEnd()}`),
+        stderr: (data) => log.debug(`claude stderr (control): ${data.trimEnd()}`),
       },
     });
     const drain = (async () => {
@@ -228,12 +247,12 @@ export class ClaudeEngine implements Engine {
     })().catch(() => {});
     let timer: NodeJS.Timeout | undefined;
     try {
-      return (await Promise.race([
-        q.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({ skipBehaviors: true }),
-        new Promise((_, reject) => {
+      return await Promise.race([
+        read(q),
+        new Promise<T>((_, reject) => {
           timer = setTimeout(() => reject(new Error("Claude Code didn't answer in time")), 45_000);
         }),
-      ])) as RawUsage;
+      ]);
     } finally {
       clearTimeout(timer);
       input.close();

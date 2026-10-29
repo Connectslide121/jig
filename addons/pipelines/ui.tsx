@@ -232,7 +232,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
           icon={arranging ? Check : ListOrdered}
           onClick={() => setArranging(!arranging)}
           data-testid="pipelines-arrange"
-          title="Hide pipelines, reorder them, group them with dividers"
+          title="Hide projects or pipelines, reorder them, group them with dividers"
         >
           {arranging ? "Done" : "Arrange"}
         </Button>
@@ -247,31 +247,45 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
               <div className="px-2 pt-1 pb-0.5 text-xs font-semibold text-fg">{orgName(o.org)}</div>
             )}
             {o.error && <div className="px-2 text-xs text-danger">{o.error}</div>}
-            {o.projects.map((p) => {
-              const key = `${orgName(o.org)}/${p.project}`;
-              return (
-                <div key={p.project} className="mb-2">
-                  <div className="px-2 py-1 text-2xs font-semibold tracking-wide text-hint uppercase">
-                    {p.project}
-                  </div>
-                  {p.error && <div className="px-2 text-xs text-danger">{p.error}</div>}
-                  {!p.error && p.pipelines.length === 0 && (
-                    <div className="px-2 text-xs text-muted">No pipelines.</div>
-                  )}
-                  <ArrangeList
-                    items={p.pipelines}
-                    keyOf={(pl) => String(pl.id)}
-                    arrangement={arrangements?.[key] ?? arrangements?.[p.project] ?? EMPTY_ARRANGEMENT}
-                    onChange={(next) => setArrangement(key, next)}
-                    arranging={arranging}
-                    testId={`pipelines-project-${p.project}`}
-                    renderItem={(pl) => (
-                      <PipelineRow ctx={ctx} org={o.org} project={p.project} pl={pl} arranging={arranging} />
+            <ArrangeList
+              items={o.projects}
+              keyOf={(p) => p.project}
+              arrangement={arrangements?.[`projects:${orgUrl(o.org).toLowerCase()}`] ?? EMPTY_ARRANGEMENT}
+              onChange={(next) => setArrangement(`projects:${orgUrl(o.org).toLowerCase()}`, next)}
+              arranging={arranging}
+              testId={`pipelines-projects-${orgName(o.org)}`}
+              renderItem={(p) => {
+                const key = `${orgName(o.org)}/${p.project}`;
+                return (
+                  <div key={p.project} className="mb-2">
+                    <div className="px-2 py-1 text-2xs font-semibold tracking-wide text-hint uppercase">
+                      {p.project}
+                    </div>
+                    {p.error && <div className="px-2 text-xs text-danger">{p.error}</div>}
+                    {!p.error && p.pipelines.length === 0 && (
+                      <div className="px-2 text-xs text-muted">No pipelines.</div>
                     )}
-                  />
-                </div>
-              );
-            })}
+                    <ArrangeList
+                      items={p.pipelines}
+                      keyOf={(pl) => String(pl.id)}
+                      arrangement={arrangements?.[key] ?? arrangements?.[p.project] ?? EMPTY_ARRANGEMENT}
+                      onChange={(next) => setArrangement(key, next)}
+                      arranging={arranging}
+                      testId={`pipelines-project-${p.project}`}
+                      renderItem={(pl) => (
+                        <PipelineRow
+                          ctx={ctx}
+                          org={o.org}
+                          project={p.project}
+                          pl={pl}
+                          arranging={arranging}
+                        />
+                      )}
+                    />
+                  </div>
+                );
+              }}
+            />
           </div>
         ))}
       </div>
@@ -363,7 +377,9 @@ function OrgSettingsRow({
 }
 
 export function PipelinesSettings({ ctx }: AddonComponentProps) {
-  const { data } = useHostCall<PipelineSettings>("settings");
+  const { data, error } = useHostCall<PipelineSettings>("settings");
+  const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<PipelineSettings>();
   const [found, setFound] = useState<{ orgs?: string[]; error?: string }>({});
   const [adding, setAdding] = useState("");
@@ -378,6 +394,7 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
       (error: Error) => setFound({ error: error.message }),
     );
   }, [ctx, form?.allOrgs, found]);
+  if (error) return <div className="text-sm text-danger">{error}</div>;
   if (!form) return <Spinner className="m-3" />;
   const rows = effectiveOrgs(form, form.allOrgs ? (found.orgs ?? []) : []);
   const listed = (org: string) => form.orgs.some((o) => orgUrl(o.org).toLowerCase() === org.toLowerCase());
@@ -395,8 +412,15 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
     setAdding("");
   };
   const save = async () => {
-    await ctx.host.call("saveSettings", form);
-    ctx.notify({ title: "Pipelines settings saved", tone: "success" });
+    setSaving(true);
+    try {
+      await ctx.host.call("saveSettings", form);
+      ctx.notify({ title: "Pipelines settings saved", tone: "success" });
+    } catch (error) {
+      setStatus({ ok: false, message: (error as Error).message });
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <div className="flex flex-col gap-6" data-testid="pipelines-settings">
@@ -408,7 +432,17 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => void ctx.host.call<{ ok: boolean; message: string }>("check").then(setStatus)}
+            busy={checking}
+            onClick={async () => {
+              setChecking(true);
+              try {
+                setStatus(await ctx.host.call<{ ok: boolean; message: string }>("check"));
+              } catch (error) {
+                setStatus({ ok: false, message: (error as Error).message });
+              } finally {
+                setChecking(false);
+              }
+            }}
           >
             Check Azure CLI
           </Button>
@@ -467,7 +501,13 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
           </Button>
         </div>
         <div className="flex gap-2">
-          <Button variant="primary" size="sm" onClick={() => void save()} data-testid="pipelines-save">
+          <Button
+            variant="primary"
+            size="sm"
+            busy={saving}
+            onClick={() => void save()}
+            data-testid="pipelines-save"
+          >
             Save
           </Button>
           {rows.map((o) => (

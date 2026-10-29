@@ -1,6 +1,6 @@
 # Status
 
-_Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
+_Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
 
@@ -24,7 +24,7 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - Themes: Jig Dark, Jig Light, your own files in `~/.jig/themes` (Jig or VS Code format, re-applied
     on save), themes from installed VS Code / Insiders / Cursor / VSCodium / Windsurf (plus VS Code's own
     built-in themes), and Open VSX search + install (theme JSON only). See `docs/guides/themes.md`.
-  - Settings → Appearance: theme grid with hover preview, follow the system light/dark mode, density,
+  - Settings → Appearance: theme grid with selection only, follow the system light/dark mode, density,
     corners, font size, UI/code fonts. Code is highlighted with Shiki using the theme's own colours.
   - Base components in `apps/desktop/src/renderer/ui/` (buttons, inputs, menus, dialogs, …).
 - **Phase 3 (done): workbench shell.**
@@ -604,3 +604,38 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   hand. On a normal machine `npm install` downloads it.
 - `docs/plan/01-app-skeleton.md` lists the bridge as `window.jig.invoke` + renderer `call()` (the
   envelope design); see its notes.
+
+## Model defaults and desktop polish (2026-10-29)
+
+- New chats default to native Opus planning / Sonnet execution and Plan mode. Settings → Claude Code exposes the chat, subagent fallback, helper and tester models; Use recommended defaults applies the preset to existing installations. Existing saved choices remain.
+- Subagent fallback is Sonnet, add-on questions use Sonnet, tester/reflection stay Haiku. Explicit specialist choices remain available; this is not a quality guarantee or cost cap.
+- Top-bar action groups each have a menu; the all-tools icon and Ctrl+K still search everything. Theme cards apply only on selection, with no hover preview. Menu/button text and toolbar icons increase one token step.
+- Pipelines → Arrange hides/restores whole DevOps projects. Settings checks/save show progress/errors.
+- Extra usage formats cents as currency (4000 EUR = €40.00).
+- Windows builds include an explicit ICO and shell relaunch metadata. Needs testing after reinstalling; existing taskbar pins may need repinning.
+
+- Markdown Preview renders safe embedded README HTML (headings, centered blocks and sized local images), instead of printing tags. Scripts and handlers are removed; chat HTML stays escaped.
+
+Validation: `npm run check` passes (454 tests; 8 skipped). Focused fake-engine Electron regressions pass for model settings/action groups, pipeline gear navigation/project hiding, theme selection and Markdown HTML/local images. Screenshots regenerated. The packaged Windows app starts and loads its built-in add-ons, and the executable contains Jig’s icon. The pipeline gear failure was not reproduced in current source; verify the fresh installed build. Actual installed taskbar/pinned-shortcut appearance still needs reinstall verification.
+
+Markdown table follow-up: preserve HTML spans, column widths and cell alignment; README screenshot galleries no longer lose their spanning rows. Ordinary GFM table alignment is retained too.
+
+UI follow-up: larger panel view tabs and slightly smaller top-bar group labels. Open top-bar menus switch groups on hover; closed menus stay closed. Add from Azure gives Filter and Group matching label/input stacks so their inputs align.
+
+Taskbar investigation: the installed executable, running-window icon handles and Start-menu shortcut all contain Jig’s logo, and there is no Jig taskbar pin. The reported Electron taskbar icon therefore remains a shell/grouping issue rather than a missing asset. Follow-up defers taskbar registration until window branding is ready, uses the executable icon for relaunch metadata and excludes browser helpers. Actual visible taskbar result still needs verification after installing this follow-up.
+
+Menus remain open while a screenshot overlay takes focus. Git history from a project resolves its focused/only inner repository or offers a repository picker; it displays that repository’s current-branch commits. Git Settings keeps Every visible beside the interval select. Shared regular Button text returns to text-sm with centered icons, while panel tabs and toolbar icon buttons retain their separate sizes.
+
+Settings follow-up: Claude Code model choices are dropdowns discovered without an AI prompt; the recommended preset is a primary button and subagent precedence lives in expandable help. Font fields offer bundled/system/custom choices and individual Reset buttons. Open VSX search runs after a 500 ms typing pause (at least two characters), with stale results ignored; Enter/Search remains available.
+
+Repos hover actions now reserve their layout space; revealing fetch/pull/push/more no longer shifts repository text or changes row height.
+
+The main Jig logo/name menu now includes the registered Jig actions (setup, updates, reload, settings, developer tools, all tools and About), replacing the duplicate top-bar Jig group. Development also sets explicit window-level taskbar icon/relaunch metadata, using its own identity.
+
+Latest validation: `npm run check` passes with 459 tests (8 skipped). Additional fake-engine Electron regressions pass for merged/hovering menus, screenshot blur, workspace history, model pickers, font reset and automatic Open VSX search. The user requested a local development launch instead of another installer; use the existing Jig home and close the installed copy first. Taskbar visual verification remains open.
+
+Live validation (2026-10-29): closed the installed copy and launched `npm run dev` from this checkout. The dev server is at http://localhost:5199/ and the app uses the existing `~/.jig` home; the visible local Electron window was verified. No follow-up installer was built.
+
+Panel-tab refinement: labels (Chats, Files, Pipelines, etc.) use text-sm, one step smaller; icon and button dimensions remain unchanged. Applied to the live dev build through hot reload.
+
+Dropdown/menu hover is clearer: an accent-tinted fill and inset accent outline identify the hovered or keyboard-selected row, also in the all-tools picker. Disabled rows stay unhighlighted.

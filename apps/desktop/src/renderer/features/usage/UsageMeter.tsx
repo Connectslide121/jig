@@ -1,6 +1,12 @@
 import { Gauge, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
-import { formatResetIn, type PlanUsage, type UsageWindow, usageTone } from "../../../shared/usage";
+import {
+  formatResetIn,
+  formatUsageAmount,
+  type PlanUsage,
+  type UsageWindow,
+  usageTone,
+} from "../../../shared/usage";
 import { timeAgo } from "../../lib/time";
 import { refreshUsage, useUsage } from "../../stores/usage";
 import { Badge, cn, Tooltip } from "../../ui";
@@ -82,7 +88,7 @@ export function UsageCard({ usage }: { usage: PlanUsage }) {
         <div className="text-2xs text-muted">
           Extra usage: {percentText(usage.extra.percent)}
           {usage.extra.monthlyLimit !== null && usage.extra.usedCredits !== null
-            ? ` (${usage.extra.usedCredits} of ${usage.extra.monthlyLimit} ${usage.extra.currency ?? ""})`
+            ? ` (${formatUsageAmount(usage.extra.usedCredits, usage.extra.currency)} of ${formatUsageAmount(usage.extra.monthlyLimit, usage.extra.currency)})`
             : ""}
         </div>
       )}

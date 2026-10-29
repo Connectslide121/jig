@@ -13,3 +13,5 @@ opens its Git view. "New chat in this repository" starts a chat inside it.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
 Uses your own `git` and `code`.
+
+Row actions reserve their layout space while hidden and become visible on hover or keyboard focus, so repository text and row heights do not shift.

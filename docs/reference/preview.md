@@ -71,3 +71,7 @@ Code and text files are **always editable** in the Preview tab (D-101). Kinds wi
   Claude's edits.
 - Mermaid (`ui/Mermaid.tsx`) loads on first use, renders with `securityLevel: "strict"` and takes the
   theme's colours. Chats render ```` ```mermaid ```` blocks as diagrams too.
+
+Markdown file previews parse embedded HTML with rehype-raw followed by the GitHub-style rehype-sanitize allowlist. Safe headings, alignment, details, tables, links and images render; scripts, handlers, styles and frames are removed. Relative images/links still resolve through the existing jig-file grants; image dimensions are retained. Chat Markdown keeps escaping HTML.
+
+Markdown table components preserve sanitized cell spans (`colspan`/`rowspan`), widths and horizontal/vertical alignment from HTML, plus GFM alignment. Tables fill their available width with horizontal overflow contained by a wrapper. This keeps README galleries with full-width rows and two-column image rows intact.

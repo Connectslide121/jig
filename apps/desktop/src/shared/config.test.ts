@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig, inversePatch, patchPaths, protectedIn } from "./config";
+import { ConfigSchema, defaultConfig, inversePatch, patchPaths, protectedIn } from "./config";
 
 describe("patch helpers", () => {
   it("lists paths, finds protected settings and builds an undo patch", () => {
@@ -15,4 +15,17 @@ describe("patch helpers", () => {
       learning: { exclusions: [] },
     });
   });
+});
+
+it("starts new chats with native Opus planning and Sonnet execution, preserving explicit choices", () => {
+  expect(defaultConfig().engine).toMatchObject({
+    defaultModel: "opusplan",
+    defaultPermissionMode: "plan",
+    subagentModel: "sonnet",
+    helperModel: "sonnet",
+    testerModel: "haiku",
+  });
+  expect(
+    ConfigSchema.parse({ engine: { defaultModel: "", defaultPermissionMode: "default" } }).engine,
+  ).toMatchObject({ defaultModel: "", defaultPermissionMode: "default" });
 });

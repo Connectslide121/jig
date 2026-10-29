@@ -34,7 +34,7 @@ export function registerAiHandlers(): void {
     const { engine } = getConfig();
     const answer = await getEngine().oneShot(prompt, {
       cwd: cwd || jigHome(),
-      model: "",
+      model: engine.helperModel,
       appendSystemPrompt: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench around Claude Code). Answer with exactly what was asked, without preamble.`,
       env: sessionEnv(process.env, engine.allowApiKey),
       claudePath: engine.claudePath,

@@ -447,3 +447,15 @@ mode with your add-ons off, and Jig shows a banner); installed, the latest GitHu
 - **End-to-end** (Playwright driving Electron, under Xvfb on Linux): `JIG_ENGINE=fake`, temp
   `JIG_HOME`, real UI.
 - **Checks:** `npm run check` = typecheck + lint (Biome) + unit tests + design-token check.
+
+### Model defaults and desktop menus (D-129)
+
+The main process passes native `opusplan` and the subagent fallback to Claude Code; it does not implement model routing. New chats start in Plan mode, add-on questions use Sonnet, browser testing/reflection keep Haiku. Settings preserve explicit choices and offer a preset. Top-bar group menus derive from the existing action registry and use `ui/Menu`; Ctrl+K still searches all actions.
+
+Markdown file previews opt into HTML parsing followed by sanitization before React rendering. Local images and links still use jig-file grants; chat Markdown does not opt in.
+
+The shared menu state optionally carries a menu-bar identity. Topbar uses that identity to switch an open menu on hover, without opening menus from an idle pointer move or switching unrelated context menus.
+
+On Windows, main windows remain off the taskbar until ready-to-show has set their icon; relaunch metadata points at the branded executable. Hidden browser helpers explicitly skip the taskbar.
+
+`engine.models` discovers the model catalogue through the existing no-prompt SDK control-process lifecycle. Appearance font choices use bundled fonts and generic system families with custom input/reset; no renderer filesystem access or OS font scan is introduced. Open VSX UI debounces search and ignores responses superseded by newer queries.

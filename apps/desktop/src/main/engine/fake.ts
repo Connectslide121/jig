@@ -64,6 +64,7 @@ const FAKE_MODELS = [
     description: "Most capable",
     efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
   },
+  { value: "sonnet", displayName: "Sonnet", description: "Coding and execution" },
   { value: "haiku", displayName: "Haiku", description: "Fastest" },
 ];
 
@@ -794,6 +795,10 @@ export class FakeEngine implements Engine {
    * Scripted plan usage: 42 % of the 5-hour window (resets in 2 h 13 min) and 18 % of the week.
    * `JIG_FAKE_USAGE=unavailable` acts like an API-key login; a JSON value replaces the answer.
    */
+  async models() {
+    return FAKE_MODELS;
+  }
+
   async planUsage(): Promise<RawUsage> {
     const scripted = process.env.JIG_FAKE_USAGE;
     if (scripted === "unavailable")

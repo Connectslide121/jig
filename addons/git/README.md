@@ -68,3 +68,5 @@ this repository**, Focus, Copy path. Clicking a repository makes it the **focus 
 bar shows `repo: branch`, and the Tools-menu Git actions (Fetch, Pull, Push, Switch/Create branch,
 History) use it. **Fetch all** and **Look for repositories again** are in the header.
 
+
+Project → Git history and Git → History show commits on HEAD of the project’s selected repository. A workspace with one repository opens it directly; with several and no focus, a repository menu appears. The workspace parent is never passed to Git as a repository. The background-fetch interval keeps its Every label visible beside a compact select.

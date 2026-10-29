@@ -162,3 +162,45 @@ test("a submenu opens beside its menu, on the left when there's no room on the r
   const [parent, sub] = [(await menus.nth(0).boundingBox())!, (await menus.nth(1).boundingBox())!];
   expect(sub.x + sub.width).toBeLessThanOrEqual(parent.x + 4);
 });
+
+test("action groups open separate menus and model defaults remain configurable", async ({ page }) => {
+  await expect(page.getByTestId("tools-group-Jig")).toHaveCount(0);
+  await page.getByTestId("jig-menu").click();
+  await expect(page.getByRole("menuitem", { name: "Reload window", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "What Jig can do", exact: true })).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("tools-group-Layout").click();
+  await expect(page.getByRole("menuitem", { name: /Toggle bottom panel/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("settings-button").click();
+  await page.getByTestId("settings-nav-engine").click();
+  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opusplan");
+  await expect(page.getByRole("combobox", { name: "Subagent fallback model" })).toHaveValue("sonnet");
+  await expect(page.getByLabel("Default permission mode", { exact: true })).toHaveValue("plan");
+  await page.getByRole("combobox", { name: "Default model", exact: true }).selectOption("opus");
+  await page.getByRole("combobox", { name: "Default model", exact: true }).press("Tab");
+  await page.getByRole("button", { name: "Use recommended defaults" }).click();
+  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opusplan");
+});
+
+test("the top menu bar switches groups on hover only while a menu is open", async ({ page }) => {
+  await page.getByTestId("tools-group-Build").hover();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await page.getByTestId("tools-group-Build").click();
+  await expect(page.getByRole("menuitem", { name: /Build something/ })).toBeVisible();
+  await page.getByTestId("tools-group-Projects").hover();
+  await expect(page.getByRole("menuitem", { name: /New project/ })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Build something/ })).toHaveCount(0);
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("tools-group-Build").hover();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});
+
+test("menus stay visible when a screenshot overlay blurs the window", async ({ page }) => {
+  await page.getByTestId("tools-group-Build").click();
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await expect(page.getByRole("menuitem", { name: /Build something/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+});

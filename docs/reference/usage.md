@@ -52,3 +52,5 @@ error until Jig is updated (the rest of Jig is unaffected).
 
 The fake engine (`JIG_ENGINE=fake`) reports 42 % (5 h), 18 % (week) and 31 % (Fable, a per-model weekly limit as the server names it);
 `JIG_FAKE_USAGE=unavailable` acts like an API-key login, and a JSON value replaces the answer.
+
+Extra-usage amounts from the SDK are currency minor units. The UI formats them using the currency's decimal places (4000 EUR → €40.00), preserving raw amounts in the usage contract. This is display only and does not change the billing limit.

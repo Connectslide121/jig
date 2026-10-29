@@ -186,3 +186,11 @@ html[data-platform="darwin"] .topbar-insets {
 .jig-code pre {
   margin: 0;
 }
+
+/* Safe README HTML alignment; image widths are retained by the Markdown renderer. */
+.jig-document [align="center"] {
+  text-align: center;
+}
+.jig-document [align="center"] img {
+  margin-inline: auto;
+}

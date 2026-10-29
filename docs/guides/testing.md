@@ -97,3 +97,5 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 - Host modules that touch state are tested with a temporary `JIG_HOME` (the Vitest config sets one
   for every test, so nothing reaches the real `~/.jig`).
 - A bug fix comes with a test that fails without it.
+
+Settings model discovery uses the fake engine’s canned model list (now including Sonnet), without creating a chat or using credentials.

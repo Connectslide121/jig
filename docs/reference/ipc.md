@@ -190,3 +190,5 @@ settings, add-on permissions.
 | `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |
 | `learning.knowledgeChanged` | — | the profile or the notes changed |
+
+`engine.models` (no arguments) returns `ModelInfo[]` from a short-lived, prompt-free Claude Code SDK `supportedModels` control request. It creates no chat and sends no AI prompt. Settings uses it for model pickers.

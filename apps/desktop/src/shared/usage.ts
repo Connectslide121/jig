@@ -25,6 +25,7 @@ export interface PlanUsage {
   extra?: {
     enabled: boolean;
     percent: number | null;
+    /** Currency minor units from Claude Code; format with formatUsageAmount. */
     usedCredits: number | null;
     monthlyLimit: number | null;
     currency?: string;
@@ -134,4 +135,15 @@ export function formatResetIn(resetsAt: string | undefined, now = new Date()): s
 export function usageTone(percent: number | null | undefined): "ok" | "warning" | "danger" {
   if (percent === null || percent === undefined) return "ok";
   return percent >= 90 ? "danger" : percent >= 75 ? "warning" : "ok";
+}
+
+/** Claude Code reports overage amounts in currency minor units (for example, euro cents). */
+export function formatUsageAmount(amount: number, currency = "USD"): string {
+  try {
+    const formatter = new Intl.NumberFormat("en-GB", { style: "currency", currency });
+    const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+    return formatter.format(amount / 10 ** digits);
+  } catch {
+    return `${(amount / 100).toFixed(2)} ${currency}`;
+  }
 }

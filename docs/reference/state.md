@@ -57,8 +57,10 @@ A new state file is documented here in the same commit that adds it.
 | `appearance.fontSize` | `13` | base UI font size in px (11–18) |
 | `engine.claudePath` | `""` | your own `claude` binary; empty = the one shipped with the Agent SDK |
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
-| `engine.defaultModel` | `""` | model for new sessions; empty = Claude Code's default |
-| `engine.defaultPermissionMode` | `default` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
+| `engine.defaultModel` | `"opusplan"` | new chats: Opus in Plan mode, Sonnet for execution; empty follows Claude Code |
+| `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
+| `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions (commit messages, reviews, etc.) |
+| `engine.defaultPermissionMode` | `plan` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
 | `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Tools → Test something… (D-124) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
@@ -80,3 +82,5 @@ A new state file is documented here in the same commit that adds it.
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
+
+Settings → Claude Code edits the model strings through pickers populated by Claude Code. Use recommended defaults is a primary action. Appearance offers bundled/system font choices, an optional custom font field and per-font Reset to the schema defaults.

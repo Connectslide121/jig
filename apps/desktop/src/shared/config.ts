@@ -28,11 +28,13 @@ export const ConfigSchema = z.object({
       claudePath: z.string().default(""),
       /** Keep ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in session environments (pay-as-you-go). */
       allowApiKey: z.boolean().default(false),
-      /** Model alias or id for new sessions; empty = Claude Code's default. */
-      defaultModel: z.string().default(""),
-      defaultPermissionMode: z
-        .enum(["default", "acceptEdits", "plan", "bypassPermissions"])
-        .default("default"),
+      /** Model alias or id for new sessions; opusplan = Opus planning, Sonnet execution. */
+      defaultModel: z.string().default("opusplan"),
+      /** Fallback for subagents without an explicit model; empty respects Claude Code settings. */
+      subagentModel: z.string().default("sonnet"),
+      /** No-tools questions from add-ons (commit messages, reviews and other helpers). */
+      helperModel: z.string().default("sonnet"),
+      defaultPermissionMode: z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]).default("plan"),
       /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
       promptSuggestions: z.boolean().default(true),
       /** Claude Code keeps a copy of files before it edits them, so a chat can restore them later. */

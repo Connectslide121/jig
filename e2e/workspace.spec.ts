@@ -179,3 +179,26 @@ test("Git fetches in the background and has a settings page", async ({ page, jig
   await settings.getByRole("switch", { name: "Fetch in the background" }).click();
   await expect.poll(settingsNow).toEqual({ enabled: false, minutes: 5 });
 });
+
+test("project Git history picks an inner repository and follows the project focus", async ({
+  page,
+  jigHome,
+}) => {
+  const ws = await workspace(jigHome);
+  const added = (await hostCall(page, "projects.add", { path: ws })) as {
+    value: { id: string };
+  };
+  await page.getByTestId("project-repos").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Git history", exact: true }).click();
+  await page.getByRole("menuitem", { name: "client-a/portal", exact: true }).click();
+  const history = page.locator("[data-tab-id]:not(.hidden)").getByTestId("git-history");
+  await expect(history).toContainText("Initial commit");
+  await expect(page.locator("[role=tab][aria-selected=true]")).toContainText("client-a/portal");
+  await hostCall(page, "projects.setFocusRepo", { id: added.value.id, repo: join(ws, "web") });
+  await page.getByTestId("project-repos").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Git history", exact: true }).click();
+  await expect(page.locator("[role=tab][aria-selected=true]")).toContainText("web");
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("git-history")).toContainText(
+    "Initial commit",
+  );
+});

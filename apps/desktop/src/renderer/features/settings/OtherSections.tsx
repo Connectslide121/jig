@@ -1,5 +1,6 @@
-import { Eye, FolderOpen, RotateCcw, Search, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Eye, FolderOpen, RotateCcw, Search, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { ModelInfo } from "../../../shared/engine";
 import { defaultLayout } from "../../../shared/layout";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
@@ -79,6 +80,7 @@ function TextSetting({
   onSave: (v: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
   return (
     <SettingRow label={label} description={description}>
       <Input
@@ -94,9 +96,59 @@ function TextSetting({
   );
 }
 
+function ModelSetting({
+  label,
+  description,
+  value,
+  models,
+  onSave,
+  hybrid = false,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  models: ModelInfo[];
+  onSave: (value: string) => void;
+  hybrid?: boolean;
+}) {
+  const choices = new Map(models.filter((m) => m.value !== "opusplan").map((m) => [m.value, m.displayName]));
+  choices.set("", "Follow Claude Code");
+  if (hybrid) choices.set("opusplan", "Opus plans · Sonnet executes");
+  if (value && !choices.has(value)) choices.set(value, `${value} (saved choice)`);
+  return (
+    <SettingRow label={label} description={description}>
+      <Select className="w-64" aria-label={label} value={value} onChange={(ev) => onSave(ev.target.value)}>
+        {[...choices].map(([id, name]) => (
+          <option key={id} value={id}>
+            {name}
+          </option>
+        ))}
+      </Select>
+    </SettingRow>
+  );
+}
+
 export function EngineSettings() {
   const config = useConfig((s) => s.config);
   const info = useConfig((s) => s.info);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelsError, setModelsError] = useState<string>();
+  const [reload, setReload] = useState(0);
+  const binary = config?.engine.claudePath;
+  const allowApiKey = config?.engine.allowApiKey;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry and host-side engine options deliberately reload discovery.
+  useEffect(() => {
+    if (binary === undefined) return;
+    let active = true;
+    setModelsError(undefined);
+    void call("engine.models").then(
+      (list) => active && setModels(list),
+      (error) => active && setModelsError(errorMessage(error)),
+    );
+    return () => {
+      active = false;
+    };
+  }, [binary, allowApiKey, reload]);
   if (!config) return <Spinner />;
   const e = config.engine;
   return (
@@ -116,20 +168,73 @@ export function EngineSettings() {
         placeholder="(built in)"
         onSave={(claudePath) => void updateConfig({ engine: { claudePath } })}
       />
-      <TextSetting
+      <SettingRow
+        label="Recommended setup"
+        description="Opus plans, Sonnet executes, Haiku tests. Applies to new chats."
+      >
+        <Button
+          variant="primary"
+          icon={Sparkles}
+          onClick={() =>
+            void updateConfig({
+              engine: {
+                defaultModel: "opusplan",
+                defaultPermissionMode: "plan",
+                subagentModel: "sonnet",
+                helperModel: "sonnet",
+                testerModel: "haiku",
+              },
+            })
+          }
+        >
+          Use recommended defaults
+        </Button>
+      </SettingRow>
+      {modelsError && (
+        <SettingRow label="Couldn't load available models" description={modelsError}>
+          <Button onClick={() => setReload((n) => n + 1)}>Retry</Button>
+        </SettingRow>
+      )}
+      <ModelSetting
         label="Default model"
-        description="Model alias or id for new chats (e.g. sonnet, opus). Empty = Claude Code's default."
+        description="For new chats. Project and chat selections override this."
         value={e.defaultModel}
-        placeholder="(Claude Code default)"
+        models={models}
+        hybrid
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
-      <TextSetting
+      <ModelSetting
+        label="Helper model"
+        description="For add-on questions, such as commit messages and reviews."
+        value={e.helperModel}
+        models={models}
+        onSave={(helperModel) => void updateConfig({ engine: { helperModel } })}
+      />
+      <ModelSetting
+        label="Subagent fallback model"
+        description="For subagents without an explicit model choice."
+        value={e.subagentModel}
+        models={models}
+        onSave={(subagentModel) => void updateConfig({ engine: { subagentModel } })}
+      />
+      <ModelSetting
         label="Tester model"
-        description="Model that tests pages in Claude's browser: the jig-tester helper your chats hand testing to, and Tools → Test something…. A small model keeps testing cheap."
+        description="For the browser-testing helper and Test something…."
         value={e.testerModel}
-        placeholder="haiku"
+        models={models}
         onSave={(testerModel) => void updateConfig({ engine: { testerModel } })}
       />
+      <div className="px-4 py-3 text-xs text-muted">
+        <p>Defaults affect new chats. Smaller models save usage but cannot guarantee equal quality.</p>
+        <details className="mt-2">
+          <summary className="cursor-pointer text-fg">How subagent models are chosen</summary>
+          <p className="mt-2">
+            Claude’s choice for the invocation wins, then the agent definition, then your fallback, then the
+            chat model. Built-in Explore and Plan follow Claude Code’s own rules. A forced model in your
+            environment can override these choices.
+          </p>
+        </details>
+      </div>
       <SettingRow
         label="Default permission mode"
         description="How new chats ask before editing files or running commands."
@@ -202,7 +307,6 @@ export function EngineSettings() {
     </SettingsSection>
   );
 }
-
 export function EditorSettings() {
   const config = useConfig((s) => s.config);
   if (!config) return <Spinner />;

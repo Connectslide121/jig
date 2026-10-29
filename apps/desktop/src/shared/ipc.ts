@@ -121,6 +121,7 @@ export interface HostMethods {
   "ai.ask": { args: { addonId: string; prompt: string; cwd?: string }; result: string };
   "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
+  "engine.models": { args: void; result: ModelInfo[] };
   "usage.get": { args: void; result: PlanUsage };
   /** Asks Claude Code again now. */
   "usage.refresh": { args: void; result: PlanUsage };

@@ -1281,3 +1281,60 @@ saying Jig was signed in too) and Claude, on my own (how) · **Date:** 2026-10-2
   builder already reviews with you before an add-on is accepted.
 - **Development requests keep one attachment, the zip** (D-123): `mockup.html` isn't attached on its
   own; it is inside the zip, and you attach that yourself.
+
+### D-129 — Native model defaults and desktop polish
+**Decided by:** Jon (Opus planning/Sonnet execution, cheaper subagents, grouped top-bar menus, project hiding, balanced toolbar control sizes and theme selection without hover previews); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Use Claude Code's `opusplan` with Plan mode for new chats, Sonnet as a non-forced subagent fallback and for add-on questions; keep explicit specialist choices and Haiku tester/reflection. Preserve explicit saved defaults and offer an apply-preset button. Native routing avoids a second orchestration loop; lower cost cannot guarantee unchanged quality. Show requested subagent models without misrepresenting them as confirmed runtime models. Reuse registered action groups and Menu in the top bar, existing arrangements for DevOps project hiding, and currency decimal metadata for minor-unit overage amounts. Ship a Windows ICO and matching taskbar relaunch metadata.
+
+### D-130 — Render safe HTML inside Markdown file previews
+**Decided by:** Jon (README preview shows literal HTML); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Opt Markdown file previews into rehype-raw followed by rehype-sanitize using its GitHub-style allowlist. Preserve image sizes and alignment while retaining existing jig-file grants. Chat messages keep escaping raw HTML. This renders ordinary repository READMEs without enabling scripts or Node access.
+
+### D-131 — Preserve the Markdown library’s table layout attributes
+**Decided by:** Jon (broken README table layout); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Keep react-markdown/remark-gfm and the existing HTML sanitizer. Forward sanitized table/cell props instead of discarding spans, widths and alignment in custom components. Tables fill the available width and retain a horizontal scroll wrapper; do not force equal-width columns on ordinary data tables.
+
+### D-132 — Balance panel tabs and use native-style menu-bar hover switching
+**Decided by:** Jon (sizes, hover switching and Azure field alignment); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Increase panel view tabs separately from base buttons; reduce top-bar action-group labels one type step. Give the shared Menu state an optional menu-bar identity and switch on hover only when that same menu bar is already open. Align Filter/Group in Add from Azure with matching label/input stacks, preserving the rest of the dialog layout.
+
+### D-133 — Register the Windows taskbar button after window branding
+**Decided by:** Claude, on my own (Jon still sees Electron in the taskbar) · **Date:** 2026-10-29
+
+Read-only inspection of the installed process confirms correct executable/window icons and relaunch identity, without a stale Jig pin. Defer main-window taskbar registration until ready-to-show, keep maximize/show after branding, use the executable icon resource matching the installed shortcut, and exclude hidden browser helpers. These address shell grouping/startup behavior; do not claim the taskbar report fixed until visually confirmed.
+
+### D-134 — Keep menus for screenshots and resolve project history to repositories
+**Decided by:** Jon (screenshots, workspace history, shared button sizing and clipped interval label); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Do not dismiss shared menus on window blur; retain Escape, action and outside-click dismissal. Project history resolves the focused or only repository and otherwise offers a repository menu. Keep regular Button text at text-sm with leading-none and non-shrinking icons; panel tabs and icon-only controls stay independently sized. Give the Git fetch interval a compact select and a non-shrinking labelled control.
+
+### D-135 — Settings pickers, font reset and automatic theme search
+**Decided by:** Jon (model/font pickers, visible preset button, reset and dynamic search); Claude, on my own (implementation) · **Date:** 2026-10-29
+
+Populate model pickers through a no-prompt SDK control request instead of a hard-coded catalogue; preserve saved custom model IDs and offer native opusplan as a policy. Make the preset a primary button and collapse detailed model precedence. Font pickers offer the bundled/system families and optional custom input with per-field Reset. Debounce Open VSX search by 500 ms with a two-character minimum and stale-response guards; Enter/Search can run immediately.
+
+Development uses `dev.jig.workbench.development` as its Windows taskbar identity; installed builds retain `dev.jig.workbench`, matching the installer. This prevents development Electron from seeding the installed app’s taskbar group cache.
+
+### D-136 — Keep repository rows still on hover
+**Decided by:** Jon · **Date:** 2026-10-29
+
+Use visibility for Repos row actions instead of toggling display. The controls reserve the same space before and during hover, and remain available on keyboard focus.
+
+### D-137 — One main Jig menu
+**Decided by:** Jon · **Date:** 2026-10-29
+
+Derive the main logo/name menu’s Jig-wide actions from the registry, retain the help links, and omit the separate Jig group button. No actions are lost or duplicated manually.
+
+### D-138 — Smaller panel-tab labels with the approved icon size
+**Decided by:** Jon · **Date:** 2026-10-29
+
+Reduce panel view-tab labels from text-base to text-sm; preserve h-7 controls and size-4 icons. This balances the label against the icon without shrinking the clickable area.
+
+### D-139 — Clearer menu hover and keyboard selection
+**Decided by:** Jon (hover is hard to see); Claude, on my own (token treatment) · **Date:** 2026-10-29
+
+Use an accent-soft fill and inset accent outline for active shared-menu and all-tools rows. This distinguishes the row from the elevated menu surface without moving content or hard-coding a theme colour. Disabled items stay unhighlighted.

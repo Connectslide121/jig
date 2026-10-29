@@ -82,7 +82,10 @@ export function startSessions(): void {
       return {
         claudePath: engine.claudePath,
         allowApiKey: engine.allowApiKey,
-        env: sessionEnv(process.env, engine.allowApiKey),
+        env: {
+          ...sessionEnv(process.env, engine.allowApiKey),
+          ...(engine.subagentModel ? { CLAUDE_CODE_SUBAGENT_MODEL: engine.subagentModel } : {}),
+        },
         promptSuggestions: engine.promptSuggestions,
         fileCheckpoints: engine.fileCheckpoints,
       };

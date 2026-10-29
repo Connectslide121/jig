@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/desktop/build/icon.png?v=12" alt="Jig" width="112">
+  <img src="apps/desktop/build/icon.png?v=13" alt="Jig" width="112">
 </p>
 
 <h1 align="center">Jig</h1>
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=12" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
+  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=13" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
 </p>
 
 > In woodworking, a **jig** is a custom tool you make yourself so a repetitive job gets faster and
@@ -37,6 +37,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
+- **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. Action groups each have their own top-bar menu.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
@@ -75,7 +76,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 <table>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=12" alt="A chat with Claude's todo list, an edit with its diff and a plan to approve">
+      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=13" alt="A chat with Claude's todo list, an edit with its diff and a plan to approve">
       <b>Claude Code, in a window.</b> Everything its terminal shows, as cards:
       <ul>
         <li>Claude's todo list as a checklist, and plans you approve or send back with feedback.</li>
@@ -89,13 +90,13 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/dashboard.jpg?v=12" alt="Workspace dashboard">
+      <img src="apps/desktop/src/renderer/features/about/shots/dashboard.jpg?v=13" alt="Workspace dashboard">
       <b>A Home for every project.</b> Type what Claude should do and press Enter. Recent chats, next
       steps and every repo's scripts are right below. Add your whole repos folder once: Jig finds the
       repositories inside (three levels deep).
     </td>
     <td width="50%" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/git.jpg?v=12" alt="Git view and diff">
+      <img src="apps/desktop/src/renderer/features/about/shots/git.jpg?v=13" alt="Git view and diff">
       <b>Git for every repo.</b> The repo you work in (or any set of them) in one panel: stage, commit, push, pull,
       branches, history, side-by-side or inline diffs, image diffs. <b>Write</b> asks Claude for the
       commit message; any change or repo can be explained or reviewed by Claude in one click.
@@ -103,7 +104,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/files.jpg?v=12" alt="The file tree, a file being edited and a Markdown preview beside it">
+      <img src="apps/desktop/src/renderer/features/about/shots/files.jpg?v=13" alt="The file tree, a file being edited and a Markdown preview beside it">
       <b>Files and editing.</b> The project's tree with git colours and a filter. Code and text open
       editable in your theme's colours; Ctrl+S saves, and if Claude changes the file meanwhile Jig asks
       before replacing your edits. Split the main area to keep a preview, a chat or a diff beside it.
@@ -111,14 +112,14 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/releases.jpg?v=12" alt="A repository's release policy and a release drafted with Claude">
+      <img src="apps/desktop/src/renderer/features/about/shots/releases.jpg?v=13" alt="A repository's release policy and a release drafted with Claude">
       <b>Releases.</b> Each repository gets a release policy (<code>.jig/release.json</code>, shared
       with your team): planned releases, continuous deploys, or none. See what's unreleased, let Claude
       suggest the bump and write the changelog and customer notes, then release: version, changelog,
       commit, tag and push in one step. "What's live" shows each environment.
     </td>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/workflows.jpg?v=12" alt="A release workflow half-way">
+      <img src="apps/desktop/src/renderer/features/about/shots/workflows.jpg?v=13" alt="A release workflow half-way">
       <b>Workflows.</b> The things you repeat, as steps per project. Jig runs the commands, scripts,
       pipelines and messages to Claude it can, asks before others and leaves the rest to you. Schedule
       them, export them as a Claude Code skill, or move them to the cloud.
@@ -126,19 +127,19 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/configure.jpg?v=12" alt="Claude changing Jig's theme from a chat">
+      <img src="apps/desktop/src/renderer/features/about/shots/configure.jpg?v=13" alt="Claude changing Jig's theme from a chat">
       <b>Claude configures Jig.</b> Ask in any chat to change the theme, fonts, layout or add-ons. Each
       change shows as a card with Undo. Billing settings are never touched from a chat.
     </td>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/build.jpg?v=12" alt="The builder with a new add-on ready to review">
+      <img src="apps/desktop/src/renderer/features/about/shots/build.jpg?v=13" alt="The builder with a new add-on ready to review">
       <b>The builder.</b> "A button that runs the tests of the active project" becomes an add-on.
       You see the files and a live preview, then Accept or Discard.
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/attempts.jpg?v=12" alt="Three attempts at the same task, with Claude's verdict">
+      <img src="apps/desktop/src/renderer/features/about/shots/attempts.jpg?v=13" alt="Three attempts at the same task, with Claude's verdict">
       <b>Try several ways.</b> One task, 2–4 Claude Code chats at once, each in its own git worktree and
       from a different angle (simplest, cleanest, most thorough…). Compare their changes, let Claude judge,
       and keep the winner: it lands in your working copy, the rest disappears.
@@ -146,13 +147,13 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/tour.jpg?v=12" alt="A guided tour of changes">
+      <img src="apps/desktop/src/renderer/features/about/shots/tour.jpg?v=13" alt="A guided tour of changes">
       <b>Guided tours of changes.</b> Claude orders your uncommitted changes for understanding and explains
       each step next to its highlighted diff. Also: check before committing, and commit messages in your
       repo's style.
     </td>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/preview.jpg?v=12" alt="A Markdown preview with a Mermaid diagram">
+      <img src="apps/desktop/src/renderer/features/about/shots/preview.jpg?v=13" alt="A Markdown preview with a Mermaid diagram">
       <b>Previews for everything Claude writes.</b> Markdown with Mermaid diagrams, HTML, PDF, CSV and Excel
       tables, JSON, notebooks, media and code. Previews follow the file as it changes, with Ask Claude
       one click away.
@@ -160,7 +161,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=12" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
+      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=13" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
       <b>Claude's browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse
@@ -171,32 +172,32 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=12" alt="A suggestion based on repeated actions">
+      <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=13" alt="A suggestion based on repeated actions">
       <b>Suggestions.</b> Jig notices what you repeat, what slows you down and what you mention to
       Claude (locally, on your machine) and suggests a tool, a workflow, a CLAUDE.md line, a routine or a
       tip, each with its evidence and one-click action. A week later it checks whether it helped.
     </td>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg?v=12" alt="Plan usage card">
+      <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg?v=13" alt="Plan usage card">
       <b>Your plan limits, always visible.</b> The 5-hour and weekly windows of your Claude plan, in
       the status bar and on a ring in every chat. Hover for when each one resets.
     </td>
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/context.jpg?v=12" alt="Context window breakdown with a Compact button">
+      <img src="apps/desktop/src/renderer/features/about/shots/context.jpg?v=13" alt="Context window breakdown with a Compact button">
       <b>Context window and Compact.</b> How full each chat's context is and what fills it, as Claude
       Code reports it. From 70% a <b>Compact</b> button appears; one click runs Claude Code's /compact.
     </td>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/settings.jpg?v=12" alt="Appearance settings">
+      <img src="apps/desktop/src/renderer/features/about/shots/settings.jpg?v=13" alt="Appearance settings">
       <b>Styled your way.</b> Jig Dark and Jig Light, any VS Code colour theme (from your VS Code or the
       marketplace) and VS Code file icon themes like Material Icon Theme.
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/knowledge.jpg?v=12" alt="What Jig knows about me">
+      <img src="apps/desktop/src/renderer/features/about/shots/knowledge.jpg?v=13" alt="What Jig knows about me">
       <b>What Jig knows about you, in plain sight.</b> Your profile (how you work), the notes Claude saved
       from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand.
       All local; edit or delete anything. An optional weekly check-in fills in the gaps.
@@ -204,7 +205,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/about.jpg?v=12" alt="The What Jig can do page">
+      <img src="apps/desktop/src/renderer/features/about/shots/about.jpg?v=13" alt="The What Jig can do page">
       <b>Everything in one page.</b> "What Jig can do" is the welcome screen (until your first project) and always one click away
       in the <b>Jig menu</b> (the logo, top left): every feature, the extension slots, your add-ons and
       skills, keyboard shortcuts, and examples you can try in one click.
@@ -253,7 +254,7 @@ Add-ons are folders in `~/.jig/addons` with an `addon.json`, React components an
 They can plug into 17 places:
 
 <p align="center">
-  <img src="apps/desktop/src/renderer/features/about/shots/slots.jpg?v=12" alt="The extension slots on the What Jig can do page" width="900">
+  <img src="apps/desktop/src/renderer/features/about/shots/slots.jpg?v=13" alt="The extension slots on the What Jig can do page" width="900">
 </p>
 
 | Slot | Where it shows | Slot | Where it shows |

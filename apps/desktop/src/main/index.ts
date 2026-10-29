@@ -31,7 +31,7 @@ import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
 import { registerTourHandlers } from "./tour";
 import { startUsage, stopUsage } from "./usage";
-import { createMainWindow } from "./window";
+import { APP_ID, createMainWindow, DEVELOPMENT_APP_ID } from "./window";
 import { startWorktrees } from "./worktrees";
 
 const log = logger("main");
@@ -39,8 +39,8 @@ const log = logger("main");
 registerSchemes();
 
 // Jig's own taskbar entry on Windows (with Jig's icon), not Electron's when it runs from a clone;
-// the same id as `appId` in electron-builder.yml, so the installed app groups the same way.
-if (process.platform === "win32") app.setAppUserModelId("dev.jig.workbench");
+// packaged builds match electron-builder; development has its own group and icon cache.
+if (process.platform === "win32") app.setAppUserModelId(app.isPackaged ? APP_ID : DEVELOPMENT_APP_ID);
 
 // One Jig per state directory: a second launch focuses the first window. Electron locks its own
 // data folder, so with JIG_HOME (tests, a throwaway home) that folder goes inside it, and such a Jig

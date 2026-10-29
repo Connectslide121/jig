@@ -1,9 +1,9 @@
-import type { JigTheme, ThemeSummary } from "@jig/themes";
-import { Download, FolderOpen, RefreshCw, Search, Trash2, TriangleAlert } from "lucide-react";
-import { useRef, useState } from "react";
+import type { ThemeSummary } from "@jig/themes";
+import { Download, FolderOpen, RefreshCw, RotateCcw, Search, Trash2, TriangleAlert } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { defaultConfig } from "../../../shared/config";
 import type { OpenVsxExtension } from "../../../shared/themes";
 import { call, errorMessage } from "../../lib/host";
-import { applyTheme } from "../../lib/theme";
 import { useAppearance } from "../../stores/appearance";
 import { updateConfig, useConfig } from "../../stores/config";
 import {
@@ -45,24 +45,12 @@ function Swatch({ summary }: { summary: ThemeSummary }) {
 
 function ThemeGrid({ filter }: { filter: string }) {
   const themes = useAppearance((s) => s.themes);
-  const active = useAppearance((s) => s.theme);
   const config = useConfig((s) => s.config);
-  const previewing = useRef<string | undefined>(undefined);
   if (!config) return null;
   const words = filter.toLowerCase();
   const list = themes.filter((t) => !words || `${t.label} ${t.id}`.toLowerCase().includes(words));
 
-  const preview = async (id: string) => {
-    previewing.current = id;
-    const theme = await call("themes.get", { id }).catch(() => undefined);
-    if (theme && previewing.current === id) applyTheme(theme, config.appearance);
-  };
-  const endPreview = () => {
-    previewing.current = undefined;
-    if (active) applyTheme(active as JigTheme, config.appearance);
-  };
   const choose = (summary: ThemeSummary) => {
-    previewing.current = undefined;
     const a = config.appearance;
     if (!a.followSystem) void updateConfig({ appearance: { themeId: summary.id } });
     else if (summary.appearance === "dark") void updateConfig({ appearance: { darkThemeId: summary.id } });
@@ -78,7 +66,7 @@ function ThemeGrid({ filter }: { filter: string }) {
 
   if (list.length === 0) return <Empty title="No themes match" />;
   return (
-    <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4" onMouseLeave={endPreview}>
+    <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-4">
       {list.map((summary) => {
         const selected = config.appearance.followSystem
           ? summary.id === config.appearance.darkThemeId || summary.id === config.appearance.lightThemeId
@@ -90,7 +78,6 @@ function ThemeGrid({ filter }: { filter: string }) {
             tabIndex={0}
             data-testid={`theme-${summary.id}`}
             aria-pressed={selected}
-            onMouseEnter={() => void preview(summary.id)}
             onClick={() => choose(summary)}
             onKeyDown={(e) => e.key === "Enter" && choose(summary)}
             className={cn(
@@ -133,17 +120,32 @@ function OpenVsxSearch() {
   const [busy, setBusy] = useState(false);
   const [installing, setInstalling] = useState<string>();
   const [error, setError] = useState<string>();
-  const search = async () => {
+  const request = useRef(0);
+  const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const search = useCallback(async (term: string, version: number) => {
+    if (term.length < 2) return;
     setBusy(true);
     setError(undefined);
     try {
-      setResults(await call("themes.searchOpenVsx", { query }));
+      const found = await call("themes.searchOpenVsx", { query: term });
+      if (version === request.current) setResults(found);
     } catch (e) {
-      setError(errorMessage(e));
+      if (version === request.current) setError(errorMessage(e));
     } finally {
-      setBusy(false);
+      if (version === request.current) setBusy(false);
     }
-  };
+  }, []);
+  useEffect(() => {
+    const version = ++request.current;
+    setBusy(false);
+    setResults(undefined);
+    setError(undefined);
+    if (query.trim().length >= 2) pending.current = setTimeout(() => void search(query.trim(), version), 500);
+    return () => {
+      clearTimeout(pending.current);
+      request.current++;
+    };
+  }, [query, search]);
   const install = async (ext: OpenVsxExtension) => {
     const key = `${ext.namespace}.${ext.name}`;
     setInstalling(key);
@@ -168,7 +170,8 @@ function OpenVsxSearch() {
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void search();
+          clearTimeout(pending.current);
+          void search(query.trim(), ++request.current);
         }}
       >
         <Input
@@ -180,6 +183,7 @@ function OpenVsxSearch() {
           Search
         </Button>
       </form>
+      <p className="text-xs text-muted">Type at least two characters. Results update as you pause typing.</p>
       {error && <div className="text-sm text-danger">{error}</div>}
       {results?.length === 0 && <div className="text-sm text-muted">No theme extensions found.</div>}
       {results?.map((ext) => (
@@ -227,7 +231,7 @@ export function AppearanceSettings() {
     <div className="flex flex-col gap-8">
       <SettingsSection
         title="Theme"
-        description="Click a theme to use it; hover to preview. Imported VS Code themes recolour all of Jig, add-ons included."
+        description="Select a theme to use it. Imported VS Code themes recolour all of Jig, add-ons included."
       >
         {themeError && (
           <div className="flex items-center gap-2 px-4 py-2 text-sm text-warning">
@@ -349,11 +353,13 @@ export function AppearanceSettings() {
         </SettingRow>
         <FontRow
           label="Interface font"
+          defaultValue={defaultConfig().appearance.uiFont}
           value={a.uiFont}
           onSave={(uiFont) => void updateConfig({ appearance: { uiFont } })}
         />
         <FontRow
           label="Code font"
+          defaultValue={defaultConfig().appearance.monoFont}
           value={a.monoFont}
           onSave={(monoFont) => void updateConfig({ appearance: { monoFont } })}
         />
@@ -362,18 +368,80 @@ export function AppearanceSettings() {
   );
 }
 
-function FontRow({ label, value, onSave }: { label: string; value: string; onSave: (v: string) => void }) {
+const FONT_CHOICES = new Map([
+  [defaultConfig().appearance.uiFont, "Inter (bundled)"],
+  [defaultConfig().appearance.monoFont, "JetBrains Mono (bundled)"],
+  ["system-ui", "System interface font"],
+  ["monospace", "System monospace font"],
+]);
+
+function FontRow({
+  label,
+  value,
+  defaultValue,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  defaultValue: string;
+  onSave: (v: string) => void;
+}) {
   const [draft, setDraft] = useState(value);
+  const [custom, setCustom] = useState(!FONT_CHOICES.has(value));
+  useEffect(() => {
+    setDraft(value);
+    setCustom(!FONT_CHOICES.has(value));
+  }, [value]);
   return (
-    <SettingRow label={label} description="Any font installed on your computer.">
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => draft !== value && onSave(draft.trim())}
-        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-        className="w-56"
-        aria-label={label}
-      />
+    <SettingRow
+      label={label}
+      description="Choose a bundled or system font, or enter an installed font. Reset restores Jig’s default."
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Select
+            className="w-56"
+            aria-label={label}
+            value={custom ? "custom" : value}
+            onChange={(ev) => {
+              if (ev.target.value === "custom") setCustom(true);
+              else {
+                setCustom(false);
+                onSave(ev.target.value);
+              }
+            }}
+          >
+            {[...FONT_CHOICES].map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+            <option value="custom">Custom installed font…</option>
+          </Select>
+          <Button
+            size="sm"
+            icon={RotateCcw}
+            aria-label={`Reset ${label.toLowerCase()}`}
+            disabled={value === defaultValue && !custom}
+            onClick={() => {
+              setCustom(false);
+              setDraft(defaultValue);
+              onSave(defaultValue);
+            }}
+          >
+            Reset
+          </Button>
+        </div>
+        {custom && (
+          <Input
+            aria-label={`Custom ${label.toLowerCase()}`}
+            value={draft}
+            onChange={(ev) => setDraft(ev.target.value)}
+            onBlur={() => draft.trim() !== value && onSave(draft.trim() || defaultValue)}
+            onKeyDown={(ev) => ev.key === "Enter" && ev.currentTarget.blur()}
+          />
+        )}
+      </div>
     </SettingRow>
   );
 }

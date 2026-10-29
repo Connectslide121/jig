@@ -132,11 +132,13 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
       className="group flex cursor-default flex-col gap-0.5 rounded-md px-2 py-1.5 hover:bg-hover"
     >
       <div className="flex items-center gap-1.5 text-sm">
-        <span className="min-w-0 flex-1 truncate font-medium">{repo.name}</span>
+        <span className="min-w-0 flex-1 truncate font-medium" title={repo.name}>
+          {repo.name}
+        </span>
         {repo.dirty > 0 && <Badge tone="warning">{repo.dirty} changed</Badge>}
         {repo.ahead > 0 && <Badge tone="info">↑{repo.ahead}</Badge>}
         {repo.behind > 0 && <Badge tone="accent">↓{repo.behind}</Badge>}
-        <span className="hidden items-center group-hover:flex group-focus-within:flex">
+        <span className="invisible flex shrink-0 items-center group-hover:visible group-focus-within:visible">
           <IconButton
             icon={CloudDownload}
             size="sm"

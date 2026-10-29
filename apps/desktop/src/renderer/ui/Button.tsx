@@ -21,7 +21,7 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-6 px-2 text-xs gap-1",
+  sm: "h-6 px-2 text-sm gap-1",
   md: "h-7 px-3 text-sm gap-1.5",
 };
 
@@ -46,7 +46,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || busy}
       className={cn(
-        "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium whitespace-nowrap transition-colors",
+        "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
         "disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
@@ -54,11 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       {...rest}
     >
-      {busy ? (
-        <Spinner size="sm" />
-      ) : Icon ? (
-        <Icon className={size === "sm" ? "size-3.5" : "size-4"} />
-      ) : null}
+      {busy ? <Spinner size="sm" /> : Icon ? <Icon className="block size-4 shrink-0" /> : null}
       {children}
     </button>
   );
@@ -87,12 +83,12 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         "no-drag inline-flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
         "hover:bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         active && "bg-active text-fg",
-        size === "sm" ? "size-6" : "size-7",
+        size === "sm" ? "size-7" : "size-8",
         className,
       )}
       {...rest}
     >
-      <Icon className={size === "sm" ? "size-3.5" : "size-4"} />
+      <Icon className={size === "sm" ? "size-4" : "size-4.5"} />
     </button>
   );
 });

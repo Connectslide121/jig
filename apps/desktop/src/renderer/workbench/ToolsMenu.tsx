@@ -129,7 +129,7 @@ export function ToolsMenuHost() {
                   onClick={() => run(action)}
                   className={cn(
                     "flex h-7 cursor-default items-center gap-2 rounded-md px-2",
-                    i === index && "bg-hover",
+                    i === index && "bg-accent-soft ring-1 ring-inset ring-accent/60",
                   )}
                 >
                   <span className="flex size-4 items-center justify-center text-muted">

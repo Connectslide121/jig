@@ -34,21 +34,46 @@ export interface MenuPosition {
 }
 
 interface MenuState {
-  open: { entries: MenuEntry[]; position: MenuPosition; minWidth?: number } | undefined;
+  open: { entries: MenuEntry[]; position: MenuPosition; minWidth?: number; menuBar?: string } | undefined;
 }
 const useMenu = create<MenuState>(() => ({ open: undefined }));
 
-export function openMenu(entries: MenuEntry[], position: MenuPosition, minWidth?: number): void {
-  useMenu.setState({ open: { entries, position, minWidth } });
+export function openMenu(
+  entries: MenuEntry[],
+  position: MenuPosition,
+  minWidth?: number,
+  menuBar?: string,
+): void {
+  useMenu.setState({ open: { entries, position, minWidth, menuBar } });
 }
 export function closeMenu(): void {
   useMenu.setState({ open: undefined });
 }
 
 /** Opens a menu below (or at the right edge of) an element. */
-export function openMenuAt(element: HTMLElement, entries: MenuEntry[], alignRight = false): void {
+export function openMenuAt(
+  element: HTMLElement,
+  entries: MenuEntry[],
+  alignRight = false,
+  menuBar?: string,
+): void {
   const rect = element.getBoundingClientRect();
-  openMenu(entries, { x: alignRight ? rect.right : rect.left, y: rect.bottom + 4, alignRight }, rect.width);
+  openMenu(
+    entries,
+    { x: alignRight ? rect.right : rect.left, y: rect.bottom + 4, alignRight },
+    rect.width,
+    menuBar,
+  );
+}
+
+/** Switch only within an already-open menu bar; hovering alone never opens a menu. */
+export function switchMenuAt(
+  element: HTMLElement,
+  entries: MenuEntry[],
+  menuBar: string,
+  alignRight = false,
+): void {
+  if (useMenu.getState().open?.menuBar === menuBar) openMenuAt(element, entries, alignRight, menuBar);
 }
 
 /** `onContextMenu={contextMenu(() => entries)}` */
@@ -142,7 +167,7 @@ function MenuList({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         style={{ left: place.left, top: place.top, minWidth: Math.max(minWidth ?? 0, 180) }}
-        className="no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] max-w-sm overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-sm text-fg shadow-popover outline-none"
+        className="no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] max-w-sm overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-base text-fg shadow-popover outline-none"
       >
         {entries.map((entry, index) => {
           if ("separator" in entry) return <div key={index} className="my-1 h-px bg-line" />;
@@ -172,7 +197,7 @@ function MenuList({
               onClick={(e) => select(entry, e.currentTarget, index)}
               className={cn(
                 "flex h-7 cursor-default items-center gap-2 rounded-md px-2",
-                active === index && "bg-hover",
+                active === index && !entry.disabled && "bg-accent-soft ring-1 ring-inset ring-accent/60",
                 entry.disabled && "opacity-50",
                 entry.danger && "text-danger",
               )}
@@ -216,11 +241,9 @@ export function MenuHost() {
       if (!(event.target as HTMLElement).closest?.("[role=menu]")) closeMenu();
     };
     window.addEventListener("mousedown", onDown, true);
-    window.addEventListener("blur", close);
     window.addEventListener("resize", close);
     return () => {
       window.removeEventListener("mousedown", onDown, true);
-      window.removeEventListener("blur", close);
       window.removeEventListener("resize", close);
     };
   }, [open]);

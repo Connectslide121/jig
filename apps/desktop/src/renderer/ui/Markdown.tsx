@@ -1,5 +1,7 @@
 import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { CodeBlock } from "./CodeBlock";
 import { cn } from "./cn";
@@ -52,22 +54,48 @@ function makeComponents(options: { baseUrl?: string; onLocalLink?: (url: string)
         </a>
       );
     },
-    img: ({ src, alt }) => (
+    img: ({ src, alt, width, height }) => (
       <img
         src={resolveRelative(typeof src === "string" ? src : undefined, options.baseUrl)}
         alt={alt ?? ""}
+        width={width}
+        height={height}
         className="max-w-full"
       />
     ),
-    table: ({ children }) => (
-      <div className="my-2 overflow-x-auto">
-        <table className="border-collapse text-sm">{children}</table>
+    table: ({ children, node: _node, ...props }) => (
+      <div className="my-2 max-w-full overflow-x-auto">
+        <table {...props} className="w-full border-collapse text-sm">
+          {children}
+        </table>
       </div>
     ),
-    th: ({ children }) => (
-      <th className="border border-line bg-surface px-2 py-1 text-left font-medium">{children}</th>
+    th: ({ children, node: _node, align, ...props }) => (
+      <th
+        {...props}
+        align={align}
+        className={cn(
+          "border border-line bg-surface px-2 py-1 font-medium",
+          align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left",
+        )}
+      >
+        {children}
+      </th>
     ),
-    td: ({ children }) => <td className="border border-line px-2 py-1">{children}</td>,
+    td: ({ children, node: _node, align, valign, ...props }) => {
+      // hast uses vAlign; React's table attribute is lowercase valign.
+      const { vAlign, ...cellProps } = props as typeof props & { vAlign?: typeof valign };
+      return (
+        <td
+          {...cellProps}
+          align={align}
+          valign={valign ?? vAlign}
+          className={cn("border border-line px-2 py-1", !(valign ?? vAlign) && "align-top")}
+        >
+          {children}
+        </td>
+      );
+    },
   };
 }
 
@@ -83,11 +111,14 @@ export const Markdown = memo(function Markdown({
   className,
   baseUrl,
   onLocalLink,
+  allowHtml = false,
 }: {
   text: string;
   className?: string;
   baseUrl?: string;
   onLocalLink?: (url: string) => void;
+  /** Opt-in for file previews: parse HTML, then sanitize it before creating React elements. */
+  allowHtml?: boolean;
 }) {
   const components = useMemo(
     () => (baseUrl ? makeComponents({ baseUrl, onLocalLink }) : chatComponents),
@@ -95,7 +126,11 @@ export const Markdown = memo(function Markdown({
   );
   return (
     <div className={cn("jig-markdown selectable text-sm leading-relaxed text-fg", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={allowHtml ? [rehypeRaw, rehypeSanitize] : []}
+        components={components}
+      >
         {text}
       </ReactMarkdown>
     </div>

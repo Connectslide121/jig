@@ -399,7 +399,11 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await page.keyboard.type("\nexport const freeShippingFrom = 50;\n");
   await files.getByTestId("files-entry-ARCHITECTURE.md").first().click();
   await page.waitForTimeout(800);
-  await page.getByTestId("tab-jig.preview").filter({ hasText: "ARCHITECTURE" }).click({ button: "right" });
+  await page
+    .getByTestId("tab-jig.preview")
+    .filter({ hasText: "ARCHITECTURE" })
+    .last()
+    .click({ button: "right" });
   await page.getByTestId("tab-open-side").click();
   await page
     .getByTestId("main-pane-left")

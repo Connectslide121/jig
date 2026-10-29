@@ -202,3 +202,15 @@ Tools marked `readOnly` run without a permission prompt. A tool may return image
 (`ToolOutput`); they show in the chat. `jigContext` (appended to Claude Code's system prompt) tells
 Claude when to use the terminal and browser tools.
 
+
+## Model routing defaults (D-129)
+
+New chats use Claude Code's native `opusplan` in Plan mode: Opus plans, then Sonnet executes after plan approval. Project/chat model choices win over the global default. Explicit saved settings are preserved; Settings → Claude Code → Use recommended defaults applies the preset to an existing installation.
+
+`engine.subagentModel` supplies `CLAUDE_CODE_SUBAGENT_MODEL` to newly started chat processes (default Sonnet). In the bundled Claude Code, the invocation's model wins, then agent definition (including inherit), then this fallback, then the main model. Explore and Plan follow Claude Code's built-in rules; external `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` can override precedence. Jig does not force every agent onto a smaller model. Settings explain this; Agent/Task cards include explicitly requested models, not an inferred actual model. Organization restrictions and Claude settings may substitute models.
+
+Add-on one-turn questions use `engine.helperModel` (Sonnet). The tester and weekly reflection keep their existing Haiku defaults. Smaller models and delegation cannot guarantee identical quality or a spending cap; large contexts and parallel work still consume quota. `opusplan` does not mean all thinking uses Opus: Sonnet reasons during execution too.
+
+Sources: [model configuration](https://code.claude.com/docs/en/model-config#opusplan-model-setting), [subagent models](https://code.claude.com/docs/en/sub-agents#choose-a-model). Checked 2026-10-29 against SDK 0.3.296.
+
+Settings discovers available model choices through `engine.models`, using a prompt-free, tools-free, non-persistent SDK control process, shared with the usage control-request lifecycle. No model list is hard-coded; opusplan is offered separately as the native planning/execution policy, and existing saved custom IDs remain selectable.

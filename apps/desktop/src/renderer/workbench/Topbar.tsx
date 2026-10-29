@@ -1,7 +1,6 @@
 import {
   ChevronDown,
   CircleHelp,
-  Download,
   Eye,
   FolderPlus,
   Keyboard,
@@ -12,20 +11,29 @@ import {
   PanelRight,
   Puzzle,
   Settings,
-  Stethoscope,
   Wrench,
 } from "lucide-react";
 import { openAbout } from "../features/about";
 import { projectDotClass } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
-import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt } from "../ui";
+import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
 import { addProject, hiddenViews, openSettings } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
-import { runAction, useRegistry } from "./registry";
+import { type ActionDef, runAction, useRegistry } from "./registry";
 import { formatShortcut } from "./shortcuts";
 import { useWorkbench, workbench } from "./store";
-import { openToolsMenu } from "./ToolsMenu";
+import { filterActions, openToolsMenu } from "./ToolsMenu";
+
+const TOPBAR_MENU = "topbar";
+function actionMenu(actions: ActionDef[]): MenuEntry[] {
+  return actions.map((action) => ({
+    label: action.title,
+    icon: action.icon,
+    shortcut: action.shortcut,
+    onSelect: () => runAction(action.id),
+  }));
+}
 
 function projectMenu(): MenuEntry[] {
   const { projects, activeId } = useProjects.getState();
@@ -99,21 +107,24 @@ function TopbarItems() {
 
 /** The "Jig" menu at the left of the top bar: help, setup and updates, always one click away. */
 function jigMenu(): MenuEntry[] {
+  const actions =
+    filterActions(Object.values(useRegistry.getState().actions), "").find((group) => group.group === "Jig")
+      ?.actions ?? [];
   return [
-    { label: "What Jig can do", icon: CircleHelp, onSelect: () => openAbout(), testId: "jig-menu-about" },
+    ...actionMenu(actions).map((entry) =>
+      "label" in entry && entry.label === "What Jig can do" ? { ...entry, testId: "jig-menu-about" } : entry,
+    ),
+    { separator: true },
     { label: "Keyboard shortcuts", icon: Keyboard, onSelect: () => openAbout("shortcuts") },
     { label: "Extension slots", icon: Puzzle, onSelect: () => openAbout("slots") },
-    { separator: true },
-    { label: "Check your setup…", icon: Stethoscope, onSelect: () => runAction("jig.setup") },
-    { label: "Check for updates…", icon: Download, onSelect: () => runAction("jig.updates") },
-    { separator: true },
-    { label: "Settings", icon: Settings, onSelect: () => openSettings() },
   ];
 }
 
 export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
+  const actions = useRegistry((s) => s.actions);
+  const groups = filterActions(Object.values(actions), "").filter((group) => group.group !== "Jig");
   return (
     <header
       className={cn(
@@ -128,7 +139,8 @@ export function Topbar() {
           "no-drag flex h-7 items-center gap-1.5 rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
           !mac && "ml-0.5",
         )}
-        onClick={(e) => openMenuAt(e.currentTarget, jigMenu())}
+        onClick={(e) => openMenuAt(e.currentTarget, jigMenu(), false, TOPBAR_MENU)}
+        onMouseEnter={(e) => switchMenuAt(e.currentTarget, jigMenu(), TOPBAR_MENU)}
       >
         <JigLogo className="size-4" />
         Jig
@@ -137,7 +149,8 @@ export function Topbar() {
         type="button"
         data-testid="project-switcher"
         className="no-drag flex h-7 max-w-64 items-center gap-1.5 rounded-md px-2 hover:bg-hover"
-        onClick={(e) => openMenuAt(e.currentTarget, projectMenu())}
+        onClick={(e) => openMenuAt(e.currentTarget, projectMenu(), false, TOPBAR_MENU)}
+        onMouseEnter={(e) => switchMenuAt(e.currentTarget, projectMenu(), TOPBAR_MENU)}
       >
         {project ? (
           <>
@@ -149,6 +162,22 @@ export function Topbar() {
         )}
         <ChevronDown className="size-3.5 text-muted" />
       </button>
+      <div className="no-drag flex min-w-0 items-center overflow-x-auto">
+        {groups.map(({ group, actions: entries }) => (
+          <button
+            type="button"
+            key={group}
+            className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
+            title={group}
+            aria-haspopup="menu"
+            data-testid={`tools-group-${group}`}
+            onClick={(e) => openMenuAt(e.currentTarget, actionMenu(entries), false, TOPBAR_MENU)}
+            onMouseEnter={(e) => switchMenuAt(e.currentTarget, actionMenu(entries), TOPBAR_MENU)}
+          >
+            {group}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
         data-testid="tools-button"
@@ -157,7 +186,7 @@ export function Topbar() {
         onClick={(e) => openToolsMenu(e.currentTarget)}
       >
         <Wrench className="size-4 text-muted" />
-        Tools
+        <span className="sr-only">All tools</span>
       </button>
       {project && (
         <button
@@ -177,7 +206,8 @@ export function Topbar() {
         icon={PanelLeft}
         label="Layout and views"
         data-testid="layout-button"
-        onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true)}
+        onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true, TOPBAR_MENU)}
+        onMouseEnter={(e) => switchMenuAt(e.currentTarget, layoutMenu(), TOPBAR_MENU, true)}
       />
       <IconButton
         icon={CircleHelp}

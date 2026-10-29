@@ -26,3 +26,5 @@ Commands used: `az rest` (profile and accounts), `az pipelines list`, `az pipeli
 **Arrange** (header button): hide pipelines, drag them into your order, and group them with dividers
 (optionally titled). One arrangement per Azure DevOps organisation and project (`<org>/<project>`; older ones by project), the same in every Jig project (D-108), kept in the
 add-on's storage (`arrangement`). New pipelines appear after the arranged ones.
+
+Arrange also hides, restores, reorders and groups entire Azure DevOps projects, including empty ones. Project arrangements are stored alongside pipeline arrangements under `projects:<normalized organisation URL>` in the global `arrangement` data. Hidden projects reappear in Arrange so you can restore them. Settings checks and saving show progress and errors.

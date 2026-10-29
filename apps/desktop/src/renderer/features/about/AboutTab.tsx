@@ -660,6 +660,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Ask a chat to “open the app and check the login form”",
+                "Settings → Claude Code: Opus plans and Sonnet executes by default; change chat, subagent fallback, helper and tester models there",
                 "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Tools → Test something… (or the flask in the browser view) starts a test chat on it",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",
@@ -699,6 +700,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Two tabs side by side: right-click a tab → Open to the side, or drag it to the right edge",
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
+                "Markdown previews render safe embedded HTML, including centered headings and sized local images",
                 "Tools → Preview a file… for anything else",
               ]}
             />
@@ -784,7 +786,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="appearance"
             title="Themes & icons"
-            lead="Jig Dark and Jig Light, any VS Code colour theme (installed from the marketplace or imported as JSON), and VS Code file icon themes such as Material Icon Theme."
+            lead="Jig Dark and Jig Light, any VS Code colour theme, and file icon themes such as Material Icon Theme. Open VSX search updates as you type. Font pickers offer bundled/system choices, custom names and Reset."
             shot={{ src: settings, alt: "Appearance settings" }}
           >
             <Button size="sm" icon={Palette} onClick={() => openSettings("appearance")}>

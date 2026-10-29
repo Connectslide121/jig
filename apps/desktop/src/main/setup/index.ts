@@ -3,7 +3,7 @@ import { app, net, shell } from "electron";
 import { JigError } from "../../shared/ipc";
 import { compareVersions, type UpdateInfo } from "../../shared/setup";
 import { getConfig } from "../config";
-import { getEngine } from "../engine";
+import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
 import { paths } from "../state/paths";
@@ -89,6 +89,13 @@ export function registerSetupHandlers(): void {
       signIn: getEngine().kind !== "fake",
     }),
   );
+  handle("engine.models", () => {
+    const { engine } = getConfig();
+    return getEngine().models({
+      env: sessionEnv(process.env, engine.allowApiKey),
+      claudePath: engine.claudePath,
+    });
+  });
   handle("updates.check", () => checkForUpdates());
   handle("updates.apply", async () => {
     const info = await checkForUpdates();

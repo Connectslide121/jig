@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BrowserWindow, screen, shell } from "electron";
+import { app, BrowserWindow, screen, shell } from "electron";
 import { z } from "zod";
 import { closeHelpersIfAlone } from "./appWindows";
 import { logger } from "./log";
@@ -21,8 +21,15 @@ const WindowStateSchema = z.object({
 /** The window controls' height on Windows/Linux; the top bar takes it (`.topbar-insets`). */
 export const TITLEBAR_HEIGHT = 36;
 
+/** Development Electron must not seed the installed app’s taskbar group/icon cache. */
+export const APP_ID = "dev.jig.workbench";
+export const DEVELOPMENT_APP_ID = `${APP_ID}.development`;
+
 /** Jig's logo: the window and taskbar icon when Jig runs from a clone, and on notifications. */
-export const APP_ICON = join(here, "../../build/icon.png");
+export const APP_ICON = join(
+  here,
+  process.platform === "win32" ? "../../build/icon.ico" : "../../build/icon.png",
+);
 
 /** Creates the main window, restoring its last size and position. */
 export async function createMainWindow(): Promise<BrowserWindow> {
@@ -48,6 +55,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     minWidth: 800,
     minHeight: 500,
     show: false,
+    // Register with the taskbar only after the window icon and relaunch identity are ready.
+    skipTaskbar: process.platform === "win32",
     title: "Jig",
     // Taskbar/window icon when Jig runs from a clone (packaged builds have it in the executable too).
     icon: APP_ICON,
@@ -68,9 +77,28 @@ export async function createMainWindow(): Promise<BrowserWindow> {
     },
   });
 
-  if (state.maximized) window.maximize();
+  if (process.platform === "win32") {
+    window.setAppDetails({
+      appId: app.isPackaged ? APP_ID : DEVELOPMENT_APP_ID,
+      // Match the installed shortcut: use the branded executable’s icon resource.
+      appIconPath: app.isPackaged ? process.execPath : APP_ICON,
+      appIconIndex: 0,
+      relaunchCommand: app.isPackaged
+        ? `"${process.execPath}"`
+        : `"${process.execPath}" "${app.getAppPath()}"`,
+      relaunchDisplayName: app.isPackaged ? "Jig" : "Jig (development)",
+    });
+  }
+
   window.once("ready-to-show", () => {
-    if (!process.env.JIG_HIDDEN) window.show();
+    if (!process.env.JIG_HIDDEN) {
+      if (process.platform === "win32") {
+        window.setIcon(APP_ICON);
+        window.setSkipTaskbar(false);
+      }
+      if (state.maximized) window.maximize();
+      window.show();
+    }
   });
 
   let saveTimer: NodeJS.Timeout | undefined;

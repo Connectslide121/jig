@@ -66,6 +66,7 @@ export class BrowserService {
     if (this.contents) return this.contents;
     const window = new BrowserWindow({
       show: false,
+      skipTaskbar: true,
       width: this.viewport.width,
       height: this.viewport.height,
       useContentSize: true,

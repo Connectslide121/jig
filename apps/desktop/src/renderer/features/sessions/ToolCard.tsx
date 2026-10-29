@@ -79,7 +79,13 @@ export function toolSummary(name: string, input: Record<string, unknown>): strin
       return str(input.query) ?? "";
     case "Task":
     case "Agent":
-      return [str(input.subagent_type), str(input.description)].filter(Boolean).join(": ");
+      return [
+        str(input.subagent_type),
+        str(input.description),
+        str(input.model) ? `requested model: ${input.model}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(": ");
     case "RemoteTrigger": {
       const body = (input.body ?? {}) as Record<string, unknown>;
       return [str(input.action), str(body.name), str(input.trigger_id)].filter(Boolean).join(" · ");
