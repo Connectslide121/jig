@@ -1494,3 +1494,16 @@ and Claude, on my own (how) · **Date:** 2026-10-30
   for keeping them current without being asked. This replaces D-147's "Claude reads them with a
   tool" (the tool stays, for reading them again).
 
+### D-152 — Usage as bars, Sync like VS Code, Repos in columns
+**Decided by:** Jon (each item asked for) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **Usage:** the status bar shows a bar per window (5-hour, week) with the share used and the time
+  left, coloured like the usage plugin's footer: green, amber from 60 %, red from 85 % (it was 75 /
+  90 %, which left a 69 % week green). The ring on the chat header is gone: the status bar is
+  always visible.
+- **Git Sync:** a Sync button with ↓/↑ counts in the Git view's header (Pull and Push moved to ⋯),
+  and VS Code's full-width **Sync Changes ↓1 ↑2** / **Publish Branch** where the commit box is when
+  there is nothing to commit. Sync pulls with your own pull settings, then pushes.
+- **Repos rows** in fixed columns (name, changes, sync, branch) so everything lines up; no column
+  labels (Jon: not needed).
+

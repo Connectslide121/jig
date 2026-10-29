@@ -131,10 +131,22 @@ export function formatResetIn(resetsAt: string | undefined, now = new Date()): s
   return `in ${d} day${d === 1 ? "" : "s"}`;
 }
 
-/** How alarming a percentage is: calm below 75 %, warning from 75 %, danger from 90 %. */
+/** Time left until a reset, short for the status bar: `45m`, `2h 13m`, `6d`; '' when unknown or past. */
+export function formatResetShort(resetsAt: string | undefined, now = new Date()): string {
+  if (!resetsAt) return "";
+  const ms = new Date(resetsAt).getTime() - now.getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const min = Math.ceil(ms / 60_000);
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return min % 60 ? `${h}h ${min % 60}m` : `${h}h`;
+  return h % 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h / 24}d`;
+}
+
+/** How alarming a percentage is, like the usage plugin's bars: calm below 60 %, amber from 60 %, red from 85 %. */
 export function usageTone(percent: number | null | undefined): "ok" | "warning" | "danger" {
   if (percent === null || percent === undefined) return "ok";
-  return percent >= 90 ? "danger" : percent >= 75 ? "warning" : "ok";
+  return percent >= 85 ? "danger" : percent >= 60 ? "warning" : "ok";
 }
 
 /** Claude Code reports overage amounts in currency minor units (for example, euro cents). */

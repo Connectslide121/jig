@@ -256,7 +256,7 @@ test("screenshots for the About page", async () => {
   await page.getByTestId("change-card").getByTestId("change-undo").click();
 
   // Plan usage card.
-  await page.getByTestId("usage-ring").hover();
+  await page.getByTestId("usage-status").hover();
   await expect(page.getByTestId("usage-card")).toBeVisible();
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(OUT, "usage.jpg"), type: "jpeg", quality: 82 });

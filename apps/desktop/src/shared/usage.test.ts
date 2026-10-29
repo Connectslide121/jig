@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatResetIn, formatUsageAmount, planUsageFrom, usageTone } from "./usage";
+import { formatResetIn, formatResetShort, formatUsageAmount, planUsageFrom, usageTone } from "./usage";
 
 const now = new Date("2026-10-28T10:00:00Z");
 
@@ -53,6 +53,11 @@ describe("planUsageFrom", () => {
 describe("formatResetIn and usageTone", () => {
   it("formats time until reset", () => {
     expect(formatResetIn("2026-10-28T12:13:00Z", now)).toBe("in 2 h 13 min");
+    expect(formatResetShort("2026-10-28T12:13:00Z", now)).toBe("2h 13m");
+    expect(formatResetShort("2026-10-28T10:45:00Z", now)).toBe("45m");
+    expect(formatResetShort("2026-11-03T10:00:00Z", now)).toBe("6d");
+    expect(formatResetShort("2026-11-02T08:00:00Z", now)).toBe("4d 22h");
+    expect(formatResetShort(undefined, now)).toBe("");
     expect(formatResetIn("2026-10-28T10:45:00Z", now)).toBe("in 45 min");
     expect(formatResetIn("2026-10-28T12:00:00Z", now)).toBe("in 2 h");
     expect(formatResetIn("2026-11-02T09:00:00Z", now)).toBe("in 5 days");
@@ -61,7 +66,7 @@ describe("formatResetIn and usageTone", () => {
   });
 
   it("rates percentages", () => {
-    expect([usageTone(10), usageTone(75), usageTone(92), usageTone(null)]).toEqual([
+    expect([usageTone(26), usageTone(69), usageTone(85), usageTone(null)]).toEqual([
       "ok",
       "warning",
       "danger",

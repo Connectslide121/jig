@@ -358,6 +358,31 @@ export async function push({ cwd }: Cwd, api: AddonHostApi) {
   return git(api, cwd, ["push", "-u", remote, s.branch.head], NETWORK);
 }
 
+/**
+ * VS Code's Sync: pull when there is something to pull (your pull settings), then push what's
+ * ahead; a branch without an upstream is published. Says what it did.
+ */
+export async function sync({ cwd }: Cwd, api: AddonHostApi): Promise<string> {
+  const before = await status({ cwd }, api);
+  const head = before.branch.head;
+  if (!head || head === "(detached)") throw new Error("Not on a branch");
+  if (!before.branch.upstream) {
+    await push({ cwd }, api);
+    return `Published ${head}`;
+  }
+  const did: string[] = [];
+  if (before.branch.behind > 0) {
+    await pull({ cwd }, api);
+    did.push(`pulled ${before.branch.behind}`);
+  }
+  const after = await status({ cwd }, api);
+  if (after.branch.ahead > 0) {
+    await push({ cwd }, api);
+    did.push(`pushed ${after.branch.ahead}`);
+  }
+  return did.length ? `Synced ${head}: ${did.join(", ")}` : `${head} is up to date`;
+}
+
 /** Commits on `branch` that the current branch doesn't have, and the other way round. */
 export async function compare({ cwd, branch }: Cwd & { branch: string }, api: AddonHostApi) {
   const current = refOf((await status({ cwd }, api)).branch.head);

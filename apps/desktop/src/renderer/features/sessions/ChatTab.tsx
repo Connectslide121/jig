@@ -4,7 +4,6 @@ import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui"
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
-import { UsageRing } from "../usage";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
@@ -97,7 +96,6 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <div className="flex-1" />
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
-        {meta.authSource !== "api_key" && <UsageRing />}
         {meta.turns > 0 && (
           <span
             className="whitespace-nowrap text-2xs text-hint"

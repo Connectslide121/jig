@@ -9,7 +9,10 @@ test("plan usage is always in the status bar and on the chat header, with a card
 }) => {
   // The fake engine reports 42 % of the 5-hour window and 18 % of the week.
   const status = page.getByTestId("usage-status");
-  await expect(status).toHaveText("5h 42% · wk 18%", { timeout: 15000 });
+  await expect(status.getByTestId("usage-mini-five_hour")).toContainText(/5h\s*42%\s*2h 1[23]m/, {
+    timeout: 15000,
+  });
+  await expect(status.getByTestId("usage-mini-seven_day")).toContainText("18%");
   await status.hover();
   const card = page.getByTestId("usage-card");
   await expect(card).toContainText("Current session (5 h)");
@@ -22,15 +25,13 @@ test("plan usage is always in the status bar and on the chat header, with a card
   await page.mouse.move(600, 300);
   await expect(card).toHaveCount(0);
 
-  // In a chat, the ring next to the model menu shows the same.
+  // The status bar is the one place it shows: no ring on the chat header.
   const dir = join(jigHome, "demo");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+N");
-  const ring = page.getByTestId("usage-ring");
-  await expect(ring).toHaveText("42%");
-  await ring.hover();
-  await expect(page.getByTestId("usage-card")).toContainText("This week (all models)");
+  await expect(page.getByTestId("composer-input")).toBeVisible();
+  await expect(page.getByTestId("usage-ring")).toHaveCount(0);
 });
 
 test("usage says so when plan limits don't apply, and warns near the limit", async () => {
@@ -47,7 +48,7 @@ test("usage says so when plan limits don't apply, and warns near the limit", asy
           },
         }),
       },
-      "5h 93% · wk 60%",
+      "5h93%wk60%",
     ],
   ] as const) {
     const home = await mkdtemp(join(tmpdir(), "jig-e2e-"));

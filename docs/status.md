@@ -172,8 +172,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   add-ons on/off, a project's name or colour, or to find and install a theme. You approve each change
   (Claude Code's prompt) and a card in the chat shows what changed, with Undo. Billing and
   program-running settings stay in Settings only.
-- **Plan usage, always visible:** the status bar shows `5h 42% · wk 18%` and each chat header has a ring
-  for the 5-hour window; hover either for a card with every window, a bar each and when it resets (click
+- **Plan usage, always visible:** the status bar shows a bar per window like the usage plugin
+  (`5h ▰▱ 26% 2h 55m · wk ▰▱ 69% 4d 22h`, green, amber from 60 %, red from 85 %; D-152); hover it for a card with every window, a bar each and when it resets (click
   to refresh). The numbers come from Claude Code's own `/usage` data.
 - **Projects you manage** (D-101, D-102): a project groups chats; folders never decide which chats are
   in it.

@@ -3,11 +3,13 @@
 Your Claude subscription usage — the **5-hour session window** and the **weekly windows** — is always
 visible:
 
-- **Status bar** (right): `5h 42% · wk 18%`, coloured when a window passes 75 % (warning) or 90 %
-  (danger), or when Claude Code reports a limit was reached.
-- **Chat header**: a ring that fills with the 5-hour window.
+- **Status bar** (right): a bar per window, like the usage plugin's footer: `5h ▰▱ 42% 2h 13m`,
+  `wk ▰▱ 69% 4d 22h` (share used, time left). Each bar is green, amber from 60 % and red from 85 %
+  (`usageTone`); the whole item turns red when a window passes 85 % or Claude Code reports a limit
+  was reached.
+The chat header has no usage ring any more: the status bar is always visible (D-152).
 
-Hovering either shows a card with every window (current session, this week for all models, per-model
+Hovering it shows a card with every window (current session, this week for all models, per-model
 weekly windows, named as the server names them, e.g. "This week (Fable)" from `model_scoped`), a bar each, when it resets ("Resets in 2 h 13 min · 14:13"), extra usage
 when your plan has it, and when the numbers were updated. Clicking refreshes.
 

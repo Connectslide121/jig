@@ -2,6 +2,7 @@ import { Gauge, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   formatResetIn,
+  formatResetShort,
   formatUsageAmount,
   type PlanUsage,
   type UsageWindow,
@@ -12,7 +13,8 @@ import { refreshUsage, useUsage } from "../../stores/usage";
 import { Badge, cn, Tooltip } from "../../ui";
 
 const TONE_TEXT = { ok: "text-muted", warning: "text-warning", danger: "text-danger" } as const;
-const TONE_BAR = { ok: "bg-accent", warning: "bg-warning", danger: "bg-danger" } as const;
+/** Green while there is room, amber from 60 %, red from 85 %, like the usage plugin's footer. */
+const TONE_BAR = { ok: "bg-success", warning: "bg-warning", danger: "bg-danger" } as const;
 
 /** Re-renders every 30 s so "resets in …" and "updated … ago" stay true. */
 function useTick() {
@@ -109,73 +111,57 @@ function worst(usage: PlanUsage): number | null {
   return values.length ? Math.max(...values) : null;
 }
 
-const pick = (usage: PlanUsage, id: string) => usage.windows.find((w) => w.id === id)?.percent ?? null;
+const _pick = (usage: PlanUsage, id: string) => usage.windows.find((w) => w.id === id)?.percent ?? null;
 
-/** Status bar: "5h 42% · wk 18%", always visible; hover for the card, click to refresh. */
+/** One window in the status bar: its name, a bar, the share used and the time left. */
+function MiniWindow({ label, w }: { label: string; w: UsageWindow | undefined }) {
+  const tone = usageTone(w?.percent);
+  const left = formatResetShort(w?.resetsAt);
+  return (
+    <span className="flex items-center gap-1.5" data-testid={`usage-mini-${w?.id ?? label}`}>
+      <span className="text-hint">{label}</span>
+      <span className="relative h-2 w-14 overflow-hidden rounded-full bg-active">
+        <span
+          className={cn("absolute inset-y-0 left-0 rounded-full", TONE_BAR[tone])}
+          style={{ width: `${Math.min(100, Math.max(0, w?.percent ?? 0))}%` }}
+        />
+      </span>
+      <span className={cn("font-medium", tone === "ok" ? "text-fg" : TONE_TEXT[tone])}>
+        {percentText(w?.percent ?? null)}
+      </span>
+      {left && <span className="text-hint">{left}</span>}
+    </span>
+  );
+}
+
+/** Status bar: a bar per window (5-hour, week) with the share used and time left; hover for the card, click to refresh. */
 export function UsageStatusItem() {
   useTick();
   const usage = useUsage((s) => s.usage);
   const refreshing = useUsage((s) => s.refreshing);
-  const five = pick(usage, "five_hour");
-  const week = pick(usage, "seven_day");
+  const window = (id: string) => usage.windows.find((w) => w.id === id);
   const tone = usage.warning?.status === "rejected" ? "danger" : usageTone(worst(usage));
   return (
     <Tooltip content={<UsageCard usage={usage} />} side="above" delay={150} className="max-w-none p-2">
       <button
         type="button"
         onClick={() => void refreshUsage()}
-        className={cn("flex items-center gap-1 tabular-nums hover:text-fg", TONE_TEXT[tone])}
+        className={cn(
+          "flex items-center gap-3 tabular-nums hover:text-fg",
+          tone === "danger" ? TONE_TEXT.danger : "text-muted",
+        )}
         data-testid="usage-status"
         aria-label="Claude plan usage"
       >
         <Gauge className={cn("size-3", refreshing && "animate-pulse")} />
         {usage.state === "ok" ? (
-          <span>
-            5h {percentText(five)} · wk {percentText(week)}
-          </span>
+          <>
+            <MiniWindow label="5h" w={window("five_hour")} />
+            <MiniWindow label="wk" w={window("seven_day")} />
+          </>
         ) : (
           <span>{usage.state === "unknown" ? "usage…" : "usage n/a"}</span>
         )}
-      </button>
-    </Tooltip>
-  );
-}
-
-/** Chat header: a ring that fills with the 5-hour window; hover for the card, click to refresh. */
-export function UsageRing() {
-  useTick();
-  const usage = useUsage((s) => s.usage);
-  const five = pick(usage, "five_hour") ?? worst(usage);
-  const tone = usage.warning?.status === "rejected" ? "danger" : usageTone(worst(usage));
-  const r = 6;
-  const c = 2 * Math.PI * r;
-  return (
-    <Tooltip content={<UsageCard usage={usage} />} delay={150} className="max-w-none p-2">
-      <button
-        type="button"
-        onClick={() => void refreshUsage()}
-        className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-muted hover:bg-hover hover:text-fg"
-        data-testid="usage-ring"
-        aria-label="Claude plan usage"
-      >
-        <svg
-          viewBox="0 0 16 16"
-          className={cn("size-4 -rotate-90", tone === "ok" ? "text-accent" : TONE_TEXT[tone])}
-          aria-hidden
-        >
-          <circle cx="8" cy="8" r={r} fill="none" strokeWidth="2.5" className="stroke-active" />
-          <circle
-            cx="8"
-            cy="8"
-            r={r}
-            fill="none"
-            strokeWidth="2.5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeDasharray={`${(c * (five ?? 0)) / 100} ${c}`}
-          />
-        </svg>
-        <span className="tabular-nums">{usage.state === "ok" ? percentText(five) : "—"}</span>
       </button>
     </Tooltip>
   );

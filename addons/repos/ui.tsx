@@ -183,7 +183,7 @@ function RepoRow({
       }}
       className={cn("group flex flex-col rounded-md px-2", expanded ? "bg-hover" : "hover:bg-hover")}
     >
-      <div className="flex h-7 items-center gap-2 text-sm">
+      <div className="relative flex h-7 items-center gap-1.5 text-sm">
         <span className="relative flex size-3 shrink-0 items-center justify-center">
           <span
             className={cn(
@@ -211,31 +211,38 @@ function RepoRow({
         >
           {name}
         </button>
-        {(status.sync || status.changed) && (
-          <button
-            type="button"
-            disabled={syncing}
-            title={`${status.label}. Sync: pull, then push`}
-            onClick={() => void sync()}
-            data-testid={`repo-sync-${name}`}
-            className="group/sync flex shrink-0 cursor-pointer items-center gap-1 disabled:cursor-default disabled:opacity-50"
-          >
-            {status.sync && (
-              <span className="rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums transition-colors group-hover/sync:bg-accent group-hover/sync:text-on-accent">
-                {syncing ? "…" : status.sync}
-              </span>
-            )}
+        {/* Fixed columns, so the pills and branches line up down the list (D-152). */}
+        <span className="flex shrink-0 items-center" data-testid={`repo-sync-${name}`}>
+          <span className="flex w-9 justify-end">
             {status.changed && (
-              <span className="flex items-center gap-0.5 rounded-full bg-warning-soft px-1.5 text-2xs font-semibold text-warning tabular-nums transition-colors group-hover/sync:bg-warning group-hover/sync:text-on-accent">
+              <button
+                type="button"
+                title={`${status.changed} uncommitted changes: open in Git`}
+                onClick={() => void open()}
+                className="flex cursor-pointer items-center gap-0.5 rounded-full bg-warning-soft px-1.5 text-2xs font-semibold text-warning tabular-nums transition-colors hover:bg-warning hover:text-on-accent"
+              >
                 <Pencil className="size-2.5" />
                 {status.changed}
-              </span>
+              </button>
             )}
-          </button>
-        )}
+          </span>
+          <span className="ml-1 flex w-12 justify-start">
+            {status.sync && (
+              <button
+                type="button"
+                disabled={syncing}
+                title={`${status.label}. Sync: pull, then push`}
+                onClick={() => void sync()}
+                className="cursor-pointer rounded-full bg-accent-soft px-1.5 text-2xs font-semibold whitespace-nowrap text-accent tabular-nums transition-colors hover:bg-accent hover:text-on-accent disabled:cursor-default disabled:opacity-50"
+              >
+                {syncing ? "…" : status.sync}
+              </button>
+            )}
+          </span>
+        </span>
         <span
           className={cn(
-            "flex max-w-2/5 min-w-0 shrink-0 items-center gap-1 text-xs",
+            "flex w-1/4 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
@@ -247,7 +254,7 @@ function RepoRow({
           icon={MoreHorizontal}
           size="sm"
           label="More"
-          className="-mr-1 invisible group-hover:visible group-focus-within:visible"
+          className="invisible absolute right-0 bg-hover group-focus-within:visible group-hover:visible"
           onClick={(e) => {
             e.stopPropagation();
             menu(e.currentTarget);

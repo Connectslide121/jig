@@ -29,12 +29,11 @@ import {
   VirtualList,
 } from "@jig/sdk/ui";
 import {
-  ArrowDownToLine,
-  ArrowUpFromLine,
   Check,
   ChevronDown,
   ChevronRight,
   CloudDownload,
+  CloudUpload,
   Copy,
   ExternalLink,
   Eye,
@@ -700,6 +699,89 @@ function CommitBox({
   );
 }
 
+/** What Sync would do for a branch: counts to pull and push, or publishing it. */
+function syncLabel(b: Status["branch"]): string {
+  if (!b.upstream) return "Publish Branch";
+  const parts = [b.behind > 0 ? `↓${b.behind}` : "", b.ahead > 0 ? `↑${b.ahead}` : ""].filter(Boolean);
+  return parts.length ? `Sync Changes ${parts.join(" ")}` : "Sync Changes";
+}
+
+const canSync = (b: Status["branch"]) =>
+  Boolean(b.head && b.head !== "(detached)") && (!b.upstream || b.ahead > 0 || b.behind > 0);
+
+/** Pull, then push (or publish), like VS Code's Sync button. */
+async function syncRepo(ctx: AddonUiContext, cwd: string, reload: () => void) {
+  try {
+    const did = await ctx.host.call<string>("sync", { cwd });
+    ctx.notify({ title: did, tone: "success" });
+  } catch (error) {
+    ctx.notify({ title: "Sync failed", message: (error as Error).message, tone: "danger" });
+  }
+  reload();
+}
+
+/**
+ * The Sync button: full width where the commit box goes when there's nothing to commit (VS Code's
+ * "Sync Changes ↓1 ↑2" / "Publish Branch"), or compact with its counts in the header.
+ */
+function SyncButton({
+  ctx,
+  cwd,
+  branch,
+  reload,
+  full = false,
+}: {
+  ctx: AddonUiContext;
+  cwd: string;
+  branch: Status["branch"];
+  reload: () => void;
+  full?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const pending = canSync(branch);
+  const go = () => {
+    setBusy(true);
+    void syncRepo(ctx, cwd, reload).finally(() => setBusy(false));
+  };
+  if (full)
+    return (
+      <Button
+        variant="primary"
+        size="sm"
+        className="w-full"
+        icon={branch.upstream ? RefreshCw : CloudUpload}
+        busy={busy}
+        onClick={go}
+        data-testid="git-sync-full"
+        title={branch.upstream ? "Pull, then push" : `Push ${branch.head} and track it on the remote`}
+      >
+        {syncLabel(branch)}
+      </Button>
+    );
+  return (
+    <Button
+      size="sm"
+      variant={pending ? "primary" : "ghost"}
+      icon={branch.upstream ? RefreshCw : CloudUpload}
+      busy={busy}
+      disabled={!branch.head || branch.head === "(detached)"}
+      onClick={go}
+      data-testid="git-sync"
+      title={
+        branch.upstream
+          ? `Sync: pull, then push (${syncLabel(branch).replace("Sync Changes", "").trim() || "up to date"})`
+          : "Publish this branch"
+      }
+    >
+      {!branch.upstream
+        ? "Publish"
+        : [branch.behind > 0 ? `↓${branch.behind}` : "", branch.ahead > 0 ? `↑${branch.ahead}` : ""]
+            .filter(Boolean)
+            .join(" ") || "Sync"}
+    </Button>
+  );
+}
+
 /** The commit box and the change groups of one repository. */
 function RepoChanges({
   ctx,
@@ -718,6 +800,11 @@ function RepoChanges({
     <>
       {changes > 0 ? (
         <CommitBox project={project} status={status} reload={reload} />
+      ) : canSync(status.branch) ? (
+        <div className="flex flex-col gap-1 px-2 pt-1 pb-2">
+          <SyncButton ctx={ctx} cwd={cwd} branch={status.branch} reload={reload} full />
+          <span className="px-1 text-2xs text-hint">No changes to commit.</span>
+        </div>
       ) : (
         <div className="px-3 py-2 text-xs text-muted">No changes.</div>
       )}
@@ -857,10 +944,9 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
         >
           <GitBranch className="size-4 shrink-0 text-accent" />
           <span className="truncate font-medium">{b.head ?? "—"}</span>
-          {b.ahead > 0 && <span className="text-xs text-muted">↑{b.ahead}</span>}
-          {b.behind > 0 && <span className="text-xs text-muted">↓{b.behind}</span>}
         </button>
         <UnreleasedBadge ctx={ctx} cwd={cwd} head={b.oid} />
+        <SyncButton ctx={ctx} cwd={cwd} branch={b} reload={reload} />
         <IconButton
           icon={CloudDownload}
           size="sm"
@@ -868,16 +954,27 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
           onClick={() => void run(ctx, "Fetched", "fetch", { cwd }).then(reload)}
         />
         <IconButton
-          icon={ArrowDownToLine}
+          icon={MoreHorizontal}
           size="sm"
-          label="Pull"
-          onClick={() => void run(ctx, "Pulled", "pull", { cwd }).then(reload)}
-        />
-        <IconButton
-          icon={ArrowUpFromLine}
-          size="sm"
-          label="Push"
-          onClick={() => void run(ctx, "Pushed", "push", { cwd }).then(reload)}
+          label="Pull, push…"
+          data-testid="git-sync-menu"
+          onClick={(e) =>
+            ctx.menu(
+              [
+                {
+                  label: "Pull",
+                  icon: "arrow-down-to-line",
+                  onSelect: () => void run(ctx, "Pulled", "pull", { cwd }).then(reload),
+                },
+                {
+                  label: "Push",
+                  icon: "arrow-up-from-line",
+                  onSelect: () => void run(ctx, "Pushed", "push", { cwd }).then(reload),
+                },
+              ],
+              e.currentTarget,
+            )
+          }
         />
         <IconButton
           icon={History}
@@ -1107,8 +1204,20 @@ function RepoSection({
             <span className="truncate">{b.head ?? "—"}</span>
           </button>
         )}
-        {b && b.ahead > 0 && <span className="shrink-0 text-2xs text-muted">↑{b.ahead}</span>}
-        {b && b.behind > 0 && <span className="shrink-0 text-2xs text-muted">↓{b.behind}</span>}
+        {b && (b.ahead > 0 || b.behind > 0) && (
+          <button
+            type="button"
+            className="shrink-0 cursor-pointer rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums transition-colors hover:bg-accent hover:text-on-accent"
+            title="Sync: pull, then push"
+            data-testid={`git-repo-sync-${repo.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              void syncRepo(ctx, repo.path, reload);
+            }}
+          >
+            {[b.behind > 0 ? `↓${b.behind}` : "", b.ahead > 0 ? `↑${b.ahead}` : ""].filter(Boolean).join(" ")}
+          </button>
+        )}
         <UnreleasedBadge ctx={ctx} cwd={repo.path} head={b?.oid} />
         <span className="flex-1" />
         {entry?.error && <Badge tone="danger">error</Badge>}

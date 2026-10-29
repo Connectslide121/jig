@@ -583,7 +583,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Queue messages while Claude works",
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
-                "Your plan usage on the ring in the chat header",
+                "Your plan usage as bars in the status bar, always visible",
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
                 "Restore files to before any of your messages, and fork a chat to try another approach",
@@ -843,7 +843,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="usage"
             title="Plan usage"
-            lead="Your 5-hour session and weekly limits, as Claude Code reports them. Hover the ring in a chat or the meter in the status bar."
+            lead="Your 5-hour session and weekly limits, as Claude Code reports them. Bars in the status bar; hover them for every window."
             shot={{ src: usage, alt: "The plan usage card" }}
           />
           <Section

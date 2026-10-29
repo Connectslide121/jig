@@ -43,3 +43,4 @@
 - [x] Repos: a repository's commits under its row, with files and diffs (D-149)
 - [x] Open a Claude Code chat: saved Claude Code conversations as chats in No project (D-150)
 - [x] `claude.context`: add-ons tell Claude something with every message; Notes sends its notes (D-151)
+- [x] Usage bars in the status bar, Git Sync like VS Code, Repos rows in columns (D-152)
