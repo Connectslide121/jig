@@ -117,61 +117,54 @@ test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await expect(page.locator(".jig-xterm:visible .xterm-rows")).toContainText("shop-dev");
 });
 
-test("Scripts: hide, reorder and group scripts with dividers, from the panel", async ({ page, jigHome }) => {
+test("Scripts: a group starts and stops its scripts together; hidden scripts leave the tree", async ({
+  page,
+  jigHome,
+}) => {
   const dir = join(jigHome, "tools");
   await mkdir(dir, { recursive: true });
+  const forever = 'node -e "setInterval(() => {}, 1000)"';
   await writeFile(
     join(dir, "package.json"),
-    JSON.stringify({ scripts: { build: "echo b", dev: "echo d", lint: "echo l", test: "echo t" } }),
+    JSON.stringify({ scripts: { serve: forever, api: forever, lint: "echo l" } }),
   );
   await hostCall(page, "projects.add", { path: dir });
   await page.getByTestId("layout-button").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   const view = page.getByTestId("scripts-view");
-  await expect(view.getByTestId("scripts-addon-lint")).toBeVisible({ timeout: 15000 });
-  const order = () =>
-    view
-      .locator("[data-testid^=scripts-addon-], [data-testid=arrange-divider]")
-      .evaluateAll((els) =>
-        els.map((e) =>
-          e.getAttribute("data-testid") === "arrange-divider" ? `--${e.textContent}` : e.textContent,
-        ),
-      );
+  const tree = view.getByTestId("scripts-package-tools");
+  await expect(tree.getByTestId("scripts-addon-lint")).toBeVisible({ timeout: 15000 });
+  await expect(tree).toContainText("npm");
 
-  await view.getByTestId("scripts-arrange").click();
-  // Hide lint; drag test above build; add a divider titled "Daily".
-  await view.getByTestId(`arrange-toggle-s:${await scriptId(view, "lint")}`).click();
-  await view
-    .getByTestId(`arrange-item-s:${await scriptId(view, "test")}`)
-    .dragTo(view.getByTestId(`arrange-item-s:${await scriptId(view, "build")}`));
-  await view.getByTestId("arrange-add-divider").click();
-  await page.getByTestId("dialog-input").fill("Daily");
+  // A group, and two scripts added to it from their menu.
+  await view.getByTestId("scripts-new-group").click();
+  await page.getByTestId("dialog-input").fill("Tools");
   await page.getByTestId("dialog-confirm").click();
-  await view.getByTestId("scripts-arrange").click();
+  for (const name of ["serve", "api"]) {
+    await tree.getByTestId(`scripts-addon-${name}`).getByRole("button").click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Add to group" }).hover();
+    await page.getByRole("menuitem", { name: "Tools" }).click();
+  }
+  const group = view.getByTestId("scripts-group-Tools");
+  await expect(group).toContainText("tools · serve");
+  await expect(group).toContainText("tools · api");
 
-  await expect(view.getByTestId("scripts-addon-lint")).toHaveCount(0);
-  await expect.poll(order).toEqual(["test", "build", "dev"]);
-  // The divider went to the end with nothing under it, so it doesn't show; move dev under it.
-  await view.getByTestId("scripts-arrange").click();
-  const divider = view.getByTestId("arrange-divider");
-  await view
-    .getByTestId(`arrange-item-s:${await scriptId(view, "dev")}`)
-    .dragTo(view.getByTestId("arrange-add-divider"));
-  await expect(divider).toBeVisible();
-  await view.getByTestId("scripts-arrange").click();
-  await expect.poll(order).toEqual(["test", "build", "--Daily", "dev"]);
+  // Start and Stop act on the whole group.
+  await view.getByTestId("scripts-group-start-Tools").click();
+  await expect(view.getByTestId("scripts-running")).toContainText("serve", { timeout: 15000 });
+  await expect(view.getByTestId("scripts-running")).toContainText("api");
+  await expect(group).toContainText("2/2");
+  await view.getByTestId("scripts-group-stop-Tools").click();
+  await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
+
+  // Hide lint; the eye shows hidden scripts again.
+  await tree.getByTestId("scripts-addon-lint").getByRole("button").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Hide it" }).click();
+  await expect(tree.getByTestId("scripts-addon-lint")).toHaveCount(0);
+  await view.getByTestId("scripts-show-hidden").click();
+  await expect(tree.getByTestId("scripts-addon-lint")).toBeVisible();
 });
-
-/** The id Jig gives a script (shown in its test id while arranging). */
-async function scriptId(view: import("@playwright/test").Locator, name: string): Promise<string> {
-  const id = await view
-    .locator(`[data-testid^="arrange-item-"]`)
-    .filter({ has: view.page().getByTestId(`scripts-addon-${name}`) })
-    .first()
-    .getAttribute("data-testid");
-  return id!.replace("arrange-item-s:", "");
-}
 
 test("Pipelines asks to be set up and has a settings page", async ({ page }) => {
   await page.getByTestId("tools-button").click();

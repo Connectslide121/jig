@@ -6,30 +6,48 @@ import {
   type AddonUiContext,
   type Arrangement,
   EMPTY_ARRANGEMENT,
+  type RunningScript,
+  toggleHidden,
 } from "@jig/sdk";
 import {
-  ArrangeList,
   Badge,
   Button,
+  cn,
   Empty,
   IconButton,
   Spinner,
   useProjectList,
   useRunningScripts,
+  useStorage,
   useWorkspaceList,
 } from "@jig/sdk/ui";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FolderPlus,
   Layers,
-  ListOrdered,
+  MoreHorizontal,
   Play,
-  RotateCw,
   Square,
   SquareTerminal,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
+import {
+  addMember,
+  groupState,
+  memberKey,
+  moveGroup,
+  newGroup,
+  parseMember,
+  removeGroup,
+  removeMember,
+  renameGroup,
+  type ScriptGroup,
+} from "./lib/groups";
+import { countText, type PackageNode, relativeRepos, scriptTree, type TopNode } from "./lib/tree";
 
 type Listing = { scripts: AddonScript[]; groups: AddonScriptGroup[] };
 
@@ -37,7 +55,7 @@ function useListings(ctx: AddonUiContext, projects: AddonProject[]) {
   const [data, setData] = useState<Record<string, Listing | { error: string }>>({});
   const [version, setVersion] = useState(0);
   const key = projects.map((p) => p.id).join(",");
-  // Groups made on the dashboard, a rescan: list again.
+  // A rescan, a group made on the dashboard: list again.
   useEffect(() => ctx.scripts.onChange(() => setVersion((v) => v + 1)), [ctx]);
   useEffect(() => {
     let cancelled = false;
@@ -67,159 +85,457 @@ async function safe(ctx: AddonUiContext, label: string, fn: () => Promise<void>)
   }
 }
 
-/** One entry of a folder's list: a script group or a script. */
-type Item = { kind: "group"; group: AddonScriptGroup } | { kind: "script"; script: AddonScript };
-const itemKey = (i: Item) => (i.kind === "group" ? `g:${i.group.id}` : `s:${i.script.id}`);
-
-/** Your arrangement of each folder's list (hidden, order, dividers), the same in every project. */
-function useArrangements(ctx: AddonUiContext) {
-  const [all, setAll] = useState<Record<string, Arrangement>>();
-  useEffect(() => {
-    const load = () =>
-      void ctx.storage.get<Record<string, Arrangement>>("arrangement").then((v) => setAll(v ?? {}));
-    load();
-    // Claude changed the stored data.
-    return ctx.on("storage", load);
-  }, [ctx]);
-  const set = (folder: string, next: Arrangement) =>
-    setAll((current) => {
-      const updated = { ...(current ?? {}), [folder]: next };
-      void ctx.storage.set("arrangement", updated);
-      return updated;
-    });
-  return [all, set] as const;
+/** A script with the project it belongs to, and how to call it in a group or the running list. */
+interface Located {
+  project: AddonProject;
+  script: AddonScript;
+  /** "web · dev": the package and the script. */
+  label: string;
 }
 
-function FolderScripts({
-  ctx,
-  project,
-  title,
-  listing,
-  arrangement,
-  onArrange,
-  arranging,
-}: {
+/** Everything the view's parts share: projects, scripts, running, groups and hidden scripts. */
+interface Model {
   ctx: AddonUiContext;
-  project: AddonProject;
-  title: string;
-  listing?: Listing | { error: string };
-  arrangement: Arrangement;
-  onArrange: (next: Arrangement) => void;
-  arranging: boolean;
-}) {
-  const [open, setOpen] = useState(true);
-  const running = useRunningScripts();
-  const runningIds = new Map(running.filter((r) => r.projectId === project.id).map((r) => [r.scriptId, r]));
-  const items: Item[] =
-    listing && "scripts" in listing
-      ? [
-          ...listing.groups.map((group) => ({ kind: "group" as const, group })),
-          ...listing.scripts.map((script) => ({ kind: "script" as const, script })),
-        ]
-      : [];
-  const row = (item: Item) => {
-    if (item.kind === "group") {
-      const g = item.group;
-      return (
-        <div className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover">
-          <Layers className="size-3.5 text-muted" />
-          <span className="flex-1 truncate">{g.name}</span>
-          {!arranging && (
-            <IconButton
-              icon={Play}
-              size="sm"
-              label={`Start ${g.name}`}
-              onClick={() => void safe(ctx, g.name, () => ctx.scripts.runGroup(project.id, g.id))}
-            />
-          )}
-        </div>
-      );
-    }
-    const sc = item.script;
-    const r = runningIds.get(sc.id);
-    return (
-      <div
-        className="group flex h-7 items-center gap-2 rounded-md pr-1 pl-5 text-sm hover:bg-hover"
-        data-testid={`scripts-addon-${sc.name}`}
-      >
-        <span className={r ? "size-1.5 rounded-full bg-success" : "size-1.5 rounded-full bg-line-strong"} />
-        <button
-          type="button"
-          className="min-w-0 flex-1 truncate text-left"
-          title={sc.detail ?? sc.command}
-          disabled={arranging}
-          onClick={() =>
-            r
-              ? ctx.scripts.show(r.terminalId)
-              : void safe(ctx, sc.name, () => ctx.scripts.run(project.id, sc.id))
+  running: Map<string, RunningScript>;
+  find: (member: string) => Located | undefined;
+  /** The script a running terminal belongs to. */
+  findRun: (projectId: string, scriptId: string) => Located | undefined;
+  groups: ScriptGroup[];
+  setGroups: (next: ScriptGroup[]) => void;
+  isHidden: (folder: string, scriptId: string) => boolean;
+  toggleHide: (folder: string, scriptId: string) => void;
+}
+
+const runKey = (projectId: string, scriptId: string) => `${projectId}|${scriptId}`;
+
+function scriptMenu(m: Model, located: Located, e: MouseEvent, group?: ScriptGroup) {
+  e.preventDefault();
+  const { project, script } = located;
+  const { ctx } = m;
+  const member = memberKey(project.path, script.id);
+  const r = m.running.get(runKey(project.id, script.id));
+  ctx.menu(
+    [
+      r
+        ? { label: "Stop", icon: "square", onSelect: () => void ctx.scripts.stop(project.id, script.id) }
+        : {
+            label: "Run",
+            icon: "play",
+            onSelect: () => void safe(ctx, script.name, () => ctx.scripts.run(project.id, script.id)),
+          },
+      ...(r
+        ? [
+            {
+              label: "Show its terminal",
+              icon: "square-terminal",
+              onSelect: () => ctx.scripts.show(r.terminalId),
+            },
+          ]
+        : []),
+      ...(script.url
+        ? [
+            {
+              label: `Open ${script.url}`,
+              icon: "external-link",
+              onSelect: () => ctx.openExternal(script.url!),
+            },
+          ]
+        : []),
+      { separator: true },
+      group
+        ? {
+            label: `Remove from ${group.name}`,
+            icon: "x",
+            onSelect: () => m.setGroups(removeMember(m.groups, group.id, member)),
           }
-        >
-          {sc.folder ? <span className="text-hint">{sc.folder}/</span> : null}
-          {sc.name}
-        </button>
-        {arranging ? null : r ? (
-          <>
-            <IconButton
-              icon={RotateCw}
-              size="sm"
-              label="Restart"
-              onClick={() => void safe(ctx, sc.name, () => ctx.scripts.restart(project.id, sc.id))}
-            />
+        : {
+            label: "Add to group",
+            icon: "layers",
+            submenu: [
+              ...m.groups.map((g) => ({
+                label: g.name,
+                checked: g.members.includes(member),
+                onSelect: () => m.setGroups(addMember(m.groups, g.id, member)),
+              })),
+              ...(m.groups.length ? [{ separator: true as const }] : []),
+              {
+                label: "New group…",
+                icon: "folder-plus",
+                onSelect: async () => {
+                  const name = await ctx.prompt({
+                    title: "New group",
+                    message: `With ${located.label}.`,
+                    confirmLabel: "Create",
+                  });
+                  if (name?.trim()) m.setGroups(newGroup(m.groups, name, member));
+                },
+              },
+            ],
+          },
+      ...(group
+        ? []
+        : [
+            {
+              label: m.isHidden(project.path, script.id) ? "Show it" : "Hide it",
+              icon: m.isHidden(project.path, script.id) ? "eye" : "eye-off",
+              onSelect: () => m.toggleHide(project.path, script.id),
+            },
+          ]),
+    ],
+    e.nativeEvent,
+  );
+}
+
+/** A script as a chip: ▶ name to start; while it runs, a green ■ name that stops it. */
+function ScriptChip({
+  m,
+  located,
+  label,
+  group,
+  hidden,
+}: {
+  m: Model;
+  located: Located;
+  label: string;
+  group?: ScriptGroup;
+  hidden?: boolean;
+}) {
+  const { project, script } = located;
+  const { ctx } = m;
+  const r = m.running.get(runKey(project.id, script.id));
+  return (
+    <span className="inline-flex" data-testid={`scripts-addon-${script.name}`}>
+      <button
+        type="button"
+        title={`${script.detail ?? script.command}\n${project.name}${script.folder ? ` · ${script.folder}` : ""}`}
+        onClick={() =>
+          r
+            ? void ctx.scripts.stop(project.id, script.id)
+            : void safe(ctx, script.name, () => ctx.scripts.run(project.id, script.id))
+        }
+        onContextMenu={(e) => scriptMenu(m, located, e, group)}
+        className={cn(
+          "inline-flex h-6 max-w-full items-center gap-1 truncate rounded-md border px-1.5 text-xs",
+          r ? "border-success bg-success-soft text-success" : "border-line bg-surface text-fg hover:bg-hover",
+          hidden && "opacity-50",
+        )}
+      >
+        {r ? <Square className="size-3 shrink-0" /> : <Play className="size-3 shrink-0" />}
+        <span className="truncate">{label}</span>
+        {hidden && <EyeOff className="size-3 shrink-0 text-hint" />}
+      </button>
+    </span>
+  );
+}
+
+/** Scripts running now, wherever they're from: open the address, show the terminal, stop. */
+function RunningList({ m }: { m: Model }) {
+  const runs = [...m.running.values()];
+  if (runs.length === 0) return null;
+  return (
+    <section className="mb-3" data-testid="scripts-running">
+      <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">Running</div>
+      {runs.map((r) => {
+        const url = m.findRun(r.projectId, r.scriptId)?.script.url;
+        return (
+          <div
+            key={r.terminalId}
+            className="group flex h-7 items-center gap-2 rounded-md px-2 text-sm hover:bg-hover"
+          >
+            <span className="size-1.5 shrink-0 rounded-full bg-success" />
+            <button
+              type="button"
+              className="min-w-0 flex-1 truncate text-left"
+              onClick={() => m.ctx.scripts.show(r.terminalId)}
+            >
+              {r.title}
+            </button>
+            {url && (
+              <IconButton
+                icon={ExternalLink}
+                size="sm"
+                label={`Open ${url}`}
+                onClick={() => m.ctx.openExternal(url)}
+              />
+            )}
             <IconButton
               icon={Square}
               size="sm"
-              label="Stop"
-              onClick={() => void ctx.scripts.stop(project.id, sc.id)}
+              label={`Stop ${r.title}`}
+              onClick={() => void m.ctx.scripts.stop(r.projectId, r.scriptId)}
             />
-          </>
-        ) : (
-          <IconButton
-            icon={Play}
-            size="sm"
-            label="Run"
-            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-            onClick={() => void safe(ctx, sc.name, () => ctx.scripts.run(project.id, sc.id))}
-          />
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** One of your groups: Start and Stop for all of it, its scripts as chips. */
+function GroupCard({ m, group, index }: { m: Model; group: ScriptGroup; index: number }) {
+  const { ctx } = m;
+  const members = group.members.map((key) => ({ key, located: m.find(key) }));
+  const isRunning = (key: string) => {
+    const l = m.find(key);
+    return !!l && m.running.has(runKey(l.project.id, l.script.id));
+  };
+  const { running, stopped } = groupState(group, isRunning);
+  const start = () =>
+    void Promise.all(
+      stopped
+        .map(m.find)
+        .map((l) => l && safe(ctx, l.script.name, () => ctx.scripts.run(l.project.id, l.script.id))),
+    );
+  const stop = () =>
+    void Promise.all(running.map(m.find).map((l) => l && ctx.scripts.stop(l.project.id, l.script.id)));
+  const menu = (e: MouseEvent) =>
+    ctx.menu(
+      [
+        {
+          label: "Rename…",
+          icon: "pencil",
+          onSelect: async () => {
+            const name = await ctx.prompt({
+              title: "Rename group",
+              initial: group.name,
+              confirmLabel: "Rename",
+            });
+            if (name) m.setGroups(renameGroup(m.groups, group.id, name));
+          },
+        },
+        {
+          label: "Move up",
+          icon: "arrow-up",
+          disabled: index === 0,
+          onSelect: () => m.setGroups(moveGroup(m.groups, group.id, -1)),
+        },
+        {
+          label: "Move down",
+          icon: "arrow-down",
+          disabled: index === m.groups.length - 1,
+          onSelect: () => m.setGroups(moveGroup(m.groups, group.id, 1)),
+        },
+        { separator: true },
+        {
+          label: "Delete group",
+          icon: "trash-2",
+          danger: true,
+          onSelect: () => m.setGroups(removeGroup(m.groups, group.id)),
+        },
+      ],
+      e.nativeEvent,
+    );
+  return (
+    <div className="mb-2 rounded-md border border-line p-2" data-testid={`scripts-group-${group.name}`}>
+      <div className="flex items-center gap-1.5">
+        <Layers className="size-3.5 shrink-0 text-muted" />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{group.name}</span>
+        {running.length > 0 && (
+          <Badge tone="success">
+            {running.length}/{group.members.length}
+          </Badge>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Play}
+          disabled={stopped.length === 0}
+          onClick={start}
+          data-testid={`scripts-group-start-${group.name}`}
+        >
+          Start
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Square}
+          disabled={running.length === 0}
+          onClick={stop}
+          data-testid={`scripts-group-stop-${group.name}`}
+        >
+          Stop
+        </Button>
+        <IconButton icon={MoreHorizontal} size="sm" label={`${group.name} options`} onClick={menu} />
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {members.length === 0 && (
+          <span className="text-xs text-hint">Right-click a script below → Add to group.</span>
+        )}
+        {members.map(({ key, located }) =>
+          located ? (
+            <ScriptChip key={key} m={m} located={located} label={located.label} group={group} />
+          ) : (
+            <button
+              key={key}
+              type="button"
+              title="This script isn't found any more. Click to remove it from the group."
+              className="h-6 rounded-md border border-dashed border-line px-1.5 text-xs text-hint"
+              onClick={() => m.setGroups(removeMember(m.groups, group.id, key))}
+            >
+              {parseMember(key).scriptId.split(":").pop()} (gone)
+            </button>
+          ),
         )}
       </div>
-    );
-  };
-  return (
-    <div className="mb-2">
-      <button
-        type="button"
-        className="flex h-7 w-full items-center gap-1 px-2 text-left text-xs font-medium text-muted hover:text-fg"
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-        <span className="flex-1 truncate">{title}</span>
-        {runningIds.size > 0 && <Badge tone="success">{runningIds.size} running</Badge>}
-      </button>
-      {open && !listing && <Spinner size="sm" className="mx-4" />}
-      {open && listing && "error" in listing && (
-        <div className="px-4 text-xs text-danger">{listing.error}</div>
-      )}
-      {open && listing && "scripts" in listing && (
-        <>
-          {listing.scripts.length === 0 && <div className="px-5 text-xs text-hint">No scripts found.</div>}
-          <ArrangeList
-            items={items}
-            keyOf={itemKey}
-            arrangement={arrangement}
-            onChange={onArrange}
-            arranging={arranging}
-            renderItem={row}
-            testId={`scripts-folder-${title}`}
-          />
-        </>
-      )}
     </div>
   );
 }
 
+const TAGS: Record<PackageNode["kind"], { text: string; tone: "info" | "warning" | "neutral" }> = {
+  api: { text: "API", tone: "info" },
+  npm: { text: "npm", tone: "warning" },
+  script: { text: "script", tone: "neutral" },
+};
+
+/** A package or project: its tag and name, then its scripts. */
+function PackageRow({
+  m,
+  project,
+  node,
+  showHidden,
+}: {
+  m: Model;
+  project: AddonProject;
+  node: PackageNode;
+  showHidden: boolean;
+}) {
+  const scripts = node.scripts.filter((s) => showHidden || !m.isHidden(project.path, s.id));
+  if (scripts.length === 0) return null;
+  return (
+    <div className="mb-1.5 pl-6" data-testid={`scripts-package-${node.folder || node.label}`}>
+      <div className="flex items-center gap-1.5 pb-0.5 text-xs">
+        <Badge tone={TAGS[node.kind].tone}>{TAGS[node.kind].text}</Badge>
+        <span className="truncate font-medium" title={node.folder}>
+          {node.label}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {scripts.map((s) => (
+          <ScriptChip
+            key={s.id}
+            m={m}
+            located={{ project, script: s, label: `${node.label} · ${s.name}` }}
+            label={s.name}
+            hidden={m.isHidden(project.path, s.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A folding row of the tree: its name, a dot when something in it runs, what it holds. */
+function Fold({
+  label,
+  open,
+  onToggle,
+  active,
+  count,
+  depth,
+  testId,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  active: boolean;
+  count: string;
+  depth: number;
+  testId: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      data-testid={testId}
+      className={cn(
+        "flex h-7 w-full items-center gap-1 rounded-md pr-2 text-left text-sm hover:bg-hover",
+        depth ? "pl-5" : "pl-1",
+      )}
+    >
+      {open ? (
+        <ChevronDown className="size-3.5 shrink-0 text-muted" />
+      ) : (
+        <ChevronRight className="size-3.5 shrink-0 text-muted" />
+      )}
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+      {active && <span className="size-1.5 shrink-0 rounded-full bg-success" />}
+      <span className="shrink-0 text-2xs text-hint">{count}</span>
+    </button>
+  );
+}
+
+function Tree({
+  m,
+  project,
+  tops,
+  showHidden,
+  expanded,
+  toggle,
+}: {
+  m: Model;
+  project: AddonProject;
+  tops: TopNode[];
+  showHidden: boolean;
+  expanded: (key: string) => boolean;
+  toggle: (key: string) => void;
+}) {
+  const visible = (packages: PackageNode[]) =>
+    packages.filter((p) => p.scripts.some((s) => showHidden || !m.isHidden(project.path, s.id)));
+  const active = (packages: PackageNode[]) =>
+    packages.some((p) => p.scripts.some((s) => m.running.has(runKey(project.id, s.id))));
+  const packages = (list: PackageNode[]) =>
+    visible(list).map((node) => (
+      <PackageRow key={node.folder} m={m} project={project} node={node} showHidden={showHidden} />
+    ));
+  return (
+    <>
+      {tops.map((top) => {
+        const all = top.repos.flatMap((r) => r.packages);
+        if (visible(all).length === 0) return null;
+        const key = `${project.path}|${top.key}`;
+        return (
+          <div key={top.key}>
+            <Fold
+              label={top.label}
+              open={expanded(key)}
+              onToggle={() => toggle(key)}
+              active={active(all)}
+              count={countText(visible(all))}
+              depth={0}
+              testId={`scripts-top-${top.label}`}
+            />
+            {expanded(key) &&
+              (top.flat
+                ? packages(all)
+                : top.repos.map((repo) => {
+                    if (visible(repo.packages).length === 0) return null;
+                    const rk = `${project.path}|${repo.key}`;
+                    return (
+                      <div key={repo.key}>
+                        <Fold
+                          label={repo.label || top.label}
+                          open={expanded(rk)}
+                          onToggle={() => toggle(rk)}
+                          active={active(repo.packages)}
+                          count={countText(visible(repo.packages))}
+                          depth={1}
+                          testId={`scripts-repo-${repo.label || top.label}`}
+                        />
+                        {expanded(rk) && <div className="pl-3">{packages(repo.packages)}</div>}
+                      </div>
+                    );
+                  }))}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 /**
- * Every script Jig finds, one group per folder (workspace), whatever the active project (D-102: the
- * right side is global). Arrange: hide scripts, drag them into your order, group them with dividers.
+ * Every script Jig finds, like the scripts plugin (D-142): what runs now, your groups (Start and Stop
+ * for each), then each folder as a tree of top folder → repository → package, scripts as chips.
+ * Right-click a script to add it to a group or hide it. The right side is global (D-102).
  */
 export function ScriptsView({ ctx }: AddonComponentProps) {
   const projects = useProjectList();
@@ -231,42 +547,128 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
     return [...seen.values()];
   }, [projects]);
   const listings = useListings(ctx, folders);
-  const [arrangements, setArrangement] = useArrangements(ctx);
-  const [arranging, setArranging] = useState(false);
+  const runningList = useRunningScripts();
+  const [groups, setGroups] = useStorage<ScriptGroup[]>("groups", []);
+  // Hidden scripts, per folder (the arrangement the view kept before groups).
+  const [arrangements, setArrangements] = useStorage<Record<string, Arrangement>>("arrangement", {});
+  const [open, setOpen] = useStorage<Record<string, boolean>>("expanded", {});
+  const [showHidden, setShowHidden] = useState(false);
   const active = ctx.projects.active();
   const ordered = [...folders].sort((a, b) =>
     a.path === active?.path ? -1 : b.path === active?.path ? 1 : 0,
   );
+
+  const located = useMemo(() => {
+    const map = new Map<string, Located>();
+    for (const project of folders) {
+      const listing = listings[project.id];
+      if (!listing || !("scripts" in listing)) continue;
+      for (const script of listing.scripts) {
+        const pkg = script.folder ? (script.folder.split("/").pop() ?? script.folder) : project.name;
+        map.set(memberKey(project.path, script.id), { project, script, label: `${pkg} · ${script.name}` });
+      }
+    }
+    return map;
+  }, [folders, listings]);
+
+  const m: Model = {
+    ctx,
+    running: new Map(runningList.map((r) => [runKey(r.projectId, r.scriptId), r])),
+    find: (member) => located.get(member),
+    findRun: (projectId, scriptId) => {
+      const project = folders.find((p) => p.id === projectId);
+      return project ? located.get(memberKey(project.path, scriptId)) : undefined;
+    },
+    groups,
+    setGroups: (next) => void setGroups(next),
+    isHidden: (folder, id) => (arrangements[folder]?.hidden ?? []).includes(`s:${id}`),
+    toggleHide: (folder, id) =>
+      void setArrangements({
+        ...arrangements,
+        [folder]: toggleHidden(arrangements[folder] ?? EMPTY_ARRANGEMENT, `s:${id}`),
+      }),
+  };
+
+  const trees = ordered.map((project) => {
+    const listing = listings[project.id];
+    const workspace = workspaces.find((w) => w.path === project.path);
+    const repos = relativeRepos(project.path, workspace?.repos ?? [], workspace?.isGitRepo ?? false);
+    const title = workspace?.name ?? project.name;
+    return {
+      project,
+      listing,
+      title,
+      tops: listing && "scripts" in listing ? scriptTree(listing.scripts, repos, title) : [],
+    };
+  });
+  const all = trees.flatMap((t) => t.tops.flatMap((top) => top.repos.flatMap((r) => r.packages)));
+  // One top folder in all: open it from the start.
+  const single = trees.length === 1 && trees[0]!.tops.length === 1;
+  const expanded = (key: string) => open[key] ?? single;
+  const toggle = (key: string) => void setOpen({ ...open, [key]: !expanded(key) });
+
   if (folders.length === 0) return <Empty icon={SquareTerminal} title="No projects" />;
-  const titleOf = (p: AddonProject) => workspaces.find((w) => w.path === p.path)?.name ?? p.name;
   return (
     <div className="flex h-full flex-col" data-testid="scripts-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
-        <span className="flex-1">{arranging ? "Hide, reorder and group your scripts" : "Scripts"}</span>
-        <Button
+        <span className="min-w-0 flex-1 truncate">{countText(all) || "Scripts"}</span>
+        <IconButton
+          icon={showHidden ? Eye : EyeOff}
           size="sm"
-          variant={arranging ? "primary" : "ghost"}
-          icon={arranging ? Check : ListOrdered}
-          onClick={() => setArranging(!arranging)}
-          data-testid="scripts-arrange"
-        >
-          {arranging ? "Done" : "Arrange"}
-        </Button>
+          label={showHidden ? "Leave hidden scripts out" : "Show hidden scripts"}
+          active={showHidden}
+          onClick={() => setShowHidden(!showHidden)}
+          data-testid="scripts-show-hidden"
+        />
+        <IconButton
+          icon={FolderPlus}
+          size="sm"
+          label="New group"
+          data-testid="scripts-new-group"
+          onClick={async () => {
+            const name = await ctx.prompt({
+              title: "New group",
+              message: "Then right-click scripts → Add to group.",
+              confirmLabel: "Create",
+            });
+            if (name?.trim()) m.setGroups(newGroup(groups, name));
+          }}
+        />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        {arrangements &&
-          ordered.map((p) => (
-            <FolderScripts
-              key={p.path}
-              ctx={ctx}
-              project={p}
-              title={titleOf(p)}
-              listing={listings[p.id]}
-              arrangement={arrangements[p.path] ?? EMPTY_ARRANGEMENT}
-              onArrange={(next) => setArrangement(p.path, next)}
-              arranging={arranging}
+        <RunningList m={m} />
+        {groups.length > 0 && (
+          <section className="mb-3" data-testid="scripts-groups">
+            <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">Groups</div>
+            {groups.map((g, i) => (
+              <GroupCard key={g.id} m={m} group={g} index={i} />
+            ))}
+          </section>
+        )}
+        {trees.map((t) => (
+          <section key={t.project.path} className="mb-2">
+            {trees.length > 1 && (
+              <div className="px-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">
+                {t.title}
+              </div>
+            )}
+            {!t.listing && <Spinner size="sm" className="mx-4" />}
+            {t.listing && "error" in t.listing && (
+              <div className="px-4 text-xs text-danger">{t.listing.error}</div>
+            )}
+            {t.listing && "scripts" in t.listing && t.listing.scripts.length === 0 && (
+              <div className="px-3 text-xs text-hint">No scripts found.</div>
+            )}
+            <Tree
+              m={m}
+              project={t.project}
+              tops={t.tops}
+              showHidden={showHidden}
+              expanded={expanded}
+              toggle={toggle}
             />
-          ))}
+          </section>
+        ))}
       </div>
     </div>
   );
@@ -291,21 +693,33 @@ export async function runScriptMenu(ctx: AddonUiContext) {
   );
 }
 
+/** Tools → Start a script group…: your groups from the Scripts view, then the project's own. */
 export async function runGroupMenu(ctx: AddonUiContext) {
+  const mine = (await ctx.storage.get<ScriptGroup[]>("groups")) ?? [];
   const project = ctx.projects.active();
-  if (!project) return ctx.notify({ title: "Pick a project first", tone: "warning" });
-  const { groups } = await ctx.scripts.list(project.id);
-  if (groups.length === 0)
+  const theirs = project ? (await ctx.scripts.list(project.id)).groups : [];
+  if (mine.length === 0 && theirs.length === 0)
     return ctx.notify({
       title: "No script groups yet",
-      message: "Create one on the project dashboard (Scripts → Group).",
+      message: "In the Scripts view: New group, then right-click scripts → Add to group.",
       tone: "info",
     });
+  const projects = ctx.projects.list();
+  const startMine = async (g: ScriptGroup) => {
+    for (const key of g.members) {
+      const { folder, scriptId } = parseMember(key);
+      const p = projects.find((x) => x.path === folder);
+      if (p) await safe(ctx, g.name, () => ctx.scripts.run(p.id, scriptId));
+    }
+  };
   ctx.menu(
-    groups.map((g) => ({
-      label: g.name,
-      onSelect: () => void safe(ctx, g.name, () => ctx.scripts.runGroup(project.id, g.id)),
-    })),
+    [
+      ...mine.map((g) => ({ label: g.name, icon: "layers", onSelect: () => void startMine(g) })),
+      ...theirs.map((g) => ({
+        label: `${g.name} (${project!.name})`,
+        onSelect: () => void safe(ctx, g.name, () => ctx.scripts.runGroup(project!.id, g.id)),
+      })),
+    ],
     anchor(),
   );
 }

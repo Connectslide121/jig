@@ -84,8 +84,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     Explorer.
   - **Pipelines** (right sidebar): Azure DevOps through your `az` login, every organisation you
     belong to with all its projects by default (D-125); narrow it in Settings → Pipelines; run on a branch, open in the browser, notifications when your runs finish.
-  - **Scripts** (right sidebar): every script of every project (git worktrees inside a folder are
-    left out, D-127); Tools → Run a script… (`Ctrl+Shift+R`).
+  - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups with
+    Start/Stop (right-click a script → Add to group); every script as a tree of folder → repository
+    → package (API / npm), scripts as ▶ chips. .NET projects offer their launch profiles (D-141);
+    worktrees inside a folder are left out (D-127). Tools → Run a script… (`Ctrl+Shift+R`).
 
 - **Phase 8 (done): builder, levels 1 and 2.**
   - Tools → **Build something…** (`Ctrl+Shift+B`), **Change this with AI…** in an add-on view's `⋯`

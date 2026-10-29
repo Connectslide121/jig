@@ -1354,3 +1354,18 @@ Use text-sm instead of text-base for shared menu item text, matching the all-too
 - A web, worker or console project without profiles still gets one `dotnet run`; a class library
   gets nothing, and `dotnet watch` entries are gone. On Jon's `E:\repos` that took the list from 540
   (after D-127) to 421, and the backends listed are the ones he actually starts.
+
+### D-142 — Scripts: a running list, real groups and a tree, like the scripts plugin
+**Decided by:** Jon (the plugin's layout; groups with Start/Stop instead of dividers; he only runs
+a frontend and a backend per repository) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **Groups replace dividers** in Scripts. A group is a named set of scripts from any project
+  (`<project folder>|<script id>`), global, with Start (members not running) and Stop (running ones).
+  Scripts join a group from their right-click menu; a member whose script is gone shows as "(gone)"
+  and leaves with a click.
+- **The list is the plugin's tree:** top folder → repository → package, tagged API / npm / script,
+  scripts as ▶ chips that turn into green ■ stop chips. A **Running** section on top has open (the
+  launch profile's address), show terminal and Stop.
+- **Hiding stays** (right-click → Hide it; the eye shows hidden ones), reusing the per-folder
+  `arrangement` so scripts Jon already hid stay hidden. The drag-to-reorder arrangement is gone from
+  Scripts; Pipelines and other lists keep `ArrangeList`.
