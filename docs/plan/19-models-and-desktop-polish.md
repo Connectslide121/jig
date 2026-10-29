@@ -38,3 +38,5 @@
 - [x] Reduce shared dropdown item text one step without changing icons, row height or hover styling.
 - [x] Scripts like the scripts plugin: running list, groups with Start/Stop, folder → repository → package tree (D-142)
 - [x] Notes as a built-in add-on: per-chat notes you and Claude write (D-147)
+- [x] Pipelines like the pipelines plugin: your repositories' pipelines, newest run and stages, a Run
+      form with the branch and the YAML's parameters (D-148)

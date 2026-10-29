@@ -85,8 +85,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     bar; right-click a project → Open in VS Code / Explorer.
   - **Notes** (right sidebar; D-147): short notes for the chat you're in (waiting on, where, to-do,
     note, link), like the notes plugin; Claude reads them before working and writes them too.
-  - **Pipelines** (right sidebar): Azure DevOps through your `az` login, every organisation you
-    belong to with all its projects by default (D-125); narrow it in Settings → Pipelines; run on a branch, open in the browser, notifications when your runs finish.
+  - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
+    the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
+    changed parameters) and its stages; **Run** opens a form with the branch, a picker per YAML
+    parameter and a checkbox per boolean, queued only on **Queue run**; notifications when your
+    runs finish. Every organisation's other pipelines (D-125) under "More pipelines".
   - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups with
     Start/Stop (right-click a script → Add to group); every script as a tree of folder → repository
     → package (API / npm), scripts as ▶ chips. .NET projects offer their launch profiles (D-141);
@@ -546,9 +549,10 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   npm test in the active project". Check that the builder reads the catalog, prefers changing an
   existing add-on when you name one, passes validation, that the preview works, and Accept/Discard.
   Open the Builder chat to see what it did.
-- **Pipelines with your Azure DevOps** (not testable here): Settings → Pipelines → Check Azure CLI,
-  enter the organisation, Load from Azure DevOps, pick projects; check the list, Run…, the browser
-  links, and the notification when a run finishes. Needs `az login` and
+- **Pipelines with your Azure DevOps** (tested with a fake `az` only): check that your repositories'
+  pipelines show with their newest run and stages, that the Run form's branch list and parameter
+  pickers match the YAML, that Queue run starts the run you picked (try a harmless pipeline or
+  "Deploy to: none") and that its notification comes; "More pipelines" for the rest. Needs `az login` and
   `az extension add --name azure-devops`.
 - **Git on your real repos**: large histories (scrolling, filter), Windows paths with spaces, line
   endings in diffs, push with your credential manager (a sign-in window may appear — that is git's,

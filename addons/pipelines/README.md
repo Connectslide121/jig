@@ -1,30 +1,34 @@
 # Pipelines
 
-Azure DevOps pipelines through your own `az` CLI (`az login` + the `azure-devops` extension). Jig
-stores no tokens (D-018).
+Azure DevOps pipelines through your own `az` CLI (`az login` + the `azure-devops` extension), like
+the pipelines plugin (D-148). Jig stores no tokens (D-018).
 
-- **Every organisation you belong to** (D-125): by default the view shows each Azure DevOps
-  organisation your `az` login is a member of (`listOrgs`: the profile and accounts APIs through
-  `az rest`), with all its projects. Settings → Pipelines turns that off, adds organisations by
-  hand, and narrows any organisation to chosen projects. The first version's single organisation
-  is kept as a listed one.
-- **Cost:** the organisations and their projects are asked for once an hour, each project's
-  pipelines every 10 minutes, and only the latest runs on each refresh (none for a project without
-  pipelines), at most 4 `az` processes at a time.
-- **View Pipelines** (right sidebar): pipelines grouped per organisation and Azure DevOps project with the latest run
-  (status, branch, when), refreshed every 30 s while Jig is in front. Run a pipeline on a branch, open a run or
-  the pipeline in the browser.
-- **Watcher**: runs you started from Jig are checked every minute; you get a notification when one
+- **Your repositories' pipelines:** every repository in your workspaces whose `origin` is on Azure
+  DevOps (a repository with worktrees once) → `az pipelines list --repository … --repository-type
+  tfsgit` → `az pipelines show` for the YAML file and default branch → the YAML's run-time
+  parameters, read from your checkout (`lib/devops.ts`). "(old) …" and disabled pipelines are left
+  out. Found once and kept (storage `found`); **Find pipelines again** (header) looks again.
+- **View Pipelines** (right sidebar): a card per repository; per pipeline the newest run as a chip
+  (✓ 12m, ▶ Running 35m, ◷ Queued 3m, Cancelled…), its branch, why (CI, manual, PR…), who and what
+  it changed from the defaults ("Deploy to: production"), and its stages (`Build ✓ → Deploy ▶`,
+  skipped ones left out). Click the name to open the run (or the pipeline) in the browser; ⋯ for both.
+- **Run form** (Run on a pipeline, or Tools → Run a pipeline…): the branch (the default first, then
+  local and origin branches), a picker per parameter with `values`, a checkbox per boolean, a text
+  field otherwise, and a summary of what will run. Nothing runs until **Queue run**.
+- **Refreshing:** one `az pipelines runs list` per Azure DevOps project, every 20 s while a run runs
+  and every minute otherwise, only while Jig is in front; a finished run's stages
+  (`az devops invoke … Timeline`) are asked for once.
+- **Watcher:** runs you started from Jig are checked every minute; you get a notification when one
   succeeds or fails.
-- **Settings → Pipelines**: every organisation of your login (on by default), organisations added by
-  URL (e.g. `https://dev.azure.com/contoso`), the projects per organisation (none = all); "Check"
-  tells you whether `az`, the extension and your login are ready.
+- **More pipelines in your organisations** (collapsed, loaded when opened; D-125): every other
+  pipeline of the organisations your `az` login belongs to (or the ones listed in Settings →
+  Pipelines), per organisation and project; run one on a branch with the YAML's defaults.
+- **Arrange** (header): hide pipelines, drag them into your order, group them with dividers; per
+  repository (`repo:<name>`), and per organisation/project in More pipelines. Kept globally in the
+  add-on's storage (`arrangement`).
+- **Settings → Pipelines:** Check Azure CLI; the organisations for More pipelines (every one you
+  belong to by default, added by URL, narrowed to projects).
 
-Commands used: `az rest` (profile and accounts), `az pipelines list`, `az pipelines runs list`, `az pipelines run`,
-`az pipelines runs show`, `az devops project list`. Parsers in `lib/runs.ts` (tested).
-
-**Arrange** (header button): hide pipelines, drag them into your order, and group them with dividers
-(optionally titled). One arrangement per Azure DevOps organisation and project (`<org>/<project>`; older ones by project), the same in every Jig project (D-108), kept in the
-add-on's storage (`arrangement`). New pipelines appear after the arranged ones.
-
-Arrange also hides, restores, reorders and groups entire Azure DevOps projects, including empty ones. Project arrangements are stored alongside pipeline arrangements under `projects:<normalized organisation URL>` in the global `arrangement` data. Hidden projects reappear in Arrange so you can restore them. Settings checks and saving show progress and errors.
+Commands used: `git remote get-url`, `git for-each-ref`, `az pipelines list / show / run / runs list
+/ runs show`, `az devops invoke` (timeline), `az rest` (your organisations), `az devops project list`.
+Parsers in `lib/devops.ts`, `lib/runs.ts` and `lib/orgs.ts` (tested).

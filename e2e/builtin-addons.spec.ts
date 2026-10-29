@@ -171,12 +171,14 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
   await expect(view.getByTestId("scripts-matches").getByTestId("scripts-addon-lint")).toBeVisible();
 });
 
-test("Pipelines asks to be set up and has a settings page", async ({ page }) => {
+test("Pipelines: none found, a settings page, and more pipelines from your organisations", async ({
+  page,
+}) => {
   await page.getByTestId("tools-button").click();
   await page.getByTestId("tools-filter").fill("show pipelines");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Set up Azure DevOps")).toBeVisible({ timeout: 15000 });
-  await page.getByRole("button", { name: "Set up" }).click();
+  await expect(page.getByTestId("pipelines-view")).toContainText("No pipelines found", { timeout: 15000 });
+  await page.getByRole("button", { name: "Pipelines settings", exact: true }).click();
   await expect(page.getByTestId("pipelines-settings")).toBeVisible();
   // Every organisation of your az login by default; az here says it isn't signed in.
   await expect(page.getByTestId("pipelines-settings")).toContainText("az login");
@@ -190,13 +192,14 @@ test("Pipelines asks to be set up and has a settings page", async ({ page }) => 
     value: { allOrgs: true, orgs: [{ org: "https://dev.azure.com/contoso", projects: ["Web", "Api"] }] },
   });
   await page.getByTestId("settings-nav-appearance").click();
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await page.getByRole("button", { name: "Pipelines settings", exact: true }).click();
   await expect(page.getByTestId("pipelines-settings")).toBeVisible();
   await expect(page.getByTestId("tab-jig.settings")).toHaveCount(1);
-  // Projects, including empty/erroring ones, can be hidden and restored from Arrange.
-  await page.getByTestId("pipelines-arrange").click();
+  // More pipelines: projects, including empty/erroring ones, can be hidden and restored from Arrange.
+  await page.getByTestId("pipelines-more").click();
   const projects = page.getByTestId("pipelines-projects-contoso");
+  await expect(projects).toBeVisible({ timeout: 15000 });
+  await page.getByTestId("pipelines-arrange").click();
   await projects.getByTestId("arrange-toggle-Web").click();
   await page.getByTestId("pipelines-arrange").click();
   await expect(projects.getByTestId("arrange-item-Web")).toHaveCount(0);

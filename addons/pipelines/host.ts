@@ -1,8 +1,21 @@
+import { basename, join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
+import {
+  branchList,
+  fromBuild,
+  isRetired,
+  newestPerPipeline,
+  type PipelineInfo,
+  type PipelineRun,
+  parseParameters,
+  parseRemote,
+  runParameters,
+  stagesOf,
+} from "./lib/devops";
 import { effectiveOrgs, inBatches, type OrgSettings, orgUrl, readSettings, type Settings } from "./lib/orgs";
 import { latestRuns, type Pipeline, type Run, runState, runUrl, toPipeline, toRun } from "./lib/runs";
 
-export type { OrgSettings, Settings };
+export type { OrgSettings, PipelineInfo, PipelineRun, Settings };
 
 /**
  * Azure DevOps through the user's `az` CLI (az login + azure-devops extension). No tokens stored.
@@ -194,34 +207,6 @@ export async function overview(
   };
 }
 
-/** Starts a pipeline on a branch and keeps an eye on it (watcher). */
-export async function run(
-  {
-    org,
-    project,
-    id,
-    branch,
-    name,
-  }: { org: string; project: string; id: number; branch?: string; name: string },
-  api: AddonHostApi,
-) {
-  const result = await az<unknown>(api, [
-    "pipelines",
-    "run",
-    "--id",
-    String(id),
-    "--org",
-    orgUrl(org),
-    "--project",
-    project,
-    ...(branch ? ["--branch", branch] : []),
-  ]);
-  const started = toRun(result);
-  const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
-  await api.storage.set("tracked", [...tracked, { org: orgUrl(org), project, runId: started.id, name }]);
-  return { run: started, url: runUrl(orgUrl(org), project, started.id) };
-}
-
 /** Watcher: notifies when a run started from Jig finishes. */
 export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
   const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
@@ -273,4 +258,261 @@ export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
 
 export async function tracked(_: unknown, api: AddonHostApi) {
   return (await api.storage.get<Tracked[]>("tracked")) ?? [];
+}
+
+// ── Pipelines of your repositories, like the pipelines plugin (D-148) ──────────────────────────────
+
+/** Found pipelines are kept (storage `found`) and looked for again after this long, or on request. */
+const FIND_AGAIN = 6 * HOUR;
+
+export interface Found {
+  at: number;
+  pipelines: PipelineInfo[];
+  /** Repositories whose pipelines couldn't be listed, with why. */
+  errors: string[];
+}
+
+async function git(api: AddonHostApi, cwd: string, args: string[]) {
+  const r = await api.exec("git", args, { cwd, timeoutMs: 20_000, env: { GIT_TERMINAL_PROMPT: "0" } });
+  return r.code === 0 ? r.stdout : "";
+}
+
+/** Every repository checkout of your workspaces, each once. */
+async function checkouts(api: AddonHostApi): Promise<Array<{ path: string; name: string }>> {
+  const seen = new Set<string>();
+  return (await api.workspaces())
+    .filter((w) => w.exists)
+    .flatMap((w) => (w.isGitRepo ? [{ path: w.path, name: w.name }] : (w.repos ?? [])))
+    .map((r) => ({ path: r.path, name: r.name || basename(r.path) }))
+    .filter((r) => !seen.has(r.path.toLowerCase()) && Boolean(seen.add(r.path.toLowerCase())));
+}
+
+/**
+ * The pipelines of the Azure DevOps repositories you have checked out: each checkout's `origin`, the
+ * pipelines building that repository (not retired ones), their YAML file and its run-time parameters.
+ * A repository checked out twice (worktrees) counts once.
+ */
+export async function pipelines({ force }: { force?: boolean } = {}, api: AddonHostApi): Promise<Found> {
+  const kept = await api.storage.get<Found>("found");
+  if (kept && !force && Date.now() - kept.at < FIND_AGAIN) return kept;
+  const remotes = new Map<
+    string,
+    { path: string; name: string; org: string; project: string; repo: string }
+  >();
+  for (const c of await checkouts(api)) {
+    const remote = parseRemote(await git(api, c.path, ["remote", "get-url", "origin"]));
+    if (!remote) continue;
+    const id = `${remote.org}/${remote.project}/${remote.repo}`.toLowerCase();
+    if (!remotes.has(id)) remotes.set(id, { ...c, ...remote });
+  }
+  const errors: string[] = [];
+  const found = await inBatches([...remotes.values()], PARALLEL, async (r) => {
+    const common = ["--org", orgUrl(r.org), "--project", r.project];
+    try {
+      const listed =
+        (await az<Array<{ id: number; name: string; queueStatus?: string }>>(api, [
+          "pipelines",
+          "list",
+          ...common,
+          "--repository",
+          r.repo,
+          "--repository-type",
+          "tfsgit",
+        ])) ?? [];
+      return await inBatches(
+        listed.filter((p) => !isRetired(p.name, p.queueStatus ?? "enabled")),
+        PARALLEL,
+        async (p): Promise<PipelineInfo> => {
+          // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+          const shown = await az<any>(api, ["pipelines", "show", "--id", String(p.id), ...common]);
+          const yaml = String(shown?.process?.yamlFilename ?? "").replace(/^\/+/, "");
+          const text = yaml ? await api.fs.readFile(join(r.path, yaml)).catch(() => "") : "";
+          return {
+            key: `${r.org}/${r.project}/${p.id}`,
+            org: r.org,
+            project: r.project,
+            id: p.id,
+            name: p.name,
+            repoPath: r.path,
+            repoName: r.name,
+            yaml,
+            defaultBranch: String(shown?.repository?.defaultBranch ?? "refs/heads/main").replace(
+              /^refs\/heads\//,
+              "",
+            ),
+            params: parseParameters(text),
+          };
+        },
+      );
+    } catch (error) {
+      errors.push(`${r.name}: ${(error as Error).message}`);
+      return [];
+    }
+  });
+  const result: Found = {
+    at: Date.now(),
+    pipelines: found
+      .flat()
+      .sort((a, b) => a.repoName.localeCompare(b.repoName) || a.name.localeCompare(b.name)),
+    errors,
+  };
+  // A failed search (signed out…) doesn't replace pipelines found before.
+  if (result.pipelines.length || !kept?.pipelines.length) await api.storage.set("found", result);
+  return result.pipelines.length || !kept ? result : { ...kept, errors };
+}
+
+/** A finished run's stages don't change: asked for once. */
+const finishedStages = new Map<string, PipelineRun["stages"]>();
+
+/**
+ * The newest run of each pipeline (`keys` from `pipelines`), with its stages: one `az pipelines runs
+ * list` per Azure DevOps project, a timeline per run (once for a finished one).
+ */
+export async function latest(
+  { keys }: { keys: string[] },
+  api: AddonHostApi,
+): Promise<{ runs: Record<string, PipelineRun | null>; error?: string }> {
+  const byProject = new Map<string, { org: string; project: string; ids: number[] }>();
+  for (const key of keys) {
+    const [org, project, id] = key.split("/");
+    if (!org || !project || !id) continue;
+    const group = byProject.get(`${org}/${project}`) ?? { org, project, ids: [] };
+    group.ids.push(Number(id));
+    byProject.set(`${org}/${project}`, group);
+  }
+  const runs: Record<string, PipelineRun | null> = Object.fromEntries(keys.map((k) => [k, null]));
+  let error: string | undefined;
+  await inBatches([...byProject.values()], PARALLEL, async ({ org, project, ids }) => {
+    const common = ["--org", orgUrl(org), "--project", project];
+    try {
+      const list =
+        // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+        (await az<any[]>(api, [
+          "pipelines",
+          "runs",
+          "list",
+          ...common,
+          "--pipeline-ids",
+          ...ids.map(String),
+          "--top",
+          String(Math.max(20, ids.length * 5)),
+          "--query-order",
+          "QueueTimeDesc",
+        ])) ?? [];
+      const newest = newestPerPipeline(
+        list.flatMap((b) => {
+          const run = fromBuild(b);
+          return run ? [{ ...run, pipelineId: Number(b.definition?.id) }] : [];
+        }),
+      );
+      await inBatches([...newest.entries()], PARALLEL, async ([id, run]) => {
+        const stageKey = `${org}/${project}/${run.id}`;
+        let stages = finishedStages.get(stageKey);
+        if (!stages) {
+          stages = stagesOf(
+            await az<{ records?: Array<Record<string, unknown>> }>(api, [
+              "devops",
+              "invoke",
+              "--area",
+              "build",
+              "--resource",
+              "Timeline",
+              "--route-parameters",
+              `project=${project}`,
+              `buildId=${run.id}`,
+              "--org",
+              orgUrl(org),
+              "--api-version",
+              "7.1",
+            ]).catch(() => null),
+          );
+          if (run.status === "completed") finishedStages.set(stageKey, stages);
+        }
+        runs[`${org}/${project}/${id}`] = { ...run, stages };
+      });
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  });
+  return { runs, error };
+}
+
+/** The branches to run a pipeline on: the default first, then the checkout's and origin's. */
+export async function branches({ key }: { key: string }, api: AddonHostApi): Promise<string[]> {
+  const p = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
+  if (!p) return [];
+  const refs = await git(api, p.repoPath, [
+    "for-each-ref",
+    "--format=%(refname)",
+    "--sort=-committerdate",
+    "refs/heads",
+    "refs/remotes/origin",
+  ]);
+  return branchList(refs, p.defaultBranch);
+}
+
+/** Queues a run with the branch and parameters picked in the Run form, and keeps an eye on it. */
+export async function queue(
+  { key, branch, values }: { key: string; branch: string; values: Record<string, string> },
+  api: AddonHostApi,
+) {
+  const p = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
+  if (!p) throw new Error("That pipeline isn't known any more: find pipelines again.");
+  const params = runParameters(p.params, values);
+  const started = toRun(
+    await az<unknown>(api, [
+      "pipelines",
+      "run",
+      "--id",
+      String(p.id),
+      "--org",
+      orgUrl(p.org),
+      "--project",
+      p.project,
+      "--branch",
+      branch || p.defaultBranch,
+      ...(params.length ? ["--parameters", ...params] : []),
+    ]),
+  );
+  await track(api, { org: orgUrl(p.org), project: p.project, runId: started.id, name: p.name });
+  return { number: started.buildNumber, url: runUrl(orgUrl(p.org), p.project, started.id) };
+}
+
+/** Runs a pipeline from "More pipelines" (no checkout here): on a branch, with the YAML's defaults. */
+export async function runOther(
+  {
+    org,
+    project,
+    id,
+    branch,
+    name,
+  }: { org: string; project: string; id: number; branch?: string; name: string },
+  api: AddonHostApi,
+) {
+  const started = toRun(
+    await az<unknown>(api, [
+      "pipelines",
+      "run",
+      "--id",
+      String(id),
+      "--org",
+      orgUrl(org),
+      "--project",
+      project,
+      ...(branch ? ["--branch", branch] : []),
+    ]),
+  );
+  await track(api, { org: orgUrl(org), project, runId: started.id, name });
+  return { number: started.buildNumber, url: runUrl(orgUrl(org), project, started.id) };
+}
+
+async function track(api: AddonHostApi, run: Tracked) {
+  const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
+  await api.storage.set("tracked", [...tracked, run]);
+  api.emit("runs-changed");
+}
+
+/** Tools → Run a pipeline…: the view opens that pipeline's Run form. */
+export async function openRunForm({ key }: { key: string }, api: AddonHostApi) {
+  api.emit("open-run", key);
 }

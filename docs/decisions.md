@@ -1427,3 +1427,27 @@ group's start button) and Claude, on my own (how) · **Date:** 2026-10-30
 - **Claude reads the notes with a tool** (`addon_notes_list`, described as "read before working")
   instead of in every turn's system prompt, which a Claude Code chat fixes when it starts. The
   writing tools only touch the chat's notes and run without asking.
+
+### D-148 — Pipelines come from your repositories, like the pipelines plugin, with a Run form
+**Decided by:** Jon ("structured like the one in the plugin, with the same pickers, and test checkbox
+etc") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **What's listed:** the pipelines of the Azure DevOps repositories checked out in your workspaces
+  (each checkout's `origin`; a repository with worktrees once), grouped per repository; "(old) …"
+  and disabled pipelines are left out. They are looked for once and kept (storage `found`); the
+  header's "Find pipelines again" looks again. This replaces D-125's organisation-wide list as the
+  main view; that list stays under **More pipelines in your organisations**, loaded only when
+  opened, without the ones already shown (Settings → Pipelines still chooses its organisations).
+- **Each pipeline:** the newest run as a chip (✓ 12m, ▶ Running 35m, ◷ Queued…), its branch, why
+  (CI, manual…), who, the parameters it changed from the YAML's defaults, and its stages (skipped
+  ones left out). One `az pipelines runs list` per Azure DevOps project; a finished run's stages are
+  asked for once. Refreshed every 20 s while a run runs, else every minute, only while Jig is in front.
+- **Run form** (inline, under the pipeline): the branch (the default first, then the checkout's and
+  origin's), a picker per YAML parameter with `values`, a checkbox per boolean ("Run tests"), a text
+  field otherwise, and a summary ("Runs Shop CI on develop with Deploy to: production"). Nothing is
+  queued until **Queue run** is pressed; the run is then tracked and notifies when it finishes.
+- **Why the checkout:** the YAML's parameters are read from the file in your checkout, so the form
+  matches what you have; a pipeline outside your workspaces has no form (More pipelines runs it on a
+  branch with the defaults).
+- The add-on now also asks for `exec:git` and `fs:read` (the remote, the branches, the YAML).
+
