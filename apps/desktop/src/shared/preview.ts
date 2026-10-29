@@ -51,6 +51,7 @@ const BY_EXTENSION: Record<string, PreviewKind> = {
   m4v: "video",
   docx: "word",
   xlsx: "spreadsheet",
+  xlsm: "spreadsheet",
   pptx: "slides",
   mmd: "mermaid",
   mermaid: "mermaid",

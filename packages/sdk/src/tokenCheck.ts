@@ -24,7 +24,8 @@ const COLOUR_UTILITIES =
 const RULES: Array<{ rule: TokenViolation["rule"]; pattern: RegExp; message: string }> = [
   {
     rule: "hex-colour",
-    pattern: /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g,
+    // Not an anchor link (href="#add").
+    pattern: /(?<![\w&]|href=["'])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g,
     message: "Hard-coded hex colour — use a colour token (e.g. bg-surface, text-muted, var(--jig-accent)).",
   },
   {

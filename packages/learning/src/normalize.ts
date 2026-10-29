@@ -4,7 +4,8 @@ const RULES: Array<[RegExp, string]> = [
   [/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "<email>"],
   [/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, "<str>"],
   [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<id>"],
-  [/\b[0-9a-f]{7,40}\b(?=\s|$)/g, "<hash>"],
+  // A hash has digits and letters ("deadbeef" and "facade" are words).
+  [/\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b(?=\s|$)/g, "<hash>"],
   // Any word containing a path separator (Windows or POSIX, absolute or relative).
   [/(?<=^|\s|=)(?:[A-Za-z]:)?[\w.@~-]*(?:[\\/][\w.@~-]*)+/g, "<path>"],
   [/\b\d+(?:\.\d+)*\b/g, "<n>"],
@@ -36,7 +37,7 @@ export function promptTokens(text: string): string[] {
         .toLowerCase()
         .replace(/[`'"()[\]{}.,:;!?]/g, " ")
         .split(/\s+/)
-        .map((w) => w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ""))
+        .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
         .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
     ),
   ];

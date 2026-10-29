@@ -49,6 +49,8 @@ export function addonTools(
   addons: AddonInfo[],
   call: (id: string, method: string, args: unknown) => Promise<unknown>,
 ): JigTool[] {
+  // "a-b" + "c" and "a" + "b_c" give the same name: the first add-on keeps it.
+  const seen = new Set<string>();
   return addons
     .filter((a) => a.enabled && a.errors.length === 0 && a.manifest)
     .flatMap((a) =>
@@ -64,7 +66,8 @@ export function addonTools(
             ),
         }),
       ),
-    );
+    )
+    .filter((t) => !seen.has(t.name) && Boolean(seen.add(t.name)));
 }
 
 export interface AddonDataDeps {

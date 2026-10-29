@@ -3,14 +3,15 @@
 Source of truth: `packages/sdk/src/slots.ts` (`SLOTS`, `MANIFEST_KEY`). A contribution names a slot by
 its manifest key in `addon.json` → `contributes`. Components and handlers are named exports of the
 add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced by Jig
-(`addon.<addon-id>.<id>`), so they never collide.
+(`addon.<addon-id>.<id>`), so they never collide. Claude tools are named `addon_<addon-id>_<id>` with
+`-` turned into `_`; if two add-ons end up with the same name, the first one loaded keeps it.
 
 | Slot | Manifest key | Fields | Export receives | Where it shows |
 |---|---|---|---|---|
 | `view` | `views` | `id`, `title`, `icon?`, `region` (`left`/`right`/`bottom`, default left), `under?` (a view id such as `addon.git.git`: start as a collapsible section below it), `component` | `{ ctx }` | a sidebar or the bottom panel, or a section below another view; the user can move/hide it; a new view opens its region the first time |
 | `workbench.tab` | `tabs` | `type`, `title`, `icon?`, `component` | `{ ctx, params, tabId, active }` | main-area tabs, opened with `ctx.openTab(type, params)` (`params.title` overrides the tab title) |
 | `topbar.item` | `topbar` | `id`, `component` | `{ ctx }` | right side of the top bar |
-| `statusbar.item` | `statusbar` | `id`, `side` (`left`/`right`), `component` | `{ ctx }` | status bar |
+| `statusbar.item` | `statusbar` | `id`, `side` (`left`/`right`, default `right`), `component` | `{ ctx }` | status bar |
 | `dashboard.widget` | `dashboard` | `id`, `component`, `order?` | `{ ctx, project }` | project dashboard |
 | `tools.action` | `actions` | `id`, `title`, `group?` (default: add-on name), `icon?`, `shortcut?`, `run` | `run(ctx)` | Tools menu (+ keyboard shortcut) |
 | `context.project` / `context.repo` / `context.file` / `context.message` | `menus` | `slot`, `id`, `title`, `icon?`, `run` | `run(ctx, target)` — see `MenuTarget` | right-click menus of projects, repos (Repos view), files (Git), chat messages (`⋯` on a reply) |

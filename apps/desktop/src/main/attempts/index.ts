@@ -1,9 +1,8 @@
-import { join } from "node:path";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { emit, handle } from "../ipc/router";
 import { sessionManager } from "../sessions";
-import { jigHome } from "../state/paths";
+import { paths } from "../state/paths";
 import { AttemptService } from "./service";
 
 let service: AttemptService | undefined;
@@ -18,7 +17,7 @@ const JUDGE_INSTRUCTIONS =
 
 export function startAttempts(): void {
   const s = new AttemptService({
-    dir: join(jigHome(), "attempts"),
+    dir: paths.attempts(),
     createSession: ({ projectId, cwd, title }) =>
       sessionManager().create({
         projectId,

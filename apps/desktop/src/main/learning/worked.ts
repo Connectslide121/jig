@@ -61,6 +61,9 @@ export async function computeWorked(
     try {
       const email = (await git(repo, ["config", "user.email"]).catch(() => "")).trim();
       const out = await git(repo, [
+        // Paths as they are (not quoted with octal escapes), so they match the recorded files.
+        "-c",
+        "core.quotePath=false",
         "log",
         `--since=${read}`,
         "-n",

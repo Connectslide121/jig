@@ -29,6 +29,10 @@ export const paths = {
   builds: () => join(jigHome(), "builds.json"),
   scripts: () => join(jigHome(), "scripts.json"),
   logs: () => join(jigHome(), "logs"),
+  /** Best-of-N runs: one JSON per run, worktrees inside. */
+  attempts: () => join(jigHome(), "attempts"),
+  worktrees: () => join(jigHome(), "worktrees"),
+  worktreeChats: () => join(jigHome(), "worktree-chats.json"),
   /** The build that ran before the last update from source (launcher fallback). */
   appBuilds: () => join(jigHome(), "app-builds"),
 };

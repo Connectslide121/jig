@@ -10,6 +10,7 @@ describe("checkTokens", () => {
 
   it("flags hex colours but not anchors or entities", () => {
     expect(checkTokens(`const c = "#ff0000";`).map((v) => v.rule)).toEqual(["hex-colour"]);
+    expect(checkTokens(`<a href="#add">Add</a>`)).toEqual([]);
     expect(checkTokens(`<a href="#section">x</a>`)).toEqual([]);
     expect(checkTokens(`&#123;`)).toEqual([]);
   });

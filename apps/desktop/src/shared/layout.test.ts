@@ -338,4 +338,15 @@ describe("dropView", () => {
     expect(l.right.views).toEqual(["jig.sessions"]);
     expect(dropView(l, "jig.terminal", "left", "jig.terminal")).toBe(l);
   });
+
+  it("drops a section into its host's strip without losing a view", () => {
+    const git = { id: "addon.git.git", defaultRegion: "left" as const };
+    const repos = { id: "addon.repos.overview", defaultRegion: "right" as const, under: "addon.git.git" };
+    const l = normalizeLayout(defaultLayout(), [...views, git, repos]);
+    expect(hostOf(l, "addon.repos.overview")).toBe("addon.git.git");
+    const before = l.left.views;
+    const next = dropView(l, "addon.repos.overview", "left", before[0]);
+    expect(next.left.views).toEqual(["addon.repos.overview", ...before]);
+    expect(hostOf(next, "addon.repos.overview")).toBeUndefined();
+  });
 });

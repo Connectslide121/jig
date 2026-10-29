@@ -5,6 +5,10 @@ const rg = "/subscriptions/abc/resourceGroups/shop-stage";
 const portal = (id: string) => azurePortalUrl(id);
 
 describe("guessLinkType / defaultLinkLabel", () => {
+  it("doesn't throw on an address being typed", () => {
+    expect(() => guessLinkType("https://example.com/100%")).not.toThrow();
+  });
+
   it("reads Azure portal addresses", () => {
     expect(guessLinkType(portal(rg))).toBe("resource-group");
     expect(defaultLinkLabel(portal(rg))).toBe("shop-stage");

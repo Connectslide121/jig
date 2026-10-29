@@ -18,6 +18,8 @@ describe("attachmentType", () => {
     expect(attachmentType("Shot.PNG")).toEqual({ kind: "image", mime: "image/png" });
     expect(attachmentType("", "image/webp")).toEqual({ kind: "image", mime: "image/webp" });
     expect(attachmentType("spec.pdf").kind).toBe("pdf");
+    expect(attachmentType(".env").kind).toBe("text");
+    expect(attachmentType("repo/.gitignore").kind).toBe("text");
     expect(attachmentType("plan.docx").kind).toBe("office");
     expect(attachmentType("budget.xlsx").kind).toBe("office");
     expect(attachmentType("deck.pptx").kind).toBe("office");

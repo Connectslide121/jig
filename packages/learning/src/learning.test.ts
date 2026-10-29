@@ -27,6 +27,7 @@ describe("normalizeCommand", () => {
       "dotnet test <path> --filter Category=Fast",
     );
     expect(normalizeCommand("git show 3f2a9c1d")).toBe("git show <hash>");
+    expect(normalizeCommand("echo deadbeef cafebabe")).toBe("echo deadbeef cafebabe");
     expect(normalizeCommand('git commit -m "fix the cart"')).toBe("git commit -m <str>");
     expect(normalizeCommand("curl https://api.example.com/v1/orders/42")).toBe("curl <url>");
     expect(normalizeCommand("az pipelines runs show --id 1234")).toBe("az pipelines runs show --id <n>");
@@ -44,6 +45,10 @@ describe("normalizeCommand", () => {
 });
 
 describe("prompt similarity", () => {
+  it("keeps letters outside ASCII in prompt words", () => {
+    expect(promptTokens("Åtgärda överföringen!")).toEqual(["åtgärda", "överföringen"]);
+  });
+
   it("tokenizes content words and measures overlap", () => {
     expect(promptTokens("Please write the release notes for this week!")).toEqual([
       "write",

@@ -279,6 +279,8 @@ export function reorderView(input: Layout, viewId: string, toIndex: number): Lay
   if (!region) return input;
   const layout = clone(input);
   const views = layout[region].views;
+  // A section (shown below another view) isn't in the strip: dropView moves it there first.
+  if (!views.includes(viewId)) return input;
   views.splice(views.indexOf(viewId), 1);
   views.splice(Math.max(0, Math.min(toIndex, views.length)), 0, viewId);
   return layout;
@@ -290,7 +292,8 @@ export function reorderView(input: Layout, viewId: string, toIndex: number): Lay
  */
 export function dropView(input: Layout, viewId: string, region: SideRegion, beforeId?: string): Layout {
   if (viewId === beforeId) return input;
-  let layout = regionOf(input, viewId) === region ? input : moveView(input, viewId, region);
+  const inStrip = regionOf(input, viewId) === region && !hostOf(input, viewId);
+  let layout = inStrip ? input : moveView(input, viewId, region);
   if (regionOf(layout, viewId) !== region) return layout;
   const others = layout[region].views.filter((v) => v !== viewId);
   const at = beforeId && others.includes(beforeId) ? others.indexOf(beforeId) : others.length;

@@ -65,6 +65,20 @@ describe("add-on tools for Claude", () => {
     expect(addonTools([{ ...addon("/x"), enabled: false }], async () => 0)).toEqual([]);
   });
 
+  it("keeps the first of two tools that get the same name", () => {
+    const withTool = (id: string, tool: string) =>
+      ({
+        ...addon("/x"),
+        id,
+        manifest: {
+          ...manifest,
+          contributes: { ...manifest.contributes, tools: [{ ...manifest.contributes.tools[0]!, id: tool }] },
+        },
+      }) as AddonInfo;
+    const tools = addonTools([withTool("a-b", "c"), withTool("a", "b_c")], async () => 0);
+    expect(tools.map((t) => t.name)).toEqual(["addon_a_b_c"]);
+  });
+
   it("shows an add-on and changes its data with Undo cards", async () => {
     const dir = await mkdtemp(join(tmpdir(), "jig-addon-"));
     await writeFile(join(dir, "README.md"), "# Releases\nVersions.");

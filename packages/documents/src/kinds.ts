@@ -37,7 +37,8 @@ export const ATTACHMENT_LIMITS = {
 export function extensionOf(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? name;
   const dot = base.lastIndexOf(".");
-  return dot > 0 ? base.slice(dot + 1).toLowerCase() : base.toLowerCase();
+  // ".env", ".gitignore": the name is the type.
+  return dot >= 0 ? base.slice(dot + 1).toLowerCase() : base.toLowerCase();
 }
 
 export type AttachmentType = { kind: AttachmentKind; mime: string } | { kind: "unsupported"; reason: string };

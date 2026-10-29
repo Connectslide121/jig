@@ -52,7 +52,13 @@ const AZURE_ID =
 /** The type a link probably is, from its address. */
 export function guessLinkType(url: string): LinkType {
   const u = url.toLowerCase();
-  const azure = AZURE_ID.exec(decodeURIComponent(u));
+  let decoded = u;
+  try {
+    decoded = decodeURIComponent(u);
+  } catch {
+    // "100%" while typing: read it as it is.
+  }
+  const azure = AZURE_ID.exec(decoded);
   if (azure) {
     const provider = azure[2] ?? "";
     if (!provider) return "resource-group";

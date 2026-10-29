@@ -106,6 +106,34 @@ describe("attribution", () => {
     );
     expect(workedText({ ...s, commits: 0 })).toBe("");
   });
+  it("reads `-- ` and `++ ` lines inside a hunk as lines, not file headers", () => {
+    const sql = [
+      "\x1eddd\x1f2026-10-21T10:00:00+02:00\x1fTweak query",
+      "diff --git a/q.sql b/q.sql",
+      "--- a/q.sql",
+      "+++ b/q.sql",
+      "@@ -1,2 +1,2 @@",
+      "--- old comment",
+      "+++ new thing",
+      " select 1;",
+    ].join("\n");
+    const [c] = parseLogPatch(sql);
+    expect(c!.files).toEqual([{ path: "q.sql", added: ["++ new thing"], removed: ["-- old comment"] }]);
+  });
+  it("compares commit times as times, whatever their offset", () => {
+    const commits = parseLogPatch(
+      [
+        "\x1eeee\x1f2026-10-19T01:00:00+02:00\x1fLate",
+        "diff --git a/a b/a",
+        "+++ b/a",
+        "@@ -0,0 +1 @@",
+        "+x = 1",
+      ].join("\n"),
+    );
+    // 01:00+02:00 is 23:00 UTC the day before: outside a window starting at midnight UTC.
+    expect(summarizeWork(commits, () => undefined, "2026-10-19T00:00:00.000Z").commits).toBe(0);
+    expect(summarizeWork(commits, () => undefined, "2026-10-18T22:00:00.000Z").commits).toBe(1);
+  });
   it("estimates active minutes", () => {
     expect(activeMinutes(["2026-10-01T10:00:00Z", "2026-10-01T10:05:00Z", "2026-10-01T11:00:00Z"])).toBe(5);
   });

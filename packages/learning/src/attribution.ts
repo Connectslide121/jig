@@ -52,13 +52,20 @@ export function parseLogPatch(out: string): CommitPatch[] {
     const [hash = "", at = "", subject = ""] = header.split("\x1f");
     const commit: CommitPatch = { hash, at, subject, files: [] };
     let file: CommitPatch["files"][number] | undefined;
+    // `---`/`+++` are file headers only between `diff --git` and the first hunk: inside a hunk,
+    // "--- x" is a removed line "-- x" (an SQL comment, say).
+    let inHeader = false;
     for (const line of (nl < 0 ? "" : chunk.slice(nl + 1)).split("\n")) {
-      if (line.startsWith("+++ ")) {
+      if (line.startsWith("diff --git")) {
+        inHeader = true;
+        file = undefined;
+      } else if (line.startsWith("@@")) inHeader = false;
+      else if (inHeader && line.startsWith("+++ ")) {
         const path = line.slice(4).replace(/^b\//, "");
         file = path === "/dev/null" ? undefined : { path, added: [], removed: [] };
         if (file) commit.files.push(file);
-      } else if (line.startsWith("--- ") || line.startsWith("diff --git") || line.startsWith("@@")) {
-        // headers
+      } else if (inHeader) {
+        // other headers: ---, index, mode, rename…
       } else if (file && line.startsWith("+")) file.added.push(line.slice(1));
       else if (file && line.startsWith("-")) file.removed.push(line.slice(1));
     }
@@ -95,7 +102,8 @@ export function summarizeWork(
   const recent = new Map<string, Map<string, { origin: "ai" | "hand"; at: number }>>();
   for (const c of commits) {
     const t = new Date(c.at).getTime();
-    const inWindow = c.at >= since;
+    // Compared as times: `at` has the committer's offset, `since` is UTC.
+    const inWindow = t >= new Date(since).getTime();
     if (inWindow) summary.commits++;
     const removedOrigins: Array<"ai" | "hand"> = [];
     for (const f of c.files) {
