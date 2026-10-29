@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { BuildJob } from "../../../shared/builds";
+import { useAddons } from "../../addons/loader";
 
 export const useBuilds = create<{ jobs: BuildJob[] }>(() => ({ jobs: [] }));
 
@@ -25,6 +26,14 @@ export const STATUS_TONE: Record<
 };
 
 /** What the build does, naming the add-on it changes or makes ("Changes Releases"). */
+/** An add-on's name for a build's label: the installed one's, else its preview's, else its id. */
+export function useAddonName(id: string | undefined): string | undefined {
+  return useAddons((s) => {
+    const all = s.addons.filter((a) => a.id === id);
+    return (all.find((a) => !a.preview) ?? all[0])?.name;
+  });
+}
+
 export function kindText(job: Pick<BuildJob, "kind" | "addonId">, addonName?: string): string {
   if (!job.kind) return "";
   const name = addonName ?? job.addonId;

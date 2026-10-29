@@ -97,7 +97,7 @@ test("Change this with AI on an add-on view starts a build about that add-on", a
   await expect(page.getByTestId("build-dialog")).toBeVisible();
   await page.getByTestId("build-goal").fill("show the last commit message");
   await page.getByTestId("build-submit").click();
-  await expect(page.getByTestId("build-tab")).toContainText("Changes an add-on", { timeout: 20000 });
+  await expect(page.getByTestId("build-tab")).toContainText("Changes Repos", { timeout: 20000 });
   await page.getByTestId("build-accept").click();
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-addons").click();
