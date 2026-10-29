@@ -1192,3 +1192,14 @@ a clickable demo, iterate and validate before sending) and Claude, on my own (ho
   worktree chat writes line endings the way the user's own checkouts do.
 - **Unit tests get 30 s** (`testTimeout`): tests that spawn git dozens of times took over 5 s on
   Windows under the full suite's load.
+
+### D-122 — You can delete your own add-ons; built-in ones only turn off
+**Decided by:** Jon (wanted Delete in Settings → Add-ons) and Claude, on my own (how) · **Date:** 2026-10-29
+
+- **Only add-ons in `~/.jig/addons`** get a Delete button (after a confirmation). Built-in add-ons
+  are part of Jig and can only be turned off; a build preview can't be deleted either.
+- **Deleting is a commit** in the add-ons repository, so the add-on stays in its git history and
+  nothing is lost for good.
+- **Its stored data is kept** (`addon-data/<id>.json`), so importing or rebuilding it later finds the
+  same data. It is small, and data is what users would least want gone by accident.
+- **Deleting your copy of a built-in** brings the built-in back; the dialog says so.

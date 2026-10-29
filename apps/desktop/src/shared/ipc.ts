@@ -334,6 +334,8 @@ export interface HostMethods {
   "addons.reload": { args: { id?: string }; result: void };
   "addons.history": { args: { id: string }; result: AddonCommit[] };
   "addons.rollback": { args: { id: string; commit: string }; result: void };
+  /** Deletes one of your add-ons (its folder, as a commit); a built-in it replaced comes back. */
+  "addons.remove": { args: { id: string }; result: void };
   /** Saves an add-on as a `.zip` to share (a save dialog); the chosen file, or nothing if cancelled. */
   "addons.export": { args: { id: string }; result: string | undefined };
   /** Reads an add-on package (an open dialog when no `path`) without installing it. */

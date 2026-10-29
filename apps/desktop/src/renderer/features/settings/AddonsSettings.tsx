@@ -8,6 +8,7 @@ import {
   RefreshCw,
   RotateCcw,
   Sparkles,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -91,6 +92,24 @@ async function exportAddon(addon: AddonInfo) {
   }
 }
 
+async function deleteAddon(addon: AddonInfo) {
+  const ok = await confirmDialog({
+    title: addon.overridesBuiltin ? `Delete your copy of ${addon.name}?` : `Delete ${addon.name}?`,
+    message: addon.overridesBuiltin
+      ? "The built-in add-on comes back. Your copy stays in the add-ons' git history."
+      : "Its folder is deleted (it stays in the add-ons' git history). Its stored data is kept, so importing it again finds it.",
+    confirmLabel: "Delete",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await call("addons.remove", { id: addon.id });
+    notify({ title: `${addon.name} deleted`, tone: "success" });
+  } catch (error) {
+    notify({ title: "Couldn't delete", message: errorMessage(error), tone: "danger" });
+  }
+}
+
 /** Import: pick a .zip, see what it is and what it may do, then install it. */
 export async function importAddon(path?: string) {
   try {
@@ -171,6 +190,14 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
         )}
         {addon.source === "user" && (
           <IconButton icon={History} label="History" onClick={() => setHistory(true)} />
+        )}
+        {addon.source === "user" && !addon.preview && (
+          <IconButton
+            icon={Trash2}
+            label={addon.overridesBuiltin ? `Delete your copy of ${addon.name}` : `Delete ${addon.name}`}
+            data-testid={`addon-delete-${addon.id}`}
+            onClick={() => void deleteAddon(addon)}
+          />
         )}
         <IconButton
           icon={FileDown}

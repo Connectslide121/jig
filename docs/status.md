@@ -65,7 +65,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - Saving a file reloads that add-on; a crash shows "Turn off" in its place, never a broken app.
   - Host code runs in its own process with permission-checked `exec`/`fs`/`fetch`.
   - Settings → Add-ons: on/off, problems and token warnings, permissions, open folder, reload,
-    history and roll back.
+    history and roll back, and Delete for your own add-ons (D-122: kept in the history and its data
+    kept; deleting your copy of a built-in brings the built-in back).
 
 - **Phase 7 (done): built-in add-ons.**
   - **Git** (left sidebar, `Ctrl+Shift+G`): current branch with ahead/behind and fetch/pull/push,

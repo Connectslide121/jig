@@ -339,6 +339,26 @@ export class AddonService {
     await this.reload(id);
   }
 
+  /**
+   * Deletes one of your add-ons (D-122): its folder goes, recorded as a commit so it stays in the
+   * repository's history; its stored data stays, so importing it again finds it. A built-in add-on
+   * it replaced comes back. Built-in add-ons can only be turned off.
+   */
+  async remove(id: string): Promise<void> {
+    const l = this.get(id);
+    if (l.info.source !== "user" || l.info.preview)
+      throw new JigError("not_yours", "Only your own add-ons can be deleted; turn this one off instead");
+    this.unload(l);
+    await rm(l.info.dir, { recursive: true, force: true, maxRetries: 5 });
+    if (this.hasRepo)
+      await commitAll(
+        this.options.userDir,
+        `Delete ${l.info.name}`,
+        relative(this.options.userDir, l.info.dir).split(sep).join("/"),
+      );
+    await this.reload(id);
+  }
+
   /** Records the current state of an add-on folder in the history (used by the builder on Accept). */
   async commit(id: string, message: string): Promise<string | undefined> {
     const l = this.get(id);

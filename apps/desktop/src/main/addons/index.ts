@@ -203,6 +203,7 @@ export async function startAddons(): Promise<void> {
   });
   handle("addons.history", ({ id }) => s.history(id));
   handle("addons.rollback", ({ id, commit }) => s.rollback(id, commit));
+  handle("addons.remove", ({ id }) => s.remove(id));
 
   // Sharing: an add-on as a .zip, and a .zip back in (after you've seen what it is).
   const window = () => appWindows().find((w) => w.isFocused()) ?? appWindows()[0];

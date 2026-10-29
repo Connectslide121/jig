@@ -1,4 +1,4 @@
-import { mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
 
@@ -43,10 +43,13 @@ test("an add-on is exported to a zip and imported back after showing its permiss
     )
     .toBeGreaterThan(100);
 
-  // Gone, then imported back: the dialog says what it is and what it may do.
-  await rm(dir, { recursive: true, force: true });
-  await hostCall(page, "addons.reload", {});
+  // Deleted (after asking), then imported back: the dialog says what it is and what it may do.
+  await page.getByTestId("addon-delete-greeter").click();
+  await expect(page.getByRole("dialog")).toContainText("Delete Greeter?");
+  await page.getByTestId("dialog-confirm").click();
   await expect(page.getByTestId("addon-greeter")).toHaveCount(0);
+  await expect(stat(dir)).rejects.toThrow();
+  expect(await hostCall(page, "addons.remove", { id: "git" })).toMatchObject({ ok: false });
   await page.getByTestId("addon-import").click();
   await expect(page.getByRole("dialog")).toContainText("Install Greeter 1.0.0?");
   await expect(page.getByRole("dialog")).toContainText("Says hello");

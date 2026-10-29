@@ -29,6 +29,7 @@ declares, reloads on save, can be switched off, and a crash in it never breaks t
 - [x] Error boundary per contribution with "Turn off" / "Fix with AI" (the AI button appears once the builder exists, phase 8)
 - [x] Shared UI kit exported to add-ons (`@jig/sdk/ui`: Button, Card, List, Badge, Spinner, Empty, …)
 - [x] Settings → Add-ons: list, enable/disable, open folder, history (git log), roll back
+- [x] Delete one of your add-ons (a commit; its data is kept; a replaced built-in comes back, D-122)
 
 ### Docs
 - [x] `docs/reference/slots.md`, `docs/reference/addon-api.md`, `docs/guides/writing-addons.md`

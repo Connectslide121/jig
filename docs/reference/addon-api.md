@@ -16,7 +16,9 @@ my-addon/
 
 Built-in add-ons: `addons/` in Jig's repository. Yours: `~/.jig/addons/<folder>/` — a git repository;
 every change Jig accepts is a commit (Settings → Add-ons → History → Roll back). A folder of yours with
-the same `id` as a built-in add-on replaces it.
+the same `id` as a built-in add-on replaces it. **Delete** (the bin on one of yours) removes its folder
+as a commit and keeps its stored data; deleting your copy of a built-in brings the built-in back
+(D-122). Built-in add-ons can only be turned off.
 
 ## Manifest (`addon.json`)
 

@@ -188,6 +188,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "addons.storageSet": z.object({ id: addonId, key: z.string().max(200) }),
   "addons.setEnabled": z.object({ id: addonId, enabled: z.boolean() }),
   "addons.rollback": z.object({ id: addonId, commit: z.string().regex(/^[0-9a-f]{7,40}$/) }),
+  "addons.remove": z.object({ id: addonId }),
   "scripts.run": z.object({ projectId: id, scriptId: z.string().max(2000) }),
   "scripts.restart": z.object({ projectId: id, scriptId: z.string().max(2000) }),
 };

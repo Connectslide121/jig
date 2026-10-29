@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -168,6 +168,29 @@ describe("AddonService", () => {
     await expect(s.storageSet("../config", "updates", {})).rejects.toThrow(/not found/);
     await expect(s.storageGet("nope", "x")).rejects.toThrow(/not found/);
     expect(changes.length).toBeGreaterThan(2);
+    s.stop();
+  });
+
+  it("deletes your add-ons, brings back the built-in a copy replaced, and keeps the data", async () => {
+    const s = service();
+    await s.start();
+    await expect(s.remove("hello")).rejects.toThrow(/Only your own add-ons/);
+    const copy = join(root, "home", "addons", "hello");
+    await addon(copy, { "addon.json": { id: "hello", name: "Hello copy" } });
+    const mine = join(root, "home", "addons", "mine");
+    await addon(mine, { "addon.json": { id: "mine", name: "Mine" } });
+    await s.reloadAll();
+    await s.commit("mine", "Add mine");
+    await s.storageSet("mine", "kept", true);
+
+    await s.remove("hello");
+    expect(s.list().find((a) => a.id === "hello")).toMatchObject({ name: "Hello", source: "builtin" });
+    await s.remove("mine");
+    expect(s.list().find((a) => a.id === "mine")).toBeUndefined();
+    await expect(stat(mine)).rejects.toThrow();
+    expect((await readFile(join(root, "home", "addon-data", "mine.json"), "utf8")).includes("kept")).toBe(
+      true,
+    );
     s.stop();
   });
 });
