@@ -6,6 +6,7 @@ import {
   closeTabsWhere,
   cycleTab,
   defaultLayout,
+  dropView,
   findView,
   hideView,
   hostOf,
@@ -322,5 +323,19 @@ describe("split view", () => {
     const normal = normalizeLayout(l, views);
     expect(normal.main.split).toBeUndefined();
     expect(normal.main.active).toBe("a");
+  });
+});
+
+describe("dropView", () => {
+  it("moves a view to another region before a tab, or reorders it in its region", () => {
+    let l = dropView(base(), "jig.terminal", "left", "jig.sessions");
+    expect(l.left.views).toEqual(["jig.projects", "jig.terminal", "jig.sessions"]);
+    expect(l.left.active).toBe("jig.terminal");
+    expect(l.bottom.views).toEqual([]);
+    l = dropView(l, "jig.projects", "left");
+    expect(l.left.views).toEqual(["jig.terminal", "jig.sessions", "jig.projects"]);
+    l = dropView(l, "jig.sessions", "right");
+    expect(l.right.views).toEqual(["jig.sessions"]);
+    expect(dropView(l, "jig.terminal", "left", "jig.terminal")).toBe(l);
   });
 });

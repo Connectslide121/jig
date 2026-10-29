@@ -128,3 +128,26 @@ test("sidebars and panes resize by dragging or with the keyboard, and remember i
     })
     .toBe(272);
 });
+
+test("drag a view's tab to reorder it, or onto another sidebar to move it there", async ({ page }) => {
+  const left = page.getByTestId("region-left");
+  const right = page.getByTestId("region-right");
+  await page.getByTestId("suggestions-badge").click();
+  await expect(right.getByTestId("view-tab-jig.suggestions")).toBeVisible();
+  await right.getByTestId("view-tab-jig.suggestions").dragTo(left.getByTestId("view-tab-jig.sessions"));
+  await expect(left.getByTestId("view-tab-jig.suggestions")).toBeVisible();
+  await expect(right.getByTestId("view-tab-jig.suggestions")).toHaveCount(0);
+  const leftViews = async () =>
+    ((await hostCall(page, "layout.get")) as { value: { left: { views: string[] } } }).value.left.views;
+  await expect
+    .poll(async () => {
+      const v = await leftViews();
+      return v.indexOf("jig.suggestions") === v.indexOf("jig.sessions") - 1;
+    })
+    .toBe(true);
+  // Within the sidebar: dropped on the bar's empty end, it goes last.
+  await left.getByTestId("view-tab-jig.suggestions").dragTo(left.getByTestId("view-tabs-left"), {
+    targetPosition: { x: 2, y: 2 },
+  });
+  await expect.poll(async () => (await leftViews()).includes("jig.suggestions")).toBe(true);
+});

@@ -284,6 +284,20 @@ export function reorderView(input: Layout, viewId: string, toIndex: number): Lay
   return layout;
 }
 
+/**
+ * A view dropped on a region's tab bar (drag and drop): moved there if it was elsewhere (or a section),
+ * placed before `beforeId` (or at the end), and shown.
+ */
+export function dropView(input: Layout, viewId: string, region: SideRegion, beforeId?: string): Layout {
+  if (viewId === beforeId) return input;
+  let layout = regionOf(input, viewId) === region ? input : moveView(input, viewId, region);
+  if (regionOf(layout, viewId) !== region) return layout;
+  const others = layout[region].views.filter((v) => v !== viewId);
+  const at = beforeId && others.includes(beforeId) ? others.indexOf(beforeId) : others.length;
+  layout = reorderView(layout, viewId, at);
+  return { ...layout, [region]: { ...layout[region], active: viewId, collapsed: false } };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Main-area tabs
 

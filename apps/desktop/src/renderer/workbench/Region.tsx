@@ -10,6 +10,7 @@ import {
   Sparkles,
   SquareStack,
 } from "lucide-react";
+import { useState } from "react";
 import { hostOf, type SideRegion } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
@@ -110,8 +111,12 @@ function Resizer({ region, size }: { region: SideRegion; size: number }) {
 }
 
 /** A side region: a header with one tab per view, and the active view below. */
+/** Drag data of a view tab (drag a tab to reorder it, or onto another sidebar's tabs to move it). */
+const VIEW_DRAG = "application/x-jig-view";
+
 export function Region({ region }: { region: SideRegion }) {
   const state = useWorkbench((s) => s.layout?.[region]);
+  const [over, setOver] = useState<string | null>(null);
   const views = useRegistry((s) => s.views);
   const sectionMap = useWorkbench((s) => s.layout?.sections) ?? {};
   if (!state || state.collapsed) return null;
@@ -135,7 +140,31 @@ export function Region({ region }: { region: SideRegion }) {
       )}
     >
       <header className="flex h-8 shrink-0 items-center gap-0.5 border-b border-line px-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden rounded-md",
+            over === "" && "bg-accent-soft",
+          )}
+          data-testid={`view-tabs-${region}`}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(VIEW_DRAG)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            if (e.target === e.currentTarget) setOver("");
+          }}
+          onDragLeave={(e) => {
+            if (e.target === e.currentTarget) setOver(null);
+          }}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData(VIEW_DRAG);
+            setOver(null);
+            if (!id) return;
+            e.preventDefault();
+            // On a tab: before it; elsewhere on the bar: at the end.
+            const before = (e.target as HTMLElement).closest<HTMLElement>("[data-view-id]")?.dataset.viewId;
+            workbench.dropView(id, region, before);
+          }}
+        >
           {visible.map((view) => {
             const Icon = view.icon;
             const isActive = view.id === active.id;
@@ -144,7 +173,15 @@ export function Region({ region }: { region: SideRegion }) {
                 key={view.id}
                 type="button"
                 data-testid={`view-tab-${view.id}`}
+                data-view-id={view.id}
                 title={view.title}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(VIEW_DRAG, view.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={() => setOver(view.id)}
+                onDragEnd={() => setOver(null)}
                 onClick={() => workbench.showView(view.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -153,6 +190,7 @@ export function Region({ region }: { region: SideRegion }) {
                 className={cn(
                   "flex h-6 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium",
                   isActive ? "bg-active text-fg" : "text-muted hover:bg-hover hover:text-fg",
+                  over === view.id && "border-l-2 border-accent",
                 )}
               >
                 <Icon className="size-3.5 shrink-0" />

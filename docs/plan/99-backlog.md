@@ -2,7 +2,6 @@
 
 Ideas and deferred work. Each entry says why it is here.
 
-- **Drag-and-drop layout editing.** Menus move views first; drag later.
 - **Sandboxed iframe runtime** for add-ons written by other people.
 - **Mobile / remote access** to a running Jig.
 - **Dropped: builder level 3 (Jig editing its own source).** Built and then removed (D-074): it needed a

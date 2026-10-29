@@ -197,6 +197,8 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   project's repository on a new branch (`jig/<what it's for>-<id>`), so your working copy isn't
   touched. The chat's ⋯ menu applies its changes to your working copy (uncommitted), opens the folder,
   or removes the worktree and branch.
+- **Drag views between sidebars:** drag a view's tab to reorder it, or onto another sidebar's tabs
+  to move it there (the ⋯ menus still work).
 - **Sharing add-ons:** Settings → Add-ons → ⤓ exports an add-on as a `.zip`; **Import add-on…**
   shows what a `.zip` is and what it may do, then installs it (replacing yours only after you confirm).
 - **Split view:** two tabs side by side.

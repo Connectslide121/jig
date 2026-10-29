@@ -67,6 +67,7 @@ that is reloading or switched off) are kept in place but never shown; duplicates
 | `placeBelow(layout, viewId, hostId)`, `toggleSection(layout, viewId)`, `hostOf(layout, viewId)` | show a view as a section below another, collapse/open it, find its host |
 | `setRegion(layout, region, { size?, collapsed?, active? })`, `toggleRegion` | resize, collapse/expand |
 | `reorderView(layout, viewId, index)` | order within a region |
+| `dropView(layout, viewId, region, beforeId?)` | drag and drop: move to `region` (if elsewhere) before `beforeId` or at the end, and show it |
 | `openTab(layout, { type, params })` → `{ layout, tabId }` | open or focus a tab |
 | `closeTab`, `closeOtherTabs`, `closeTabsWhere(predicate)`, `activateTab`, `cycleTab(±1)`, `moveTab`, `updateTabParams` | tab housekeeping (split-aware: activating a tab focuses its pane) |
 | `moveTabToPane(layout, tabId, "left" \| "right")`, `unsplit`, `paneOf`, `paneTabs`, `paneActive` | split view |
@@ -136,7 +137,8 @@ Chat tabs report it from the chat's status and the turns seen while the tab show
 ## Menus and shortcuts
 
 Every view has a `⋯` menu (and a right-click menu on its tab): Move to left sidebar / right sidebar /
-bottom panel, Hide. The top bar's layout button toggles regions and shows/hides views. Main-area tabs:
+bottom panel, Hide. **Drag a view's tab** to reorder it, or onto another sidebar's (or the bottom
+panel's) tabs to move it there, before the tab you drop it on (`dropView`); the menus work as before. The top bar's layout button toggles regions and shows/hides views. Main-area tabs:
 middle-click or `×` closes; right-click → Close, Close others, Close all; drag to reorder.
 
 | Shortcut | Action (also in the Tools menu) |

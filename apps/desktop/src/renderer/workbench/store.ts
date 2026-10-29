@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   activateTab,
   closeTab,
+  dropView,
   hideView,
   type Layout,
   moveView,
@@ -82,6 +83,9 @@ export const workbench = {
   closeTab: (tabId: string) => updateLayout((l) => closeTab(l, tabId)),
   activateTab: (tabId: string) => updateLayout((l) => activateTab(l, tabId)),
   moveView: (viewId: string, region: SideRegion) => updateLayout((l) => moveView(l, viewId, region)),
+  /** A view dragged onto a region's tab bar, before another view's tab (or at the end). */
+  dropView: (viewId: string, region: SideRegion, beforeId?: string) =>
+    updateLayout((l) => dropView(l, viewId, region, beforeId)),
   hideView: (viewId: string) => updateLayout((l) => hideView(l, viewId)),
   placeBelow: (viewId: string, hostId: string) => updateLayout((l) => placeBelow(l, viewId, hostId)),
   toggleSection: (viewId: string) => updateLayout((l) => toggleSection(l, viewId)),
