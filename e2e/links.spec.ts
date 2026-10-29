@@ -45,12 +45,26 @@ test("project links: add from Azure through your az login", async () => {
   const home = await mkdtemp(join(tmpdir(), "jig-e2e-az-"));
   const bin = join(home, "bin");
   await mkdir(bin, { recursive: true });
-  const rg = "/subscriptions/abc/resourceGroups/shop-stage";
+  // Three subscriptions in two tenants; the third one's tenant needs its own sign-in.
+  const contoso = "11111111-1111-1111-1111-111111111111";
+  const fabrikam = "22222222-2222-2222-2222-222222222222";
+  const locked = "33333333-3333-3333-3333-333333333333";
+  const rg = `/subscriptions/${contoso}/resourceGroups/shop-stage`;
   await writeFile(
     join(bin, "az"),
     `#!/usr/bin/env node
 const a = process.argv.slice(2);
-if (a[0] === "group") console.log(JSON.stringify([{ id: "${rg}", name: "shop-stage" }]));
+const sub = a[a.indexOf("--subscription") + 1];
+if (a[0] === "account") console.log(JSON.stringify([
+  { id: "${contoso}", name: "Contoso Dev", tenantId: "t1", state: "Enabled" },
+  { id: "${fabrikam}", name: "Fabrikam Prod", tenantId: "t2", state: "Enabled" },
+  { id: "${locked}", name: "Fabrikam Old", tenantId: "t3", state: "Enabled" },
+  { id: "${contoso}", name: "Contoso Dev", tenantId: "t1", state: "Enabled" }
+]));
+else if (a[0] === "group" && sub === "${locked}") { console.error("AADSTS50076: multi-factor authentication required"); process.exit(1); }
+else if (a[0] === "group" && sub === "${fabrikam}") console.log(JSON.stringify([{ id: "/subscriptions/${fabrikam}/resourceGroups/fabrikam-prod", name: "fabrikam-prod" }]));
+else if (a[0] === "group") console.log(JSON.stringify([{ id: "${rg}", name: "shop-stage" }]));
+else if (sub !== "${contoso}") console.log("[]");
 else console.log(JSON.stringify([
   { id: "${rg}/providers/Microsoft.Web/sites/shop-web", name: "shop-web", type: "Microsoft.Web/sites", resourceGroup: "shop-stage" },
   { id: "${rg}/providers/Microsoft.Sql/servers/sql/databases/shopdb", name: "shopdb", type: "Microsoft.Sql/servers/databases", resourceGroup: "shop-stage" }
@@ -74,8 +88,13 @@ else console.log(JSON.stringify([
   const links = page.getByTestId("links-view");
   await links.getByTestId("links-azure").click();
   const dialog = page.getByTestId("azure-dialog");
-  await expect(dialog.getByTestId("azure-item")).toContainText("shop-stage");
-  await dialog.getByRole("button", { name: "Resources…" }).click();
+  // Every subscription's resource groups, under its name; one that can't be read is named.
+  await expect(dialog.getByTestId("azure-item")).toHaveCount(2);
+  await expect(dialog.getByTestId("azure-subscription")).toHaveText(["Contoso Dev", "Fabrikam Prod"]);
+  await expect(dialog.getByTestId("azure-item").first()).toContainText("shop-stage");
+  await expect(dialog.getByTestId("azure-problems")).toContainText("Fabrikam Old");
+  // A group's resources come from its own subscription.
+  await dialog.getByTestId("azure-item").first().getByRole("button", { name: "Resources…" }).click();
   await expect(dialog.getByTestId("azure-item")).toHaveCount(2);
   await dialog.getByRole("checkbox", { name: "shop-web" }).check();
   await dialog.getByRole("checkbox", { name: "shopdb" }).check();

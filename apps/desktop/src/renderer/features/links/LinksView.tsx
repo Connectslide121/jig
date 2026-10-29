@@ -1,5 +1,5 @@
 import { Cloud, ExternalLink, Link as LinkIcon, MoreHorizontal, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { create } from "zustand";
 import {
   type AzureItem,
@@ -205,21 +205,33 @@ function AzureDialog({
 }) {
   const [rg, setRg] = useState<string>();
   const [items, setItems] = useState<AzureItem[]>();
+  const [problems, setProblems] = useState<string[]>([]);
   const [error, setError] = useState<string>();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [groupTitle, setGroupTitle] = useState(group ?? project.links?.[0]?.title ?? "Azure");
-  const load = (resourceGroup?: string) => {
+  const load = (resourceGroup?: string, subscription?: string) => {
     setItems(undefined);
     setError(undefined);
+    setProblems([]);
     setRg(resourceGroup);
-    void call("links.azure", resourceGroup ? { group: resourceGroup } : {})
-      .then(setItems)
+    void call(
+      "links.azure",
+      resourceGroup ? { group: resourceGroup, ...(subscription ? { subscription } : {}) } : {},
+    )
+      .then((r) => {
+        setItems(r.items);
+        setProblems(r.problems);
+      })
       .catch((e) => setError(errorMessage(e)));
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: load once when the dialog opens.
   useEffect(() => load(), []);
-  const shown = (items ?? []).filter((i) => i.name.toLowerCase().includes(filter.toLowerCase()));
+  const shown = (items ?? []).filter((i) =>
+    `${i.name} ${i.subscription ?? ""}`.toLowerCase().includes(filter.toLowerCase()),
+  );
+  // Resource groups come per subscription: a heading wherever the subscription changes.
+  const bySubscription = !rg && new Set(shown.map((i) => i.subscription ?? "")).size > 1;
   const add = async () => {
     const chosen = (items ?? []).filter((i) => picked.has(i.id));
     await save(
@@ -277,38 +289,53 @@ function AzureDialog({
           <GroupField project={project} value={groupTitle} onChange={setGroupTitle} />
         </div>
         {error && <div className="text-xs text-danger">{error}</div>}
+        {problems.length > 0 && (
+          <div className="text-xs text-warning" data-testid="azure-problems">
+            Couldn't read {problems.length === 1 ? "one subscription" : `${problems.length} subscriptions`}:{" "}
+            {problems.join(" · ")}
+          </div>
+        )}
         {!items && !error && <Spinner center />}
         <div className="flex max-h-80 flex-col overflow-y-auto">
-          {shown.map((i) => (
-            <div
-              key={i.id}
-              className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-hover"
-              data-testid="azure-item"
-            >
-              <input
-                type="checkbox"
-                aria-label={i.name}
-                checked={picked.has(i.id)}
-                onChange={(e) =>
-                  setPicked((p) => {
-                    const next = new Set(p);
-                    if (e.target.checked) next.add(i.id);
-                    else next.delete(i.id);
-                    return next;
-                  })
-                }
-              />
-              <LinkTypeIcon type={i.type} />
-              <span className="min-w-0 flex-1 truncate text-sm">{i.name}</span>
-              <span className="truncate text-2xs text-hint">
-                {i.azureType === "resourceGroup" ? "resource group" : i.azureType}
-              </span>
-              {!rg && (
-                <Button size="sm" variant="ghost" onClick={() => load(i.name)}>
-                  Resources…
-                </Button>
+          {shown.map((i, n) => (
+            <Fragment key={i.id}>
+              {bySubscription && i.subscription !== shown[n - 1]?.subscription && (
+                <div
+                  className="sticky top-0 bg-elevated px-2 pt-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase"
+                  data-testid="azure-subscription"
+                >
+                  {i.subscription ?? "Other"}
+                </div>
               )}
-            </div>
+              <div
+                className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-hover"
+                data-testid="azure-item"
+              >
+                <input
+                  type="checkbox"
+                  aria-label={i.name}
+                  checked={picked.has(i.id)}
+                  onChange={(e) =>
+                    setPicked((p) => {
+                      const next = new Set(p);
+                      if (e.target.checked) next.add(i.id);
+                      else next.delete(i.id);
+                      return next;
+                    })
+                  }
+                />
+                <LinkTypeIcon type={i.type} />
+                <span className="min-w-0 flex-1 truncate text-sm">{i.name}</span>
+                <span className="truncate text-2xs text-hint">
+                  {i.azureType === "resourceGroup" ? "resource group" : i.azureType}
+                </span>
+                {!rg && (
+                  <Button size="sm" variant="ghost" onClick={() => load(i.name, i.subscriptionId)}>
+                    Resources…
+                  </Button>
+                )}
+              </div>
+            </Fragment>
           ))}
           {items && shown.length === 0 && <div className="text-xs text-hint">Nothing here.</div>}
         </div>

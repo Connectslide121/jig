@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { azureItems, azurePortalUrl, defaultLinkLabel, guessLinkType, linkLabel } from "./links";
+import {
+  azureItems,
+  azurePortalUrl,
+  azureSubscriptions,
+  defaultLinkLabel,
+  guessLinkType,
+  linkLabel,
+} from "./links";
 
 const rg = "/subscriptions/abc/resourceGroups/shop-stage";
 const portal = (id: string) => azurePortalUrl(id);
@@ -56,5 +63,22 @@ describe("azureItems", () => {
     ]);
     expect(items[0]!.url).toBe("https://portal.azure.com/#@/resource/subscriptions/a/resourceGroups/rg");
     expect(azureItems("nope")).toEqual([]);
+  });
+});
+
+describe("azureSubscriptions", () => {
+  it("keeps every enabled subscription once, by name", () => {
+    expect(
+      azureSubscriptions([
+        { id: "b", name: "Fabrikam", tenantId: "t2", state: "Enabled" },
+        { id: "a", name: "Contoso", tenantId: "t1", state: "Enabled" },
+        { id: "c", name: "Old", tenantId: "t1", state: "Disabled" },
+        { id: "a", name: "Contoso", tenantId: "t1", state: "Enabled" },
+      ]),
+    ).toEqual([
+      { id: "a", name: "Contoso", tenantId: "t1" },
+      { id: "b", name: "Fabrikam", tenantId: "t2" },
+    ]);
+    expect(azureSubscriptions(null)).toEqual([]);
   });
 });

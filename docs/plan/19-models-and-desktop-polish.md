@@ -47,3 +47,4 @@
 - [x] Fixes: a finished background task left "In the background" (with a Stop that did nothing); Walk me
       through in a chat whose folder holds several repositories said "not a git repository"
 - [x] Projects shown as coloured squares (Chats, top bar, project picker), chats as round dots, indented
+- [x] Add from Azure lists the resource groups of every subscription in every tenant, under its name

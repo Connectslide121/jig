@@ -554,6 +554,9 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   npm test in the active project". Check that the builder reads the catalog, prefers changing an
   existing add-on when you name one, passes validation, that the preview works, and Accept/Discard.
   Open the Builder chat to see what it did.
+- **Add from Azure across tenants** (tested with a fake `az` only): check that every subscription you
+  have shows with its resource groups, and which ones it says it couldn't read (a tenant may need
+  `az login --tenant <id>` once).
 - **Open a Claude Code chat** (tested with the fake engine only): check that your real Claude Code
   chats are listed (the desktop app's Code tab and terminal ones), that the history reads right
   (long chats with subagents and tools), and that sending a message continues it while the original

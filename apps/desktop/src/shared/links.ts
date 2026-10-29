@@ -135,6 +135,32 @@ export interface AzureItem {
   group: string;
   url: string;
   type: LinkType;
+  /** The subscription it's in (id and name), when listed across subscriptions. */
+  subscriptionId?: string;
+  subscription?: string;
+}
+
+export interface AzureSubscription {
+  id: string;
+  name: string;
+  tenantId: string;
+}
+
+/**
+ * The subscriptions to look in, out of `az account list --all`: every enabled one your login can
+ * see, in every tenant, each once, by name (pure).
+ */
+export function azureSubscriptions(json: unknown): AzureSubscription[] {
+  if (!Array.isArray(json)) return [];
+  const seen = new Set<string>();
+  return json
+    .filter(
+      (s): s is { id: string; name?: string; tenantId?: string; state?: string } =>
+        Boolean(s && typeof s.id === "string") && (s.state === undefined || s.state === "Enabled"),
+    )
+    .filter((s) => !seen.has(s.id) && Boolean(seen.add(s.id)))
+    .map((s) => ({ id: s.id, name: s.name || s.id, tenantId: s.tenantId ?? "" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** `az group list` / `az resource list` output → items to pick (pure). */

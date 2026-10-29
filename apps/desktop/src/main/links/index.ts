@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { JigError } from "../../shared/ipc";
-import { type AzureItem, azureItems } from "../../shared/links";
+import { type AzureItem, azureItems, azureSubscriptions } from "../../shared/links";
 import { resolveCommand } from "../addons/winCommand";
 import { handle } from "../ipc/router";
 
@@ -46,11 +46,55 @@ function az(args: string[]): Promise<unknown> {
   });
 }
 
-/** Project links from Azure: resource groups, or one group's resources. Jig stores no tokens. */
-export async function azureLinks(group?: string): Promise<AzureItem[]> {
-  return azureItems(await az(group ? ["resource", "list", "--resource-group", group] : ["group", "list"]));
+/**
+ * Project links from Azure through your `az` login (Jig stores no tokens): the resource groups of
+ * every enabled subscription you can see, in every tenant, each marked with its subscription; or
+ * one group's resources. A subscription that can't be read (a tenant that needs its own sign-in)
+ * is named in `problems` instead of failing the rest.
+ */
+export async function azureLinks(
+  group?: string,
+  subscription?: string,
+): Promise<{ items: AzureItem[]; problems: string[] }> {
+  if (group)
+    return {
+      items: azureItems(
+        await az([
+          "resource",
+          "list",
+          "--resource-group",
+          group,
+          ...(subscription ? ["--subscription", subscription] : []),
+        ]),
+      ),
+      problems: [],
+    };
+  const subscriptions = azureSubscriptions(await az(["account", "list", "--all"]));
+  if (subscriptions.length === 0) return { items: azureItems(await az(["group", "list"])), problems: [] };
+  const problems: string[] = [];
+  const lists: AzureItem[][] = new Array(subscriptions.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, subscriptions.length) }, async () => {
+      while (next < subscriptions.length) {
+        const i = next++;
+        const sub = subscriptions[i]!;
+        try {
+          lists[i] = azureItems(await az(["group", "list", "--subscription", sub.id])).map((item) => ({
+            ...item,
+            subscriptionId: sub.id,
+            subscription: sub.name,
+          }));
+        } catch (error) {
+          lists[i] = [];
+          problems.push(`${sub.name}: ${(error as Error).message.split("\n")[0]}`);
+        }
+      }
+    }),
+  );
+  return { items: lists.flat(), problems };
 }
 
 export function registerLinkHandlers(): void {
-  handle("links.azure", ({ group }) => azureLinks(group));
+  handle("links.azure", ({ group, subscription }) => azureLinks(group, subscription));
 }

@@ -112,6 +112,10 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
   "sessions.openSaved": z.object({ sessionId: z.string().regex(/^[\w-]{1,100}$/) }),
   "links.azure": z.object({
+    subscription: z
+      .string()
+      .regex(/^[0-9a-fA-F-]{36}$/)
+      .optional(),
     group: z
       .string()
       .regex(/^[\w.()-]+$/)
