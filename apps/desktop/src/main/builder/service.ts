@@ -15,6 +15,7 @@ import { allViews, applyLayoutOps, type BuilderTool, builderTools, folderExists 
 import { validateAddon } from "./validate";
 import {
   changedFiles,
+  commitAll,
   commitWorktree,
   copyInto,
   createWorktree,
@@ -233,10 +234,16 @@ export class BuildService {
     if (!existing) throw new Error(`No add-on "${id}". Use an id from the catalog, or mode "new".`);
     const name = this.folderName(id);
     const folder = join(job.worktree, name);
-    if (!(await folderExists(folder))) await copyInto(existing.dir, job.worktree, name);
+    let base = job.base;
+    if (!(await folderExists(folder))) {
+      await copyInto(existing.dir, job.worktree, name);
+      // The copy is its own commit, so the build shows only what the builder changes in it.
+      if (existing.source === "builtin")
+        base = await commitAll(job.worktree, `Copy of the built-in add-on ${id}`);
+    }
     this.update(
       jobId,
-      { kind: "change-addon", addonId: id, level: 2 },
+      { kind: "change-addon", addonId: id, level: 2, base },
       existing.source === "builtin"
         ? `Changing the built-in add-on "${id}" (as your own copy)`
         : `Changing your add-on "${id}"`,
@@ -332,7 +339,7 @@ export class BuildService {
       );
       return `Not valid yet (try ${rounds} of ${MAX_ROUNDS}). Fix these, validate, then finish again:\n- ${result.problems.join("\n- ")}`;
     }
-    const files = await commitWorktree(job.worktree!, `Build: ${job.goal.slice(0, 70)}`);
+    const files = await commitWorktree(job.worktree!, `Build: ${job.goal.slice(0, 70)}`, job.base);
     this.update(jobId, {
       kind: input.kind,
       level: 2,
@@ -352,7 +359,7 @@ export class BuildService {
   async diff(jobId: string, path: string): Promise<string> {
     const job = this.get(jobId);
     if (!job.worktree) return "";
-    return fileDiff(job.worktree, path);
+    return fileDiff(job.worktree, path, job.base);
   }
 
   async accept(jobId: string): Promise<BuildJob> {
@@ -417,6 +424,6 @@ export class BuildService {
   /** Files of a build (refreshed from git). */
   async files(jobId: string) {
     const job = this.get(jobId);
-    return job.worktree ? changedFiles(job.worktree) : [];
+    return job.worktree ? changedFiles(job.worktree, job.base) : [];
   }
 }

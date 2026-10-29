@@ -2,7 +2,7 @@ import { Hammer } from "lucide-react";
 import { Badge, Button, Spinner } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { BuildActions } from "./BuildTab";
-import { KIND_TEXT, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
+import { kindText, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
 
 /** The card a chat shows for a build it asked for (jig_request_build). */
 export function BuildCard({ buildId }: { buildId: string }) {
@@ -17,7 +17,7 @@ export function BuildCard({ buildId }: { buildId: string }) {
         <Hammer className="size-4 text-accent" />
         <span className="min-w-0 flex-1 truncate font-medium">{job.goal}</span>
         {job.status === "working" && <Spinner size="sm" />}
-        {job.kind && <Badge>{KIND_TEXT[job.kind]}</Badge>}
+        {job.kind && <Badge>{kindText(job)}</Badge>}
         <Badge tone={STATUS_TONE[job.status]}>{STATUS_TEXT[job.status]}</Badge>
       </div>
       {job.summary && <div className="text-xs text-muted">{job.summary}</div>}

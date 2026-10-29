@@ -71,6 +71,11 @@ export interface BuildJob {
   originSessionId?: string;
   /** An add-on the request is about ("Change this with AI", "Fix with AI"). */
   targetAddonId?: string;
+  /**
+   * What the build's changes are compared with: the commit of the copy of a built-in add-on it
+   * changes (so only the builder's edits show), else where the build's branch started.
+   */
+  base?: string;
   status: BuildStatus;
   createdAt: string;
   updatedAt: string;

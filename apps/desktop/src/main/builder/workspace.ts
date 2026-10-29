@@ -35,20 +35,31 @@ export async function copyInto(from: string, worktree: string, folder: string): 
   return target;
 }
 
-/** Commits what the builder changed in the worktree; returns the changed files. */
-export async function commitWorktree(dir: string, message: string): Promise<BuildFile[]> {
+/** Commits what the builder changed in the worktree; returns the changed files (since `base`). */
+export async function commitWorktree(dir: string, message: string, base?: string): Promise<BuildFile[]> {
+  await commitAll(dir, message);
+  return changedFiles(dir, base);
+}
+
+/** Commits everything in the worktree (no-op when nothing changed); returns the commit. */
+export async function commitAll(dir: string, message: string): Promise<string> {
   await run(dir, ["add", "-A"]);
   const staged = await git(dir, ["diff", "--cached", "--quiet"]);
   if (staged.code !== 0) await run(dir, [...IDENTITY, "commit", "-q", "-m", message]);
-  return changedFiles(dir);
+  return (await run(dir, ["rev-parse", "HEAD"])).trim();
 }
 
-/** Files that differ between the worktree's branch and where it started. */
-export async function changedFiles(dir: string): Promise<BuildFile[]> {
-  const base = (await run(dir, ["merge-base", "HEAD", "main"]).catch(() => "")).trim() || "HEAD~0";
+/** Where the build's changes start: `base`, else where its branch left `main`. */
+async function startOf(dir: string, base?: string): Promise<string> {
+  return base || (await run(dir, ["merge-base", "HEAD", "main"]).catch(() => "")).trim() || "HEAD~0";
+}
+
+/** Files that differ between `base` (or where the worktree's branch started) and now. */
+export async function changedFiles(dir: string, base?: string): Promise<BuildFile[]> {
+  const from = await startOf(dir, base);
   const [names, numstat] = await Promise.all([
-    run(dir, ["diff", "--no-renames", "--name-status", "-z", base, "HEAD"]),
-    run(dir, ["diff", "--no-renames", "--numstat", "-z", base, "HEAD"]),
+    run(dir, ["diff", "--no-renames", "--name-status", "-z", from, "HEAD"]),
+    run(dir, ["diff", "--no-renames", "--numstat", "-z", from, "HEAD"]),
   ]);
   const counts = new Map<string, [number, number]>();
   for (const entry of numstat.split("\0").filter(Boolean)) {
@@ -72,9 +83,8 @@ export async function changedFiles(dir: string): Promise<BuildFile[]> {
 }
 
 /** The patch of one file in the build (for the preview). */
-export async function fileDiff(dir: string, path: string): Promise<string> {
-  const base = (await run(dir, ["merge-base", "HEAD", "main"])).trim();
-  return run(dir, ["diff", "-U100000", base, "HEAD", "--", path]);
+export async function fileDiff(dir: string, path: string, base?: string): Promise<string> {
+  return run(dir, ["diff", "-U100000", await startOf(dir, base), "HEAD", "--", path]);
 }
 
 /** Merges the build branch into `main` of the add-ons repo. */

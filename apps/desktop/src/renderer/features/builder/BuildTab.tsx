@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
 import type { DevRequestStatus } from "../../../shared/devRequest";
+import { useAddons } from "../../addons/loader";
 import { call, errorMessage } from "../../lib/host";
 import { timeAgo } from "../../lib/time";
 import {
@@ -32,7 +33,7 @@ import type { TabProps } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { openPreview } from "../preview/actions";
 import { openBuilderChat } from "./BuildDialog";
-import { KIND_TEXT, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
+import { kindText, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
 
 function describeOp(op: LayoutOp): string {
   const view = op.view?.replace(/^addon\.([^.]+)\./, "$1: ").replace(/^jig\./, "") ?? "";
@@ -424,6 +425,7 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
 /** One build: what was asked, what the builder decided, the changes, and Accept / Discard. */
 export function BuildTab({ params }: TabProps) {
   const job = useBuilds((s) => s.jobs.find((j) => j.id === params.buildId));
+  const addonName = useAddons((s) => s.addons.find((a) => a.id === job?.addonId && !a.preview)?.name);
   if (!job) return <Empty title="Build not found" />;
   return (
     <div className="h-full overflow-y-auto" data-testid="build-tab">
@@ -432,7 +434,11 @@ export function BuildTab({ params }: TabProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <Badge tone={STATUS_TONE[job.status]}>{STATUS_TEXT[job.status]}</Badge>
-              {job.kind && <Badge>{KIND_TEXT[job.kind]}</Badge>}
+              {job.kind && (
+                <Badge tone={job.addonId ? "accent" : undefined}>
+                  <span data-testid="build-kind">{kindText(job, addonName)}</span>
+                </Badge>
+              )}
               {job.level && <Badge>level {job.level}</Badge>}
             </div>
             <h1 className="selectable mt-2 text-lg font-semibold">{job.goal || "Build"}</h1>

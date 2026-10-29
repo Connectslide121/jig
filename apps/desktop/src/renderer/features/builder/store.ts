@@ -24,6 +24,15 @@ export const STATUS_TONE: Record<
   failed: "danger",
 };
 
+/** What the build does, naming the add-on it changes or makes ("Changes Releases"). */
+export function kindText(job: Pick<BuildJob, "kind" | "addonId">, addonName?: string): string {
+  if (!job.kind) return "";
+  const name = addonName ?? job.addonId;
+  if (job.kind === "change-addon" && name) return `Changes ${name}`;
+  if (job.kind === "new-addon" && name) return `New add-on: ${name}`;
+  return KIND_TEXT[job.kind];
+}
+
 export const KIND_TEXT: Record<NonNullable<BuildJob["kind"]>, string> = {
   layout: "Layout change",
   settings: "Settings change",

@@ -1394,3 +1394,13 @@ itself) and Claude, on my own (how) · **Date:** 2026-10-30
   Builder chat button opens it there too.
 - Releases' **Set up** is a real bordered button with its own hover (from Jon's builder change,
   built in).
+
+### D-145 — A build names the add-on it changes and shows only the builder's edits
+**Decided by:** Jon (couldn't tell which add-on a build was about; a one-line change showed 13 files
+"added") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- The Build tab and the chat's build card say **Changes Releases** / **New add-on: Pomodoro**
+  instead of "Changes an add-on" (`kindText`).
+- Changing a built-in add-on copies it into the build's worktree as your own copy; that copy is now
+  its own commit, kept as the job's `base`, and the files and diffs are compared with it, so only
+  what the builder changed shows. Accept still brings the whole copy into your add-ons.

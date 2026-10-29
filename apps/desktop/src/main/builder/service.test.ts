@@ -185,6 +185,11 @@ describe("BuildService", () => {
     const { service, addons, home } = await setup();
     const job = await service.start({ goal: "add a word", origin: "addon", targetAddonId: "notes" });
     expect(job).toMatchObject({ status: "preview", kind: "change-addon", addonId: "notes" });
+    // Only what the builder changed is listed, not the whole copied add-on as "added".
+    expect(job.files).toEqual([
+      expect.objectContaining({ path: "notes/README.md", status: "modified", deleted: 0 }),
+    ]);
+    expect(await service.diff(job.id, "notes/README.md")).toContain("+Changed by the builder: add a word");
     await service.accept(job.id);
     expect(await readFile(join(home, "addons", "notes", "README.md"), "utf8")).toContain(
       "Changed by the builder: add a word",
