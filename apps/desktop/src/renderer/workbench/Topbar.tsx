@@ -117,7 +117,7 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        "drag topbar-insets flex h-10 shrink-0 items-center gap-1 border-b border-line bg-titlebar px-2 text-sm",
+        "drag topbar-insets flex shrink-0 items-center gap-1 border-b border-line bg-titlebar px-2 text-sm",
       )}
     >
       <button

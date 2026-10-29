@@ -18,7 +18,8 @@ const WindowStateSchema = z.object({
   maximized: z.boolean().default(false),
 });
 
-export const TITLEBAR_HEIGHT = 40;
+/** The window controls' height on Windows/Linux; the top bar takes it (`.topbar-insets`). */
+export const TITLEBAR_HEIGHT = 36;
 
 /** Creates the main window, restoring its last size and position. */
 export async function createMainWindow(): Promise<BrowserWindow> {

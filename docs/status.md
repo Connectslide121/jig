@@ -407,6 +407,9 @@ Things the cloud build environment couldn't verify:
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
+  - The window controls (minimise, maximise, close) hung below the top bar: they were 40 px and the
+    bar 2.5rem, which is 32.5 px at the default 13 px UI font. The bar now takes the controls' height
+    (`env(titlebar-area-height)`), now 36 px, at any font size; an e2e test checks it.
   - A failed script always said "Exit code 1" on Windows (PowerShell's `-Command` replaces the
     program's code): scripts run in PowerShell now exit with the program's own code.
   - Saving in Preview failed while another program had the file open (Windows can't rename over
@@ -430,7 +433,6 @@ Things the cloud build environment couldn't verify:
     with the real model.
   - Claude's browser network log on a real dev server (bodies of the first page's requests).
 
-- The window's title-bar overlay (Windows window controls drawn over Jig's own top bar).
 - **Real Claude Code sessions with your login** (phase 4): start a session, check streaming, tool
   cards, permission prompts, Always allow, interrupt, model switch, resume after restarting Jig, and that
   the header shows no "API key billing" badge. If Claude Code isn't signed in, check the banner.
