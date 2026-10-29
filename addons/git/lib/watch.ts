@@ -4,6 +4,15 @@
  * changes matter and how often the view still checks by itself.
  */
 
+/**
+ * Whether a watch event says the watched folder itself is gone: Node on Windows then reports the
+ * folder's own absolute path (`\\?\C:\…`), over and over, instead of an error; normal events carry
+ * a path relative to the folder.
+ */
+export function watchedFolderGone(file: string): boolean {
+  return /^(\\\\\?\\|[a-zA-Z]:[\\/]|\/)/.test(file);
+}
+
 /** A change under the working folder that can change `git status` (paths relative to the repo). */
 export function treeChangeMatters(file: string): boolean {
   const parts = file.split(/[\\/]/);

@@ -39,6 +39,9 @@ detail in the main window**. Rebase, graph and blame are out of scope.
   - Also on window focus (a workspace at most every 10 s), and as a safety net while Jig is visible:
     every 60 s where the working folders are watched. Elsewhere (Linux) it runs every 5 s for one
     repository, and 1 s per repository for a workspace, up to 30 s.
+  - A watch that fails, or whose folder is deleted (Windows then reports the folder's own path over
+    and over: `watchedFolderGone`), is closed and the host emits `watchLost`; the views then check
+    as often as where nothing is watched.
   - One `git status` at a time per repository: a call while one runs waits for one more run after it,
     shared by every caller meanwhile (`singleFlight`).
 - **Fetch in the background** (watcher `autoFetch`, every minute; Settings → Git; on, every 5 min):

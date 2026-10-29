@@ -7,6 +7,7 @@ import {
   singleFlight,
   throttleDebounce,
   treeChangeMatters,
+  watchedFolderGone,
 } from "./watch";
 
 describe("treeChangeMatters", () => {
@@ -114,5 +115,14 @@ describe("dueForFetch", () => {
       ["c", 500],
     ]);
     expect(dueForFetch(["a", "b", "c", "d"], last, 5_000, 10_000)).toEqual(["d", "c", "a"]);
+  });
+});
+
+describe("watchedFolderGone", () => {
+  it("tells the watched folder's own path (Windows, when it's deleted) from a change inside it", () => {
+    expect(watchedFolderGone(String.raw`\\?\C:\Users\me\repo`)).toBe(true);
+    expect(watchedFolderGone(String.raw`C:\Users\me\repo`)).toBe(true);
+    expect(watchedFolderGone(String.raw`src\app.ts`)).toBe(false);
+    expect(watchedFolderGone(".git/index")).toBe(false);
   });
 });

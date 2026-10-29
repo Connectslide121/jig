@@ -152,10 +152,16 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
     [folders, loadDir, loadStatus],
   );
 
+  const watchLost = useRef<() => void>(undefined);
   useEffect(() => {
     if (!roots) return;
     let timer: ReturnType<typeof setInterval> | undefined;
     let gone = false;
+    const poll = () => {
+      if (gone || timer) return;
+      timer = setInterval(() => document.visibilityState === "visible" && shown.forEach(refresh), POLL_MS);
+    };
+    watchLost.current = poll;
     for (const folder of shownFolders) {
       loadDir(folder.path);
       loadStatus(folder);
@@ -168,8 +174,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
         ),
       ),
     ).then((live) => {
-      if (gone || live.every(Boolean)) return;
-      timer = setInterval(() => document.visibilityState === "visible" && shown.forEach(refresh), POLL_MS);
+      if (!live.every(Boolean)) poll();
     });
     const onFocus = () => shown.forEach(refresh);
     window.addEventListener("focus", onFocus);
@@ -183,6 +188,10 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   useAddonEvent("changed", (payload) => {
     const root = (payload as { root?: string })?.root;
     if (root && shown.includes(root)) refresh(root);
+  });
+  useAddonEvent("watchLost", (payload) => {
+    const root = (payload as { root?: string })?.root;
+    if (root && shown.includes(root)) watchLost.current?.();
   });
 
   // The filter: every file of the shown folders, loaded when you start typing.

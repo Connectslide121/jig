@@ -23,6 +23,7 @@ import {
   singleFlight,
   throttleDebounce,
   treeChangeMatters,
+  watchedFolderGone,
 } from "./lib/watch";
 
 /** Runs the user's git safely: argument arrays (no shell), stable output, no prompts. */
@@ -406,10 +407,21 @@ export async function watchRepo({ cwd }: Cwd, api: AddonHostApi): Promise<{ tree
   }
   const add = (target: string, recursive: boolean, matters: (file: string) => boolean) => {
     try {
+      // A watch that fails or whose folder is gone (deleted, renamed, a network drive gone): the
+      // views go back to looking again by themselves.
+      let closed = false;
+      const lost = () => {
+        if (closed) return;
+        closed = true;
+        w.close();
+        entry.tree = false;
+        api.emit("watchLost", { cwd });
+      };
       const w = watch(target, { recursive }, (_e, file) => {
-        if (!file || matters(String(file))) entry.changed.call();
+        if (file && watchedFolderGone(String(file))) lost();
+        else if (!file || matters(String(file))) entry.changed.call();
       });
-      w.on("error", () => w.close());
+      w.on("error", lost);
       entry.watchers.push(w);
       return true;
     } catch {

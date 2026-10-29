@@ -128,14 +128,17 @@ function useProject(projectId: unknown, repo?: unknown): RepoProject | undefined
  */
 function useLiveRefresh(cwd: string | undefined, reload: () => void) {
   const ctx = useAddon();
+  const watchLost = useRef<() => void>(undefined);
   useEffect(() => {
     if (!cwd) return;
     let timer: ReturnType<typeof setInterval> | undefined;
     let gone = false;
     const start = (tree: boolean) => {
       if (gone) return;
+      clearInterval(timer);
       timer = setInterval(() => document.visibilityState === "visible" && reload(), pollInterval(tree, 1));
     };
+    watchLost.current = () => start(false);
     void ctx.host
       .call<{ tree: boolean }>("watchRepo", { cwd })
       .then((r) => start(Boolean(r?.tree)))
@@ -151,6 +154,9 @@ function useLiveRefresh(cwd: string | undefined, reload: () => void) {
   }, [cwd, ctx, reload]);
   useAddonEvent("changed", (payload) => {
     if ((payload as { cwd?: string })?.cwd === cwd) reload();
+  });
+  useAddonEvent("watchLost", (payload) => {
+    if ((payload as { cwd?: string })?.cwd === cwd) watchLost.current?.();
   });
 }
 
@@ -907,6 +913,7 @@ type RepoStatus = { cwd: string; status?: Status; error?: string };
  */
 function useLiveRefreshAll(cwds: string[], reloadAll: () => void, reloadOne: (cwd: string) => void) {
   const ctx = useAddon();
+  const watchLost = useRef<() => void>(undefined);
   const key = cwds.join("\n");
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -925,11 +932,15 @@ function useLiveRefreshAll(cwds: string[], reloadAll: () => void, reloadOne: (cw
       ),
     ).then((trees) => {
       if (gone) return;
-      const watching = trees.length > 0 && trees.every(Boolean);
-      timer = setInterval(
-        () => document.visibilityState === "visible" && all(),
-        pollInterval(watching, cwds.length),
-      );
+      const poll = (watching: boolean) => {
+        clearInterval(timer);
+        timer = setInterval(
+          () => document.visibilityState === "visible" && all(),
+          pollInterval(watching, cwds.length),
+        );
+      };
+      poll(trees.length > 0 && trees.every(Boolean));
+      watchLost.current = () => poll(false);
     });
     const onFocus = () => Date.now() - last > 10_000 && all();
     window.addEventListener("focus", onFocus);
@@ -943,6 +954,9 @@ function useLiveRefreshAll(cwds: string[], reloadAll: () => void, reloadOne: (cw
   useAddonEvent("changed", (payload) => {
     const cwd = (payload as { cwd?: string })?.cwd ?? "";
     if (cwds.includes(cwd)) reloadOne(cwd);
+  });
+  useAddonEvent("watchLost", (payload) => {
+    if (cwds.includes((payload as { cwd?: string })?.cwd ?? "")) watchLost.current?.();
   });
 }
 

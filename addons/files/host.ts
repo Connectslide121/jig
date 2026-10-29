@@ -2,7 +2,15 @@ import { type FSWatcher, watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
-import { changeMatters, type Entry, type FileState, hiddenEntry, parseStatus, sortEntries } from "./lib/tree";
+import {
+  changeMatters,
+  type Entry,
+  type FileState,
+  hiddenEntry,
+  parseStatus,
+  sortEntries,
+  watchedFolderGone,
+} from "./lib/tree";
 
 /** Runs the user's git: argument arrays, no prompts, no index writes (so watching never loops). */
 async function git(api: AddonHostApi, cwd: string, args: string[], input?: string) {
@@ -98,8 +106,17 @@ export function watchFolder({ root }: { root: string }, api: AddonHostApi): { li
   const entry: FolderWatch = { users: 1, last: 0 };
   watches.set(root, entry);
   if (process.platform === "win32" || process.platform === "darwin") {
+    // A watch that fails or whose folder is gone (deleted, renamed, a network drive gone): the view
+    // goes back to looking again by itself.
+    const lost = () => {
+      if (!entry.watcher) return;
+      entry.watcher.close();
+      entry.watcher = undefined;
+      api.emit("watchLost", { root });
+    };
     try {
       entry.watcher = watch(root, { recursive: true }, (_e, file) => {
+        if (file && watchedFolderGone(String(file))) return lost();
         if (file && !changeMatters(String(file))) return;
         if (entry.timer) return;
         const wait = Math.max(300, 1000 - (Date.now() - entry.last));
@@ -109,7 +126,7 @@ export function watchFolder({ root }: { root: string }, api: AddonHostApi): { li
           api.emit("changed", { root });
         }, wait);
       });
-      entry.watcher.on("error", () => entry.watcher?.close());
+      entry.watcher.on("error", lost);
     } catch {
       entry.watcher = undefined;
     }

@@ -18,7 +18,8 @@ The project's files as a tree (phase 18, D-101/D-102: it follows the active proj
 - **Filter:** every word appears in the path; name matches come first. It uses `git ls-files -co
   --exclude-standard`, so ignored files are left out. Enter opens the first match.
 - **Live:** one recursive watch per shown folder on Windows and macOS (a change refreshes that folder
-  at most once a second). On Linux it checks every 5 s while Jig is visible, and on focus.
+  at most once a second). On Linux it checks every 5 s while Jig is visible, and on focus. A watch
+  that fails, or whose folder is deleted, is closed (`watchLost`) and the view checks every 5 s too.
 - Tools → Show files (`Ctrl+Shift+E`).
 
 Logic in `lib/tree.ts` (tested). Uses your own `git` and `code`.

@@ -110,6 +110,15 @@ export function filterPaths(paths: string[], query: string, limit = 200): string
     .slice(0, limit);
 }
 
+/**
+ * Whether a watch event says the watched folder itself is gone: Node on Windows then reports the
+ * folder's own absolute path (`\\?\C:\…`), over and over, instead of an error; normal events carry
+ * a path relative to the folder.
+ */
+export function watchedFolderGone(file: string): boolean {
+  return /^(\\\\\?\\|[a-zA-Z]:[\\/]|\/)/.test(file);
+}
+
 /** A change under a shown folder that can change the tree (paths relative to it). */
 export function changeMatters(file: string): boolean {
   const parts = file.split(/[\\/]/);

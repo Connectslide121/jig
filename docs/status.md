@@ -444,6 +444,10 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
     - `npm run dist` builds `Jig-Setup-0.1.0.exe` (247 MB, unsigned); the packaged app
       (`win-unpacked\Jig.exe`) starts, opens Get started and loads the built-in add-ons with its
       bundled esbuild (`e2e/packaged.spec.ts`). The installer itself wasn't run.
+  - When a watched folder is deleted (a removed worktree, a renamed folder), Node on Windows reports
+    the folder's own path over and over instead of an error, which kept Git's and Files' watchers
+    busy for good. Those watches now close, and the views fall back to checking by themselves
+    (`watchLost`), as they also do when a watch fails.
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an

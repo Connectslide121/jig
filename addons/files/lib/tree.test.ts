@@ -7,6 +7,7 @@ import {
   sortEntries,
   toggleRoot,
   visibleRoots,
+  watchedFolderGone,
 } from "./tree";
 
 describe("sortEntries", () => {
@@ -70,5 +71,13 @@ describe("filterPaths / changeMatters", () => {
     expect(changeMatters("src/app.ts")).toBe(true);
     expect(changeMatters(".git/index")).toBe(true);
     expect(changeMatters(".git/objects/ab/cd")).toBe(false);
+  });
+});
+
+describe("watchedFolderGone", () => {
+  it("tells the watched folder's own path (Windows, when it's deleted) from a change inside it", () => {
+    expect(watchedFolderGone(String.raw`\\?\C:\repos\shown`)).toBe(true);
+    expect(watchedFolderGone("/home/me/shown")).toBe(true);
+    expect(watchedFolderGone("src/app.ts")).toBe(false);
   });
 });
