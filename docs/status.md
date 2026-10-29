@@ -405,6 +405,8 @@ Things the cloud build environment couldn't verify:
   - Add-on UIs didn't bundle at all on Windows: the bundler took the entry `C:\…\ui.tsx` for a
     package import and refused it. Fixed in `main/addons/bundle.ts`.
   - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.
+  - `npm run e2e` passes on Windows: 95 passed, 6 skipped (screenshots and Linux-only ones), with the
+    windows hidden.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.

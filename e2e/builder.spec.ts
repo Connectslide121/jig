@@ -124,7 +124,9 @@ test("when no add-on can do it, you try the request's demo, change it, confirm i
   // 1. Try it: the demo runs right there (sandboxed).
   const demo = page.frameLocator("[data-testid=dev-demo]");
   await expect(demo.locator("button")).toHaveText("Build ✓");
-  await demo.locator("button").click();
+  // A DOM click: the windows are hidden in tests, and a hidden window doesn't route mouse clicks
+  // into a sandboxed frame (it runs in its own process).
+  await demo.locator("button").dispatchEvent("click");
   await expect(demo.locator("button")).toHaveText("Clicked");
   // Nothing can be sent before you confirm it.
   await expect(page.getByTestId("build-email-request")).toBeDisabled();
