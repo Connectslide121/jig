@@ -1,5 +1,6 @@
 import { Code, Eye, FileX, FolderOpen, Play, Save, Sparkles, SquareArrowOutUpRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { lineEnding } from "../../../shared/indent";
 import { unifiedDiff } from "../../../shared/lineDiff";
 import { type FilePreview, HAS_SOURCE, type PreviewKind } from "../../../shared/preview";
 import { call, errorMessage } from "../../lib/host";
@@ -393,6 +394,7 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
             value={draft ?? (preview.text ?? "").replaceAll("\r\n", "\n")}
             onChange={(text) => setDraft(text)}
             onSave={() => void save()}
+            eol={lineEnding(preview.text ?? "")}
           />
         ) : (
           <Viewer preview={preview} source={source} scripts={scripts} />

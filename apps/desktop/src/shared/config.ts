@@ -39,6 +39,18 @@ export const ConfigSchema = z.object({
       fileCheckpoints: z.boolean().default(true),
     })
     .prefault({}),
+  editor: z
+    .object({
+      /** Long lines wrap in the Preview editor instead of scrolling sideways. */
+      wordWrap: z.boolean().default(false),
+      /** Spaces and tabs show as faint dots and arrows. */
+      showWhitespace: z.boolean().default(false),
+      /** Typing ( [ { " ' adds the closing one. */
+      closeBrackets: z.boolean().default(true),
+      /** Indentation for a file that doesn't show its own yet (Jig follows the file's otherwise). */
+      tabSize: z.number().int().min(1).max(8).default(4),
+    })
+    .prefault({}),
   notifications: z
     .object({
       /** A system notification when a chat needs you or finishes while Jig isn't in front. */

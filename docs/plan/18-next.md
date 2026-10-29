@@ -368,3 +368,5 @@ true"). This step checks the whole picture again:
       add-on suggestions in chats (D-115)
 - [x] Add-on data scope: global, per project or per repository (D-116)
 - [x] Repo sweep: four reviews and their fixes (unsaved-edit guard, races, safer inputs, a11y, docs)
+- [x] A full code editor: theme syntax colours, indentation guides and detection, closing brackets,
+      several cursors, go to line, word wrap and whitespace, status line, Settings → Editor (D-118)

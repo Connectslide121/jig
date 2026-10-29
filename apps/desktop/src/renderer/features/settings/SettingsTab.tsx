@@ -1,6 +1,7 @@
 import {
   Bot,
   Download,
+  FileCode,
   FolderTree,
   Info,
   LayoutPanelLeft,
@@ -20,6 +21,7 @@ import { AddonsSettings } from "./AddonsSettings";
 import { AppearanceSettings } from "./Appearance";
 import {
   AboutSettings,
+  EditorSettings,
   EngineSettings,
   LayoutSettings,
   LearningSettings,
@@ -56,6 +58,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       order: 1.5,
     },
     engine: { id: "engine", title: "Claude Code", icon: Bot, component: EngineSettings, order: 2 },
+    editor: { id: "editor", title: "Editor", icon: FileCode, component: EditorSettings, order: 2.5 },
     terminal: {
       id: "terminal",
       title: "Terminal",

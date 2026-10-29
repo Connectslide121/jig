@@ -59,6 +59,10 @@ A new state file is documented here in the same commit that adds it.
 | `engine.defaultPermissionMode` | `default` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
+| `editor.wordWrap` | `false` | long lines wrap in the file editor (Preview) |
+| `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
+| `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
+| `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `browser.showWhenUsed` | `true` | open the Claude's browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |

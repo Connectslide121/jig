@@ -228,10 +228,12 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - Drag the divider to resize; closing a pane's last tab (or One pane) ends the split. It's kept
     with the layout.
 - **Editing in Preview:** code and text files are editable (Markdown, HTML, JSON… in Source).
-  - CodeMirror in the theme's colours, with find (`Ctrl+F`); `Ctrl+S` or Save writes the file.
-  - If the file changes on disk while you have unsaved edits, a bar asks: Keep mine / Load theirs /
-    Show diff.
-  - Gap: closing the tab drops unsaved edits without asking.
+  - A full editor (D-118): the theme's own syntax colours, indentation guides, the file's own
+    indentation, closing brackets, several cursors (Alt+click, Alt+drag, Ctrl+D), folding, find and
+    replace, go to line (Ctrl+G), toggle comment, move lines; a status line with line/column,
+    indentation, line endings, language, word wrap and whitespace. Settings → Editor.
+  - `Ctrl+S` or Save writes the file. If it changes on disk while you have unsaved edits, a bar asks:
+    Keep mine / Load theirs / Show diff. Closing a tab with unsaved edits asks first.
 - **Files** (left sidebar, `Ctrl+Shift+E`): the project's files as a tree.
   - Changed files in git colours with their letter; ignored ones dimmed.
   - A filter; click for Preview; right-click to open in VS Code, ask Claude about the file, or copy

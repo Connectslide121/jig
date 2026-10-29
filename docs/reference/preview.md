@@ -33,16 +33,29 @@ the file (review a document, summarise data, explain code), typed in and not sen
 
 Code and text files are **always editable** in the Preview tab (D-101). Kinds with a rendered form
 (Markdown, HTML, JSON, SVG, diagrams, tables, diffs, notebooks) are editable in **Source**.
-- **The editor** is CodeMirror 6 (`CodeEditor.tsx`), coloured by Jig's tokens, so it follows the theme.
-  It has line numbers, folding, bracket matching and **find** (`Ctrl+F`). The file's language loads
-  on demand (`@codemirror/language-data`).
+- **The editor** is CodeMirror 6 (`CodeEditor.tsx`, D-118). The code takes the **theme's own syntax
+  colours** (its `tokenColors`, matched to CodeMirror's tags in `editorSyntax.ts` through
+  `syntaxStyles` in `@jig/themes`), so an imported VS Code theme looks as it does in VS Code and in
+  the chat's code blocks; the frame uses Jig's tokens. The file's language loads on demand
+  (`@codemirror/language-data`), by name or by a `#!` line.
+- **Editing:** line numbers, folding (gutter, `Ctrl+Shift+[` / `]`, Fold all), indentation guides,
+  bracket matching, closing brackets and quotes, several cursors (Alt+click, Alt+drag for a column,
+  `Ctrl+D` for the next match), move/copy lines (`Alt+↑↓`, `Shift+Alt+↑↓`), toggle comment
+  (`Ctrl+/`), find and replace (`Ctrl+F`), go to line (`Ctrl+G`).
+- **Indentation** follows the file (`detectIndent` in `shared/indent.ts`: tabs, or the common number
+  of spaces); a file without any uses `editor.tabSize`. The status line changes it for the file.
+- **The status line:** line and column (click: go to line), cursors or selected characters,
+  indentation, line endings (`CRLF`/`LF`, kept on save), language, and toggles for word wrap and
+  whitespace (`editor.wordWrap`, `editor.showWhitespace`), plus ⋯ (find, go to line, comment, fold,
+  close brackets). Settings → Editor has the same settings.
 - **Saving:** `Ctrl+S`, or **Save** in the header while there are unsaved edits. It goes through
   `files.write`, inside a workspace or a file you opened in Preview. Windows line endings are kept.
 - **A change on disk while you have unsaved edits** (Claude edits the file) doesn't replace them. A
   bar asks: **Keep mine** (save over it), **Load theirs** (drop your edits), **Show diff** (− on
   disk, + yours, `shared/lineDiff.ts`). Saving also refuses when the file changed since you opened it.
-- Files cut at 2 MB stay read-only. It is for quick fixes, not a VS Code replacement: no language
-  servers.
+- **Unsaved edits:** the tab shows a dot; closing it asks first, and the tab limit never closes it.
+- Files cut at 2 MB stay read-only. No language servers (no completion, errors or go to definition):
+  Claude does that work in Jig, and VS Code is one click away (Open in VS Code).
 
 ## How it works
 

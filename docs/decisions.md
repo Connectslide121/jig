@@ -1126,3 +1126,23 @@ or keep it global) and Claude, on my own (the shape) · **Date:** 2026-10-29
 - **Not changed (needs Jon):** an add-on tool's `readOnly` (runs without asking) is still trusted for
   every add-on, built-in or not. Honouring it only for built-in add-ons would be safer, but it
   changes how user add-ons behave.
+
+### D-118 — The code editor: complete, in the theme's own syntax colours, without language servers
+**Decided by:** Jon (the editor should be as complete as possible, with highlighting; maybe not
+autocompletion) and Claude, on my own (how) · **Date:** 2026-10-29
+
+- **Still CodeMirror 6** (D-106), with what a good editor has: closing brackets, several cursors and
+  column selection, indentation guides (`@replit/codemirror-indentation-markers`), folding, find and
+  replace, go to line, toggle comment, move lines, and a status line.
+- **Colours come from the theme's `tokenColors`**, the same data Shiki uses for code blocks: each
+  kind of code (keyword, string, function…) is given TextMate scopes, resolved the way VS Code does
+  (most specific selector wins), and mapped to CodeMirror's tags. Running Shiki inside the editor
+  would match exactly, but re-tokenising with TextMate grammars on every keystroke is slow on big
+  files; the mapping gets the theme's colours with CodeMirror's incremental parsers. A theme with
+  almost no syntax colours falls back to Jig's tokens.
+- **Indentation follows the file** (tabs or the common number of spaces); `editor.tabSize` is only for
+  files without any. Line endings are kept (D-106) and shown.
+- **Settings** (`editor.wordWrap`, `showWhitespace`, `closeBrackets`, `tabSize`) are ordinary settings,
+  so a chat can change them too, and the status line toggles them.
+- **No completion and no language servers:** the editor is for reading and fixing; Claude does the
+  heavy edits, and VS Code is one click away.

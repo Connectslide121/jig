@@ -196,6 +196,60 @@ export function EngineSettings() {
   );
 }
 
+export function EditorSettings() {
+  const config = useConfig((s) => s.config);
+  if (!config) return <Spinner />;
+  const e = config.editor;
+  return (
+    <SettingsSection
+      title="Editor"
+      description="The editor for code and text files in Preview. It colours code with your theme, follows each file's own indentation and keeps its line endings."
+    >
+      <SettingRow label="Wrap long lines" description="Long lines wrap instead of scrolling sideways.">
+        <Switch
+          label="Wrap long lines"
+          checked={e.wordWrap}
+          onChange={(wordWrap) => void updateConfig({ editor: { wordWrap } })}
+        />
+      </SettingRow>
+      <SettingRow
+        label="Show spaces and tabs"
+        description="Faint dots and arrows; spaces at the end of a line are marked."
+      >
+        <Switch
+          label="Show spaces and tabs"
+          checked={e.showWhitespace}
+          onChange={(showWhitespace) => void updateConfig({ editor: { showWhitespace } })}
+        />
+      </SettingRow>
+      <SettingRow label="Close brackets and quotes" description={`Typing ( [ { " ' adds the closing one.`}>
+        <Switch
+          label="Close brackets and quotes"
+          checked={e.closeBrackets}
+          onChange={(closeBrackets) => void updateConfig({ editor: { closeBrackets } })}
+        />
+      </SettingRow>
+      <SettingRow
+        label="Indentation for new files"
+        description="Spaces per indent in a file that has no indentation yet. Other files keep their own."
+      >
+        <Select
+          value={String(e.tabSize)}
+          aria-label="Indentation for new files"
+          onChange={(event) => void updateConfig({ editor: { tabSize: Number(event.target.value) } })}
+          data-testid="settings-tab-size"
+        >
+          {[2, 4, 8].map((n) => (
+            <option key={n} value={n}>
+              {n} spaces
+            </option>
+          ))}
+        </Select>
+      </SettingRow>
+    </SettingsSection>
+  );
+}
+
 export function TerminalSettings() {
   const config = useConfig((s) => s.config);
   if (!config) return <Spinner />;

@@ -697,6 +697,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Preview / Source switch, and Ask Claude about the file",
                 "Two tabs side by side: right-click a tab → Open to the side, or drag it to the right edge",
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
+                "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
                 "Tools → Preview a file… for anything else",
               ]}
             />
