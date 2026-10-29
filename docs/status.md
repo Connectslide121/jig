@@ -138,6 +138,13 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
+- **Project links** (section below Projects, and a card on Home): the project's places in groups you
+  name (Stage, Prod…).
+  - Each link is typed (resource group, website, database, Azure DevOps repo…), with its icon; the
+    type and label come from the address.
+  - Add one by hand (+), or tick resource groups or resources from your `az` login (cloud button).
+    Drag links between groups; click opens your browser.
+  - Claude can add or rearrange them from a chat (with Undo).
 - **Arrange Scripts and Pipelines:** Arrange in each panel's header hides items, lets you drag them
   into your order and adds dividers (optionally titled). It's the same in every project. Scripts
   shows one group per folder, whatever the active project.

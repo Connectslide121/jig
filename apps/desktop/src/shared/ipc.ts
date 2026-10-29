@@ -31,6 +31,7 @@ import type {
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
 import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
+import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
@@ -181,6 +182,11 @@ export interface HostMethods {
     args: { projectId?: string; title?: string; cwd?: string };
     result: SessionMeta;
   };
+  /**
+   * Azure resource groups, or the resources of one group (`group`), through the user's own `az` login,
+   * to pick project links from. Errors: `az_missing`, `az_login`, `az_failed`.
+   */
+  "links.azure": { args: { group?: string }; result: AzureItem[] };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /** Pinned chats stay at the top of their project. */

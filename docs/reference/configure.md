@@ -18,6 +18,8 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_list_projects` | projects with their settings, workspaces with their repositories, recent chats and their project | no (read-only) |
 | `jig_create_project { name, path, color?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | a new project (Undo removes it) | yes |
 | `jig_update_project { projectId?, name?, color?, path?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | changes a project (default: the chat's project); `""`/`[]` clears a preference; Undo puts back the previous values | yes |
+| `jig_add_project_links { projectId?, group, links: [{ url, label?, type? }] }` | adds links to a group (made if missing); type guessed from the address | yes |
+| `jig_set_project_links { projectId?, groups: [{ title, links }] }` | replaces all links (reorder, regroup, remove); Undo puts the old ones back | yes |
 | `jig_move_chat { chatId?, projectId?, pinned? }` | puts a chat (default: this one) in a project, moves it, takes it out, pins/unpins it | yes |
 | `jig_install_theme { namespace, name }` | installs a theme extension from Open VSX (theme files only) | yes |
 

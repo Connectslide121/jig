@@ -217,4 +217,24 @@ describe("configure tools", () => {
     expect(get().projects.projects[0]?.instructions).toBeUndefined();
     expect(get().projects.projects[0]?.permissionMode).toBeUndefined();
   });
+
+  it("adds and replaces project links, undoable", async () => {
+    const { call, cards, deps, get } = setup();
+    await call("jig_add_project_links", {
+      group: "Stage",
+      links: [
+        { url: "https://stage.shop.se" },
+        { url: "https://dev.azure.com/c/S/_git/shop", label: "Repo" },
+      ],
+    });
+    const links = get().projects.projects[0]!.links!;
+    expect(links.map((g) => g.title)).toEqual(["Stage"]);
+    expect(links[0]!.links.map((l) => l.type)).toEqual(["website", "devops-repo"]);
+    expect(await call("jig_list_projects")).toContain("links: Stage [");
+    await call("jig_set_project_links", { groups: [{ title: "Prod", links: [{ url: "https://shop.se" }] }] });
+    expect(get().projects.projects[0]!.links!.map((g) => g.title)).toEqual(["Prod"]);
+    for (const c of [...cards].reverse())
+      await applyUndo(deps, (c as Extract<ChatItem, { kind: "change" }>).undo!);
+    expect(get().projects.projects[0]!.links ?? []).toEqual([]);
+  });
 });

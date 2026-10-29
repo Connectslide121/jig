@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
+import { LinkGroupSchema } from "../../shared/links";
 import { PROJECT_COLORS } from "../../shared/projects";
 
 /**
@@ -37,6 +38,7 @@ const projectPatch = z.object({
   permissionMode: z.union([z.enum(PERMISSION_MODES), z.literal("")]).optional(),
   instructions: z.string().max(20_000).optional(),
   starters: z.array(z.string().max(500)).max(12).optional(),
+  links: z.array(LinkGroupSchema).max(50).optional(),
 });
 
 const attachment = z.object({
@@ -75,6 +77,13 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     cwd: path.optional(),
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
+  "links.azure": z.object({
+    group: z
+      .string()
+      .regex(/^[\w.()-]+$/)
+      .max(90)
+      .optional(),
+  }),
   "sessions.send": z.object({
     id,
     text,

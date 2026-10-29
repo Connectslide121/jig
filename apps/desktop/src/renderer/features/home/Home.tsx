@@ -26,6 +26,7 @@ import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openAbout } from "../about";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
+import { LinksCard } from "../links/LinksView";
 import { projectTextClass } from "../projects/colors";
 import { openProjectDialog } from "../projects/ProjectDialog";
 import { projectMenu } from "../projects/projectMenu";
@@ -230,6 +231,8 @@ export function Home({ project }: { project: ProjectInfo }) {
             ))}
           </div>
         </section>
+
+        <LinksCard project={project} />
 
         {recent.length > 0 && (
           <section className="flex flex-col gap-1" data-testid="home-recent">

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { EFFORT_LEVELS, type EffortLevel, PERMISSION_MODES, type PermissionMode } from "./engine";
+import { LinkGroupSchema } from "./links";
 
 /** Project colours are token names, so a project's colour follows the theme. */
 export const PROJECT_COLORS = ["accent", "info", "success", "warning", "danger", "muted"] as const;
@@ -38,12 +39,14 @@ export const ProjectSchema = z.object({
   instructions: z.string().max(20_000).optional(),
   /** Quick prompts on the project's Home; empty = Jig's defaults. */
   starters: z.array(z.string().max(500)).max(12).optional(),
+  /** Its links in groups (Stage, Prod…): Azure resources, sites, Azure DevOps, docs. */
+  links: z.array(LinkGroupSchema).max(50).optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
 /** What `projects.update` can change; an empty string or list clears a preference. */
 export type ProjectPatch = Partial<
-  Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters">
+  Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters" | "links">
 > & { effort?: EffortLevel | ""; permissionMode?: PermissionMode | "" };
 
 export const ProjectsFileSchema = z.object({

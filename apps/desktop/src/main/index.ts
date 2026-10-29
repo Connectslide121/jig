@@ -16,6 +16,7 @@ import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
 import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
+import { registerLinkHandlers } from "./links";
 import { logger } from "./log";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
@@ -68,6 +69,7 @@ async function start() {
   registerArtifactHandlers();
   registerScriptHandlers();
   registerFileHandlers();
+  registerLinkHandlers();
   registerAboutHandlers();
   registerAiHandlers();
   registerTourHandlers();

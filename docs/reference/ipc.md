@@ -82,6 +82,7 @@ settings, add-on permissions.
 | `sessions.create` | `{ projectId?, title?, cwd? }` | `SessionMeta` | a chat in a project or none. Runs in `cwd` (any folder) or the project's default workspace; without a project `cwd` is required. Model, effort and permission mode: the project's defaults, else Jig's |
 | `sessions.setProject` | `{ id, projectId? }` | — | puts a chat in a project, moves it, or takes it out |
 | `sessions.setPinned` | `{ id, pinned }` | — | pinned chats stay at the top of their project |
+| `links.azure` | `{ group? }` | `AzureItem[]` | resource groups, or one group's resources, through the user's own `az` (`az group list` / `az resource list -g`), as portal links with a guessed type; `az_missing`, `az_login`, `az_failed` |
 | `sessions.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment { path, mime, name, kind }` | keeps pasted/dropped bytes (base64) or copies a file into `attachments/<session>/`: images, PDFs, .docx/.xlsx/.pptx, text files (`docs/reference/engine.md` → Attachments); `not_supported`, `too_large`, `not_found`, `unreadable` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |

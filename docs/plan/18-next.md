@@ -339,7 +339,7 @@ true"). This step checks the whole picture again:
 - [x] Scripts and Pipelines: hide, reorder and dividers, from the panel
 - [x] Split view: two side-by-side panes with their own tabs; drag a tab to the edge or "Open to the
       side"; draggable divider
-- [ ] Project links: grouped, typed links (icon + default label), managed in the panel and from
+- [x] Project links: grouped, typed links (icon + default label), managed in the panel and from
       chats (with Undo), optional "Add from Azure…" via `az`
 - [ ] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
 - [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help

@@ -7,6 +7,7 @@ import { registerBuilder } from "./builder";
 import { registerDigest } from "./digest";
 import { registerFiles } from "./files";
 import { registerLearning } from "./learning";
+import { registerLinks } from "./links";
 import { registerPreview } from "./preview";
 import { registerProjects } from "./projects";
 import { registerRoutines } from "./routines";
@@ -21,6 +22,7 @@ import { registerUsage } from "./usage";
 export function registerFeatures(): void {
   registerCoreActions();
   registerProjects();
+  registerLinks();
   registerSessions();
   registerSettings();
   registerTerminals();

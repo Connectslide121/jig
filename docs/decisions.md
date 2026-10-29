@@ -954,3 +954,20 @@ Instead of two one-off implementations, `@jig/sdk` has pure helpers (`arrange`, 
 - New items appear after the arranged ones, so nothing disappears silently.
 - Scripts is now one group per workspace folder, whatever the active project (the right side is
   global, D-102).
+
+### D-109 — Project links are project data, with types from a fixed list
+**Decided by:** Claude, on my own (Jon: grouped links per project, typed with a label and an icon, set
+by hand and from chats; a section below Projects and on Home) · **Date:** 2026-10-29
+
+- **Stored on the project** (`links` in `projects.json`), so Claude's configure tools change them like
+  any project setting, with Undo.
+- **Types are a fixed list in Jig** (`shared/links.ts`: resource group, website, App Service,
+  database, key vault, Azure DevOps repo/pipeline/board, docs, API, …). Each type has a Lucide icon and
+  a label.
+  - A link's own label is optional; it defaults to the Azure resource's name, the repository, or the
+    host.
+  - The type is guessed from the address (Azure portal resource ids, Azure DevOps paths).
+- **"Add from Azure…"** asks the user's `az` in the main process (`links.azure`), like Pipelines does
+  in its add-on. It lists resource groups, or a group's resources, to tick. Jig stores no tokens.
+- **The Links view is core** (`jig.links`), a section below Projects (D-099), because it is project
+  data. Drag links between groups; group menus rename, reorder, remove.

@@ -20,6 +20,14 @@ import {
   type SessionMeta,
 } from "../../shared/engine";
 import type { Layout } from "../../shared/layout";
+import {
+  defaultLinkLabel,
+  guessLinkType,
+  LINK_TYPE_IDS,
+  LINK_TYPES,
+  type LinkGroup,
+  type LinkType,
+} from "../../shared/links";
 import { PROJECT_COLORS, type Project, type ProjectPatch, type ProjectsState } from "../../shared/projects";
 import type { FileIconThemeList, OpenVsxExtension } from "../../shared/themes";
 import { allViews, applyLayoutOps } from "../builder/tools";
@@ -84,6 +92,13 @@ function card(summary: string, details: string[], undo?: ConfigUndo): ChatItem {
 
 export function configureTools(deps: ConfigureDeps): JigTool[] {
   const viewIds = () => allViews(deps.addons()).map((v) => v.id);
+  const projectFor = async (id: string | undefined, meta: SessionMeta) => {
+    const projectId = id ?? meta.projectId;
+    const project = (await deps.projects()).projects.find((p) => p.id === projectId);
+    if (!projectId || !project)
+      throw new Error("Project not found (this chat is in no project; pass projectId)");
+    return project;
+  };
   return [
     {
       name: "jig_get_settings",
@@ -309,6 +324,9 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             p.permissionMode ? `permissions ${p.permissionMode}` : "",
             p.instructions ? `instructions: ${JSON.stringify(p.instructions)}` : "",
             p.starters?.length ? `starters: ${JSON.stringify(p.starters)}` : "",
+            p.links?.length
+              ? `links: ${p.links.map((g) => `${g.title} [${g.links.map((l) => `${l.label || l.url} (${l.type}) ${l.url}`).join(", ")}]`).join("; ")}`
+              : "",
           ]
             .filter(Boolean)
             .join("; "),
@@ -391,6 +409,70 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
       },
     },
     {
+      name: "jig_add_project_links",
+      description: `Add links to a project (its Azure resources, sites, Azure DevOps, docs…) in a group such as "Stage" or "Prod" (made if missing). Each link: url (http/https; for an Azure resource the portal address https://portal.azure.com/#@/resource<resource id>), optional label (default: from the address), optional type (${LINK_TYPE_IDS.join(", ")}; default: guessed from the address). Without projectId: this chat's project. To reorganise or remove links, read them with jig_list_projects and use jig_set_project_links.`,
+      shape: {
+        projectId: z.string().optional(),
+        group: z.string(),
+        links: z.array(linkInput).min(1).max(50),
+      },
+      handler: async (args, meta: SessionMeta) => {
+        const project = await projectFor(args.projectId as string | undefined, meta);
+        const before = project.links ?? [];
+        const input = args.links as Array<{ url: string; label?: string; type?: LinkType }>;
+        const links = addLinkGroups(before, String(args.group), input);
+        await deps.updateProject(project.id, { links });
+        const details = input.map(
+          (l) =>
+            `${args.group}: ${l.label || defaultLinkLabel(l.url)} (${LINK_TYPES[l.type ?? guessLinkType(l.url)].label})`,
+        );
+        await deps.addCard(
+          meta.id,
+          card(`Added links to ${project.name}`, details, {
+            type: "project",
+            id: project.id,
+            patch: { links: before },
+          }),
+        );
+        return `Done:\n${details.join("\n")}`;
+      },
+    },
+    {
+      name: "jig_set_project_links",
+      description:
+        "Replace all of a project's links with these groups, in this order (to rename, regroup, reorder or remove links; read the current ones with jig_list_projects first). Without projectId: this chat's project.",
+      shape: {
+        projectId: z.string().optional(),
+        groups: z.array(z.object({ title: z.string(), links: z.array(linkInput).max(200) })).max(50),
+      },
+      handler: async (args, meta: SessionMeta) => {
+        const project = await projectFor(args.projectId as string | undefined, meta);
+        const before = project.links ?? [];
+        let links: LinkGroup[] = [];
+        for (const g of args.groups as Array<{
+          title: string;
+          links: Array<{ url: string; label?: string; type?: LinkType }>;
+        }>)
+          links = g.links.length
+            ? addLinkGroups(links, g.title, g.links)
+            : [...links, { id: randomUUID(), title: g.title, links: [] }];
+        await deps.updateProject(project.id, { links });
+        const details = links.map(
+          (g) =>
+            `${g.title}: ${g.links.map((l) => l.label || defaultLinkLabel(l.url)).join(", ") || "(empty)"}`,
+        );
+        await deps.addCard(
+          meta.id,
+          card(`Changed the links of ${project.name}`, details, {
+            type: "project",
+            id: project.id,
+            patch: { links: before },
+          }),
+        );
+        return `Done:\n${details.join("\n")}`;
+      },
+    },
+    {
       name: "jig_move_chat",
       description:
         "Put a chat in a project, move it to another, or take it out (leave projectId out), and/or pin it to the top of its project. Without chatId: this chat. Chat and project ids come from jig_list_projects.",
@@ -450,6 +532,32 @@ export async function applyUndo(deps: ConfigureDeps, undo: ConfigUndo): Promise<
     await deps.setChatProject(undo.id, undo.projectId);
     await deps.setChatPinned(undo.id, undo.pinned);
   }
+}
+
+/** A link as Claude gives it. */
+const linkInput = z.object({
+  url: z.string().regex(/^https?:\/\//i, "http(s) addresses only"),
+  label: z.string().optional(),
+  type: z.enum(LINK_TYPE_IDS as [LinkType, ...LinkType[]]).optional(),
+});
+
+/** Adds links to the group `title` (made if missing), with ids and guessed types. */
+function addLinkGroups(
+  groups: LinkGroup[],
+  title: string,
+  links: Array<{ url: string; label?: string; type?: LinkType }>,
+): LinkGroup[] {
+  const name = title.trim() || "Links";
+  const made = links.map((l) => ({
+    id: randomUUID(),
+    url: l.url,
+    label: l.label?.trim() || undefined,
+    type: l.type ?? guessLinkType(l.url),
+  }));
+  const existing = groups.find((g) => g.title.toLowerCase() === name.toLowerCase());
+  return existing
+    ? groups.map((g) => (g === existing ? { ...g, links: [...g.links, ...made] } : g))
+    : [...groups, { id: randomUUID(), title: name, links: made }];
 }
 
 /** The project settings Claude can set (shared by create and update). */

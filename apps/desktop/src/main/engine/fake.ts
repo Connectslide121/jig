@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links)\b/.test(
             lower,
           )
         ) {
@@ -402,7 +402,21 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/make a project for this chat/.test(lower)) {
+          if (/add the stage links/.test(lower)) {
+            await call("jig_list_projects", {});
+            await call("jig_add_project_links", {
+              group: "Stage",
+              links: [
+                { url: "https://stage.shop.se" },
+                { url: "https://portal.azure.com/#@/resource/subscriptions/abc/resourceGroups/shop-stage" },
+              ],
+            });
+            await stream(
+              `${msg}:text:0`,
+              "I added the stage site and resource group to the Stage links.",
+              signal,
+            );
+          } else if (/make a project for this chat/.test(lower)) {
             await call("jig_list_projects", {});
             await call("jig_create_project", {
               name: "Fake project",
