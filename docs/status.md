@@ -93,6 +93,12 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - You review in the build tab: layout/settings changes, or the add-on running as a "(preview)" with
     its files, diffs and permissions. **Accept** applies it (add-ons: a commit in `~/.jig/addons`,
     roll back from Settings → Add-ons); **Discard** leaves nothing behind. Builds view in the bottom panel.
+  - **Development requests** (D-119): when no add-on can do it, the build ends with a request for
+    Jig's developers: title, user story, why, the proposed extension point, how the tool is then an
+    add-on, acceptance criteria and a clickable mockup. **Email to developers** opens a new email to
+    support@sprinta.se (Settings → Add-ons) with a zip attached (SPEC.md, PROMPT.md to paste into
+    Claude Code in the Jig repository, mockup.html, context.json); also Open mockup, Copy prompt,
+    Show package.
   - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
     "compact", "a pomodoro timer").
 
@@ -396,6 +402,10 @@ Things the cloud build environment couldn't verify:
   - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
+  - Email to developers: classic Outlook should open a new message with the zip attached
+    (`outlook.exe /c ipm.note /m … /a <zip>`). With only the new Outlook, Jig opens an unsent `.eml`
+    instead; check it opens as a message you can send (else the last resort is a plain email and the
+    zip shown in its folder).
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

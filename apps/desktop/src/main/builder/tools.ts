@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path";
 import { addonViewId } from "@jig/sdk";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
-import type { BuildJob, BuildKind, LayoutOp } from "../../shared/builds";
+import type { BuildJob, BuildKind, ExtensionProposal, LayoutOp } from "../../shared/builds";
 import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
 import {
   hideView,
@@ -44,6 +44,8 @@ export interface BuilderEnv {
     addonId?: string;
     reason?: string;
     proposal?: string;
+    /** The rest of the development request (D-119). */
+    extra?: Omit<ExtensionProposal, "reason" | "proposal">;
   }) => Promise<string>;
 }
 
@@ -223,19 +225,48 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
       description:
         "No layout change, setting or add-on can do the request with the existing slots and add-on API. You can't change Jig's code: describe the missing extension point instead (the user adds it to Jig's source), then stop.",
       shape: {
+        title: z
+          .string()
+          .max(120)
+          .describe("A short name for the development request, e.g. 'Title bar items from add-ons'"),
         reason: z.string().describe("Why the existing slots and API can't do it"),
         proposal: z
           .string()
           .describe(
-            "Markdown: the new slot or API (name, what it receives, where it shows), a sketch of its TypeScript types, and how the request would then be built as an add-on",
+            "Markdown: the new slot or API (name, what it receives, where it shows), a sketch of its TypeScript types, and which Jig files it touches",
+          ),
+        userStory: z.string().optional().describe("As a …, I want … so that …"),
+        acceptance: z
+          .array(z.string())
+          .optional()
+          .describe("Acceptance criteria: how a developer knows it's done (3–8 short lines)"),
+        addonPlan: z
+          .string()
+          .optional()
+          .describe(
+            "Markdown: how the requested tool is then built as an add-on on top of the new extension point",
+          ),
+        mockupHtml: z
+          .string()
+          .max(200_000)
+          .optional()
+          .describe(
+            "A clickable mockup of the intended result: ONE self-contained HTML page (inline CSS and JS, no external URLs, scripts or fonts) that looks like Jig (dark UI, small text) and lets the developer click through the idea",
           ),
       },
-      handler: async ({ reason, proposal }) =>
+      handler: async ({ title, reason, proposal, userStory, acceptance, addonPlan, mockupHtml }) =>
         env.finish({
-          summary: `Needs a new extension point in Jig: ${String(reason)}`,
+          summary: `Development request: ${String(title ?? reason)}`,
           kind: "app",
           reason: String(reason),
           proposal: String(proposal),
+          extra: {
+            title: title ? String(title) : undefined,
+            userStory: userStory ? String(userStory) : undefined,
+            acceptance: Array.isArray(acceptance) ? acceptance.map(String) : undefined,
+            addonPlan: addonPlan ? String(addonPlan) : undefined,
+            mockupHtml: mockupHtml ? String(mockupHtml) : undefined,
+          },
         }),
     },
     {

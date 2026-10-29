@@ -89,6 +89,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     originSessionId: id.optional(),
   }),
   "builds.diff": z.object({ id, path }),
+  "devRequests.create": z.object({ buildId: id }),
+  "devRequests.email": z.object({ buildId: id }),
+  "devRequests.prompt": z.object({ buildId: id }),
   "learning.record": z.object({
     kind: z.literal("addon.action"),
     text: z.string().max(2000),

@@ -1146,3 +1146,23 @@ autocompletion) and Claude, on my own (how) · **Date:** 2026-10-29
   so a chat can change them too, and the status line toggles them.
 - **No completion and no language servers:** the editor is for reading and fixing; Claude does the
   heavy edits, and VS Code is one click away.
+
+### D-119 — Development requests: what the builder can't make goes to the developers by email
+**Decided by:** Jon (a package with a spec, a clickable reference and a prompt, emailed with one
+click to support@sprinta.se so other users can send requests) and Claude, on my own (how) ·
+**Date:** 2026-10-29
+
+- **It grows out of D-074's proposal.** `propose_extension_point` now also takes a title, a user story,
+  acceptance criteria, how the tool is built as an add-on afterwards, and a mockup: one
+  self-contained HTML page (no external URLs; Jig opens it in Preview, whose HTML view is sandboxed).
+- **The package** (`~/.jig/dev-requests/<build>/`, zipped): README.md, SPEC.md, PROMPT.md (the spec
+  inside, plus "follow AGENTS.md, add it as an extension point, tests and docs"), mockup.html,
+  context.json (Jig's version, the OS, the add-ons that were on — nothing from chats or files).
+- **One button opens a new email with the zip attached.** A `mailto:` link can't carry an attachment,
+  so Jig tries, in order: classic Outlook's command line on Windows (`/m … /a`), the default mail app
+  through AppleScript on macOS (Outlook or Mail), `xdg-email --attach` on Linux, an unsent `.eml`
+  (`X-Unsent: 1`, which Outlook opens as a new message) and, last, a `mailto:` without the attachment
+  and the zip shown in its folder. The user always sees the email and presses Send: Jig sends
+  nothing by itself and stores no mail credentials.
+- **The address is a protected setting** (`devRequests.email`, default support@sprinta.se, Settings →
+  Add-ons only), so a chat can't redirect requests.

@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
-import type { BuildJob, BuildKind, BuildRequestInput } from "../../shared/builds";
+import type { BuildJob, BuildKind, BuildRequestInput, ExtensionProposal } from "../../shared/builds";
 import { type DeepPartial, type JigConfig, protectedIn } from "../../shared/config";
 import type { ChatItem, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
@@ -246,7 +246,14 @@ export class BuildService {
 
   private async finish(
     jobId: string,
-    input: { summary: string; kind: BuildKind; addonId?: string; reason?: string; proposal?: string },
+    input: {
+      summary: string;
+      kind: BuildKind;
+      addonId?: string;
+      reason?: string;
+      proposal?: string;
+      extra?: Omit<ExtensionProposal, "reason" | "proposal">;
+    },
   ): Promise<string> {
     const job = this.get(jobId);
     if (input.kind === "app") {
@@ -262,17 +269,17 @@ export class BuildService {
           worktree: undefined,
           branch: undefined,
           files: [],
-          proposal: { reason: input.reason ?? "", proposal: input.proposal ?? "" },
+          proposal: { ...input.extra, reason: input.reason ?? "", proposal: input.proposal ?? "" },
         },
-        "No slot can do this yet: the builder proposes a new extension point for Jig.",
+        "No slot can do this yet: the builder wrote a development request for Jig's developers.",
         "warning",
       );
       this.options.notify?.({
-        title: "A build needs a new extension point in Jig",
+        title: "This needs a change in Jig: a development request is ready to send",
         message: job.goal,
         tone: "warning",
       });
-      return "Recorded. The user will see your proposal and may add the extension point to Jig themselves. Stop here.";
+      return "Recorded. The user sees it as a development request they can email to Jig's developers (spec, prompt and your mockup in a zip). Tell them in one or two sentences, then stop.";
     }
     if (input.kind === "nothing") {
       this.update(

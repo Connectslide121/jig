@@ -370,3 +370,6 @@ true"). This step checks the whole picture again:
 - [x] Repo sweep: four reviews and their fixes (unsaved-edit guard, races, safer inputs, a11y, docs)
 - [x] A full code editor: theme syntax colours, indentation guides and detection, closing brackets,
       several cursors, go to line, word wrap and whitespace, status line, Settings → Editor (D-118)
+- [x] Development requests: when no add-on can do it, the builder's proposal becomes a package
+      (spec, prompt for Claude Code, mockup, context) that **Email to developers** attaches to a new
+      email to support@sprinta.se (D-119)

@@ -1,6 +1,6 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, launchJig, test } from "./fixtures";
 
 test("Build something… makes a new add-on, previews it, and Accept makes it live", async ({ page }) => {
   await page.keyboard.press("Control+Shift+B");
@@ -104,16 +104,38 @@ test("Change this with AI on an add-on view starts a build about that add-on", a
   await expect(page.getByTestId("addon-repos")).toContainText("your copy");
 });
 
-test("when no slot can do it, the builder proposes an extension point instead of changing Jig", async ({
-  page,
+test("when no add-on can do it, the builder writes a development request that one button emails", async ({
+  jigHome,
 }) => {
+  const outbox = join(jigHome, "outbox");
+  await mkdir(outbox, { recursive: true });
+  // JIG_MAIL_OUT: the email is written there instead of opening a mail app.
+  const app = await launchJig(jigHome, { JIG_MAIL_OUT: outbox });
+  const page = await app.firstWindow();
+  await page.waitForSelector("[data-testid=app-root]");
   await page.keyboard.press("Control+Shift+B");
   await page.getByTestId("build-goal").fill("change jig itself: draw in the window frame");
   await page.getByTestId("build-submit").click();
-  const proposal = page.getByTestId("build-proposal");
-  await expect(proposal).toContainText("No extension point can do this yet", { timeout: 20000 });
-  await expect(proposal).toContainText("window.decorations");
+  const request = page.getByTestId("build-proposal");
+  await expect(request).toContainText("Needs a change in Jig", { timeout: 20000 });
+  await expect(request).toContainText("Title bar items from add-ons");
+  await expect(request).toContainText("window.decorations");
+  await expect(request).toContainText("support@sprinta.se");
   await expect(page.getByTestId("build-accept")).toHaveCount(0);
-  await page.getByTestId("build-copy-proposal").click();
-  await expect(page.getByTestId("toast").last()).toContainText("Proposal copied");
+
+  // One click: a new email to the developers with the package attached.
+  await page.getByTestId("build-email-request").click();
+  await expect(page.getByTestId("toast").last()).toContainText("ready to send");
+  await expect.poll(async () => (await readdir(outbox)).filter((f) => f.endsWith(".eml")).length).toBe(1);
+  const [emlName] = (await readdir(outbox)).filter((f) => f.endsWith(".eml"));
+  const eml = await readFile(join(outbox, emlName!), "utf8");
+  expect(eml).toContain("To: support@sprinta.se");
+  expect(eml).toContain("Subject: Jig development request: Title bar items from add-ons");
+  expect(eml).toMatch(/filename="jig-request-title-bar-items-from-add-ons-[\w-]+\.zip"/);
+  await expect(request).toContainText("Email opened");
+
+  // The mockup opens in Preview; the prompt is ready to paste into Claude Code.
+  await page.getByTestId("build-open-mockup").click();
+  await expect(page.locator("[data-tab-id]:not(.hidden)")).toContainText("mockup.html");
+  await app.close();
 });

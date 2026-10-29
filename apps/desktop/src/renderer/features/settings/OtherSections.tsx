@@ -65,7 +65,7 @@ function WorkspaceDepthRow() {
   );
 }
 
-function TextSetting({
+export function TextSetting({
   label,
   description,
   value,

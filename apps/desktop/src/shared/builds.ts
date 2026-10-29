@@ -51,6 +51,16 @@ export interface ExtensionProposal {
   reason: string;
   /** The new slot or API, what it would let add-ons do, and how the request would then be built. */
   proposal: string;
+  /** For the development request (D-119): a short name for it. */
+  title?: string;
+  /** "As a …, I want … so that …". */
+  userStory?: string;
+  /** How the developer knows it's done. */
+  acceptance?: string[];
+  /** How the request is built as an add-on once the extension point exists. */
+  addonPlan?: string;
+  /** A self-contained, clickable HTML mockup of the intended result. */
+  mockupHtml?: string;
 }
 
 export interface BuildJob {

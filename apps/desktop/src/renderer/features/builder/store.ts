@@ -29,6 +29,6 @@ export const KIND_TEXT: Record<NonNullable<BuildJob["kind"]>, string> = {
   settings: "Settings change",
   "change-addon": "Changes an add-on",
   "new-addon": "New add-on",
-  app: "Needs a new extension point",
+  app: "Development request",
   nothing: "Nothing to build",
 };

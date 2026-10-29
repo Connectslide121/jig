@@ -21,8 +21,8 @@ export const BUILD_EXAMPLES: Array<{ level: string; what: string; goals: string[
     ],
   },
   {
-    level: "A new extension point",
-    what: "When no slot fits, the builder writes a proposal for a new slot. You add it to Jig's code yourself.",
+    level: "A development request",
+    what: "When no slot fits, the builder writes a development request: a spec, a prompt for Claude Code and a clickable mockup. One button emails it to Jig's developers.",
     goals: ["Let add-ons add columns to the Repos overview"],
   },
 ];

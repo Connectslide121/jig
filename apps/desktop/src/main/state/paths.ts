@@ -33,6 +33,8 @@ export const paths = {
   attempts: () => join(jigHome(), "attempts"),
   worktrees: () => join(jigHome(), "worktrees"),
   worktreeChats: () => join(jigHome(), "worktree-chats.json"),
+  /** Development requests: one folder per build (its files and the zip). */
+  devRequests: () => join(jigHome(), "dev-requests"),
   /** The build that ran before the last update from source (launcher fallback). */
   appBuilds: () => join(jigHome(), "app-builds"),
 };

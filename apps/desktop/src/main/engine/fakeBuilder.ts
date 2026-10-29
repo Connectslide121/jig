@@ -12,7 +12,7 @@ import { outputText, type ToolOutput } from "./types";
  * - goal mentions "move" / "layout" → level 1: moves Terminals to the right sidebar
  * - "compact" / "setting" → level 1: density compact
  * - "broken" → writes an add-on with a design-token problem first, then fixes it after validation
- * - "jig itself" / "source" → proposes a new extension point (Jig doesn't change its own code)
+ * - "jig itself" / "source" → a development request: proposes a new extension point, with a mockup
  * - a target add-on → changes that add-on (adds a line to its README and a label)
  * - anything else → a new add-on with a view and a Tools-menu action
  */
@@ -56,10 +56,17 @@ export async function runFakeBuilder(
   }
   if (/jig itself|source/.test(lower)) {
     await call("propose_extension_point", {
+      title: "Title bar items from add-ons",
       reason: "No slot can change the window frame.",
       proposal: "Add a `window.decorations` slot: add-ons contribute components drawn in the title bar.",
+      userStory:
+        "As a user, I want my add-ons to show things in the title bar so that I see them everywhere.",
+      acceptance: ["An add-on can contribute a title bar item", "It follows the theme"],
+      addonPlan: "The add-on contributes a `window.decorations` item.",
+      mockupHtml:
+        "<!doctype html><html><body><header>Jig <button onclick=\"this.textContent='Clicked'\">Build ✓</button></header></body></html>",
     });
-    return say("This needs a new extension point in Jig.");
+    return say("This needs a change in Jig: a development request is ready to send.");
   }
   if (target) {
     const started = await call("start_addon", { id: target, mode: "change" });

@@ -68,11 +68,13 @@ More behaviour:
   commit messages and release drafts (bump, changelog, one note for customers). The reflection
   answers a pattern with a new-add-on suggestion, and a `manual-work` note (without patterns) with a
   workflow suggestion plus a profile update.
-- **The builder:** its sessions run a scripted build (`fakeBuilder.ts`).
+- **The builder:** its sessions run a scripted build (`fakeBuilder.ts`). A goal with "jig itself" or
+  "source" ends in a development request (title, user story, acceptance criteria, a small mockup).
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.
 
-`JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
+`JIG_MAIL_OUT=<folder>` makes **Email to developers** write the `.eml` there instead of opening a
+mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
 
 ## Screenshots

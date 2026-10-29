@@ -55,7 +55,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   tell Claude you do by hand, and suggests what would help: a tool, a **workflow**, a CLAUDE.md line, a
   routine, a tip. One page shows everything it knows, and you can edit or delete it.
 - **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
-  an add-on. You review it before it's kept.
+  an add-on. You review it before it's kept. When an add-on can't do it, the builder writes a
+  development request (spec, prompt, mockup) that one button emails to the developers.
 - **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
   worktree and from its own angle; Claude judges the results and you keep the best.
 - **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig,
@@ -239,7 +240,7 @@ Ask from the Tools menu, a chat, a suggestion or a slot on the "What Jig can do"
 |---|---|---|
 | **1. Layout and settings** | Moves views, changes defaults | "Put the Git view on the right and the terminals at the bottom" |
 | **2. An add-on** | Views, tabs, buttons, menus, watchers: React components plus optional host code | "A view with my Azure DevOps pipelines and their last run" |
-| **3. A proposal** | When no extension point fits, a written proposal for a new slot. You add it to Jig's code yourself | "Let add-ons add columns to the Repos overview" |
+| **3. A development request** | When no extension point fits: a package with a spec, a prompt for Claude Code in Jig's repository and a clickable mockup. **Email to developers** opens a new email with it attached (to support@sprinta.se, Settings → Add-ons) | "Let add-ons add columns to the Repos overview" |
 
 Every build is previewed and kept only when you accept it. **Jig never edits its own source code:**
 it grows through add-ons and the extension points you choose to add.

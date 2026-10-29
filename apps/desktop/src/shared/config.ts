@@ -51,6 +51,12 @@ export const ConfigSchema = z.object({
       tabSize: z.number().int().min(1).max(8).default(4),
     })
     .prefault({}),
+  devRequests: z
+    .object({
+      /** Where "Email to developers" sends development requests (D-119). */
+      email: z.string().max(320).default("support@sprinta.se"),
+    })
+    .prefault({}),
   notifications: z
     .object({
       /** A system notification when a chat needs you or finishes while Jig isn't in front. */
@@ -148,6 +154,8 @@ export const PROTECTED_SETTINGS = [
   "engine.allowApiKey",
   "terminal.shell",
   "updates",
+  // Where your development requests are sent: a chat must not redirect them.
+  "devRequests",
 ] as const;
 
 /** Dotted paths of the leaves a patch sets (`{ appearance: { themeId } }` → `appearance.themeId`). */

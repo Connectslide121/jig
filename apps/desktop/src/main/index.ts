@@ -11,6 +11,7 @@ import { startBrowser, stopBrowser } from "./browser";
 import { startBuilder } from "./builder";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { startConfigure } from "./configure";
+import { startDevRequests } from "./devRequests";
 import { registerDigestHandlers } from "./digest";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
@@ -82,6 +83,7 @@ async function start() {
   await startAddons();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
+  startDevRequests();
   startConfigure();
   await startLearning();
   await createMainWindow();

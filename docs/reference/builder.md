@@ -2,7 +2,7 @@
 
 Code: `apps/desktop/src/main/builder/` (service, tools, prompt, workspace, validation),
 `apps/desktop/src/shared/builds.ts` (types), `apps/desktop/src/renderer/features/builder/` (UI). Jig never
-edits its own source (D-074): when no slot fits, the builder proposes an extension point.
+edits its own source (D-074): when no slot fits, the builder writes a development request (D-119).
 
 ## Entry points (all menus, no commands)
 
@@ -47,7 +47,7 @@ edits its own source (D-074): when no slot fits, the builder proposes an extensi
 | `validate { id }` | the checks above |
 | `stage_layout { ops }` | `move`/`hide`/`show` a view, `below` (a view as a section under `host`), `resize`/`collapse`/`expand` a region |
 | `stage_settings { patch }` | a partial `config.json`, validated |
-| `propose_extension_point { reason, proposal }` | no slot can do it: the job ends (`needs_you`, kind `app`) with `job.proposal` — the Build tab shows it with **Copy proposal**; you add the slot to Jig yourself |
+| `propose_extension_point { title, reason, proposal, userStory?, acceptance?, addonPlan?, mockupHtml? }` | no slot can do it: the job ends (`needs_you`, kind `app`) with `job.proposal`, a **development request** (D-119). The Build tab shows it with **Email to developers** (a new email with the package attached, to `devRequests.email`), **Open mockup**, **Copy prompt** and **Show package** |
 | `finish { summary, kind, addonId? }` | validate and go to preview |
 
 The same tools are plain functions for the fake engine: with `JIG_ENGINE=fake` a scripted builder

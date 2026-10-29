@@ -1,12 +1,26 @@
 import { describePermission } from "@jig/sdk";
-import { Check, Copy, ExternalLink, MessageSquare, Shield, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  FolderOpen,
+  Mail,
+  MessageSquare,
+  MousePointerClick,
+  Shield,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
+import type { DevRequestInfo, MailMethod } from "../../../shared/devRequest";
 import { call, errorMessage } from "../../lib/host";
+import { timeAgo } from "../../lib/time";
+import { useConfig } from "../../stores/config";
 import { Badge, Button, Card, CodeBlock, confirmDialog, Empty, FileIcon, Markdown, Spinner } from "../../ui";
 import type { TabProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openPreview } from "../preview/actions";
 import { KIND_TEXT, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
 
 function describeOp(op: LayoutOp): string {
@@ -135,38 +149,138 @@ function FileRow({
   );
 }
 
-/** The extension point Jig is missing for this request: for you to add to Jig's source (D-074). */
-function ProposalPanel({ job }: { job: BuildJob }) {
-  const proposal = job.proposal!;
-  const text = `## Extension point for: ${job.goal}\n\n**Why no slot can do it:** ${proposal.reason}\n\n${proposal.proposal}\n`;
+const MAIL_NEXT: Record<MailMethod, (to: string, zip: string) => string> = {
+  outlook: () => "A new message is open in Outlook with the request attached. Check it and press Send.",
+  "apple-mail": () => "A new message is open in Mail with the request attached. Check it and press Send.",
+  "xdg-email": () =>
+    "A new message is open in your email app with the request attached. Check it and press Send.",
+  eml: (to) => `An email to ${to} opened with the request attached. Check it and press Send.`,
+  mailto: (_to, zip) =>
+    `Your email app opened without the attachment: attach ${zip} from the folder that opened, then send.`,
+  test: () => "The email is ready.",
+};
+
+/**
+ * No slot can do this (D-074): the builder wrote a development request (D-119). One button emails
+ * it to Jig's developers with a package attached: the spec, a prompt for Claude Code in Jig's
+ * repository and a clickable mockup.
+ */
+function DevRequestPanel({ job }: { job: BuildJob }) {
+  const p = job.proposal!;
+  const to = useConfig((s) => s.config?.devRequests.email) || "support@sprinta.se";
+  const [busy, setBusy] = useState(false);
+  const [emailedAt, setEmailedAt] = useState<string>();
+  const withPackage = async (use: (info: DevRequestInfo) => void | Promise<void>) => {
+    try {
+      await use(await call("devRequests.create", { buildId: job.id }));
+    } catch (error) {
+      notify({ title: "Couldn't make the request", message: errorMessage(error), tone: "danger" });
+    }
+  };
+  const email = async () => {
+    setBusy(true);
+    try {
+      const { info, method, to: sentTo } = await call("devRequests.email", { buildId: job.id });
+      setEmailedAt(info.emailedAt);
+      const zip = info.zipPath.split(/[\\/]/).pop() ?? "the zip";
+      notify({
+        title: "Development request ready to send",
+        message: MAIL_NEXT[method](sentTo, zip),
+        tone: "success",
+      });
+    } catch (error) {
+      notify({ title: "Couldn't open an email", message: errorMessage(error), tone: "danger" });
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Card className="flex flex-col gap-3 p-4 text-sm" data-testid="build-proposal">
-      <div className="font-medium text-warning">No extension point can do this yet.</div>
-      <div className="text-muted">
-        Jig doesn't change its own code. This is what the builder would add to Jig so the request can be built
-        as an add-on — add it to Jig's source yourself (or with Claude Code in your Jig clone), then ask
-        again.
+      <div className="flex items-center gap-2">
+        <Badge tone="warning">Needs a change in Jig</Badge>
+        <span className="font-medium">{p.title || "Development request"}</span>
       </div>
-      {proposal.reason && (
-        <div>
-          <span className="text-muted">Why: </span>
-          <span className="selectable">{proposal.reason}</span>
-        </div>
-      )}
-      {proposal.proposal && <Markdown text={proposal.proposal} />}
-      <div>
+      <div className="text-muted">
+        No add-on can do this with Jig's extension points today, and Jig doesn't change its own code. The
+        builder wrote a development request: email it to Jig's developers ({to}). They build it with Claude
+        Code from the attached package (a spec, a ready prompt{p.mockupHtml ? " and a clickable mockup" : ""}
+        ); once it's in Jig, ask for your tool again.
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Mail}
+          disabled={busy}
+          onClick={() => void email()}
+          data-testid="build-email-request"
+        >
+          Email to developers
+        </Button>
+        {p.mockupHtml && (
+          <Button
+            size="sm"
+            icon={MousePointerClick}
+            onClick={() => void withPackage((info) => openPreview(`${info.folder}/mockup.html`))}
+            data-testid="build-open-mockup"
+          >
+            Open mockup
+          </Button>
+        )}
         <Button
           size="sm"
           icon={Copy}
-          onClick={() => {
-            void navigator.clipboard.writeText(text);
-            notify({ title: "Proposal copied", tone: "success" });
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(await call("devRequests.prompt", { buildId: job.id }));
+              notify({
+                title: "Prompt copied",
+                message: "Paste it into Claude Code in your Jig clone.",
+                tone: "success",
+              });
+            } catch (error) {
+              notify({ title: "Couldn't copy", message: errorMessage(error), tone: "danger" });
+            }
           }}
           data-testid="build-copy-proposal"
         >
-          Copy proposal
+          Copy prompt
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={FolderOpen}
+          onClick={() => void withPackage((info) => call("app.showItemInFolder", { path: info.zipPath }))}
+          data-testid="build-show-request"
+        >
+          Show package
+        </Button>
+        {emailedAt && <span className="text-xs text-hint">Email opened {timeAgo(emailedAt)}</span>}
       </div>
+      {p.userStory && <div className="selectable italic text-muted">{p.userStory}</div>}
+      {p.reason && (
+        <div>
+          <span className="text-muted">Why an add-on can't do it: </span>
+          <span className="selectable">{p.reason}</span>
+        </div>
+      )}
+      {p.proposal && <Markdown text={p.proposal} />}
+      {p.addonPlan && (
+        <div>
+          <div className="text-muted">Then, as an add-on:</div>
+          <Markdown text={p.addonPlan} />
+        </div>
+      )}
+      {p.acceptance?.length ? (
+        <div>
+          <div className="text-muted">Done when:</div>
+          <ul className="list-disc pl-5">
+            {p.acceptance.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -195,7 +309,7 @@ export function BuildTab({ params }: TabProps) {
             The builder is waiting. Open its chat to answer or ask it to continue.
           </Card>
         )}
-        {job.proposal && <ProposalPanel job={job} />}
+        {job.proposal && <DevRequestPanel job={job} />}
         {job.summary && (
           <Card className="p-4">
             <Markdown text={job.summary} />
