@@ -4,6 +4,7 @@ import { getConfig, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
+import { knowledgeStore } from "../learning";
 import { projectStore } from "../projects";
 import { sessionManager } from "../sessions";
 import { fileIconService, themeService } from "../themes";
@@ -31,6 +32,8 @@ export function startConfigure(): void {
     setChatProject: (id, projectId) => sessionManager().setProject(id, projectId),
     setChatPinned: (id, pinned) => sessionManager().setPinned(id, pinned),
     addCard: (sessionId, item) => sessionManager().addItem(sessionId, item),
+    removeEvidence: (id) => knowledgeStore().remove(id),
+    setProfile: (text) => knowledgeStore().setProfile(text),
   };
   registerJigTools(configureTools(deps));
 

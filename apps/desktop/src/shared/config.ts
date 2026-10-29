@@ -95,6 +95,8 @@ export const ConfigSchema = z.object({
         .prefault({}),
       /** Model for the reflection step; a small model keeps quota use low. */
       model: z.string().default("haiku"),
+      /** A short check-in chat about how you work (Learning 2); off until you turn it on. */
+      checkIn: z.enum(["off", "weekly", "biweekly"]).default("off"),
     })
     .prefault({}),
 });

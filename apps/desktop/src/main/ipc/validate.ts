@@ -58,6 +58,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "app.showItemInFolder": z.object({ path }),
   "app.pickFiles": z.object({ title: z.string().max(200).optional(), defaultPath: path.optional() }),
   "tour.create": z.object({ cwd: path, focus: z.string().max(2000).optional() }),
+  "learning.setProfile": z.object({ text: z.string().max(200_000) }),
+  "learning.checkIn": z.object({ action: z.enum(["enable", "decline", "start", "skip"]) }),
   "ai.ask": z.object({ addonId, prompt: z.string().max(200_000), cwd: path.optional() }),
   "attempts.start": z.object({
     projectId: id,

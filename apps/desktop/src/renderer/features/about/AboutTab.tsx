@@ -756,9 +756,21 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="learning"
             title="Suggestions"
-            lead="Jig notices what you do often (the same prompt, the same commands) and suggests a tool for it. One click hands the idea to the builder."
+            lead="Jig notices what you do often (the same prompt, the same commands), what slows you down, and what you mention in chats, and suggests what would help — a tool, a workflow, a CLAUDE.md line, a routine, or a tip. Everything stays on your computer."
             shot={{ src: suggestions, alt: "The suggestions view" }}
-          />
+          >
+            <Bullets
+              items={[
+                "Claude notes manual work you mention in a chat (a card you can remove)",
+                "Friction counts too: stops, rewinds, denied permissions, corrections, failing scripts",
+                "Each suggestion has its own action: Build it, Draft a workflow, Add to CLAUDE.md, Make a routine…",
+                "“Did it help?” a week after you act on one",
+                "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
+                "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
+                "An optional weekly check-in chat (off by default)",
+              ]}
+            />
+          </Section>
           <Section
             id="usage"
             title="Plan usage"

@@ -1,4 +1,5 @@
 import { jaccard, normalizeCommand, promptTokens } from "./normalize";
+import { frictionPatterns, pastePatterns, unusedToolPatterns } from "./signals";
 
 export type ActivityKind =
   | "prompt"
@@ -7,7 +8,13 @@ export type ActivityKind =
   | "script.run"
   | "addon.action"
   | "git"
-  | "project.switch";
+  | "project.switch"
+  /** Friction without AI (`detail.signal`): interrupt, rewind, denied, correction, tool-errors, script-failed. */
+  | "friction"
+  /** A note Claude saved from a chat (`jig_note_evidence`), `detail.category`. */
+  | "evidence"
+  /** Lines Claude wrote with Edit/Write: `text` is the file, `detail.lines` comma-joined line hashes. */
+  | "ai.lines";
 
 export interface ActivityEvent {
   at: string; // ISO time
@@ -26,7 +33,7 @@ export interface Evidence {
 export interface Pattern {
   /** Stable key: the same repetition gets the same key next week (used to block "Never" patterns). */
   key: string;
-  kind: "command" | "sequence" | "prompt";
+  kind: "command" | "sequence" | "prompt" | "friction" | "paste" | "unused-tool";
   /** The template, sequence ("a → b") or a representative prompt. */
   summary: string;
   count: number;
@@ -59,7 +66,7 @@ const COMMAND_KINDS = new Set<ActivityKind>([
 
 const day = (iso: string) => iso.slice(0, 10);
 
-function hashKey(text: string): string {
+export function hashKey(text: string): string {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
   return (h >>> 0).toString(36);
@@ -75,7 +82,7 @@ function template(event: ActivityEvent): string | undefined {
   return event.kind === "addon.action" ? `action: ${t}` : t;
 }
 
-function summarizeGroup(events: ActivityEvent[]) {
+export function summarizeGroup(events: ActivityEvent[]) {
   const days = new Set(events.map((e) => day(e.at)));
   const projects = new Set(events.map((e) => e.projectId ?? ""));
   const examples = events
@@ -205,6 +212,9 @@ export function mine(events: ActivityEvent[], options: MineOptions = {}): Patter
     ...commandPatterns(events, options.minCommand),
     ...sequencePatterns(events, options.minSequence, options.sequenceWindowMinutes),
     ...promptPatterns(events, options.minPrompts, options.promptSimilarity),
+    ...frictionPatterns(events),
+    ...pastePatterns(events),
+    ...unusedToolPatterns(events),
   ]
     .filter((p) => !blocked.has(p.key))
     .sort((a, b) => b.score - a.score)

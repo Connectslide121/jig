@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in)\b/.test(
             lower,
           )
         ) {
@@ -402,7 +402,24 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/add the stage links/.test(lower)) {
+          if (/by hand on the vm/.test(lower)) {
+            await call("jig_note_evidence", {
+              note: "Deploys the webshop by hand: publish, then upload to the VM",
+              category: "manual-work",
+            });
+            await stream(
+              `${msg}:text:0`,
+              "Got it — that sounds like a good candidate for a workflow.",
+              signal,
+            );
+          } else if (/weekly check-in/.test(lower)) {
+            await call("jig_read_profile", {});
+            await call("jig_update_profile", {
+              heading: "How I release and deploy",
+              lines: ["Publishes the webshop and uploads it to a VM by hand"],
+            });
+            await stream(`${msg}:text:0`, "I added how you deploy to your profile.", signal);
+          } else if (/add the stage links/.test(lower)) {
             await call("jig_list_projects", {});
             await call("jig_add_project_links", {
               group: "Stage",
@@ -813,7 +830,24 @@ export class FakeEngine implements Engine {
       });
     if (/commit message/i.test(prompt))
       return "Apply the discount in the cart total\n\nSum the items with reduce and take the discount off the total.";
-    const first = /key: (\S+) \| (\w+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
+    const first = /key: (\S+) \| ([\w-]+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
+    // A note from a chat (jig_note_evidence) about manual work: a workflow, and a profile addition.
+    const note = /- id: (\S+) \| [\d-]+ \| manual-work \| (.+)/.exec(prompt);
+    if (!first && note)
+      return JSON.stringify({
+        suggestions: [
+          {
+            title: "A workflow for deploying the webshop",
+            why: `You said: “${note[2]}”.`,
+            goal: "Deploy the webshop the same way every time",
+            level: 2,
+            kind: "workflow",
+            steps: ["Build and publish", "Upload to the VM", "Check the site"],
+            noteIds: [note[1]],
+          },
+        ],
+        profileUpdates: ["Deploys the webshop to a VM by hand"],
+      });
     if (!first) return JSON.stringify({ suggestions: [] });
     const [, key, kind, summary, count, days] = first;
     return JSON.stringify({

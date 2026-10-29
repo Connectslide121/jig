@@ -379,6 +379,7 @@ export function LearningSettings() {
 function LearningActions() {
   const state = useLearning((s) => s.state);
   const info = useConfig((s) => s.info);
+  const config = useConfig((s) => s.config);
   return (
     <>
       <SettingRow
@@ -392,6 +393,35 @@ function LearningActions() {
         <Button size="sm" icon={Search} busy={state?.running} onClick={() => void lookForPatterns()}>
           Look now
         </Button>
+      </SettingRow>
+      <SettingRow
+        label="What Jig knows about me"
+        description="Your profile, notes Claude saved from chats, and the activity: read, edit or delete them."
+      >
+        <Button
+          size="sm"
+          onClick={() => void workbench.openTab("jig.knowledge")}
+          data-testid="settings-knowledge"
+        >
+          Open…
+        </Button>
+      </SettingRow>
+      <SettingRow
+        label="Check-in"
+        description="A short chat (3–5 questions) about how you work, so suggestions fit better. Uses a little of your plan."
+      >
+        <Select
+          className="w-40"
+          value={config?.learning.checkIn ?? "off"}
+          onChange={(e) =>
+            void updateConfig({ learning: { checkIn: e.target.value as "off" | "weekly" | "biweekly" } })
+          }
+          data-testid="settings-checkin"
+        >
+          <option value="off">Off</option>
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Every two weeks</option>
+        </Select>
       </SettingRow>
       <SettingRow
         label="Recorded activity"

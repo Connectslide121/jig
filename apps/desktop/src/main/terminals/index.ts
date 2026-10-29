@@ -29,6 +29,16 @@ export function startTerminals(): void {
     onChange: (terminals) => emit("terminals.changed", terminals),
     onCommand: (terminal, command) =>
       publishActivity({ kind: "terminal.command", text: command, projectId: terminal.projectId }),
+    // A script that fails by itself is friction for Learning (not one you stopped).
+    onExit: (terminal) => {
+      if (terminal.scriptId && !terminal.private && terminal.exitCode && terminal.exitCode > 0)
+        publishActivity({
+          kind: "friction",
+          text: terminal.title,
+          projectId: terminal.projectId,
+          detail: { signal: "script-failed", code: String(terminal.exitCode) },
+        });
+    },
   });
   const m = manager;
   registerJigTools(

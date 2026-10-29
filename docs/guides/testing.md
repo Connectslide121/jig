@@ -40,6 +40,8 @@ in this order:
 | "background job" | a Bash command that keeps running in the background (Stop ends it) |
 | "edit <file>" | edits the file's first line; the card shows the diff |
 | "theme", "light mode", "dark mode", "terminals to the right" | Claude changes Jig's settings or layout (change cards with Undo) |
+| "by hand on the vm" | Claude saves a note (`jig_note_evidence`): a "Noted for suggestions" card with Remove |
+| "weekly check-in" | Claude reads the profile and adds a line under "How I release and deploy" (`jig_update_profile`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
 | "pipelines below git" (or "under") | Claude shows Pipelines as a section below Git (`jig_change_layout` op `below`) |
@@ -60,7 +62,9 @@ More behaviour:
 - **Commands, models and MCP servers:** canned lists (`/usage`, `/explain-code`; models with effort
   levels; `github` connected and `jira` needing sign-in).
 - **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups,
-  commit messages and release drafts (bump, changelog, one note for customers).
+  commit messages and release drafts (bump, changelog, one note for customers). The reflection
+  answers a pattern with a new-add-on suggestion, and a `manual-work` note (without patterns) with a
+  workflow suggestion plus a profile update.
 - **The builder:** its sessions run a scripted build (`fakeBuilder.ts`).
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.

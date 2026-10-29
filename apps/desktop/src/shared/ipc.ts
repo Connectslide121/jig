@@ -30,7 +30,7 @@ import type {
 } from "./engine";
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
-import type { LearningState, PatternRun, SuggestionAnswer } from "./learning";
+import type { EvidenceNote, LearningState, PatternRun, SuggestionAnswer, WorkedState } from "./learning";
 import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
@@ -331,6 +331,26 @@ export interface HostMethods {
   "learning.runNow": { args: void; result: PatternRun };
   "learning.answer": { args: { id: string; answer: SuggestionAnswer }; result: void };
   "learning.clearActivity": { args: void; result: void };
+  /** What Jig knows about you: the profile, notes from chats, activity per kind (Learning 2). */
+  "learning.knowledge": {
+    args: void;
+    result: {
+      profile: string;
+      profileExists: boolean;
+      notes: EvidenceNote[];
+      activity: Array<{ kind: string; count: number }>;
+    };
+  };
+  "learning.setProfile": { args: { text: string }; result: void };
+  "learning.removeNote": { args: { id: string }; result: void };
+  "learning.clearNotes": { args: void; result: void };
+  /** "How you worked" in the last 7 days (computed at most once an hour unless `refresh`). */
+  "learning.worked": { args: { refresh?: boolean }; result: WorkedState };
+  /** The weekly check-in: start returns the chat's first message. */
+  "learning.checkIn": {
+    args: { action: "enable" | "decline" | "start" | "skip" };
+    result: { prompt?: string };
+  };
   /** Activity that happens in the renderer (add-on actions). */
   "learning.record": {
     args: { kind: "addon.action"; text: string; projectId?: string; detail?: Record<string, string> };
@@ -367,6 +387,8 @@ export interface HostEvents {
   "builds.changed": BuildJob[];
   "usage.changed": PlanUsage;
   "learning.changed": LearningState;
+  /** The profile or the notes from chats changed. */
+  "learning.knowledgeChanged": void;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** A notification from the host, shown as a toast. */

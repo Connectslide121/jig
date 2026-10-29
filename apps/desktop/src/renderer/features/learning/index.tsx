@@ -1,9 +1,10 @@
-import { Lightbulb, Search } from "lucide-react";
+import { Lightbulb, Search, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import { call, useHostEvent } from "../../lib/host";
 import { CountBadge } from "../../ui";
-import { registerAction, registerTopbarItem, registerView } from "../../workbench/registry";
+import { registerAction, registerTabType, registerTopbarItem, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
+import { KnowledgeTab } from "./KnowledgeTab";
 import { SuggestionsView } from "./SuggestionsView";
 import { lookForPatterns, useLearning } from "./store";
 
@@ -41,6 +42,21 @@ export function registerLearning(): void {
     group: "Build",
     icon: Lightbulb,
     run: () => workbench.showView("jig.suggestions"),
+  });
+  registerTabType({
+    type: "jig.knowledge",
+    title: () => "What Jig knows about me",
+    icon: UserRound,
+    component: KnowledgeTab,
+    owner: "core",
+  });
+  registerAction({
+    id: "jig.knowledge",
+    title: "What Jig knows about me",
+    group: "Build",
+    icon: UserRound,
+    keywords: ["profile", "learning", "notes", "privacy"],
+    run: () => void workbench.openTab("jig.knowledge"),
   });
   registerAction({
     id: "jig.lookForPatterns",

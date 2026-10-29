@@ -2,6 +2,7 @@ import { exec } from "node:child_process";
 import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { aiLineHashes, correctionSignal } from "@jig/learning";
 import { app, BrowserWindow, dialog, Notification } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
@@ -123,17 +124,42 @@ export function startSessions(): void {
         if (u.op === "meta" && u.meta.kind && u.meta.status === "working")
           kindHooks.get(u.meta.kind)?.onWorking?.(u.meta);
     },
-    onActivity: (event) =>
-      publishActivity(
-        event.kind === "prompt"
-          ? { kind: "prompt", text: event.text, projectId: event.session.projectId }
-          : {
-              kind: "session.tool",
-              text: event.text,
-              projectId: event.session.projectId,
-              detail: { tool: event.tool ?? "" },
-            },
-      ),
+    onActivity: (event) => {
+      const projectId = event.session.projectId;
+      if (event.kind === "friction") {
+        publishActivity({
+          kind: "friction",
+          text: event.text,
+          projectId,
+          detail: { signal: event.signal ?? "" },
+        });
+        return;
+      }
+      if (event.kind === "prompt") {
+        publishActivity({ kind: "prompt", text: event.text, projectId });
+        if (correctionSignal(event.text))
+          publishActivity({
+            kind: "friction",
+            text: "corrected Claude",
+            projectId,
+            detail: { signal: "correction" },
+          });
+        return;
+      }
+      publishActivity({
+        kind: "session.tool",
+        text: event.text,
+        projectId,
+        detail: { tool: event.tool ?? "" },
+      });
+      // The lines Claude writes, as hashes, to tell them from hand-written ones at commit time (2e).
+      const file = event.input?.file_path;
+      if (event.tool && event.input && typeof file === "string") {
+        const lines = aiLineHashes(event.tool, event.input);
+        if (lines.length)
+          publishActivity({ kind: "ai.lines", text: file, projectId, detail: { lines: lines.join(",") } });
+      }
+    },
   });
   const m = manager;
 

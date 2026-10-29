@@ -48,11 +48,16 @@ async function renameWithRetry(from: string, to: string, attempts = 6): Promise<
 
 /** Writes JSON atomically (temp file + rename). Writes to the same file are serialised. */
 export function writeJson(file: string, value: unknown): Promise<void> {
+  return writeText(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+/** Writes a text state file (e.g. `profile.md`) atomically. Writes to the same file are serialised. */
+export function writeText(file: string, text: string): Promise<void> {
   const previous = queues.get(file) ?? Promise.resolve();
   const next = previous.then(async () => {
     await mkdir(dirname(file), { recursive: true });
     const temp = `${file}.${process.pid}.tmp`;
-    await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await writeFile(temp, text, "utf8");
     await renameWithRetry(temp, file);
   });
   queues.set(

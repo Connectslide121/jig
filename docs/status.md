@@ -104,6 +104,21 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     10:00 (catch-up at launch): repeated commands, sequences and similar prompts are found without AI;
     only then one small Claude Code request picks at most 3 suggestions with evidence.
   - **Build it** starts the builder; **Not now** hides it for 14 days; **Never** blocks the pattern.
+  - **Learning 2** (D-111):
+    - **Notes from chats:** when you mention work you do by hand or outside Jig, frustration or a
+      chore, Claude saves a short note; a "Noted for suggestions" card in the chat has Remove.
+    - **Friction** is recorded without AI: Stop while Claude works, rewinds, denied permissions,
+      corrections ("no, I meant…"), repeated tool errors, scripts that fail. Pastes per kind and
+      "Claude's browser never used for UI work" are signals too.
+    - **More kinds of suggestions**, each with its action: workflows (Draft a workflow), Claude Code
+      setup, CLAUDE.md additions, routines, tips (at most one a week, with your own examples), and
+      additions to your profile. **Did it help?** shows on built or adopted suggestions after a week.
+    - **What Jig knows about me** (the person button in Suggestions, Tools, Settings → Learning): your
+      profile (`~/.jig/profile.md`, editable), the notes (deletable), activity per kind and **How you
+      worked** (lines by Claude vs by hand in your commits of the week, churn, fixes, chat time — an
+      estimate).
+    - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
+      with 3–5 questions that adds what it learns to your profile.
 - **Phase 10 (done, reworked): no self-editing.** When no slot can do a request, the build ends with a
   proposal for the missing extension point (why, and the slot or API to add), with **Copy proposal** —
   Jig never changes its own code; you add the slot yourself (D-074).

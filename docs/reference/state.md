@@ -25,6 +25,8 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
 | `app-builds/previous/` | build snapshot | the build that ran before the last "Pull, build and restart" (launcher fallback) |
 | `launcher/` | `status.json`, `launcher.log`, `ready-*` | the launcher's result, log and ready heartbeats (`docs/reference/setup.md`) |
+| `evidence.json` | `{ notes: [{ id, at, category, text, projectId?, sessionId? }] }` | notes Claude saved from chats for suggestions (`jig_note_evidence`) |
+| `profile.md` | Markdown | how you work, read by every reflection; edit it on "What Jig knows about me" |
 | `activity/YYYY-MM-DD.jsonl` | JSON lines `{ at, kind, text, projectId?, detail? }` | the local activity log (`docs/reference/learning.md`) |
 | `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ workspaces: [{ id, path, addedAt }], projects: [{ id, name, path, color, addedAt, focusRepo?, model?, effort?, permissionMode?, instructions?, starters?, links? }], activeId }` (D-101). `links`: `[{ id, title, links: [{ id, url, label?, type }] }]`, the project's link groups (`shared/links.ts`). Workspaces are the folders you added; a project is a group of chats with `path` = its default workspace, `focusRepo` = its default Git repository and defaults for its chats. A project's folder missing from `workspaces` is added on load |
@@ -64,6 +66,7 @@ A new state file is documented here in the same commit that adds it.
 | `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
 | `learning.model` | `haiku` | model for the reflection step |
+| `learning.checkIn` | `off` | weekly or biweekly check-in chat about how you work (offered once after two weeks) |
 | `appearance.fileIconTheme` | `"vscode"` | file icons: `vscode` (same as VS Code), `jig`, or a theme id (`docs/reference/file-icons.md`) |
 | `projects.repoScanDepth` | `3` | how many folder levels a workspace project is searched for repositories (1–5) |
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |

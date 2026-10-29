@@ -61,6 +61,9 @@ export interface ConfigureDeps {
   setChatPinned(sessionId: string, pinned: boolean): Promise<void>;
   /** Adds a change card to the chat. */
   addCard(sessionId: string, item: ChatItem): Promise<void>;
+  /** Learning 2: a note saved from a chat, and the profile (for Undo of their cards). */
+  removeEvidence?(id: string): Promise<unknown>;
+  setProfile?(text: string): Promise<unknown>;
 }
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
@@ -69,7 +72,7 @@ engine.defaultModel: model alias or id for new chats ("" = Claude Code's default
 notifications.desktop: true|false, a system notification when a chat needs the user or finishes while Jig is in the background.
 browser.showWhenUsed: true|false, open the Claude's browser view when Claude starts using its browser (default true; false: it stays out of sight and the user opens the view from Tools). The page has its own size either way, so the view's size never limits Claude.
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
-learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it.
+learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it; checkIn: off|weekly|biweekly, a short check-in chat about how the user works (off by default).
 setup.firstRunDone: true|false.
 Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*.`;
 
@@ -79,7 +82,7 @@ function valueAt(obj: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], obj);
 }
 
-function card(summary: string, details: string[], undo?: ConfigUndo): ChatItem {
+export function card(summary: string, details: string[], undo?: ConfigUndo): ChatItem {
   return {
     kind: "change",
     id: `change-${randomUUID()}`,
@@ -531,7 +534,8 @@ export async function applyUndo(deps: ConfigureDeps, undo: ConfigUndo): Promise<
   else if (undo.type === "chat") {
     await deps.setChatProject(undo.id, undo.projectId);
     await deps.setChatPinned(undo.id, undo.pinned);
-  }
+  } else if (undo.type === "evidence") await deps.removeEvidence?.(undo.id);
+  else if (undo.type === "profile") await deps.setProfile?.(undo.text);
 }
 
 /** A link as Claude gives it. */

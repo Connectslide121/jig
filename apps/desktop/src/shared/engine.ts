@@ -248,7 +248,11 @@ export type ConfigUndo =
   /** A project's previous settings (`defaultRepo` for its default repository). */
   | { type: "project"; id: string; patch: Record<string, unknown> }
   | { type: "projectCreated"; id: string }
-  | { type: "chat"; id: string; projectId?: string; pinned: boolean };
+  | { type: "chat"; id: string; projectId?: string; pinned: boolean }
+  /** A note saved for suggestions (Remove deletes it). */
+  | { type: "evidence"; id: string }
+  /** The profile before Claude changed it. */
+  | { type: "profile"; text: string };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =

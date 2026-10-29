@@ -997,3 +997,27 @@ open points) · **Date:** 2026-10-29
   (it would need a commit per deploy) — the tag messages are the log.
 - **Git's Write follows `commitConvention: "conventional"`** by reading the same file.
 
+### D-111 — Learning 2: notes from chats, friction, a profile, kinds of suggestions, check-ins
+**Decided by:** Jon (the list in phase 18 item 4, D-101: Claude saves evidence without asking and shows
+a card; at most one tip a week with his own examples; check-in off by default and offered once) and
+Claude, on my own (the details below) · **Date:** 2026-10-29
+
+- **Notes are a Jig tool, not a second AI call.** `jig_note_evidence` is read-only (no prompt) and
+  costs nothing extra: Claude calls it during the turn. Notes live in `evidence.json`, with the
+  activity log's exclusions and masking; the card's Remove deletes the note (it reuses the change card
+  with an `evidence` undo).
+- **The profile is a Markdown file** (`profile.md`) with fixed headings, so it reads well, diffs well and
+  Claude can add bullets under a heading (`appendToSection`). The reflection proposes additions as one
+  suggestion; check-ins add them through `jig_update_profile` (a card with Undo, not read-only).
+- **Friction is recorded where it happens** (session manager, terminals) as activity of kind
+  `friction`; the miner turns repeats into patterns like any other, so no new pipeline is needed.
+  Not yet: "long chats with no commit" and "hopping between repositories" (backlog).
+- **Suggestion kinds** are a closed list with one action each. Actions that need Claude open a chat
+  with a drafted first message instead of acting silently. A workflow suggestion opens the Workflows
+  add-on's editor with a draft (tab `addon.workflows.workflow`, params `draft`).
+- **Did it help?** is computed without AI from the activity after the suggestion was acted on (its
+  patterns' rate after vs the 4 weeks before; ≤ half = helped).
+- **Lines by Claude vs by hand** are matched by line-content hashes: Claude's Edit/Write calls record
+  hashes (never content) per file, and only the user's own commits (`--author` = user.email) are
+  measured. It is labelled an estimate everywhere and is never pushed as a notification.
+

@@ -74,3 +74,60 @@ test("activity is recorded locally and can be deleted", async ({ page, jigHome }
   await page.getByTestId("dialog-confirm").click();
   await expect.poll(async () => (await readdir(join(jigHome, "activity"))).length).toBe(0);
 });
+
+test("Claude notes manual work from a chat; it becomes a workflow suggestion and a profile addition", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("composer-input").fill("I deploy the webshop by hand on the VM every Friday");
+  await page.keyboard.press("Enter");
+  const card = page.getByTestId("change-card").first();
+  await expect(card).toContainText("Noted for suggestions", { timeout: 15000 });
+  await expect(card).toContainText("publish, then upload to the VM");
+  await expect(card.getByTestId("change-undo")).toHaveText("Remove");
+
+  // The weekly reflection gets the note: a workflow, and something to add to the profile.
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("look-for-patterns").click();
+  const workflow = page.getByTestId("suggestion").filter({ hasText: "A workflow for deploying" });
+  await expect(workflow).toContainText("Upload to the VM", { timeout: 15000 });
+  await workflow.getByText("Evidence").click();
+  await expect(workflow.getByTestId("suggestion-note")).toContainText("upload to the VM");
+  const profile = page.getByTestId("suggestion").filter({ hasText: "Add to what Jig knows about you" });
+  await profile.getByTestId("suggestion-build").click();
+  await expect(profile.getByTestId("suggestion-build")).toHaveCount(0);
+  expect(await readFile(join(jigHome, "profile.md"), "utf8")).toContain(
+    "- Deploys the webshop to a VM by hand",
+  );
+
+  // What Jig knows about me: the profile and the note, which can be deleted.
+  await page.getByTestId("open-knowledge").click();
+  await expect(page.getByTestId("knowledge-tab")).toContainText("Deploys the webshop to a VM by hand");
+  await expect(page.getByTestId("knowledge-note")).toContainText("upload to the VM");
+  await page.getByTestId("knowledge-note-delete").click();
+  await expect(page.getByTestId("knowledge-note")).toHaveCount(0);
+});
+
+test("the weekly check-in starts a chat that adds to the profile, with Undo", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await hostCall(page, "config.update", { learning: { checkIn: "weekly" } });
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("checkin-start").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(/Weekly check-in \(Jig\)/, { timeout: 15000 });
+  await page.keyboard.press("Enter");
+  const card = page.getByTestId("change-card").first();
+  await expect(card).toContainText("Added to what Jig knows about you", { timeout: 15000 });
+  expect(await readFile(join(jigHome, "profile.md"), "utf8")).toContain(
+    "## How I release and deploy\n\n- Publishes the webshop",
+  );
+  await card.getByTestId("change-undo").click();
+  await expect(card).toContainText("Undone");
+  expect(await readFile(join(jigHome, "profile.md"), "utf8")).not.toContain("Publishes the webshop");
+  await expect(page.getByTestId("checkin-card")).toHaveCount(0);
+});

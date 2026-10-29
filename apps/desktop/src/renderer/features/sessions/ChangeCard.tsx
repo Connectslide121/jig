@@ -1,4 +1,4 @@
-import { Settings2, Undo2 } from "lucide-react";
+import { Lightbulb, Settings2, Undo2 } from "lucide-react";
 import { useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
@@ -25,7 +25,11 @@ export function ChangeCard({ item, sessionId }: { item: ChangeItem; sessionId: s
       className="flex items-start gap-2 rounded-md border border-line bg-raised px-3 py-2 text-xs"
       data-testid="change-card"
     >
-      <Settings2 className="mt-0.5 size-3.5 shrink-0 text-accent" />
+      {item.undo?.type === "evidence" || item.undo?.type === "profile" ? (
+        <Lightbulb className="mt-0.5 size-3.5 shrink-0 text-accent" />
+      ) : (
+        <Settings2 className="mt-0.5 size-3.5 shrink-0 text-accent" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="font-medium text-fg">{item.summary}</div>
         {item.details.length > 0 && (
@@ -39,7 +43,7 @@ export function ChangeCard({ item, sessionId }: { item: ChangeItem; sessionId: s
         )}
       </div>
       {item.undone ? (
-        <Badge>Undone</Badge>
+        <Badge>{item.undo?.type === "evidence" ? "Removed" : "Undone"}</Badge>
       ) : item.undo ? (
         <Button
           size="sm"
@@ -49,7 +53,7 @@ export function ChangeCard({ item, sessionId }: { item: ChangeItem; sessionId: s
           onClick={() => void undo()}
           data-testid="change-undo"
         >
-          Undo
+          {item.undo.type === "evidence" ? "Remove" : "Undo"}
         </Button>
       ) : null}
     </div>

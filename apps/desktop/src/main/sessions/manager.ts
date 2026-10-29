@@ -89,10 +89,14 @@ export interface SessionManagerOptions {
   runShell?: (cwd: string, command: string) => Promise<{ output: string; exitCode: number }>;
   /** Activity for the learning log (phase 9): prompts and tool calls. */
   onActivity?: (event: {
-    kind: "prompt" | "tool";
+    kind: "prompt" | "tool" | "friction";
     session: SessionMeta;
     text: string;
     tool?: string;
+    /** The tool's input (to record the lines Claude writes). */
+    input?: Record<string, unknown>;
+    /** Friction (Learning 2): interrupt, rewind, denied, tool-errors. */
+    signal?: string;
   }) => void;
 }
 
@@ -109,6 +113,8 @@ interface Live {
   deleted?: boolean;
   lastSave?: number;
   saving?: Promise<void>;
+  /** Failed tool calls in the current turn (friction when it reaches 3). */
+  toolErrors?: number;
 }
 
 /**
@@ -330,7 +336,12 @@ export class SessionManager {
         session: live.state.meta,
         tool: event.name,
         text: typeof event.input.command === "string" ? event.input.command : JSON.stringify(event.input),
+        input: event.input,
       });
+    if (event.type === "tool_result" && event.isError) {
+      live.toolErrors = (live.toolErrors ?? 0) + 1;
+      if (live.toolErrors === 3) this.friction(live, "tool-errors", "3 failed tool calls in one turn");
+    }
     this.emit(live, reduceEvent(live.state, event));
     // A fork has its own Claude Code session id from its first start on.
     if (event.type === "init" && live.state.meta.forkPending) this.setMeta(live, { forkPending: undefined });
@@ -404,6 +415,7 @@ export class SessionManager {
     updates.push({ op: "meta", meta: live.state.meta });
     this.emit(live, updates);
     this.options.onActivity?.({ kind: "prompt", session: live.state.meta, text });
+    live.toolErrors = 0;
     // Output of `!` commands you ran since the last message goes with it, as Claude Code sends it.
     const shells = live.state.items.filter(
       (i): i is Extract<ChatItem, { kind: "shell" }> => i.kind === "shell" && !i.sent && i.status === "done",
@@ -537,6 +549,7 @@ export class SessionManager {
     const index = live.state.items.findIndex((i) => i.id === itemId);
     const item = live.state.items[index];
     if (item?.kind !== "user") throw new JigError("not_found", "That message isn't in this chat");
+    this.friction(live, "rewind", files ? "rewound the chat and its files" : "rewound the chat");
     let restored: RewindResult | undefined;
     if (files) {
       restored = await this.rewindFiles(id, itemId, false);
@@ -697,9 +710,15 @@ export class SessionManager {
     this.emit(live, [{ op: "queue", queue: live.queue }]);
   }
 
+  /** Friction for the learning log (no AI): what made a chat harder. */
+  private friction(live: Live, signal: string, text: string) {
+    this.options.onActivity?.({ kind: "friction", session: live.state.meta, text, signal });
+  }
+
   async interrupt(id: string): Promise<void> {
     const live = await this.live(id);
     if (!live.engine) return;
+    if (live.state.meta.status === "working") this.friction(live, "interrupt", "stopped Claude mid-turn");
     await live.engine.interrupt().catch((error) => log.warn("Interrupt failed", error));
   }
 
@@ -709,6 +728,7 @@ export class SessionManager {
     if (!pending) throw new JigError("not_found", "This request is no longer waiting");
     live.permissions.delete(requestId);
     const status = decision.behavior === "deny" ? "denied" : decision.always ? "always" : "allowed";
+    if (status === "denied") this.friction(live, "denied", `denied ${pending.request.toolName}`);
     this.handleEvent(live, { type: "permission_resolved", requestId, status });
     pending.resolve(decision);
   }

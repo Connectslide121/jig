@@ -9,7 +9,10 @@ export type ActivityKind =
   | "script.run"
   | "addon.action"
   | "git"
-  | "project.switch";
+  | "project.switch"
+  | "friction"
+  | "evidence"
+  | "ai.lines";
 
 export interface ActivityInput {
   kind: ActivityKind;

@@ -26,6 +26,8 @@ export interface TerminalManagerOptions {
   onChange: (terminals: TerminalInfo[]) => void;
   /** A command typed into an interactive (non-private) terminal, for the activity log. */
   onCommand?: (terminal: TerminalInfo, command: string) => void;
+  /** A process ended by itself (not stopped from Jig): its terminal with the exit code. */
+  onExit?: (terminal: TerminalInfo) => void;
 }
 
 interface Live {
@@ -38,6 +40,8 @@ interface Live {
   /** The last output (to check a typed line was echoed) and whether a full-screen program shows. */
   recent: string;
   altScreen: boolean;
+  /** Stopped from Jig (Stop, close): its exit is not a failure. */
+  killed?: boolean;
 }
 
 export interface CreateTerminal {
@@ -139,6 +143,7 @@ export class TerminalManager {
       live.info = { ...live.info, status: "exited", exitCode };
       this.push(live, `\r\n\x1b[2m[process exited with code ${exitCode}]\x1b[0m\r\n`);
       this.changed();
+      if (!live.killed) this.options.onExit?.(live.info);
     });
     this.changed();
     return info;
@@ -192,6 +197,7 @@ export class TerminalManager {
   /** Stops the process; the terminal stays open showing its output. */
   kill(id: string): void {
     const live = this.live(id);
+    live.killed = true;
     try {
       live.pty?.kill();
     } catch (error) {
@@ -203,6 +209,7 @@ export class TerminalManager {
   close(id: string): void {
     const live = this.terminals.get(id);
     if (!live) return;
+    live.killed = true;
     clearTimeout(live.timer);
     try {
       live.pty?.kill();

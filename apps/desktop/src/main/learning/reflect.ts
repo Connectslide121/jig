@@ -1,25 +1,47 @@
 import { randomUUID } from "node:crypto";
 import type { Pattern } from "@jig/learning";
 import { z } from "zod";
-import type { Suggestion } from "../../shared/learning";
+import { type EvidenceNote, type Suggestion, TIP_KINDS } from "../../shared/learning";
 
 /**
  * The AI step: one Claude Code query (no tools) gets the mined patterns, the add-on catalog and your
  * past answers, and returns at most 3 suggestions as JSON, validated here.
  */
-export const REFLECTION_INSTRUCTIONS = `You help Jig, a desktop workbench around Claude Code, suggest tools that save its user time.
-You get patterns mined from the user's local activity (commands, sequences of commands, similar prompts), the add-ons that exist, and the user's past answers to suggestions.
-Suggest AT MOST 3 tools that would clearly save time, only where the evidence is strong. Prefer, in order: a layout/settings change (level 1), changing an existing add-on when it fits (level 2, kind "change-addon" with its addonId), a new add-on (level 2), and only if nothing else can, a new extension point in Jig (level 3, kind "app": the builder proposes it and the user adds it to Jig's code).
-Don't suggest what the user said "never" to, nor repeat what they already built or snoozed.
-Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days)","goal":"what to ask Jig's builder, concrete and complete","level":1|2|3,"kind":"layout"|"settings"|"change-addon"|"new-addon"|"app","addonId":"…","minutesPerWeek":N,"patternKeys":["…"]}]}
+export const REFLECTION_INSTRUCTIONS = `You help Jig, a desktop workbench around Claude Code, help its user work better.
+You get: patterns mined from the user's local activity (repeated commands, sequences, similar prompts, friction such as interrupts and corrections, what they paste into chats, Jig tools that fit but were never used), notes Claude saved from their chats (manual work, work outside Jig, frustration), their profile (how they work), a summary of lines written by Claude vs by hand, the add-ons that exist, and their past answers with whether built suggestions helped.
+Suggest AT MOST 3 things, only where the evidence is strong, each of one kind:
+- a tool: "layout" or "settings" (level 1), "change-addon" with its addonId or "new-addon" (level 2), or only if nothing else can, "app" (level 3: a new extension point). "goal" is what to ask Jig's builder.
+- "workflow": a repeated multi-step chore (e.g. a release by hand). "steps": the steps in order. "goal": what it is for.
+- "claude-setup": an MCP server, skill or hook for Claude Code. "goal": what to set up and why.
+- "project-memory": something Claude keeps being told, to add to the project's CLAUDE.md. "goal": the text to add.
+- "prompting-tip" or "habit-tip": coaching, ONLY with the user's own examples as evidence (quote them, before/after), and at most one tip in total (none when "Tips allowed: no").
+- "automation": something to run on a schedule as a Claude Code routine. "goal": what the routine does and when.
+Prefer the smallest thing that helps. Don't suggest what the user said "never" to, nor repeat what they built, adopted or snoozed; learn from what helped and what didn't.
+Also propose additions to the profile ("profileUpdates": short facts the evidence shows, not already in it; none if unsure).
+Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
 Return {"suggestions":[]} when nothing is worth it.`;
 
 export interface PastAnswer {
   title: string;
   status: Suggestion["status"];
+  /** "Did it help?" once checked. */
+  outcome?: string;
 }
 
-export function reflectionPrompt(patterns: Pattern[], catalog: string, answers: PastAnswer[]): string {
+/** What the reflection reads besides the patterns (Learning 2). */
+export interface ReflectionContext {
+  notes?: EvidenceNote[];
+  profile?: string;
+  worked?: string;
+  tipsAllowed?: boolean;
+}
+
+export function reflectionPrompt(
+  patterns: Pattern[],
+  catalog: string,
+  answers: PastAnswer[],
+  context: ReflectionContext = {},
+): string {
   const lines = patterns.map(
     (p) =>
       `- key: ${p.key} | ${p.kind} | "${p.summary}" | ${p.count} times on ${p.days} day(s) in ${p.projects} project(s)\n  examples: ${p.examples
@@ -27,8 +49,22 @@ export function reflectionPrompt(patterns: Pattern[], catalog: string, answers: 
         .map((e) => `${e.at.slice(0, 16)} ${e.text}`)
         .join(" ; ")}`,
   );
-  const past = answers.length ? answers.map((a) => `- ${a.title}: ${a.status}`).join("\n") : "(none yet)";
-  return `## Patterns\n${lines.join("\n")}\n\n## Add-ons\n${catalog}\n\n## Past answers\n${past}\n\nReply with the JSON only.`;
+  const past = answers.length
+    ? answers.map((a) => `- ${a.title}: ${a.status}${a.outcome ? ` (${a.outcome})` : ""}`).join("\n")
+    : "(none yet)";
+  const notes = context.notes?.length
+    ? context.notes.map((n) => `- id: ${n.id} | ${n.at.slice(0, 10)} | ${n.category} | ${n.text}`).join("\n")
+    : "(none)";
+  return [
+    `## Patterns\n${lines.join("\n") || "(none)"}`,
+    `## Notes from chats\n${notes}`,
+    `## Profile\n${context.profile?.trim() || "(empty)"}`,
+    `## How they worked (last 7 days)\n${context.worked || "(no commits measured)"}`,
+    `## Add-ons\n${catalog}`,
+    `## Past answers\n${past}`,
+    `Tips allowed: ${context.tipsAllowed === false ? "no" : "yes (at most one)"}`,
+    "Reply with the JSON only.",
+  ].join("\n\n");
 }
 
 const SuggestionSchema = z.object({
@@ -36,16 +72,42 @@ const SuggestionSchema = z.object({
   why: z.string().min(3),
   goal: z.string().min(3),
   level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  kind: z.enum(["layout", "settings", "change-addon", "new-addon", "app"]),
+  kind: z.enum([
+    "layout",
+    "settings",
+    "change-addon",
+    "new-addon",
+    "app",
+    "workflow",
+    "claude-setup",
+    "project-memory",
+    "prompting-tip",
+    "habit-tip",
+    "automation",
+  ]),
   addonId: z.string().optional(),
+  steps: z.array(z.string()).optional(),
+  noteIds: z.array(z.string()).optional(),
   minutesPerWeek: z.number().nonnegative().optional(),
   patternKeys: z.array(z.string()).default([]),
 });
 
-const ReplySchema = z.object({ suggestions: z.array(SuggestionSchema).max(3) });
+const ReplySchema = z.object({
+  suggestions: z.array(SuggestionSchema).max(3),
+  profileUpdates: z.array(z.string()).optional(),
+});
 
-/** Parses the model's reply (tolerating text around the JSON); throws with a readable message. */
-export function parseReflection(text: string, patterns: Pattern[], now = new Date()): Suggestion[] {
+/**
+ * Parses the model's reply (tolerating text around the JSON); throws with a readable message. Tips
+ * beyond the first (or any, when not allowed) are dropped; profile updates become one "profile"
+ * suggestion.
+ */
+export function parseReflection(
+  text: string,
+  patterns: Pattern[],
+  now = new Date(),
+  options: { notes?: EvidenceNote[]; tipsAllowed?: boolean } = {},
+): Suggestion[] {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end < start) throw new Error("The reply had no JSON");
@@ -59,8 +121,16 @@ export function parseReflection(text: string, patterns: Pattern[], now = new Dat
   if (!result.success)
     throw new Error(`The reply didn't match the expected format: ${result.error.issues[0]?.message}`);
   const known = new Map(patterns.map((p) => [p.key, p]));
-  return result.data.suggestions.map((s) => {
+  const noteIds = new Set((options.notes ?? []).map((n) => n.id));
+  let tips = options.tipsAllowed === false ? 1 : 0;
+  const picked = result.data.suggestions.filter((s) => {
+    if (!TIP_KINDS.includes(s.kind)) return true;
+    tips++;
+    return tips === 1;
+  });
+  const suggestions: Suggestion[] = picked.map((s) => {
     const keys = s.patternKeys.filter((k) => known.has(k));
+    const notes = (s.noteIds ?? []).filter((id) => noteIds.has(id));
     return {
       id: randomUUID().slice(0, 8),
       createdAt: now.toISOString(),
@@ -70,10 +140,55 @@ export function parseReflection(text: string, patterns: Pattern[], now = new Dat
       level: s.level,
       kind: s.kind,
       addonId: s.addonId || undefined,
+      steps: s.kind === "workflow" && s.steps?.length ? s.steps : undefined,
+      noteIds: notes.length ? notes : undefined,
       minutesPerWeek: s.minutesPerWeek,
       patternKeys: keys,
       evidence: keys.map((k) => known.get(k)!),
       status: "new" as const,
     };
   });
+  const updates = (result.data.profileUpdates ?? [])
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  if (updates.length)
+    suggestions.push({
+      id: randomUUID().slice(0, 8),
+      createdAt: now.toISOString(),
+      title: "Add to what Jig knows about you",
+      why: "From your recent activity and chats.",
+      goal: updates.join("\n"),
+      level: 1,
+      kind: "profile",
+      patternKeys: [],
+      evidence: [],
+      status: "new",
+    });
+  return suggestions;
+}
+
+/**
+ * The first message of a weekly check-in chat: Claude asks 3–5 short questions chosen from the gaps
+ * in the profile and from recent notes, then updates the profile with `jig_update_profile`.
+ */
+export function checkInPrompt(profile: string, notes: EvidenceNote[]): string {
+  const gaps = profile
+    .split("\n")
+    .map((l, i, all) => ({ l, next: all.slice(i + 1).find((x) => x.trim() && !x.startsWith("<!--")) }))
+    .filter(({ l, next }) => /^##\s/.test(l) && (!next || /^#/.test(next)))
+    .map(({ l }) => l.replace(/^##\s*/, ""));
+  return [
+    "Weekly check-in (Jig). Keep it short: ask me 3–5 questions, one at a time, to understand how I work, so Jig can suggest better tools and habits.",
+    gaps.length ? `My profile has nothing yet under: ${gaps.join(", ")}.` : "",
+    notes.length
+      ? `Notes from my recent chats:\n${notes
+          .slice(-8)
+          .map((n) => `- ${n.text}`)
+          .join("\n")}`
+      : "",
+    "Start from the notes (e.g. something I keep doing by hand) or the gaps. When we're done, read my profile with jig_read_profile and add what you learned with jig_update_profile (short facts under the right headings), then tell me in one line what you added.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }

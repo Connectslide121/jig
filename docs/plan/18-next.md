@@ -341,11 +341,11 @@ true"). This step checks the whole picture again:
       side"; draggable divider
 - [x] Project links: grouped, typed links (icon + default label), managed in the panel and from
       chats (with Undo), optional "Add from Azure…" via `az`
-- [ ] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
-- [ ] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
+- [x] Learning 2a: `jig_note_evidence` tool with chat card; friction signals in the activity log
+- [x] Learning 2b: profile + "What Jig knows about me"; suggestion kinds with actions; did-it-help
       follow-up
-- [ ] Learning 2c: weekly check-in chat (opt-in, frequency setting)
-- [ ] Learning 2e: AI vs hand-written lines per commit, time and churn per origin, weekly "How you
+- [x] Learning 2c: weekly check-in chat (opt-in, frequency setting)
+- [x] Learning 2e: AI vs hand-written lines per commit, time and churn per origin, weekly "How you
       worked" summary
 - [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals

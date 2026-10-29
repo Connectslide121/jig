@@ -137,9 +137,14 @@ settings, add-on permissions.
 | `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
 | `learning.state` | — | `LearningState` | suggestions, recent runs, last/next run, activity stats (`docs/reference/learning.md`) |
 | `learning.runNow` | — | `PatternRun` | look for patterns now; no AI call when nothing repeats; `busy` |
-| `learning.answer` | `{ id, answer: "build" \| "snooze" \| "never" }` | — | |
+| `learning.answer` | `{ id, answer: "build" \| "act" \| "snooze" \| "dismiss" \| "never" }` | — | `act`: the kind's own action was taken (a profile one is written here) |
 | `learning.clearActivity` | — | — | deletes the activity log |
 | `learning.record` | `{ kind: "addon.action", text, projectId?, detail? }` | — | activity from the renderer |
+| `learning.knowledge` | — | `{ profile, profileExists, notes, activity }` | What Jig knows about me |
+| `learning.setProfile` | `{ text }` | — | writes `profile.md` (schema) |
+| `learning.removeNote` / `learning.clearNotes` | `{ id }` / — | — | notes from chats |
+| `learning.worked` | `{ refresh? }` | `WorkedState` | "How you worked", cached an hour |
+| `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 
 ## Events
@@ -166,4 +171,5 @@ settings, add-on permissions.
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
-| `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted |
+| `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |
+| `learning.knowledgeChanged` | — | the profile or the notes changed |
