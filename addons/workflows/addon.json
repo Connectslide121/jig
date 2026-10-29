@@ -1,0 +1,52 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "workflows",
+  "name": "Workflows",
+  "description": "Lists of steps you repeat, per project — a release, a deploy, a morning routine. Jig does the steps it can, asks first, or leaves them to you; on a schedule while Jig is open; export as a Claude Code skill or move to the cloud.",
+  "version": "1.0.0",
+  "icon": "list-checks",
+  "permissions": ["exec", "exec:az", "fs:write", "chat", "terminal"],
+  "contributes": {
+    "views": [
+      {
+        "id": "workflows",
+        "title": "Workflows",
+        "icon": "list-checks",
+        "region": "left",
+        "component": "WorkflowsView"
+      }
+    ],
+    "tabs": [
+      {
+        "type": "workflow",
+        "title": "Workflow",
+        "icon": "list-checks",
+        "component": "WorkflowTab"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show workflows",
+        "group": "Workflows",
+        "icon": "list-checks",
+        "run": "showWorkflows"
+      },
+      {
+        "id": "new",
+        "title": "New workflow…",
+        "group": "Workflows",
+        "icon": "plus",
+        "run": "newWorkflowAction"
+      },
+      {
+        "id": "run",
+        "title": "Run a workflow…",
+        "group": "Workflows",
+        "icon": "play",
+        "run": "runWorkflowMenu"
+      }
+    ],
+    "watchers": [{ "id": "schedules", "every": "1m", "run": "checkSchedules" }]
+  }
+}

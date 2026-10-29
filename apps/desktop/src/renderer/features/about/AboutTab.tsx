@@ -768,6 +768,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
                 "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
                 "An optional weekly check-in chat (off by default)",
+                "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
               ]}
             />
           </Section>

@@ -34,8 +34,6 @@ export class BrowserService {
   private frameTimer: NodeJS.Timeout | undefined;
   private console: ConsoleEntry[] = [];
   private network: NetworkEntry[] = [];
-  private networkIds = new Map<string, string>();
-  private networkSeq = 0;
   private viewport: { width: number; height: number } = { ...VIEWPORTS.desktop };
 
   constructor(private readonly events: BrowserEvents) {}
@@ -142,66 +140,90 @@ export class BrowserService {
   }
 
   /**
-   * The page's requests through Chromium's DevTools protocol (`webContents.debugger`): method, URL,
-   * status, timing and size, headers with credentials redacted. Bodies are fetched only when asked.
+   * The page's requests: the log comes from the session's `webRequest` events (every request, whatever
+   * renderer process the page is in): method, URL, type, status, time, headers with credentials
+   * redacted. Chromium's DevTools protocol (`webContents.debugger`) is only used to fetch a response
+   * body when asked.
    */
   private captureNetwork(c: WebContents): void {
-    try {
-      c.debugger.attach("1.3");
-    } catch (error) {
-      log.warn("Network capture unavailable", error);
-      return;
-    }
-    void c.debugger.sendCommand("Network.enable").catch(() => {});
-    const started = new Map<string, number>();
-    // biome-ignore lint/suspicious/noExplicitAny: DevTools protocol payloads.
-    c.debugger.on("message", (_event, method: string, params: any) => {
-      const entry = () => {
-        const id = this.networkIds.get(params.requestId);
-        return id ? this.network.find((e) => e.id === id) : undefined;
-      };
-      if (method === "Network.requestWillBeSent") {
-        // A redirect reuses the request id: the earlier hop stays as it was.
-        const id = String(++this.networkSeq);
-        this.networkIds.set(params.requestId, id);
-        started.set(params.requestId, Number(params.timestamp) * 1000);
+    const web = c.session.webRequest;
+    const find = (id: number) => this.network.find((e) => e.id === String(id));
+    const TYPES: Record<string, string> = { mainFrame: "document", subFrame: "iframe", xhr: "fetch" };
+    web.onBeforeRequest((details, callback) => {
+      if (details.webContentsId === c.id || details.webContentsId === undefined) {
         this.network.push({
-          id,
-          method: String(params.request?.method ?? "GET"),
-          url: String(params.request?.url ?? ""),
-          type: String(params.type ?? "other").toLowerCase(),
-          startedAt: new Date().toISOString(),
-          requestHeaders: redactHeaders(params.request?.headers),
-          postData:
-            typeof params.request?.postData === "string"
-              ? params.request.postData.slice(0, MAX_BODY)
-              : undefined,
+          id: String(details.id),
+          method: details.method,
+          url: details.url,
+          type: TYPES[details.resourceType] ?? details.resourceType,
+          startedAt: new Date(details.timestamp).toISOString(),
+          postData: details.uploadData?.[0]?.bytes?.toString("utf8").slice(0, MAX_BODY),
         });
-        if (this.network.length > MAX_NETWORK) {
-          const dropped = this.network.splice(0, this.network.length - MAX_NETWORK);
-          for (const d of dropped)
-            for (const [rid, id2] of this.networkIds) if (id2 === d.id) this.networkIds.delete(rid);
-        }
-        this.networkChanged();
-      } else if (method === "Network.responseReceived") {
-        const e = entry();
-        if (!e) return;
-        e.status = Number(params.response?.status);
-        e.statusText = String(params.response?.statusText ?? "");
-        e.mimeType = String(params.response?.mimeType ?? "");
-        e.responseHeaders = redactHeaders(params.response?.headers);
-      } else if (method === "Network.loadingFinished" || method === "Network.loadingFailed") {
-        const e = entry();
-        if (!e) return;
-        const t0 = started.get(params.requestId);
-        if (t0) e.durationMs = Number(params.timestamp) * 1000 - t0;
-        if (method === "Network.loadingFinished") e.size = Number(params.encodedDataLength) || 0;
-        else e.error = String(params.errorText || "failed");
-        started.delete(params.requestId);
+        if (this.network.length > MAX_NETWORK) this.network.splice(0, this.network.length - MAX_NETWORK);
         this.networkChanged();
       }
+      callback({});
     });
+    web.onBeforeSendHeaders((details, callback) => {
+      const e = find(details.id);
+      if (e) e.requestHeaders = redactHeaders(details.requestHeaders);
+      callback({});
+    });
+    web.onHeadersReceived((details, callback) => {
+      const e = find(details.id);
+      if (e) {
+        e.status = details.statusCode;
+        e.statusText = details.statusLine.replace(/^HTTP\/[\d.]+\s+\d+\s*/, "");
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(details.responseHeaders ?? {})) headers[k] = v.join(", ");
+        e.responseHeaders = redactHeaders(headers);
+        e.mimeType = (headers["content-type"] ?? headers["Content-Type"] ?? "").split(";")[0];
+      }
+      callback({});
+    });
+    web.onCompleted((details) => {
+      const e = find(details.id);
+      if (!e) return;
+      e.status = details.statusCode;
+      e.durationMs = details.timestamp - new Date(e.startedAt).getTime();
+      const length = Number(e.responseHeaders?.["content-length"] ?? e.responseHeaders?.["Content-Length"]);
+      if (Number.isFinite(length)) e.size = length;
+      this.networkChanged();
+    });
+    web.onErrorOccurred((details) => {
+      const e = find(details.id);
+      if (!e) return;
+      e.error = details.error;
+      e.durationMs = details.timestamp - new Date(e.startedAt).getTime();
+      this.networkChanged();
+    });
+    // Bodies: DevTools remembers the request id of each URL's latest response.
+    try {
+      c.debugger.attach("1.3");
+      // Enabled on a blank page before the first navigation, so the first page's requests are seen
+      // from their start (Chromium keeps bodies only for requests it saw begin).
+      const enable = (async () => {
+        await c.loadURL("about:blank").catch(() => {});
+        await c.debugger.sendCommand("Network.enable");
+      })().catch(() => {});
+      this.bodiesReady = Promise.race([enable, new Promise<void>((r) => setTimeout(r, 3000))]);
+      // A navigation to another site moves the page to a new renderer: enable it there too.
+      c.on("did-start-navigation", (details) => {
+        if (details.isMainFrame && !details.isSameDocument)
+          void c.debugger.sendCommand("Network.enable").catch(() => {});
+      });
+      // biome-ignore lint/suspicious/noExplicitAny: DevTools protocol payloads.
+      c.debugger.on("message", (_event, method: string, params: any) => {
+        if (method === "Network.responseReceived" && params.response?.url)
+          this.bodyIds.set(`${params.response.url}`, String(params.requestId));
+      });
+    } catch (error) {
+      log.warn("Response bodies unavailable", error);
+    }
   }
+
+  private bodyIds = new Map<string, string>();
+  private bodiesReady: Promise<void> = Promise.resolve();
 
   private networkTimer: NodeJS.Timeout | undefined;
   /** The view's list follows the log (at most twice a second). */
@@ -217,7 +239,7 @@ export class BrowserService {
     const list = this.network.map((e) => ({ ...e }));
     if (clear) {
       this.network = [];
-      this.networkIds.clear();
+      this.bodyIds.clear();
       this.changed();
     }
     return list;
@@ -227,7 +249,7 @@ export class BrowserService {
   async networkDetail(id: string): Promise<NetworkEntry & { body?: string; bodyNote?: string }> {
     const e = this.network.find((x) => x.id === id);
     if (!e) throw new Error(`No request #${id} (list them with jig_browser_network)`);
-    const requestId = [...this.networkIds.entries()].find(([, v]) => v === id)?.[0];
+    const requestId = this.bodyIds.get(e.url);
     const c = this.contents;
     if (!requestId || !c) return { ...e, bodyNote: "The body is no longer available." };
     try {
@@ -285,6 +307,7 @@ export class BrowserService {
     const url = normalizeUrl(input);
     const c = this.ensure();
     this.events.reveal();
+    await this.bodiesReady;
     try {
       await c.loadURL(url);
     } catch (error) {
@@ -465,7 +488,7 @@ export class BrowserService {
     this.window = undefined;
     this.console = [];
     this.network = [];
-    this.networkIds.clear();
+    this.bodyIds.clear();
     this.changed();
   }
 }

@@ -119,6 +119,11 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
       estimate).
     - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
       with 3–5 questions that adds what it learns to your profile.
+    - **Workflows** (left sidebar, Tools → Show workflows; a new built-in add-on): lists of steps you
+      repeat, per project. Each step is yours (a check), "ask me first" or done by Jig (a command, a
+      script, a pipeline, a message to Claude). Run it step by step with the output shown; schedule it
+      (while Jig is open); export it as a Claude Code skill; Move to the cloud asks Claude to make it a
+      routine or a pipeline. Workflow suggestions open here as drafts.
     - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
       list — so API calls are debugged there instead of copied from your browser.

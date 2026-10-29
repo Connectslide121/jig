@@ -68,9 +68,7 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
     .toContain("Other page");
 });
 
-test("Claude's browser: the network log shows the page's requests, failed ones and their bodies", async ({
-  page,
-}) => {
+test("Claude's browser: the network log shows requests, errors and their bodies", async ({ page }) => {
   const server = createServer((req, res) => {
     if (req.url === "/api/cart") {
       res.writeHead(500, { "Content-Type": "application/json", "Set-Cookie": "session=secret" });

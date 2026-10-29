@@ -1021,3 +1021,23 @@ Claude, on my own (the details below) · **Date:** 2026-10-29
   hashes (never content) per file, and only the user's own commits (`--author` = user.email) are
   measured. It is labelled an estimate everywhere and is never pushed as a notification.
 
+### D-112 — Workflows: a built-in add-on, steps marked yours / ask me / Jig's
+**Decided by:** Jon (phase 18 item 4d: stored in Jig per project, private; manual / assisted /
+automated; triggers while Jig is open; Move to the cloud) and Claude, on my own (the format and run
+history, open in the plan) · **Date:** 2026-10-29
+
+- **An add-on (`addons/workflows`)**, using public slots only (a left view, a tab, actions, a
+  watcher), so it is an example for the builder too.
+- **Format:** JSON in the add-on's storage, `workflows:<projectId>`; runs in `runs:<workflowId>`
+  (the last 20). Not a file in the repository: workflows are personal (Jon's decision). **Export as
+  skill** is the way to share one (`.claude/skills/<name>/SKILL.md`).
+- **Step kinds:** check, command (the platform shell in the project folder, output captured), script
+  (Jig's script discovery, in a terminal), pipeline (`az pipelines run`), Claude (a new chat with the
+  message, sent), wait. A check and a wait are always yours.
+- **Schedules run only while Jig is open.** A workflow runs unattended only when every step is an
+  automatic command or pipeline; otherwise the schedule notifies you. **Move to the cloud** asks
+  Claude in a chat (a routine for judgement, a pipeline for builds), never silently.
+- **Suggestions → workflows:** a "workflow" suggestion opens the editor with a draft (tab
+  `addon.workflows.workflow`, `params.draft`); lines that look like commands become command steps
+  ("ask me first"), others checks.
+

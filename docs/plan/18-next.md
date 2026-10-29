@@ -134,7 +134,7 @@ tool". Build in this order:
   - automated: a trigger (schedule, push, file change) runs it **while Jig is open**. **Move to the
     cloud** turns it into a Claude Code routine or an Azure DevOps pipeline (decided).
 - Suggestions draft workflows from evidence ("Release webshop: build → package → upload to VM").
-- Still open: the file format (Markdown with steps?) and the run history.
+- Decided (D-112): JSON in the add-on's storage per project, runs kept (last 20) per workflow.
 
 ### 4e. Manual vs AI: measured, and compared quietly
 Recorded silently. Shown only as evidence in suggestions and in a weekly "How you worked" summary on
@@ -349,7 +349,7 @@ true"). This step checks the whole picture again:
       worked" summary
 - [x] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals
-- [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
+- [x] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
 - [x] Releases add-on: setup chat and release policy per repository, baseline release; unreleased
       work in the panel and status bar, deploy-without-version warning, commit convention, reminders;
       bump suggestion, changelog and user notes, one-action release, history and "What's live" (D-110).

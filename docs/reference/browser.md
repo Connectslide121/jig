@@ -32,9 +32,11 @@ in the view at any time.
 - **Console:** console messages and failed loads are kept (the last 300). The view shows the number of
   errors; the terminal icon opens the list in a resizable pane. Electron's own development warnings
   are left out.
-- **Network** (Learning 2f, D-111): the page's requests through Chromium's DevTools protocol
-  (`webContents.debugger`, `Network` domain): method, URL, type, status, time, size and headers, the
-  last 300. Credential headers (`Authorization`, `Cookie`, `Set-Cookie`, API keys) are replaced by
+- **Network** (Learning 2f, D-111): the page's requests from the browser session's `webRequest`
+  events (every request, whatever renderer process the page is in): method, URL, type, status, time,
+  size and headers, the last 300. Response bodies come from Chromium's DevTools protocol
+  (`webContents.debugger`, `Network.getResponseBody`), enabled on a blank page before the first
+  navigation so the first page's requests are seen from their start. Credential headers (`Authorization`, `Cookie`, `Set-Cookie`, API keys) are replaced by
   `«redacted»`; response bodies are fetched only when asked (at most 20k characters, while Chromium
   still has them). The view's Network button lists them (click one for headers and body); a badge
   counts failed requests and HTTP errors.

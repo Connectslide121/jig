@@ -97,6 +97,15 @@ test("Claude notes manual work from a chat; it becomes a workflow suggestion and
   await expect(workflow).toContainText("Upload to the VM", { timeout: 15000 });
   await workflow.getByText("Evidence").click();
   await expect(workflow.getByTestId("suggestion-note")).toContainText("upload to the VM");
+  // Draft a workflow: the Workflows editor opens with the steps.
+  await workflow.getByTestId("suggestion-build").click();
+  await expect(page.getByTestId("workflow-editor").getByTestId("workflow-name")).toHaveValue(
+    "A workflow for deploying the webshop",
+  );
+  await expect(page.getByTestId("workflow-edit-step")).toHaveCount(3);
+  await page.getByTestId("workflow-save").click();
+  await expect(page.getByTestId("workflow-steps")).toContainText("Upload to the VM");
+  await page.getByTestId("suggestions-badge").click();
   const profile = page.getByTestId("suggestion").filter({ hasText: "Add to what Jig knows about you" });
   await profile.getByTestId("suggestion-build").click();
   await expect(profile.getByTestId("suggestion-build")).toHaveCount(0);
