@@ -99,9 +99,10 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
     add-on, acceptance criteria and a clickable mockup. The Build tab works it out with you (D-120):
     **1. Try it** (the demo runs right there), **2. Is this what you want?** (say what to change and
     the builder writes version 2, 3…; **This is what I want** confirms it), **3. Send it**: **Email to
-    developers**, only for the confirmed version, opens a new email to support@sprinta.se (fixed in
-    Jig, not a setting) with a zip attached (SPEC.md, PROMPT.md to paste into Claude Code in the Jig
-    repository, mockup.html, context.json); also Copy prompt and Show package.
+    developers**, only for the confirmed version, saves the package zip in your Downloads folder
+    (SPEC.md, PROMPT.md to paste into Claude Code in the Jig repository, mockup.html, context.json),
+    shows it there and opens a new email to support@sprinta.se (fixed in Jig, not a setting) in your
+    mail app; you attach the zip and send (D-123). Also Copy prompt and Show package.
   - With `JIG_ENGINE=fake` a scripted builder runs the real pipeline (try "move the terminals",
     "compact", "a pomodoro timer").
 
@@ -407,6 +408,9 @@ Things the cloud build environment couldn't verify:
   - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.
   - `npm run e2e` passes on Windows: 95 passed, 6 skipped (screenshots and Linux-only ones), with the
     windows hidden.
+  - Email to developers opened Office's "install Outlook" stub on a machine with only the new
+    Outlook (`OUTLOOK.EXE` is registered even when classic Outlook isn't installed). It now saves the
+    zip in Downloads and opens a plain `mailto:` email in your default mail app (D-123).
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
@@ -427,10 +431,8 @@ Things the cloud build environment couldn't verify:
   - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
-  - Email to developers: classic Outlook should open a new message with the zip attached
-    (`outlook.exe /c ipm.note /m … /a <zip>`). With only the new Outlook, Jig opens an unsent `.eml`
-    instead; check it opens as a message you can send (else the last resort is a plain email and the
-    zip shown in its folder).
+  - Email to developers: the new email opens in your default mail app (the new Outlook) with the
+    subject and text, and Explorer shows the zip in Downloads to attach.
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

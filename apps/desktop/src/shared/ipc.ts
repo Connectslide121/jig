@@ -15,7 +15,7 @@ import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
-import type { DevRequestInfo, DevRequestStatus, MailMethod } from "./devRequest";
+import type { DevRequestInfo, DevRequestStatus } from "./devRequest";
 import type {
   ChatAttachment,
   ChatUpdate,
@@ -367,10 +367,10 @@ export interface HostMethods {
   "builds.diff": { args: { id: string; path: string }; result: string };
   /** A build that needs a change in Jig: its development request package (D-119). */
   "devRequests.create": { args: { buildId: string }; result: DevRequestInfo };
-  /** Makes the package and opens a new email to the developers with it attached. */
+  /** Saves the package in Downloads and opens a new email to the developers (attach it yourself). */
   "devRequests.email": {
     args: { buildId: string };
-    result: { info: DevRequestInfo; method: MailMethod; to: string };
+    result: { info: DevRequestInfo; savedTo: string; to: string };
   };
   /** PROMPT.md of the package (to paste into Claude Code in Jig's repository). */
   "devRequests.prompt": { args: { buildId: string }; result: string };

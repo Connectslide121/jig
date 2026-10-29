@@ -109,7 +109,7 @@ test("when no add-on can do it, you try the request's demo, change it, confirm i
 }) => {
   const outbox = join(jigHome, "outbox");
   await mkdir(outbox, { recursive: true });
-  // JIG_MAIL_OUT: the email is written there instead of opening a mail app.
+  // JIG_MAIL_OUT: the zip and the mailto: link are written there instead of opening anything.
   const app = await launchJig(jigHome, { JIG_MAIL_OUT: outbox });
   const page = await app.firstWindow();
   await page.waitForSelector("[data-testid=app-root]");
@@ -143,13 +143,16 @@ test("when no add-on can do it, you try the request's demo, change it, confirm i
   await page.getByTestId("dev-approve").click();
   await expect(page.getByTestId("dev-approved")).toBeVisible();
   await page.getByTestId("build-email-request").click();
-  await expect(page.getByTestId("toast").last()).toContainText("ready to send");
-  await expect.poll(async () => (await readdir(outbox)).filter((f) => f.endsWith(".eml")).length).toBe(1);
-  const [emlName] = (await readdir(outbox)).filter((f) => f.endsWith(".eml"));
-  const eml = await readFile(join(outbox, emlName!), "utf8");
-  expect(eml).toContain("To: support@sprinta.se");
-  expect(eml).toContain("Subject: Jig development request: Title bar items from add-ons");
-  expect(eml).toMatch(/filename="jig-request-title-bar-items-from-add-ons-[\w-]+\.zip"/);
+  await expect(page.getByTestId("toast").last()).toContainText("Attach jig-request-title-bar-items");
+  // The zip is saved in "Downloads" (JIG_MAIL_OUT here) and a mailto: email says to attach it.
+  await expect.poll(async () => (await readdir(outbox)).filter((f) => f.endsWith(".zip")).length).toBe(1);
+  const [zipName] = (await readdir(outbox)).filter((f) => f.endsWith(".zip"));
+  expect(zipName).toMatch(/^jig-request-title-bar-items-from-add-ons-[\w-]+\.zip$/);
+  const mailto = decodeURIComponent(await readFile(join(outbox, "mailto.txt"), "utf8"));
+  expect(mailto).toContain(
+    "mailto:support@sprinta.se?subject=Jig development request: Title bar items from add-ons",
+  );
+  expect(mailto).toContain(`[Before sending: attach ${zipName}.`);
   await expect(page.getByTestId("dev-emailed")).toBeVisible();
   await app.close();
 });

@@ -22,7 +22,9 @@ const job = {
 describe("DevRequestService", () => {
   it("packs a build's request into a zip and emails it to the developers", async () => {
     const dir = await mkdtemp(join(tmpdir(), "jig-devreq-"));
-    const opened: Array<{ to: string; subject: string; attachment: string }> = [];
+    const downloads = join(dir, "Downloads");
+    const opened: string[] = [];
+    const shown: string[] = [];
     const s = new DevRequestService({
       dir,
       job: (id) => (id === job.id ? job : ({ id, kind: "new-addon" } as BuildJob)),
@@ -32,10 +34,11 @@ describe("DevRequestService", () => {
         addons: ["git"],
         createdAt: "2026-10-29T10:00:00Z",
       }),
-      openMail: async (mail, attachment) => {
-        opened.push({ to: mail.to, subject: mail.subject, attachment });
-        return "test";
+      downloads: () => downloads,
+      openEmail: async (url) => {
+        opened.push(url);
       },
+      showFile: (path) => shown.push(path),
     });
     const info = await s.create(job.id);
     expect(info.title).toBe("Title bar items");
@@ -68,16 +71,18 @@ describe("DevRequestService", () => {
     expect((await s.status(job.id)).approved).toBe(true);
 
     const sent = await s.email(job.id);
-    expect(sent).toMatchObject({ method: "test", to: "support@sprinta.se" });
+    // Saved in Downloads (and shown there), and a new email that says to attach it.
+    const zipName = `${top}.zip`;
+    expect(sent).toMatchObject({ savedTo: join(downloads, zipName), to: "support@sprinta.se" });
+    expect(await readFile(sent.savedTo)).toEqual(await readFile(info.zipPath));
+    expect(shown).toEqual([sent.savedTo]);
     expect(sent.info.emailedAt).toBeTruthy();
     expect((await s.status(job.id)).emailedAt).toBe(sent.info.emailedAt);
-    expect(opened).toEqual([
-      {
-        to: "support@sprinta.se",
-        subject: "Jig development request: Title bar items",
-        attachment: info.zipPath,
-      },
-    ]);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]).toMatch(
+      /^mailto:support@sprinta\.se\?subject=Jig%20development%20request%3A%20Title%20bar%20items&body=/,
+    );
+    expect(decodeURIComponent(opened[0]!)).toContain(`[Before sending: attach ${zipName}.`);
     expect(await s.prompt(job.id)).toContain("Read AGENTS.md");
     await expect(s.create("other")).rejects.toMatchObject({ code: "not_found" });
   });

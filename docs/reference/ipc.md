@@ -141,7 +141,7 @@ settings, add-on permissions.
 | `builds.discard` | `{ id }` | `BuildJob` | |
 | `builds.diff` | `{ id, path }` | `string` | patch of one changed file |
 | `devRequests.create` | `{ buildId }` | `DevRequestInfo` | writes the development request of a build that needs a change in Jig (D-119): `~/.jig/dev-requests/<build id>/files/` (README.md, SPEC.md, PROMPT.md, mockup.html, context.json) and the zip beside it |
-| `devRequests.email` | `{ buildId }` | `{ info, method, to }` | makes the package and opens a new email to Jig's developers (`DEV_REQUEST_EMAIL`, fixed in the code) with the zip attached. Refused (`not_approved`) until you confirmed the current version. `method`: `outlook` (Windows: classic Outlook's `/m … /a`; macOS: AppleScript), `apple-mail`, `xdg-email`, `eml` (an unsent `.eml` opened by the default app), `mailto` (no attachment: the zip is shown in its folder), `test` (`JIG_MAIL_OUT`) |
+| `devRequests.email` | `{ buildId }` | `{ info, savedTo, to }` | makes the package, copies the zip to your Downloads folder (`savedTo`, shown in Explorer/Finder) and opens a `mailto:` email to Jig's developers (`DEV_REQUEST_EMAIL`, fixed in the code) whose first line says to attach it (D-123). Refused (`not_approved`) until you confirmed the current version. `JIG_MAIL_OUT` (tests): the zip and `mailto.txt` go there and nothing opens |
 | `devRequests.prompt` | `{ buildId }` | `string` | PROMPT.md, to paste into Claude Code in Jig's repository |
 | `devRequests.status` | `{ buildId }` | `DevRequestStatus` | `{ approved, emailedAt?, to }`: `approved` is true when you confirmed this exact version (a revision needs confirming again) |
 | `devRequests.approve` | `{ buildId }` | `DevRequestStatus` | **This is what I want**: confirms the current version |

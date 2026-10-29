@@ -1158,7 +1158,8 @@ click to support@sprinta.se so other users can send requests) and Claude, on my 
 - **The package** (`~/.jig/dev-requests/<build>/`, zipped): README.md, SPEC.md, PROMPT.md (the spec
   inside, plus "follow AGENTS.md, add it as an extension point, tests and docs"), mockup.html,
   context.json (Jig's version, the OS, the add-ons that were on — nothing from chats or files).
-- **One button opens a new email with the zip attached.** A `mailto:` link can't carry an attachment,
+- **One button opens a new email with the zip attached** (replaced by D-123: the zip is saved in
+  Downloads and a plain `mailto:` email says to attach it). A `mailto:` link can't carry an attachment,
   so Jig tries, in order: classic Outlook's command line on Windows (`/m … /a`), the default mail app
   through AppleScript on macOS (Outlook or Mail), `xdg-email --attach` on Linux, an unsent `.eml`
   (`X-Unsent: 1`, which Outlook opens as a new message) and, last, a `mailto:` without the attachment
@@ -1203,3 +1204,16 @@ a clickable demo, iterate and validate before sending) and Claude, on my own (ho
 - **Its stored data is kept** (`addon-data/<id>.json`), so importing or rebuilding it later finds the
   same data. It is small, and data is what users would least want gone by accident.
 - **Deleting your copy of a built-in** brings the built-in back; the dialog says so.
+
+### D-123 — "Email to developers" saves the package in Downloads and opens a plain email
+**Decided by:** Jon (a `mailto:` link, and the package to download and attach, instead of guessing
+the mail app) · **Date:** 2026-10-29 · **Replaces** D-119's list of ways to attach the zip.
+
+- **Why:** on Windows the classic-Outlook route started Office's "install Outlook" stub on a machine
+  with only the new Outlook (`OUTLOOK.EXE` is registered even when classic Outlook isn't installed),
+  and the `.eml` route was registered to the same stub. Guessing the mail app was fragile everywhere.
+- **Now, on every OS:** the zip is copied to the Downloads folder and shown in Explorer / Finder, and
+  a `mailto:` link opens a new email to `DEV_REQUEST_EMAIL` in the default mail app. Its first line
+  says to attach the zip ("[Before sending: attach … Jig saved it in your Downloads folder.]") and the
+  toast in Jig says the same. You attach it and press Send; Jig still sends nothing itself.
+- The Outlook command line, AppleScript, `xdg-email` and `.eml` code is removed.

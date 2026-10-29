@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
-import type { DevRequestStatus, MailMethod } from "../../../shared/devRequest";
+import type { DevRequestStatus } from "../../../shared/devRequest";
 import { call, errorMessage } from "../../lib/host";
 import { timeAgo } from "../../lib/time";
 import {
@@ -160,17 +160,6 @@ function FileRow({
   );
 }
 
-const MAIL_NEXT: Record<MailMethod, (to: string, zip: string) => string> = {
-  outlook: () => "A new message is open in Outlook with the request attached. Check it and press Send.",
-  "apple-mail": () => "A new message is open in Mail with the request attached. Check it and press Send.",
-  "xdg-email": () =>
-    "A new message is open in your email app with the request attached. Check it and press Send.",
-  eml: (to) => `An email to ${to} opened with the request attached. Check it and press Send.`,
-  mailto: (_to, zip) =>
-    `Your email app opened without the attachment: attach ${zip} from the folder that opened, then send.`,
-  test: () => "The email is ready.",
-};
-
 /** The request's clickable demo, live in a sandboxed frame (never same-origin: it can't reach Jig). */
 function RequestDemo({ job }: { job: BuildJob }) {
   const [demo, setDemo] = useState<{ url: string; path: string }>();
@@ -228,7 +217,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 /**
  * No slot can do this (D-074): the builder wrote a development request (D-119). You try its demo,
  * ask for changes until it's right (the builder writes a new version), confirm it, and only then
- * email it to Jig's developers with the package attached.
+ * email it to Jig's developers: the package is saved in Downloads for you to attach (D-123).
  */
 function DevRequestPanel({ job }: { job: BuildJob }) {
   const p = job.proposal!;
@@ -261,12 +250,12 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
     act("Couldn't confirm", async () => setStatus(await call("devRequests.approve", { buildId: job.id })));
   const email = () =>
     act("Couldn't open an email", async () => {
-      const { info, method, to } = await call("devRequests.email", { buildId: job.id });
+      const { info, savedTo, to } = await call("devRequests.email", { buildId: job.id });
       setStatus((s) => s && { ...s, emailedAt: info.emailedAt });
-      const zip = info.zipPath.split(/[\\/]/).pop() ?? "the zip";
+      const zip = savedTo.split(/[\\/]/).pop() ?? "the zip";
       notify({
-        title: "Development request ready to send",
-        message: MAIL_NEXT[method](to, zip),
+        title: "Attach the package and send",
+        message: `A new email to ${to} is open. Attach ${zip}: it's in your Downloads folder, shown in the window that opened.`,
         tone: "success",
       });
     });
@@ -384,7 +373,7 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
           </Button>
           <span className="text-xs text-muted">
             {status?.approved
-              ? `A new email to ${to} opens with the request attached (spec, prompt for Claude Code, demo). You press Send.`
+              ? `Saves the package (spec, prompt for Claude Code, demo) in your Downloads folder and opens a new email to ${to}: attach the package, then send.`
               : "Confirm the request first (step 2)."}
           </span>
         </div>

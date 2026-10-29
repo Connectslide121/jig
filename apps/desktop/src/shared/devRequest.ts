@@ -3,7 +3,8 @@ import type { BuildJob, ExtensionProposal } from "./builds";
 /**
  * A development request (D-119): when the builder finds that no layout change, setting or add-on can
  * do what someone asked, Jig packs what the developers need (a spec, a prompt for Claude Code in the
- * Jig repository, a clickable mockup, context) into a zip that one button emails to them.
+ * Jig repository, a clickable mockup, context) into a zip. "Email to developers" saves it in your
+ * Downloads folder and opens a new email to them for you to attach it to (D-123).
  */
 /** Where development requests go: Jig's developers. Fixed in the code, so no one can redirect them. */
 export const DEV_REQUEST_EMAIL = "support@sprinta.se";
@@ -29,9 +30,6 @@ export interface DevRequestInfo {
   /** When "Email to developers" last opened an email for it. */
   emailedAt?: string;
 }
-
-/** How the email was opened, so the UI can say what to do next. */
-export type MailMethod = "outlook" | "apple-mail" | "xdg-email" | "eml" | "mailto" | "test";
 
 export interface DevRequestContext {
   jigVersion: string;
@@ -120,7 +118,7 @@ ${hasMockup ? "- mockup.html: a clickable mockup of the intended result (open it
 `;
 }
 
-/** The email: short, because the package carries the details. */
+/** The email: short, because the package carries the details; it starts by reminding you to attach it. */
 export function requestEmail(
   title: string,
   to: string,
@@ -129,7 +127,9 @@ export function requestEmail(
   return {
     to,
     subject: `Jig development request: ${title}`,
-    body: `Hi,
+    body: `[Before sending: attach ${zipName}. Jig saved it in your Downloads folder.]
+
+Hi,
 
 Jig's builder couldn't make this as an add-on, so here is a development request:
 
@@ -154,7 +154,7 @@ export function requestZipName(title: string, id: string): string {
   return `jig-request-${slug || "feature"}-${id.slice(0, 6)}.zip`;
 }
 
-/** A `mailto:` link (the last resort: no attachment, so the zip is shown in its folder). */
+/** The `mailto:` link that opens the email (it can't carry the attachment). */
 export function mailtoUrl(mail: { to: string; subject: string; body: string }): string {
   return `mailto:${encodeURIComponent(mail.to).replace("%40", "@")}?subject=${encodeURIComponent(mail.subject)}&body=${encodeURIComponent(mail.body)}`;
 }

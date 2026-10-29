@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import type { BuildJob } from "../../shared/builds";
@@ -9,7 +9,7 @@ import {
   type DevRequestContext,
   type DevRequestInfo,
   type DevRequestStatus,
-  type MailMethod,
+  mailtoUrl,
   requestEmail,
   requestPrompt,
   requestReadme,
@@ -19,14 +19,18 @@ import {
 } from "../../shared/devRequest";
 import { JigError } from "../../shared/ipc";
 import { readJson, writeJson } from "../state/jsonStore";
-import type { Mail } from "./mail";
 
 export interface DevRequestDeps {
   /** `~/.jig/dev-requests` */
   dir: string;
   job(id: string): BuildJob;
   context(): DevRequestContext;
-  openMail(mail: Mail, attachment: string, draftsDir: string): Promise<MailMethod>;
+  /** Where "Email to developers" saves the zip for you to attach (your Downloads folder). */
+  downloads(): string;
+  /** Opens a `mailto:` link in the default mail app. */
+  openEmail(url: string): Promise<void>;
+  /** Shows a file in Explorer / Finder. */
+  showFile(path: string): void;
 }
 
 const InfoSchema = z
@@ -118,24 +122,26 @@ export class DevRequestService {
     return this.status(buildId);
   }
 
-  /** Makes the package and opens a new email to the developers with it attached. */
-  async email(buildId: string): Promise<{ info: DevRequestInfo; method: MailMethod; to: string }> {
+  /**
+   * Makes the package, saves the zip in your Downloads folder (shown there) and opens a new email to
+   * the developers in your mail app (D-123). A `mailto:` link can't attach files, so you attach it.
+   */
+  async email(buildId: string): Promise<{ info: DevRequestInfo; savedTo: string; to: string }> {
     if (!(await this.status(buildId)).approved)
       throw new JigError("not_approved", "Try the demo and confirm the request before sending it");
     const info = await this.create(buildId);
     const to = DEV_REQUEST_EMAIL;
-    const zipName = info.zipPath.split(/[\\/]/).pop()!;
-    const method = await this.deps.openMail(
-      requestEmail(info.title, to, zipName),
-      info.zipPath,
-      join(this.deps.dir, buildId),
-    );
+    await mkdir(this.deps.downloads(), { recursive: true });
+    const savedTo = join(this.deps.downloads(), basename(info.zipPath));
+    await copyFile(info.zipPath, savedTo);
+    await this.deps.openEmail(mailtoUrl(requestEmail(info.title, to, basename(savedTo))));
+    this.deps.showFile(savedTo);
     const next = { ...info, emailedAt: new Date().toISOString() };
     await writeJson(join(this.deps.dir, buildId, "request.json"), {
       ...next,
       approvedHash: versionHash(this.deps.job(buildId)),
     });
-    return { info: next, method, to };
+    return { info: next, savedTo, to };
   }
 
   /** The text of PROMPT.md, to copy. */

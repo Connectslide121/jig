@@ -80,8 +80,8 @@ More behaviour:
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.
 
-`JIG_MAIL_OUT=<folder>` makes **Email to developers** write the `.eml` there instead of opening a
-mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
+`JIG_MAIL_OUT=<folder>` makes **Email to developers** save the zip there (instead of Downloads) and
+write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
 
 ## Screenshots
