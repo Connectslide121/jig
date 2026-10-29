@@ -274,7 +274,11 @@ function AzureDialog({
       }
     >
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-muted">Through your own Azure CLI login (`az`); Jig stores no tokens.</p>
+        <p className="text-xs text-muted">
+          Through your own Azure CLI login (`az`); Jig stores no tokens. Every subscription of the directories
+          you're signed in to; for another directory, run <code>az login --tenant &lt;directory&gt;</code>{" "}
+          once.
+        </p>
         <div className="grid grid-cols-2 gap-2">
           {/* biome-ignore lint/a11y/noLabelWithoutControl: Input is the labelled control. */}
           <label className="flex flex-col gap-1">
