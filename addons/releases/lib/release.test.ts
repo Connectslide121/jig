@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classify, draftChangelog, insertChangelog, suggestedBump } from "./commits";
+import { classify, draftChangelog, insertChangelog, parsePullRequest, suggestedBump } from "./commits";
 import { deployAction, shouldRemind, unreleasedLabel, whatsLive } from "./deploys";
 import { detect, policyFromDetection } from "./detect";
 import { readVersion, versionFileKind, writeVersion } from "./files";
@@ -230,5 +230,24 @@ describe("next version, drafts and deploys", () => {
     expect(unreleasedLabel(14, "2026-10-08T10:00:00Z", now)).toBe("14 commits, 3 weeks");
     expect(unreleasedLabel(1, "2026-10-28T10:00:00Z", now)).toBe("1 commit, 1 day");
     expect(unreleasedLabel(0, undefined, now)).toBe("Nothing unreleased");
+  });
+});
+
+describe("pull requests", () => {
+  it("reads merged pull requests from GitHub and Azure DevOps", () => {
+    expect(parsePullRequest("Merge pull request #12 from ann/discounts", "Discount codes\n\nmore")).toEqual({
+      number: "12",
+      title: "Discount codes",
+    });
+    expect(parsePullRequest("Merged PR 431: feat: invoices")).toEqual({
+      number: "431",
+      title: "feat: invoices",
+    });
+    expect(parsePullRequest("fix: x")).toBeUndefined();
+    expect(commit("Merged PR 431: feat(pay): invoices")).toMatchObject({
+      pr: "431",
+      kind: "feat",
+      text: "invoices",
+    });
   });
 });

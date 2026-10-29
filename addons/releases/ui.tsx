@@ -23,6 +23,7 @@ import {
   MessageSquare,
   RefreshCw,
   Rocket,
+  Share2,
   Sparkles,
   Tag,
   TriangleAlert,
@@ -406,6 +407,7 @@ function PrepareCard({
   const [notes, setNotes] = useState<Draft["notes"]>([]);
   const [reason, setReason] = useState<string>();
   const [push, setPush] = useState(true);
+  const [pipeline, setPipeline] = useState(true);
   const [busy, setBusy] = useState<"draft" | "release">();
   const [open, setOpen] = useState(false);
   useEffect(() => setVersion(suggestion.version), [suggestion.version]);
@@ -442,6 +444,9 @@ function PrepareCard({
       : undefined,
     `Tag ${tag}${notes.length ? " with the notes" : ""}`,
     push ? "Push the commit and the tag" : undefined,
+    push && pipeline && policy.releasePipeline
+      ? `Start release pipeline ${policy.releasePipeline.id} on ${tag}`
+      : undefined,
   ].filter(Boolean) as string[];
   const doRelease = async () => {
     const ok = await ctx.confirm({
@@ -452,19 +457,23 @@ function PrepareCard({
     if (!ok) return;
     setBusy("release");
     try {
-      const r = await ctx.host.call<{ tag: string; pushed: boolean; pushError?: string }>("release", {
-        path: data.path,
-        version,
-        changelog,
-        notes: notesMarkdown(version, notes),
-        push,
-      });
+      const r = await ctx.host.call<{ tag: string; pushed: boolean; pushError?: string; pipeline?: string }>(
+        "release",
+        {
+          path: data.path,
+          version,
+          changelog,
+          notes: notesMarkdown(version, notes),
+          push,
+          runPipeline: Boolean(policy.releasePipeline) && push && pipeline,
+        },
+      );
       ctx.notify({
         title: `Released ${r.tag}`,
         message: r.pushError
           ? `Not pushed: ${r.pushError}`
           : r.pushed
-            ? "Pushed with its tag."
+            ? `Pushed with its tag.${r.pipeline ? ` Release pipeline: ${r.pipeline}` : ""}`
             : "Not pushed yet.",
         tone: r.pushError ? "warning" : "success",
       });
@@ -535,6 +544,19 @@ function PrepareCard({
         ))}
         {commits.length > 50 && <div className="py-1 text-xs text-hint">and {commits.length - 50} more</div>}
       </div>
+      {data.pullRequests.length > 0 && (
+        <div className="mt-2 border-t border-line pt-2" data-testid="release-prs">
+          <div className="mb-1 text-xs font-semibold text-muted">
+            Pull requests ({data.pullRequests.length})
+          </div>
+          {data.pullRequests.map((p) => (
+            <div key={p.number} className="flex gap-2 py-0.5 text-sm">
+              <Badge tone="info">#{p.number}</Badge>
+              <span className="min-w-0 flex-1 truncate text-fg">{p.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {open && (
         <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3" data-testid="release-form">
           <div className="flex flex-wrap items-end gap-2">
@@ -623,6 +645,14 @@ function PrepareCard({
           </div>
           <div className="flex items-center gap-3">
             <Switch checked={push} onChange={setPush} label="Push" />
+            {policy.releasePipeline && (
+              <Switch
+                checked={push && pipeline}
+                disabled={!push}
+                onChange={setPipeline}
+                label="Start the release pipeline"
+              />
+            )}
             <span className="flex-1" />
             <Button variant="ghost" onClick={() => setOpen(false)}>
               Cancel
@@ -749,7 +779,21 @@ function HistoryCard({ ctx, data }: { ctx: AddonUiContext; data: RepoDetail }) {
               </button>
               <span className="flex-1 text-xs text-muted">{when(r.date)}</span>
               {body && (
-                <IconButton icon={Copy} size="sm" label="Copy the notes" onClick={() => ctx.copy(body)} />
+                <>
+                  <IconButton icon={Copy} size="sm" label="Copy the notes" onClick={() => ctx.copy(body)} />
+                  <IconButton
+                    icon={Share2}
+                    size="sm"
+                    label="Publish the notes as an artifact"
+                    data-testid="release-publish"
+                    onClick={() =>
+                      void ctx.openChat({
+                        cwd: data.path,
+                        draft: `Publish the release notes of ${data.path.split(/[\\/]/).pop()} ${r.tag} as an artifact: a clean page for the people who use it, in the notes' language. Here are the notes:\n\n${body}`,
+                      })
+                    }
+                  />
+                </>
               )}
             </div>
             {shown === r.tag && body && (

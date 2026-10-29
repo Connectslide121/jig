@@ -186,7 +186,9 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   - **Continuous:** "Deployed to prod" tags the checked-out commit with the next version. Production
     pipelines (from the policy) are watched every 5 minutes: a deploy of a commit without a release
     warns (planned) or becomes the release (continuous).
-  - **What's live** per environment and the release history (notes to copy). Weekly reminders when the
+  - **What's live** per environment and the release history (notes to copy, or publish as an
+    artifact through a chat). Merged pull requests are listed with the unreleased commits; an optional
+    release pipeline starts on the new tag; Git shows "N unreleased" next to the repository. Weekly reminders when the
     policy asks for them. Git's **Write** uses Conventional Commits when the policy says so.
 - **Split view:** two tabs side by side.
   - Right-click a tab → Open to the side, or drag it to the right part of the main area (or onto

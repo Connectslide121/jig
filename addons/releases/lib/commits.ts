@@ -21,11 +21,15 @@ export interface Classified extends Commit {
   text: string;
   /** Azure DevOps work items (AB#n). */
   workItems: string[];
+  /** The pull request it came from (an Azure DevOps squash merge: "Merged PR 123: …"). */
+  pr?: string;
 }
 
 const CONVENTIONAL = /^(\w+)(?:\(([^)]+)\))?(!)?:\s*(.+)$/;
 
 export function classify(c: Commit): Classified {
+  const merged = /^Merged PR (\d+):\s*(.+)$/.exec(c.subject);
+  if (merged) return { ...classify({ ...c, subject: merged[2]! }), subject: c.subject, pr: merged[1] };
   const m = CONVENTIONAL.exec(c.subject);
   const breaking = Boolean(m?.[3]) || /BREAKING[ -]CHANGE/.test(c.body);
   const items = new Set<string>();
@@ -38,6 +42,23 @@ export function classify(c: Commit): Classified {
     text: m?.[4] ?? c.subject,
     workItems: [...items],
   };
+}
+
+export interface PullRequest {
+  number: string;
+  title: string;
+}
+
+/**
+ * A merged pull request from a merge commit: GitHub's "Merge pull request #12 from owner/branch" (the
+ * title is the body's first line) or Azure DevOps' "Merged PR 12: title".
+ */
+export function parsePullRequest(subject: string, body = ""): PullRequest | undefined {
+  const gh = /^Merge pull request #(\d+) from (\S+)/.exec(subject);
+  if (gh) return { number: gh[1]!, title: body.trim().split("\n")[0]?.trim() || gh[2]! };
+  const az = /^Merged PR (\d+):\s*(.+)$/.exec(subject);
+  if (az) return { number: az[1]!, title: az[2]!.trim() };
+  return undefined;
 }
 
 /** The bump the commits ask for: a breaking change → major, a feature → minor, else patch. */

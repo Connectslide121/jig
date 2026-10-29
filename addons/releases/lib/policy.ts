@@ -32,6 +32,8 @@ export interface ReleasePolicy {
   /** When to release (planned): before every production deploy, weekly, or no reminders. */
   cadence?: "before-prod-deploy" | "weekly" | "none";
   environments?: Environment[];
+  /** An Azure DevOps pipeline to start on the new tag after a release (optional). */
+  releasePipeline?: { org: string; project: string; id: number };
 }
 
 export const DEFAULT_POLICY: ReleasePolicy = {

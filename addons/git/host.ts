@@ -221,6 +221,40 @@ const MESSAGE_DIFF_LIMIT = 60_000;
  * change when nothing is staged, as the Commit button does), the names of new files, and the
  * subjects of recent commits (to match the repository's style).
  */
+/**
+ * Unreleased commits for a repository with planned releases (the Releases add-on's `.jig/release.json`):
+ * commits since the latest tag in the policy's format. Undefined without such a policy.
+ */
+export async function releaseInfo(
+  { cwd }: Cwd,
+  api: AddonHostApi,
+): Promise<{ count: number; tag?: string } | undefined> {
+  try {
+    const top = (await git(api, cwd, ["rev-parse", "--show-toplevel"])).trim();
+    const policy = JSON.parse(await api.fs.readFile(join(top, ".jig", "release.json")));
+    if (policy?.style && policy.style !== "planned") return undefined;
+    const format =
+      typeof policy?.tagFormat === "string" && policy.tagFormat.includes("{version}")
+        ? policy.tagFormat
+        : "v{version}";
+    const tag = (
+      await git(api, top, ["describe", "--tags", "--abbrev=0", "--match", format.replace("{version}", "*")], {
+        ok: [0, 128],
+      })
+    ).trim();
+    const count = Number(
+      (
+        await git(api, top, ["rev-list", "--count", "--no-merges", tag ? `${tag}..HEAD` : "HEAD"], {
+          ok: [0, 128],
+        })
+      ).trim(),
+    );
+    return { count: Number.isFinite(count) ? count : 0, tag: tag || undefined };
+  } catch {
+    return undefined;
+  }
+}
+
 export async function messageContext({ cwd }: Cwd, api: AddonHostApi) {
   const stagedNames = (await git(api, cwd, ["diff", "--cached", "--name-only"])).trim();
   const staged = stagedNames.length > 0;

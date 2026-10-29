@@ -18,6 +18,8 @@ detail in the main window**. Rebase, graph and blame are out of scope.
 - **Write** (commit box) asks Claude for the message from the staged diff and recent subjects. When the
   repository's release policy (`.jig/release.json`, Releases add-on) sets `commitConvention:
   "conventional"`, it asks for Conventional Commits (`feat(scope): …`, `!` for breaking).
+- **"N unreleased"** next to a repository whose release policy (`.jig/release.json`) plans releases:
+  commits since the latest tag in its format. Click opens the Releases view.
 - **Tabs in the main window**: History of a branch (filter by message or author, paged), Commit detail
   (message, author, date, parents, changed files with +/−), Diff (side-by-side or inline,
   syntax-highlighted with the active theme, unchanged regions collapsed), Compare (commits ahead/behind).

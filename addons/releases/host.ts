@@ -1,7 +1,13 @@
 import { mkdir, readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { AddonHostApi, AddonWorkspace } from "@jig/sdk";
-import { type Classified, classify, insertChangelog } from "./lib/commits";
+import {
+  type Classified,
+  classify,
+  insertChangelog,
+  type PullRequest,
+  parsePullRequest,
+} from "./lib/commits";
 import { type Deploy, deployAction, shouldRemind } from "./lib/deploys";
 import { type Detection, detect } from "./lib/detect";
 import { readVersion, versionFileKind, writeVersion } from "./lib/files";
@@ -235,6 +241,8 @@ export interface RepoDetail {
   latest?: Release;
   releases: Release[];
   unreleased: Classified[];
+  /** Pull requests merged since the last release (merge commits and Azure DevOps squash merges). */
+  pullRequests: PullRequest[];
   fileVersion?: string;
   /** The version file and the latest tag disagree. */
   mismatch?: string;
@@ -257,6 +265,21 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
     git(api, path, ["rev-parse", "HEAD"], { ok: [0, 128] }),
   ]);
   const headSha = head.trim();
+  const merges = await git(
+    api,
+    path,
+    ["log", "-n", "200", "--merges", "--format=%s%x1f%b%x1e", latest ? `${latest.tag}..HEAD` : "HEAD"],
+    { ok: [0, 128] },
+  );
+  const pullRequests: PullRequest[] = [];
+  for (const r of merges.split("\x1e")) {
+    const [subject = "", body = ""] = r.replace(/^\n/, "").split("\x1f");
+    const pr = parsePullRequest(subject, body);
+    if (pr) pullRequests.push(pr);
+  }
+  for (const c of unreleased)
+    if (c.pr && !pullRequests.some((p) => p.number === c.pr))
+      pullRequests.push({ number: c.pr, title: c.text });
   const mismatch =
     latest && version && !policy?.managedBy && version !== latest.version
       ? `${policy?.versionFile} says ${version}, the latest tag ${latest.tag}.`
@@ -269,6 +292,7 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
     latest,
     releases: list.slice(0, 50),
     unreleased,
+    pullRequests,
     fileVersion: version,
     mismatch,
     deploys: (await api.storage.get<Deploy[]>(`deploys:${path}`)) ?? [],
@@ -296,9 +320,18 @@ export async function release(
     changelog,
     notes,
     push,
-  }: { path: string; version: string; changelog?: string; notes?: string; push?: boolean },
+    runPipeline,
+  }: {
+    path: string;
+    version: string;
+    changelog?: string;
+    notes?: string;
+    push?: boolean;
+    /** Start the policy's release pipeline on the new tag (after a successful push). */
+    runPipeline?: boolean;
+  },
   api: AddonHostApi,
-): Promise<{ tag: string; committed: boolean; pushed: boolean; pushError?: string }> {
+): Promise<{ tag: string; committed: boolean; pushed: boolean; pushError?: string; pipeline?: string }> {
   const { policy } = await readPolicy(path);
   if (!policy || policy.style === "none") throw new Error("This repository has no release policy yet.");
   const tag = tagFor(version, policy.tagFormat);
@@ -342,8 +375,40 @@ export async function release(
       pushError = (error as Error).message;
     }
   }
+  let pipeline: string | undefined;
+  if (runPipeline && pushed && policy.releasePipeline) {
+    const p = policy.releasePipeline;
+    const r = await api.exec(
+      "az",
+      [
+        "pipelines",
+        "run",
+        "--id",
+        String(p.id),
+        "--org",
+        p.org,
+        "--project",
+        p.project,
+        "--branch",
+        `refs/tags/${tag}`,
+        "-o",
+        "json",
+        "--only-show-errors",
+      ],
+      { timeoutMs: 120_000, env: { AZURE_CORE_NO_COLOR: "1" } },
+    );
+    if (r.code === 0) {
+      try {
+        pipeline =
+          `Started run ${(JSON.parse(r.stdout) as { buildNumber?: string }).buildNumber ?? ""}`.trim();
+      } catch {
+        pipeline = "Started.";
+      }
+    } else
+      pipeline = `Not started: ${r.stderr.trim().split("\n").slice(-2).join(" ") || "az pipelines run failed"}`;
+  }
   api.emit("changed", { path });
-  return { tag, committed: changed.length > 0, pushed, pushError };
+  return { tag, committed: changed.length > 0, pushed, pushError, pipeline };
 }
 
 async function logDeploy(api: AddonHostApi, path: string, deploy: Deploy) {

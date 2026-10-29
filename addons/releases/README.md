@@ -16,8 +16,16 @@ Versions, changelogs and release notes per repository, following its **release p
     items. **Prepare release:** the suggested version (bump from the commits; the first release is the
     baseline), release candidates for environments with a `prerelease` label, the changelog draft,
     **Draft with Claude** (bump reason, changelog, notes per audience), the steps, then **Release**.
+  - **Pull requests** merged since the last release (GitHub merge commits, Azure DevOps "Merged PR n"
+    squash merges) are listed under the commits.
+  - **Release pipeline** (optional, `releasePipeline: { org, project, id }` in the policy): "Start the
+    release pipeline" runs it on the new tag after a successful push (`az pipelines run --branch
+    refs/tags/<tag>`).
   - **What's live:** the latest deploy per environment; "Deployed to …" buttons for manual ones.
-  - **Releases:** the history, with the notes to copy.
+  - **Releases:** the history, with the notes to copy, or **publish as an artifact** (a chat with the
+    notes and the request, ready to send).
+- **In the Git panel:** "N unreleased" next to a repository with planned releases (the Git add-on's
+  `releaseInfo` reads the same policy); click opens Releases.
 - **Watchers:** `checkDeploys` (5 min) looks at production pipelines in the policy through `az`;
   `remind` (6 h) sends the weekly reminder when the policy's cadence is `weekly`.
 

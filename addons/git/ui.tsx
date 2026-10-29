@@ -844,6 +844,7 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
           {b.ahead > 0 && <span className="text-xs text-muted">↑{b.ahead}</span>}
           {b.behind > 0 && <span className="text-xs text-muted">↓{b.behind}</span>}
         </button>
+        <UnreleasedBadge ctx={ctx} cwd={cwd} head={b.oid} />
         <IconButton
           icon={CloudDownload}
           size="sm"
@@ -1085,6 +1086,7 @@ function RepoSection({
         )}
         {b && b.ahead > 0 && <span className="shrink-0 text-2xs text-muted">↑{b.ahead}</span>}
         {b && b.behind > 0 && <span className="shrink-0 text-2xs text-muted">↓{b.behind}</span>}
+        <UnreleasedBadge ctx={ctx} cwd={repo.path} head={b?.oid} />
         <span className="flex-1" />
         {entry?.error && <Badge tone="danger">error</Badge>}
         {!status && !entry?.error && <Spinner size="sm" />}
@@ -1972,5 +1974,39 @@ export function GitSettings({ ctx }: AddonComponentProps) {
         </div>
       </Card>
     </div>
+  );
+}
+
+/**
+ * "3 unreleased" next to a repository with planned releases (Releases add-on policy); click opens the
+ * Releases view. Nothing shows without a policy.
+ */
+function UnreleasedBadge({ ctx, cwd, head }: { ctx: AddonUiContext; cwd: string; head?: string }) {
+  const [info, setInfo] = useState<{ count: number; tag?: string }>();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new commit (head) changes the count.
+  useEffect(() => {
+    let live = true;
+    void ctx.host
+      .call<{ count: number; tag?: string } | undefined>("releaseInfo", { cwd })
+      .then((r) => live && setInfo(r))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ctx, cwd, head]);
+  if (!info?.count) return null;
+  return (
+    <button
+      type="button"
+      className="shrink-0 rounded-sm px-1 text-2xs text-accent hover:bg-active"
+      title={`${info.count} commit${info.count === 1 ? "" : "s"} since ${info.tag ?? "the start"} — open Releases`}
+      data-testid="git-unreleased"
+      onClick={(e) => {
+        e.stopPropagation();
+        ctx.showView("addon.releases.releases");
+      }}
+    >
+      {info.count} unreleased
+    </button>
   );
 }

@@ -72,13 +72,45 @@ test("Releases: set up a repository, draft with Claude, release, and see the nex
   await writeFile(join(dir, "pay.ts"), "export const pay = 1;\n");
   git(dir, "add", "pay.ts");
   git(dir, "commit", "-q", "-m", "feat: pay by invoice");
+  // A pull request merged from GitHub.
+  git(dir, "checkout", "-q", "-b", "ann/export");
+  await writeFile(join(dir, "export.ts"), "export const csv = 1;\n");
+  git(dir, "add", "export.ts");
+  git(dir, "commit", "-q", "-m", "feat: export to CSV");
+  git(dir, "checkout", "-q", "main");
+  git(
+    dir,
+    "merge",
+    "-q",
+    "--no-ff",
+    "ann/export",
+    "-m",
+    "Merge pull request #7 from ann/export\n\nExport orders to CSV",
+  );
   await page.getByTestId("release-refresh").click();
-  await expect(page.getByTestId("release-unreleased")).toContainText("1 commit");
+  await expect(page.getByTestId("release-unreleased")).toContainText("2 commits");
+  await expect(page.getByTestId("release-prs")).toContainText("#7");
+  await expect(page.getByTestId("release-prs")).toContainText("Export orders to CSV");
   await page.getByTestId("release-prepare").click();
   await expect(page.getByTestId("release-version")).toHaveValue("0.2.0");
+  await page.getByRole("button", { name: "Cancel" }).click();
 
   // The panel shows it with its unreleased work.
   await expect(page.getByTestId("releases-repo-shop")).toContainText("0.1.0", { timeout: 15000 });
+
+  // Git shows the unreleased count next to the repository.
+  await page.keyboard.press("Control+Shift+G");
+  await expect(page.getByTestId("git-unreleased").first()).toHaveText("2 unreleased", { timeout: 15000 });
+
+  // The notes of a release can be published as an artifact from a chat.
+  await page.getByTestId("tab-addon.releases.repo").click();
+  await page.getByTestId("release-publish").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(
+    /Publish the release notes of shop v0\.1\.0 as an artifact/,
+    {
+      timeout: 15000,
+    },
+  );
 });
 
 test("Releases: on a continuous project, a deploy by hand is the release", async ({ page, jigHome }) => {
