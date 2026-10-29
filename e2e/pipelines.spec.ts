@@ -39,6 +39,7 @@ if (has("pipelines", "list") && !has("runs")) say([
   { id: 13, name: "(old) Shop", queueStatus: "enabled" },
 ]);
 if (has("pipelines", "show")) say({ process: { yamlFilename: "/azure-pipelines.yml" }, repository: { defaultBranch: "refs/heads/main" } });
+if (has("pipelines", "runs", "list")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500);
 if (has("pipelines", "runs", "list")) say([{
   id: 100, buildNumber: "20261029.1", status: "completed", result: "succeeded",
   sourceBranch: "refs/heads/main", reason: "manual", queueTime: ago(40), startTime: ago(35), finishTime: ago(12),
@@ -89,6 +90,8 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   // Grouped per repository; a retired pipeline isn't listed.
   await expect(view.getByTestId("pipelines-repo-shop")).toContainText("contoso/Shop");
   await expect(view).not.toContainText("(old) Shop");
+  // Each pipeline shows it's loading until its newest run comes (az answers slowly here).
+  await expect(card.getByTestId("pipeline-loading")).toBeVisible();
   // The newest run: when, branch, why, who, what it changed; its stages without the skipped one.
   await expect(card.getByTestId("pipeline-chip")).toContainText("✓ 12m");
   await expect(card).toContainText("main · manual · Ann Demo · Deploy to: staging");

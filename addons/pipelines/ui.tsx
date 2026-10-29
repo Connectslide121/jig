@@ -398,10 +398,13 @@ function PipelineCard({
   open,
   onOpen,
   arranging,
+  loading = false,
 }: {
   ctx: AddonUiContext;
   pipeline: PipelineInfo;
   run?: PipelineRun | null;
+  /** The newest runs haven't come yet. */
+  loading?: boolean;
   open: boolean;
   onOpen: (open: boolean) => void;
   arranging: boolean;
@@ -448,7 +451,14 @@ function PipelineCard({
       }}
     >
       <div className="flex items-center gap-2">
-        <StateIcon kind={kind} run={run} />
+        {loading ? (
+          <LoaderCircle
+            className="size-4 shrink-0 animate-spin text-hint"
+            aria-label="Loading the latest run"
+          />
+        ) : (
+          <StateIcon kind={kind} run={run} />
+        )}
         <button
           type="button"
           className="min-w-0 flex-1 truncate text-left text-sm"
@@ -463,7 +473,15 @@ function PipelineCard({
           {pipeline.name}
         </button>
         <span className="shrink-0" data-testid="pipeline-chip">
-          <Badge tone={KIND_TONE[kind]}>{runLabel(run)}</Badge>
+          {loading ? (
+            <span
+              className="block h-4 w-14 animate-pulse rounded-sm bg-active"
+              title="Loading the latest run"
+              data-testid="pipeline-loading"
+            />
+          ) : (
+            <Badge tone={KIND_TONE[kind]}>{runLabel(run)}</Badge>
+          )}
         </span>
         {!arranging && (
           <>
@@ -523,7 +541,8 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
   const [loading, setLoading] = useState(false);
   const joined = keys.join("|");
   const reload = useCallback(async () => {
-    if (!joined) return setLatest({ runs: {} });
+    // No pipelines found yet: nothing to ask, and nothing to show as loaded.
+    if (!joined) return;
     setLoading(true);
     try {
       setLatest(await ctx.host.call<Latest>("latest", { keys: joined.split("|") }));
@@ -666,6 +685,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                     ctx={ctx}
                     pipeline={p}
                     run={latest?.runs[p.key]}
+                    loading={!latest}
                     open={openForm === p.key}
                     onOpen={(o) => setOpenForm(o ? p.key : undefined)}
                     arranging={arranging}

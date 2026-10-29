@@ -409,24 +409,24 @@ export async function latest(
         const stageKey = `${org}/${project}/${run.id}`;
         let stages = finishedStages.get(stageKey);
         if (!stages) {
-          stages = stagesOf(
-            await az<{ records?: Array<Record<string, unknown>> }>(api, [
-              "devops",
-              "invoke",
-              "--area",
-              "build",
-              "--resource",
-              "Timeline",
-              "--route-parameters",
-              `project=${project}`,
-              `buildId=${run.id}`,
-              "--org",
-              orgUrl(org),
-              "--api-version",
-              "7.1",
-            ]).catch(() => null),
-          );
-          if (run.status === "completed") finishedStages.set(stageKey, stages);
+          const timeline = await az<{ records?: Array<Record<string, unknown>> }>(api, [
+            "devops",
+            "invoke",
+            "--area",
+            "build",
+            "--resource",
+            "Timeline",
+            "--route-parameters",
+            `project=${project}`,
+            `buildId=${run.id}`,
+            "--org",
+            orgUrl(org),
+            "--api-version",
+            "7.1",
+          ]).catch(() => null);
+          stages = stagesOf(timeline);
+          // A failed read is asked again next time; a finished run's real stages are kept.
+          if (timeline && run.status === "completed") finishedStages.set(stageKey, stages);
         }
         runs[`${org}/${project}/${id}`] = { ...run, stages };
       });
