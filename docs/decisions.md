@@ -1381,3 +1381,16 @@ divide and reorder them, globally) and Claude, on my own (how) · **Date:** 2026
 - Loading anywhere is one centered spinner (`Spinner center`), and filter fields are a
   `SearchInput` whose magnifier sits beside the text: the Files filter's icon covered the text
   because the base `Input`'s padding won over the caller's (`cn` only joins classes).
+
+### D-144 — "Don't ask" can be chosen in any running chat; the builder's chat opens beside the build
+**Decided by:** Jon (couldn't pick Don't ask in the builder chat; wants the builder chat open by
+itself) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- Claude Code refuses to switch a session to `bypassPermissions` unless it was started with
+  `allowDangerouslySkipPermissions`, which Jig only set for chats *started* in that mode, so picking
+  "Don't ask" later failed in every chat. Every session now starts with it allowed; it only makes
+  the mode available, and a chat still starts in the mode you chose.
+- Starting a build opens its Build tab and, beside it in split view, the builder's chat; the
+  Builder chat button opens it there too.
+- Releases' **Set up** is a real bordered button with its own hover (from Jon's builder change,
+  built in).

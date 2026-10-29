@@ -29,9 +29,9 @@ import {
   Textarea,
 } from "../../ui";
 import type { TabProps } from "../../workbench/registry";
-import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openPreview } from "../preview/actions";
+import { openBuilderChat } from "./BuildDialog";
 import { KIND_TEXT, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
 
 function describeOp(op: LayoutOp): string {
@@ -100,7 +100,7 @@ export function BuildActions({ job, size = "md" }: { job: BuildJob; size?: "sm" 
         <Button
           size={size}
           icon={MessageSquare}
-          onClick={() => workbench.openTab("jig.chat", { sessionId: job.sessionId })}
+          onClick={() => job.sessionId && openBuilderChat(job.sessionId)}
         >
           Builder chat
         </Button>

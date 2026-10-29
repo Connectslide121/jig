@@ -69,7 +69,7 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("mode-plan").click();
   await expect(page.getByTestId("permission-menu")).toContainText("Plan only");
   await page.getByTestId("model-menu").click();
-  await page.getByRole("menuitem", { name: "Opus" }).click();
+  await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
 });
 

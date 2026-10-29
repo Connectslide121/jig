@@ -135,9 +135,10 @@ export function ReleasesView({ ctx }: AddonComponentProps) {
               <div key={r.path} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-hover">
                 <Tag className="size-4 shrink-0 text-hint" />
                 <span className="min-w-0 flex-1 truncate text-sm text-muted">{r.name}</span>
+                {/* A real button, with its own hover on top of the row's (Jon's builder change). */}
                 <Button
                   size="sm"
-                  variant="ghost"
+                  className="hover:border-accent hover:text-accent"
                   onClick={() => openRepo(ctx, r)}
                   data-testid={`releases-setup-${r.name}`}
                 >

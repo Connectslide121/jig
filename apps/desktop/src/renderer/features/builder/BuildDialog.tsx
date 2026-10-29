@@ -2,10 +2,11 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
 import type { BuildOrigin } from "../../../shared/builds";
+import { moveTabToPane } from "../../../shared/layout";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage } from "../../lib/host";
 import { Button, Dialog, Select, Textarea } from "../../ui";
-import { workbench } from "../../workbench/store";
+import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 
 interface Open {
@@ -20,11 +21,18 @@ export function openBuildDialog(open: Open): void {
   useDialog.setState({ open });
 }
 
-/** Starts a build and opens its tab. */
+/** Opens a build's chat beside its Build tab (split view), so you watch the builder work. */
+export function openBuilderChat(sessionId: string): void {
+  const tab = workbench.openTab("jig.chat", { sessionId });
+  updateLayout((l) => moveTabToPane(l, tab, "right"));
+}
+
+/** Starts a build and opens its tab, with the builder's chat beside it. */
 export async function startBuild(goal: string, origin: BuildOrigin, targetAddonId?: string): Promise<void> {
   try {
     const job = await call("builds.start", { goal, origin, targetAddonId });
     workbench.openTab("jig.build", { buildId: job.id });
+    if (job.sessionId) openBuilderChat(job.sessionId);
   } catch (error) {
     notify({ title: "Couldn't start the build", message: errorMessage(error), tone: "danger" });
   }

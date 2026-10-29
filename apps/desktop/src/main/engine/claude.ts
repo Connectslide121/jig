@@ -31,7 +31,9 @@ export class ClaudeEngine implements Engine {
         cwd: options.cwd,
         model: options.model || undefined,
         permissionMode: options.permissionMode,
-        allowDangerouslySkipPermissions: options.permissionMode === "bypassPermissions",
+        // Lets you switch a running chat to "Don't ask" from its menu (Claude Code refuses that
+        // switch otherwise); the chat still starts in the mode you chose (D-144).
+        allowDangerouslySkipPermissions: true,
         resume: options.resume,
         settingSources: ["user", "project", "local"],
         systemPrompt: { type: "preset", preset: "claude_code", append: options.appendSystemPrompt },
