@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { discoverScripts, isWorktreeGitFile } from "./discover";
+import { discoverScripts, dotnetLaunchers, isWorktreeGitFile, parseLooseJson } from "./discover";
 
 async function file(path: string, content = "") {
   await mkdir(join(path, ".."), { recursive: true });
@@ -20,8 +20,20 @@ describe("discoverScripts", () => {
     await file(join(root, "setup.ps1"));
     await file(join(root, "scripts", "deploy.sh"));
     await file(join(root, "web", "package.json"), JSON.stringify({ scripts: { start: "next start" } }));
-    await file(join(root, "api", "Api.csproj"));
+    await file(join(root, "api", "Api.csproj"), '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>');
     await file(join(root, "api", "Api.Tests.csproj"));
+    // Visual Studio's launch profiles, as editors leave them: a BOM, comments, a trailing comma.
+    await file(
+      join(root, "api", "Properties", "launchSettings.json"),
+      `﻿{
+  // what the start button offers
+  "profiles": {
+    "Api": { "commandName": "Project", "applicationUrl": "https://localhost:7001;http://localhost:5001" },
+    "IIS Express": { "commandName": "IISExpress" },
+  },
+}`,
+    );
+    await file(join(root, "lib", "Shared.csproj"), '<Project Sdk="Microsoft.NET.Sdk"></Project>');
     await file(join(root, "functions", "host.json"), "{}");
     await file(join(root, "functions", "local.settings.json"), "{}");
     await file(join(root, "functions", "Functions.csproj"));
@@ -34,14 +46,45 @@ describe("discoverScripts", () => {
       "|build|pnpm build",
       "|dev|pnpm dev",
       '|setup.ps1|& ".\\setup.ps1"',
-      'api|Api: run|dotnet run --project "Api.csproj"',
-      'api|Api: watch|dotnet watch --project "Api.csproj" run',
+      'api|Api|dotnet run --project "Api.csproj" --launch-profile Api',
       "functions|func start|func start",
       'scripts|deploy.sh|bash "./deploy.sh"',
       "web|start|pnpm start",
     ]);
     expect(scripts[0]).toMatchObject({ id: "npm::build", kind: "npm", cwd: root, detail: "tsc" });
     expect(scripts.find((s) => s.name === "start")?.cwd).toBe(join(root, "web"));
+    // The backend's address comes from its profile; a class library offers nothing to start.
+    expect(scripts.find((s) => s.name === "Api")?.url).toBe("https://localhost:7001");
+    expect(scripts.some((s) => s.folder === "lib")).toBe(false);
+  });
+
+  it("starts .NET projects the way Visual Studio's start button does", () => {
+    const profiles = {
+      profiles: {
+        Local: { commandName: "Project", commandLineArgs: "--port 7072", applicationUrl: "" },
+        Docker: { commandName: "Docker" },
+      },
+    };
+    expect(dotnetLaunchers("Fn.csproj", { functions: true, runnable: false, settings: profiles })).toEqual([
+      { name: "Local", command: "func start --port 7072", url: "http://localhost:7072", functions: true },
+    ]);
+    expect(
+      dotnetLaunchers("Fn.csproj", { functions: true, runnable: false, settings: null })[0],
+    ).toMatchObject({
+      command: "func start",
+    });
+    expect(dotnetLaunchers("App.csproj", { functions: false, runnable: true, settings: null })).toEqual([
+      { name: "run", command: 'dotnet run --project "App.csproj"', functions: false },
+    ]);
+    expect(dotnetLaunchers("Lib.csproj", { functions: false, runnable: false, settings: null })).toEqual([]);
+    expect(
+      dotnetLaunchers("App.csproj", {
+        functions: false,
+        runnable: true,
+        settings: { profiles: { "My App": { commandName: "Project", commandLineArgs: "--seed" } } },
+      })[0]?.command,
+    ).toBe('dotnet run --project "App.csproj" --launch-profile "My App" -- --seed');
+    expect(parseLooseJson('﻿{ "a": "http://x", // c\n "b": [1,], }')).toEqual({ a: "http://x", b: [1] });
   });
 
   it("uses npm by default and pwsh for .ps1 off Windows", async () => {

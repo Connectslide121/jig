@@ -49,6 +49,8 @@ export interface AddonScript {
   cwd: string;
   command: string;
   detail?: string;
+  /** Where it listens, when known (a backend's launch profile). */
+  url?: string;
 }
 
 export interface AddonScriptGroup {

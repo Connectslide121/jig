@@ -167,7 +167,7 @@ function MenuList({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         style={{ left: place.left, top: place.top, minWidth: Math.max(minWidth ?? 0, 180) }}
-        className="no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] max-w-sm overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-base text-fg shadow-popover outline-none"
+        className="no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] max-w-sm overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-sm text-fg shadow-popover outline-none"
       >
         {entries.map((entry, index) => {
           if ("separator" in entry) return <div key={index} className="my-1 h-px bg-line" />;

@@ -31,6 +31,8 @@ export interface Script {
   command: string;
   /** e.g. the npm script's body. */
   detail?: string;
+  /** Where it listens, when its launch profile says (a backend's `applicationUrl`). */
+  url?: string;
 }
 
 export interface ScriptGroup {

@@ -639,3 +639,5 @@ Live validation (2026-10-29): closed the installed copy and launched `npm run de
 Panel-tab refinement: labels (Chats, Files, Pipelines, etc.) use text-sm, one step smaller; icon and button dimensions remain unchanged. Applied to the live dev build through hot reload.
 
 Dropdown/menu hover is clearer: an accent-tinted fill and inset accent outline identify the hovered or keyboard-selected row, also in the all-tools picker. Disabled rows stay unhighlighted.
+
+Dropdown item labels use text-sm (matching the all-tools picker); icon sizes, row heights and the stronger hover highlight are unchanged.

@@ -34,3 +34,5 @@
 - [x] Reduce panel-tab label text one step while preserving the approved icon/control sizes.
 
 - [x] Strengthen menu hover/keyboard selection with theme-token accent fill and inset outline.
+
+- [x] Reduce shared dropdown item text one step without changing icons, row height or hover styling.

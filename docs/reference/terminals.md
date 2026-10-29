@@ -33,8 +33,8 @@ Discovered per project (`main/scripts/discover.ts`), per folder up to 3 levels d
 |---|---|---|
 | `npm` | `package.json` scripts (not `pre*`/`post*`) | `npm run x` / `pnpm x` / `yarn x` / `bun run x` (from the lockfile) |
 | `ps1` / `sh` / `cmd` | files in the project root and `scripts/` folders | `& ".\x.ps1"` (Windows) / `pwsh -File`, `bash "./x.sh"`, `.\x.cmd` |
-| `dotnet-run` / `dotnet-watch` | `*.csproj` (not `*.Tests.csproj`) | `dotnet run --project "X.csproj"` / `dotnet watch --project "X.csproj" run` |
-| `func` | a folder with `host.json` plus `local.settings.json`, a `.csproj`, `package.json` or `requirements.txt` | `func start` |
+| `dotnet-run` | a `*.csproj` (not `*.Tests.csproj`): each launch profile of kind `Project` in `Properties/launchSettings.json`, named after it; a web/worker/console project without profiles gets one `run`; a class library nothing (D-141) | `dotnet run --project "X.csproj" --launch-profile <name> [-- args]` / `dotnet run --project "X.csproj"`; `url` from the profile's `applicationUrl` |
+| `func` | a folder with `host.json` plus `local.settings.json`, a `.csproj`, `package.json` or `requirements.txt`, or a project with `AzureFunctionsVersion`: one per launch profile (its arguments), else one | `func start [args]`; `url` `http://localhost:<--port or 7071>` |
 
 A script id is `<kind>:<folder>:<name>`. **Run** opens a terminal running the command in the script's
 folder (one terminal per script; running it again focuses it, a finished run is replaced); **Stop**

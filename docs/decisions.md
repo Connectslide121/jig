@@ -1338,3 +1338,19 @@ Reduce panel view-tab labels from text-base to text-sm; preserve h-7 controls an
 **Decided by:** Jon (hover is hard to see); Claude, on my own (token treatment) · **Date:** 2026-10-29
 
 Use an accent-soft fill and inset accent outline for active shared-menu and all-tools rows. This distinguishes the row from the elevated menu surface without moving content or hard-coding a theme colour. Disabled items stay unhighlighted.
+
+### D-140 — Smaller dropdown labels
+**Decided by:** Jon · **Date:** 2026-10-29
+
+Use text-sm instead of text-base for shared menu item text, matching the all-tools picker. Keep icon dimensions, h-7 row height and accent hover treatment.
+
+### D-141 — .NET scripts are the launch profiles, as Visual Studio's start button
+**Decided by:** Jon (Scripts like his scripts plugin) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- A `.csproj` offers its launch profiles of kind `Project` (`Properties/launchSettings.json`, read
+  leniently: BOM, comments, trailing commas): `dotnet run --project X.csproj --launch-profile <name>`,
+  with the profile's address as the script's `url` (for **open**). A Functions app offers
+  `func start` with each profile's arguments (its `--port`), else plain `func start`.
+- A web, worker or console project without profiles still gets one `dotnet run`; a class library
+  gets nothing, and `dotnet watch` entries are gone. On Jon's `E:\repos` that took the list from 540
+  (after D-127) to 421, and the backends listed are the ones he actually starts.

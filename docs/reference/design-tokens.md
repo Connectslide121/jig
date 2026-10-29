@@ -68,7 +68,7 @@ Reuse these before writing new ones; add-ons get the same components as `@jig/sd
 | `Dialog`, `confirmDialog`, `promptDialog`, `DialogHost` | modal dialogs; promise-based confirm and prompt |
 | `Tooltip`, `Spinner` | |
 
-Menu items use `text-base`; small and regular text buttons use `text-sm`. Icon buttons increase from `size-6/7` to `size-7/8`, with icons from `size-3.5/4` to `size-4/4.5`. Appearance font size still scales every control.
+Menu items use `text-sm`; small and regular text buttons use `text-sm`. Icon buttons increase from `size-6/7` to `size-7/8`, with icons from `size-3.5/4` to `size-4/4.5`. Appearance font size still scales every control.
 
 Panel view tabs (Files, Pipelines, etc.) use `h-7`, `text-sm` and `size-4` icons. The top-bar action groups use `text-sm` to keep their labels quieter than panel content.
 

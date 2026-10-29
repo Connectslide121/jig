@@ -4,8 +4,9 @@ import type { Script, ScriptKind } from "../../shared/terminals";
 
 /**
  * Finds the things you start in a project, per folder: `package.json` scripts (npm / pnpm / yarn /
- * bun from the lockfile), `*.ps1` / `*.sh` / `*.cmd` in the root and `scripts/`, .NET projects
- * (`dotnet run` / `dotnet watch`) and Azure Functions apps (`func start`). Reads files only.
+ * bun from the lockfile), `*.ps1` / `*.sh` / `*.cmd` in the root and `scripts/`, .NET projects (their
+ * launch profiles, what Visual Studio's start button runs: `dotnet run --launch-profile <name>`) and
+ * Azure Functions apps (`func start`). Reads files only (D-141).
  */
 const SKIP = new Set([
   "node_modules",
@@ -46,6 +47,64 @@ async function packageRunner(dir: string, root: string): Promise<string> {
 
 const slash = (p: string) => p.replaceAll("\\", "/");
 
+/** JSON as editors leave it: a byte-order mark, comments and trailing commas (launchSettings.json). */
+export function parseLooseJson(text: string): unknown {
+  const clean = text
+    .replace(/^﻿/, "")
+    .replace(
+      /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+      (_match, str: string | undefined) => str ?? "",
+    )
+    .replace(/,(\s*[}\]])/g, "$1");
+  return JSON.parse(clean);
+}
+
+type Profile = { commandName?: string; commandLineArgs?: string; applicationUrl?: string };
+
+/** A launch profile's name as a command-line argument: bare when plain, else quoted. */
+const arg = (text: string) => (/^[\w.:@/+=-]+$/.test(text) ? text : `"${text.replaceAll('"', "")}"`);
+
+/**
+ * What a .NET project offers to start, like Visual Studio's start button: each launch profile of kind
+ * `Project` (`dotnet run --launch-profile`, or `func start` with its arguments for a Functions app),
+ * with the address it listens on. A web or console project without profiles gets one `dotnet run`, a
+ * Functions app `func start`; a class library nothing.
+ */
+export function dotnetLaunchers(
+  project: string,
+  options: { functions: boolean; runnable: boolean; settings: unknown },
+): Array<{ name: string; command: string; url?: string; functions: boolean }> {
+  const all = (options.settings as { profiles?: Record<string, Profile> } | null)?.profiles ?? {};
+  const profiles = Object.entries(all).filter(([, p]) => p?.commandName === "Project");
+  if (options.functions) {
+    if (!profiles.length)
+      return [{ name: "func start", command: "func start", url: "http://localhost:7071", functions: true }];
+    return profiles.map(([name, p]) => {
+      const args = (p.commandLineArgs ?? "").trim();
+      const port = /--port\s+(\d+)/.exec(args)?.[1] ?? "7071";
+      return {
+        name,
+        command: `func start${args ? ` ${args}` : ""}`,
+        url: `http://localhost:${port}`,
+        functions: true,
+      };
+    });
+  }
+  if (profiles.length)
+    return profiles.map(([name, p]) => {
+      const args = (p.commandLineArgs ?? "").trim();
+      return {
+        name,
+        command: `dotnet run --project "${project}" --launch-profile ${arg(name)}${args ? ` -- ${args}` : ""}`,
+        url: (p.applicationUrl ?? "").split(";")[0]?.trim() || undefined,
+        functions: false,
+      };
+    });
+  return options.runnable
+    ? [{ name: "run", command: `dotnet run --project "${project}"`, functions: false }]
+    : [];
+}
+
 function script(
   kind: ScriptKind,
   root: string,
@@ -53,9 +112,19 @@ function script(
   name: string,
   command: string,
   detail?: string,
+  url?: string,
 ): Script {
   const folder = slash(relative(root, cwd));
-  return { id: `${kind}:${folder}:${name}`, name, kind, folder, cwd, command, detail };
+  return {
+    id: `${kind}:${folder}:${name}`,
+    name,
+    kind,
+    folder,
+    cwd,
+    command,
+    detail,
+    ...(url ? { url } : {}),
+  };
 }
 
 /**
@@ -104,17 +173,17 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
       [...files].some((f) => f.endsWith(".csproj")) ||
       files.has("package.json") ||
       files.has("requirements.txt"));
-  if (isAzureFunctions) out.push(script("func", root, dir, "func start", "func start"));
-
-  for (const file of [...files].sort()) {
-    if (file.endsWith(".csproj") && !/\.Tests?\.csproj$/i.test(file)) {
-      const name = file.replace(/\.csproj$/i, "");
-      if (!isAzureFunctions) {
-        out.push(script("dotnet-run", root, dir, `${name}: run`, `dotnet run --project "${file}"`));
-        out.push(script("dotnet-watch", root, dir, `${name}: watch`, `dotnet watch --project "${file}" run`));
-      }
-    }
-  }
+  const project = [...files].sort().find((f) => f.endsWith(".csproj") && !/\.Tests?\.csproj$/i.test(f));
+  if (project) {
+    const text = await readFile(join(dir, project), "utf8").catch(() => "");
+    const settings = await readFile(join(dir, "Properties", "launchSettings.json"), "utf8")
+      .then(parseLooseJson)
+      .catch(() => null);
+    const functions = isAzureFunctions || /AzureFunctionsVersion/i.test(text);
+    const runnable = /Sdk="Microsoft\.NET\.Sdk\.(Web|Worker)"|<OutputType>\s*Exe\s*</i.test(text);
+    for (const l of dotnetLaunchers(project, { functions, runnable, settings }))
+      out.push(script(l.functions ? "func" : "dotnet-run", root, dir, l.name, l.command, l.command, l.url));
+  } else if (isAzureFunctions) out.push(script("func", root, dir, "func start", "func start"));
 
   const rel = slash(relative(root, dir));
   const scriptFolder = rel === "" || /(^|\/)scripts$/.test(rel);
