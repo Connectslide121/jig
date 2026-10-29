@@ -44,6 +44,17 @@ export function resolveCommand(
 ): Resolved {
   if (platform !== "win32") return { file: command, args, verbatim: false };
   const found = findOnPath(command, env, exists);
+  // `cmd /c <command line>`: cmd doesn't understand the \" escaping Node uses for other programs,
+  // so the command line goes as written, in quotes that /s strips (`echo "a b"` keeps its quotes).
+  const c = args.findIndex((a) => /^\/c$/i.test(a));
+  if (/(^|[\\/])cmd(\.exe)?$/i.test(found ?? command) && c >= 0) {
+    const options = args.slice(0, c).filter((a) => !/^\/s$/i.test(a));
+    return {
+      file: found ?? command,
+      args: [...options, "/s", "/c", `"${args.slice(c + 1).join(" ")}"`],
+      verbatim: true,
+    };
+  }
   if (!found || !/\.(cmd|bat)$/i.test(found)) return { file: found ?? command, args, verbatim: false };
   const line = [quoteForCmd(found), ...args.map(quoteForCmd)].join(" ");
   return { file: env.ComSpec ?? "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], verbatim: true };

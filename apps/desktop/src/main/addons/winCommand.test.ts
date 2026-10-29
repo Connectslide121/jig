@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { findOnPath, quoteForCmd, resolveCommand } from "./winCommand";
 
@@ -31,6 +32,18 @@ describe("Windows command resolution", () => {
       args: ["x"],
       verbatim: false,
     });
+  });
+
+  it("passes a cmd /c command line as written", () => {
+    const r = resolveCommand("cmd.exe", ["/d", "/s", "/c", 'echo "a b" & dir'], "win32", env, exists);
+    expect(r).toEqual({ file: "cmd.exe", args: ["/d", "/s", "/c", '"echo "a b" & dir"'], verbatim: true });
+    expect(resolveCommand("cmd", ["/C", "ver"], "win32", env, exists).args).toEqual(["/s", "/c", '"ver"']);
+  });
+
+  it.runIf(process.platform === "win32")("keeps quotes in a real cmd.exe", () => {
+    const r = resolveCommand("cmd.exe", ["/d", "/s", "/c", 'echo "a b"'], "win32", process.env);
+    const out = spawnSync(r.file, r.args, { encoding: "utf8", windowsVerbatimArguments: r.verbatim });
+    expect(out.stdout.trim()).toBe('"a b"');
   });
 
   it("escapes quotes, backslashes and cmd metacharacters", () => {

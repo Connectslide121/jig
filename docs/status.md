@@ -404,6 +404,9 @@ Things the cloud build environment couldn't verify:
   - Add-on UIs didn't bundle at all on Windows: the bundler took the entry `C:\…\ui.tsx` for a
     package import and refused it. Fixed in `main/addons/bundle.ts`.
   - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.
+  - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
+    add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
+    (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
 
 - **Phase 18 on Windows:**
   - Files: the watcher on a large repository (live refresh), Open in VS Code.
