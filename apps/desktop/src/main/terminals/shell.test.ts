@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   altScreenAfter,
@@ -7,6 +8,7 @@ import {
   isRecordable,
   LineTracker,
   looksSecret,
+  POWERSHELL_EXIT,
   shellFamily,
 } from "./shell";
 
@@ -35,7 +37,7 @@ describe("shell selection", () => {
       "-NoLogo",
       "-NoProfile",
       "-Command",
-      "npm run dev",
+      `npm run dev${POWERSHELL_EXIT}`,
     ]);
     expect(commandArgs("cmd.exe", "npm run dev", "win32")).toBe('/d /s /c "npm run dev"');
     expect(commandArgs("cmd.exe", 'echo "a b"', "win32")).toBe('/d /s /c "echo "a b""');
@@ -43,6 +45,13 @@ describe("shell selection", () => {
     expect(commandArgs("/bin/zsh", "x", "darwin")).toEqual(["-l", "-c", "x"]);
     expect(interactiveArgs("pwsh.exe", "win32")).toEqual(["-NoLogo"]);
     expect(interactiveArgs("/bin/zsh", "darwin")).toEqual(["-l"]);
+  });
+
+  it.runIf(process.platform === "win32")("exits with the program's own code in PowerShell", () => {
+    const command = `node -e "process.exit(3)"`;
+    expect(
+      spawnSync("powershell.exe", commandArgs("powershell.exe", command, "win32") as string[]).status,
+    ).toBe(3);
   });
 });
 

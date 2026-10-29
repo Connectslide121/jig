@@ -53,13 +53,19 @@ export function interactiveArgs(shell: string, platform: string): string[] {
 }
 
 /**
+ * PowerShell's `-Command` exits with 1 whenever the last command failed; this passes on a program's
+ * own exit code instead. On its own line, so a `#` comment in the command doesn't swallow it.
+ */
+export const POWERSHELL_EXIT = "\nif (-not $?) { if ($LASTEXITCODE) { exit $LASTEXITCODE } else { exit 1 } }";
+
+/**
  * Arguments that make `shell` run `command` and exit with its status. For cmd it's one command line
  * (node-pty passes a string as is): quoting each argument would turn `"` into `\"`, which cmd
  * doesn't understand; `/s /c "…"` runs what's between the outer quotes unchanged.
  */
 export function commandArgs(shell: string, command: string, platform: string): string[] | string {
   const family = shellFamily(shell);
-  if (family === "powershell") return ["-NoLogo", "-NoProfile", "-Command", command];
+  if (family === "powershell") return ["-NoLogo", "-NoProfile", "-Command", command + POWERSHELL_EXIT];
   if (family === "cmd") return `/d /s /c "${command}"`;
   return platform === "darwin" ? ["-l", "-c", command] : ["-c", command];
 }

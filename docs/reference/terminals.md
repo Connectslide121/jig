@@ -11,7 +11,8 @@ Code: `apps/desktop/src/main/terminals/` (ptys), `apps/desktop/src/main/scripts/
   quits (they are not restored after a restart).
 - **Shell**: Settings → Terminal → Shell; empty = PowerShell 7 (`pwsh.exe`) if installed, else Windows
   PowerShell, on Windows; `$SHELL` elsewhere (`main/terminals/shell.ts`). Commands run as
-  `pwsh -NoLogo -NoProfile -Command …`, `cmd /d /s /c …` or `sh -c …`.
+  `pwsh -NoLogo -NoProfile -Command …`, `cmd /d /s /c …` or `sh -c …`. PowerShell gets a last line
+  that exits with the program's own exit code (`POWERSHELL_EXIT`; on its own PowerShell says 1).
 - The environment is Jig's own, with `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` removed unless API keys
   are allowed (the same rule as sessions), plus `TERM=xterm-256color`, `COLORTERM=truecolor`,
   `TERM_PROGRAM=Jig`.

@@ -407,6 +407,8 @@ Things the cloud build environment couldn't verify:
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
+  - A failed script always said "Exit code 1" on Windows (PowerShell's `-Command` replaces the
+    program's code): scripts run in PowerShell now exit with the program's own code.
   - Saving in Preview failed while another program had the file open (Windows can't rename over
     it): it now writes into the file instead. CRLF is kept.
 
