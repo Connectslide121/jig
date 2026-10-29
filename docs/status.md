@@ -419,6 +419,14 @@ Things the cloud build environment couldn't verify:
   - A Jig with its own `JIG_HOME` (tests, a throwaway home) quit at once while your usual Jig was
     open: the one-instance lock was per Windows user. With `JIG_HOME`, Electron's data folder (and the
     lock) now lives in that home, so both run side by side.
+  - `.cmd` programs in a folder with spaces didn't run at all (`az` in `C:\Program Files\…`, VS
+    Code's `code`, `npm`): the program's path was quoted with `^"`, which cmd takes literally. It's
+    now escaped with `^` the way cross-spawn does (`escapeProgramForCmd`). This broke Pipelines,
+    Releases, Project links from Azure and Open in VS Code on Windows; Check your setup said az and
+    code weren't installed. It also ignores az's "WARNING: updates available" line now.
+  - VS Code's own themes (Dark Modern, Dark+, Light+…) were missing: newer VS Code keeps its
+    built-in extensions in a folder named after the build (`Microsoft VS Coded62b1d5daesources\…`),
+    which Jig now finds (`builtinExtensionsDir`).
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
@@ -454,7 +462,7 @@ Things the cloud build environment couldn't verify:
   (~$0.02) was made. Jig read no credentials; this was not repeated and tests use the fake engine.
 - **Themes from your real VS Code install**: open Settings → Appearance and check your installed themes
   appear (labels, dark/light) and look right. On Windows Jig reads `%USERPROFILE%\.vscode\extensions`
-  and `%LOCALAPPDATA%\Programs\Microsoft VS Code\resources\app\extensions` (built-in themes).
+  and `%LOCALAPPDATA%\Programs\Microsoft VS Code\[<build>\]resources\app\extensions` (built-in themes).
 - **Open VSX** search and install (open-vsx.org is blocked in the cloud container; tested with a mock).
 - The top bar under the Windows window controls (the right padding comes from the Window Controls
   Overlay `titlebar-area-*` CSS variables) and the window-control colours following the theme.

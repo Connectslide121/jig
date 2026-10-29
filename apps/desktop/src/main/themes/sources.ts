@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
@@ -104,6 +105,38 @@ export async function userEntries(dir: string): Promise<ThemeEntry[]> {
   return entries;
 }
 
+/**
+ * VS Code's built-in extensions (its own themes) for an install folder: `resources/app/extensions`,
+ * or in newer versions the same inside a folder named after the build (`<install>/6d62b1d5da/…`),
+ * the newest one when an update left an older one behind.
+ */
+export function builtinExtensionsDir(
+  install: string,
+  fs: {
+    exists(path: string): boolean;
+    list(dir: string): string[];
+    mtimeMs(path: string): number;
+  } = {
+    exists: (path) => existsSync(path),
+    list: (dir: string) => readdirSync(dir),
+    mtimeMs: (path: string) => statSync(path).mtimeMs,
+  },
+): string {
+  const direct = join(install, "resources", "app", "extensions");
+  if (fs.exists(direct)) return direct;
+  let names: string[] = [];
+  try {
+    names = fs.list(install);
+  } catch {
+    return direct;
+  }
+  const builds = names
+    .map((name) => join(install, name, "resources", "app", "extensions"))
+    .filter((dir) => fs.exists(dir))
+    .sort((a, b) => fs.mtimeMs(b) - fs.mtimeMs(a));
+  return builds[0] ?? direct;
+}
+
 /** Folders where VS Code-family editors install extensions, plus VS Code's own built-in themes. */
 export function vscodeExtensionDirs(home = homedir(), env = process.env): string[] {
   const dirs = [".vscode", ".vscode-insiders", ".cursor", ".vscode-oss", ".windsurf"].map((d) =>
@@ -112,11 +145,10 @@ export function vscodeExtensionDirs(home = homedir(), env = process.env): string
   if (process.platform === "win32") {
     const local = env.LOCALAPPDATA ?? join(home, "AppData", "Local");
     dirs.push(
-      join(local, "Programs", "Microsoft VS Code", "resources", "app", "extensions"),
-      join(local, "Programs", "Microsoft VS Code Insiders", "resources", "app", "extensions"),
+      builtinExtensionsDir(join(local, "Programs", "Microsoft VS Code")),
+      builtinExtensionsDir(join(local, "Programs", "Microsoft VS Code Insiders")),
     );
-    if (env.ProgramFiles)
-      dirs.push(join(env.ProgramFiles, "Microsoft VS Code", "resources", "app", "extensions"));
+    if (env.ProgramFiles) dirs.push(builtinExtensionsDir(join(env.ProgramFiles, "Microsoft VS Code")));
   } else if (process.platform === "darwin") {
     dirs.push("/Applications/Visual Studio Code.app/Contents/Resources/app/extensions");
   } else {
