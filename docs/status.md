@@ -410,7 +410,10 @@ Things the cloud build environment couldn't verify:
     windows hidden.
   - Email to developers opened Office's "install Outlook" stub on a machine with only the new
     Outlook (`OUTLOOK.EXE` is registered even when classic Outlook isn't installed). It now saves the
-    zip in Downloads and opens a plain `mailto:` email in your default mail app (D-123).
+    zip in Downloads and opens a plain `mailto:` email in your default mail app (D-123). Checked
+    with the new Outlook: the email opens and Explorer shows the zip.
+  - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
+    every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
@@ -431,8 +434,6 @@ Things the cloud build environment couldn't verify:
   - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
-  - Email to developers: the new email opens in your default mail app (the new Outlook) with the
-    subject and text, and Explorer shows the zip in Downloads to attach.
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

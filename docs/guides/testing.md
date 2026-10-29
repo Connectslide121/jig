@@ -92,5 +92,6 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 ## Rules
 
 - Never use real Claude credentials in tests — use the fake engine.
-- Host modules that touch state are tested with a temporary `JIG_HOME`.
+- Host modules that touch state are tested with a temporary `JIG_HOME` (the Vitest config sets one
+  for every test, so nothing reaches the real `~/.jig`).
 - A bug fix comes with a test that fails without it.
