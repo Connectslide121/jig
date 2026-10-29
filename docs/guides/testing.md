@@ -59,8 +59,8 @@ More behaviour:
 - **Messages sent with Ctrl+Enter during a turn:** they get "Noted while working: …".
 - **Commands, models and MCP servers:** canned lists (`/usage`, `/explain-code`; models with effort
   levels; `github` connected and `jira` needing sign-in).
-- **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups and
-  commit messages.
+- **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups,
+  commit messages and release drafts (bump, changelog, one note for customers).
 - **The builder:** its sessions run a scripted build (`fakeBuilder.ts`).
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.

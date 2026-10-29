@@ -22,3 +22,11 @@ describe("commit message with Claude", () => {
     expect(cleanMessage("  Fix the cart  ")).toBe("Fix the cart");
   });
 });
+
+describe("commitMessagePrompt with a convention", () => {
+  it("asks for conventional commits when the release policy does", () => {
+    const base = { staged: true, diff: "+x", recent: "", truncated: false };
+    expect(commitMessagePrompt({ ...base, convention: "conventional" })).toContain("Conventional Commits");
+    expect(commitMessagePrompt(base)).not.toContain("Conventional Commits");
+  });
+});

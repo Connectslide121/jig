@@ -16,3 +16,7 @@ Ideas and deferred work. Each entry says why it is here.
   in git history (commit "Builder level 3: …").
 - **Git live refresh on Linux by watching folders** (D-098): needs a folder walker that follows
   `.gitignore` (Node's recursive watch can't leave `node_modules` out); until then Linux polls.
+- **Releases, the rest** (phase 18 item 8): merged PRs next to the commits, starting the release
+  pipeline after a release (through Pipelines), publishing the notes as an artifact, an unreleased
+  badge inside the Git panel, and Claude tools ("what changed since the last release?"). The core
+  (policy, release, deploys, reminders) came first; these wait until releases have been used a while.

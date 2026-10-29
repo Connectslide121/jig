@@ -350,9 +350,11 @@ true"). This step checks the whole picture again:
 - [ ] Learning 2f: classify pastes (no raw content stored); `jig_browser_network` + Network list in
       the browser view; "tools never used" signals
 - [ ] Learning 2d: Workflows add-on (manual, assisted, automated; suggestions draft workflows)
-- [ ] Releases add-on: setup chat and release policy per repository, baseline release; unreleased
-      badges, deploy-without-version warning, commit convention, reminders; bump suggestion,
-      changelog and user notes, one-action release, history and "What's live"
+- [x] Releases add-on: setup chat and release policy per repository, baseline release; unreleased
+      work in the panel and status bar, deploy-without-version warning, commit convention, reminders;
+      bump suggestion, changelog and user notes, one-action release, history and "What's live" (D-110).
+      Not yet: merged PRs in the list, starting the release pipeline, notes as an artifact, Claude
+      tools for releases (backlog)
 - [ ] Finish: README, AGENTS.md, all docs (status, architecture, references, guides, index,
       decisions, plan), the About page and screenshots, and the guide artifact updated with every new
       feature

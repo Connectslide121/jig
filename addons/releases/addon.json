@@ -1,0 +1,48 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "releases",
+  "name": "Releases",
+  "description": "Versions, changelogs and release notes per repository, following its release policy: set it up with Claude, see what's unreleased, release in one action, record deploys and see what's live.",
+  "version": "1.0.0",
+  "icon": "tag",
+  "permissions": ["exec:git", "exec:az", "fs:read", "fs:write", "ai", "chat"],
+  "contributes": {
+    "views": [
+      {
+        "id": "releases",
+        "title": "Releases",
+        "icon": "tag",
+        "region": "right",
+        "component": "ReleasesView"
+      }
+    ],
+    "tabs": [
+      {
+        "type": "repo",
+        "title": "Release",
+        "icon": "tag",
+        "component": "ReleaseTab"
+      }
+    ],
+    "statusbar": [
+      {
+        "id": "unreleased",
+        "side": "right",
+        "component": "ReleasesStatus"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show releases",
+        "group": "Git",
+        "icon": "tag",
+        "run": "showReleases"
+      }
+    ],
+    "watchers": [
+      { "id": "deploys", "every": "5m", "run": "checkDeploys" },
+      { "id": "remind", "every": "6h", "run": "remind" }
+    ]
+  }
+}

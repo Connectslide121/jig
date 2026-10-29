@@ -971,3 +971,29 @@ by hand and from chats; a section below Projects and on Home) · **Date:** 2026-
   in its add-on. It lists resource groups, or a group's resources, to tick. Jig stores no tokens.
 - **The Links view is core** (`jig.links`), a section below Projects (D-099), because it is project
   data. Drag links between groups; group menus rename, reorder, remove.
+
+### D-110 — Releases: a built-in add-on driven by a release policy in the repository
+**Decided by:** Claude, on my own (Jon: start versioning where there is none, adopt it where there is,
+stay disciplined but quiet; projects differ — some only deploy; Jon trusted my judgement on the
+open points) · **Date:** 2026-10-29
+
+- **An add-on (`addons/releases`), not core:** it only needs public slots (a view, a tab, the status
+  bar, watchers, `ai`, `openChat`), so it is also an example for the builder.
+- **The policy is `.jig/release.json` in the repository**, committed, so colleagues get the same rules.
+  Shape in `addons/releases/lib/policy.ts` (style planned/continuous/none, scheme, version file or
+  `managedBy` tool, tag format, changelog, audiences, commit convention, cadence, environments).
+- **No AI in the background.** Detection, badges, deploy checks, reminders and writing files/tags are
+  plain code. Claude is used only when you start it: the setup chat (`ctx.openChat` with a drafted
+  prompt that includes what detection found) and "Draft with Claude" (`ctx.ai.ask`, once per release).
+  Without Claude, the version comes from the commits and the changelog from a pure draft.
+- **Releasing commits only the files it changes** (version file and changelog), then an annotated tag
+  whose message holds the notes; push is a switch, on by default. A tool such as GitVersion
+  (`managedBy`) keeps the number: Jig never edits files then.
+- **Deploys:** environments marked `manual` get a "Deployed to …" button; pipeline environments are
+  watched every 5 minutes through the user's `az`. The first look at a pipeline only remembers where it
+  is, so old runs never notify. A production deploy of a commit without a release warns (planned) or
+  becomes the release (continuous: the next CalVer/patch tag, pushed). Deploys are logged in the
+  add-on's storage for "What's live"; a running changelog file for continuous projects is not written
+  (it would need a commit per deploy) — the tag messages are the log.
+- **Git's Write follows `commitConvention: "conventional"`** by reading the same file.
+

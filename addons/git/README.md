@@ -15,6 +15,9 @@ detail in the main window**. Rebase, graph and blame are out of scope.
   - The choice is kept per project and per focus repository (add-on storage `shown:<projectId>`).
   - Only the listed repositories are watched and checked.
   - The Repos add-on below the list shows every repository at a glance.
+- **Write** (commit box) asks Claude for the message from the staged diff and recent subjects. When the
+  repository's release policy (`.jig/release.json`, Releases add-on) sets `commitConvention:
+  "conventional"`, it asks for Conventional Commits (`feat(scope): …`, `!` for breaking).
 - **Tabs in the main window**: History of a branch (filter by message or author, paged), Commit detail
   (message, author, date, parents, changed files with +/−), Diff (side-by-side or inline,
   syntax-highlighted with the active theme, unchanged regions collapsed), Compare (commits ahead/behind).

@@ -424,7 +424,8 @@ extensions or embed VS Code (D-019, D-022).
 
 The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, Open in
 VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
-and `addons/scripts` (scripts view and Tools-menu actions). They use only public slots, so they are
+`addons/scripts` (scripts view and Tools-menu actions) and `addons/releases` (versions, changelogs and
+deploys per repository from its `.jig/release.json` policy, D-110). They use only public slots, so they are
 also examples for the builder.
 
 ## 12. Packaging, first run and updates

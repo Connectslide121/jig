@@ -239,7 +239,16 @@ export async function messageContext({ cwd }: Cwd, api: AddonHostApi) {
   const truncated = diff.length > MESSAGE_DIFF_LIMIT;
   if (truncated) diff = `${diff.slice(0, MESSAGE_DIFF_LIMIT)}\n[… diff cut here]`;
   const recent = (await git(api, cwd, ["log", "-12", "--pretty=format:%s"], { ok: [0, 128] })).trim();
-  return { staged, diff: diff.trim(), recent, truncated };
+  // A release policy (Releases add-on, .jig/release.json) may ask for conventional commits.
+  let convention: string | undefined;
+  try {
+    const top = (await git(api, cwd, ["rev-parse", "--show-toplevel"])).trim();
+    const policy = JSON.parse(await api.fs.readFile(join(top, ".jig", "release.json")));
+    if (policy?.commitConvention === "conventional") convention = "conventional";
+  } catch {
+    // No policy: the repository's own style.
+  }
+  return { staged, diff: diff.trim(), recent, truncated, convention };
 }
 
 export async function stage({ cwd, paths }: Cwd & { paths: string[] }, api: AddonHostApi) {

@@ -6,9 +6,14 @@ export function commitMessagePrompt(c: {
   diff: string;
   recent: string;
   truncated: boolean;
+  /** "conventional": the repository's release policy asks for conventional commits. */
+  convention?: string;
 }): string {
   return [
     "Write a git commit message for the changes below.",
+    c.convention === "conventional"
+      ? "This repository uses Conventional Commits: start the summary with a type (feat, fix, docs, refactor, perf, test, build, ci, chore), an optional (scope), and `!` for a breaking change, e.g. `feat(cart): add discount codes`."
+      : "",
     "Reply with only the message: a summary line of at most 72 characters in the imperative mood, then, if the change needs it, a blank line and a short body saying what changed and why. No code fences, no quotes, no trailers.",
     c.recent ? `Match the style of this repository's recent commit subjects:\n${c.recent}` : "",
     `${c.staged ? "Staged changes" : "All changes"}${c.truncated ? " (cut short)" : ""}:\n${c.diff}`,

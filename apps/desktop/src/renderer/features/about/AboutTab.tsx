@@ -18,6 +18,7 @@ import {
   Sparkles,
   Split,
   SquareTerminal,
+  Tag,
   Wand2,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -55,6 +56,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "browser", title: "Claude's browser", icon: Globe },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
+  { id: "releases", title: "Releases", icon: Tag },
   { id: "terminals", title: "Terminals & scripts", icon: SquareTerminal },
   { id: "configure", title: "Claude configures Jig", icon: Settings2 },
   { id: "build", title: "Build your own tools", icon: Wand2 },
@@ -673,6 +675,21 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             lead="The repository you work in, plus any you show next to it (or all of them), with Repos below for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes."
             shot={{ src: git, alt: "The Git view with changes in several repositories" }}
           />
+          <Section
+            id="releases"
+            title="Releases"
+            lead="Versions, changelogs and release notes per repository, by rules you set once: Claude looks at the repository and proposes a release policy (or adopts the versioning you already have), saved in the repo so your team shares it. Then Jig keeps you at it, quietly and without AI: what's unreleased, deploys without a version, reminders. Releasing is one action."
+          >
+            <Bullets
+              items={[
+                "Planned releases, continuous (every prod deploy is a release) or not tracked — per repository",
+                "Draft with Claude: the bump with a reason, the changelog and notes for each audience and language",
+                "One action: version file, changelog, commit, tag and push, after you've seen every step",
+                "What's live per environment, from pipeline runs or a Deployed button",
+                "Git's Write follows the repository's commit convention",
+              ]}
+            />
+          </Section>
           <Section
             id="terminals"
             title="Terminals & scripts"

@@ -513,10 +513,13 @@ function CommitBox({
   const write = async () => {
     setWriting(true);
     try {
-      const c = await ctx.host.call<{ staged: boolean; diff: string; recent: string; truncated: boolean }>(
-        "messageContext",
-        { cwd: project.path },
-      );
+      const c = await ctx.host.call<{
+        staged: boolean;
+        diff: string;
+        recent: string;
+        truncated: boolean;
+        convention?: string;
+      }>("messageContext", { cwd: project.path });
       if (!c.diff) {
         ctx.notify({
           title: "Nothing to describe",

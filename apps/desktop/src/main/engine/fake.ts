@@ -776,6 +776,17 @@ export class FakeEngine implements Engine {
           : [],
       });
     }
+    if (/Prepare the release notes for/.test(prompt)) {
+      const version = /Proposed version: (\S+) /.exec(prompt)?.[1] ?? "1.0.0";
+      return JSON.stringify({
+        bump: "minor",
+        reason: "A new feature and a fix since the last release (scripted).",
+        changelog: `## [${version}] - 2026-10-29\n\n### Added\n- Discount codes at checkout\n\n### Fixed\n- Rounding in totals`,
+        notes: [
+          { audience: "customers", language: "English", text: "You can now use discount codes at checkout." },
+        ],
+      });
+    }
     if (/Write my standup update/.test(prompt))
       return "**Done**\n- Worked on the shop (scripted standup).\n\n**Next**\n- Keep going.\n\n**Blockers**\n- None.";
     if (/guided tour of the code changes/.test(prompt)) {

@@ -148,6 +148,21 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
 - **Arrange Scripts and Pipelines:** Arrange in each panel's header hides items, lets you drag them
   into your order and adds dividers (optionally titled). It's the same in every project. Scripts
   shows one group per folder, whatever the active project.
+- **Releases** (right sidebar, Tools → Show releases; a "N to release" item in the status bar): versions,
+  changelogs and release notes per repository (D-110).
+  - **Set up** a repository once: Jig shows what it found (version files, tags, changelog, conventional
+    commits, tools such as GitVersion) and **Set up with Claude** opens a chat that proposes a release
+    policy with reasons, or adopts what's there. **Use what's there / Use the defaults** writes it
+    without a chat. The policy is `.jig/release.json` in the repository (commit it to share it).
+  - **Planned releases:** the unreleased commits (with their type and AB# work items), **Prepare
+    release** with the suggested version (the first release is the baseline), **Draft with Claude** for
+    the bump's reason, the changelog and notes per audience, then **Release**: version file, changelog,
+    commit "Release x", tag (with the notes), push.
+  - **Continuous:** "Deployed to prod" tags the checked-out commit with the next version. Production
+    pipelines (from the policy) are watched every 5 minutes: a deploy of a commit without a release
+    warns (planned) or becomes the release (continuous).
+  - **What's live** per environment and the release history (notes to copy). Weekly reminders when the
+    policy asks for them. Git's **Write** uses Conventional Commits when the policy says so.
 - **Split view:** two tabs side by side.
   - Right-click a tab → Open to the side, or drag it to the right part of the main area (or onto
     the other pane's tab bar).
