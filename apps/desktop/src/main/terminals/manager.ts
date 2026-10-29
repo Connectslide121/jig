@@ -15,7 +15,7 @@ const ECHO_WAIT_MS = 250;
 /** Output is batched for the renderer at most this often (ms). */
 const FLUSH_MS = 16;
 
-type Spawn = (file: string, args: string[], options: Record<string, unknown>) => IPty;
+type Spawn = (file: string, args: string[] | string, options: Record<string, unknown>) => IPty;
 
 export interface TerminalManagerOptions {
   spawn: Spawn;

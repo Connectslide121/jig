@@ -1,5 +1,5 @@
 import { type FSWatcher, watch } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { addonToolName, addonViewId, checkTokens, intervalMs, scopeLabel, uiExports } from "@jig/sdk";
 import { z } from "zod";
@@ -54,6 +54,7 @@ export class AddonService {
   private loaded = new Map<string, Loaded>();
   private disabled = new Set<string>();
   private watchers: FSWatcher[] = [];
+  private readonly reloadTimers = new Map<string, NodeJS.Timeout>();
   private hasRepo = false;
   /** Add-ons loaded from a build worktree instead of their live folder (id → preview). */
   private previews = new Map<string, { dir: string; buildId: string }>();
@@ -195,6 +196,10 @@ export class AddonService {
         await mkdir(dir, { recursive: true });
         const file = join(dir, `${record.id}-${bundle.hash}.mjs`);
         await writeFile(file, bundle.code!);
+        // Earlier builds of this add-on's host code (a running host has already loaded its own).
+        for (const old of await readdir(dir).catch(() => []))
+          if (old.startsWith(`${record.id}-`) && old.endsWith(".mjs") && join(dir, old) !== file)
+            await rm(join(dir, old), { force: true }).catch(() => {});
         const dataDir = join(this.options.dataDir, record.id);
         await mkdir(dataDir, { recursive: true });
         if (stale()) return;
@@ -204,13 +209,20 @@ export class AddonService {
           this.rpcFor(record.id),
         );
         for (const watcher of manifest.contributes.watchers) {
+          // A run that takes longer than the interval isn't started again until it's done.
+          let running = false;
           loaded.timers.push(
             setInterval(() => {
+              if (running || !loaded.host) return;
+              running = true;
               void loaded.host
-                ?.call(watcher.run, {})
+                .call(watcher.run, {})
                 .catch((error: Error) =>
                   log.warn(`Watcher ${record.id}/${watcher.id} failed: ${error.message}`),
-                );
+                )
+                .finally(() => {
+                  running = false;
+                });
             }, intervalMs(watcher.every)),
           );
         }
@@ -341,7 +353,7 @@ export class AddonService {
   /** Watches add-on folders and reloads an add-on when its files change. */
   watchFiles(): void {
     const roots = [this.options.userDir, this.options.builtinDir].filter((d): d is string => Boolean(d));
-    const timers = new Map<string, NodeJS.Timeout>();
+    const timers = this.reloadTimers;
     for (const root of roots) {
       try {
         this.watchers.push(
@@ -403,6 +415,8 @@ export class AddonService {
 
   stop(): void {
     for (const w of this.watchers) w.close();
+    for (const t of this.reloadTimers.values()) clearTimeout(t);
+    this.reloadTimers.clear();
     for (const l of this.loaded.values()) this.unload(l);
   }
 }

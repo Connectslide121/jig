@@ -43,4 +43,20 @@ describe("writeTextFile", () => {
     await writeTextFile(join(dir, "b.ts"), "new", undefined, allowed);
     expect(await readFile(join(dir, "b.ts"), "utf8")).toBe("new");
   });
+
+  it.skipIf(process.platform === "win32")("keeps the file's mode and writes through a symlink", async () => {
+    const { chmod, lstat, readFile, stat, symlink } = await import("node:fs/promises");
+    const { writeTextFile } = await import("./index");
+    const dir = await mkdtemp(join(tmpdir(), "jig-write-"));
+    const script = join(dir, "run.sh");
+    await writeFile(script, "echo 1\n");
+    await chmod(script, 0o755);
+    await writeTextFile(script, "echo 2\n", undefined, () => true);
+    expect((await stat(script)).mode & 0o777).toBe(0o755);
+    const link = join(dir, "link.sh");
+    await symlink(script, link);
+    await writeTextFile(link, "echo 3\n", undefined, () => true);
+    expect((await lstat(link)).isSymbolicLink()).toBe(true);
+    expect(await readFile(script, "utf8")).toBe("echo 3\n");
+  });
 });

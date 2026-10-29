@@ -9,6 +9,7 @@ const log = logger("browser");
 const PARTITION = "persist:jig-browser";
 /** Frames sent to a watching view at most this often (ms). */
 const FRAME_MS = 100;
+const guardedSessions = new WeakSet<Electron.Session>();
 const MAX_CONSOLE = 300;
 const MAX_NETWORK = 300;
 /** Bodies Claude gets, at most (characters). */
@@ -82,9 +83,14 @@ export class BrowserService {
     const c = window.webContents;
     c.setFrameRate(15);
     c.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    c.session.on("will-download", (event) => event.preventDefault());
+    // The session outlives the window (a reopened browser uses it again): one listener is enough.
+    if (!guardedSessions.has(c.session)) {
+      guardedSessions.add(c.session);
+      c.session.on("will-download", (event) => event.preventDefault());
+    }
     c.setWindowOpenHandler(({ url }) => {
-      void c.loadURL(url).catch(() => {});
+      // A page's popup opens in the same tab, but never as a file or another scheme.
+      if (/^https?:/i.test(url)) void c.loadURL(url).catch(() => {});
       return { action: "deny" };
     });
     c.on("will-navigate", (event, url) => {
@@ -484,6 +490,11 @@ export class BrowserService {
   }
 
   close(): void {
+    clearTimeout(this.frameTimer);
+    clearTimeout(this.networkTimer);
+    this.frameTimer = undefined;
+    this.networkTimer = undefined;
+    this.pending = undefined;
     this.window?.destroy();
     this.window = undefined;
     this.console = [];

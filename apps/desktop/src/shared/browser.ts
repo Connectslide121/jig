@@ -43,12 +43,15 @@ export const VIEWPORTS = {
 } as const;
 
 /** "localhost:5173" → "http://localhost:5173"; refuses javascript:, data: and other schemes. */
+/** This machine and private networks: dev servers there usually speak plain http. */
+const LOCAL = /^(localhost|127\.|0\.0\.0\.0|\[::1\]|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i;
+
 export function normalizeUrl(input: string): string {
   const raw = input.trim();
   if (!raw) throw new Error("Give a URL");
   // "localhost:5173" looks like a scheme to URL, so known host shapes are checked first.
   const host = /^(localhost|127\.0\.0\.1|\[::1\]|[\w-]+(\.[\w-]+)+)(:\d+)?(\/|$)/i.test(raw);
-  const withScheme = host ? `${/^(localhost|127\.|\[::1\])/i.test(raw) ? "http" : "https"}://${raw}` : raw;
+  const withScheme = host ? `${LOCAL.test(raw) ? "http" : "https"}://${raw}` : raw;
   const url = new URL(withScheme);
   if (!["http:", "https:", "file:"].includes(url.protocol))
     throw new Error(`Claude's browser opens http(s) and file pages only, not ${url.protocol}`);

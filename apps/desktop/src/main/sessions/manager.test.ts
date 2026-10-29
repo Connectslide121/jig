@@ -106,6 +106,24 @@ describe("SessionManager", () => {
     expect((await m.snapshot(session.id)).queue).toEqual([]);
   });
 
+  it("sends what's still queued first when Claude stopped before reaching it", async () => {
+    const m = manager();
+    const session = await create(m);
+    await m.send(session.id, "slow please");
+    await m.send(session.id, "queued");
+    await m.stopProcess(session.id);
+    await until(async () => !["working", "starting"].includes((await metaOf(m, session.id)).status));
+    expect((await m.snapshot(session.id)).queue.map((q) => q.text)).toEqual(["queued"]);
+    await m.send(session.id, "new");
+    await until(
+      async () => (await m.snapshot(session.id)).items.filter((i) => i.kind === "user").length === 3,
+    );
+    const users = (await m.snapshot(session.id)).items.filter((i) => i.kind === "user");
+    expect(users.map((u) => u.kind === "user" && u.text)).toEqual(["slow please", "queued", "new"]);
+    await until(async () => (await m.snapshot(session.id)).queue.length === 0);
+    await m.shutdown();
+  });
+
   it("removes queued messages", async () => {
     const m = manager();
     const session = await create(m);

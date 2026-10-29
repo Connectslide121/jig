@@ -25,6 +25,7 @@ export function startWorktrees(): void {
         effort: project?.effort,
       });
     },
+    retireChat: (sessionId) => sessionManager().setArchived(sessionId, true),
     onChange: (chats) => emit("worktrees.changed", chats),
   });
   handle("worktrees.list", () => s.list());

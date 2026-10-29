@@ -52,11 +52,15 @@ export function interactiveArgs(shell: string, platform: string): string[] {
   return platform === "darwin" ? ["-l"] : [];
 }
 
-/** Arguments that make `shell` run `command` and exit with its status. */
-export function commandArgs(shell: string, command: string, platform: string): string[] {
+/**
+ * Arguments that make `shell` run `command` and exit with its status. For cmd it's one command line
+ * (node-pty passes a string as is): quoting each argument would turn `"` into `\"`, which cmd
+ * doesn't understand; `/s /c "…"` runs what's between the outer quotes unchanged.
+ */
+export function commandArgs(shell: string, command: string, platform: string): string[] | string {
   const family = shellFamily(shell);
   if (family === "powershell") return ["-NoLogo", "-NoProfile", "-Command", command];
-  if (family === "cmd") return ["/d", "/s", "/c", command];
+  if (family === "cmd") return `/d /s /c "${command}"`;
   return platform === "darwin" ? ["-l", "-c", command] : ["-c", command];
 }
 

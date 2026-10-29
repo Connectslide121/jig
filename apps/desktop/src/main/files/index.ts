@@ -1,10 +1,11 @@
-import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { protocol } from "electron";
 import { type ImageData, imageMime, MAX_IMAGE_BYTES } from "../../shared/files";
 import { JigError } from "../../shared/ipc";
 import { handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { renameWithRetry } from "../state/jsonStore";
 import { isInside } from "../themes/sources";
 import { previewFile, serveFile } from "./preview";
 import { searchFiles } from "./search";
@@ -39,9 +40,10 @@ export async function writeTextFile(
   expectedMtimeMs: number | undefined,
   allowed: (path: string) => boolean | Promise<boolean>,
 ): Promise<{ size: number; mtimeMs: number }> {
-  const file = resolve(path);
-  if (!(await allowed(file)))
+  if (!(await allowed(resolve(path))))
     throw new JigError("not_allowed", "Jig saves files inside your workspaces only");
+  // Through a symlink to the file it points at, so the link stays a link.
+  const file = await realpath(resolve(path)).catch(() => resolve(path));
   const before = await stat(file).catch(() => undefined);
   if (before && !before.isFile()) throw new JigError("not_a_file", `${file} is not a file`);
   if (expectedMtimeMs !== undefined && before && Math.abs(before.mtimeMs - expectedMtimeMs) > 1)
@@ -49,7 +51,9 @@ export async function writeTextFile(
   const temp = join(dirname(file), `.${basename(file)}.jig-${process.pid}-${Date.now()}.tmp`);
   try {
     await writeFile(temp, text, "utf8");
-    await rename(temp, file);
+    // Keep the file's permissions (an executable script stays executable).
+    if (before) await chmod(temp, before.mode & 0o7777);
+    await renameWithRetry(temp, file);
   } catch (error) {
     await rm(temp, { force: true }).catch(() => {});
     throw new JigError("write_failed", `Couldn't save ${file}: ${(error as Error).message}`);

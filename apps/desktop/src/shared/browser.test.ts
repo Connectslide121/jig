@@ -6,6 +6,10 @@ describe("normalizeUrl", () => {
     expect(normalizeUrl("localhost:5173")).toBe("http://localhost:5173/");
     expect(normalizeUrl("127.0.0.1:3000/login")).toBe("http://127.0.0.1:3000/login");
     expect(normalizeUrl("example.com/docs")).toBe("https://example.com/docs");
+    expect(normalizeUrl("192.168.1.20:5173")).toBe("http://192.168.1.20:5173/");
+    expect(normalizeUrl("0.0.0.0:3000")).toBe("http://0.0.0.0:3000/");
+    expect(normalizeUrl("172.20.0.2")).toBe("http://172.20.0.2/");
+    expect(normalizeUrl("172.40.0.2")).toBe("https://172.40.0.2/");
   });
 
   it("keeps http, https and file URLs", () => {

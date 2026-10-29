@@ -174,7 +174,7 @@ export function startSessions(): void {
     if (!Notification.isSupported()) return;
     const n = new Notification({ title: note.title, body: note.body });
     n.on("click", () => {
-      const w = windows[0];
+      const w = appWindows()[0];
       if (w) {
         if (w.isMinimized()) w.restore();
         w.show();

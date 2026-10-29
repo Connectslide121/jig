@@ -48,5 +48,9 @@ describe("sharing add-ons", () => {
       "No addon.json in the package",
     );
     expect(() => inspectPackage(strToU8("nope"))).toThrow(/zip/);
+    expect(() => inspectPackage(zipSync({}))).toThrow(/empty/);
+    // A small zip that unpacks to a lot.
+    const bomb = zipSync({ "big.txt": new Uint8Array(101 * 1024 * 1024) }, { level: 9 });
+    expect(() => inspectPackage(bomb)).toThrow(/100 MB/);
   });
 });

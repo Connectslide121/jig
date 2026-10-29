@@ -78,6 +78,7 @@ export class AddonHostProcess {
         }
       });
       channel.onExit((code) => {
+        clearTimeout(startTimer);
         if (this.channel !== channel) return;
         this.channel = undefined;
         this.ready = undefined;

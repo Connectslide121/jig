@@ -24,12 +24,16 @@ describe("chats in a worktree", () => {
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "init");
     const sessions: Array<{ cwd: string; title: string }> = [];
+    const retired: string[] = [];
     const s = new WorktreeService({
       file: join(home, "worktree-chats.json"),
       dir: join(home, "worktrees"),
       createSession: async (input) => {
         sessions.push(input);
         return { id: "s1" };
+      },
+      retireChat: async (id) => {
+        retired.push(id);
       },
       onChange: () => {},
     });
@@ -40,8 +44,32 @@ describe("chats in a worktree", () => {
     await s.apply("s1");
     expect(await readFile(join(repo, "a.txt"), "utf8")).toBe("two\n");
     await s.remove("s1");
+    expect(retired).toEqual(["s1"]);
     expect(await s.list()).toEqual([]);
     await expect(stat(chat.path)).rejects.toThrow();
     expect(git(repo, "branch", "--list", chat.branch).trim()).toBe("");
+  });
+
+  it("removes the worktree again when the chat can't be created", async () => {
+    const home = await mkdtemp(join(tmpdir(), "jig-wt-"));
+    const repo = join(home, "repo");
+    execFileSync("git", ["init", "-q", "-b", "main", repo]);
+    git(repo, "config", "user.email", "a@b.c");
+    git(repo, "config", "user.name", "A");
+    await writeFile(join(repo, "a.txt"), "one\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "init");
+    const s = new WorktreeService({
+      file: join(home, "worktree-chats.json"),
+      dir: join(home, "worktrees"),
+      createSession: async () => {
+        throw new Error("no engine");
+      },
+      retireChat: async () => {},
+      onChange: () => {},
+    });
+    await expect(s.start({ repo, name: "Broken" })).rejects.toThrow("no engine");
+    expect(git(repo, "worktree", "list").trim().split("\n")).toHaveLength(1);
+    expect(git(repo, "branch", "--list", "jig/*").trim()).toBe("");
   });
 });

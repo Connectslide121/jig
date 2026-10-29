@@ -3,9 +3,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { slugify } from "@jig/themes";
-import { app, BrowserWindow, dialog, protocol, utilityProcess } from "electron";
+import { app, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
+import { appWindows } from "../appWindows";
 import { card } from "../configure/tools";
 import { registerJigTools, setAddonSummary, setAddonTools, setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
@@ -21,7 +22,7 @@ import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
 import { commitAll } from "./repo";
 import { AddonService } from "./service";
-import { inspectPackage, installPackage, packAddon } from "./share";
+import { inspectPackage, installPackage, packAddon, readPackage } from "./share";
 
 const log = logger("addons");
 const here = dirname(fileURLToPath(import.meta.url));
@@ -204,7 +205,7 @@ export async function startAddons(): Promise<void> {
   handle("addons.rollback", ({ id, commit }) => s.rollback(id, commit));
 
   // Sharing: an add-on as a .zip, and a .zip back in (after you've seen what it is).
-  const window = () => BrowserWindow.getFocusedWindow() ?? undefined;
+  const window = () => appWindows().find((w) => w.isFocused()) ?? appWindows()[0];
   handle("addons.export", async ({ id }) => {
     const addon = s.list().find((a) => a.id === id);
     if (!addon) throw new JigError("not_found", "No such add-on");
@@ -232,7 +233,7 @@ export async function startAddons(): Promise<void> {
       if (result.canceled || !result.filePaths[0]) return undefined;
       file = result.filePaths[0];
     }
-    const { pkg } = inspectPackage(new Uint8Array(await readFile(file)));
+    const { pkg } = inspectPackage(await readPackage(file));
     const existing = s.list().find((a) => a.id === pkg.id);
     const { manifest: _m, ...info } = pkg;
     return {
@@ -245,7 +246,7 @@ export async function startAddons(): Promise<void> {
     };
   });
   handle("addons.importPackage", async ({ path, replace }) => {
-    const pkg = await installPackage(new Uint8Array(await readFile(path)), paths.addons(), { replace });
+    const pkg = await installPackage(await readPackage(path), paths.addons(), { replace });
     await commitAll(
       paths.addons(),
       `Import ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""}`,

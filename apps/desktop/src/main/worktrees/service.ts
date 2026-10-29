@@ -14,6 +14,8 @@ export interface WorktreeDeps {
   /** `~/.jig/worktrees` */
   dir: string;
   createSession(input: { projectId?: string; cwd: string; title: string }): Promise<{ id: string }>;
+  /** Stops the chat's Claude Code process and archives it (its folder is about to go). */
+  retireChat(sessionId: string): Promise<void>;
   onChange(chats: WorktreeChat[]): void;
 }
 
@@ -50,11 +52,17 @@ export class WorktreeService {
     const branch = worktreeBranch(input.name, id);
     const path = join(this.deps.dir, id);
     await addWorktree(input.repo, path, branch, base);
-    const session = await this.deps.createSession({
-      projectId: input.projectId,
-      cwd: path,
-      title: input.name.trim() || `Worktree ${id}`,
-    });
+    let session: { id: string };
+    try {
+      session = await this.deps.createSession({
+        projectId: input.projectId,
+        cwd: path,
+        title: input.name.trim() || `Worktree ${id}`,
+      });
+    } catch (error) {
+      await removeWorktree(input.repo, path, branch).catch(() => {});
+      throw error;
+    }
     const chat: WorktreeChat = {
       sessionId: session.id,
       projectId: input.projectId,
@@ -76,6 +84,8 @@ export class WorktreeService {
 
   async remove(sessionId: string): Promise<void> {
     const chat = await this.get(sessionId);
+    // A running chat holds the folder (Windows can't delete it) and would fail on its next message.
+    await this.deps.retireChat(sessionId).catch(() => {});
     await removeWorktree(chat.repo, chat.path, chat.branch);
     await this.save((await this.list()).filter((c) => c.sessionId !== sessionId));
   }

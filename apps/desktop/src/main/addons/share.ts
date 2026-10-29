@@ -10,6 +10,8 @@ import { unzipSync, zipSync } from "fflate";
  */
 const SKIP = new Set([".git", "node_modules", ".DS_Store", "Thumbs.db"]);
 const MAX_BYTES = 20 * 1024 * 1024;
+/** Unpacked, all files together: a small zip can claim to hold gigabytes. */
+const MAX_UNPACKED = 100 * 1024 * 1024;
 
 /** Every file of an add-on folder (relative, forward slashes), without .git and node_modules. */
 async function files(dir: string, base = dir): Promise<string[]> {
@@ -51,6 +53,12 @@ const safe = (p: string) =>
   !p.split("/").includes("..");
 
 /** Reads a package without writing anything: its manifest, files and problems. */
+/** Reads a package file, refusing a large one before reading it. */
+export async function readPackage(file: string): Promise<Uint8Array> {
+  if ((await stat(file)).size > MAX_BYTES) throw new Error("The package is larger than 20 MB");
+  return new Uint8Array(await readFile(file));
+}
+
 export function inspectPackage(bytes: Uint8Array): {
   pkg: AddonPackage;
   contents: Record<string, Uint8Array>;
@@ -58,11 +66,20 @@ export function inspectPackage(bytes: Uint8Array): {
   if (bytes.byteLength > MAX_BYTES) throw new Error("The package is larger than 20 MB");
   let raw: Record<string, Uint8Array>;
   try {
-    raw = unzipSync(bytes);
-  } catch {
+    let unpacked = 0;
+    raw = unzipSync(bytes, {
+      filter: (f) => {
+        unpacked += f.originalSize;
+        if (unpacked > MAX_UNPACKED) throw new Error("too large");
+        return true;
+      },
+    });
+  } catch (error) {
+    if ((error as Error).message === "too large") throw new Error("The package unpacks to more than 100 MB");
     throw new Error("This isn't a zip file");
   }
   const names = Object.keys(raw).filter((n) => !n.endsWith("/"));
+  if (!names.length) throw new Error("The package is empty");
   // The files may sit in one top folder (an exported add-on) or at the root.
   const top = names.every((n) => n.includes("/")) ? names[0]!.split("/")[0]! : "";
   const contents: Record<string, Uint8Array> = {};

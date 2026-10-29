@@ -109,11 +109,12 @@ export class AttemptService {
         const branch = `jig/attempt-${id}-${index}`;
         await addWorktree(input.repo, worktree, branch, base);
         const title = task.split("\n")[0]!.slice(0, 50);
-        const session = await this.deps.createSession({
-          projectId: input.projectId,
-          cwd: worktree,
-          title: `Attempt ${index}: ${title}`,
-        });
+        const session = await this.deps
+          .createSession({ projectId: input.projectId, cwd: worktree, title: `Attempt ${index}: ${title}` })
+          .catch(async (error) => {
+            await removeWorktree(input.repo, worktree, branch).catch(() => {});
+            throw error;
+          });
         run.attempts.push({ index, hint, sessionId: session.id, worktree, branch });
       }
     } catch (error) {
@@ -153,7 +154,9 @@ export class AttemptService {
       await this.deps.ask(judgePrompt(run, changes, diffs), run.repo),
       run.attempts.length,
     );
-    await this.save({ ...run, verdict });
+    // Keep or Discard may have finished the run while Claude was judging: don't bring it back.
+    const now = await this.get(id);
+    if (now.status === "running") await this.save({ ...now, verdict });
     return verdict;
   }
 

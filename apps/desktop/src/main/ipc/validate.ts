@@ -73,6 +73,28 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "attempts.diff": z.object({ id, index: int.min(1).max(4), path: z.string().max(4096).optional() }),
   "attempts.keep": z.object({ id, index: int.min(1).max(4) }),
   "projects.add": z.object({ path: path.optional() }),
+  "projects.setFocusRepo": z.object({ id, repo: path.optional() }),
+  "sessions.addAttachment": z.object({
+    id,
+    // Base64 of a pasted file (about 30 MB).
+    data: z.string().max(42_000_000).optional(),
+    mime: z.string().max(200).optional(),
+    name: z.string().max(500).optional(),
+    path: path.optional(),
+  }),
+  "builds.start": z.object({
+    goal: z.string().min(1).max(50_000),
+    origin: z.enum(["tools", "addon", "chat", "suggestion", "settings"]),
+    targetAddonId: addonId.optional(),
+    originSessionId: id.optional(),
+  }),
+  "builds.diff": z.object({ id, path }),
+  "learning.record": z.object({
+    kind: z.literal("addon.action"),
+    text: z.string().max(2000),
+    projectId: id.optional(),
+    detail: z.record(z.string(), z.string().max(2000)).optional(),
+  }),
   "projects.create": z.object({ name: z.string().min(1).max(200), path }).extend(projectPatch.shape),
   "projects.update": z.object({ id }).extend(projectPatch.shape),
   "workspaces.add": z.object({ path: path.optional() }),

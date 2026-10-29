@@ -461,8 +461,14 @@ export class SessionManager {
       this.emit(live, [{ op: "upsert", item: sent }]);
       return;
     }
-    if (busy) {
+    // Messages still queued (Claude stopped or restarted before reaching them) go first.
+    if (busy || live.queue.length) {
       live.queue.push({ id: randomUUID(), text: trimmed, ...(attachments.length ? { attachments } : {}) });
+      if (!busy) {
+        const next = live.queue.shift()!;
+        this.emit(live, [{ op: "queue", queue: live.queue }]);
+        return this.startTurn(live, next.text, next.attachments);
+      }
       this.emit(live, [{ op: "queue", queue: live.queue }]);
       return;
     }

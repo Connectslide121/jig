@@ -129,13 +129,14 @@ export class ProjectStore {
 
   /** The repository of a workspace that Git actions and the status bar use. */
   async setFocusRepo(id: string, repo: string | undefined): Promise<ProjectsState> {
-    const data = await this.load();
     const project = await this.get(id);
     if (repo) {
       const info = await this.describe(project);
       if (!info.repos.some((r) => r.path === repo))
         throw new JigError("not_found", "That repository isn't part of this project");
     }
+    // Read after the scan above: a change saved meanwhile isn't overwritten.
+    const data = await this.load();
     return this.save({
       ...data,
       projects: data.projects.map((p) => (p.id === id ? { ...p, focusRepo: repo } : p)),

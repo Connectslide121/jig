@@ -37,7 +37,8 @@ describe("shell selection", () => {
       "-Command",
       "npm run dev",
     ]);
-    expect(commandArgs("cmd.exe", "npm run dev", "win32")).toEqual(["/d", "/s", "/c", "npm run dev"]);
+    expect(commandArgs("cmd.exe", "npm run dev", "win32")).toBe('/d /s /c "npm run dev"');
+    expect(commandArgs("cmd.exe", 'echo "a b"', "win32")).toBe('/d /s /c "echo "a b""');
     expect(commandArgs("/bin/bash", "npm run dev", "linux")).toEqual(["-c", "npm run dev"]);
     expect(commandArgs("/bin/zsh", "x", "darwin")).toEqual(["-l", "-c", "x"]);
     expect(interactiveArgs("pwsh.exe", "win32")).toEqual(["-NoLogo"]);
