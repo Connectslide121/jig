@@ -2,10 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
 
-test("Build something… makes a new add-on, previews it, and Accept makes it live", async ({
-  page,
-  jigHome,
-}) => {
+test("Build something… makes a new add-on, previews it, and Accept makes it live", async ({ page }) => {
   await page.keyboard.press("Control+Shift+B");
   await page.getByTestId("build-goal").fill("Hello button");
   await page.getByTestId("build-submit").click();
@@ -34,7 +31,7 @@ test("Build something… makes a new add-on, previews it, and Accept makes it li
   await expect(page.getByTestId("toast").last()).toContainText("Hello from hello-button");
 });
 
-test("a layout request is a level-1 change shown before it applies", async ({ page, jigHome }) => {
+test("a layout request is a level-1 change shown before it applies", async ({ page }) => {
   await page.keyboard.press("Control+Shift+B");
   await page.getByTestId("build-goal").fill("move the terminals please");
   await page.getByTestId("build-submit").click();

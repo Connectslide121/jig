@@ -467,7 +467,6 @@ export function Composer({
             )}
           </div>
         )}
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop zone for files; Attach does the same from a button. */}
         <div
           ref={box}
           className={cn(

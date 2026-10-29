@@ -42,12 +42,16 @@
   /* While a resize handle is dragged: one cursor everywhere, no text selection, iframes ignore the mouse. */
   body.jig-resizing,
   body.jig-resizing * {
+    /* biome-ignore lint/complexity/noImportantStyles: must win over every element's own cursor while dragging. */
     cursor: col-resize !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same, for text selection. */
     user-select: none !important;
   }
   body.jig-resizing-row,
   body.jig-resizing-row * {
+    /* biome-ignore lint/complexity/noImportantStyles: must win over every element's own cursor while dragging. */
     cursor: row-resize !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same, for text selection. */
     user-select: none !important;
   }
   body.jig-resizing iframe,

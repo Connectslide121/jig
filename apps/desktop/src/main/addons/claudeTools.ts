@@ -16,18 +16,17 @@ type ToolDef = AddonManifest["contributes"]["tools"][number];
 export function paramsShape(params: ToolDef["params"]): z.ZodRawShape {
   const shape: Record<string, z.ZodType> = {};
   for (const [name, p] of Object.entries(params)) {
-    let t: z.ZodType =
-      p.enum && p.enum.length
-        ? z.enum(p.enum as [string, ...string[]])
-        : p.type === "number"
-          ? z.number()
-          : p.type === "boolean"
-            ? z.boolean()
-            : p.type === "object"
-              ? z.record(z.string(), z.unknown())
-              : p.type === "array"
-                ? z.array(z.unknown())
-                : z.string();
+    let t: z.ZodType = p.enum?.length
+      ? z.enum(p.enum as [string, ...string[]])
+      : p.type === "number"
+        ? z.number()
+        : p.type === "boolean"
+          ? z.boolean()
+          : p.type === "object"
+            ? z.record(z.string(), z.unknown())
+            : p.type === "array"
+              ? z.array(z.unknown())
+              : z.string();
     if (p.description) t = t.describe(p.description);
     shape[name] = p.optional ? t.optional() : t;
   }

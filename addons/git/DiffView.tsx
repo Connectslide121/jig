@@ -16,7 +16,6 @@ import type { ReviewComment } from "./lib/review";
  */
 function Code({ html, text }: { html?: string; text: string }) {
   return html !== undefined ? (
-    // biome-ignore lint/security/noDangerouslySetInnerHtml: Shiki output built from escaped text.
     <span dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} />
   ) : (
     <span>{text || " "}</span>

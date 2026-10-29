@@ -271,7 +271,6 @@ export function TodoList({ todos, className }: { todos: Todo[]; className?: stri
     <ul className={cn("flex flex-col gap-0.5 text-xs", className)} data-testid="todo-list">
       {todos.map((t, i) => (
         <li
-          // biome-ignore lint/suspicious/noArrayIndexKey: todos have no ids.
           key={i}
           className={cn(
             "flex items-start gap-1.5",

@@ -259,7 +259,6 @@ function Runner({
     await ctx.host.call("saveRun", { run: next });
   };
   const start = async () => update(newRun(wf));
-  // biome-ignore lint/correctness/useExhaustiveDependencies: start once when opened with Run.
   useEffect(() => {
     if (autostart) void start();
   }, []);
@@ -386,7 +385,7 @@ function Runner({
         })}
       </Card>
       <div className="flex flex-wrap items-center gap-2">
-        {!run || run.status !== "running" ? (
+        {run?.status !== "running" ? (
           <Button
             variant="primary"
             icon={Play}

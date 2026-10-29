@@ -30,8 +30,6 @@ export function ImagePreview({ src, alt = "", bytes, compact, className, onClick
   const image = failed ? (
     <div className="p-4 text-sm text-muted">The image can't be shown.</div>
   ) : (
-    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: clicking a thumbnail opens it; the same action is in its menu.
-    // biome-ignore lint/a11y/useKeyWithClickEvents: see above.
     <img
       src={src}
       alt={alt}

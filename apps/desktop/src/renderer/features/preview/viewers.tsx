@@ -39,7 +39,6 @@ export function TableView({ rows, header = true }: { rows: string[][]; header?: 
               <tr>
                 <th className="border border-line px-2 py-1 text-right text-hint">#</th>
                 {Array.from({ length: columns }, (_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity but their position.
                   <th key={i} className="border border-line px-2 py-1 text-left font-semibold text-fg">
                     {head[i] ?? ""}
                   </th>
@@ -49,11 +48,9 @@ export function TableView({ rows, header = true }: { rows: string[][]; header?: 
           )}
           <tbody>
             {matching.slice(0, shown).map((row, r) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: rows of a file have no other identity.
               <tr key={r} className="hover:bg-hover">
                 <td className="border border-line px-2 py-0.5 text-right text-hint">{r + 1}</td>
                 {Array.from({ length: columns }, (_, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: see above.
                   <td
                     key={i}
                     className="max-w-96 truncate border border-line px-2 py-0.5 text-fg"
@@ -210,10 +207,8 @@ export function NotebookView({ preview }: { preview: FilePreview }) {
     <div className="mx-auto flex max-w-4xl flex-col gap-3 p-6" data-testid="preview-notebook">
       {notebook.cells.map((cell, i) =>
         cell.cell_type === "markdown" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: cells have no id in older notebooks.
           <Markdown key={i} text={joined(cell.source)} baseUrl={preview.baseUrl} />
         ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: see above.
           <div key={i} className="flex flex-col gap-1">
             <CodeBlock code={joined(cell.source)} lang={cell.cell_type === "code" ? lang : undefined} />
             {cell.outputs?.map((out, j) => {
@@ -221,7 +216,6 @@ export function NotebookView({ preview }: { preview: FilePreview }) {
               const svg = out.data?.["image/svg+xml"];
               const text = joined(out.text ?? out.data?.["text/plain"]);
               return (
-                // biome-ignore lint/suspicious/noArrayIndexKey: outputs have no id.
                 <div key={j} className="pl-3">
                   {png ? (
                     <img src={`data:image/png;base64,${joined(png).trim()}`} alt="" className="max-w-full" />
@@ -265,7 +259,6 @@ export function DiffLines({
     <pre className={cn("selectable p-4 font-mono text-xs leading-5", className)} data-testid={testId}>
       {lines.map((line, i) => (
         <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: lines of a file.
           key={i}
           className={cn(
             "px-2 whitespace-pre-wrap",

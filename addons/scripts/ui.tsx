@@ -39,7 +39,6 @@ function useListings(ctx: AddonUiContext, projects: AddonProject[]) {
   const key = projects.map((p) => p.id).join(",");
   // Groups made on the dashboard, a rescan: list again.
   useEffect(() => ctx.scripts.onChange(() => setVersion((v) => v + 1)), [ctx]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the project list changes.
   useEffect(() => {
     let cancelled = false;
     void Promise.all(

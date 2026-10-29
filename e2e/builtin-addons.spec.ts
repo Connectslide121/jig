@@ -139,7 +139,7 @@ test("Scripts: hide, reorder and group scripts with dividers, from the panel", a
 
   await view.getByTestId("scripts-arrange").click();
   // Hide lint; drag test above build; add a divider titled "Daily".
-  await view.getByTestId("arrange-toggle-s:" + (await scriptId(view, "lint"))).click();
+  await view.getByTestId(`arrange-toggle-s:${await scriptId(view, "lint")}`).click();
   await view
     .getByTestId(`arrange-item-s:${await scriptId(view, "test")}`)
     .dragTo(view.getByTestId(`arrange-item-s:${await scriptId(view, "build")}`));

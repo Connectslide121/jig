@@ -133,7 +133,6 @@ export function ArrangeList<T>({
         ),
       )}
       {arranging && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: a drop zone at the end; the handles move items.
         <div
           className={cn("flex items-center gap-1 px-2 py-1", over === "" && "border-t-2 border-accent")}
           onDragOver={(e) => {

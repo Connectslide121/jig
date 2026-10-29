@@ -47,7 +47,6 @@ export function ResizeHandle({
     document.body.classList.remove("jig-resizing", "jig-resizing-row");
   };
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a focusable separator (WAI-ARIA window splitter) has no HTML element.
     <div
       role="separator"
       tabIndex={0}

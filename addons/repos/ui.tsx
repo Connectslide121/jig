@@ -1,5 +1,5 @@
 import type { AddonComponentProps, AddonProject, AddonUiContext } from "@jig/sdk";
-import { Badge, cn, Empty, IconButton, Spinner, useAddon, useHostCall, useProjectList } from "@jig/sdk/ui";
+import { Badge, cn, Empty, IconButton, Spinner, useAddon, useProjectList } from "@jig/sdk/ui";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -43,7 +43,6 @@ function useOverview() {
   const projects = useProjectList();
   const [repos, setRepos] = useState(cache);
   const key = projects.map((p) => `${p.id}:${p.isGitRepo}`).join(",");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh when the project list changes.
   useEffect(() => {
     subscribers.add(setRepos);
     void refresh(ctx);
@@ -142,25 +141,37 @@ function RepoRow({ repo, project }: { repo: RepoState; project?: AddonProject })
             icon={CloudDownload}
             size="sm"
             label="Fetch"
-            onClick={(e) => (e.stopPropagation(), void act(ctx, `Fetched ${repo.name}`, "fetch", repo.path))}
+            onClick={(e) => {
+              e.stopPropagation();
+              void act(ctx, `Fetched ${repo.name}`, "fetch", repo.path);
+            }}
           />
           <IconButton
             icon={ArrowDownToLine}
             size="sm"
             label="Pull"
-            onClick={(e) => (e.stopPropagation(), void act(ctx, `Pulled ${repo.name}`, "pull", repo.path))}
+            onClick={(e) => {
+              e.stopPropagation();
+              void act(ctx, `Pulled ${repo.name}`, "pull", repo.path);
+            }}
           />
           <IconButton
             icon={ArrowUpFromLine}
             size="sm"
             label="Push"
-            onClick={(e) => (e.stopPropagation(), void act(ctx, `Pushed ${repo.name}`, "push", repo.path))}
+            onClick={(e) => {
+              e.stopPropagation();
+              void act(ctx, `Pushed ${repo.name}`, "push", repo.path);
+            }}
           />
           <IconButton
             icon={MoreHorizontal}
             size="sm"
             label="More"
-            onClick={(e) => (e.stopPropagation(), menu(e.currentTarget))}
+            onClick={(e) => {
+              e.stopPropagation();
+              menu(e.currentTarget);
+            }}
           />
         </span>
       </div>
@@ -205,7 +216,10 @@ export function ReposView({ ctx }: AddonComponentProps) {
           size="sm"
           label="Fetch all"
           disabled={busy}
-          onClick={() => (setBusy(true), void fetchAll(ctx).finally(() => setBusy(false)))}
+          onClick={() => {
+            setBusy(true);
+            void fetchAll(ctx).finally(() => setBusy(false));
+          }}
         />
         <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={() => void reload()} />
       </div>

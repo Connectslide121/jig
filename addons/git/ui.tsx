@@ -282,7 +282,10 @@ function FileRow({
             icon={Undo2}
             size="sm"
             label="Discard"
-            onClick={(e) => (e.stopPropagation(), void discard())}
+            onClick={(e) => {
+              e.stopPropagation();
+              void discard();
+            }}
           />
         )}
         {group === "staged" ? (
@@ -291,7 +294,10 @@ function FileRow({
             size="sm"
             label="Unstage"
             data-testid="git-unstage"
-            onClick={(e) => (e.stopPropagation(), unstage())}
+            onClick={(e) => {
+              e.stopPropagation();
+              unstage();
+            }}
           />
         ) : (
           <IconButton
@@ -299,7 +305,10 @@ function FileRow({
             size="sm"
             label="Stage"
             data-testid="git-stage"
-            onClick={(e) => (e.stopPropagation(), stage())}
+            onClick={(e) => {
+              e.stopPropagation();
+              stage();
+            }}
           />
         )}
       </span>
@@ -655,7 +664,6 @@ function CommitBox({
             </button>
           </div>
           {findings.map((f, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: findings have no id.
             <div key={i} className="flex gap-1.5 pl-5">
               <span
                 className={
@@ -899,7 +907,6 @@ type RepoStatus = { cwd: string; status?: Status; error?: string };
 function useLiveRefreshAll(cwds: string[], reloadAll: () => void, reloadOne: (cwd: string) => void) {
   const ctx = useAddon();
   const key = cwds.join("\n");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for `cwds`.
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
     let gone = false;
@@ -1181,7 +1188,6 @@ function WorkspaceList({
   const listAll = showsAll(shown, focus, paths);
   const visible = visibleRepos(paths, focus, shown);
   const visibleKey = visible.join("\n");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `visibleKey` stands for `visible`.
   const repos = useMemo(
     () => visible.map((p) => everyRepo.find((r) => r.path === p)!).filter(Boolean),
     [visibleKey, everyRepo],
@@ -1242,7 +1248,7 @@ function WorkspaceList({
     focus &&
     ctx.menu(
       [
-        { label: "Show next to " + (focusRepo?.name ?? "this repository"), disabled: true },
+        { label: `Show next to ${focusRepo?.name ?? "this repository"}`, disabled: true },
         ...everyRepo
           .filter((r) => r.path !== focus)
           .map((r) => ({
@@ -1516,7 +1522,6 @@ export function HistoryTab({ ctx, params }: AddonTabProps) {
       if (n === request.current) setLoading(false);
     }
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the branch or filter changes.
   useEffect(() => {
     setDone(false);
     void load(true);
@@ -2054,7 +2059,6 @@ export function GitSettings({ ctx }: AddonComponentProps) {
  */
 function UnreleasedBadge({ ctx, cwd, head }: { ctx: AddonUiContext; cwd: string; head?: string }) {
   const [info, setInfo] = useState<{ count: number; tag?: string }>();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new commit (head) changes the count.
   useEffect(() => {
     let live = true;
     void ctx.host

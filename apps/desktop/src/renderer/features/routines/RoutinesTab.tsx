@@ -68,7 +68,6 @@ function RunLog({ sessionId }: { sessionId: string }) {
     <div className="flex flex-col gap-2 px-3 py-2" data-testid="routine-log">
       {log.map((entry, i) => (
         <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no ids.
           key={i}
           className={cn("rounded-md px-2 py-1 text-xs", entry.role === "user" ? "bg-active" : "bg-surface")}
         >

@@ -218,17 +218,19 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                       icon={Play}
                       size="sm"
                       label={`Run ${pl.name}`}
-                      onClick={(e) => (
-                        e.stopPropagation(), void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch)
-                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void startRun(ctx, p.project, pl.id, pl.name, pl.latest?.branch);
+                      }}
                     />
                     <IconButton
                       icon={ExternalLink}
                       size="sm"
                       label="Open in browser"
-                      onClick={(e) => (
-                        e.stopPropagation(), ctx.openExternal(pipelineUrl(data.org, p.project, pl.id))
-                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        ctx.openExternal(pipelineUrl(data.org, p.project, pl.id));
+                      }}
                     />
                   </span>
                 </div>

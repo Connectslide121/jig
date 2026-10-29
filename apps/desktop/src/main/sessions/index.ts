@@ -17,7 +17,6 @@ import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { routinesChanged } from "../routines";
 import { paths } from "../state/paths";
-import { isInside } from "../themes/sources";
 import { usageService } from "../usage";
 import { SessionManager } from "./manager";
 import { notificationFor } from "./notify";

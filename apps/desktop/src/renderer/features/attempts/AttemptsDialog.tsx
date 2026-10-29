@@ -129,7 +129,6 @@ function Form({ open }: { open: Open }) {
         </div>
         <div className="flex flex-col gap-1.5">
           {angles.slice(0, count).map((angle, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: one input per attempt number.
             <div key={i} className="flex items-center gap-2 text-xs text-muted">
               <span className="w-16 shrink-0">Attempt {i + 1}</span>
               <Input

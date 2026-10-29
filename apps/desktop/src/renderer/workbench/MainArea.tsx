@@ -323,7 +323,6 @@ export function MainArea() {
           </div>
           {split && (
             <>
-              {/* biome-ignore lint/a11y/useSemanticElements: a focusable splitter (WAI-ARIA window splitter). */}
               <div
                 role="separator"
                 aria-orientation="vertical"

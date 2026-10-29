@@ -6,7 +6,6 @@ import {
   IconButton,
   Input,
   useActiveProject,
-  useAddon,
   useAddonEvent,
   useWorkspaceList,
   VirtualList,
@@ -152,7 +151,6 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
     [folders, loadDir, loadStatus],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `shownKey` stands for `shown`.
   useEffect(() => {
     if (!roots) return;
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -198,7 +196,6 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
       ),
     ).then((list) => setAll(Object.fromEntries(list)));
   }, [query, all, shownFolders, ctx]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new set of folders needs a new list.
   useEffect(() => setAll(undefined), [shownKey]);
 
   if (!roots || !main) return null;

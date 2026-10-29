@@ -172,7 +172,6 @@ export function TourTab({ params, active }: TabProps) {
           {parts.header && <DiffLines text={parts.header.trimEnd()} />}
           {parts.hunks.map((hunk, i) => (
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: hunks of one file diff.
               key={i}
               ref={i === highlighted ? hunkRef : undefined}
               className={cn(i === highlighted ? "border-l-2 border-accent bg-accent-soft" : "opacity-60")}
