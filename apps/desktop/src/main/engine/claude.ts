@@ -48,6 +48,8 @@ export class ClaudeEngine implements Engine {
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         // biome-ignore lint/suspicious/noExplicitAny: the SDK's MCP server config type is opaque here.
         mcpServers: options.mcpServers as any,
+        // biome-ignore lint/suspicious/noExplicitAny: Agent SDK AgentDefinitions, opaque to the engine interface.
+        agents: options.agents as any,
         abortController: abort,
         stderr: (data) => log.debug(`claude stderr: ${data.trimEnd()}`),
         canUseTool: async (toolName, toolInput, ctx) => {

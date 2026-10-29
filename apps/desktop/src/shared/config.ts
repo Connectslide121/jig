@@ -37,6 +37,8 @@ export const ConfigSchema = z.object({
       promptSuggestions: z.boolean().default(true),
       /** Claude Code keeps a copy of files before it edits them, so a chat can restore them later. */
       fileCheckpoints: z.boolean().default(true),
+      /** Model for testing in Claude's browser (the jig-tester subagent and Test something…, D-124). */
+      testerModel: z.string().default("haiku"),
     })
     .prefault({}),
   editor: z

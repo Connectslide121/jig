@@ -1217,3 +1217,17 @@ the mail app) · **Date:** 2026-10-29 · **Replaces** D-119's list of ways to at
   says to attach the zip ("[Before sending: attach … Jig saved it in your Downloads folder.]") and the
   toast in Jig says the same. You attach it and press Send; Jig still sends nothing itself.
 - The Outlook command line, AppleScript, `xdg-email` and `.eml` code is removed.
+
+### D-124 — Testing runs on a small model: the jig-tester subagent and Test something…
+**Decided by:** Jon (testing in the browser on Opus is overkill; option A of the proposal: Haiku,
+not a second engine or a local model) and Claude, on my own (how) · **Date:** 2026-10-29
+
+- **Every chat with Jig's tools gets a `jig-tester` subagent** (Agent SDK `agents`): Claude's browser
+  tools plus Read/Grep/Glob (it tests, it never changes code), its own test protocol, no CLAUDE.md,
+  on `engine.testerModel` (default `haiku`). `jigContext` tells Claude to hand page testing to it, so
+  an Opus chat keeps coding while the clicking-through runs on Haiku.
+- **Tools → Test something…** (and the flask button in Claude's browser view) asks what to test and
+  starts a chat on the tester model with the same protocol, on the page open in Claude's browser
+  unless the request names a URL.
+- **Still Claude Code only** (vision principle 1): pi or a local model were weighed and left out.
+- **Builder and other special chats** keep their own tools and get no tester.

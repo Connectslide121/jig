@@ -660,6 +660,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Ask a chat to “open the app and check the login form”",
+                "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Tools → Test something… (or the flask in the browser view) starts a test chat on it",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",
                 "Desktop, tablet and phone sizes for responsive checks",

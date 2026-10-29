@@ -77,6 +77,7 @@ export interface SessionManagerOptions {
   };
   appendSystemPrompt: (meta: SessionMeta) => string;
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
+  agents?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   toolHandlers?: (
     meta: SessionMeta,
   ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
@@ -275,6 +276,7 @@ export class SessionManager {
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
         mcpServers: this.options.mcpServers?.(meta),
+        agents: this.options.agents?.(meta),
         toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {

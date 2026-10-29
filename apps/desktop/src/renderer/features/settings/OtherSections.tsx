@@ -123,6 +123,13 @@ export function EngineSettings() {
         placeholder="(Claude Code default)"
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
+      <TextSetting
+        label="Tester model"
+        description="Model that tests pages in Claude's browser: the jig-tester helper your chats hand testing to, and Tools → Test something…. A small model keeps testing cheap."
+        value={e.testerModel}
+        placeholder="haiku"
+        onSave={(testerModel) => void updateConfig({ engine: { testerModel } })}
+      />
       <SettingRow
         label="Default permission mode"
         description="How new chats ask before editing files or running commands."

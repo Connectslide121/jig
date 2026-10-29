@@ -51,6 +51,8 @@ export interface StartOptions {
   additionalDirectories?: string[];
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
+  /** Subagents Claude can hand work to (Agent SDK `AgentDefinition`s, e.g. `jig-tester`). */
+  agents?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */
   toolHandlers?: Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>>;
   /** Asks the user; resolves with their decision. */

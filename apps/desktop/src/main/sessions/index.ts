@@ -7,6 +7,7 @@ import { app, BrowserWindow, dialog, Notification } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
 import { appWindows } from "../appWindows";
 import { getConfig } from "../config";
@@ -93,6 +94,11 @@ export function startSessions(): void {
       if (hooks) return hooks.mcpServers(meta);
       return getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
     },
+    // Chats with Jig's tools get the tester, which tests UI in Claude's browser on a small model.
+    agents: (meta) =>
+      kindHooks.has(meta.kind ?? "")
+        ? undefined
+        : { [TESTER_AGENT]: testerAgent(getConfig().engine.testerModel) },
     toolHandlers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
       return hooks ? hooks.toolHandlers(meta) : jigToolHandlers(meta);

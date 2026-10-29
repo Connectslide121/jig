@@ -374,3 +374,7 @@ true"). This step checks the whole picture again:
       (spec, prompt for Claude Code, mockup, context) that **Email to developers** attaches to a new
       email to support@sprinta.se (D-119); you try the demo, ask for changes and confirm before
       sending; the address is fixed (D-120)
+- [x] Email to developers saves the package in Downloads and opens a plain `mailto:` email (D-123)
+- [x] Delete your own add-ons in Settings → Add-ons (D-122)
+- [x] Testing on a small model: the `jig-tester` subagent in every chat and Tools → Test something…
+      (D-124)

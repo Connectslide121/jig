@@ -59,6 +59,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `""` | model for new sessions; empty = Claude Code's default |
 | `engine.defaultPermissionMode` | `default` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
+| `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Tools → Test something… (D-124) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
 | `editor.wordWrap` | `false` | long lines wrap in the file editor (Preview) |

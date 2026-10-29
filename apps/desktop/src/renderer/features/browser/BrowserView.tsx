@@ -2,6 +2,7 @@ import {
   ArrowDownUp,
   ArrowLeft,
   ArrowRight,
+  FlaskConical,
   Globe,
   MonitorSmartphone,
   RotateCw,
@@ -22,6 +23,7 @@ import { Badge, cn, Empty, IconButton, Input, openMenuAt } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import type { ViewProps } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
+import { testSomething } from "./testing";
 
 const LEVEL_TONE: Record<ConsoleEntry["level"], string> = {
   log: "text-muted",
@@ -167,6 +169,13 @@ export function BrowserView(_props: ViewProps) {
             onChange={(e) => setAddress(e.target.value)}
           />
         </form>
+        <IconButton
+          size="sm"
+          icon={FlaskConical}
+          label="Test this page… (a chat on the small tester model)"
+          onClick={() => void testSomething()}
+          data-testid="browser-test"
+        />
         <IconButton
           size="sm"
           icon={MonitorSmartphone}

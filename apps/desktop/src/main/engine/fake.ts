@@ -162,6 +162,8 @@ export class FakeEngine implements Engine {
           return;
         }
         contextTokens = Math.min(CONTEXT_MAX, contextTokens + (lower.includes("big file") ? 130_000 : 9_000));
+        // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
+        const isTestChat = lower.startsWith("test this in claude's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
         if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
@@ -182,6 +184,16 @@ export class FakeEngine implements Engine {
               text: `**/${command.name}** (fake): ${command.description}.${effort ? ` Effort: ${effort}.` : ""}`,
             });
           else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
+        } else if (isTestChat) {
+          // Tools → Test something…: a short report that says which model and helpers ran it.
+          const agents = Object.keys(options.agents ?? {}).join(", ") || "none";
+          await stream(
+            `${msg}:text:0`,
+            `Test report (model ${model}; subagents: ${agents})
+
+- PASS: the page opened and showed what was asked.`,
+            signal,
+          );
         } else if (lower.includes("routine")) {
           // Claude makes a routine with Claude Code's RemoteTrigger tool (it asks first, like any change).
           const toolId = `tool-${randomUUID()}`;
@@ -635,7 +647,7 @@ export class FakeEngine implements Engine {
           const note = steers.shift()!;
           await stream(`${msg}:text:steer-${steers.length}`, `Noted while working: “${note}”.`, signal);
         }
-        if (lower.includes("fail")) {
+        if (lower.includes("fail") && !isTestChat) {
           onEvent({
             type: "result",
             ok: false,

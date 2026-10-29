@@ -315,6 +315,10 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   (right sidebar, or Tools → Open Claude's browser) shows the
   page live with an address bar, back/forward/reload, desktop/tablet/phone sizes and the console; click
   and type on it to take over. Try it with the fake engine: `browse file:///path/to/page.html`.
+- **Testing on a small model** (D-124): chats hand page testing to the `jig-tester` subagent, which
+  uses Claude's browser on Haiku (Settings → Claude Code → Tester model) and reports PASS/FAIL per
+  check with screenshots. Tools → Test something… or the flask in Claude's browser view starts a
+  test chat on that model. Try it with the fake engine: Tools → Test something… → anything.
 - **Images from tools:** screenshots and charts that a tool returns (an MCP browser, a plotting tool)
   show as thumbnails in the chat instead of "[image]".
 - **Guided tours of changes:** Git → ✨ → Walk me through the changes (also a workspace repo's menu

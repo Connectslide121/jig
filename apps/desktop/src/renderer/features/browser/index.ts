@@ -1,8 +1,9 @@
-import { Globe } from "lucide-react";
+import { FlaskConical, Globe } from "lucide-react";
 import { useHostEvent } from "../../lib/host";
 import { registerAction, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { BrowserView } from "./BrowserView";
+import { testSomething } from "./testing";
 
 export const BROWSER_VIEW = "jig.browser";
 
@@ -22,6 +23,14 @@ export function registerBrowser(): void {
     icon: Globe,
     keywords: ["browser", "web", "preview", "localhost"],
     run: () => workbench.showView(BROWSER_VIEW),
+  });
+  registerAction({
+    id: "jig.testSomething",
+    title: "Test something…",
+    group: "Claude",
+    icon: FlaskConical,
+    keywords: ["test", "check", "qa", "browser", "haiku", "cheap"],
+    run: () => void testSomething(),
   });
 }
 

@@ -164,7 +164,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
       <b>Claude's browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse
-      and keyboard. Long-running commands Claude starts run in Jig terminals you can see and stop.
+      and keyboard. Testing runs on a small model (Haiku): chats hand it to the jig-tester helper, or
+      use Tools → Test something…. Long-running commands Claude starts run in Jig terminals you can
+      see and stop.
     </td>
   </tr>
   <tr>
