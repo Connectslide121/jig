@@ -53,7 +53,13 @@ export async function writeTextFile(
     await writeFile(temp, text, "utf8");
     // Keep the file's permissions (an executable script stays executable).
     if (before) await chmod(temp, before.mode & 0o7777);
-    await renameWithRetry(temp, file);
+    await renameWithRetry(temp, file).catch(async (error: NodeJS.ErrnoException) => {
+      // Windows can't replace a file another program holds open (an editor, a log viewer, a
+      // scanner), but it can often still write into it, as VS Code does.
+      if (!before || !["EPERM", "EBUSY", "EACCES"].includes(error.code ?? "")) throw error;
+      await writeFile(file, text, "utf8");
+      await rm(temp, { force: true });
+    });
   } catch (error) {
     await rm(temp, { force: true }).catch(() => {});
     throw new JigError("write_failed", `Couldn't save ${file}: ${(error as Error).message}`);

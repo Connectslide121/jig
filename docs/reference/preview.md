@@ -50,6 +50,9 @@ Code and text files are **always editable** in the Preview tab (D-101). Kinds wi
   close brackets). Settings → Editor has the same settings.
 - **Saving:** `Ctrl+S`, or **Save** in the header while there are unsaved edits. It goes through
   `files.write`, inside a workspace or a file you opened in Preview. Windows line endings are kept.
+  It writes a temporary file next to it and renames it over the file (retrying briefly while a
+  scanner holds it); when Windows still refuses because another program has the file open, it
+  writes into the file instead.
 - **A change on disk while you have unsaved edits** (Claude edits the file) doesn't replace them. A
   bar asks: **Keep mine** (save over it), **Load theirs** (drop your edits), **Show diff** (− on
   disk, + yours, `shared/lineDiff.ts`). Saving also refuses when the file changed since you opened it.

@@ -60,3 +60,32 @@ describe("writeTextFile", () => {
     expect(await readFile(script, "utf8")).toBe("echo 3\n");
   });
 });
+
+describe.runIf(process.platform === "win32")("writeTextFile on Windows", () => {
+  it("saves a file another program holds open, by writing into it", async () => {
+    const { spawn } = await import("node:child_process");
+    const { readFile, readdir } = await import("node:fs/promises");
+    const { writeTextFile } = await import("./index");
+    const dir = await mkdtemp(join(tmpdir(), "jig-held-"));
+    const file = join(dir, "a.txt");
+    await writeFile(file, "one\r\n");
+    // Open for reading, sharing read and write but not delete: rename over it fails.
+    const holder = spawn(
+      "powershell",
+      [
+        "-NoProfile",
+        "-Command",
+        `$f=[IO.File]::Open('${file}','Open','Read','ReadWrite'); 'open'; Start-Sleep 20; $f.Close()`,
+      ],
+      { windowsHide: true },
+    );
+    await new Promise((r) => holder.stdout.once("data", r));
+    try {
+      await writeTextFile(file, "two\r\n", undefined, () => true);
+      expect(await readFile(file, "utf8")).toBe("two\r\n");
+      expect(await readdir(dir)).toEqual(["a.txt"]);
+    } finally {
+      holder.kill();
+    }
+  });
+});

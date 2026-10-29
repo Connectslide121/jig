@@ -407,6 +407,8 @@ Things the cloud build environment couldn't verify:
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
     add-on's `exec("cmd.exe", ["/d", "/s", "/c", line])` now passes the line as written
     (`resolveCommand` in `main/addons/winCommand.ts`). Scripts and terminals were already right.
+  - Saving in Preview failed while another program had the file open (Windows can't rename over
+    it): it now writes into the file instead. CRLF is kept.
 
 - **Phase 18 on Windows:**
   - Files: the watcher on a large repository (live refresh), Open in VS Code.
