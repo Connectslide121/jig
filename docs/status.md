@@ -399,6 +399,8 @@ Things the cloud build environment couldn't verify:
   - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
   - A fresh clone used to fail `npm run check`: Git for Windows checks files out with CRLF
     (`core.autocrlf=true`), which Biome rejects. `.gitattributes` now keeps LF (D-121).
+  - `npm run build` and `npm run dev` failed on Windows: the main-process build marked its own
+    entry points (`C:\…`) as external npm packages. Fixed in `apps/desktop/scripts/build-config.mjs`.
   - Add-on UIs didn't bundle at all on Windows: the bundler took the entry `C:\…\ui.tsx` for a
     package import and refused it. Fixed in `main/addons/bundle.ts`.
   - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.

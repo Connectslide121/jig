@@ -1,4 +1,5 @@
 // Shared esbuild configuration for the main process and the preload script.
+import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const appDir = fileURLToPath(new URL("..", import.meta.url));
@@ -8,6 +9,8 @@ const externalizeDependencies = {
   name: "externalize-dependencies",
   setup(build) {
     build.onResolve({ filter: /^[^./]/ }, (args) => {
+      // On Windows entry points are "C:\…", which the filter also matches.
+      if (args.kind === "entry-point" || isAbsolute(args.path)) return undefined;
       if (args.path.startsWith("@jig/")) return undefined;
       return { path: args.path, external: true };
     });
