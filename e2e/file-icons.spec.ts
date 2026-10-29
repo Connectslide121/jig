@@ -44,16 +44,29 @@ async function fakeVsCodeHome(root: string) {
   ])
     await write(join(ext, "icons", `${name}.svg`), svg(fill!));
   await write(
-    join(home, ".config", "Code", "User", "settings.json"),
+    join(configDir(home), "Code", "User", "settings.json"),
     '{ "workbench.iconTheme": "material-icon-theme" }',
   );
   return home;
 }
 
+// Where VS Code's settings are, as Jig looks for them (`vscodeSettingsFiles`), inside the fake home.
+const configDir = (home: string) =>
+  process.platform === "win32" ? join(home, "AppData", "Roaming") : join(home, ".config");
+
+// A fake home on every OS: Windows takes the home folder from USERPROFILE, not HOME.
+const homeEnv = (home: string) => ({
+  HOME: home,
+  USERPROFILE: home,
+  APPDATA: join(home, "AppData", "Roaming"),
+  LOCALAPPDATA: join(home, "AppData", "Local"),
+  XDG_CONFIG_HOME: join(home, ".config"),
+});
+
 test("file icons follow the icon theme VS Code uses, and can be switched", async () => {
   const root = await mkdtemp(join(tmpdir(), "jig-e2e-"));
   const home = await fakeVsCodeHome(root);
-  const app = await launchJig(join(root, "jig-home"), { HOME: home, XDG_CONFIG_HOME: join(home, ".config") });
+  const app = await launchJig(join(root, "jig-home"), homeEnv(home));
   try {
     const page = await app.firstWindow();
     await page.waitForSelector("[data-testid=app-root]");

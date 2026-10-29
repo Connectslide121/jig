@@ -12,7 +12,13 @@
 `e2e/fixtures.ts` launches the **built** app (`apps/desktop/dist`) with:
 
 - a fresh temporary `JIG_HOME` per test (deleted afterwards),
-- `JIG_ENGINE=fake`, so no Claude Code process is started and no quota is used.
+- `JIG_ENGINE=fake`, so no Claude Code process is started and no quota is used,
+- `JIG_HIDDEN=1`, so the windows never show: on a desktop they would take focus and the mouse could
+  cancel a hover (`JIG_HIDDEN=` with an empty value to watch them).
+
+Tests that fake a home folder set `USERPROFILE`/`APPDATA` as well as `HOME` (Windows takes the home
+folder from them), and fake programs on `PATH` also get a `.cmd` next to them (Windows runs no
+shebang scripts).
 
 Fixtures: `jigHome`, `app` (ElectronApplication), `page` (main window, waits for the UI).
 `hostCall(page, method, args)` calls a host method and returns the raw `{ ok, value | error }`

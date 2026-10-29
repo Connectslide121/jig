@@ -21,7 +21,11 @@ export async function launchJig(
   if (process.platform === "linux") args.push("--no-sandbox");
   return electron.launch({
     args,
-    env: { ...process.env, JIG_HOME: jigHome, JIG_ENGINE: "fake", ...env } as Record<string, string>,
+    // Hidden, so a test never fights the user's mouse and focus (JIG_HIDDEN= shows the windows).
+    env: { JIG_HIDDEN: "1", ...process.env, JIG_HOME: jigHome, JIG_ENGINE: "fake", ...env } as Record<
+      string,
+      string
+    >,
   });
 }
 

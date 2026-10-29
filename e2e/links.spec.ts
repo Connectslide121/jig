@@ -1,6 +1,6 @@
 import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
 test("project links: grouped, typed, added by hand, shown on Home, and by Claude with Undo", async ({
@@ -58,7 +58,14 @@ else console.log(JSON.stringify([
 `,
   );
   await chmod(join(bin, "az"), 0o755);
-  const app = await launchJig(home, { PATH: `${bin}:${process.env.PATH}` });
+  // Windows runs no shebang scripts: an az.cmd starts the same script with node.
+  await writeFile(
+    join(bin, "az.cmd"),
+    `@node "%~dp0az" %*
+`,
+  );
+  const PATH = `${bin}${delimiter}${process.env.PATH ?? process.env.Path}`;
+  const app = await launchJig(home, { PATH, Path: PATH });
   const page = await app.firstWindow();
   await page.waitForSelector("[data-testid=app-root]");
   const dir = join(home, "shop");
