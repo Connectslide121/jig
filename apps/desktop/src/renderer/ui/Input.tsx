@@ -1,3 +1,4 @@
+import { Search, X } from "lucide-react";
 import {
   forwardRef,
   type InputHTMLAttributes,
@@ -15,6 +16,48 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   ref,
 ) {
   return <input ref={ref} className={cn(field, "h-7", className)} spellCheck={false} {...rest} />;
+});
+
+/**
+ * A filter or search box: the magnifier beside the text (never over it) and, with `onClear` and a
+ * value, an × that empties it. Use it for every "Filter …" field.
+ */
+export const SearchInput = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement> & { onClear?: () => void; boxClassName?: string }
+>(function SearchInput({ className, boxClassName, onClear, ...rest }, ref) {
+  return (
+    <div
+      className={cn(
+        "no-drag flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border border-line-strong bg-raised px-2",
+        "focus-within:border-focus",
+        boxClassName,
+      )}
+    >
+      <Search className="size-3.5 shrink-0 text-hint" aria-hidden />
+      <input
+        ref={ref}
+        type="text"
+        spellCheck={false}
+        className={cn(
+          "h-full min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-hint disabled:opacity-50",
+          className,
+        )}
+        {...rest}
+      />
+      {onClear && rest.value ? (
+        <button
+          type="button"
+          aria-label="Clear"
+          title="Clear"
+          className="shrink-0 rounded-sm text-hint hover:text-fg"
+          onClick={onClear}
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(

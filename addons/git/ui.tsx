@@ -14,8 +14,8 @@ import {
   Empty,
   FileIcon,
   IconButton,
-  Input,
   isImagePath,
+  SearchInput,
   SectionTitle,
   Select,
   Spinner,
@@ -843,7 +843,7 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
   useLiveRefresh(cwd, reload);
   if (st.error) return <div className="p-3 text-xs text-danger">{st.error}</div>;
   const status = st.data;
-  if (!status) return <Spinner className="m-3" />;
+  if (!status) return <Spinner center />;
   const b = status.branch;
   return (
     <div className="flex h-full flex-col" data-testid="git-view">
@@ -1182,7 +1182,7 @@ function useShown(ctx: AddonUiContext, projectId: string) {
  */
 function WorkspaceGit({ ctx, project }: { ctx: AddonUiContext; project: AddonProject }) {
   const [shown, setShown] = useShown(ctx, project.id);
-  if (!shown) return <Spinner className="m-3" />;
+  if (!shown) return <Spinner center />;
   return <WorkspaceList ctx={ctx} project={project} shown={shown} setShown={setShown} />;
 }
 
@@ -1553,11 +1553,12 @@ export function HistoryTab({ ctx, params }: AddonTabProps) {
         <span className="text-sm font-medium">{ref}</span>
         <span className="text-xs text-muted">{project.name}</span>
         <div className="flex-1" />
-        <Input
+        <SearchInput
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          onClear={() => setFilter("")}
           placeholder="Filter by message or author"
-          className="w-72"
+          boxClassName="w-72"
           data-testid="git-history-filter"
         />
       </div>
@@ -1572,7 +1573,7 @@ export function HistoryTab({ ctx, params }: AddonTabProps) {
         onEndReached={() => void load(false)}
         renderRow={(commit) => <CommitRow ctx={ctx} project={project} commit={commit} />}
       />
-      {loading && <Spinner className="m-2" />}
+      {loading && <Spinner center />}
     </div>
   );
 }
@@ -1599,7 +1600,7 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
   );
   if (!project) return <Empty title="Project not found" />;
   if (error) return <div className="p-6 text-sm text-danger">{error}</div>;
-  if (!data) return <Spinner className="m-6" />;
+  if (!data) return <Spinner center />;
   const { commit, files } = data;
   const added = files.reduce((n, f) => n + (f.added ?? 0), 0);
   const deleted = files.reduce((n, f) => n + (f.deleted ?? 0), 0);
@@ -1871,7 +1872,7 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
       ) : error ? (
         <div className="p-4 text-sm text-danger">{error}</div>
       ) : !data ? (
-        <Spinner className="m-4" />
+        <Spinner center />
       ) : (
         <DiffView
           patch={data.patch}
@@ -1900,7 +1901,7 @@ export function CompareTab({ ctx, params }: AddonTabProps) {
   }>("compare", { cwd: project?.path, branch }, { skip: !project });
   if (!project) return <Empty title="Project not found" />;
   if (error) return <div className="p-6 text-sm text-danger">{error}</div>;
-  if (!data) return <Spinner className="m-6" />;
+  if (!data) return <Spinner center />;
   const list = (title: string, commits: Commit[]) => (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-8 items-center gap-2 border-b border-line px-4 text-sm font-medium">
@@ -2041,7 +2042,7 @@ export async function createBranch(ctx: AddonUiContext, repo?: RepoProject) {
 
 export function GitSettings({ ctx }: AddonComponentProps) {
   const { data, reload } = useHostCall<AutoFetchSettings>("settings");
-  if (!data) return <Spinner />;
+  if (!data) return <Spinner center />;
   const save = async (next: AutoFetchSettings) => {
     await ctx.host.call("saveSettings", next);
     reload();

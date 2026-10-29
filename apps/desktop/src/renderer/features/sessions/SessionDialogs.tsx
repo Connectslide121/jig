@@ -65,7 +65,7 @@ function McpDialog({ sessionId, onClose }: { sessionId: string; onClose: () => v
         <code className="font-mono">/mcp</code> there.
       </p>
       {error && <div className="text-xs text-danger">{error}</div>}
-      {!servers && !error && <Spinner />}
+      {!servers && !error && <Spinner center />}
       {servers?.length === 0 && <div className="text-xs text-hint">No MCP servers are configured.</div>}
       <div className="flex flex-col gap-1">
         {servers?.map((s) => (

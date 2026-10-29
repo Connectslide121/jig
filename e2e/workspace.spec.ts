@@ -104,11 +104,34 @@ test("a folder of repositories works as one workspace: every repo's changes in G
 
   // Every repository at a glance in the Repos section below the list.
   const repos = page.getByTestId("section-addon.repos.overview");
-  await expect(repos.getByTestId("repos-view")).toContainText("repos/client-a/portal", { timeout: 15000 });
+  // Each repository by its own name (not repos/client-a/portal), with its sync chip and branch.
+  const portal = repos.getByTestId("repo-repos/client-a/portal");
+  await expect(portal).toContainText("portal", { timeout: 15000 });
+  await expect(portal).not.toContainText("repos/");
+  await expect(portal.getByTestId("repo-sync-portal")).toBeVisible();
   await page.getByTestId("section-toggle-addon.repos.overview").click();
   await expect(repos.getByTestId("repos-view")).toHaveCount(0);
   await page.getByTestId("section-toggle-addon.repos.overview").click();
   await expect(repos.getByTestId("repos-view")).toBeVisible();
+
+  // Arrange, for all projects: a titled divider right above web, and api hidden.
+  await repos.getByTestId("repos-arrange").click();
+  await repos.getByTestId(/^arrange-divider-above-.*web$/).click();
+  await page.getByTestId("dialog-input").fill("Frontends");
+  await page.getByTestId("dialog-confirm").click();
+  await repos.getByTestId(/^arrange-toggle-.*api$/).click();
+  await repos.getByTestId("repos-arrange").click();
+  const rows = () =>
+    repos
+      .locator('[data-testid=arrange-divider], [data-testid^="repo-repos/"]')
+      .evaluateAll((els) =>
+        els.map((e) =>
+          e.getAttribute("data-testid") === "arrange-divider"
+            ? `--${e.textContent}`
+            : (e.getAttribute("data-testid") ?? "").replace("repo-repos/", ""),
+        ),
+      );
+  await expect.poll(rows).toEqual(["client-a/portal", "--Frontends", "web"]);
 
   // Back to every repository.
   await view.getByTestId("git-repo-picker").click();

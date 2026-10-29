@@ -4,13 +4,14 @@ import {
   Empty,
   FileIcon,
   IconButton,
-  Input,
+  SearchInput,
+  Spinner,
   useActiveProject,
   useAddonEvent,
   useWorkspaceList,
   VirtualList,
 } from "@jig/sdk/ui";
-import { ChevronDown, ChevronRight, Eye, Files, FolderTree, RefreshCw, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, Files, FolderTree, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Entry,
@@ -100,7 +101,8 @@ export function FilesView({ ctx }: AddonComponentProps) {
 type Row =
   | { kind: "root"; folder: Folder; open: boolean }
   | { kind: "entry"; entry: Entry; depth: number; open: boolean; root: string }
-  | { kind: "empty"; depth: number; text: string };
+  | { kind: "empty"; depth: number; text: string }
+  | { kind: "loading"; depth: number };
 
 function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonProject }) {
   const [roots, setRoots] = useRoots(ctx, project.id);
@@ -235,7 +237,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   const rows: Row[] = [];
   const walk = (dir: string, depth: number, root: string) => {
     const list = entries[dir];
-    if (list === undefined) return rows.push({ kind: "empty", depth, text: "Loading…" });
+    if (list === undefined) return rows.push({ kind: "loading", depth });
     if (list === "error") return rows.push({ kind: "empty", depth, text: "Can't read this folder" });
     if (!list.length) return rows.push({ kind: "empty", depth, text: "Empty" });
     for (const entry of list) {
@@ -343,28 +345,19 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
         />
         <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={() => shown.forEach(refresh)} />
       </div>
-      <div className="relative shrink-0 border-b border-line p-1.5">
-        <Search className="pointer-events-none absolute top-3 left-3.5 size-3.5 text-hint" />
-        <Input
+      <div className="shrink-0 border-b border-line p-1.5">
+        <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
           placeholder="Filter files"
-          className="h-7 pl-7 text-xs"
+          className="text-xs"
           data-testid="files-filter"
           onKeyDown={(e) => {
             if (e.key === "Escape") setQuery("");
             if (e.key === "Enter" && matches[0]) ctx.openPreview(matches[0].path);
           }}
         />
-        {query && (
-          <IconButton
-            icon={X}
-            size="sm"
-            label="Clear the filter"
-            className="absolute top-2 right-2"
-            onClick={() => setQuery("")}
-          />
-        )}
       </div>
       {query.trim() ? (
         <div className="min-h-0 flex-1 overflow-y-auto py-1" data-testid="files-matches">
@@ -402,6 +395,17 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
           items={rows}
           rowHeight={ROW}
           renderRow={(row) => {
+            // A folder being read: a spinner, centered for a whole shown folder.
+            if (row.kind === "loading")
+              return (
+                <div
+                  className={cn("flex h-6 items-center", row.depth === 0 && "justify-center")}
+                  style={row.depth === 0 ? undefined : { paddingLeft: 8 + row.depth * 12 + 18 }}
+                  data-testid="loading"
+                >
+                  <Spinner size="sm" />
+                </div>
+              );
             if (row.kind === "empty")
               return (
                 <div

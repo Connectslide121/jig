@@ -224,7 +224,7 @@ export function AppearanceSettings() {
   const themes = useAppearance((s) => s.themes);
   const themeError = useAppearance((s) => s.themeError);
   const [filter, setFilter] = useState("");
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   const a = config.appearance;
   const byAppearance = (appearance: "dark" | "light") => themes.filter((t) => t.appearance === appearance);
   return (

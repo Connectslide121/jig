@@ -1,17 +1,27 @@
 # Repos
 
-A cross-project overview (which GitLens doesn't have): every
-git repository in the folders you added (a folder that is a repository, and the repositories inside
-a folder, shown as `folder/repo`), with its branch, number of uncommitted files, commits ahead/behind its upstream and when
-it was last fetched. Fetch, pull and push per repo or fetch everything at once. Clicking a repo makes
-it the active project (for a workspace repository: the workspace, with that repository focused) and
-opens its Git view. "New chat in this repository" starts a chat inside it.
+A cross-project overview (which GitLens doesn't have), laid out like the Git plugin (D-143): every
+git repository in the folders you added (a folder that is a repository, and the repositories inside a
+folder), one row each:
+
+- **Its name** (the folder's own name; a parent folder is added only when two would read the same,
+  `lib/names.ts`; the full path and the last fetch are in its tooltip). Click it: it becomes the
+  active project (for a workspace repository: the workspace, with that repository focused) and its
+  Git view opens.
+- **A sync chip**: `↓2 ↑1` to pull and push, `3 changed`, or ✓. Press it to sync: pull when there
+  is something to pull, then push (also a new branch without an upstream). Host `sync`.
+- **Its branch** (dimmed without an upstream).
+- ⋯ / right-click: Open in Git, Sync, Fetch, Pull, Push, New chat in this repository, Open in
+  Explorer, and other add-ons' repository menus.
+
+**Arrange** (header): hide repositories, drag them into your order, add dividers (a titled one groups
+what follows) — each row has a button that adds a divider right above it. One arrangement for all
+your projects (the add-on's global storage, `arrangement`); new repositories come after it.
 
 - View **Repos**: a collapsible section at the bottom of the Git panel (`"under": "addon.git.git"`,
-  D-099), like GitLens below Source Control. Its ⋯ menu moves it to its own tab. Status bar item
+  D-099), like GitLens below Source Control. Its ⋯ menu moves it to its own tab. Header: how many
+  repositories, to push, to pull and with changes; Fetch all; Refresh. Status bar item
   "N to push/pull", Tools → Fetch all repos.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
 Uses your own `git` and `code`.
-
-Row actions reserve their layout space while hidden and become visible on hover or keyboard focus, so repository text and row heights do not shift.

@@ -55,7 +55,7 @@ export function KnowledgeTab() {
       .then(setWorked)
       .catch(() => {});
   }, []);
-  if (!data) return <Spinner className="m-4" />;
+  if (!data) return <Spinner center />;
   const dirty = draft !== undefined && draft !== data.profile;
   const save = async () => {
     if (draft === undefined) return;

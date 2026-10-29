@@ -87,7 +87,7 @@ export function WorkflowsView({ ctx }: AddonComponentProps) {
         Pick a project to see its workflows.
       </Empty>
     );
-  if (!data) return <Spinner className="m-3" />;
+  if (!data) return <Spinner center />;
   return (
     <div className="flex h-full flex-col" data-testid="workflows-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
@@ -208,7 +208,7 @@ export function WorkflowTab({ params, tabId }: AddonTabProps) {
     if ((payload as { projectId?: string } | undefined)?.projectId === projectId) reloadStored();
   });
 
-  if (!wf) return <Spinner className="m-4" />;
+  if (!wf) return <Spinner center />;
   return (
     <div className="h-full overflow-y-auto" data-testid="workflow-tab" data-tab={tabId}>
       <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">

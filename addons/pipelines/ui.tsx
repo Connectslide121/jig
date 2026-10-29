@@ -207,7 +207,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
     return () => clearInterval(t);
   }, [reload]);
   if (error) return <div className="p-3 text-xs text-danger">{error}</div>;
-  if (!data) return <Spinner className="m-3" />;
+  if (!data) return <Spinner center />;
   if (data.orgs.length === 0)
     return (
       <Empty icon={Rocket} title="Set up Azure DevOps">
@@ -395,7 +395,7 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
     );
   }, [ctx, form?.allOrgs, found]);
   if (error) return <div className="text-sm text-danger">{error}</div>;
-  if (!form) return <Spinner className="m-3" />;
+  if (!form) return <Spinner center />;
   const rows = effectiveOrgs(form, form.allOrgs ? (found.orgs ?? []) : []);
   const listed = (org: string) => form.orgs.some((o) => orgUrl(o.org).toLowerCase() === org.toLowerCase());
   const update = (next: OrgSettings) =>

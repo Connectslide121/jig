@@ -23,7 +23,7 @@ function Side({
   path: string;
 }) {
   let body: React.ReactNode;
-  if (version === undefined) body = <Spinner className="m-4" />;
+  if (version === undefined) body = <Spinner center />;
   else if (version === null) body = <Empty title="No file">The image doesn't exist in this version.</Empty>;
   else if ("tooLarge" in version) body = <Empty title="Too large">The image is larger than 25 MB.</Empty>;
   else body = <ImagePreview src={version.dataUrl} alt={`${path} (${title})`} bytes={version.bytes} />;

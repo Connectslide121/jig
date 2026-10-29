@@ -25,6 +25,7 @@ export {
   ListRow,
   Markdown,
   ResizeHandle,
+  SearchInput,
   SectionTitle,
   Select,
   Spinner,

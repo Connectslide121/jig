@@ -652,7 +652,7 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
                 {t.title}
               </div>
             )}
-            {!t.listing && <Spinner size="sm" className="mx-4" />}
+            {!t.listing && <Spinner center />}
             {t.listing && "error" in t.listing && (
               <div className="px-4 text-xs text-danger">{t.listing.error}</div>
             )}

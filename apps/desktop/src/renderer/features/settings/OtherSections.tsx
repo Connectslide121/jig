@@ -149,7 +149,7 @@ export function EngineSettings() {
       active = false;
     };
   }, [binary, allowApiKey, reload]);
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   const e = config.engine;
   return (
     <SettingsSection
@@ -309,7 +309,7 @@ export function EngineSettings() {
 }
 export function EditorSettings() {
   const config = useConfig((s) => s.config);
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   const e = config.editor;
   return (
     <SettingsSection
@@ -363,7 +363,7 @@ export function EditorSettings() {
 
 export function TerminalSettings() {
   const config = useConfig((s) => s.config);
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   return (
     <SettingsSection title="Terminal">
       <TextSetting
@@ -380,7 +380,7 @@ export function TerminalSettings() {
 /** Updates from a git clone of Jig: where it is and how it is built. */
 export function UpdatesSettings() {
   const config = useConfig((s) => s.config);
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   const u = config.updates;
   return (
     <SettingsSection
@@ -437,7 +437,7 @@ const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 export function LearningSettings() {
   const config = useConfig((s) => s.config);
   const [exclusions, setExclusions] = useState<string>();
-  if (!config) return <Spinner />;
+  if (!config) return <Spinner center />;
   const l = config.learning;
   const time = `${String(l.schedule.hour).padStart(2, "0")}:${String(l.schedule.minute).padStart(2, "0")}`;
   return (
@@ -629,7 +629,7 @@ function LearningActions() {
 
 export function AboutSettings() {
   const info = useConfig((s) => s.info);
-  if (!info) return <Spinner />;
+  if (!info) return <Spinner center />;
   return (
     <SettingsSection title="About Jig">
       <SettingRow label="Version">

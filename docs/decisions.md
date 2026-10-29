@@ -1369,3 +1369,15 @@ a frontend and a backend per repository) and Claude, on my own (how) · **Date:*
 - **Hiding stays** (right-click → Hide it; the eye shows hidden ones), reusing the per-folder
   `arrangement` so scripts Jon already hid stay hidden. The drag-to-reorder arrangement is gone from
   Scripts; Pipelines and other lists keep `ArrangeList`.
+
+### D-143 — Repos like the Git plugin: short names, a sync chip, one arrangement for all projects
+**Decided by:** Jon (rows like the Git plugin; only the repository's name, not `repos/…`; group,
+divide and reorder them, globally) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- A row is the repository's own folder name (parents only where two names clash), a sync chip
+  (`↓n ↑m`, `n changed` or ✓; pressing it pulls, then pushes) and its branch.
+- Arrange uses the shared `ArrangeList` with one global `arrangement`: hide, drag, dividers (a titled
+  divider is the group), and a divider can go right above any row (also in Pipelines' Arrange).
+- Loading anywhere is one centered spinner (`Spinner center`), and filter fields are a
+  `SearchInput` whose magnifier sits beside the text: the Files filter's icon covered the text
+  because the base `Input`'s padding won over the caller's (`cn` only joins classes).

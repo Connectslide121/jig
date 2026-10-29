@@ -67,7 +67,8 @@ export function ChatTab({ params, active, focused }: TabProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [focused]);
-  if (!meta) return loaded ? <Empty icon={MessageSquareX} title="This chat was deleted" /> : <Spinner />;
+  if (!meta)
+    return loaded ? <Empty icon={MessageSquareX} title="This chat was deleted" /> : <Spinner center />;
   const tokens =
     meta.usage.inputTokens +
     meta.usage.cacheReadTokens +

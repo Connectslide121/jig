@@ -30,7 +30,7 @@ export function ImageTab({ params }: TabProps) {
         ) : data ? (
           <ImagePreview src={data.dataUrl} alt={path} bytes={data.bytes} />
         ) : (
-          <Spinner className="m-4" />
+          <Spinner center />
         )}
       </div>
     </div>

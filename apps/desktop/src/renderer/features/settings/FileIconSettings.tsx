@@ -36,7 +36,7 @@ export function FileIconSettings() {
   );
   useEffect(() => load(), [load]);
   useHostEvent("themes.changed", () => load());
-  if (choice === undefined) return <Spinner />;
+  if (choice === undefined) return <Spinner center />;
   const vscodeTheme = list?.themes.find((t) => t.id === list.vscodeMatch);
   const vscodeLabel = !list
     ? "Same as VS Code"

@@ -181,7 +181,7 @@ function RequestDemo({ job }: { job: BuildJob }) {
     };
   }, [job.id, job.revision]);
   if (error) return <div className="text-xs text-danger">The demo couldn't open: {error}</div>;
-  if (!demo) return <Spinner />;
+  if (!demo) return <Spinner center />;
   return (
     <div className="flex flex-col gap-1.5">
       <iframe

@@ -1,9 +1,9 @@
 import { guessDelimiter, parseDelimited } from "@jig/documents";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import type { FilePreview } from "../../../shared/preview";
 import { extensionOf } from "../../../shared/preview";
-import { Button, CodeBlock, cn, Input, Markdown, Mermaid } from "../../ui";
+import { Button, CodeBlock, cn, Markdown, Mermaid, SearchInput } from "../../ui";
 import { parseJsonLoose } from "./paths";
 
 /** Rows shown in a table before "show more" (the DOM stays fast). */
@@ -20,12 +20,12 @@ export function TableView({ rows, header = true }: { rows: string[][]; header?: 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="preview-table">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line px-3 text-xs text-muted">
-        <Search className="size-3.5" />
-        <Input
+        <SearchInput
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          onClear={() => setFilter("")}
           placeholder="Filter rows"
-          className="h-6 max-w-64"
+          boxClassName="h-6 max-w-64"
           aria-label="Filter rows"
         />
         <span>

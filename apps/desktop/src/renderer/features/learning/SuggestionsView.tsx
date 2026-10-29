@@ -322,7 +322,7 @@ function WorkedCard() {
 export function SuggestionsView() {
   const state = useLearning((s) => s.state);
   const notes = useNotes();
-  if (!state) return <Spinner className="m-3" />;
+  if (!state) return <Spinner center />;
   const fresh = state.suggestions.filter((s) => s.status === "new");
   const done = state.suggestions.filter((s) => s.status === "built" || s.status === "adopted").slice(0, 5);
   const last = state.runs[0];

@@ -51,7 +51,7 @@ function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => vo
   return (
     <Dialog open onClose={onClose} title={`History of ${addon.name}`} width="lg">
       {!commits ? (
-        <Spinner />
+        <Spinner center />
       ) : commits.length === 0 ? (
         <Empty title="No history yet" />
       ) : (

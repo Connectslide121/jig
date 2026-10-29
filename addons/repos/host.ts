@@ -130,6 +130,25 @@ export async function push({ path }: { path: string }, api: AddonHostApi) {
   }
 }
 
+/**
+ * The sync chip (like the Git plugin): pulls when there is something to pull, then pushes what is
+ * to push or a branch with no upstream yet. Says what it did.
+ */
+export async function sync({ path }: { path: string }, api: AddonHostApi): Promise<string> {
+  const before = summarize(await git(api, path, ["status", "--porcelain=v2", "--branch", "-z"]));
+  const done: string[] = [];
+  if (before.behind) {
+    await pull({ path }, api);
+    done.push(`pulled ${before.behind}`);
+  }
+  const after = summarize(await git(api, path, ["status", "--porcelain=v2", "--branch", "-z"]));
+  if (after.ahead || (!after.upstream && after.branch)) {
+    await push({ path }, api);
+    done.push(after.ahead ? `pushed ${after.ahead}` : "pushed the branch");
+  }
+  return done.length ? done.join(", ") : "nothing to sync";
+}
+
 export async function fetchAll(_: unknown, api: AddonHostApi) {
   const results = await pool(repoItems(await api.workspaces()), 4, async (p) => {
     try {

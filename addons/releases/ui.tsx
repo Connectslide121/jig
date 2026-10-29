@@ -77,7 +77,7 @@ const toRelease = (repos: RepoSummary[]) =>
 export function ReleasesView({ ctx }: AddonComponentProps) {
   const { data, error, loading, reload } = useOverview();
   if (error) return <div className="p-3 text-xs text-danger">{error}</div>;
-  if (!data) return <Spinner className="m-3" />;
+  if (!data) return <Spinner center />;
   if (data.length === 0)
     return (
       <Empty icon={Tag} title="No git repositories">
@@ -186,7 +186,7 @@ export function ReleaseTab({ params }: AddonTabProps) {
     if ((p as { path?: string })?.path === path) void reload();
   });
   if (error) return <div className="p-4 text-sm text-danger">{error}</div>;
-  if (!data) return <Spinner className="m-4" />;
+  if (!data) return <Spinner center />;
   const policy = data.policy;
   return (
     <div className="h-full overflow-y-auto" data-testid="release-tab">

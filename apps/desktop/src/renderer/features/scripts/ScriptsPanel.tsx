@@ -114,7 +114,7 @@ export function ScriptsPanel({ project, compact }: { project: ProjectInfo; compa
   const { data, error, reload, running } = useProjectScripts(project.id);
   const [editing, setEditing] = useState<{ group?: ScriptGroup } | undefined>();
   if (error) return <div className="p-3 text-sm text-danger">{error}</div>;
-  if (!data) return <Spinner />;
+  if (!data) return <Spinner center />;
   const byFolder = new Map<string, Script[]>();
   for (const s of data.scripts) byFolder.set(s.folder, [...(byFolder.get(s.folder) ?? []), s]);
   return (

@@ -25,6 +25,7 @@ import {
   Input,
   openMenuAt,
   promptDialog,
+  SearchInput,
   Select,
   Spinner,
 } from "../../ui";
@@ -266,12 +267,17 @@ function AzureDialog({
           {/* biome-ignore lint/a11y/noLabelWithoutControl: Input is the labelled control. */}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted">Filter</span>
-            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter" />
+            <SearchInput
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onClear={() => setFilter("")}
+              placeholder="Filter"
+            />
           </label>
           <GroupField project={project} value={groupTitle} onChange={setGroupTitle} />
         </div>
         {error && <div className="text-xs text-danger">{error}</div>}
-        {!items && !error && <Spinner />}
+        {!items && !error && <Spinner center />}
         <div className="flex max-h-80 flex-col overflow-y-auto">
           {shown.map((i) => (
             <div
