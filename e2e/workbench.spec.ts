@@ -151,3 +151,14 @@ test("drag a view's tab to reorder it, or onto another sidebar to move it there"
   });
   await expect.poll(async () => (await leftViews()).includes("jig.suggestions")).toBe(true);
 });
+
+test("a submenu opens beside its menu, on the left when there's no room on the right", async ({ page }) => {
+  // The bottom panel's ⋯ is at the window's right edge.
+  await page.keyboard.press("Control+`");
+  await page.getByTestId("region-bottom").locator("[data-testid^=view-menu-]").first().click();
+  await page.getByTestId("place-below").hover();
+  const menus = page.getByRole("menu");
+  await expect(menus).toHaveCount(2);
+  const [parent, sub] = [(await menus.nth(0).boundingBox())!, (await menus.nth(1).boundingBox())!];
+  expect(sub.x + sub.width).toBeLessThanOrEqual(parent.x + 4);
+});

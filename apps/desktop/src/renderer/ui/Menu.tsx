@@ -29,6 +29,8 @@ export interface MenuPosition {
   y: number;
   /** Align the menu's right edge to `x` (for buttons on the right of the window). */
   alignRight?: boolean;
+  /** A submenu: its parent's left edge, where it opens instead when there's no room on the right. */
+  parentLeft?: number;
 }
 
 interface MenuState {
@@ -85,6 +87,9 @@ function MenuList({
     const { width, height } = el.getBoundingClientRect();
     let left = position.alignRight ? position.x - width : position.x;
     let top = position.y;
+    // A submenu without room on the right opens on its parent's left, never over the parent.
+    if (position.parentLeft !== undefined && left + width > window.innerWidth - 4)
+      left = position.parentLeft - width + 2;
     if (left + width > window.innerWidth - 4) left = Math.max(4, window.innerWidth - width - 4);
     if (top + height > window.innerHeight - 4) top = Math.max(4, window.innerHeight - height - 4);
     setPlace({ left: Math.max(4, left), top });
@@ -96,7 +101,11 @@ function MenuList({
 
   const openSub = (index: number, el: HTMLElement) => {
     const rect = el.getBoundingClientRect();
-    setSub({ index, position: { x: rect.right - 2, y: rect.top - 4 } });
+    const parent = ref.current?.getBoundingClientRect();
+    setSub({
+      index,
+      position: { x: rect.right - 2, y: rect.top - 4, parentLeft: parent?.left ?? rect.left },
+    });
   };
 
   const select = (entry: MenuItem, el: HTMLElement | null, index: number) => {
