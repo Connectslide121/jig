@@ -22,5 +22,13 @@ Lists of steps you repeat, per project: a release, a deploy, a morning routine (
   (tab params `{ draft: { name, goal, steps: string[] } }`; lines that look like commands become
   command steps).
 
+- **Tools for Claude** (slot `claude.tool`): `addon_workflows_list` and `addon_workflows_get`
+  (read-only), `addon_workflows_save` (create or update by name, from steps as text or
+  `{ title, kind, mode, command?, prompt? }`), `addon_workflows_delete`, and `addon_workflows_run`
+  (Jig's automatic command and pipeline steps run with their output; it stops at the first step that
+  is yours, asks first or is a message for Claude, and Claude guides you through the rest). Without
+  `project`, the chat's project. Claude is told to offer saving a step-by-step request you'll repeat
+  as a workflow (once, in one sentence).
+
 Storage (this add-on's, private to you): `workflows:<projectId>`, `runs:<workflowId>` (last 20),
 `triggered`. Pure logic in `lib/workflow.ts` (tested).

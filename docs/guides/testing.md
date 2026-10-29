@@ -42,6 +42,7 @@ in this order:
 | "theme", "light mode", "dark mode", "terminals to the right" | Claude changes Jig's settings or layout (change cards with Undo) |
 | "by hand on the vm" | Claude saves a note (`jig_note_evidence`): a "Noted for suggestions" card with Remove |
 | "weekly check-in" | Claude reads the profile and adds a line under "How I release and deploy" (`jig_update_profile`, card with Undo) |
+| "as a workflow" | Claude saves a 4-step workflow "Write release notes" in the chat's project (`addon_workflows_save`) |
 | "since the last release" | Claude calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |

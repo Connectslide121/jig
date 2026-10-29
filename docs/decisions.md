@@ -1085,4 +1085,10 @@ data) and Claude, on my own (the shape below) · **Date:** 2026-10-29
   `ConfigUndo` `addonData`). After a change the add-on gets the event `storage`; `useHostCall`
   reloads by itself, so views follow without each add-on doing anything.
 - The builder can now give an add-on Claude tools too, since it writes manifests with any slot.
+- **Workflows has tools** (list, get, save, delete, run). `run` runs only Jig's automatic command and
+  pipeline steps and stops at the first step that needs the user or Claude, so a chat can't skip a
+  step the user marked as theirs.
+- **Recommending add-ons in chats** (Jon): every chat's appended context lists the switched-on add-ons
+  (one line each) and tells Claude to offer, once and briefly, a workflow for a repeated step-by-step
+  request, an existing add-on that fits, or a build. No extra AI call: it's part of the chat's turn.
 

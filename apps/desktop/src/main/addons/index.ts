@@ -7,7 +7,7 @@ import { app, BrowserWindow, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
 import { card } from "../configure/tools";
-import { registerJigTools, setAddonTools, setJigToolHandlers } from "../engine/jigTools";
+import { registerJigTools, setAddonSummary, setAddonTools, setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
@@ -172,6 +172,13 @@ export async function startAddons(): Promise<void> {
   s.watchFiles();
   setJigToolHandlers({ listAddons: async () => s.catalog() });
   setAddonTools(addonTools(s.list(), (id, method, args) => s.call(id, method, args)));
+  setAddonSummary(() =>
+    s
+      .list()
+      .filter((a) => a.enabled && a.errors.length === 0)
+      .map((a) => `- ${a.name}: ${(a.description ?? "").split(". ")[0]}`)
+      .join("\n"),
+  );
   registerJigTools(
     addonDataTools({
       list: () => s.list(),

@@ -257,3 +257,69 @@ export function cloudPrompt(wf: Workflow): string {
     .filter((l) => l !== "")
     .join("\n");
 }
+
+/** A step as Claude (or a pasted list) describes it. */
+export interface StepInput {
+  title: string;
+  kind?: StepKind;
+  mode?: StepMode;
+  command?: string;
+  cwd?: string;
+  prompt?: string;
+  scriptId?: string;
+}
+
+/**
+ * A workflow from a description (Claude's `workflows_save`): kinds guessed from the text when not
+ * given (a command line → command), ids kept for steps whose title didn't change, so a run's history
+ * still matches.
+ */
+export function workflowFromInput(
+  input: { name: string; goal?: string; steps: Array<StepInput | string>; trigger?: Trigger },
+  projectId: string,
+  existing?: Workflow,
+  now = new Date(),
+): Workflow {
+  const steps = input.steps.map((s): Step => {
+    const given = typeof s === "string" ? { title: s } : s;
+    const guessed = given.kind
+      ? newStep(given.kind, given.title)
+      : stepFromText(given.command ?? given.title);
+    const kind = given.kind ?? guessed.kind;
+    const step: Step = {
+      ...guessed,
+      kind,
+      title: given.title.trim() || guessed.title,
+      mode: kind === "check" || kind === "wait" ? "manual" : (given.mode ?? guessed.mode),
+      command: kind === "command" ? (given.command ?? guessed.command ?? given.title) : undefined,
+      cwd: given.cwd,
+      prompt: kind === "claude" ? (given.prompt ?? given.title) : undefined,
+      scriptId: kind === "script" ? given.scriptId : undefined,
+    };
+    const same = existing?.steps.find((x) => x.title === step.title && x.kind === step.kind);
+    return same ? { ...step, id: same.id } : step;
+  });
+  return {
+    id: existing?.id ?? newId("w"),
+    name: input.name.trim(),
+    goal: input.goal?.trim() || existing?.goal,
+    projectId,
+    steps,
+    trigger: input.trigger ?? existing?.trigger ?? { kind: "none" },
+    createdAt: existing?.createdAt ?? now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+}
+
+/** A workflow as text for Claude: its steps with who does each. */
+export function describeWorkflow(wf: Workflow): string {
+  return [
+    `${wf.name} (${triggerLabel(wf.trigger)})${wf.goal ? ` — ${wf.goal}` : ""}`,
+    ...wf.steps.map((s, i) => {
+      const mode = effectiveMode(s);
+      const who = mode === "auto" ? "Jig does it" : mode === "ask" ? "ask first" : "the user does it";
+      const what = s.command ? ` \`${s.command}\`` : s.prompt && s.prompt !== s.title ? `: ${s.prompt}` : "";
+      return `${i + 1}. [${s.kind}, ${who}] ${s.title}${what}`;
+    }),
+  ].join("\n");
+}

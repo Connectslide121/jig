@@ -202,6 +202,11 @@ _Last updated: 2026-10-28 (phases 0–17: every phase of the plan is done; the l
   (that one asks first). Claude can also look inside any add-on and read, create, change or delete its
   stored data (e.g. a workflow, a pipeline arrangement), each change with a card and Undo; the
   add-on's views update.
+  - Workflows has tools too: Claude lists, reads, saves, deletes and runs your workflows from a chat.
+  - **Claude recommends add-ons in the chat:** it knows your add-ons, and when you ask for something
+    step by step that you'll do again (check the code, release notes, user stories, test cases…) it
+    does it and offers once to save it as a workflow; it points to an add-on that already does what
+    you ask, or offers to build one.
 - **Drag views between sidebars:** drag a view's tab to reorder it, or onto another sidebar's tabs
   to move it there (the ⋯ menus still work).
 - **Sharing add-ons:** Settings → Add-ons → ⤓ exports an add-on as a `.zip`; **Import add-on…**

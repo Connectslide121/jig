@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cloudPrompt,
+  describeWorkflow,
   draftWorkflow,
   effectiveMode,
   isDue,
@@ -13,6 +14,7 @@ import {
   toSkill,
   triggerLabel,
   type Workflow,
+  workflowFromInput,
 } from "./workflow";
 
 const wf = (): Workflow => {
@@ -82,5 +84,35 @@ describe("workflows", () => {
     expect(skill).toContain("2. Build and publish: ask me to do this and wait until I confirm.");
     expect(skill).toContain("3. dotnet test: run `dotnet test` (ask me before doing it).");
     expect(cloudPrompt(wf())).toContain("Claude Code routine");
+  });
+});
+
+describe("workflows from Claude", () => {
+  it("builds a workflow from a description, keeping step ids on update", () => {
+    const wf = workflowFromInput(
+      {
+        name: "Review a PR",
+        goal: "Check a pull request before merging",
+        steps: [
+          "git fetch",
+          { title: "Read the diff and list risks", kind: "claude" },
+          { title: "Run the tests", kind: "command", command: "npm test", mode: "auto" },
+          "Approve in Azure DevOps",
+        ],
+      },
+      "p1",
+    );
+    expect(wf.steps.map((s) => [s.kind, effectiveMode(s)])).toEqual([
+      ["command", "ask"],
+      ["claude", "ask"],
+      ["command", "auto"],
+      ["check", "manual"],
+    ]);
+    expect(wf.steps[1]!.prompt).toBe("Read the diff and list risks");
+    const again = workflowFromInput({ name: "Review a PR", steps: ["git fetch", "Merge"] }, "p1", wf);
+    expect(again.id).toBe(wf.id);
+    expect(again.steps[0]!.id).toBe(wf.steps[0]!.id);
+    expect(again.goal).toBe("Check a pull request before merging");
+    expect(describeWorkflow(wf)).toContain("3. [command, Jig does it] Run the tests `npm test`");
   });
 });

@@ -389,7 +389,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data|as a workflow)\b/.test(
             lower,
           )
         ) {
@@ -402,7 +402,19 @@ export class FakeEngine implements Engine {
             );
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
           };
-          if (/since the last release/.test(lower)) {
+          if (/as a workflow/.test(lower)) {
+            await call("addon_workflows_save", {
+              name: "Write release notes",
+              goal: "Notes for customers from the changes since the last release",
+              steps: [
+                "git fetch --tags",
+                { title: "Read the changes since the last release", kind: "claude" },
+                { title: "Write the notes in Swedish for customers", kind: "claude" },
+                "Send the notes to the customer",
+              ],
+            });
+            await stream(`${msg}:text:0`, "Saved as the workflow Write release notes.", signal);
+          } else if (/since the last release/.test(lower)) {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
           } else if (/in the releases data/.test(lower)) {

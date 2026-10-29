@@ -47,6 +47,12 @@ export function isReadOnlyJigTool(toolName: string): boolean {
   return name === "jig_list_addons" || extraTools.some((t) => t.name === name && t.readOnly);
 }
 
+/** One line per switched-on add-on (name: what it does), for Claude's context. */
+let addonSummary: () => string = () => "";
+export function setAddonSummary(fn: () => string): void {
+  addonSummary = fn;
+}
+
 let handlers: JigToolHandlers = {
   listAddons: async () => "No add-ons are installed yet.",
   requestBuild: async () => "Jig's builder is not available in this version yet.",
@@ -137,6 +143,8 @@ export function jigContext(
     "For long-running commands (dev servers, watchers, anything that keeps running) use jig_terminal_run, so the user sees them in a Jig terminal, then jig_terminal_read for their output; jig_terminal_list shows the project's terminals (including the user's own dev server). Use your own shell for commands that finish.",
     "To check web UI you build, use Claude's browser (a real offscreen page with its own size; the user can watch it in Jig): jig_browser_open the dev server, jig_browser_read for the text and numbered elements, jig_browser_click / jig_browser_type / jig_browser_press to use it, jig_browser_screenshot to see it (sizes: phone, tablet, desktop checks responsive layouts in one call; fullPage for the whole page), jig_browser_console for errors, jig_browser_network for the requests it makes (status, headers, bodies — debug API calls there instead of asking the user to copy them from their browser). It runs headless: the user isn't interrupted.",
     "For work that should run on a schedule, use Claude Code routines (the RemoteTrigger tool); the user sees and manages them in Jig's Routines tab. Pages you publish with the Artifact tool can be opened in Jig from the chat.",
+    ...(addonSummary() ? [`The user's Jig add-ons (switched on):\n${addonSummary()}`] : []),
+    "Recommend Jig's add-ons when they fit, in the chat, briefly: when the user asks you to do something step by step that they're likely to do again (check the code, write release notes, user stories, test cases, a release, a deploy), do it, then offer once in one sentence to save it as a workflow (addon_workflows_save) so next time it's one click or one message. When an installed add-on already does what they ask, say so and where to find it. When they keep doing something no add-on covers, offer to build one (jig_request_build). Don't repeat an offer they declined in this chat.",
     "Add-ons give you tools too (named addon_<add-on>_<tool>, e.g. addon_releases_changes for what changed since the last release): use them for what their descriptions say. jig_get_addon shows what an add-on is and the data it stores; jig_get_addon_data reads that data and jig_set_addon_data / jig_delete_addon_data change it (the user sees a card with Undo) — read first and keep the shape the add-on uses.",
     "When the user mentions work they do by hand, work outside Jig (portals, a VM, Postman, the browser's network tab), something that frustrates them or a chore, save it with jig_note_evidence (one short note, their words, no secrets); don't ask first and don't mention it beyond a few words — Jig shows a card they can remove. jig_read_profile tells you how they work; jig_update_profile adds what they ask Jig to remember.",
     "Jig adds tools (MCP server `jig`). When the user wants Jig configured — settings, theme, fonts, density, file icons, layout (move/hide/show/resize views, or show one view below another as a collapsible section in its tab, like GitLens below Source Control), add-ons on or off, projects (groups of chats the user manages: create one, its default workspace, default Git repository, model/effort/permission defaults, instructions and starter prompts; which chats are in which project, pinned chats) — use jig_get_settings / jig_list_themes / jig_get_layout / jig_list_projects to look and jig_update_settings / jig_change_layout / jig_set_addon_enabled / jig_create_project / jig_update_project / jig_move_chat / jig_install_theme to change it; the user approves each change and can undo it from the chat. When they ask for something new (a tool, button, view, menu entry), call jig_request_build with a clear goal. Never edit Jig's files yourself.",

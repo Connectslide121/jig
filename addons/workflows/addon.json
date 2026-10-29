@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "workflows",
   "name": "Workflows",
-  "description": "Lists of steps you repeat, per project — a release, a deploy, a morning routine. Jig does the steps it can, asks first, or leaves them to you; on a schedule while Jig is open; export as a Claude Code skill or move to the cloud.",
+  "description": "Lists of steps you repeat, per project \u2014 a release, a deploy, a morning routine. Jig does the steps it can, asks first, or leaves them to you; on a schedule while Jig is open; export as a Claude Code skill or move to the cloud.",
   "version": "1.0.0",
   "icon": "list-checks",
   "permissions": ["exec", "exec:az", "fs:write", "chat", "terminal"],
@@ -34,19 +34,109 @@
       },
       {
         "id": "new",
-        "title": "New workflow…",
+        "title": "New workflow\u2026",
         "group": "Workflows",
         "icon": "plus",
         "run": "newWorkflowAction"
       },
       {
         "id": "run",
-        "title": "Run a workflow…",
+        "title": "Run a workflow\u2026",
         "group": "Workflows",
         "icon": "play",
         "run": "runWorkflowMenu"
       }
     ],
-    "watchers": [{ "id": "schedules", "every": "1m", "run": "checkSchedules" }]
+    "watchers": [
+      {
+        "id": "schedules",
+        "every": "1m",
+        "run": "checkSchedules"
+      }
+    ],
+    "tools": [
+      {
+        "id": "list",
+        "description": "The workflows of a project (repeated multi-step processes the user saved: releases, deploys, reviews\u2026).",
+        "params": {
+          "project": {
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolList"
+      },
+      {
+        "id": "get",
+        "description": "One workflow's steps (who does each: Jig, ask first, or the user) and its last runs.",
+        "params": {
+          "project": {
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          },
+          "workflow": {
+            "description": "Its name or id"
+          }
+        },
+        "readOnly": true,
+        "run": "toolGet"
+      },
+      {
+        "id": "save",
+        "description": "Save a repeatable multi-step process as a workflow in the project (or update the one with that name). Offer this when the user asks for something step by step that they'll do again (check the code, write release notes, user stories, test cases, a release or deploy). Steps: strings, or {title, kind: check|command|script|pipeline|claude|wait, mode: auto|ask|manual, command?, prompt?}; a 'claude' step is a message for Claude.",
+        "params": {
+          "project": {
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          },
+          "name": {
+            "description": "A short name, e.g. Release webshop"
+          },
+          "goal": {
+            "description": "What it is for",
+            "optional": true
+          },
+          "steps": {
+            "type": "array",
+            "description": "The steps in order"
+          },
+          "trigger": {
+            "type": "object",
+            "description": "{kind:'schedule', every:'day'|'weekday'|'week', time:'HH:MM', day?:0-6} to run on a schedule while Jig is open",
+            "optional": true
+          }
+        },
+        "run": "toolSave"
+      },
+      {
+        "id": "delete",
+        "description": "Delete a workflow.",
+        "params": {
+          "project": {
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          },
+          "workflow": {
+            "description": "Its name or id"
+          }
+        },
+        "run": "toolDelete"
+      },
+      {
+        "id": "run",
+        "description": "Run a workflow: Jig's automatic command and pipeline steps run now with their output; it stops at the first step that is the user's, asks first, or is a message for you, and says what comes next so you can guide the user through it.",
+        "params": {
+          "project": {
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          },
+          "workflow": {
+            "description": "Its name or id"
+          }
+        },
+        "run": "toolRun"
+      }
+    ]
   }
 }

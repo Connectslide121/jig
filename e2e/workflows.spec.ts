@@ -46,3 +46,21 @@ test("Workflows: make one with a check and a command, run it step by step, expor
   expect(skill).toContain("name: morning");
   expect(skill).toContain("2. Say hello: run `echo hello-from-jig`.");
 });
+
+test("Claude saves a process as a workflow from a chat, and runs it", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("composer-input").fill("great, save it as a workflow");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("chat")).toContainText("Saved as the workflow Write release notes.", {
+    timeout: 15000,
+  });
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("workflows-view").getByText("Write release notes").click({ timeout: 15000 });
+  await expect(page.getByTestId("workflow-steps")).toContainText("Write the notes in Swedish for customers");
+  await expect(page.getByTestId("workflow-step")).toHaveCount(4);
+});

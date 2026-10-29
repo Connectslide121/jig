@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
+  describeWorkflow,
   isDue,
   markStep,
   newRun,
@@ -9,9 +10,13 @@ import {
   type Run,
   runsUnattended,
   type Step,
+  type StepInput,
   skillName,
+  type Trigger,
   toSkill,
+  triggerLabel,
   type Workflow,
+  workflowFromInput,
 } from "./lib/workflow";
 
 /**
@@ -158,4 +163,121 @@ export async function checkSchedules(_: unknown, api: AddonHostApi) {
     }
   }
   if (changed) await api.storage.set("triggered", triggered);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Tools for Claude (`contributes.tools`): list, read, save, delete and run workflows from a chat.
+
+interface ToolArgs {
+  project?: string;
+  chat?: { cwd?: string; projectId?: string };
+}
+
+async function resolveProject(args: ToolArgs, api: AddonHostApi) {
+  const projects = await api.projects();
+  const want = args.project?.trim().toLowerCase();
+  const p = want
+    ? projects.find((x) => x.id === args.project || x.name.toLowerCase() === want)
+    : projects.find((x) => x.id === args.chat?.projectId);
+  if (!p)
+    throw new Error(
+      `${want ? `No project "${args.project}"` : "This chat is in no project"}. Projects: ${projects.map((x) => x.name).join(", ")}`,
+    );
+  return p;
+}
+
+async function resolveWorkflow(args: ToolArgs & { workflow: string }, api: AddonHostApi) {
+  const project = await resolveProject(args, api);
+  const all = await list({ projectId: project.id }, api);
+  const want = args.workflow.trim().toLowerCase();
+  const wf = all.find((w) => w.id === args.workflow || w.name.toLowerCase() === want);
+  if (!wf)
+    throw new Error(
+      `No workflow "${args.workflow}" in ${project.name}. Workflows: ${all.map((w) => w.name).join(", ") || "(none)"}`,
+    );
+  return { project, wf };
+}
+
+export async function toolList(args: ToolArgs, api: AddonHostApi): Promise<string> {
+  const project = await resolveProject(args, api);
+  const all = await list({ projectId: project.id }, api);
+  if (!all.length) return `${project.name} has no workflows yet.`;
+  return [
+    `Workflows of ${project.name}:`,
+    ...all.map(
+      (w) =>
+        `- ${w.name}: ${w.steps.length} steps, ${triggerLabel(w.trigger)}${w.goal ? ` — ${w.goal}` : ""}`,
+    ),
+  ].join("\n");
+}
+
+export async function toolGet(args: ToolArgs & { workflow: string }, api: AddonHostApi): Promise<string> {
+  const { wf } = await resolveWorkflow(args, api);
+  const history = (await runs({ id: wf.id }, api)).slice(0, 5);
+  return [
+    describeWorkflow(wf),
+    history.length
+      ? `Last runs: ${history.map((r) => `${r.startedAt.slice(0, 16)} ${r.status}`).join("; ")}`
+      : "Never run yet.",
+  ].join("\n\n");
+}
+
+export async function toolSave(
+  args: ToolArgs & { name: string; goal?: string; steps: Array<StepInput | string>; trigger?: Trigger },
+  api: AddonHostApi,
+): Promise<string> {
+  const project = await resolveProject(args, api);
+  if (!args.steps?.length) throw new Error("Give the steps");
+  const existing = (await list({ projectId: project.id }, api)).find(
+    (w) => w.name.toLowerCase() === args.name.trim().toLowerCase(),
+  );
+  const saved = await save({ workflow: workflowFromInput(args, project.id, existing) }, api);
+  return `${existing ? "Updated" : "Saved"} the workflow in ${project.name} (the user finds it in Workflows, left sidebar):\n${describeWorkflow(saved)}`;
+}
+
+export async function toolDelete(args: ToolArgs & { workflow: string }, api: AddonHostApi): Promise<string> {
+  const { project, wf } = await resolveWorkflow(args, api);
+  await remove({ projectId: project.id, id: wf.id }, api);
+  return `Deleted ${wf.name} from ${project.name}.`;
+}
+
+/**
+ * Runs a workflow from a chat: Jig's automatic steps (commands, pipelines) run here; it stops at the
+ * first step that is the user's, asks first, or is for Claude, and says what comes next.
+ */
+export async function toolRun(args: ToolArgs & { workflow: string }, api: AddonHostApi): Promise<string> {
+  const { project, wf } = await resolveWorkflow(args, api);
+  let run = newRun(wf);
+  const out: string[] = [];
+  for (let next = nextStep(wf, run); next; next = nextStep(wf, run)) {
+    const s = next.step;
+    const runnable = next.mode === "auto" && (s.kind === "command" || s.kind === "pipeline");
+    if (!runnable) {
+      const n = wf.steps.indexOf(s) + 1;
+      const rest = wf.steps.slice(n);
+      out.push(
+        `Stopped at step ${n}, "${s.title}" (${s.kind}, ${next.mode === "ask" ? "ask the user first" : next.mode === "manual" ? "the user does it" : "for you"}).`,
+        s.kind === "claude"
+          ? `It's a message for you: ${s.prompt ?? s.title}. Do it in this chat.`
+          : s.kind === "command"
+            ? `Ask the user, then run \`${s.command}\` yourself if they agree.`
+            : "Ask the user to do it and tell you when it's done.",
+        rest.length ? `Then: ${rest.map((x) => x.title).join(" → ")}` : "That's the last step.",
+        "The user can also run it step by step in the Workflows tab.",
+      );
+      break;
+    }
+    const result =
+      s.kind === "pipeline" && s.pipeline
+        ? await runPipeline({ pipeline: s.pipeline }, api)
+        : await runCommand({ command: s.command ?? "", cwd: s.cwd || project.path }, api);
+    run = markStep(run, s.id, result.ok ? "done" : "failed", result.output);
+    out.push(`${result.ok ? "✓" : "✗"} ${s.title}\n${result.output.slice(-1500)}`);
+    if (!result.ok) break;
+  }
+  if (run.status === "running") run = { ...run, status: "stopped", finishedAt: new Date().toISOString() };
+  await saveRun({ run }, api);
+  return [`${wf.name}:`, ...out, run.status === "done" ? "Every step is done." : ""]
+    .filter(Boolean)
+    .join("\n\n");
 }
