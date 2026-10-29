@@ -425,8 +425,23 @@ Things the cloud build environment couldn't verify:
     Releases, Project links from Azure and Open in VS Code on Windows; Check your setup said az and
     code weren't installed. It also ignores az's "WARNING: updates available" line now.
   - VS Code's own themes (Dark Modern, Dark+, Light+…) were missing: newer VS Code keeps its
-    built-in extensions in a folder named after the build (`Microsoft VS Coded62b1d5daesources\…`),
+    built-in extensions in a folder named after the build (`Microsoft VS Coded62b1d5da
+esources\…`),
     which Jig now finds (`builtinExtensionsDir`).
+  - **Measured on Jon's machine** (built app, throwaway `JIG_HOME`, real profile, `E:epos` as the
+    workspace with 52 repositories):
+    - Git view: all 52 repositories listed; **0** git processes from Jig in 60 s of idle (other
+      tools on the machine ran ~120 in 30 s); a new file showed in ~0.7 s and left ~0.7 s after
+      deletion.
+    - Files view on `E:epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
+    - Scripts: 3,088 scripts in 1,033 folders, found in 4–7 s; 2,551 of them come from the Podium
+      worktrees in `Podium\wt` (whether to list worktrees is an open question for Jon).
+    - Check your setup: Claude Code (bundled), git, gh, az + azure-devops, VS Code `code` all found.
+    - Themes: Jig's 2, VS Code's built-in ones and the extensions' (25); file icons follow VS Code's
+      Material Icon Theme.
+    - `npm run dist` builds `Jig-Setup-0.1.0.exe` (247 MB, unsigned); the packaged app
+      (`win-unpacked\Jig.exe`) starts, opens Get started and loads the built-in add-ons with its
+      bundled esbuild (`e2e/packaged.spec.ts`). The installer itself wasn't run.
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
