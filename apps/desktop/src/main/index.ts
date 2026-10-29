@@ -1,4 +1,5 @@
 import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { app, Menu } from "electron";
 import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
@@ -37,7 +38,14 @@ const log = logger("main");
 
 registerSchemes();
 
-// One Jig per state directory: a second launch focuses the first window.
+// Jig's own taskbar entry on Windows (with Jig's icon), not Electron's when it runs from a clone;
+// the same id as `appId` in electron-builder.yml, so the installed app groups the same way.
+if (process.platform === "win32") app.setAppUserModelId("dev.jig.workbench");
+
+// One Jig per state directory: a second launch focuses the first window. Electron locks its own
+// data folder, so with JIG_HOME (tests, a throwaway home) that folder goes inside it, and such a Jig
+// runs next to your usual one.
+if (process.env.JIG_HOME) app.setPath("userData", join(jigHome(), "electron"));
 if (!app.requestSingleInstanceLock({ jigHome: jigHome() })) {
   app.quit();
 } else {

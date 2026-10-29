@@ -412,6 +412,13 @@ Things the cloud build environment couldn't verify:
     Outlook (`OUTLOOK.EXE` is registered even when classic Outlook isn't installed). It now saves the
     zip in Downloads and opens a plain `mailto:` email in your default mail app (D-123). Checked
     with the new Outlook: the email opens and Explorer shows the zip.
+  - A submenu near the window's right edge (the bottom panel's ⋯ → Show below…) was pushed back
+    over its parent menu and looked like it replaced it; it now opens on the parent's left.
+  - The taskbar showed Electron's icon when Jig runs from a clone: Jig now has its own app id
+    (`dev.jig.workbench`, as in the installer), so the taskbar shows Jig's icon.
+  - A Jig with its own `JIG_HOME` (tests, a throwaway home) quit at once while your usual Jig was
+    open: the one-instance lock was per Windows user. With `JIG_HOME`, Electron's data folder (and the
+    lock) now lives in that home, so both run side by side.
   - Unit tests wrote log lines into the real `~/.jig/logs/main.log`; `vitest.config.ts` now gives
     every test a temporary `JIG_HOME` unless it sets its own.
   - Workflow command steps lost their quotes in `cmd.exe` (`echo "a b"` printed `\"a b\"`): an
