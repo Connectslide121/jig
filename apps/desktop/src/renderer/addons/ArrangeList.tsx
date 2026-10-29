@@ -7,7 +7,7 @@ import {
   renameDivider,
   toggleHidden,
 } from "@jig/sdk";
-import { Eye, EyeOff, GripVertical, Minus, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, GripVertical, Minus, Pencil, SeparatorHorizontal, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { cn, IconButton, promptDialog } from "../ui";
 
@@ -38,6 +38,16 @@ export function ArrangeList<T>({
 }) {
   const [over, setOver] = useState<string>();
   const entries = arrange(items, keyOf, arrangement, arranging);
+  /** Adds a divider just above `before` (or at the end), asking for its title. */
+  const insertDivider = async (before?: string) => {
+    const title = await promptDialog({
+      title: "Add a divider",
+      placeholder: "A title, or empty for a plain line",
+      confirmLabel: "Add",
+      allowEmpty: true,
+    });
+    if (title !== undefined) onChange(addDivider(items, keyOf, arrangement, title.trim(), before));
+  };
   const drop = (before: string | undefined, e: React.DragEvent) => {
     const key = e.dataTransfer.getData(DRAG);
     setOver(undefined);
@@ -122,6 +132,15 @@ export function ArrangeList<T>({
             <div className="min-w-0 flex-1">{renderItem(entry.item)}</div>
             {arranging && (
               <IconButton
+                icon={SeparatorHorizontal}
+                size="sm"
+                label="Add a divider above"
+                data-testid={`arrange-divider-above-${entry.key}`}
+                onClick={() => void insertDivider(entry.key)}
+              />
+            )}
+            {arranging && (
+              <IconButton
                 icon={entry.hidden ? EyeOff : Eye}
                 size="sm"
                 label={entry.hidden ? "Show it" : "Hide it"}
@@ -146,19 +165,13 @@ export function ArrangeList<T>({
             type="button"
             className="flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-muted hover:bg-hover hover:text-fg"
             data-testid="arrange-add-divider"
-            onClick={async () => {
-              const title = await promptDialog({
-                title: "Add a divider",
-                placeholder: "A title, or empty for a plain line",
-                confirmLabel: "Add",
-                allowEmpty: true,
-              });
-              if (title !== undefined) onChange(addDivider(items, keyOf, arrangement, title.trim()));
-            }}
+            onClick={() => void insertDivider()}
           >
             <Minus className="size-3.5" /> Add divider
           </button>
-          <span className="text-2xs text-hint">Drag the handles to reorder; dividers too.</span>
+          <span className="text-2xs text-hint">
+            Drag the handles to reorder; ⎯ on a row adds a divider above it.
+          </span>
         </div>
       )}
     </div>
