@@ -1180,3 +1180,15 @@ a clickable demo, iterate and validate before sending) and Claude, on my own (ho
 - **The demo lives in Jig, not on claude.ai.** Publishing it as a claude.ai Artifact would put the
   user's idea online before they decide to send it; the same HTML goes in the package as
   `mockup.html` for the developers.
+
+### D-121 — The repository keeps LF line endings on every OS
+**Decided by:** Claude, on my own (a fresh Windows clone failed `npm run check`) · **Date:** 2026-10-29
+
+- **`.gitattributes` sets `* text=auto eol=lf`** (images binary). Git for Windows defaults to
+  `core.autocrlf=true`, which checked every file out with CRLF and made Biome reject all of them.
+- **Unit tests don't depend on the machine's git config:** `vitest.config.ts` sets
+  `core.autocrlf=false` for the git the tests spawn (`GIT_CONFIG_COUNT`), since tests compare files
+  byte for byte after `git apply`. Jig itself keeps the user's setting: applying an attempt or a
+  worktree chat writes line endings the way the user's own checkouts do.
+- **Unit tests get 30 s** (`testTimeout`): tests that spawn git dozens of times took over 5 s on
+  Windows under the full suite's load.

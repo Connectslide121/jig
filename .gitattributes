@@ -1,0 +1,8 @@
+# LF everywhere, whatever core.autocrlf says (Git for Windows defaults it to true,
+# which makes Biome reject every file on a fresh clone).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary

@@ -395,6 +395,14 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
+- **Checked on Windows 11 (Oct 29, first local run):**
+  - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
+  - A fresh clone used to fail `npm run check`: Git for Windows checks files out with CRLF
+    (`core.autocrlf=true`), which Biome rejects. `.gitattributes` now keeps LF (D-121).
+  - Add-on UIs didn't bundle at all on Windows: the bundler took the entry `C:\…\ui.tsx` for a
+    package import and refused it. Fixed in `main/addons/bundle.ts`.
+  - The add-on file list Claude reads is sorted, so it's the same on NTFS and ext4.
+
 - **Phase 18 on Windows:**
   - Files: the watcher on a large repository (live refresh), Open in VS Code.
   - Editing in Preview: saving CRLF files, a file changed by Claude while you edit.
@@ -413,8 +421,6 @@ Things the cloud build environment couldn't verify:
     with the real model.
   - Claude's browser network log on a real dev server (bodies of the first page's requests).
 
-- `npm install` on Windows (Electron download, `@lydell/node-pty` prebuilt binary, the Agent SDK's
-  `win32-x64` package).
 - The window's title-bar overlay (Windows window controls drawn over Jig's own top bar).
 - **Real Claude Code sessions with your login** (phase 4): start a session, check streaming, tool
   cards, permission prompts, Always allow, interrupt, model switch, resume after restarting Jig, and that
