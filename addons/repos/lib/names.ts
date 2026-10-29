@@ -20,14 +20,29 @@ export function shortNames(paths: string[]): Map<string, string> {
   return out;
 }
 
-/** What the sync chip says and how it looks: work to sync, local changes, or a tick. */
-export function syncChip(repo: { ahead: number; behind: number; dirty: number; error?: string }): {
-  text: string;
+/**
+ * A repository's state at a glance: the dot's tone and words, and what the row's pills show (nothing
+ * for a repository that is up to date, so a long list stays calm).
+ */
+export function repoStatus(repo: { ahead: number; behind: number; dirty: number; error?: string }): {
   tone: "danger" | "accent" | "warning" | "success";
+  label: string;
+  /** `↓1 ↑2`, when there is something to pull or push. */
+  sync?: string;
+  /** Files with uncommitted changes. */
+  changed?: number;
 } {
-  if (repo.error) return { text: "error", tone: "danger" };
-  const parts = [repo.behind && `↓${repo.behind}`, repo.ahead && `↑${repo.ahead}`].filter(Boolean);
-  if (parts.length) return { text: parts.join(" "), tone: "accent" };
-  if (repo.dirty) return { text: `${repo.dirty} changed`, tone: "warning" };
-  return { text: "✓", tone: "success" };
+  if (repo.error) return { tone: "danger", label: "Couldn't read it" };
+  const sync = [repo.behind && `↓${repo.behind}`, repo.ahead && `↑${repo.ahead}`].filter(Boolean).join(" ");
+  const changed = repo.dirty || undefined;
+  const label = [
+    repo.behind && `${repo.behind} to pull`,
+    repo.ahead && `${repo.ahead} to push`,
+    repo.dirty && `${repo.dirty} changed`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  if (sync) return { tone: "accent", label, sync, changed };
+  if (changed) return { tone: "warning", label, changed };
+  return { tone: "success", label: "Up to date" };
 }

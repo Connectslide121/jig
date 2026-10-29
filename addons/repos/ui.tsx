@@ -17,10 +17,19 @@ import {
   useProjectList,
   useStorage,
 } from "@jig/sdk/ui";
-import { Check, CloudDownload, FolderGit2, ListOrdered, MoreHorizontal, RefreshCw } from "lucide-react";
+import {
+  Check,
+  CloudDownload,
+  FolderGit2,
+  GitBranch,
+  ListOrdered,
+  MoreHorizontal,
+  Pencil,
+  RefreshCw,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { RepoState } from "./host";
-import { shortNames, syncChip } from "./lib/names";
+import { repoStatus, shortNames } from "./lib/names";
 
 function ago(iso: string | undefined): string {
   if (!iso) return "never fetched";
@@ -143,7 +152,7 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
       at,
       target ? { slot: "context.repo", project: target } : undefined,
     );
-  const chip = syncChip(repo);
+  const status = repoStatus(repo);
   return (
     <div
       data-testid={`repo-${repo.name}`}
@@ -151,51 +160,76 @@ function RepoRow({ repo, name, project }: { repo: RepoState; name: string; proje
         e.preventDefault();
         menu(e.nativeEvent);
       }}
-      className="group flex flex-col rounded-md px-2 py-1 hover:bg-hover"
+      className="group flex flex-col rounded-md px-2 hover:bg-hover"
     >
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex h-7 items-center gap-2 text-sm">
+        <span
+          className={cn("size-2 shrink-0 rounded-full", DOT[status.tone])}
+          title={status.label}
+          aria-label={status.label}
+        />
         <button
           type="button"
           className="min-w-0 flex-1 truncate text-left font-medium"
-          title={`${repo.path}\n${ago(repo.lastFetch)}`}
+          title={`${repo.path}\n${status.label} · ${ago(repo.lastFetch)}`}
           onClick={() => void open()}
         >
           {name}
         </button>
-        <button
-          type="button"
-          disabled={syncing}
-          title={chip.tone === "success" ? "Nothing to sync" : "Sync: pull, then push"}
-          onClick={() => void sync()}
-          data-testid={`repo-sync-${name}`}
-          className="shrink-0 disabled:opacity-50"
-        >
-          <Badge tone={chip.tone}>{syncing ? "…" : chip.text}</Badge>
-        </button>
+        {(status.sync || status.changed) && (
+          <button
+            type="button"
+            disabled={syncing}
+            title={`${status.label}. Sync: pull, then push`}
+            onClick={() => void sync()}
+            data-testid={`repo-sync-${name}`}
+            className="flex shrink-0 items-center gap-1 disabled:opacity-50"
+          >
+            {status.sync && (
+              <span className="rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums">
+                {syncing ? "…" : status.sync}
+              </span>
+            )}
+            {status.changed && (
+              <span className="flex items-center gap-0.5 rounded-full bg-warning-soft px-1.5 text-2xs font-semibold text-warning tabular-nums">
+                <Pencil className="size-2.5" />
+                {status.changed}
+              </span>
+            )}
+          </button>
+        )}
         <span
           className={cn(
-            "w-2/5 shrink-0 truncate text-right text-xs",
+            "flex max-w-2/5 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
-          title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : "No upstream"}
+          title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
         >
-          {repo.branch ?? "—"}
+          <GitBranch className="size-3 shrink-0" />
+          <span className="truncate">{repo.branch ?? "—"}</span>
         </span>
         <IconButton
           icon={MoreHorizontal}
           size="sm"
           label="More"
-          className="invisible group-hover:visible group-focus-within:visible"
+          className="-mr-1 invisible group-hover:visible group-focus-within:visible"
           onClick={(e) => {
             e.stopPropagation();
             menu(e.currentTarget);
           }}
         />
       </div>
-      {repo.error && <div className="truncate text-xs text-danger">{repo.error}</div>}
+      {repo.error && <div className="truncate pb-1 pl-4 text-xs text-danger">{repo.error}</div>}
     </div>
   );
 }
+
+const DOT = {
+  success: "bg-success",
+  accent: "bg-accent",
+  warning: "bg-warning",
+  danger: "bg-danger",
+} as const;
 
 /**
  * Every repository of every workspace, like the Git plugin (D-143): its short name, a sync chip
@@ -225,18 +259,32 @@ export function ReposView({ ctx }: AddonComponentProps) {
   const toPush = repos.filter((r) => r.ahead).length;
   const toPull = repos.filter((r) => r.behind).length;
   const changed = repos.filter((r) => r.dirty).length;
-  const summary = [
-    `${repos.length} repos`,
-    toPush && `${toPush} to push`,
-    toPull && `${toPull} to pull`,
-    changed && `${changed} with changes`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+
   return (
     <div className="flex h-full flex-col" data-testid="repos-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
-        <span className="min-w-0 flex-1 truncate">{summary}</span>
+        <span className="flex min-w-0 flex-1 items-center gap-2 truncate">
+          <span>{repos.length} repos</span>
+          {toPush > 0 && (
+            <span className="text-accent" title={`${toPush} with commits to push`}>
+              ↑{toPush}
+            </span>
+          )}
+          {toPull > 0 && (
+            <span className="text-accent" title={`${toPull} with commits to pull`}>
+              ↓{toPull}
+            </span>
+          )}
+          {changed > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-warning"
+              title={`${changed} with uncommitted changes`}
+            >
+              <Pencil className="size-3" />
+              {changed}
+            </span>
+          )}
+        </span>
         <Button
           size="sm"
           variant={arranging ? "primary" : "ghost"}

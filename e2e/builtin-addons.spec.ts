@@ -102,7 +102,7 @@ test("Repos overview lists repositories with their state", async ({ page, jigHom
   await page.getByTestId("tools-button").click();
   await page.getByTestId("tools-filter").fill("show all repos");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("repo-shop")).toContainText("2 changed", { timeout: 15000 });
+  await expect(page.getByTestId("repo-sync-shop")).toContainText("2", { timeout: 15000 });
   await expect(page.getByTestId("repo-shop")).toContainText("main");
 });
 

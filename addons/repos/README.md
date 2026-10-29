@@ -8,9 +8,11 @@ folder), one row each:
   `lib/names.ts`; the full path and the last fetch are in its tooltip). Click it: it becomes the
   active project (for a workspace repository: the workspace, with that repository focused) and its
   Git view opens.
-- **A sync chip**: `↓2 ↑1` to pull and push, `3 changed`, or ✓. Press it to sync: pull when there
-  is something to pull, then push (also a new branch without an upstream). Host `sync`.
-- **Its branch** (dimmed without an upstream).
+- **A status dot** (green up to date, amber changes, accent to pull or push, red when it can't be
+  read) and **pills only when there is something to do**: `↓2 ↑1` and ✎ with the number of changed
+  files. Press them to sync: pull when there is something to pull, then push (also a new branch
+  without an upstream). Host `sync`. A clean repository shows no pill, so a long list stays calm.
+- **Its branch**, with a branch icon (dimmed without an upstream).
 - ⋯ / right-click: Open in Git, Sync, Fetch, Pull, Push, New chat in this repository, Open in
   Explorer, and other add-ons' repository menus.
 
@@ -20,7 +22,7 @@ your projects (the add-on's global storage, `arrangement`); new repositories com
 
 - View **Repos**: a collapsible section at the bottom of the Git panel (`"under": "addon.git.git"`,
   D-099), like GitLens below Source Control. Its ⋯ menu moves it to its own tab. Header: how many
-  repositories, to push, to pull and with changes; Fetch all; Refresh. Status bar item
+  repositories, then ↑ / ↓ / ✎ counts (to push, to pull, with changes); Fetch all; Refresh. Status bar item
   "N to push/pull", Tools → Fetch all repos.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
