@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { builtinModules } from "node:module";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { build, type Message, type Plugin } from "esbuild";
 
 /**
@@ -21,6 +21,8 @@ const sharedModules: Plugin = {
   name: "jig-shared-modules",
   setup(b) {
     b.onResolve({ filter: /^[^./]/ }, (args) => {
+      // On Windows the entry point is "C:\…", which the filter also matches.
+      if (args.kind === "entry-point" || isAbsolute(args.path)) return undefined;
       if (SHARED_UI_MODULES.includes(args.path)) return { path: args.path, namespace: "jig-shared" };
       return {
         errors: [
