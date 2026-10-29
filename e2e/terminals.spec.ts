@@ -26,29 +26,19 @@ test("terminals: open in the bottom panel, type, see output", async ({ page, jig
   await expect(screenText(page)).toContainText("jig-42");
 });
 
-test("scripts: discovered, run from the dashboard, shown in the status bar, stopped", async ({
+test("scripts: discovered, run from the Scripts panel, shown in the status bar, stopped", async ({
   page,
   jigHome,
 }) => {
   await project(page, jigHome);
-  await page.getByTestId("project-app").dblclick();
-  await expect(page.getByTestId("script-dev")).toBeVisible();
-  await page.getByTestId("script-run-dev").click();
+  await page.getByTestId("layout-button").click();
+  await page.getByRole("menuitem", { name: "Views" }).hover();
+  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  const view = page.getByTestId("scripts-view");
+  await expect(view.getByTestId("scripts-addon-dev")).toBeVisible({ timeout: 15000 });
+  await view.getByRole("button", { name: "Run dev" }).click();
   await expect(screenText(page)).toContainText("dev-running");
   await expect(page.getByTestId("running-scripts")).toContainText("1 running");
-  await page.getByTestId("script-stop-dev").click();
+  await view.getByRole("button", { name: "Stop dev" }).first().click();
   await expect(page.getByTestId("running-scripts")).toHaveCount(0);
-});
-
-test("scripts: a group starts several scripts at once", async ({ page, jigHome }) => {
-  await project(page, jigHome);
-  await page.getByTestId("project-app").dblclick();
-  await page.getByTestId("group-new").click();
-  await page.getByTestId("group-name").fill("Start local");
-  await page.getByTestId("group-pick-dev").check();
-  await page.getByTestId("group-pick-lint").check();
-  await page.getByTestId("group-save").click();
-  await page.getByTestId("group-run-Start local").click();
-  await expect(page.getByTestId("terminal-tab-dev")).toBeVisible();
-  await expect(page.getByTestId("terminal-tab-lint")).toBeVisible();
 });

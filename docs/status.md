@@ -52,9 +52,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Phase 5 (done): terminals & scripts.**
   - Terminals in the bottom panel (`Ctrl+\``, or `+` in its header): PowerShell by default on Windows,
     themed, survive switching tabs; rename/stop/close from the right-click menu.
-  - Scripts on the project dashboard: npm/pnpm/yarn/bun scripts, `.ps1`/`.sh`, `dotnet run`/`watch`,
-    `func start`, per folder; Run / Stop / Restart; groups such as "Start local" start several at once;
-    the status bar shows "N running".
+  - Scripts in the Scripts view (no longer on the project dashboard, D-153): npm/pnpm/yarn/bun
+    scripts, `.ps1`/`.sh`, .NET launch profiles, `func start`, per folder; Run / Stop; groups start
+    several at once; the status bar shows "N running".
   - Tools → Sign in to Claude Code… runs Claude Code's own sign-in in a private terminal; when you're
     signed in Jig says so and closes it (D-126). Get started shows whether you're signed in.
 

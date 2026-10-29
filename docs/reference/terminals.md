@@ -41,8 +41,9 @@ folder (one terminal per script; running it again focuses it, a finished run is 
 kills it; **Restart** does both. **Groups** ("Start local" = front end + back end) are saved per project
 in `~/.jig/scripts.json` and start their scripts in order.
 
-UI: the project dashboard's Scripts card (run/stop/restart, groups), and the status bar item "N running"
-(click → show output / stop). The Scripts add-on (phase 7) adds a view and Tools-menu actions.
+UI: the Scripts add-on's view (run/stop, groups, D-146) and Tools-menu actions, and the status bar
+item "N running" (click → show output / stop). The project dashboard no longer has a Scripts card
+(D-153).
 
 On Windows, stopping a script closes its pseudo console, which ends the processes attached to it; check
 that dev servers (node, dotnet) really stop (`docs/status.md`).

@@ -189,10 +189,8 @@ test("screenshots for the About page", async () => {
     await page.screenshot({ path: join(OUT, `${name}.jpg`), type: "jpeg", quality: 82 });
   };
 
-  // Dashboard with a running script.
+  // Dashboard.
   await page.getByTestId("project-repos").dblclick();
-  await expect(page.getByTestId("script-run-dev")).toBeVisible({ timeout: 15000 });
-  await page.getByTestId("script-run-dev").click();
   await page.waitForTimeout(1200);
   await shot("dashboard");
   await key("Control+j");

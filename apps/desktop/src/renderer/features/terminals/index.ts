@@ -1,11 +1,9 @@
 import { KeyRound, SquareTerminal } from "lucide-react";
-import { createElement, useEffect } from "react";
+import { useEffect } from "react";
 import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerStatusItem, registerView } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
-import { registerDashboardWidget } from "../projects/widgets";
 import { RunningScripts } from "../scripts/RunningScripts";
-import { ScriptsPanel } from "../scripts/ScriptsPanel";
 import { claudeLogin, newTerminal, showTerminal } from "./actions";
 import { askClaudeAboutTerminal, newlyFailed } from "./askClaude";
 import { routeTerminalData, setTerminals, useTerminals } from "./store";
@@ -43,12 +41,6 @@ export function registerTerminals(): void {
     order: 10,
     component: RunningScripts,
     owner: "core",
-  });
-  registerDashboardWidget({
-    id: "jig.scripts",
-    order: 0,
-    owner: "core",
-    render: (project) => createElement(ScriptsPanel, { project }),
   });
 }
 

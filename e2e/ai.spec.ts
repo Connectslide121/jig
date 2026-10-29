@@ -129,8 +129,11 @@ test("A failed script offers Ask Claude, with its output in a new chat", async (
     }),
   );
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("project-app").dblclick();
-  await page.getByTestId("script-run-check").click();
+  await page.getByTestId("layout-button").click();
+  await page.getByRole("menuitem", { name: "Views" }).hover();
+  await page.getByRole("menuitem", { name: "Scripts" }).click();
+  const view = page.getByTestId("scripts-view");
+  await view.getByRole("button", { name: "Run check" }).click({ timeout: 15000 });
 
   const toast = page.getByTestId("toast").filter({ hasText: "failed" });
   await expect(toast).toContainText("Exit code 3", { timeout: 15000 });

@@ -1507,3 +1507,12 @@ and Claude, on my own (how) · **Date:** 2026-10-30
 - **Repos rows** in fixed columns (name, changes, sync, branch) so everything lines up; no column
   labels (Jon: not needed).
 
+### D-153 — The project dashboard has no Scripts card
+**Decided by:** Jon ("remove scripts from the project dashboard, we have a new very nice scripts
+panel") · **Date:** 2026-10-30
+
+- Scripts are listed, run and grouped in the Scripts view only (D-146). The dashboard's card
+  (`ScriptsPanel`, with its own group dialog) is removed; the "N running" status bar item stays.
+- Groups made on the dashboard before stay in `~/.jig/scripts.json` and keep showing in the Scripts
+  view as the project's, with Start and Stop.
+
