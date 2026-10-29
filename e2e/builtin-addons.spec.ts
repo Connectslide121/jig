@@ -65,6 +65,8 @@ test("Git: working changes, stage, commit, history, commit detail and diffs", as
   await page.getByTestId("git-commit").click();
   await expect(page.getByTestId("git-file-staged-cart.ts")).toHaveCount(0);
   expect(git(dir, "log", "-1", "--format=%s").trim()).toBe("Double the total");
+  // The message box is empty again, ready for the next commit.
+  await expect(page.getByTestId("git-commit-message")).toHaveValue("");
 
   // History of main, filter, commit detail, diff in a commit.
   await page.getByTestId("git-branch-main").click();

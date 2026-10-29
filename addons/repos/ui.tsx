@@ -48,7 +48,7 @@ function useOverview() {
     void refresh(ctx);
     const onFocus = () => void refresh(ctx);
     window.addEventListener("focus", onFocus);
-    const timer = setInterval(() => void refresh(ctx), 60_000);
+    const timer = setInterval(() => document.visibilityState === "visible" && void refresh(ctx), 60_000);
     return () => {
       subscribers.delete(setRepos);
       window.removeEventListener("focus", onFocus);

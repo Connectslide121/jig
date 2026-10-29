@@ -9,6 +9,7 @@ import {
   parseLog,
   parseNumstat,
   parseStatus,
+  refOf,
   SHOW_FORMAT,
   type Status,
 } from "./lib/parse";
@@ -129,7 +130,8 @@ export async function log(
   const n = `-n${skip + limit}`;
   const [byMessage, byAuthor] = await Promise.all([
     git(api, cwd, [...base, n, "-i", "--fixed-strings", `--grep=${f}`, ...target]),
-    git(api, cwd, [...base, n, "-i", `--author=${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, ...target]),
+    // --fixed-strings applies to --author too (its regex is basic, where escaping changes meaning).
+    git(api, cwd, [...base, n, "-i", "--fixed-strings", `--author=${f}`, ...target]),
   ]);
   const seen = new Set<string>();
   return [...parseLog(byMessage), ...parseLog(byAuthor)]
@@ -217,11 +219,6 @@ export async function image(
 const MESSAGE_DIFF_LIMIT = 60_000;
 
 /**
- * What Claude needs to write a commit message: the diff that would be committed (staged, or every
- * change when nothing is staged, as the Commit button does), the names of new files, and the
- * subjects of recent commits (to match the repository's style).
- */
-/**
  * Unreleased commits for a repository with planned releases (the Releases add-on's `.jig/release.json`):
  * commits since the latest tag in the policy's format. Undefined without such a policy.
  */
@@ -255,6 +252,11 @@ export async function releaseInfo(
   }
 }
 
+/**
+ * What Claude needs to write a commit message: the diff that would be committed (staged, or every
+ * change when nothing is staged, as the Commit button does), the names of new files, and the
+ * subjects of recent commits (to match the repository's style).
+ */
 export async function messageContext({ cwd }: Cwd, api: AddonHostApi) {
   const stagedNames = (await git(api, cwd, ["diff", "--cached", "--name-only"])).trim();
   const staged = stagedNames.length > 0;
@@ -313,6 +315,7 @@ export async function commit(
 ) {
   if (!message.trim() && !amend) throw new Error("Write a commit message first");
   await git(api, cwd, ["commit", ...(amend ? ["--amend"] : []), "-F", "-"], { input: message });
+  return true;
 }
 
 export async function switchBranch(
@@ -356,7 +359,7 @@ export async function push({ cwd }: Cwd, api: AddonHostApi) {
 
 /** Commits on `branch` that the current branch doesn't have, and the other way round. */
 export async function compare({ cwd, branch }: Cwd & { branch: string }, api: AddonHostApi) {
-  const current = (await status({ cwd }, api)).branch.head ?? "HEAD";
+  const current = refOf((await status({ cwd }, api)).branch.head);
   const range = (a: string, b: string) =>
     git(api, cwd, ["log", `--format=${LOG_FORMAT}`, "-n200", `${a}..${b}`, "--"]);
   const [onlyThere, onlyHere] = await Promise.all([range("HEAD", branch), range(branch, "HEAD")]);
@@ -365,11 +368,6 @@ export async function compare({ cwd, branch }: Cwd & { branch: string }, api: Ad
 
 export async function remoteUrl({ cwd }: Cwd, api: AddonHostApi) {
   return (await git(api, cwd, ["remote", "get-url", "origin"], { ok: [0, 2] })).trim() || undefined;
-}
-
-export async function isRepo({ cwd }: Cwd, api: AddonHostApi) {
-  const r = await api.exec("git", ["rev-parse", "--is-inside-work-tree"], { cwd });
-  return r.code === 0 && r.stdout.trim() === "true";
 }
 
 // ------------------------------------------------------------------------------------------------

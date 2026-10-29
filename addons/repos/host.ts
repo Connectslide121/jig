@@ -58,7 +58,6 @@ export function summarize(
 
 type RepoItem = { workspaceId: string; name: string; path: string; repoPath?: string };
 
-/** Every repository: projects that are repositories, and the repositories inside workspace projects. */
 /** Every repository of every workspace (added folder), whatever the projects; each once. */
 export function repoItems(workspaces: AddonWorkspace[]): RepoItem[] {
   const seen = new Set<string>();

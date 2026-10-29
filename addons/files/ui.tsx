@@ -144,7 +144,8 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   /** Looks at a shown folder again: its opened folders and its git state. */
   const refresh = useCallback(
     (root: string) => {
-      for (const dir of loaded.current) if (dir === root || dir.startsWith(root)) loadDir(dir);
+      for (const dir of loaded.current)
+        if (dir === root || dir.startsWith(`${root}/`) || dir.startsWith(`${root}\\`)) loadDir(dir);
       const folder = folders.find((f) => f.path === root);
       if (folder) loadStatus(folder);
     },
@@ -187,16 +188,30 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
   // The filter: every file of the shown folders, loaded when you start typing.
   const [query, setQuery] = useState("");
   const [all, setAll] = useState<Record<string, string[]>>();
+  const listing = useRef<string>(undefined);
   useEffect(() => {
-    if (!query.trim() || all) return;
+    // Once per set of folders (not on every render while the first answer is on its way).
+    if (!query.trim() || all || listing.current === shownKey) return;
+    const key = shownKey;
+    listing.current = key;
     void Promise.all(
       shownFolders.map(
         async (f) =>
           [f.path, await ctx.host.call<string[]>("files", { root: f.path, repos: f.repos })] as const,
       ),
-    ).then((list) => setAll(Object.fromEntries(list)));
-  }, [query, all, shownFolders, ctx]);
-  useEffect(() => setAll(undefined), [shownKey]);
+    )
+      .then((list) => {
+        // Folders changed meanwhile: this list is of the old ones.
+        if (listing.current === key) setAll(Object.fromEntries(list));
+      })
+      .catch(() => {
+        if (listing.current === key) listing.current = undefined;
+      });
+  }, [query, all, shownKey, ctx]);
+  useEffect(() => {
+    setAll(undefined);
+    listing.current = undefined;
+  }, [shownKey]);
 
   if (!roots || !main) return null;
   const stateOf = (root: string, path: string) => states[root]?.[path];

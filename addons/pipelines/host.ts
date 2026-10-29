@@ -23,7 +23,11 @@ interface Tracked {
   project: string;
   runId: number;
   name: string;
+  /** Checks in a row that failed (az signed out, run deleted…): given up after MAX_FAILS. */
+  fails?: number;
 }
+
+const MAX_FAILS = 30;
 
 async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> {
   const r = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
@@ -145,7 +149,8 @@ export async function run(
 export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
   const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
   if (tracked.length === 0) return;
-  const still: Tracked[] = [];
+  const finished = new Set<number>();
+  const failing = new Map<number, number>();
   for (const t of tracked) {
     try {
       const r = toRun(
@@ -162,20 +167,31 @@ export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
         ]),
       );
       const state = runState(r);
-      if (state === "running" || state === "queued") still.push(t);
-      else
+      if (state === "running" || state === "queued") failing.set(t.runId, 0);
+      else {
+        finished.add(t.runId);
         api.notify({
           title: `${t.name} ${state === "succeeded" ? "succeeded" : state === "failed" ? "failed" : state === "canceled" ? "was cancelled" : "finished"}`,
           message: `Run ${r.buildNumber} on ${r.branch}`,
           tone: state === "succeeded" ? "success" : state === "failed" ? "danger" : "warning",
         });
+      }
     } catch (error) {
       api.log(`Could not check run ${t.runId}`, (error as Error).message);
-      still.push(t);
+      const fails = (t.fails ?? 0) + 1;
+      if (fails >= MAX_FAILS) finished.add(t.runId);
+      else failing.set(t.runId, fails);
     }
   }
-  await api.storage.set("tracked", still);
-  if (still.length !== tracked.length) api.emit("runs-changed");
+  // Read again: a run started while these checks ran stays tracked.
+  const now = (await api.storage.get<Tracked[]>("tracked")) ?? [];
+  await api.storage.set(
+    "tracked",
+    now
+      .filter((t) => !finished.has(t.runId))
+      .map((t) => (failing.has(t.runId) ? { ...t, fails: failing.get(t.runId) || undefined } : t)),
+  );
+  if (finished.size) api.emit("runs-changed");
 }
 
 export async function tracked(_: unknown, api: AddonHostApi) {

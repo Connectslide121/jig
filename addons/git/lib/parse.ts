@@ -361,3 +361,8 @@ export function relativeTime(iso: string, now = Date.now()): string {
   const n = Math.floor(s / pick[0]);
   return `${n} ${pick[1]}${n === 1 ? "" : "s"} ago`;
 }
+
+/** The ref to read history from: the branch, or `HEAD` when detached (status says "(detached)"). */
+export function refOf(head: string | undefined): string {
+  return head && head !== "(detached)" ? head : "HEAD";
+}

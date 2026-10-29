@@ -105,7 +105,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   const [arranging, setArranging] = useState(false);
   useAddonEvent("runs-changed", () => void reload());
   useEffect(() => {
-    const t = setInterval(() => void reload(), 30_000);
+    const t = setInterval(() => document.visibilityState === "visible" && void reload(), 30_000);
     return () => clearInterval(t);
   }, [reload]);
   if (error) return <div className="p-3 text-xs text-danger">{error}</div>;

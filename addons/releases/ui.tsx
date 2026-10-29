@@ -29,7 +29,7 @@ import {
   TriangleAlert,
   Wand2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RepoDetail, RepoSummary } from "./host";
 import { draftChangelog } from "./lib/commits";
 import { unreleasedLabel, whatsLive } from "./lib/deploys";
@@ -63,7 +63,7 @@ function useOverview() {
   const result = useHostCall<RepoSummary[]>("overview");
   useAddonEvent("changed", () => void result.reload());
   useEffect(() => {
-    const t = setInterval(() => void result.reload(), 120_000);
+    const t = setInterval(() => document.visibilityState === "visible" && void result.reload(), 120_000);
     return () => clearInterval(t);
   }, [result.reload]);
   return result;
@@ -411,9 +411,15 @@ function PrepareCard({
   const [busy, setBusy] = useState<"draft" | "release">();
   const [open, setOpen] = useState(false);
   useEffect(() => setVersion(suggestion.version), [suggestion.version]);
+  // Drafted once when the section opens (you may empty it to release without a changelog entry)…
+  const drafted = useRef(false);
   useEffect(() => {
-    if (open && !changelog) setChangelog(draftChangelog(version, today(), commits));
-  }, [open, changelog, version, commits]);
+    if (!open || drafted.current) return;
+    drafted.current = true;
+    setChangelog(draftChangelog(version, today(), commits));
+  }, [open, version, commits]);
+  // …and its heading follows the version.
+  useEffect(() => setChangelog((c) => c.replace(/^## \[[^\]]*\]/, `## [${version}]`)), [version]);
 
   const draft = async () => {
     setBusy("draft");

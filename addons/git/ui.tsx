@@ -66,6 +66,7 @@ import {
   commitUrl,
   type FileChange,
   type NumstatEntry,
+  refOf,
   relativeTime,
   type Status,
 } from "./lib/parse";
@@ -879,7 +880,7 @@ function RepoPanel({ ctx, project }: { ctx: AddonUiContext; project: RepoProject
           onClick={() =>
             ctx.openTab("history", {
               ...where(project),
-              ref: b.head ?? "HEAD",
+              ref: refOf(b.head),
               title: `History: ${b.head ?? "HEAD"}`,
             })
           }
@@ -952,7 +953,7 @@ function repoMenu(
   reload: () => void,
 ): Array<MenuItemInput | { separator: true }> {
   const cwd = repo.path;
-  const head = status?.branch.head ?? "HEAD";
+  const head = refOf(status?.branch.head);
   return [
     {
       label: "History",
@@ -1708,6 +1709,9 @@ export function CommitTab({ ctx, params }: AddonTabProps) {
 // ------------------------------------------------------------------------------------------------
 // Diff tab
 
+/** Open Diff tabs of the same repository reload their review comments when one changes them. */
+const reviewListeners = new Set<(key: string) => void>();
+
 export function DiffTab({ ctx, params }: AddonTabProps) {
   const project = useProject(params.projectId, params.repo);
   const args = {
@@ -1737,11 +1741,16 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
     if (!reviewKey) return;
     const load = () => void ctx.storage.get<ReviewComment[]>(reviewKey).then((r) => setReview(r ?? []));
     load();
-    return ctx.on("review", load);
+    const listener = (key: string) => key === reviewKey && load();
+    reviewListeners.add(listener);
+    return () => void reviewListeners.delete(listener);
   }, [ctx, reviewKey]);
-  const saveReview = async (next: ReviewComment[]) => {
+  // From what's stored (another Diff tab may have added a comment), and every open tab hears of it.
+  const saveReview = async (change: (current: ReviewComment[]) => ReviewComment[]) => {
+    const next = change((await ctx.storage.get<ReviewComment[]>(reviewKey)) ?? []);
     setReview(next);
     await ctx.storage.set(reviewKey, next);
+    for (const l of reviewListeners) l(reviewKey);
   };
   const reviewing = !args.commit && !isImage;
   const addComment = async (anchor: { side: "old" | "new"; line: number; code: string }) => {
@@ -1751,8 +1760,8 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
       confirmLabel: "Add",
     });
     if (!text?.trim()) return;
-    await saveReview([
-      ...review,
+    await saveReview((current) => [
+      ...current,
       {
         id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         path: args.path,
@@ -1797,7 +1806,7 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
                       {
                         label: "Clear the comments",
                         icon: "trash-2",
-                        onSelect: () => void saveReview([]),
+                        onSelect: () => void saveReview(() => []),
                       },
                     ],
                     e.currentTarget,
@@ -1856,7 +1865,7 @@ export function DiffTab({ ctx, params }: AddonTabProps) {
           mode={mode}
           comments={reviewing ? review.filter((c) => c.path === args.path) : []}
           onComment={reviewing ? (a) => void addComment(a) : undefined}
-          onRemoveComment={(id) => void saveReview(review.filter((c) => c.id !== id))}
+          onRemoveComment={(id) => void saveReview((current) => current.filter((c) => c.id !== id))}
         />
       )}
     </div>
@@ -1951,7 +1960,7 @@ export async function openHistory(ctx: AddonUiContext) {
   const project = activeRepo(ctx);
   if (!project) return;
   const status = await ctx.host.call<Status>("status", { cwd: project.path });
-  const ref = status.branch.head ?? "HEAD";
+  const ref = refOf(status.branch.head);
   ctx.openTab("history", { ...where(project), ref, title: `History: ${ref}` });
 }
 

@@ -138,12 +138,12 @@ async function runUnattended(wf: Workflow, folder: string, api: AddonHostApi): P
 export async function checkSchedules(_: unknown, api: AddonHostApi) {
   const triggered = (await api.storage.get<Record<string, string>>("triggered")) ?? {};
   const now = new Date();
-  let changed = false;
   for (const project of await api.projects()) {
     for (const wf of await list({ projectId: project.id }, api)) {
       if (!isDue(wf.trigger, triggered[wf.id], now, wf.createdAt)) continue;
+      // Saved before it runs: a long run must not look due again (or after a restart mid-run).
       triggered[wf.id] = now.toISOString();
-      changed = true;
+      await api.storage.set("triggered", triggered);
       if (runsUnattended(wf)) {
         const run = await runUnattended(wf, project.path, api);
         api.notify({
@@ -162,7 +162,6 @@ export async function checkSchedules(_: unknown, api: AddonHostApi) {
         });
     }
   }
-  if (changed) await api.storage.set("triggered", triggered);
 }
 
 // ------------------------------------------------------------------------------------------------

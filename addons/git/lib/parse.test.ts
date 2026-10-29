@@ -7,6 +7,7 @@ import {
   parseNumstat,
   parseStatus,
   parseUnifiedDiff,
+  refOf,
   relativeTime,
   sideBySide,
 } from "./parse";
@@ -197,5 +198,13 @@ describe("relativeTime", () => {
     expect(relativeTime("2026-10-27T11:00:00Z", now)).toBe("1 hour ago");
     expect(relativeTime("2026-10-20T12:00:00Z", now)).toBe("1 week ago");
     expect(relativeTime("2026-10-24T12:00:00Z", now)).toBe("3 days ago");
+  });
+});
+
+describe("refOf", () => {
+  it("uses HEAD when detached or unknown", () => {
+    expect(refOf("main")).toBe("main");
+    expect(refOf("(detached)")).toBe("HEAD");
+    expect(refOf(undefined)).toBe("HEAD");
   });
 });

@@ -480,7 +480,8 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
     for (const env of policy.environments ?? []) {
       if (!env.pipeline || env.deploy === "manual") continue;
       const key = `seen:${item.path}:${env.name}`;
-      const seen = await api.storage.get<{ done: number; warned: number[] }>(key);
+      // `done`: every run up to it is handled; `handled`: later runs that finished before an older one.
+      const seen = await api.storage.get<{ done: number; warned: number[]; handled?: number[] }>(key);
       const r = await api.exec(
         "az",
         [
@@ -513,11 +514,12 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
         await api.storage.set(key, { done: maxId, warned: [] });
         continue;
       }
-      const next = { done: seen.done, warned: [...seen.warned] };
+      const next = { done: seen.done, warned: [...seen.warned], handled: [...(seen.handled ?? [])] };
       const list = await releases(api, item.path, policy.tagFormat);
+      let waiting = false;
       for (const run of runs) {
         const id = Number(run.id);
-        if (id <= seen.done) continue;
+        if (id <= seen.done || next.handled.includes(id)) continue;
         const commit = String(run.sourceVersion ?? "");
         const version = list.find((x) => x.commit === commit)?.version;
         const action = deployAction(policy, env, version);
@@ -530,19 +532,27 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
               tone: "warning",
             });
           }
+          waiting = true;
           continue;
         }
-        next.done = Math.max(next.done, id);
+        // An older run still in progress: `done` stays before it, so it's handled when it finishes.
+        if (waiting) next.handled.push(id);
+        else next.done = Math.max(next.done, id);
         if (run.result !== "succeeded") continue;
         let deployed = version;
         if (action === "tag") {
-          const known = await git(api, item.path, ["cat-file", "-e", `${commit}^{commit}`], {
-            ok: [0, 1, 128],
-          })
-            .then(() => true)
-            .catch(() => false);
+          // A commit not fetched yet can't be tagged.
+          const known =
+            /^[0-9a-f]{7,40}$/i.test(commit) &&
+            (await git(api, item.path, ["cat-file", "-e", `${commit}^{commit}`])
+              .then(() => true)
+              .catch(() => false));
           if (known)
-            deployed = await tagDeploy(api, item.path, policy, commit, env.name).catch(() => undefined);
+            deployed = await tagDeploy(api, item.path, policy, commit, env.name).catch((error: Error) => {
+              api.log(`Could not tag the ${env.name} deploy of ${commit}`, error.message);
+              return undefined;
+            });
+          else api.log(`${commit} isn't in ${item.path} yet (fetch it): the ${env.name} deploy isn't tagged`);
         } else if (action === "warn" && !next.warned.includes(id)) {
           api.notify({
             title: `${item.name}: deployed to ${env.name} without a release`,
@@ -561,6 +571,7 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
         api.emit("changed", { path: item.path });
       }
       next.warned = next.warned.filter((w) => w > next.done - 50);
+      next.handled = next.handled.filter((h) => h > next.done);
       await api.storage.set(key, next);
     }
   }

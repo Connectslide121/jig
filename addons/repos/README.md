@@ -1,7 +1,8 @@
 # Repos
 
-A cross-project overview (which GitLens doesn't have): every registered project that is a git
-repository, and every repository inside a workspace project (shown as `workspace/repo`), with its branch, number of uncommitted files, commits ahead/behind its upstream and when
+A cross-project overview (which GitLens doesn't have): every
+git repository in the folders you added (a folder that is a repository, and the repositories inside
+a folder, shown as `folder/repo`), with its branch, number of uncommitted files, commits ahead/behind its upstream and when
 it was last fetched. Fetch, pull and push per repo or fetch everything at once. Clicking a repo makes
 it the active project (for a workspace repository: the workspace, with that repository focused) and
 opens its Git view. "New chat in this repository" starts a chat inside it.

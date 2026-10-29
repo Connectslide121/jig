@@ -4,7 +4,7 @@ Azure DevOps pipelines through your own `az` CLI (`az login` + the `azure-devops
 stores no tokens (D-018).
 
 - **View Pipelines** (right sidebar): pipelines grouped per Azure DevOps project with the latest run
-  (status, branch, when), refreshed every 30 s while visible. Run a pipeline on a branch, open a run or
+  (status, branch, when), refreshed every 30 s while Jig is in front. Run a pipeline on a branch, open a run or
   the pipeline in the browser.
 - **Watcher**: runs you started from Jig are checked every minute; you get a notification when one
   succeeds or fails.
