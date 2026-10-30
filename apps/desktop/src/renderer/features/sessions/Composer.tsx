@@ -382,7 +382,7 @@ export function Composer({
                   ) : null}
                   {q.text}
                 </span>
-                {!q.attachments?.length && busy && (
+                {busy && (
                   <IconButton
                     icon={Zap}
                     size="sm"
@@ -390,7 +390,7 @@ export function Composer({
                     data-testid="queue-send-now"
                     onClick={async () => {
                       await call("sessions.removeQueued", { id: meta.id, queuedId: q.id });
-                      await send(q.text, [], true);
+                      await send(q.text, q.attachments ?? [], true);
                     }}
                   />
                 )}
@@ -667,7 +667,7 @@ export function Composer({
                 Stop
               </Button>
             )}
-            {busy && text.trim() && !mode && files.length === 0 && (
+            {busy && (text.trim() || files.length > 0) && !mode && (
               <IconButton
                 icon={Zap}
                 label={`Send now: Claude reads it at its next step (${formatShortcut("Mod+Enter")})`}

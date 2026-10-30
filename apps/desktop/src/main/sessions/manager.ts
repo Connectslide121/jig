@@ -478,21 +478,28 @@ export class SessionManager {
     if (!trimmed && attachments.length === 0) return;
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
     // Sent "now" while the turn is still starting: wait until its message has gone, then join it.
-    if (busy && now && !live.engine && live.starting && attachments.length === 0) await live.starting;
-    if (busy && now && live.engine && attachments.length === 0) {
-      const item: ChatItem = {
-        kind: "user",
-        id: `user-${randomUUID()}`,
-        text: trimmed,
-        at: new Date().toISOString(),
-      };
-      live.state.items.push(item);
-      this.emit(live, [{ op: "upsert", item }]);
-      const messageId = live.engine.send(trimmed, [], "next");
-      const sent = { ...item, messageId };
-      live.state.items[live.state.items.indexOf(item)] = sent;
-      this.emit(live, [{ op: "upsert", item: sent }]);
-      return;
+    if (busy && now && !live.engine && live.starting) await live.starting;
+    if (busy && now && live.engine) {
+      // Attachments that can't be read go to the queue instead, where starting the turn reports why.
+      const data = await readAttachments(this.options.attachmentsDir, live.state.meta.id, attachments).catch(
+        () => undefined,
+      );
+      if (data && live.engine) {
+        const item: ChatItem = {
+          kind: "user",
+          id: `user-${randomUUID()}`,
+          text: trimmed,
+          at: new Date().toISOString(),
+          ...(attachments.length ? { attachments } : {}),
+        };
+        live.state.items.push(item);
+        this.emit(live, [{ op: "upsert", item }]);
+        const messageId = live.engine.send(trimmed, data, "next");
+        const sent = { ...item, messageId };
+        live.state.items[live.state.items.indexOf(item)] = sent;
+        this.emit(live, [{ op: "upsert", item: sent }]);
+        return;
+      }
     }
     // Messages still queued (Claude stopped or restarted before reaching them) go first.
     if (busy || live.queue.length) {
