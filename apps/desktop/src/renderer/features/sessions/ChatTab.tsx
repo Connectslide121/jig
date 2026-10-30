@@ -161,7 +161,7 @@ function ChatViewSwitch() {
   return (
     <div
       className="flex items-center rounded-md border border-line p-0.5"
-      role="tablist"
+      role="group"
       aria-label="Chat view"
     >
       {(
@@ -177,8 +177,7 @@ function ChatViewSwitch() {
         <button
           key={m.value}
           type="button"
-          role="tab"
-          aria-selected={view === m.value}
+          aria-pressed={view === m.value}
           title={m.title}
           data-testid={`chat-view-${m.value}`}
           onClick={() => void updateConfig({ chat: { view: m.value } })}

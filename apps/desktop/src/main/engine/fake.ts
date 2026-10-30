@@ -69,7 +69,12 @@ const FAKE_MODELS = [
   },
   { value: "sonnet", displayName: "Sonnet", description: "Coding and execution" },
   { value: "haiku", displayName: "Haiku", description: "Fastest" },
-  { value: "opusplan", displayName: "Opus Plan Mode", description: "Opus to plan, Sonnet to execute" },
+  {
+    value: "opusplan",
+    displayName: "Opus Plan Mode",
+    description: "Opus to plan, Sonnet to execute",
+    efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
+  },
 ];
 
 /** The fake saved conversation with a transcript (e2e opens it). */
@@ -237,7 +242,7 @@ export class FakeEngine implements Engine {
           const path = join(options.cwd, "release-notes.html");
           await writeFile(
             path,
-            "<title>Release notes</title><style>body{font-family:sans-serif;padding:24px}</style><h1>Release notes</h1><p>Discount codes at checkout.</p>",
+            "<!doctype html><title>Release notes</title><style>body{font-family:sans-serif;padding:24px}</style><h1>Release notes</h1><p>Discount codes at checkout.</p>",
           );
           const toolId = `tool-${randomUUID()}`;
           onEvent({

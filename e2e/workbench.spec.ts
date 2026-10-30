@@ -209,9 +209,10 @@ test("many tabs: the tab strip scrolls without a scrollbar squeezing the tabs", 
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
-  for (let i = 0; i < 14; i++) await page.keyboard.press("Control+N");
   const strip = page.getByTestId("main-pane-left").getByRole("tablist");
-  await expect(strip.getByRole("tab")).toHaveCount(14);
+  for (let i = 0; i < 14; i++) await page.keyboard.press("Control+N");
+  // Fourteen chats (Jig may have opened a tab of its own too).
+  await expect(strip.getByTestId("tab-jig.chat")).toHaveCount(14);
   const sizes = await strip.evaluate((el) => ({
     overflows: el.scrollWidth > el.clientWidth,
     strip: el.clientHeight,
