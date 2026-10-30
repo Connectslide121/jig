@@ -357,7 +357,13 @@ export function ToolCard({
           : undefined
       : undefined;
   return (
-    <div className="rounded-md border border-line bg-raised" data-testid="tool-card">
+    <div
+      className={cn(
+        "rounded-md border border-line bg-raised",
+        item.status === "running" && !waiting && "jig-working",
+      )}
+      data-testid="tool-card"
+    >
       <div className="flex min-w-0 items-center pr-1">
         <button
           type="button"

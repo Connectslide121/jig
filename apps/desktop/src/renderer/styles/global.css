@@ -201,3 +201,42 @@ html[data-platform="darwin"] .topbar-insets {
 .jig-document [align="center"] img {
   margin-inline: auto;
 }
+
+/* The tool Claude is running right now: a soft accent glow that breathes, and a light sweep across the row. */
+@keyframes jig-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    border-color: color-mix(in srgb, var(--jig-accent) 35%, var(--color-line));
+  }
+  50% {
+    box-shadow: 0 0 12px 0 color-mix(in srgb, var(--jig-accent) 40%, transparent);
+    border-color: color-mix(in srgb, var(--jig-accent) 80%, var(--color-line));
+  }
+}
+@keyframes jig-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.jig-working {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--jig-accent) 16%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation:
+    jig-glow 2s ease-in-out infinite,
+    jig-sweep 2.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jig-working {
+    animation: none;
+    border-color: var(--jig-accent);
+  }
+}

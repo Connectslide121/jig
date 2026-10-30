@@ -1656,3 +1656,11 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
   chat's picker and the one outside chats; the raw-id line stays only for a model you typed under
   "Other model…". The fake engine's list leaves it out, as Claude Code's does.
 
+
+## D-165: The running tool glows; a code block's bar sticks
+
+- Status: accepted
+- The tool Claude is running now gets `.jig-working` (global.css): a breathing accent border and glow with
+  a light sweep across the row, off while it waits for you and with reduced motion. A code block's title
+  bar with Copy is `sticky top-0` (the block clips with `overflow-clip`, not `overflow-hidden`, which
+  would stop it sticking) and Copy is always visible.

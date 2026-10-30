@@ -20,15 +20,14 @@ export function CodeBlock({ code, lang, className }: { code: string; lang?: stri
     };
   }, [code, lang, version]);
   return (
-    <div
-      className={cn("group relative my-2 overflow-hidden rounded-md border border-line bg-code", className)}
-    >
-      <div className="flex h-6 items-center justify-between border-b border-line px-2 text-2xs text-hint">
+    <div className={cn("group relative my-2 overflow-clip rounded-md border border-line bg-code", className)}>
+      {/* Sticky: in a long block the bar, and its Copy button, stay in view while you scroll. */}
+      <div className="sticky top-0 z-10 flex h-6 items-center justify-between border-b border-line bg-code px-2 text-2xs text-hint">
         <span>{lang ?? "text"}</span>
         <button
           type="button"
           aria-label="Copy code"
-          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-fg"
+          className="flex items-center gap-1 hover:text-fg"
           onClick={() => {
             void navigator.clipboard.writeText(code);
             setCopied(true);
