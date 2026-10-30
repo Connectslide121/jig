@@ -809,7 +809,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "“Did it help?” a week after you act on one",
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
                 "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
-                "An optional weekly check-in chat (off by default)",
+                "An empty profile? Jig offers a short interview chat where Claude asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Pipelines of your repositories: the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",

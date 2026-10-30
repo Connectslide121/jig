@@ -15,8 +15,8 @@ import { sessionManager } from "../sessions";
 import { jigHome, paths } from "../state/paths";
 import { ActivityLog, isExcluded } from "./activity";
 import { claudeWrittenLines } from "./claudeLines";
-import { KnowledgeStore } from "./knowledge";
-import { REFLECTION_INSTRUCTIONS } from "./reflect";
+import { KnowledgeStore, profileIsEmpty } from "./knowledge";
+import { profileInterviewPrompt, REFLECTION_INSTRUCTIONS } from "./reflect";
 import { LearningService } from "./service";
 import { ANYWHERE, computeWorked } from "./worked";
 
@@ -137,6 +137,7 @@ export async function startLearning(): Promise<void> {
     return {
       profile: profile.text,
       profileExists: profile.exists,
+      profileEmpty: profileIsEmpty(profile.text),
       notes: [...(await k.list())].reverse(),
       activity: [...counts.entries()]
         .map(([kind, count]) => ({ kind, count }))
@@ -149,6 +150,9 @@ export async function startLearning(): Promise<void> {
   });
   handle("learning.clearNotes", () => k.clear());
   handle("learning.worked", ({ refresh }) => computeWorkedNow(refresh));
+  handle("learning.interview", async () => ({
+    prompt: profileInterviewPrompt((await k.profile()).text, await k.recent(30)),
+  }));
   handle("learning.checkIn", async ({ action }) => ({ prompt: await s.checkIn(action) }));
 
   registerJigTools([

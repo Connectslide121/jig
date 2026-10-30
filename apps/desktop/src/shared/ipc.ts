@@ -401,6 +401,8 @@ export interface HostMethods {
     result: {
       profile: string;
       profileExists: boolean;
+      /** Nothing under the headings yet: Jig offers the profile interview. */
+      profileEmpty: boolean;
       notes: EvidenceNote[];
       activity: Array<{ kind: string; count: number }>;
     };
@@ -410,6 +412,8 @@ export interface HostMethods {
   "learning.clearNotes": { args: void; result: void };
   /** "How you worked" in the last 7 days (computed at most once an hour unless `refresh`). */
   "learning.worked": { args: { refresh?: boolean }; result: WorkedState };
+  /** The profile interview: the first message of a chat where Claude asks questions and fills the profile (D-169). */
+  "learning.interview": { args: void; result: { prompt: string } };
   /** The weekly check-in: start returns the chat's first message. */
   "learning.checkIn": {
     args: { action: "enable" | "decline" | "start" | "skip" };

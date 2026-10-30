@@ -412,7 +412,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|since the last release|in the releases data|as a workflow|remember in the notes)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes)\b/.test(
             lower,
           )
         ) {
@@ -462,7 +462,7 @@ export class FakeEngine implements Engine {
               "Got it — that sounds like a good candidate for a workflow.",
               signal,
             );
-          } else if (/weekly check-in/.test(lower)) {
+          } else if (/weekly check-in|profile interview/.test(lower)) {
             await call("jig_read_profile", {});
             await call("jig_update_profile", {
               heading: "How I release and deploy",

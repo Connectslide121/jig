@@ -153,7 +153,8 @@ settings, add-on permissions.
 | `learning.answer` | `{ id, answer: "build" \| "act" \| "snooze" \| "dismiss" \| "never" }` | — | `act`: the kind's own action was taken (a profile one is written here) |
 | `learning.clearActivity` | — | — | deletes the activity log |
 | `learning.record` | `{ kind: "addon.action", text, projectId?, detail? }` | — | activity from the renderer |
-| `learning.knowledge` | — | `{ profile, profileExists, notes, activity }` | What Jig knows about me |
+| `learning.knowledge` | — | `{ profile, profileExists, profileEmpty, notes, activity }` | What Jig knows about me |
+| `learning.interview` | — | `{ prompt }` | the first message of the profile interview chat (D-169) |
 | `learning.setProfile` | `{ text }` | — | writes `profile.md` (schema) |
 | `learning.removeNote` / `learning.clearNotes` | `{ id }` / — | — | notes from chats |
 | `learning.worked` | `{ refresh? }` | `WorkedState` | "How you worked", cached an hour |

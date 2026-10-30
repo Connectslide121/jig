@@ -147,6 +147,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       profile (`~/.jig/profile.md`, editable), the notes (deletable), activity per kind and **How you
       worked** (lines by Claude vs by hand in your commits of the week, churn, fixes, chat time — an
       estimate).
+    - **Profile interview** (D-169): when Jig opens and the profile is empty (and a project is active)
+      a toast offers a chat where Claude asks one question at a time, follows up and fills the profile
+      with `jig_update_profile`; once per launch, "Don't ask again" stops it; the same chat starts from
+      **Fill it in with Claude** in What Jig knows about me. Needs testing with real Claude.
     - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
       with 3–5 questions that adds what it learns to your profile.
     - **Workflows** (left sidebar, Tools → Show workflows; a new built-in add-on): lists of steps you

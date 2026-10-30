@@ -1699,3 +1699,15 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
 - Coding agents in this repository, including a chat running inside Jig, change Jig's code themselves and
   don't hand it to the in-app builder. D-074 stands for the builder (it never edits Jig's source) but
   doesn't stop Jon's own agents.
+
+## D-169: An empty profile gets an interview chat, offered with a toast
+
+- Status: accepted
+- **Decided by:** Jon ("a toast when it's empty, not spamming, whenever Jig opens; then AI asks questions
+  and follow-ups and fills it out"; a chat tab is good enough). **Claude, on my own:** a normal chat
+  rather than a dedicated view, once per launch, "Don't ask again", and no toast in the fake engine.
+- When Jig opens and the profile has nothing under its headings (`profileIsEmpty`) and a project is
+  active, a toast offers **Start the interview**, **Not now** or **Don't ask again**. The interview is a
+  new chat whose first message (`profileInterviewPrompt`) tells Claude to ask one question at a time,
+  follow up, and save facts with `jig_update_profile` every couple of answers. The same chat starts from
+  **Fill it in with Claude** in What Jig knows about me, so it's also reachable without the toast.

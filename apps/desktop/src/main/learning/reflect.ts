@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pattern } from "@jig/learning";
 import { z } from "zod";
 import { type EvidenceNote, type Suggestion, TIP_KINDS } from "../../shared/learning";
+import { profileIsEmpty } from "./knowledge";
 
 /**
  * The AI step: one Claude Code query (no tools) gets the mined patterns, the add-on catalog and your
@@ -188,6 +189,31 @@ export function checkInPrompt(profile: string, notes: EvidenceNote[]): string {
           .join("\n")}`
       : "",
     "Start from the notes (e.g. something I keep doing by hand) or the gaps. When we're done, read my profile with jig_read_profile and add what you learned with jig_update_profile (short facts under the right headings), then tell me in one line what you added.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * The first message of the profile interview (D-169): Claude interviews the user in a normal chat, one
+ * question at a time with follow-ups, and writes what it learns with `jig_update_profile` as it goes.
+ */
+export function profileInterviewPrompt(profile: string, notes: EvidenceNote[]): string {
+  const filled = !profileIsEmpty(profile);
+  return [
+    "Profile interview (Jig). Jig knows almost nothing about how I work yet. Interview me so it can suggest better tools, workflows and habits, and write what you learn into my Jig profile.",
+    'How: ask ONE question at a time and wait for my answer. Follow up when an answer is vague or interesting ("which tool exactly?", "how often?", "what\'s annoying about it?"), but don\'t interrogate: move on once you understand. Plain language, short questions, no lists of questions.',
+    "Cover, in a natural order: what I build and with what stack; how I release and deploy; which tools and portals I use outside Jig; what I do by hand repeatedly; what frustrates me; my preferences for how Claude should work with me; what I already know well. Skip what the profile already answers.",
+    filled
+      ? `My profile so far:\n${profile.trim()}`
+      : "My profile is empty (only the headings: Stack, How I release and deploy, Tools I use outside Jig, Preferences, What I already know well).",
+    notes.length
+      ? `Notes from my recent chats, a good place to start:\n${notes
+          .slice(-8)
+          .map((n) => `- ${n.text}`)
+          .join("\n")}`
+      : "",
+    "After every couple of answers, save what you learned with jig_update_profile (short facts, one per line, under the right heading; never secrets or credentials), so nothing is lost if I stop early. Read my profile first with jig_read_profile. Stop after about 8–10 questions, or sooner if I say so, and tell me in one line what you added. I can always run this again later.",
   ]
     .filter(Boolean)
     .join("\n\n");

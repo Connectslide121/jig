@@ -147,3 +147,24 @@ test("the weekly check-in starts a chat that adds to the profile, with Undo", as
   expect(await readFile(join(jigHome, "profile.md"), "utf8")).not.toContain("Publishes the webshop");
   await expect(page.getByTestId("checkin-card")).toHaveCount(0);
 });
+
+test("an empty profile offers a chat where Claude interviews you and fills it in", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("open-knowledge").click();
+  await expect(page.getByTestId("knowledge-tab")).toContainText("Not written yet");
+  await page.getByTestId("profile-interview").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(/Profile interview \(Jig\)/, {
+    timeout: 15000,
+  });
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("change-card").first()).toContainText("Added to what Jig knows about you", {
+    timeout: 15000,
+  });
+  expect(await readFile(join(jigHome, "profile.md"), "utf8")).toContain("Publishes the webshop");
+});

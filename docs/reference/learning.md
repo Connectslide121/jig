@@ -51,6 +51,10 @@ start and daily), open the folder, delete all.
 - **What Jig knows about me** (tab `jig.knowledge`: Suggestions view's person button, Tools, Settings →
   Learning): the profile in an editor (Ctrl+S), the notes (delete one or all), the activity of the last
   4 weeks per kind, and "How you worked".
+- **Profile interview** (D-169): an empty profile (only headings) makes Jig offer a chat where Claude
+  interviews you one question at a time and writes with `jig_update_profile`: a toast when Jig opens
+  (once per launch, a project active, "Don't ask again" in localStorage) and **Fill it in with Claude**
+  in the tab. The prompt is `profileInterviewPrompt` (`learning/reflect.ts`).
 
 ## 2. Mine (no AI) — `packages/learning`
 

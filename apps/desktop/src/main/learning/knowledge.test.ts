@@ -4,8 +4,8 @@ import { join } from "node:path";
 import type { Pattern } from "@jig/learning";
 import { describe, expect, it } from "vitest";
 import type { Suggestion } from "../../shared/learning";
-import { appendToSection, KnowledgeStore, PROFILE_TEMPLATE } from "./knowledge";
-import { checkInPrompt, parseReflection, reflectionPrompt } from "./reflect";
+import { appendToSection, KnowledgeStore, PROFILE_TEMPLATE, profileIsEmpty } from "./knowledge";
+import { checkInPrompt, parseReflection, profileInterviewPrompt, reflectionPrompt } from "./reflect";
 import { didItHelp } from "./service";
 
 describe("profile", () => {
@@ -142,5 +142,32 @@ describe("did it help", () => {
     expect(helped).toMatchObject({ helped: true });
     expect(helped.text).toContain("hasn't come back in 10 days");
     expect(didItHelp(s, events(3), new Date("2026-10-11T00:00:00Z"))).toBeUndefined();
+  });
+});
+
+describe("the profile interview", () => {
+  it("knows an empty profile: only title, headings and comments", () => {
+    expect(profileIsEmpty(PROFILE_TEMPLATE)).toBe(true);
+    expect(profileIsEmpty("")).toBe(true);
+    expect(profileIsEmpty("# How I work\n\n<!-- a\nmulti-line comment -->\n\n## Stack\n")).toBe(true);
+    expect(profileIsEmpty(PROFILE_TEMPLATE.replace("## Stack\n", "## Stack\n\n- .NET\n"))).toBe(false);
+    expect(profileIsEmpty("I work on a webshop")).toBe(false);
+  });
+
+  it("asks one question at a time, with follow-ups, and writes as it goes", () => {
+    const prompt = profileInterviewPrompt(PROFILE_TEMPLATE, [
+      {
+        id: "1",
+        at: "2026-10-01T00:00:00Z",
+        text: "Uploads the build to a VM by hand",
+        category: "manual-work",
+      },
+    ]);
+    expect(prompt).toContain("Profile interview (Jig)");
+    expect(prompt).toContain("ONE question at a time");
+    expect(prompt).toContain("jig_update_profile");
+    expect(prompt).toContain("My profile is empty");
+    expect(prompt).toContain("- Uploads the build to a VM by hand");
+    expect(profileInterviewPrompt("# How I work\n\n## Stack\n\n- .NET\n", [])).toContain("- .NET");
   });
 });

@@ -1,4 +1,4 @@
-import { FolderOpen, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { FolderOpen, MessageSquare, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { EvidenceNote, WorkedState } from "../../../shared/learning";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
@@ -6,6 +6,7 @@ import { useConfig } from "../../stores/config";
 import { Badge, Button, Card, confirmDialog, IconButton, Spinner } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { CodeEditor } from "../preview/CodeEditor";
+import { startProfileInterview } from "./interview";
 
 const CATEGORY: Record<EvidenceNote["category"], string> = {
   "manual-work": "by hand",
@@ -32,6 +33,7 @@ const KIND: Record<string, string> = {
 type Knowledge = {
   profile: string;
   profileExists: boolean;
+  profileEmpty: boolean;
   notes: EvidenceNote[];
   activity: Array<{ kind: string; count: number }>;
 };
@@ -82,6 +84,18 @@ export function KnowledgeTab() {
           <div className="flex items-center gap-2">
             <h2 className="flex-1 text-sm font-semibold text-fg">Profile</h2>
             {!data.profileExists && !dirty && <Badge>Not written yet</Badge>}
+            {data.profileEmpty && !dirty && (
+              <Button
+                size="sm"
+                variant="primary"
+                icon={MessageSquare}
+                onClick={() => void startProfileInterview()}
+                data-testid="profile-interview"
+                title="A chat where Claude asks you questions and fills in your profile"
+              >
+                Fill it in with Claude
+              </Button>
+            )}
             <Button
               size="sm"
               variant={dirty ? "primary" : "ghost"}

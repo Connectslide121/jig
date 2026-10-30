@@ -1,15 +1,53 @@
 import { Lightbulb, Search, UserRound } from "lucide-react";
 import { useEffect } from "react";
 import { call, useHostEvent } from "../../lib/host";
+import { useConfig } from "../../stores/config";
 import { CountBadge } from "../../ui";
+import { useProjects } from "../../workbench/projects";
 import { registerAction, registerTabType, registerTopbarItem, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
+import { notify } from "../../workbench/toasts";
+import { startProfileInterview } from "./interview";
 import { KnowledgeTab } from "./KnowledgeTab";
 import { SuggestionsView } from "./SuggestionsView";
 import { lookForPatterns, useLearning } from "./store";
 
+/** Asked at most once per launch. */
+let profileNudged = false;
+const NUDGE_OFF = "jig.profileNudge.off";
+
+/**
+ * When Jig opens and what it knows about you is empty, a toast offers the interview (D-169): once per
+ * launch, only when a chat can start (a project is active), and never again after "Don't ask again".
+ */
+function useProfileNudge(): void {
+  const hasProject = useProjects((s) => Boolean(s.activeId));
+  const engine = useConfig((s) => s.info?.engine);
+  useEffect(() => {
+    // The scripted engine (tests) has nobody to interview.
+    if (profileNudged || !hasProject || !engine || engine === "fake") return;
+    profileNudged = true;
+    if (localStorage.getItem(NUDGE_OFF)) return;
+    void call("learning.knowledge").then(({ profileEmpty }) => {
+      if (!profileEmpty) return;
+      notify({
+        title: "Tell Jig how you work",
+        message:
+          "What Jig knows about you is empty. A short chat where Claude asks you questions fills it in, so suggestions fit you.",
+        timeout: 0,
+        actions: [
+          { label: "Start the interview", run: () => void startProfileInterview() },
+          { label: "Not now", run: () => {} },
+          { label: "Don't ask again", run: () => localStorage.setItem(NUDGE_OFF, "1") },
+        ],
+      });
+    });
+  }, [hasProject, engine]);
+}
+
 /** Top bar: a light bulb with the number of new suggestions. */
 function SuggestionsBadge() {
+  useProfileNudge();
   const count = useLearning((s) => s.state?.suggestions.filter((x) => x.status === "new").length ?? 0);
   return (
     <button

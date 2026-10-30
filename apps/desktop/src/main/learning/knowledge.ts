@@ -25,6 +25,24 @@ export const PROFILE_TEMPLATE = `# How I work
 ## What I already know well
 `;
 
+/** Has the profile nothing in it yet: only the title, headings, comments and blank lines? */
+export function profileIsEmpty(text: string): boolean {
+  let inComment = false;
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (inComment) {
+      if (line.includes("-->")) inComment = false;
+      continue;
+    }
+    if (line.startsWith("<!--")) {
+      if (!line.includes("-->")) inComment = true;
+      continue;
+    }
+    if (line && !line.startsWith("#")) return false;
+  }
+  return true;
+}
+
 export class KnowledgeStore {
   private notes: EvidenceNote[] | undefined;
 
