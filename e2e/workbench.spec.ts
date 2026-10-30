@@ -222,4 +222,17 @@ test("many tabs: the tab strip scrolls without a scrollbar squeezing the tabs", 
   expect(sizes.tab).toBeGreaterThanOrEqual(sizes.strip - 1);
   // The newest (active) tab is in view.
   await expect(strip.getByRole("tab", { selected: true })).toBeInViewport();
+  // A thin scrollbar over the strip's bottom edge, shown on hover: dragging it scrolls the tabs.
+  const bar = page.getByTestId("main-pane-left").getByTestId("overlay-scrollbar");
+  await expect(bar).toHaveCount(1);
+  await strip.hover();
+  const thumb = bar.locator("div");
+  const box = (await thumb.boundingBox())!;
+  const before = await strip.evaluate((el) => el.scrollLeft);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 2000, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  expect(before).toBeGreaterThan(0);
+  expect(await strip.evaluate((el) => el.scrollLeft)).toBe(0);
 });

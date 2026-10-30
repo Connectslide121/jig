@@ -14,7 +14,7 @@ import {
 import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
 import { Home } from "../features/home/Home";
-import { cn, contextMenu, ErrorBoundary, FileIcon } from "../ui";
+import { cn, contextMenu, ErrorBoundary, FileIcon, OverlayScrollbar } from "../ui";
 import { confirmClose, useDirtyTabs } from "./dirty";
 import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
@@ -260,31 +260,35 @@ function TabPane({
         if (split && !focused && active) workbench.activateTab(active);
       }}
     >
-      <div
-        ref={strip}
-        role="tablist"
-        // No scrollbar squeezing the tabs: the wheel scrolls them sideways, as in VS Code.
-        className="tab-strip flex h-8 shrink-0 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
-        onWheel={(e) => {
-          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
-        }}
-        onDragOver={(e) => e.dataTransfer.types.includes("jig/tab") && e.preventDefault()}
-        onDrop={(e) => {
-          const id = e.dataTransfer.getData("jig/tab");
-          if (id) updateLayout((l) => moveTabToPane(l, id, pane));
-        }}
-      >
-        {tabs.map((tab) => (
-          <TabButton
-            key={tab.id}
-            tab={tab}
-            pane={pane}
-            split={split}
-            index={useWorkbench.getState().layout?.main.tabs.findIndex((t) => t.id === tab.id) ?? 0}
-            active={tab.id === active}
-            focused={focused}
-          />
-        ))}
+      <div className="group/strip relative shrink-0">
+        <div
+          ref={strip}
+          role="tablist"
+          // No scrollbar squeezing the tabs: a thin one is drawn over their bottom edge on hover, and
+          // the wheel scrolls them sideways, as in VS Code.
+          className="tab-strip flex h-8 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+          onWheel={(e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+          }}
+          onDragOver={(e) => e.dataTransfer.types.includes("jig/tab") && e.preventDefault()}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData("jig/tab");
+            if (id) updateLayout((l) => moveTabToPane(l, id, pane));
+          }}
+        >
+          {tabs.map((tab) => (
+            <TabButton
+              key={tab.id}
+              tab={tab}
+              pane={pane}
+              split={split}
+              index={useWorkbench.getState().layout?.main.tabs.findIndex((t) => t.id === tab.id) ?? 0}
+              active={tab.id === active}
+              focused={focused}
+            />
+          ))}
+        </div>
+        <OverlayScrollbar target={strip} />
       </div>
       <div className="min-h-0 flex-1">
         {tabs
