@@ -1691,3 +1691,11 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
   sessions"). Written into `AGENTS.md` (UI rules) and the workspace `AGENTS.md`.
 - Nothing on screen moves when something opens or loads: forms and pickers are modals (`Dialog`), loading
   content reserves its space. Pipelines' **Run form** (D-148, D-166) is now a modal, also while it loads.
+
+## D-168: Working on Jig means editing its source directly
+
+- Status: accepted
+- **Decided by:** Jon ("whenever I'm working on the Jig project, I want to work on its source code").
+- Coding agents in this repository, including a chat running inside Jig, change Jig's code themselves and
+  don't hand it to the in-app builder. D-074 stands for the builder (it never edits Jig's source) but
+  doesn't stop Jon's own agents.

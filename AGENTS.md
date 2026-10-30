@@ -4,6 +4,11 @@ Jig is a personal desktop agentic workbench around Claude Code (Electron + React
 build its own tools (as layout/settings changes and add-ons — it never edits its own source, D-074).
 These instructions apply to every coding agent working in this repository.
 
+**Working on Jig means working on its source.** When Jon is working on the Jig project, change this
+repository's code directly (add-ons, host, renderer, docs), never route it through the in-app builder or
+`jig_request_build`, even from a chat running inside Jig. The "never edits its own source" rule is about
+the in-app builder only (D-074, D-168).
+
 Claude Code reads `CLAUDE.md`, which only imports this file. Put rules here, never in `CLAUDE.md`.
 Folder-specific rules go in an `AGENTS.md` inside that folder (with a `CLAUDE.md` next to it that
 contains only `@AGENTS.md`).
