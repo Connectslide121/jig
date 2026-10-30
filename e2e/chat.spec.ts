@@ -98,3 +98,31 @@ test("chat: tells you to sign in when Claude Code isn't logged in", async ({ pag
   await say(page, "login");
   await expect(page.getByTestId("login-banner")).toContainText("isn't signed in");
 });
+
+test("chat: compact view folds Claude's steps into one line; Detailed shows every card", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("chat-view-compact").click();
+  await say(page, "make a todo list for the release");
+  await expect(page.getByTestId("turn-result")).toContainText("Done", { timeout: 15000 });
+  const chat = page.locator("[data-testid=transcript]:visible");
+  // The three to-do updates are one line; their cards stay folded.
+  const steps = chat.getByTestId("steps-row");
+  await expect(steps).toHaveCount(1);
+  await expect(steps).toContainText("Updated the to-do list");
+  await expect(chat.getByTestId("tool-card")).toHaveCount(0);
+  await expect(chat.getByTestId("assistant-message").first()).toBeVisible();
+  // Opening the line shows the cards.
+  await steps.getByTestId("steps-toggle").click();
+  await expect(chat.getByTestId("tool-card")).toHaveCount(3);
+  await steps.getByTestId("steps-toggle").click();
+  // Detailed: every card, no folded lines; the choice is kept as a setting.
+  await page.getByTestId("chat-view-detailed").click();
+  await expect(chat.getByTestId("steps-row")).toHaveCount(0);
+  await expect(chat.getByTestId("tool-card")).toHaveCount(3);
+  const config = (await hostCall(page, "config.get")) as { value: { chat: { view: string } } };
+  expect(config.value.chat.view).toBe("detailed");
+});

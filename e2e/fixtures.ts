@@ -36,6 +36,11 @@ export async function launchJig(
   const args = [appDir];
   if (process.platform === "linux") args.push("--no-sandbox");
   const PATH = `${await signedOutAz(jigHome)}${delimiter}${process.env.PATH ?? process.env.Path}`;
+  // Tests check Claude's steps card by card: chats start in the Detailed view (D-159) unless a
+  // test's JIG_HOME already has a config.
+  await writeFile(join(jigHome, "config.json"), JSON.stringify({ chat: { view: "detailed" } }), {
+    flag: "wx",
+  }).catch(() => {});
   return electron.launch({
     args,
     // Hidden, so a test never fights the user's mouse and focus (JIG_HIDDEN= shows the windows).

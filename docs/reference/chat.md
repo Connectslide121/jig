@@ -33,6 +33,12 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 
 ## Beyond the terminal
 
+- **Compact or Detailed** (switch in the chat's top bar; setting `chat.view`, D-159): Compact, the
+  default, shows what you and Claude say, with each run of steps between (commands, reads, edits,
+  searches, agents, thinking) folded into one line — "Ran 3 commands, read 2 files, edited 1 file",
+  failures counted, a spinner and the current step while it runs; click it for the cards. Questions,
+  permission prompts, plans, results, the changed-files bar and notices stay in view. Detailed shows
+  every step as its card. Find in chat opens the line that holds a match.
 - **An empty chat** shows where Claude runs, starter prompts (a click puts one in the box) and the
   message box's shortcuts.
 - **Message actions on hover:**

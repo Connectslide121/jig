@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   Brain,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   Copy,
@@ -18,6 +19,7 @@ import {
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { tourFolder } from "../../../shared/tour";
+import { useConfig } from "../../stores/config";
 import { Button, cn, FileIcon, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { useRegistry } from "../../workbench/registry";
@@ -27,6 +29,7 @@ import { openPreview } from "../preview/actions";
 import { startTour } from "../tour/actions";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
+import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
 import { PermissionCard } from "./PermissionCard";
 import { restoreFiles, rewindChat } from "./restore";
 import { useSessions } from "./store";
@@ -383,6 +386,65 @@ function ChangesBar({ changes, sessionId }: { changes: TurnChanges; sessionId: s
   );
 }
 
+/**
+ * A run of steps in the compact view (D-159): one line saying what they did (and what runs now),
+ * which opens to the steps' own cards.
+ */
+function StepsRow({
+  row,
+  sessionId,
+  open,
+  onToggle,
+  pending,
+  changes,
+}: {
+  row: Extract<Row, { kind: "steps" }>;
+  sessionId: string;
+  open: boolean;
+  onToggle: () => void;
+  pending: Set<string>;
+  changes: Map<string, TurnChanges>;
+}) {
+  const summary = stepsSummary(row.entries);
+  return (
+    <div className="flex flex-col" data-testid="steps-row">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex min-w-0 items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-xs text-muted hover:bg-hover hover:text-fg"
+        data-testid="steps-toggle"
+      >
+        {summary.running ? (
+          <Spinner size="sm" />
+        ) : open ? (
+          <ChevronDown className="size-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0" />
+        )}
+        <span className="truncate">{summary.text}</span>
+        {summary.failed > 0 && <span className="shrink-0 text-danger">· {summary.failed} failed</span>}
+        {summary.running && <span className="min-w-0 truncate text-hint">· {summary.running}</span>}
+      </button>
+      {open && (
+        <div className="mt-2 ml-2 flex flex-col gap-3 border-l border-line pl-3">
+          {row.entries.map(({ item, children }) => (
+            <div key={item.id} data-item-id={item.id} className="flex flex-col">
+              <Item
+                item={item}
+                sessionId={sessionId}
+                nested={children}
+                waiting={item.kind === "tool" && pending.has(item.id)}
+                changes={item.kind === "result" ? changes.get(item.id) : undefined}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Subagent items (with a parent tool) are shown inside their parent's tool card. */
 export function groupItems(items: ChatItem[]): Array<{ item: ChatItem; children: ChatItem[] }> {
   const children = new Map<string, ChatItem[]>();
@@ -401,6 +463,11 @@ export function groupItems(items: ChatItem[]): Array<{ item: ChatItem; children:
   return top.map((item) => ({ item, children: children.get(item.id) ?? [] }));
 }
 
+/** The transcript's rows: every item (detailed), or steps folded per run (compact, D-159). */
+function rowsOf(entries: Entry[], compact: boolean, pending: Set<string>): Row[] {
+  return compact ? compactRows(entries, pending) : entries.map((entry) => ({ kind: "item", entry }));
+}
+
 export function Transcript({
   items,
   sessionId,
@@ -415,6 +482,9 @@ export function Transcript({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+  const compact = useConfig((s) => s.config?.chat.view ?? "compact") === "compact";
+  // Steps rows opened by hand (compact view).
+  const [opened, setOpened] = useState<Set<string>>(() => new Set());
   const [away, setAway] = useState(false);
   const changes = useMemo(() => turnChanges(items), [items]);
   const pending = useMemo(
@@ -459,24 +529,44 @@ export function Transcript({
         data-testid="transcript"
       >
         <div className="mx-auto flex max-w-[var(--jig-chat-width)] flex-col gap-3 px-6 py-4">
-          {groupItems(items).map(({ item, children }) => (
-            <div
-              key={item.id}
-              data-item-id={item.id}
-              className={cn(
-                "flex flex-col rounded-md",
-                highlight === item.id && "outline-2 outline-offset-4 outline-accent",
-              )}
-            >
-              <Item
-                item={item}
+          {rowsOf(groupItems(items), compact, pending).map((row) =>
+            row.kind === "steps" ? (
+              <StepsRow
+                key={row.id}
+                row={row}
                 sessionId={sessionId}
-                nested={children}
-                waiting={item.kind === "tool" && pending.has(item.id)}
-                changes={item.kind === "result" ? changes.get(item.id) : undefined}
+                // A match of Find in chat inside opens its row.
+                open={opened.has(row.id) || row.entries.some((e) => e.item.id === highlight)}
+                onToggle={() =>
+                  setOpened((current) => {
+                    const next = new Set(current);
+                    if (next.has(row.id)) next.delete(row.id);
+                    else next.add(row.id);
+                    return next;
+                  })
+                }
+                pending={pending}
+                changes={changes}
               />
-            </div>
-          ))}
+            ) : (
+              <div
+                key={row.entry.item.id}
+                data-item-id={row.entry.item.id}
+                className={cn(
+                  "flex flex-col rounded-md",
+                  highlight === row.entry.item.id && "outline-2 outline-offset-4 outline-accent",
+                )}
+              >
+                <Item
+                  item={row.entry.item}
+                  sessionId={sessionId}
+                  nested={row.entry.children}
+                  waiting={row.entry.item.kind === "tool" && pending.has(row.entry.item.id)}
+                  changes={row.entry.item.kind === "result" ? changes.get(row.entry.item.id) : undefined}
+                />
+              </div>
+            ),
+          )}
         </div>
       </div>
       {away && (

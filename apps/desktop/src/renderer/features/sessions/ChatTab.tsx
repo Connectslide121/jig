@@ -1,6 +1,7 @@
 import { LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
+import { updateConfig, useConfig } from "../../stores/config";
+import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
@@ -104,6 +105,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
             {formatTokens(tokens)} tokens{meta.costUsd > 0 ? ` · ≈ $${meta.costUsd.toFixed(2)}` : ""}
           </span>
         )}
+        <ChatViewSwitch />
         <IconButton
           icon={Search}
           label={`Find in this chat (${formatShortcut("Mod+F")})`}
@@ -149,6 +151,45 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <BackgroundTasks meta={meta} />
       </div>
       <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
+    </div>
+  );
+}
+
+/** Compact or Detailed: how chats show Claude's work (D-159), for every chat. */
+function ChatViewSwitch() {
+  const view = useConfig((s) => s.config?.chat.view ?? "compact");
+  return (
+    <div
+      className="flex items-center rounded-md border border-line p-0.5"
+      role="tablist"
+      aria-label="Chat view"
+    >
+      {(
+        [
+          { value: "compact", label: "Compact", title: "Each run of steps folds into one line" },
+          {
+            value: "detailed",
+            label: "Detailed",
+            title: "Every command, read, edit and thought as its card",
+          },
+        ] as const
+      ).map((m) => (
+        <button
+          key={m.value}
+          type="button"
+          role="tab"
+          aria-selected={view === m.value}
+          title={m.title}
+          data-testid={`chat-view-${m.value}`}
+          onClick={() => void updateConfig({ chat: { view: m.value } })}
+          className={cn(
+            "h-5 rounded-sm px-1.5 text-2xs",
+            view === m.value ? "bg-active text-fg" : "text-muted hover:text-fg",
+          )}
+        >
+          {m.label}
+        </button>
+      ))}
     </div>
   );
 }

@@ -64,6 +64,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Tools → Test something… (D-124) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
+| `chat.view` | `"compact"` | how chats show Claude's work: `compact` folds each run of steps (commands, reads, edits, thinking) into one line you can open; `detailed` shows every step as its card (D-159). The switch is in each chat's top bar |
 | `editor.wordWrap` | `false` | long lines wrap in the file editor (Preview) |
 | `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |

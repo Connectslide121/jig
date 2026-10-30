@@ -583,6 +583,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Queue messages while Claude works",
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
+                "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
                 "Your plan usage as bars in the status bar, always visible",
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",

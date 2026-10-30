@@ -1576,3 +1576,16 @@ actively use it always") and Claude, on my own (how) · **Date:** 2026-10-30
   wait, settled a decision, moved work to a branch or left something for later, and to write the
   note then.
 
+### D-159 — Chats are compact by default, with a switch to Detailed
+**Decided by:** Jon ("it shows too much… the same conversation in Claude Code shows a lot fewer
+cards. I want a toggle, compact by default… in the chat topbar") and Claude, on my own (how) ·
+**Date:** 2026-10-30
+
+- **Compact** folds each run of steps between messages (tool calls not waiting for permission,
+  thinking) into one line that says what they did, counts failures and shows what runs now; it
+  opens to the cards. Messages, questions, permission prompts, plans, results, the changed-files
+  bar and notices stay. **Detailed** is the previous view.
+- One setting for all chats (`chat.view`, default `compact`), switched from every chat's top bar
+  (where the usage ring was). E2E tests start in Detailed (the fixture writes it), one test covers
+  Compact.
+

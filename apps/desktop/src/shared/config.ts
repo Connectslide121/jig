@@ -55,6 +55,15 @@ export const ConfigSchema = z.object({
       tabSize: z.number().int().min(1).max(8).default(4),
     })
     .prefault({}),
+  chat: z
+    .object({
+      /**
+       * `compact` (default): what you and Claude say, with each run of steps (commands, reads,
+       * edits, thinking) folded into one line you can open; `detailed`: every step as its card.
+       */
+      view: z.enum(["compact", "detailed"]).default("compact"),
+    })
+    .prefault({}),
   notifications: z
     .object({
       /** A system notification when a chat needs you or finishes while Jig isn't in front. */
