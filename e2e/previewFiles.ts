@@ -39,6 +39,10 @@ export async function previewFolder(dir: string) {
     join(dir, "page.html"),
     "<!doctype html><h1 id=t>Static page</h1><script>document.getElementById('t').textContent='Scripted page'</script>",
   );
+  await writeFile(
+    join(dir, "sidebar.component.html"),
+    '@if (open()) {\n  <nav>{{ "menu" | translate }}</nav>\n}\n',
+  );
   await writeFile(join(dir, "manual.pdf"), pdf());
   await writeFile(
     join(dir, "analysis.ipynb"),

@@ -1,8 +1,8 @@
 import { Code, Eye, FileX, FolderOpen, Play, Save, Sparkles, SquareArrowOutUpRight } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { lineEnding } from "../../../shared/indent";
 import { unifiedDiff } from "../../../shared/lineDiff";
-import { type FilePreview, HAS_SOURCE, type PreviewKind } from "../../../shared/preview";
+import { type FilePreview, HAS_SOURCE, isHtmlPage, type PreviewKind } from "../../../shared/preview";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn, Empty, FileIcon, IconButton, Markdown, Spinner } from "../../ui";
 import { setTabDirty } from "../../workbench/dirty";
@@ -176,6 +176,14 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
   const [preview, setPreview] = useState<FilePreview>();
   const [error, setError] = useState<string>();
   const [source, setSource] = useState(false);
+  // A component template or fragment opens as source; a page as a preview (D-154). Decided once,
+  // when the file first loads: switching by hand sticks.
+  const decided = useRef(false);
+  useEffect(() => {
+    if (!preview || decided.current) return;
+    decided.current = true;
+    if (preview.kind === "html" && !isHtmlPage(preview.path, preview.text)) setSource(true);
+  }, [preview]);
   const [scripts, setScripts] = useState(false);
   const projects = useProjects((s) => s.projects);
   // Your unsaved edits (undefined = none), and the file on disk when it changed under them.

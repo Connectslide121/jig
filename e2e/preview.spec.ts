@@ -17,6 +17,8 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   page,
   jigHome,
 }) => {
+  // One tab per format: more than the default minute on a busy machine.
+  test.setTimeout(120_000);
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
@@ -54,6 +56,13 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   await expect(frame.locator("h1")).toHaveText("Static page");
   await html.getByRole("button", { name: "Run scripts" }).click();
   await expect(page.frameLocator('[data-testid="preview-html"]').locator("h1")).toHaveText("Scripted page");
+
+  // A component template isn't a page: it opens as source; Preview is a click away.
+  const template = await preview(page, "sidebar.component.html");
+  await expect(template.getByTestId("preview-mode-source")).toHaveAttribute("aria-selected", "true");
+  await expect(template).toContainText("@if (open())");
+  await template.getByTestId("preview-mode-preview").click();
+  await expect(template.getByTestId("preview-html")).toBeVisible();
 
   const pdfTab = await preview(page, "manual.pdf");
   await expect(pdfTab.getByTestId("preview-pdf")).toBeVisible();

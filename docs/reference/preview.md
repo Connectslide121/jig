@@ -12,7 +12,7 @@ read. Open it from:
 | Kind | Files | Shown as |
 | --- | --- | --- |
 | Markdown | `.md .markdown .mdx` | rendered (GitHub style), relative images, links to other files open their preview, ```` ```mermaid ```` diagrams |
-| HTML | `.html .htm` | the page in a sandboxed frame (never same-origin); **Run scripts** turns scripts on |
+| HTML | `.html .htm` | a page (`<!doctype>`, `<html>`, `<head>` or `<body>`, no template syntax) in a sandboxed frame (never same-origin); **Run scripts** turns scripts on. Component templates (`*.component.html`, Angular `@if`/`*ngIf`/bindings/`{{ }}`, Vue, Jinja, Razor) and fragments open as **Source**, Preview a click away (`isHtmlPage`, D-154) |
 | PDF | `.pdf` | Chromium's PDF viewer (`plugins: true` in the window) |
 | Table | `.csv .tsv` | table with row filter (delimiter guessed: `,` `;` tab) |
 | Excel | `.xlsx` | sheets as tables (`xlsxToSheets` in `@jig/documents`) |

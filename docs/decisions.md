@@ -1516,3 +1516,13 @@ panel") · **Date:** 2026-10-30
 - Groups made on the dashboard before stay in `~/.jig/scripts.json` and keep showing in the Scripts
   view as the project's, with Start and Stop.
 
+### D-154 — HTML templates and fragments open as source
+**Decided by:** Jon (an Angular template rendered as a broken page: "what the hell is this") and
+Claude, on my own (how) · **Date:** 2026-10-30
+
+- Preview renders an `.html` file only when it is a page: it has `<!doctype>`, `<html>`, `<head>`
+  or `<body>`, and no template syntax. Component templates (`*.component.html`, Angular control flow
+  and bindings, `{{ }}`, Vue, Jinja/Liquid, Razor) and fragments mean something only inside their
+  app, so they open as Source; Preview stays one click away. Decided once per tab, when the file
+  loads (`isHtmlPage`, `shared/preview.ts`).
+

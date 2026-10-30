@@ -105,3 +105,27 @@ export interface FilePreview {
 
 /** Most text a preview shows (2 MB). */
 export const MAX_PREVIEW_TEXT = 2_000_000;
+
+/** Template syntax: Angular (`@if (`, `*ngIf`, `[prop]`, `(event)`), `{{ }}`, Vue, Jinja/Liquid, Razor. */
+const TEMPLATE_MARKS = [
+  /@(if|for|switch|defer)\s*\(/,
+  /\*ng[A-Z]/,
+  /\s\[[\w.-]+\]=/,
+  /\s\([\w.-]+\)=/,
+  /\{\{[^}]*\}\}/,
+  /\sv-(if|for|bind|on|model)\b/,
+  /\{%[\s\S]*?%\}/,
+  /@model\b|@Html\./,
+];
+
+/**
+ * Whether an `.html` file is a page to preview (D-154): it has `<!doctype>`, `<html>`, `<head>` or
+ * `<body>`, and no template syntax. A component template (`*.component.html`, Angular, Vue…) or a
+ * fragment only means something inside its app, so it opens as source.
+ */
+export function isHtmlPage(path: string, text: string | undefined): boolean {
+  if (/\.component\.html$/i.test(path)) return false;
+  const head = (text ?? "").slice(0, 20_000);
+  if (!/<!doctype html|<html[\s>]|<head[\s>]|<body[\s>]/i.test(head)) return false;
+  return !TEMPLATE_MARKS.some((mark) => mark.test(head));
+}

@@ -49,3 +49,5 @@
 - [x] Projects shown as coloured squares (Chats, top bar, project picker), chats as round dots, indented
 - [x] Add from Azure lists the resource groups of every subscription in every tenant, under its name
 - [x] The project dashboard has no Scripts card any more: the Scripts view is the one place (D-153)
+- [x] The model button names the model as the picker does ("Opus Plan Mode", not `opusplan`)
+- [x] HTML templates and fragments open as Source; only pages render in Preview (D-154)
