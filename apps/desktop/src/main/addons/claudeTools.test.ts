@@ -53,7 +53,7 @@ describe("add-on tools for Claude", () => {
       calls.push({ id, method, args });
       return { ok: true };
     });
-    expect(tool).toMatchObject({ name: "addon_releases_changes", readOnly: true });
+    expect(tool).toMatchObject({ name: "addon_releases_changes", readOnly: true, alwaysLoad: false });
     expect(await tool!.handler({ repo: "shop" }, meta)).toBe('{\n  "ok": true\n}');
     expect(calls).toEqual([
       {

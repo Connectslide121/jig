@@ -20,6 +20,11 @@ export interface JigTool {
   shape: z.ZodRawShape;
   /** Only reads: runs without asking the user (D-077). */
   readOnly?: boolean;
+  /**
+   * Always in Claude's prompt, never deferred behind Claude Code's tool search (D-158): for tools
+   * Claude should reach for without a lookup first. Each one costs prompt space in every turn.
+   */
+  alwaysLoad?: boolean;
   handler: (args: Record<string, unknown>, meta: SessionMeta) => Promise<ToolOutput>;
 }
 
@@ -95,24 +100,30 @@ export function jigMcpServer(meta: SessionMeta) {
         async ({ goal, addonId }) => text(await handlers.requestBuild({ goal, addonId, sessionId: meta.id })),
       ),
       ...extraTools.map((t) =>
-        tool(t.name, t.description, t.shape, async (args) => {
-          try {
-            const out = await t.handler(args as Record<string, unknown>, meta);
-            if (typeof out === "string") return text(out);
-            return {
-              content: [
-                { type: "text" as const, text: out.text },
-                ...(out.images ?? []).map((i) => ({
-                  type: "image" as const,
-                  data: i.data,
-                  mimeType: i.mime,
-                })),
-              ],
-            };
-          } catch (error) {
-            return { ...text(`Error: ${(error as Error).message}`), isError: true };
-          }
-        }),
+        tool(
+          t.name,
+          t.description,
+          t.shape,
+          async (args) => {
+            try {
+              const out = await t.handler(args as Record<string, unknown>, meta);
+              if (typeof out === "string") return text(out);
+              return {
+                content: [
+                  { type: "text" as const, text: out.text },
+                  ...(out.images ?? []).map((i) => ({
+                    type: "image" as const,
+                    data: i.data,
+                    mimeType: i.mime,
+                  })),
+                ],
+              };
+            } catch (error) {
+              return { ...text(`Error: ${(error as Error).message}`), isError: true };
+            }
+          },
+          t.alwaysLoad ? { alwaysLoad: true } : undefined,
+        ),
       ),
     ],
   });

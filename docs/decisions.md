@@ -1562,3 +1562,17 @@ more space… I don't want the black card or tile") · **Date:** 2026-10-30
   The About page's logo follows. `make-icon.mjs` writes the `.ico` with every size Windows shows
   (16–256 px), each drawn at its size.
 
+### D-158 — Notes' tools are always loaded, and Claude checks the notes before ending a turn
+**Decided by:** Jon ("the notes add-on is not being used much by Jig chats, or not at all… it should
+actively use it always") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **Why it wasn't used:** Jon's Jig chats received the notes and the rule with every message
+  (D-151), but Claude Code deferred Jig's MCP tools behind its tool search: Claude saw only their
+  names and had to look a tool up before writing a note, so it didn't.
+- **Add-on tools can be `alwaysLoad`** (manifest; `JigTool.alwaysLoad`, passed to the SDK's `tool()`
+  as `_meta['anthropic/alwaysLoad']`): always in Claude's prompt, never deferred. Each costs prompt
+  space every turn, so it is for a few tools Claude must use on its own. Notes' four tools use it.
+- **The per-turn rule** now also asks Claude, before it ends every turn, whether the turn started a
+  wait, settled a decision, moved work to a branch or left something for later, and to write the
+  note then.
+

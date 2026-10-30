@@ -89,7 +89,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     bar; right-click a project → Open in VS Code / Explorer.
   - **Notes** (right sidebar; D-147): short notes for the chat you're in (waiting on, where, to-do,
     note, link), like the notes plugin; Claude gets them with every message (D-151) and keeps them
-    current on its own.
+    current on its own; its Notes tools are always loaded, never behind tool search (D-158).
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
     changed parameters) and its stages; **Run** opens a form with the branch, a picker per YAML

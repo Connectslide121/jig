@@ -60,6 +60,7 @@ export function addonTools(
           description: `${t.description} (from the ${a.name} add-on)`,
           shape: paramsShape(t.params),
           readOnly: t.readOnly,
+          alwaysLoad: t.alwaysLoad,
           handler: async (args, meta) =>
             toolText(
               await call(a.id, t.run, {

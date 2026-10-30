@@ -36,7 +36,8 @@
         "id": "list",
         "description": "This chat's notes (the Notes panel beside the chat), each with its id. They also come with every message (in <jig-context>); use this to read them again after changing several. A 'Waiting on' note that isn't cleared means that work shouldn't go ahead yet.",
         "readOnly": true,
-        "run": "toolList"
+        "run": "toolList",
+        "alwaysLoad": true
       },
       {
         "id": "add",
@@ -69,7 +70,8 @@
           }
         },
         "readOnly": true,
-        "run": "toolAdd"
+        "run": "toolAdd",
+        "alwaysLoad": true
       },
       {
         "id": "update",
@@ -101,7 +103,8 @@
           }
         },
         "readOnly": true,
-        "run": "toolUpdate"
+        "run": "toolUpdate",
+        "alwaysLoad": true
       },
       {
         "id": "remove",
@@ -113,7 +116,8 @@
           }
         },
         "readOnly": true,
-        "run": "toolRemove"
+        "run": "toolRemove",
+        "alwaysLoad": true
       }
     ]
   }

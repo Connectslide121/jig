@@ -354,6 +354,10 @@
                 "default": false,
                 "type": "boolean"
               },
+              "alwaysLoad": {
+                "default": false,
+                "type": "boolean"
+              },
               "run": {
                 "type": "string",
                 "pattern": "^[A-Za-z_$][\\w$]*$"

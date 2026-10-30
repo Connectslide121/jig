@@ -11,7 +11,8 @@ with every message and keeps them current.
   removes. Order: open waits, where, open to-dos, notes, links, then what's done (`lib/notes.ts`).
 - **Per chat:** the view follows the chat in front (`useActiveChat`), and the last one while another
   tab is in front. A new chat starts with none.
-- **Claude's tools** (`contributes.tools`, every chat): `addon_notes_list` (read before working),
+- **Claude's tools** (`contributes.tools`, every chat, `alwaysLoad` so Claude Code never defers them
+  behind its tool search, D-158): `addon_notes_list` (read before working),
   `add`, `update` (ticks off too) and `remove`; each answers with the notes as they now stand. They
   only touch the chat's notes, so they run without asking. Their descriptions say what a note is
   for, and that notes are not a log of progress.

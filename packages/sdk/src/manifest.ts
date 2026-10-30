@@ -106,6 +106,12 @@ export const ManifestSchema = z.object({
               )
               .default({}),
             readOnly: z.boolean().default(false),
+            /**
+             * Always in Claude's prompt, never deferred behind Claude Code's tool search (D-158): for
+             * tools Claude should use on its own, without looking them up first. Costs prompt space in
+             * every turn, so keep it for a few.
+             */
+            alwaysLoad: z.boolean().default(false),
             run: ExportName,
           }),
         )

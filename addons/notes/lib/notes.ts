@@ -91,7 +91,7 @@ export function addNote(list: Note[], fields: Omit<Note, "id" | "createdAt">, no
  */
 export function turnContext(list: readonly Note[]): string {
   const rule =
-    "Keep this chat's notes current as you work, without being asked: add one (addon_notes_add) the moment the chat starts waiting on someone or something (wait), its work moves to a repository and branch (where), a decision, constraint or fact later work must respect is settled (note), something is deliberately left for later (todo), or an address matters (link). Tick a wait cleared or a to-do done (addon_notes_update, done: true) when it is, and remove notes that are no longer true. One short line each; never a log of progress, files changed or commits. The user sees them in the Notes panel.";
+    "Keep this chat's notes current as you work, without being asked: add one (addon_notes_add) the moment the chat starts waiting on someone or something (wait), its work moves to a repository and branch (where), a decision, constraint or fact later work must respect is settled (note), something is deliberately left for later (todo), or an address matters (link). Tick a wait cleared or a to-do done (addon_notes_update, done: true) when it is, and remove notes that are no longer true. Before you end every turn, check: did this turn start a wait, settle a decision, move work to a branch or leave something for later? Then add or update the note now; the user relies on these notes to keep the important things in hand. One short line each; never a log of progress, files changed or commits. The user sees them in the Notes panel.";
   if (list.length === 0) return `This chat has no notes yet.\n${rule}`;
   const open = list.filter((n) => n.kind === "wait" && !isDone(n));
   return [
