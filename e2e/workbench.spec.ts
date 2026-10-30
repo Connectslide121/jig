@@ -204,3 +204,22 @@ test("menus stay visible when a screenshot overlay blurs the window", async ({ p
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
 });
+
+test("many tabs: the tab strip scrolls without a scrollbar squeezing the tabs", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  for (let i = 0; i < 14; i++) await page.keyboard.press("Control+N");
+  const strip = page.getByTestId("main-pane-left").getByRole("tablist");
+  await expect(strip.getByRole("tab")).toHaveCount(14);
+  const sizes = await strip.evaluate((el) => ({
+    overflows: el.scrollWidth > el.clientWidth,
+    strip: el.clientHeight,
+    tab: el.querySelector<HTMLElement>('[role="tab"]')!.offsetHeight,
+  }));
+  expect(sizes.overflows).toBe(true);
+  // The tabs fill the strip's height: no scrollbar takes part of it.
+  expect(sizes.tab).toBeGreaterThanOrEqual(sizes.strip - 1);
+  // The newest (active) tab is in view.
+  await expect(strip.getByRole("tab", { selected: true })).toBeInViewport();
+});

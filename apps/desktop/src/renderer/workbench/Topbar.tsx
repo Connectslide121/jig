@@ -162,7 +162,12 @@ export function Topbar() {
         )}
         <ChevronDown className="size-3.5 text-muted" />
       </button>
-      <div className="no-drag flex min-w-0 items-center overflow-x-auto">
+      <div
+        className="tab-strip no-drag flex min-w-0 items-center overflow-x-auto"
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
         {groups.map(({ group, actions: entries }) => (
           <button
             type="button"

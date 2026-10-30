@@ -89,6 +89,13 @@
   ::-webkit-scrollbar-corner {
     background: transparent;
   }
+  /* The tab strips keep their height: no scrollbar inside them (the wheel scrolls them). */
+  .tab-strip {
+    scrollbar-width: none;
+  }
+  .tab-strip::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* The draggable window area; interactive children opt out. */

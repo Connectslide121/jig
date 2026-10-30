@@ -1,5 +1,5 @@
 import { Columns2, Settings, Sparkles, Square, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   closeOtherTabs,
   type LayoutTab,
@@ -243,6 +243,14 @@ function TabPane({
   split: boolean;
   mounted: Set<string>;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  // The active tab is always in view, however many tabs are open.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run when the active tab or the tabs change.
+  useEffect(() => {
+    strip.current
+      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active, tabs.length]);
   return (
     <div
       className="flex h-full min-w-0 flex-1 flex-col"
@@ -253,8 +261,13 @@ function TabPane({
       }}
     >
       <div
+        ref={strip}
         role="tablist"
-        className="flex h-8 shrink-0 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+        // No scrollbar squeezing the tabs: the wheel scrolls them sideways, as in VS Code.
+        className="tab-strip flex h-8 shrink-0 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+        }}
         onDragOver={(e) => e.dataTransfer.types.includes("jig/tab") && e.preventDefault()}
         onDrop={(e) => {
           const id = e.dataTransfer.getData("jig/tab");
