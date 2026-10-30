@@ -10,7 +10,7 @@ import {
 } from "../../../shared/usage";
 import { timeAgo } from "../../lib/time";
 import { refreshUsage, useUsage } from "../../stores/usage";
-import { Badge, cn, Tooltip } from "../../ui";
+import { Badge, cn, IconButton, Tooltip } from "../../ui";
 
 const TONE_TEXT = { ok: "text-muted", warning: "text-warning", danger: "text-danger" } as const;
 /** Green while there is room, amber from 60 %, red from 85 %, like the usage plugin's footer. */
@@ -56,6 +56,7 @@ function WindowRow({ w }: { w: UsageWindow }) {
 /** The card shown on hover: every window with a bar, when it resets, and where the numbers come from. */
 export function UsageCard({ usage }: { usage: PlanUsage }) {
   const warning = usage.warning;
+  const refreshing = useUsage((s) => s.refreshing);
   return (
     <div className="flex w-72 flex-col gap-3 p-1" data-testid="usage-card">
       <div className="flex items-center gap-2">
@@ -99,7 +100,14 @@ export function UsageCard({ usage }: { usage: PlanUsage }) {
           From Claude Code{usage.updatedAt ? ` · updated ${timeAgo(usage.updatedAt)}` : ""}
           {usage.state === "error" && usage.windows.length > 0 ? " · couldn't refresh" : ""}
         </span>
-        <RefreshCw className="size-3" /> click to refresh
+        <IconButton
+          icon={RefreshCw}
+          size="sm"
+          label="Refresh"
+          data-testid="usage-refresh"
+          className={refreshing ? "animate-spin" : undefined}
+          onClick={() => void refreshUsage()}
+        />
       </div>
     </div>
   );
@@ -142,7 +150,13 @@ export function UsageStatusItem() {
   const window = (id: string) => usage.windows.find((w) => w.id === id);
   const tone = usage.warning?.status === "rejected" ? "danger" : usageTone(worst(usage));
   return (
-    <Tooltip content={<UsageCard usage={usage} />} side="above" delay={150} className="max-w-none p-2">
+    <Tooltip
+      content={<UsageCard usage={usage} />}
+      side="above"
+      delay={150}
+      interactive
+      className="max-w-none p-2"
+    >
       <button
         type="button"
         onClick={() => void refreshUsage()}

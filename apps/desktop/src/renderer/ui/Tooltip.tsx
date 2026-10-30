@@ -12,6 +12,7 @@ export function Tooltip({
   side = "below",
   delay = 450,
   className,
+  interactive,
 }: {
   content: ReactNode;
   children: ReactElement<{
@@ -23,6 +24,8 @@ export function Tooltip({
   side?: "below" | "above";
   delay?: number;
   className?: string;
+  /** The card stays while the pointer is on it, so it can hold buttons. */
+  interactive?: boolean;
 }) {
   const [at, setAt] = useState<{ x: number; y: number }>();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -41,7 +44,9 @@ export function Tooltip({
   };
   const hide = () => {
     clearTimeout(timer.current);
-    setAt(undefined);
+    // An interactive card waits a moment, so the pointer can cross the gap onto it.
+    if (interactive) timer.current = setTimeout(() => setAt(undefined), 250);
+    else setAt(undefined);
   };
   const child = cloneElement(children, {
     onMouseEnter: (e: React.MouseEvent) => show(e.currentTarget as HTMLElement, delay),
@@ -56,9 +61,12 @@ export function Tooltip({
         createPortal(
           <div
             role="tooltip"
+            onMouseEnter={interactive ? () => clearTimeout(timer.current) : undefined}
+            onMouseLeave={interactive ? hide : undefined}
             style={{ left: at.x, top: at.y }}
             className={cn(
-              "pointer-events-none fixed z-50 max-w-xs -translate-x-1/2 rounded-md border border-line bg-elevated px-2 py-1 text-xs text-fg shadow-popover",
+              "fixed z-50 max-w-xs -translate-x-1/2 rounded-md border border-line bg-elevated px-2 py-1 text-xs text-fg shadow-popover",
+              !interactive && "pointer-events-none",
               side === "above" && "-translate-y-full",
               className,
             )}
