@@ -97,10 +97,21 @@ function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
 /** "default" is how Claude Code names its default; Jig stores it as an empty model. */
 const modelId = (value: string) => (value === "default" ? "" : value);
 
+/**
+ * Aliases Claude Code accepts but doesn't list: added to its list, so the picker names the chat's
+ * model the way the button does ("Opus Plan Mode", not `opusplan`) and you can pick it again.
+ */
+const ALIASES = [{ id: "opusplan", label: "Opus Plan Mode", description: "Opus plans, Sonnet executes" }];
+function withAliases<T extends { id: string; label: string; description?: string }>(
+  list: T[],
+): Array<T | (typeof ALIASES)[number]> {
+  return [...list, ...ALIASES.filter((a) => !list.some((m) => m.id === a.id))];
+}
+
 /** Models to choose from outside a chat: Claude Code's list once a chat asked for it, else the aliases. */
 export function modelChoices(): Array<{ id: string; label: string }> {
   if (!models?.length) return MODEL_CHOICES;
-  const list = models.map((m) => ({ id: modelId(m.value), label: m.displayName }));
+  const list = withAliases(models.map((m) => ({ id: modelId(m.value), label: m.displayName })));
   return list.some((m) => m.id === "") ? list : [MODEL_CHOICES[0]!, ...list];
 }
 
@@ -120,7 +131,9 @@ const EFFORT_LABELS: Record<EffortLevel, string> = {
 
 export function modelMenu(meta: SessionMeta): MenuEntry[] {
   const choices = models
-    ? models.map((m) => ({ id: modelId(m.value), label: m.displayName, description: m.description }))
+    ? withAliases(
+        models.map((m) => ({ id: modelId(m.value), label: m.displayName, description: m.description })),
+      )
     : MODEL_CHOICES;
   const known = choices.some((m) => m.id === meta.model);
   const current = models?.find((m) => modelId(m.value) === meta.model);
@@ -133,6 +146,7 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
       testId: `model-${m.id || "default"}`,
       onSelect: () => void call("sessions.setModel", { id: meta.id, model: m.id }),
     })),
+    // A model of your own (Other model…): its id, as you gave it.
     ...(known ? [] : [{ label: meta.model, checked: true, icon: Check }]),
     { separator: true },
     {

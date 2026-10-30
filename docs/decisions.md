@@ -1647,3 +1647,12 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
 - Not on every change: moving the chat to another project, or choosing a project while the chat is
   open, doesn't switch back. A chat in No project changes nothing.
 
+### D-164 — The model picker names Opus Plan Mode like the button does
+**Decided by:** Jon ("it should say the nicer Opus Plan Mode in both") · **Date:** 2026-10-30
+
+- Claude Code's model list doesn't contain the `opusplan` alias, so the picker showed the chat's
+  model as a raw `opusplan` line while the button said "Opus Plan Mode". Jig now adds the aliases
+  Claude Code accepts but doesn't list (`ALIASES` in `menus.ts`: Opus Plan Mode) to the list, in the
+  chat's picker and the one outside chats; the raw-id line stays only for a model you typed under
+  "Other model…". The fake engine's list leaves it out, as Claude Code's does.
+

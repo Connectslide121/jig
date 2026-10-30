@@ -59,3 +59,4 @@
 - [x] Claude's questions step by step with a nicer card (D-161)
 - [x] How you worked counts Claude Code's whole history on this computer, leaves lock files out (D-162)
 - [x] Opening a chat makes its project the active one (D-163)
+- [x] The model picker names Opus Plan Mode like the button (D-164)

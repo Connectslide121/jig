@@ -102,8 +102,16 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("mode-plan").click();
   await expect(page.getByTestId("permission-menu")).toContainText("Plan only");
   await page.getByTestId("model-menu").click();
+  // Claude Code's own list has no opusplan: the picker still names it, and marks it as the current one.
+  await expect(page.getByTestId("model-opusplan")).toContainText("Opus Plan Mode");
+  await expect(page.getByRole("menu")).not.toContainText("opusplan");
   await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
+  await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
+  // And it can be chosen again.
+  await page.getByTestId("model-menu").click();
+  await page.getByTestId("model-opusplan").click();
+  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
 });
 
 test("chat: sessions list across projects and survive a restart", async ({ app, page, jigHome }) => {

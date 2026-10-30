@@ -70,12 +70,7 @@ const FAKE_MODELS = [
   },
   { value: "sonnet", displayName: "Sonnet", description: "Coding and execution" },
   { value: "haiku", displayName: "Haiku", description: "Fastest" },
-  {
-    value: "opusplan",
-    displayName: "Opus Plan Mode",
-    description: "Opus to plan, Sonnet to execute",
-    efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
-  },
+  // No opusplan, as in Claude Code's own list: Jig adds it (menus.ts ALIASES).
 ];
 
 /** The fake saved conversation with a transcript (e2e opens it). */
