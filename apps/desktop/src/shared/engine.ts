@@ -108,6 +108,12 @@ export interface SavedClaudeSession {
   chatId?: string;
 }
 
+/** A tool call Claude made in a saved conversation (its name and what it was given). */
+export interface SavedToolUse {
+  name: string;
+  input: Record<string, unknown>;
+}
+
 /** One message of a saved conversation, as Claude Code's transcript has it. */
 export interface SavedClaudeMessage {
   type: "user" | "assistant" | "system";

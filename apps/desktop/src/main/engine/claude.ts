@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
+import { join } from "node:path";
+import { createInterface } from "node:readline";
 import { getSessionMessages, listSessions, query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type {
   EngineEvent,
@@ -7,6 +11,7 @@ import type {
   PermissionMode,
   SavedClaudeMessage,
   SavedClaudeSession,
+  SavedToolUse,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
@@ -43,6 +48,48 @@ export class ClaudeEngine implements Engine {
 
   async savedMessages(sessionId: string, cwd?: string): Promise<SavedClaudeMessage[]> {
     return (await getSessionMessages(sessionId, cwd ? { dir: cwd } : {})) as SavedClaudeMessage[];
+  }
+
+  /**
+   * The tool calls of a saved conversation, read from Claude Code's own transcript files (one line
+   * per message, streamed: they reach 100 MB) and its subagents' (`<chat>/subagents/*.jsonl`). The
+   * SDK's `getSessionMessages` follows only the current thread, so it misses what a compaction
+   * folded away.
+   */
+  async savedToolUses(sessionId: string): Promise<SavedToolUse[]> {
+    if (!/^[\w-]{1,100}$/.test(sessionId)) return [];
+    const projects = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects");
+    const files: string[] = [];
+    for (const folder of await readdir(projects).catch(() => [] as string[])) {
+      const main = join(projects, folder, `${sessionId}.jsonl`);
+      if (!(await stat(main).catch(() => undefined))) continue;
+      files.push(main);
+      const subagents = join(projects, folder, sessionId, "subagents");
+      for (const name of await readdir(subagents).catch(() => [] as string[]))
+        if (name.endsWith(".jsonl")) files.push(join(subagents, name));
+      break;
+    }
+    const calls: SavedToolUse[] = [];
+    for (const file of files) {
+      const lines = createInterface({
+        input: createReadStream(file, { encoding: "utf8" }),
+        crlfDelay: Infinity,
+      });
+      for await (const line of lines) {
+        // Only Claude's own messages hold tool calls; the big request dumps are never parsed.
+        if (!line.includes('"type":"assistant"')) continue;
+        try {
+          const entry = JSON.parse(line) as { type?: string; message?: { content?: unknown } };
+          if (entry.type !== "assistant" || !Array.isArray(entry.message?.content)) continue;
+          for (const block of entry.message.content)
+            if (block?.type === "tool_use" && typeof block.name === "string")
+              calls.push({ name: block.name, input: (block.input ?? {}) as Record<string, unknown> });
+        } catch {
+          // A line cut off mid-write: skipped.
+        }
+      }
+    }
+    return calls;
   }
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {

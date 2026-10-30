@@ -88,12 +88,21 @@ export interface WorkedSummary {
 const FIX = /\b(fix|bug|hotfix|revert)/i;
 
 /**
+ * Files nobody writes, only tools do: lock files, minified code, source maps and test snapshots.
+ * Their lines say nothing about who worked, so they aren't counted.
+ */
+const GENERATED =
+  /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|bun\.lockb?|Cargo\.lock|poetry\.lock|Pipfile\.lock|composer\.lock|Gemfile\.lock|go\.sum|packages\.lock\.json)$|\.(min\.(js|css)|map|snap)$/i;
+
+export const isGenerated = (path: string) => GENERATED.test(path.replaceAll("\\", "/"));
+
+/**
  * The summary for commits on or after `since`: lines by Claude (hash recorded for that file) vs by
  * hand, churn per origin, and fix commits. `aiLines`: absolute or repository paths → line hashes.
  */
 export function summarizeWork(
   commits: CommitPatch[],
-  aiLines: (path: string) => Set<string> | undefined,
+  aiLines: (path: string) => { has(hash: string): boolean } | undefined,
   since: string,
   churnDays = 14,
 ): WorkedSummary {
@@ -107,6 +116,7 @@ export function summarizeWork(
     if (inWindow) summary.commits++;
     const removedOrigins: Array<"ai" | "hand"> = [];
     for (const f of c.files) {
+      if (isGenerated(f.path)) continue;
       const lines: Map<string, { origin: "ai" | "hand"; at: number }> = recent.get(f.path) ?? new Map();
       recent.set(f.path, lines);
       for (const r of f.removed) {
@@ -163,7 +173,7 @@ export function workedText(s: WorkedSummary, chatMinutes?: number): string {
     parts.push(
       `The fix in ${f.commit} changed ${f.origin === "ai" ? "lines Claude wrote" : "hand-written lines"} from the days before.`,
     );
-  if (chatMinutes) parts.push(`About ${Math.round(chatMinutes / 6) / 10} h in chats (an estimate).`);
+  if (chatMinutes) parts.push(`About ${Math.round(chatMinutes / 6) / 10} h in Jig chats (an estimate).`);
   return parts.join(" ");
 }
 

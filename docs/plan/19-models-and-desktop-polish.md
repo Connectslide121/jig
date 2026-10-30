@@ -57,3 +57,4 @@
 - [x] Compact chats by default: steps fold into one line; Compact | Detailed switch in the top bar (D-159)
 - [x] claude.ai connectors off in chats by default, a switch in Settings (D-160); long text no longer scrolls the transcript sideways
 - [x] Claude's questions step by step with a nicer card (D-161)
+- [x] How you worked counts Claude Code's whole history on this computer, leaves lock files out (D-162)

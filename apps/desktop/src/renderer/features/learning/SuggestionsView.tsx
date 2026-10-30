@@ -315,6 +315,10 @@ function WorkedCard() {
     <Card className="p-3 text-xs text-muted" data-testid="worked-card">
       <div className="mb-1 text-sm font-medium text-fg">How you worked (last 7 days)</div>
       {worked.text}
+      <div className="mt-1.5 text-2xs text-hint">
+        Claude's lines are counted from Claude Code's own history on this computer; work done elsewhere counts
+        as by hand. Lock files and generated code are left out.
+      </div>
     </Card>
   );
 }

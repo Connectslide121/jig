@@ -74,9 +74,16 @@ start and daily), open the folder, delete all.
 `attribution.ts` and `main/learning/worked.ts`: for every workspace repository (and the ones Claude
 wrote in), your commits of the last 7 days (`git log -p --unified=0 --author=<user.email>`; 21 days
 are read for churn). Added lines whose hash Claude recorded for that file count as Claude's, others
-as yours (a line Claude wrote and you changed is yours). Lines removed again within 14 days are
+as yours (a line Claude wrote and you changed is yours). **What counts as Claude's (D-162):** the
+Write/Edit calls recorded in Jig's chats, plus everything Claude Code itself saved on this computer
+for the last 28 days (`main/learning/claudeLines.ts`, `Engine.savedToolUses`: whole transcripts,
+subagents' too, compacted parts included): its Write/Edit/MultiEdit calls per file, and the long
+lines (20+ characters) of the commands and files it wrote, which count in any file (a script that
+carries the real code in strings). Lock files, minified code, source maps and snapshots are left out
+(`isGenerated`). Work Claude did on another computer or tool leaves nothing here and counts as
+yours; the card says so. Lines removed again within 14 days are
 **churn** for their origin; "fix" commits that remove recent lines are attributed to the origin of
-most of them. Chat time is estimated from message and tool times (gaps under 10 minutes). Shown as one
+most of them. Chat time (in Jig's chats only) is estimated from message and tool times (gaps under 10 minutes). Shown as one
 paragraph on the Suggestions view and the knowledge page, and given to the reflection; never as a
 notification. `learning.worked` caches it for an hour.
 

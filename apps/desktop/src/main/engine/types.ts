@@ -10,6 +10,7 @@ import type {
   RewindResult,
   SavedClaudeMessage,
   SavedClaudeSession,
+  SavedToolUse,
   SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
@@ -128,6 +129,11 @@ export interface Engine {
   savedSessions(options: { limit: number }): Promise<SavedClaudeSession[]>;
   /** A saved conversation's messages in order (Claude Code reads its own transcript). */
   savedMessages(sessionId: string, cwd?: string): Promise<SavedClaudeMessage[]>;
+  /**
+   * Every tool call Claude made in a saved conversation, including what an earlier compaction left
+   * out of `savedMessages` and its subagents' (D-162). Only the calls are read.
+   */
+  savedToolUses(sessionId: string): Promise<SavedToolUse[]>;
 }
 
 /** Copies the environment, removing API-key variables unless the user allowed them (D-002). */

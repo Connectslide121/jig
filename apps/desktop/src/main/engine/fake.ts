@@ -10,6 +10,7 @@ import type {
   PermissionMode,
   SavedClaudeMessage,
   SavedClaudeSession,
+  SavedToolUse,
   SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
@@ -862,6 +863,22 @@ export class FakeEngine implements Engine {
         fileSize: 9_000,
       },
     ];
+  }
+
+  async savedToolUses(sessionId: string): Promise<SavedToolUse[]> {
+    return (await this.savedMessages(sessionId)).flatMap((m) =>
+      m.type !== "assistant"
+        ? []
+        : (
+            (
+              m.message as {
+                content?: Array<{ type?: string; name?: string; input?: Record<string, unknown> }>;
+              }
+            ).content ?? []
+          )
+            .filter((b) => b.type === "tool_use" && b.name)
+            .map((b) => ({ name: b.name as string, input: b.input ?? {} })),
+    );
   }
 
   async savedMessages(sessionId: string): Promise<SavedClaudeMessage[]> {

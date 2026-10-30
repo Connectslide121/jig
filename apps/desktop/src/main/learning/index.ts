@@ -14,10 +14,11 @@ import { projectStore } from "../projects";
 import { sessionManager } from "../sessions";
 import { jigHome, paths } from "../state/paths";
 import { ActivityLog, isExcluded } from "./activity";
+import { claudeWrittenLines } from "./claudeLines";
 import { KnowledgeStore } from "./knowledge";
 import { REFLECTION_INSTRUCTIONS } from "./reflect";
 import { LearningService } from "./service";
-import { computeWorked } from "./worked";
+import { ANYWHERE, computeWorked } from "./worked";
 
 let service: LearningService | undefined;
 let knowledge: KnowledgeStore | undefined;
@@ -69,7 +70,13 @@ export async function startLearning(): Promise<void> {
     }
     const events = await activity.read(21);
     for (const e of events) if (e.kind === "ai.lines") repos.add(dirname(e.text));
-    worked = await computeWorked([...repos], events);
+    // What Claude wrote in chats outside Jig (Claude Code's own history) counts as Claude's too, and
+    // the folders it wrote in are measured (D-162). Chats from the last 28 days: 21 read + 7 shown.
+    const elsewhere = await claudeWrittenLines(getEngine(), new Date(Date.now() - 28 * 86_400_000)).catch(
+      () => new Map<string, Set<string>>(),
+    );
+    for (const file of elsewhere.keys()) if (file !== ANYWHERE) repos.add(dirname(file));
+    worked = await computeWorked([...repos], events, new Date(), elsewhere);
     return worked;
   };
 

@@ -102,7 +102,7 @@ describe("attribution", () => {
     expect(s).toMatchObject({ commits: 2, ai: 2, hand: 1, churn: { ai: 1, hand: 0 } });
     expect(s.fixes).toEqual([{ commit: "ccc", subject: "fix: rounding", origin: "ai" }]);
     expect(workedText(s, 90)).toBe(
-      "2 commits: 2 lines by Claude, 1 by hand. 1 recent lines were changed again (1 by Claude, 0 by hand). The fix in ccc changed lines Claude wrote from the days before. About 1.5 h in chats (an estimate).",
+      "2 commits: 2 lines by Claude, 1 by hand. 1 recent lines were changed again (1 by Claude, 0 by hand). The fix in ccc changed lines Claude wrote from the days before. About 1.5 h in Jig chats (an estimate).",
     );
     expect(workedText({ ...s, commits: 0 })).toBe("");
   });

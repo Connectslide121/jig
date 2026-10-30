@@ -13,8 +13,14 @@ import type { WorkedState } from "../../shared/learning";
 
 const run = promisify(execFile);
 
+/**
+ * Key of the lines Claude typed into shell commands (`python`, heredocs, `sed`): they could end up in
+ * any file, so they count in every file (`claudeWrittenLines`, D-162).
+ */
+export const ANYWHERE = "*";
+
 /** Paths compared the same way on every OS (Windows: case and separators). */
-const key = (path: string) => {
+export const pathKey = (path: string) => {
   const p = resolve(path);
   return process.platform === "win32" ? p.toLowerCase() : p;
 };
@@ -39,13 +45,17 @@ export async function computeWorked(
   repos: string[],
   events: ActivityEvent[],
   now = new Date(),
+  /** Lines Claude wrote outside Jig's chats, by file (`claudeWrittenLines`, D-162). */
+  elsewhere: Map<string, Set<string>> = new Map(),
 ): Promise<WorkedState> {
   const ai = new Map<string, Set<string>>();
+  for (const [file, hashes] of elsewhere) if (file !== ANYWHERE) ai.set(file, new Set(hashes));
+  const anywhere = elsewhere.get(ANYWHERE);
   for (const e of events) {
     if (e.kind !== "ai.lines" || !e.detail?.lines) continue;
-    const set = ai.get(key(e.text)) ?? new Set();
+    const set = ai.get(pathKey(e.text)) ?? new Set();
     for (const h of e.detail.lines.split(",")) set.add(h);
-    ai.set(key(e.text), set);
+    ai.set(pathKey(e.text), set);
   }
   const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
   const read = new Date(now.getTime() - 21 * 86_400_000).toISOString();
@@ -55,7 +65,7 @@ export async function computeWorked(
   const tops = new Set<string>();
   for (const r of repos) {
     const top = (await git(r, ["rev-parse", "--show-toplevel"]).catch(() => "")).trim();
-    if (top) tops.add(key(top));
+    if (top) tops.add(pathKey(top));
   }
   for (const repo of tops) {
     try {
@@ -74,7 +84,15 @@ export async function computeWorked(
         "--format=%x1e%H%x1f%cI%x1f%s",
         ...(email ? [`--author=${email}`] : []),
       ]);
-      const s = summarizeWork(parseLogPatch(out), (path) => ai.get(key(join(repo, path))), since);
+      const s = summarizeWork(
+        parseLogPatch(out),
+        (path) => {
+          const own = ai.get(pathKey(join(repo, path)));
+          if (!own && !anywhere) return undefined;
+          return { has: (hash) => own?.has(hash) === true || anywhere?.has(hash) === true };
+        },
+        since,
+      );
       if (s.commits) measured++;
       total.commits += s.commits;
       total.ai += s.ai;

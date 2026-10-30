@@ -1618,3 +1618,21 @@ nicer UI") and Claude, on my own (how) · **Date:** 2026-10-30
   single Answer at the last step that sends all answers (Claude's tool takes them together).
 - Answering logic is pure and tested (`question.ts`); the fake engine has "several questions".
 
+### D-162 — "How you worked" counts Claude Code's whole history, not only Jig's chats
+**Decided by:** Jon (his week showed 138 lines by Claude and 145,533 "by hand", though he had written
+no code himself) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- **Cause:** Jig only recorded the lines of Claude's Write/Edit calls in chats run inside Jig;
+  everything Claude did in the terminal, the desktop app or an IDE counted as by hand.
+- **Now** it also reads the conversations Claude Code saved (`Engine.savedToolUses`): the whole
+  transcript and its subagents', streamed (`getSessionMessages` follows only the current thread and
+  loses what a compaction folded away: 611 of 1,468 tool calls in the longest chat). Write, Edit
+  and MultiEdit count per file; the long lines of commands and of any file Claude wrote count in
+  every file (scripts carry code in strings). Each chat is read once per Jig run (about 11 s for
+  four weeks on Jon's machine).
+- **Generated files** (lock files, minified code, maps, snapshots) are left out: `package-lock.json`
+  alone was 11,000 lines.
+- **Limits, said on the card:** work done on another computer or with another tool leaves no
+  transcript here and counts as by hand (on Jon's week: 42,638 lines by Claude, 94,463 by hand,
+  most of the rest founding commits that came from elsewhere); chat time counts Jig's chats only.
+
