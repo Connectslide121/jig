@@ -1681,6 +1681,8 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
 - **More pipelines:** Run on a pipeline whose repository isn't checked out opens the same form
   (`describe` → `az pipelines show` + the YAML; branches from `az repos ref list`) instead of a
   branch prompt with the defaults (`runOther` is gone).
+- The YAML is saved with `az devops invoke … --out-file` (plain text) and read from the file: on Windows az prints
+  in the console code page, which broke "ö" and "·" in labels when read from its output.
 - Parameters the form can't offer (`object`, `step`, `job`, `stage` and their lists) keep their YAML
   defaults, and a blank value isn't passed, so the YAML's own default applies.
 

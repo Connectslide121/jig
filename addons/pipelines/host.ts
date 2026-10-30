@@ -1,3 +1,5 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
@@ -519,11 +521,17 @@ async function resolve(key: string, api: AddonHostApi): Promise<PipelineInfo> {
   return found ?? describe(fromKey(key), api);
 }
 
-/** The pipeline's YAML on a branch, read from its repository in Azure DevOps ('' when it can't be). */
+/**
+ * The pipeline's YAML on a branch, read from its repository in Azure DevOps ('' when it can't be). It goes
+ * through a file: on Windows az prints in the console code page, which breaks characters like ö, while
+ * `--out-file` saves the response as it is.
+ */
 async function yamlAt(api: AddonHostApi, p: PipelineInfo, branch: string): Promise<string> {
   if (!p.repoId || !p.yaml) return "";
+  const dir = await mkdtemp(join(tmpdir(), "jig-pipeline-"));
   try {
-    const item = await az<{ content?: string }>(api, [
+    const file = join(dir, "pipeline.yml");
+    await az<unknown>(api, [
       "devops",
       "invoke",
       "--area",
@@ -535,18 +543,23 @@ async function yamlAt(api: AddonHostApi, p: PipelineInfo, branch: string): Promi
       `repositoryId=${p.repoId}`,
       "--query-parameters",
       `path=/${p.yaml}`,
-      "includeContent=true",
       `versionDescriptor.version=${branch}`,
       "versionDescriptor.versionType=branch",
+      "--accept-media-type",
+      "text/plain",
+      "--out-file",
+      file,
       "--org",
       orgUrl(p.org),
       "--api-version",
       "7.1",
     ]);
-    return item?.content ?? "";
+    return await readFile(file, "utf8");
   } catch {
     // Not on that branch (yet), or a repository Jig can't read: the form keeps the parameters it has.
     return "";
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

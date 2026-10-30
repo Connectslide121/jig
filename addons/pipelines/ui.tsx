@@ -374,7 +374,7 @@ function RunForm({
           ),
         )}
         {/* One line for "reading…" and "no parameters", so the form doesn't change height. */}
-        <div className="flex h-4 items-center text-xs text-hint">
+        <div className="flex h-4 items-center justify-center text-xs text-hint">
           {reading ? (
             <Spinner size="sm" />
           ) : (
