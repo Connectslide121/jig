@@ -108,6 +108,11 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   existing content, no spinner that swaps for a differently sized result. A form or picker that needs
   room is a modal (`Dialog`); something that loads reserves its space first (a fixed-height slot, a
   skeleton) or appears in a modal/overlay. Applies to Jig's UI and to every add-on.
+- **Align everything (hard rule, Jon).** Things in a list or row line up in columns, always: a fixed
+  slot per element (an empty one when it has nothing), the same position in every row, numbers and
+  times right-aligned. Status marks, badges and colour swatches go at the far right edge, so they form
+  one straight line however long the text is. Never let one element's width push the next one
+  sideways. Check this on every row-like view you touch or build.
 - **Tokens only.** Use the Tailwind token utilities (`bg-surface`, `text-muted`, `border-border`,
   `text-accent`, …) and the spacing/type scales. **Never** hard-code colours (`#fff`, `rgb()`, `red-500`)
   or arbitrary values (`w-[13px]`, `text-[#…]`). `npm run check:tokens` enforces this in

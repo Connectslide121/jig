@@ -128,24 +128,27 @@ export function SessionsView() {
         )}
         trailing={
           <>
-            {project && (
-              <span title={project.name} className="group-hover:hidden">
-                <ProjectSwatch color={project.color} />
-              </span>
-            )}
-            {m.pinned && <Pin className="size-3 shrink-0 text-hint group-hover:hidden" aria-label="Pinned" />}
+            <span className="flex size-3 shrink-0 items-center justify-center group-hover:hidden">
+              {m.pinned && <Pin className="size-3 shrink-0 text-hint" aria-label="Pinned" />}
+            </span>
             {m.status === "needs_you" || m.status === "error" ? (
               <span
                 className={cn(
-                  "group-hover:hidden",
+                  "min-w-12 text-right group-hover:hidden",
                   m.status === "needs_you" ? "text-warning" : "text-danger",
                 )}
               >
                 {STATUS_LABEL[m.status]}
               </span>
             ) : (
-              <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
+              <span className="min-w-12 text-right group-hover:hidden">{relative(m.updatedAt)}</span>
             )}
+            <span
+              title={project?.name}
+              className="flex size-2.5 shrink-0 items-center justify-center group-hover:hidden"
+            >
+              {project && <ProjectSwatch color={project.color} />}
+            </span>
             <IconButton
               icon={m.pinned ? PinOff : Pin}
               label={m.pinned ? "Unpin" : "Pin to the top"}
