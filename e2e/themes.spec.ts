@@ -89,3 +89,19 @@ test("Open VSX searches automatically after typing pauses", async ({ page, app }
     .toEqual(["dracula"]);
   await expect(page.getByText("No theme extensions found.")).toBeVisible();
 });
+
+test("Settings → Claude Code: claude.ai connectors are off by default and the switch is kept", async ({
+  page,
+}) => {
+  await page.getByTestId("settings-button").click();
+  await page.getByTestId("settings-nav-engine").click();
+  const toggle = page.getByRole("switch", { name: "claude.ai connectors" });
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  const config = async () =>
+    ((await hostCall(page, "config.get")) as { value: { engine: { claudeAiConnectors: boolean } } }).value
+      .engine.claudeAiConnectors;
+  expect(await config()).toBe(false);
+  await toggle.click();
+  await expect.poll(config).toBe(true);
+});

@@ -1585,7 +1585,25 @@ cards. I want a toggle, compact by default… in the chat topbar") and Claude, o
   thinking) into one line that says what they did, counts failures and shows what runs now; it
   opens to the cards. Messages, questions, permission prompts, plans, results, the changed-files
   bar and notices stay. **Detailed** is the previous view.
+- The line reads like Claude Code's: "Ran a command · List the repos" (a single command's own
+  description), "Created plan.md +253", "Edited cart.ts and total.ts +4 −1", "Received a message".
+  In a chat opened from Claude Code, a subagent's hand-back ("Another Claude session sent a
+  message", `<agent-message>`, `<task-notification>`) becomes such a step ("Message from
+  subagent"), not a message of yours.
 - One setting for all chats (`chat.view`, default `compact`), switched from every chat's top bar
   (where the usage ring was). E2E tests start in Detailed (the fixture writes it), one test covers
   Compact.
+
+### D-160 — claude.ai connectors are off in chats by default
+**Decided by:** Jon ("I get this every time I start a chat, I want to set the MCP servers globally, I
+don't want any of those flagged") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- Claude Code loads the connectors of the claude.ai account (Asana, Atlassian, Box, Canva, Figma,
+  HubSpot, Intercom, Linear, Microsoft 365, monday.com, Notion…) into every chat, and Jig put a
+  warning card in the chat for each one that needed sign-in: eleven cards at the start of Jon's chats.
+- `engine.claudeAiConnectors` (Settings → Claude Code, default **off**) sets
+  `ENABLE_CLAUDEAI_MCP_SERVERS=false` for chats, so Claude Code doesn't load them and nothing is
+  flagged. MCP servers from Claude Code's own settings (`~/.claude.json`, project `.mcp.json`) are
+  unchanged, and a failing one is still flagged.
+- Applies to new chats and to ones started again; a chat already running keeps its servers.
 

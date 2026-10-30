@@ -55,3 +55,4 @@
 - [x] Each HTML element's tag in a colour of its own, from the theme (D-156)
 - [x] Notes' tools always loaded (no tool search first), and a check before each turn ends (D-158)
 - [x] Compact chats by default: steps fold into one line; Compact | Detailed switch in the top bar (D-159)
+- [x] claude.ai connectors off in chats by default, a switch in Settings (D-160); long text no longer scrolls the transcript sideways

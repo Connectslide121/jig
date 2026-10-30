@@ -41,6 +41,12 @@ export const ConfigSchema = z.object({
       fileCheckpoints: z.boolean().default(true),
       /** Model for testing in Claude's browser (the jig-tester subagent and Test something…, D-124). */
       testerModel: z.string().default("haiku"),
+      /**
+       * Claude Code loads the connectors of your claude.ai account (Asana, Notion, Linear…) into every
+       * chat, and Jig warned about each one that wasn't signed in. Off (default): none are loaded
+       * (`ENABLE_CLAUDEAI_MCP_SERVERS=false`); the MCP servers in your own Claude Code settings stay (D-160).
+       */
+      claudeAiConnectors: z.boolean().default(false),
     })
     .prefault({}),
   editor: z

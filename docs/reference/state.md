@@ -60,6 +60,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.defaultModel` | `"opusplan"` | new chats: Opus in Plan mode, Sonnet for execution; empty follows Claude Code |
 | `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
 | `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions (commit messages, reviews, etc.) |
+| `engine.claudeAiConnectors` | `false` | load your claude.ai account's connectors (Asana, Notion, Linear…) into new chats; off sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, so none is flagged as needing sign-in; the MCP servers in your Claude Code settings are unaffected (D-160) |
 | `engine.defaultPermissionMode` | `plan` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
 | `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Tools → Test something… (D-124) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |

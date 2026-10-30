@@ -169,6 +169,16 @@ export function EngineSettings() {
         onSave={(claudePath) => void updateConfig({ engine: { claudePath } })}
       />
       <SettingRow
+        label="claude.ai connectors"
+        description="The connectors of your claude.ai account (Asana, Notion, Linear, Microsoft 365…). Off: none are loaded into chats, so none is flagged as needing sign-in. The MCP servers in your own Claude Code settings are not affected. Applies to new chats."
+      >
+        <Switch
+          label="claude.ai connectors"
+          checked={e.claudeAiConnectors}
+          onChange={(claudeAiConnectors) => void updateConfig({ engine: { claudeAiConnectors } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="Recommended setup"
         description="Opus plans, Sonnet executes, Haiku tests. Applies to new chats."
       >

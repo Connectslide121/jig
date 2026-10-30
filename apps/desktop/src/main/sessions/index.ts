@@ -85,6 +85,8 @@ export function startSessions(): void {
         env: {
           ...sessionEnv(process.env, engine.allowApiKey),
           ...(engine.subagentModel ? { CLAUDE_CODE_SUBAGENT_MODEL: engine.subagentModel } : {}),
+          // Off: Claude Code doesn't load your claude.ai connectors into chats (D-160).
+          ...(engine.claudeAiConnectors ? {} : { ENABLE_CLAUDEAI_MCP_SERVERS: "false" }),
         },
         promptSuggestions: engine.promptSuggestions,
         fileCheckpoints: engine.fileCheckpoints,
