@@ -9,7 +9,8 @@ scripts plugin (D-142):
 - **Running**: what runs now, wherever it's from, in a green box; ⋯ opens its address (a backend's
   launch profile), shows its terminal or stops it.
 - **Groups**: cards with a **Start** button (**Start the rest** when some already run) and **Stop**,
-  their scripts as rows. Your own groups take scripts from any project ("Certumhub" = its frontend
+  their scripts as rows. A group starts folded to its header (chevron to unfold, remembered in `expanded`);
+  **All scripts** folds away too. Your own groups take scripts from any project ("Certumhub" = its frontend
   and backend): **New group** in the header, then a script's ⋯ (or right-click) → **Add to group**;
   a group's ⋯ renames, moves or deletes it. Groups made on a project's dashboard before it lost its
   Scripts card (D-153) still show here, marked as the project's, with the same Start and Stop. Your groups are kept in the

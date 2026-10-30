@@ -162,7 +162,11 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
     await page.getByRole("menuitem", { name: "Add to group" }).hover();
     await page.getByRole("menuitem", { name: "Tools" }).click();
   }
+  // A group starts folded to its header; its chevron shows the scripts.
   const group = view.getByTestId("scripts-group-Tools");
+  await expect(group).toContainText("2 scripts");
+  await expect(group.getByTestId("scripts-addon-serve")).toHaveCount(0);
+  await view.getByTestId("scripts-group-fold-Tools").click();
   await expect(group.getByTestId("scripts-addon-serve")).toBeVisible();
   await expect(group.getByTestId("scripts-addon-api")).toBeVisible();
 
@@ -173,6 +177,12 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
   await expect(group).toContainText("2 of 2 running");
   await view.getByTestId("scripts-group-stop-Tools").click();
   await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
+
+  // "All scripts" folds away and comes back.
+  await view.getByTestId("scripts-all-fold").click();
+  await expect(tree).toHaveCount(0);
+  await view.getByTestId("scripts-all-fold").click();
+  await expect(tree).toBeVisible();
 
   // Hide lint; the eye shows hidden scripts again.
   await tree.getByTestId("scripts-addon-lint").click({ button: "right" });

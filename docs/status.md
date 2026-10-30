@@ -97,7 +97,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     runs finish. New pipelines join their repository on their own and the form reads the YAML in
     Azure DevOps on the picked branch (D-166). Every organisation's other pipelines (D-125) under
     "More pipelines", with the same form.
-  - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups with
+  - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups (folded to their header until you unfold them; **All scripts** folds too) with
     Start/Stop (right-click a script → Add to group); every script as a tree of folder → repository
     → package (API / npm), scripts as ▶ chips. .NET projects offer their launch profiles (D-141);
     worktrees inside a folder are left out (D-127). Tools → Run a script… (`Ctrl+Shift+R`).

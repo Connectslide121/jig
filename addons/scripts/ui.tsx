@@ -280,14 +280,42 @@ function ScriptRow({
   );
 }
 
-function Section({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+function Section({
+  title,
+  children,
+  testId,
+  fold,
+}: {
+  title: string;
+  children: ReactNode;
+  testId?: string;
+  /** A section you can fold away: its state and how to flip it. */
+  fold?: { open: boolean; onToggle: () => void };
+}) {
+  const heading = <span className="text-2xs font-semibold tracking-wide text-hint uppercase">{title}</span>;
   return (
     <section className="mb-4" data-testid={testId}>
-      <div className="flex items-center gap-2 px-1 pb-1.5">
-        <span className="text-2xs font-semibold tracking-wide text-hint uppercase">{title}</span>
-        <span className="h-px flex-1 bg-line" />
-      </div>
-      {children}
+      {fold ? (
+        <button
+          type="button"
+          onClick={fold.onToggle}
+          aria-expanded={fold.open}
+          data-testid={testId ? `${testId}-fold` : undefined}
+          className="flex w-full items-center gap-1.5 rounded-md px-1 pb-1.5 text-left hover:text-fg"
+        >
+          <ChevronRight
+            className={cn("size-3.5 shrink-0 text-hint transition-transform", fold.open && "rotate-90")}
+          />
+          {heading}
+          <span className="h-px flex-1 bg-line" />
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 px-1 pb-1.5">
+          {heading}
+          <span className="h-px flex-1 bg-line" />
+        </div>
+      )}
+      {(!fold || fold.open) && children}
     </section>
   );
 }
@@ -329,6 +357,8 @@ function GroupCard({
   from,
   menu,
   group,
+  open,
+  onToggle,
 }: {
   m: Model;
   name: string;
@@ -338,6 +368,9 @@ function GroupCard({
   from?: string;
   menu?: (e: MouseEvent) => void;
   group?: ScriptGroup;
+  /** Folded to its header unless open. */
+  open: boolean;
+  onToggle: () => void;
 }) {
   const found = members.flatMap((x) => (x.l ? [x.l] : []));
   const startable = found.filter((l) => !isRunning(m, l));
@@ -346,15 +379,27 @@ function GroupCard({
   const id = testId.replace("scripts-group-", "");
   return (
     <div className="mb-2 rounded-lg border border-line bg-surface" data-testid={testId}>
-      <div className="flex items-center gap-2 border-b border-line px-2 py-1.5">
-        <Layers className={cn("size-4 shrink-0", running.length ? "text-success" : "text-muted")} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{name}</div>
-          <div className="truncate text-2xs text-hint">
-            {running.length ? `${running.length} of ${found.length} running` : `${found.length} scripts`}
-            {from ? ` · ${from}'s dashboard group` : ""}
+      <div className={cn("flex items-center gap-2 px-2 py-1.5", open && "border-b border-line")}>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={`${open ? "Fold" : "Unfold"} ${name}`}
+          data-testid={`scripts-group-fold-${id}`}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <ChevronRight
+            className={cn("size-3.5 shrink-0 text-hint transition-transform", open && "rotate-90")}
+          />
+          <Layers className={cn("size-4 shrink-0", running.length ? "text-success" : "text-muted")} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{name}</div>
+            <div className="truncate text-2xs text-hint">
+              {running.length ? `${running.length} of ${found.length} running` : `${found.length} scripts`}
+              {from ? ` · ${from}'s dashboard group` : ""}
+            </div>
           </div>
-        </div>
+        </button>
         {!all && (
           <Button
             size="sm"
@@ -379,29 +424,31 @@ function GroupCard({
         )}
         {menu && <IconButton icon={MoreHorizontal} size="sm" label={`${name} options`} onClick={menu} />}
       </div>
-      <div className="p-1">
-        {members.length === 0 && (
-          <div className="px-2 py-1.5 text-xs text-hint">Add scripts: a script's ⋯ → Add to group.</div>
-        )}
-        {members.map(({ key, l }) =>
-          l ? (
-            <ScriptRow key={key} m={m} l={l} context inGroup={group} />
-          ) : (
-            <div key={key} className="flex h-7 items-center gap-2 px-2 text-xs text-hint">
-              <span className="min-w-0 flex-1 truncate">{key.split(":").pop()} — not found any more</span>
-              {group && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => m.setGroups(removeMember(m.groups, group.id, key))}
-                >
-                  Remove
-                </Button>
-              )}
-            </div>
-          ),
-        )}
-      </div>
+      {open && (
+        <div className="p-1">
+          {members.length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-hint">Add scripts: a script's ⋯ → Add to group.</div>
+          )}
+          {members.map(({ key, l }) =>
+            l ? (
+              <ScriptRow key={key} m={m} l={l} context inGroup={group} />
+            ) : (
+              <div key={key} className="flex h-7 items-center gap-2 px-2 text-xs text-hint">
+                <span className="min-w-0 flex-1 truncate">{key.split(":").pop()} — not found any more</span>
+                {group && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => m.setGroups(removeMember(m.groups, group.id, key))}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -757,6 +804,10 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
                     members={g.members.map((key) => ({ key, l: m.find(key) }))}
                     testId={`scripts-group-${g.name}`}
                     menu={groupMenu(g, i)}
+                    open={open[`group:${g.id}`] ?? false}
+                    onToggle={() =>
+                      void setOpen({ ...open, [`group:${g.id}`]: !(open[`group:${g.id}`] ?? false) })
+                    }
                   />
                 ))}
                 {projectGroups.map(({ project, g }) => (
@@ -770,11 +821,25 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
                       l: located.get(memberKey(project.path, id)),
                     }))}
                     testId={`scripts-group-${g.name}`}
+                    open={open[`group:${project.id}:${g.id}`] ?? false}
+                    onToggle={() =>
+                      void setOpen({
+                        ...open,
+                        [`group:${project.id}:${g.id}`]: !(open[`group:${project.id}:${g.id}`] ?? false),
+                      })
+                    }
                   />
                 ))}
               </Section>
             )}
-            <Section title="All scripts">
+            <Section
+              title="All scripts"
+              testId="scripts-all"
+              fold={{
+                open: open["section:all"] ?? true,
+                onToggle: () => void setOpen({ ...open, "section:all": !(open["section:all"] ?? true) }),
+              }}
+            >
               {trees.map((t) => (
                 <div key={t.project.path} className="mb-2">
                   {trees.length > 1 && (
