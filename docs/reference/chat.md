@@ -33,6 +33,10 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 
 ## Beyond the terminal
 
+- **A chat's project is the active project** (D-163): selecting a chat in the Chats list, or bringing
+  its tab to the front (a tab, Home, a notification), makes its project the active one; a chat
+  without a project changes nothing. Moving a chat to another project, or choosing a project while
+  the chat stays open, leaves your choice alone.
 - **Claude's questions** (AskUserQuestion) are asked one at a time (D-161): a strip of the steps
   (green once answered; click one to go back), the question with its options as rows — a circle for
   one choice, a square for several, a "Recommended" badge, "Something else…" with its own field —

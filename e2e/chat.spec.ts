@@ -169,3 +169,28 @@ test("chat: long unbroken text never makes the transcript scroll sideways", asyn
     .evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
 });
+
+test("chat: opening a chat of another project makes that project the active one", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome, "one");
+  await withProject(page, jigHome, "two");
+  const switcher = page.getByTestId("project-switcher");
+  // A chat in project "two" (the active one: the last added), then project "one" becomes active.
+  await expect(switcher).toContainText("two");
+  await page.keyboard.press("Control+N");
+  await say(page, "first in two");
+  await expect(page.getByTestId("turn-result")).toBeVisible();
+  await switcher.click();
+  await page.getByTestId("project-item-one").click();
+  await expect(switcher).toContainText("one");
+  // The chat tab is still in front: choosing a project doesn't pull it back.
+  await page.waitForTimeout(500);
+  await expect(switcher).toContainText("one");
+  await page.getByTestId("view-tab-jig.sessions").click();
+  // The other project's group is closed: open it, select the chat, and that project is active.
+  await page.getByTestId("chat-group-two").getByRole("button").first().click();
+  await page.getByTestId("session-first in two").click();
+  await expect(switcher).toContainText("two");
+});

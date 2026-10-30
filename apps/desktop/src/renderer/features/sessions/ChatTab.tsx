@@ -10,6 +10,7 @@ import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
 import { fillComposer } from "./drafts";
 import { renameSession, sessionMenu } from "./menus";
+import { showProjectOf } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
@@ -51,6 +52,15 @@ export function ChatTab({ params, active, focused }: TabProps) {
   useEffect(() => {
     if (id) void ensureTranscript(id).catch(() => {});
   }, [id]);
+  // Bringing a chat to the front makes its project the active one (D-163): from the Chats list, a
+  // tab, Home, a notification… Only when the chat comes to the front, so moving it to another project
+  // or choosing a project while it stays open leaves the choice alone. A chat without a project
+  // changes nothing.
+  const known = Boolean(meta);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on coming to the front (and once the chat is known), not on every change of its project.
+  useEffect(() => {
+    if (focused) showProjectOf(meta?.projectId);
+  }, [focused, id, known]);
   // What you have seen: the tab's dot shows a finished turn you haven't looked at yet.
   useEffect(() => {
     if (active && meta) markSeen(id, meta.turns);

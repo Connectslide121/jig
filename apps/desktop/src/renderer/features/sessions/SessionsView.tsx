@@ -18,6 +18,7 @@ import { useWorkbench, workbench } from "../../workbench/store";
 import { projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
 import { sessionMenu } from "./menus";
+import { showProjectOf } from "./project";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { useSessions } from "./store";
@@ -57,7 +58,11 @@ export function SessionsView() {
   }, []);
   const visible = metas.filter((m) => showArchived || !m.archived);
   const groups = [...projects].sort((a, b) => (a.id === activeId ? -1 : b.id === activeId ? 1 : 0));
-  const open = (m: SessionMeta) => workbench.openTab("jig.chat", { sessionId: m.id });
+  const open = (m: SessionMeta) => {
+    workbench.openTab("jig.chat", { sessionId: m.id });
+    // Also when its tab is already in front: choosing a chat here means working in its project.
+    showProjectOf(m.projectId);
+  };
   const row = (m: SessionMeta) => (
     <ListRow
       key={m.id}

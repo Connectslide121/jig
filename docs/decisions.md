@@ -1636,3 +1636,14 @@ no code himself) and Claude, on my own (how) · **Date:** 2026-10-30
   transcript here and counts as by hand (on Jon's week: 42,638 lines by Claude, 94,463 by hand,
   most of the rest founding commits that came from elsewhere); chat time counts Jig's chats only.
 
+### D-163 — Opening a chat makes its project the active one
+**Decided by:** Jon ("if I select a chat from a project that is not the active one, the active
+project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- A chat tab that comes to the front (`ChatTab`, once when focused and its chat is known) and the
+  Chats list's own selection (`showProjectOf`) set the chat's project as the active one, so the
+  Git panel, Files, new chats and the top bar match the chat in front. Done in the tab, not at each
+  of the dozen places that open chats; the list handles a click on a chat whose tab is already open.
+- Not on every change: moving the chat to another project, or choosing a project while the chat is
+  open, doesn't switch back. A chat in No project changes nothing.
+
