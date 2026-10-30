@@ -11,6 +11,7 @@ git clone https://github.com/Connectslide121/jig.git
 cd jig
 npm install
 npm run dist          # = npm run build + electron-builder --win
+                      # when done, opens the installer's folder (not with --no-open or CI)
 ```
 
 The result is `apps/desktop/release/Jig-Setup-<version>.exe` (NSIS, per user, no admin rights; you may

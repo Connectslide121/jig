@@ -1,8 +1,8 @@
 // Packages the built app with electron-builder for the platform you run it on (npm installs the
 // native parts — node-pty, esbuild, the Claude Code binary — for this platform only, so a Windows
 // installer must be built on Windows). See docs/guides/packaging.md.
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { appDir } from "./build-config.mjs";
 
@@ -23,9 +23,27 @@ const bin = join(
   ".bin",
   process.platform === "win32" ? "electron-builder.cmd" : "electron-builder",
 );
-const result = spawnSync(bin, [platform, ...process.argv.slice(2)], {
+const result = spawnSync(bin, [platform, ...process.argv.slice(2).filter((a) => a !== "--no-open")], {
   cwd: appDir,
   stdio: "inherit",
   shell: process.platform === "win32",
 });
+if (result.status === 0 && !process.env.CI && !process.argv.includes("--no-open")) showInstaller();
 process.exit(result.status ?? 1);
+
+/** Opens the folder of the newest installer, with the file selected where the OS can. */
+function showInstaller() {
+  const out = join(appDir, "release");
+  const installers = readdirSync(out)
+    .filter((f) => /\.(exe|dmg|AppImage)$/.test(f))
+    .map((f) => ({ file: join(out, f), at: statSync(join(out, f)).mtimeMs }))
+    .sort((a, b) => b.at - a.at);
+  const file = installers[0]?.file;
+  const [command, args] =
+    process.platform === "win32"
+      ? ["explorer.exe", file ? [`/select,${file}`] : [out]]
+      : process.platform === "darwin"
+        ? ["open", file ? ["-R", file] : [out]]
+        : ["xdg-open", [out]];
+  spawn(command, args, { detached: true, stdio: "ignore" }).unref();
+}
