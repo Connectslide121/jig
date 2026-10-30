@@ -98,6 +98,11 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 
 ## UI and design rules
 
+- **No layout shifts, ever (hard rule).** Nothing already on screen may move when something opens, loads
+  or changes: no inline expanding panels or forms under a row, no content that pops in above or between
+  existing content, no spinner that swaps for a differently sized result. A form or picker that needs
+  room is a modal (`Dialog`); something that loads reserves its space first (a fixed-height slot, a
+  skeleton) or appears in a modal/overlay. Applies to Jig's UI and to every add-on.
 - **Tokens only.** Use the Tailwind token utilities (`bg-surface`, `text-muted`, `border-border`,
   `text-accent`, …) and the spacing/type scales. **Never** hard-code colours (`#fff`, `rgb()`, `red-500`)
   or arbitrary values (`w-[13px]`, `text-[#…]`). `npm run check:tokens` enforces this in
