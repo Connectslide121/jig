@@ -27,6 +27,7 @@ export function ArrangeList<T>({
   arranging,
   renderItem,
   testId,
+  dragType = DRAG,
 }: {
   items: T[];
   keyOf: (item: T) => string;
@@ -35,6 +36,8 @@ export function ArrangeList<T>({
   arranging: boolean;
   renderItem: (item: T) => ReactNode;
   testId?: string;
+  /** A list inside another list's items needs its own type, so a drag only moves within its own list. */
+  dragType?: string;
 }) {
   const [over, setOver] = useState<string>();
   const entries = arrange(items, keyOf, arrangement, arranging);
@@ -49,7 +52,7 @@ export function ArrangeList<T>({
     if (title !== undefined) onChange(addDivider(items, keyOf, arrangement, title.trim(), before));
   };
   const drop = (before: string | undefined, e: React.DragEvent) => {
-    const key = e.dataTransfer.getData(DRAG);
+    const key = e.dataTransfer.getData(dragType);
     setOver(undefined);
     if (!key || key === before) return;
     e.preventDefault();
@@ -60,11 +63,12 @@ export function ArrangeList<T>({
       ? {
           draggable: true,
           onDragStart: (e: React.DragEvent) => {
-            e.dataTransfer.setData(DRAG, key);
+            e.dataTransfer.setData(dragType, key);
+            e.stopPropagation();
             e.dataTransfer.effectAllowed = "move";
           },
           onDragOver: (e: React.DragEvent) => {
-            if (!e.dataTransfer.types.includes(DRAG)) return;
+            if (!e.dataTransfer.types.includes(dragType)) return;
             e.preventDefault();
             setOver(key);
           },
@@ -155,7 +159,7 @@ export function ArrangeList<T>({
         <div
           className={cn("flex items-center gap-1 px-2 py-1", over === "" && "border-t-2 border-accent")}
           onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes(DRAG)) return;
+            if (!e.dataTransfer.types.includes(dragType)) return;
             e.preventDefault();
             setOver("");
           }}

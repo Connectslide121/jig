@@ -667,45 +667,53 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
             </Button>
           </Empty>
         )}
-        {repos.map((path) => {
-          const items = list.filter((p) => p.repoPath === path);
-          const first = items[0]!;
-          const key = `repo:${first.repoName}`;
-          return (
-            <section
-              key={path}
-              className="mb-2 rounded-lg border border-line bg-raised p-1"
-              data-testid={`pipelines-repo-${first.repoName}`}
-            >
-              <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5">
-                <FolderGit2 className="size-3.5 shrink-0 text-muted" />
-                <span className="truncate text-xs font-semibold text-fg">{first.repoName}</span>
-                <span className="truncate text-2xs text-hint">
-                  {first.org}/{first.project}
-                </span>
-              </div>
-              <ArrangeList
-                items={items}
-                keyOf={(p) => String(p.id)}
-                arrangement={arrangements?.[key] ?? EMPTY_ARRANGEMENT}
-                onChange={(next) => setArrangement(key, next)}
-                arranging={arranging}
-                testId={`pipelines-list-${first.repoName}`}
-                renderItem={(p) => (
-                  <PipelineCard
-                    ctx={ctx}
-                    pipeline={p}
-                    run={latest?.runs[p.key]}
-                    loading={!latest}
-                    open={openForm === p.key}
-                    onOpen={(o) => setOpenForm(o ? p.key : undefined)}
-                    arranging={arranging}
-                  />
-                )}
-              />
-            </section>
-          );
-        })}
+        <ArrangeList
+          items={repos}
+          keyOf={(path) => path}
+          arrangement={arrangements?.repos ?? EMPTY_ARRANGEMENT}
+          onChange={(next) => setArrangement("repos", next)}
+          arranging={arranging}
+          dragType="application/x-jig-arrange-repos"
+          testId="pipelines-repos"
+          renderItem={(path) => {
+            const items = list.filter((p) => p.repoPath === path);
+            const first = items[0]!;
+            const key = `repo:${first.repoName}`;
+            return (
+              <section
+                className="mb-2 rounded-lg border border-line bg-raised p-1"
+                data-testid={`pipelines-repo-${first.repoName}`}
+              >
+                <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5">
+                  <FolderGit2 className="size-3.5 shrink-0 text-muted" />
+                  <span className="truncate text-xs font-semibold text-fg">{first.repoName}</span>
+                  <span className="truncate text-2xs text-hint">
+                    {first.org}/{first.project}
+                  </span>
+                </div>
+                <ArrangeList
+                  items={items}
+                  keyOf={(p) => String(p.id)}
+                  arrangement={arrangements?.[key] ?? EMPTY_ARRANGEMENT}
+                  onChange={(next) => setArrangement(key, next)}
+                  arranging={arranging}
+                  testId={`pipelines-list-${first.repoName}`}
+                  renderItem={(p) => (
+                    <PipelineCard
+                      ctx={ctx}
+                      pipeline={p}
+                      run={latest?.runs[p.key]}
+                      loading={!latest}
+                      open={openForm === p.key}
+                      onOpen={(o) => setOpenForm(o ? p.key : undefined)}
+                      arranging={arranging}
+                    />
+                  )}
+                />
+              </section>
+            );
+          }}
+        />
         <button
           type="button"
           className="mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
@@ -798,6 +806,7 @@ function MorePipelines({
             arrangement={arrangements?.[`projects:${orgUrl(o.org).toLowerCase()}`] ?? EMPTY_ARRANGEMENT}
             onChange={(next) => setArrangement(`projects:${orgUrl(o.org).toLowerCase()}`, next)}
             arranging={arranging}
+            dragType="application/x-jig-arrange-projects"
             testId={`pipelines-projects-${orgName(o.org)}`}
             renderItem={(p) => {
               const key = `${orgName(o.org)}/${p.project}`;
