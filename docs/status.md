@@ -8,7 +8,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 2. Clone ThinkRail beside it for reference: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`.
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
-4. Phases 0–18 in `docs/plan/README.md` are ✅ (phase 18 was Jon's list: file explorer, editing in
+4. Phases 0–18 in `docs/plan/README.md` are ✅ (19 is 🟡: only the Windows taskbar-icon check is left) (phase 18 was Jon's list: file explorer, editing in
    Preview, projects you manage, arranging panels, split view, project links, Releases, Learning 2
    with Workflows). What's left of it is in `docs/plan/99-backlog.md`. Next: try phase 18 on Windows
    ("Needs testing on your machine" below) and ask Jon what comes next.

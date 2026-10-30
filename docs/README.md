@@ -49,7 +49,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | Add-on | What it does |
 |---|---|
 | [Git](../addons/git/README.md) | Git for the project's repositories: changes, commits, branches, history, diffs, Claude's help |
-| [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push |
+| [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push and a branch switcher |
 | [Files](../addons/files/README.md) | The project's file tree with git colours |
 | [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
 | [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |

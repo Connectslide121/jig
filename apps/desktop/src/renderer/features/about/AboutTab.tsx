@@ -614,7 +614,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Files: the project's tree with git colours, a filter and Preview on click",
                 "Links per project in your groups (Stage, Prod…): Azure resources, sites, Azure DevOps — or pick them from Azure",
                 "Start a chat in any repo from its menu",
-                "Repos overview with branch and changes",
+                "Repos overview with branch (switch it from the row) and changes",
               ]}
             />
           </Section>

@@ -45,7 +45,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   between them; pin the ones you keep.
 - **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel that
   follows the repo you work in (show others next to it when you need them, Repos below for all of
-  them at a glance), every repo's scripts, and chats that can look at another repo for inspiration.
+  them at a glance, with fetch, pull, push and a branch switcher), every repo's scripts, and chats that can look at another repo for inspiration.
 - **Files and a real editor.** The project's tree with git colours, and code that is editable right in
   Preview: your theme's code colours, indentation guides, closing brackets, several cursors, folding,
   find and replace, go to line and a status line. Two tabs side by side when you need both.
@@ -269,7 +269,7 @@ They can plug into 17 places:
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 
-Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases** and
+Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Notes** and
 **Workflows** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
 reference: [`docs/reference/slots.md`](docs/reference/slots.md),
 [`docs/reference/addon-api.md`](docs/reference/addon-api.md).
