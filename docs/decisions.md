@@ -1442,7 +1442,7 @@ etc") and Claude, on my own (how) · **Date:** 2026-10-30
   (CI, manual…), who, the parameters it changed from the YAML's defaults, and its stages (skipped
   ones left out). One `az pipelines runs list` per Azure DevOps project; a finished run's stages are
   asked for once. Refreshed every 20 s while a run runs, else every minute, only while Jig is in front.
-- **Run form** (inline, under the pipeline): the branch (the default first, then the checkout's and
+- **Run form** (a modal since D-167; first inline under the pipeline): the branch (the default first, then the checkout's and
   origin's), a picker per YAML parameter with `values`, a checkbox per boolean ("Run tests"), a text
   field otherwise, and a summary ("Runs Shop CI on develop with Deploy to: production"). Nothing is
   queued until **Queue run** is pressed; the run is then tracked and notifies when it finishes.
@@ -1664,3 +1664,30 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
   a light sweep across the row, off while it waits for you and with reduced motion. A code block's title
   bar with Copy is `sticky top-0` (the block clips with `overflow-clip`, not `overflow-hidden`, which
   would stop it sticking) and Copy is always visible.
+
+## D-166: Pipelines finds new pipelines by itself and every pipeline gets the real Run form
+
+- Status: accepted
+- **Decided by:** Jon ("like in DevOps the form is intelligent, based on the pipeline"; no hardcoded
+  favourites or forms), built by Claude. Replaces the "no form outside your workspaces" part of D-148.
+- **Discovery:** the repositories' pipelines are found again after 4 minutes (was 6 hours), when the view
+  is open every 5 minutes, and when **More pipelines** is opened, so a pipeline created in Azure DevOps
+  joins its repository's list without a button press. A pipeline seen before keeps its repository and YAML
+  file (one `az pipelines show` only for new ones); the checkout's YAML is read each time.
+- **The form reads the pipeline, not a list:** the parameters come from the pipeline's YAML in Azure DevOps
+  (`az devops invoke --area git --resource items`, on the branch picked in the form), so another branch's
+  parameters show when you pick it, and queueing passes only parameters that exist on that branch. The
+  checkout's copy is the first guess while it loads and the fallback when a branch isn't pushed.
+- **More pipelines:** Run on a pipeline whose repository isn't checked out opens the same form
+  (`describe` → `az pipelines show` + the YAML; branches from `az repos ref list`) instead of a
+  branch prompt with the defaults (`runOther` is gone).
+- Parameters the form can't offer (`object`, `step`, `job`, `stage` and their lists) keep their YAML
+  defaults, and a blank value isn't passed, so the YAML's own default applies.
+
+## D-167: No layout shifts, a hard rule; the Run form is a modal
+
+- Status: accepted
+- **Decided by:** Jon ("i really hate layout shifts. this should be a really hard rule in all our
+  sessions"). Written into `AGENTS.md` (UI rules) and the workspace `AGENTS.md`.
+- Nothing on screen moves when something opens or loads: forms and pickers are modals (`Dialog`), loading
+  content reserves its space. Pipelines' **Run form** (D-148, D-166) is now a modal, also while it loads.

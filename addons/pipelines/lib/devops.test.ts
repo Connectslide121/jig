@@ -4,6 +4,7 @@ import {
   changedParams,
   fromBuild,
   isRetired,
+  mergeValues,
   newestPerPipeline,
   parseParameters,
   parseRemote,
@@ -175,5 +176,44 @@ describe("runs as az answers them", () => {
       { ...run, id: 3, pipelineId: 2 },
     ]);
     expect([newest.get(1)?.id, newest.get(2)?.id]).toEqual([9, 3]);
+  });
+});
+
+describe("a pipeline's form read from any YAML", () => {
+  const YAML_2 = [
+    "parameters:",
+    "  - name: mode",
+    "    displayName: Build",
+    "    type: string",
+    "    default: Build the branch",
+    "    values: ['Build the branch', 'Use the latest build']",
+    "  - name: number",
+    "    type: string",
+    "    default: ' '",
+    "  - name: stage",
+    "    type: boolean",
+    "    default: false",
+    "  - name: targets",
+    "    type: object",
+    "    default:",
+    "      - { id: a, flag: stage }",
+    "variables:",
+    "  - name: x",
+  ].join("\n");
+
+  it("offers values and booleans, leaves objects at their defaults and blanks to the YAML", () => {
+    const params = parseParameters(YAML_2);
+    expect(params.map((p) => p.name)).toEqual(["mode", "number", "stage"]);
+    expect(runParameters(params, { stage: "true" })).toEqual(["mode=Build the branch", "stage=true"]);
+  });
+
+  it("keeps what was picked when another branch's YAML still allows it", () => {
+    const params = parseParameters(YAML_2);
+    expect(mergeValues(params, { mode: "Use the latest build", stage: "true", gone: "x" })).toEqual({
+      mode: "Use the latest build",
+      number: " ",
+      stage: "true",
+    });
+    expect(mergeValues(params, { mode: "not a choice" }).mode).toBe("Build the branch");
   });
 });

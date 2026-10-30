@@ -12,7 +12,15 @@ import {
   runParameters,
   stagesOf,
 } from "./lib/devops";
-import { effectiveOrgs, inBatches, type OrgSettings, orgUrl, readSettings, type Settings } from "./lib/orgs";
+import {
+  effectiveOrgs,
+  inBatches,
+  type OrgSettings,
+  orgName,
+  orgUrl,
+  readSettings,
+  type Settings,
+} from "./lib/orgs";
 import { latestRuns, type Pipeline, type Run, runState, runUrl, toPipeline, toRun } from "./lib/runs";
 
 export type { OrgSettings, PipelineInfo, PipelineRun, Settings };
@@ -262,8 +270,12 @@ export async function tracked(_: unknown, api: AddonHostApi) {
 
 // ── Pipelines of your repositories, like the pipelines plugin (D-148) ──────────────────────────────
 
-/** Found pipelines are kept (storage `found`) and looked for again after this long, or on request. */
-const FIND_AGAIN = 6 * HOUR;
+/**
+ * Found pipelines are kept (storage `found`) and looked for again after this long, or on request, so a
+ * pipeline created in Azure DevOps joins its repository's list on its own. Only new ones cost more than
+ * one `az pipelines list` per repository.
+ */
+const FIND_AGAIN = 4 * 60_000;
 
 export interface Found {
   at: number;
@@ -306,6 +318,7 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
     if (!remotes.has(id)) remotes.set(id, { ...c, ...remote });
   }
   const errors: string[] = [];
+  const before = new Map((kept?.pipelines ?? []).map((p) => [p.key, p]));
   const found = await inBatches([...remotes.values()], PARALLEL, async (r) => {
     const common = ["--org", orgUrl(r.org), "--project", r.project];
     try {
@@ -323,24 +336,36 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
         listed.filter((p) => !isRetired(p.name, p.queueStatus ?? "enabled")),
         PARALLEL,
         async (p): Promise<PipelineInfo> => {
-          // biome-ignore lint/suspicious/noExplicitAny: az JSON.
-          const shown = await az<any>(api, ["pipelines", "show", "--id", String(p.id), ...common]);
-          const yaml = String(shown?.process?.yamlFilename ?? "").replace(/^\/+/, "");
-          const text = yaml ? await api.fs.readFile(join(r.path, yaml)).catch(() => "") : "";
+          const key = `${r.org}/${r.project}/${p.id}`;
+          // A pipeline seen before keeps its repository and YAML file; only new ones are looked up.
+          let known = before.get(key);
+          if (!known?.repoId || known.repoPath !== r.path) {
+            // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+            const shown = await az<any>(api, ["pipelines", "show", "--id", String(p.id), ...common]);
+            known = {
+              ...(known ?? { params: [] }),
+              yaml: String(shown?.process?.yamlFilename ?? "").replace(/^\/+/, ""),
+              repoId: shown?.repository?.id ? String(shown.repository.id) : undefined,
+              defaultBranch: String(shown?.repository?.defaultBranch ?? "refs/heads/main").replace(
+                /^refs\/heads\//,
+                "",
+              ),
+            } as PipelineInfo;
+          }
+          // The checkout's YAML is read every time (cheap); the Run form re-reads Azure DevOps' own copy.
+          const text = known.yaml ? await api.fs.readFile(join(r.path, known.yaml)).catch(() => "") : "";
           return {
-            key: `${r.org}/${r.project}/${p.id}`,
+            key,
             org: r.org,
             project: r.project,
             id: p.id,
             name: p.name,
             repoPath: r.path,
             repoName: r.name,
-            yaml,
-            defaultBranch: String(shown?.repository?.defaultBranch ?? "refs/heads/main").replace(
-              /^refs\/heads\//,
-              "",
-            ),
-            params: parseParameters(text),
+            repoId: known.repoId,
+            yaml: known.yaml,
+            defaultBranch: known.defaultBranch,
+            params: text ? parseParameters(text) : known.params,
           };
         },
       );
@@ -437,18 +462,139 @@ export async function latest(
   return { runs, error };
 }
 
-/** The branches to run a pipeline on: the default first, then the checkout's and origin's. */
+/** A pipeline's coordinates out of a key (`<org>/<project>/<id>`). */
+function fromKey(key: string): { org: string; project: string; id: number } {
+  const [org, project, id] = key.split("/");
+  if (!org || !project || !Number(id)) throw new Error("That pipeline isn't known any more.");
+  return { org, project, id: Number(id) };
+}
+
+const describeCache = remembered<PipelineInfo>(5 * 60_000);
+
+/**
+ * Any pipeline of any organisation, as Azure DevOps knows it: its YAML file and repository, and the
+ * run-time parameters read from that YAML on the repository's default branch. A pipeline of a repository
+ * that isn't checked out gets the same Run form as the others.
+ */
+export async function describe(
+  { org, project, id, name }: { org: string; project: string; id: number; name?: string },
+  api: AddonHostApi,
+): Promise<PipelineInfo> {
+  const key = `${orgName(org)}/${project}/${id}`;
+  return describeCache(key.toLowerCase(), async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+    const shown = await az<any>(api, [
+      "pipelines",
+      "show",
+      "--id",
+      String(id),
+      "--org",
+      orgUrl(org),
+      "--project",
+      project,
+    ]);
+    const repo = shown?.repository ?? {};
+    const defaultBranch = String(repo.defaultBranch ?? "refs/heads/main").replace(/^refs\/heads\//, "");
+    const info: PipelineInfo = {
+      key,
+      org: orgName(org),
+      project,
+      id,
+      name: String(shown?.name ?? name ?? id),
+      repoPath: "",
+      repoName: String(repo.name ?? ""),
+      repoId: repo.id ? String(repo.id) : undefined,
+      yaml: String(shown?.process?.yamlFilename ?? "").replace(/^\/+/, ""),
+      defaultBranch,
+      params: [],
+    };
+    const text = await yamlAt(api, info, defaultBranch);
+    return { ...info, params: text ? parseParameters(text) : [] };
+  });
+}
+
+/** The pipeline as Jig knows it: found in a checkout, or described from Azure DevOps. */
+async function resolve(key: string, api: AddonHostApi): Promise<PipelineInfo> {
+  const found = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
+  return found ?? describe(fromKey(key), api);
+}
+
+/** The pipeline's YAML on a branch, read from its repository in Azure DevOps ('' when it can't be). */
+async function yamlAt(api: AddonHostApi, p: PipelineInfo, branch: string): Promise<string> {
+  if (!p.repoId || !p.yaml) return "";
+  try {
+    const item = await az<{ content?: string }>(api, [
+      "devops",
+      "invoke",
+      "--area",
+      "git",
+      "--resource",
+      "items",
+      "--route-parameters",
+      `project=${p.project}`,
+      `repositoryId=${p.repoId}`,
+      "--query-parameters",
+      `path=/${p.yaml}`,
+      "includeContent=true",
+      `versionDescriptor.version=${branch}`,
+      "versionDescriptor.versionType=branch",
+      "--org",
+      orgUrl(p.org),
+      "--api-version",
+      "7.1",
+    ]);
+    return item?.content ?? "";
+  } catch {
+    // Not on that branch (yet), or a repository Jig can't read: the form keeps the parameters it has.
+    return "";
+  }
+}
+
+/**
+ * The run-time parameters on the picked branch, read like Azure DevOps' own form does: from the YAML on
+ * that branch. null when it can't be read there (the form keeps the parameters it has).
+ */
+export async function parametersAt(
+  { key, branch }: { key: string; branch: string },
+  api: AddonHostApi,
+): Promise<PipelineInfo["params"] | null> {
+  const p = await resolve(key, api);
+  const repoId = p.repoId ?? (await describe(fromKey(key), api)).repoId;
+  const text = await yamlAt(api, { ...p, repoId }, branch || p.defaultBranch);
+  return text ? parseParameters(text) : null;
+}
+
+/** The branches to run a pipeline on: the default first, then the checkout's and origin's (or the repository's). */
 export async function branches({ key }: { key: string }, api: AddonHostApi): Promise<string[]> {
-  const p = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
+  const p = await resolve(key, api).catch(() => undefined);
   if (!p) return [];
-  const refs = await git(api, p.repoPath, [
-    "for-each-ref",
-    "--format=%(refname)",
-    "--sort=-committerdate",
-    "refs/heads",
-    "refs/remotes/origin",
-  ]);
-  return branchList(refs, p.defaultBranch);
+  if (p.repoPath) {
+    const refs = await git(api, p.repoPath, [
+      "for-each-ref",
+      "--format=%(refname)",
+      "--sort=-committerdate",
+      "refs/heads",
+      "refs/remotes/origin",
+    ]);
+    return branchList(refs, p.defaultBranch);
+  }
+  if (!p.repoId) return [p.defaultBranch];
+  const names = await az<string[]>(api, [
+    "repos",
+    "ref",
+    "list",
+    "--repository",
+    p.repoId,
+    "--org",
+    orgUrl(p.org),
+    "--project",
+    p.project,
+    "--filter",
+    "heads/",
+    "--query",
+    "[].name",
+  ]).catch(() => [] as string[]);
+  return branchList((names ?? []).join("\n"), p.defaultBranch);
 }
 
 /** Queues a run with the branch and parameters picked in the Run form, and keeps an eye on it. */
@@ -456,9 +602,9 @@ export async function queue(
   { key, branch, values }: { key: string; branch: string; values: Record<string, string> },
   api: AddonHostApi,
 ) {
-  const p = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
-  if (!p) throw new Error("That pipeline isn't known any more: find pipelines again.");
-  const params = runParameters(p.params, values);
+  const p = await resolve(key, api);
+  // The parameters of the branch being run, so only ones that exist there are passed.
+  const params = runParameters((await parametersAt({ key, branch }, api)) ?? p.params, values);
   const started = toRun(
     await az<unknown>(api, [
       "pipelines",
@@ -476,34 +622,6 @@ export async function queue(
   );
   await track(api, { org: orgUrl(p.org), project: p.project, runId: started.id, name: p.name });
   return { number: started.buildNumber, url: runUrl(orgUrl(p.org), p.project, started.id) };
-}
-
-/** Runs a pipeline from "More pipelines" (no checkout here): on a branch, with the YAML's defaults. */
-export async function runOther(
-  {
-    org,
-    project,
-    id,
-    branch,
-    name,
-  }: { org: string; project: string; id: number; branch?: string; name: string },
-  api: AddonHostApi,
-) {
-  const started = toRun(
-    await az<unknown>(api, [
-      "pipelines",
-      "run",
-      "--id",
-      String(id),
-      "--org",
-      orgUrl(org),
-      "--project",
-      project,
-      ...(branch ? ["--branch", branch] : []),
-    ]),
-  );
-  await track(api, { org: orgUrl(org), project, runId: started.id, name });
-  return { number: started.buildNumber, url: runUrl(orgUrl(org), project, started.id) };
 }
 
 async function track(api: AddonHostApi, run: Tracked) {

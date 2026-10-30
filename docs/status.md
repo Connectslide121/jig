@@ -92,9 +92,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     current on its own; its Notes tools are always loaded, never behind tool search (D-158).
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
-    changed parameters) and its stages; **Run** opens a form with the branch, a picker per YAML
+    changed parameters) and its stages; **Run** opens a modal form with the branch, a picker per YAML
     parameter and a checkbox per boolean, queued only on **Queue run**; notifications when your
-    runs finish. Every organisation's other pipelines (D-125) under "More pipelines".
+    runs finish. New pipelines join their repository on their own and the form reads the YAML in
+    Azure DevOps on the picked branch (D-166). Every organisation's other pipelines (D-125) under
+    "More pipelines", with the same form.
   - **Scripts** (right sidebar), like the scripts plugin (D-142): what runs now; your groups with
     Start/Stop (right-click a script → Add to group); every script as a tree of folder → repository
     → package (API / npm), scripts as ▶ chips. .NET projects offer their launch profiles (D-141);

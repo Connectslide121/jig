@@ -26,6 +26,8 @@ export interface PipelineInfo {
   /** The checkout's folder (absolute) and its short name. */
   repoPath: string;
   repoName: string;
+  /** Azure DevOps' id of the repository the YAML lives in (to read it from there), when known. */
+  repoId?: string;
   /** The YAML file inside the repository, '' when the pipeline isn't YAML. */
   yaml: string;
   defaultBranch: string;
@@ -126,7 +128,9 @@ export function parseParameters(yaml: string): PipelineParam[] {
     const listed = /^\s+-\s+(.+)$/.exec(text);
     if (inValues && listed) current.values.push(unquote(listed[1]!));
   }
-  for (const p of params) {
+  // The run form picks scalars; objects, steps, jobs… keep their defaults, like they would unedited.
+  const scalar = params.filter((p) => !STRUCTURED.has(p.type));
+  for (const p of scalar) {
     if (!p.label) p.label = p.name;
     if (p.type === "boolean") {
       p.values = ["true", "false"];
@@ -134,8 +138,21 @@ export function parseParameters(yaml: string): PipelineParam[] {
     }
     if (!p.defaultValue && p.values.length) p.defaultValue = p.values[0]!;
   }
-  return params;
+  return scalar;
 }
+
+/** Parameter types the run form can't offer (they take YAML, not a value): left at their defaults. */
+const STRUCTURED = new Set([
+  "object",
+  "step",
+  "stepList",
+  "job",
+  "jobList",
+  "deployment",
+  "deploymentList",
+  "stage",
+  "stageList",
+]);
 
 /** A pipeline that's switched off, or named "(old) …", isn't listed. */
 export function isRetired(name: string, queueStatus: string): boolean {
@@ -241,9 +258,28 @@ export const REASONS: Record<string, string> = {
   pullRequest: "PR",
 };
 
-/** The `--parameters` arguments for a run: every parameter, as picked or its default. */
+/** The `--parameters` arguments for a run: every parameter, as picked or its default (blank ones are left to the YAML). */
 export function runParameters(params: PipelineParam[], values: Record<string, string>): string[] {
-  return params.map((p) => `${p.name}=${values[p.name] ?? p.defaultValue}`);
+  return params
+    .map((p) => [p.name, values[p.name] ?? p.defaultValue] as const)
+    .filter(([, value]) => value.trim() !== "")
+    .map(([name, value]) => `${name}=${value}`);
+}
+
+/**
+ * The form's values after its parameters changed (another branch's YAML): what was picked stays when it
+ * is still a valid choice, everything else takes the new default.
+ */
+export function mergeValues(params: PipelineParam[], values: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    params.map((p) => {
+      const kept = values[p.name];
+      return [
+        p.name,
+        kept !== undefined && (!p.values.length || p.values.includes(kept)) ? kept : p.defaultValue,
+      ];
+    }),
+  );
 }
 
 /** Branch names out of `git for-each-ref` (local and origin's), the default first, each once. */

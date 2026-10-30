@@ -99,9 +99,9 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await expect(card.getByTestId("pipeline-stages")).toContainText("Deploy to staging");
   await expect(card.getByTestId("pipeline-stages")).not.toContainText("Deploy to none");
 
-  // The Run form: branch picker, a picker per parameter, a checkbox for the boolean; nothing runs yet.
+  // The Run form (a modal, so the list doesn't move): branch picker, a picker per parameter, a checkbox for the boolean; nothing runs yet.
   await card.getByTestId("pipeline-run-Shop CI").click();
-  const form = card.getByTestId("pipeline-form-Shop CI");
+  const form = page.getByTestId("pipeline-form-Shop CI");
   await expect(form.getByTestId("pipeline-summary")).toContainText("on main with the defaults");
   await form.getByTestId("pipeline-branch").selectOption("develop");
   await form.getByTestId("pipeline-param-deployTo").selectOption("production");

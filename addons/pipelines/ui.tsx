@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   cn,
+  Dialog,
   Empty,
   IconButton,
   Input,
@@ -40,7 +41,9 @@ import type { Found, OrgPipelines } from "./host";
 import {
   changedParams,
   isActive,
+  mergeValues,
   type PipelineInfo,
+  type PipelineParam,
   type PipelineRun,
   REASONS,
   type RunKind,
@@ -81,39 +84,6 @@ function RunStateIcon({ run }: { run?: Run }) {
   return <CircleDashed className="size-4 shrink-0 text-hint" aria-label="No runs" />;
 }
 
-async function startRun(
-  ctx: AddonUiContext,
-  org: string,
-  project: string,
-  id: number,
-  name: string,
-  defaultBranch?: string,
-) {
-  const branch = await ctx.prompt({
-    title: `Run ${name}`,
-    message: "Branch to run on:",
-    initial: defaultBranch ?? "main",
-    confirmLabel: "Run",
-  });
-  if (!branch) return;
-  try {
-    const run = await ctx.host.call<{ number: string; url: string }>("runOther", {
-      org,
-      project,
-      id,
-      branch,
-      name,
-    });
-    ctx.notify({
-      title: `${name} started`,
-      message: `Run ${run.number} on ${branch}. You'll be told when it finishes.`,
-      tone: "success",
-    });
-  } catch (error) {
-    ctx.notify({ title: `Couldn't run ${name}`, message: (error as Error).message, tone: "danger" });
-  }
-}
-
 /**
  * Your arrangement of each Azure DevOps project's pipelines (hidden, order, dividers), keyed
  * `<organisation>/<project>`; arrangements from before several organisations are keyed by project.
@@ -142,12 +112,15 @@ function PipelineRow({
   project,
   pl,
   arranging,
+  onRun,
 }: {
   ctx: AddonUiContext;
   org: string;
   project: string;
   pl: OrgPipelines["projects"][number]["pipelines"][number];
   arranging: boolean;
+  /** Opens the Run form under the row. */
+  onRun: () => void;
 }) {
   const open = () =>
     ctx.openExternal(pl.latest ? runUrl(org, project, pl.latest.id) : pipelineUrl(org, project, pl.id));
@@ -165,7 +138,7 @@ function PipelineRow({
             {
               label: "Run…",
               icon: "play",
-              onSelect: () => void startRun(ctx, org, project, pl.id, pl.name, pl.latest?.branch),
+              onSelect: onRun,
             },
             {
               label: "Open pipeline in browser",
@@ -203,7 +176,7 @@ function PipelineRow({
           label={`Run ${pl.name}`}
           onClick={(e) => {
             e.stopPropagation();
-            void startRun(ctx, org, project, pl.id, pl.name, pl.latest?.branch);
+            onRun();
           }}
         />
         <IconButton
@@ -269,11 +242,31 @@ function RunForm({
 }) {
   const { data: branchNames } = useHostCall<string[]>("branches", { key: pipeline.key });
   const [branch, setBranch] = useState(pipeline.defaultBranch);
+  const [params, setParams] = useState<PipelineParam[]>(pipeline.params);
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(pipeline.params.map((p) => [p.name, p.defaultValue])),
   );
+  const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const changed = changedParams(pipeline, values);
+  // Like Azure DevOps' own form: the parameters are those of the YAML on the picked branch.
+  useEffect(() => {
+    let current = true;
+    setReading(true);
+    ctx.host.call<PipelineParam[] | null>("parametersAt", { key: pipeline.key, branch }).then(
+      (read) => {
+        if (!current) return;
+        setReading(false);
+        if (!read) return;
+        setParams(read);
+        setValues((v) => mergeValues(read, v));
+      },
+      () => current && setReading(false),
+    );
+    return () => {
+      current = false;
+    };
+  }, [ctx, pipeline.key, branch]);
+  const changed = changedParams({ params }, values);
   const queueRun = async () => {
     setBusy(true);
     try {
@@ -300,93 +293,108 @@ function RunForm({
   };
   const set = (name: string, value: string) => setValues((v) => ({ ...v, [name]: value }));
   return (
-    <div
-      className="mt-2 flex flex-col gap-2 rounded-md border border-accent bg-surface p-2.5"
-      data-testid={`pipeline-form-${pipeline.name}`}
+    <Dialog
+      open
+      onClose={onDone}
+      title={`Run ${pipeline.name}`}
+      testId={`pipeline-form-${pipeline.name}`}
+      footer={
+        <>
+          <Button size="sm" variant="ghost" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Play}
+            busy={busy}
+            onClick={() => void queueRun()}
+            data-testid="pipeline-queue"
+          >
+            Queue run
+          </Button>
+        </>
+      }
     >
-      <div className="flex flex-col gap-1 text-xs text-muted">
-        Branch
-        <Select
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          data-testid="pipeline-branch"
-          aria-label="Branch"
-        >
-          {(branchNames ?? [pipeline.defaultBranch]).map((b) => (
-            <option key={b} value={b}>
-              {b}
-              {b === pipeline.defaultBranch ? " (default)" : ""}
-            </option>
-          ))}
-        </Select>
-      </div>
-      {pipeline.params.map((p) =>
-        p.type === "boolean" ? (
-          <label key={p.name} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="accent-accent"
-              checked={values[p.name] === "true"}
-              onChange={(e) => set(p.name, e.target.checked ? "true" : "false")}
-              data-testid={`pipeline-param-${p.name}`}
-            />
-            {p.label}
-          </label>
-        ) : (
-          <div key={p.name} className="flex flex-col gap-1 text-xs text-muted">
-            {p.label}
-            {p.values.length ? (
-              <Select
-                value={values[p.name]}
-                onChange={(e) => set(p.name, e.target.value)}
-                data-testid={`pipeline-param-${p.name}`}
-                aria-label={p.label}
-              >
-                {p.values.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                    {v === p.defaultValue ? " (default)" : ""}
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <Input
-                value={values[p.name] ?? ""}
-                onChange={(e) => set(p.name, e.target.value)}
-                data-testid={`pipeline-param-${p.name}`}
-                aria-label={p.label}
-              />
-            )}
-          </div>
-        ),
-      )}
-      {!pipeline.params.length && (
-        <div className="text-xs text-hint">
-          {pipeline.yaml ? "No run-time parameters in " : "No YAML file found in this checkout"}
-          {pipeline.yaml && <code>{pipeline.yaml}</code>}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1 text-xs text-muted">
+          Branch
+          <Select
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            data-testid="pipeline-branch"
+            aria-label="Branch"
+          >
+            {(branchNames ?? [pipeline.defaultBranch]).map((b) => (
+              <option key={b} value={b}>
+                {b}
+                {b === pipeline.defaultBranch ? " (default)" : ""}
+              </option>
+            ))}
+          </Select>
         </div>
-      )}
-      <div className="text-xs text-muted" data-testid="pipeline-summary">
-        Runs <span className="text-fg">{pipeline.name}</span> on <span className="text-fg">{branch}</span>{" "}
-        {changed ? `with ${changed}` : "with the defaults"}
-        {last && last.branch !== branch && <span className="text-hint"> (last run: {last.branch})</span>}
+        {params.map((p) =>
+          p.type === "boolean" ? (
+            <label key={p.name} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={values[p.name] === "true"}
+                onChange={(e) => set(p.name, e.target.checked ? "true" : "false")}
+                data-testid={`pipeline-param-${p.name}`}
+              />
+              {p.label}
+            </label>
+          ) : (
+            <div key={p.name} className="flex flex-col gap-1 text-xs text-muted">
+              {p.label}
+              {p.values.length ? (
+                <Select
+                  value={values[p.name]}
+                  onChange={(e) => set(p.name, e.target.value)}
+                  data-testid={`pipeline-param-${p.name}`}
+                  aria-label={p.label}
+                >
+                  {p.values.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                      {v === p.defaultValue ? " (default)" : ""}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  value={values[p.name] ?? ""}
+                  onChange={(e) => set(p.name, e.target.value)}
+                  data-testid={`pipeline-param-${p.name}`}
+                  aria-label={p.label}
+                />
+              )}
+            </div>
+          ),
+        )}
+        {/* One line for "reading…" and "no parameters", so the form doesn't change height. */}
+        <div className="flex h-4 items-center text-xs text-hint">
+          {reading ? (
+            <Spinner size="sm" />
+          ) : (
+            !params.length &&
+            (pipeline.yaml ? (
+              <>
+                No run-time parameters in <code className="ml-1">{pipeline.yaml}</code>
+              </>
+            ) : (
+              "No YAML file found for this pipeline"
+            ))
+          )}
+        </div>
+        <div className="text-xs text-muted" data-testid="pipeline-summary">
+          Runs <span className="text-fg">{pipeline.name}</span> on <span className="text-fg">{branch}</span>{" "}
+          {changed ? `with ${changed}` : "with the defaults"}
+          {last && last.branch !== branch && <span className="text-hint"> (last run: {last.branch})</span>}
+        </div>
       </div>
-      <div className="flex justify-end gap-1.5">
-        <Button size="sm" variant="ghost" onClick={onDone}>
-          Cancel
-        </Button>
-        <Button
-          size="sm"
-          variant="primary"
-          icon={Play}
-          busy={busy}
-          onClick={() => void queueRun()}
-          data-testid="pipeline-queue"
-        >
-          Queue run
-        </Button>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -587,6 +595,9 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   );
   useEffect(() => {
     void find();
+    // Pipelines created in Azure DevOps join their repository on their own.
+    const t = setInterval(() => document.visibilityState === "visible" && void find(), 5 * 60_000);
+    return () => clearInterval(t);
   }, [find]);
   const list = found?.pipelines ?? [];
   const { latest, loading, reload } = useLatest(
@@ -698,7 +709,11 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
         <button
           type="button"
           className="mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
-          onClick={() => setMore(!more)}
+          onClick={() => {
+            // A pipeline of a checked-out repository belongs with its repository, not down here.
+            if (!more) void find(true);
+            setMore(!more);
+          }}
           data-testid="pipelines-more"
         >
           {more ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -718,6 +733,30 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   );
 }
 
+/** The Run form of a pipeline whose repository isn't checked out: described from Azure DevOps first. */
+function OtherRunForm({
+  ctx,
+  org,
+  project,
+  pl,
+  onDone,
+}: {
+  ctx: AddonUiContext;
+  org: string;
+  project: string;
+  pl: OrgPipelines["projects"][number]["pipelines"][number];
+  onDone: () => void;
+}) {
+  const { data, error } = useHostCall<PipelineInfo>("describe", { org, project, id: pl.id, name: pl.name });
+  if (data) return <RunForm ctx={ctx} pipeline={data} last={undefined} onDone={onDone} />;
+  // A modal while it loads, so nothing in the list moves.
+  return (
+    <Dialog open onClose={onDone} title={`Run ${pl.name}`}>
+      {error ? <div className="text-xs text-danger">{error}</div> : <Spinner center />}
+    </Dialog>
+  );
+}
+
 /** Every organisation's pipelines (D-125), but the ones listed above: loaded only when opened. */
 function MorePipelines({
   ctx,
@@ -733,6 +772,7 @@ function MorePipelines({
   arranging: boolean;
 }) {
   const { data, error } = useHostCall<Overview>("overview");
+  const [openForm, setOpenForm] = useState<string>();
   if (error) return <div className="p-2 text-xs text-danger">{error}</div>;
   if (!data) return <Spinner center />;
   if (data.orgs.length === 0)
@@ -778,9 +818,30 @@ function MorePipelines({
                     onChange={(next) => setArrangement(key, next)}
                     arranging={arranging}
                     testId={`pipelines-project-${p.project}`}
-                    renderItem={(pl) => (
-                      <PipelineRow ctx={ctx} org={o.org} project={p.project} pl={pl} arranging={arranging} />
-                    )}
+                    renderItem={(pl) => {
+                      const formKey = `${key}/${pl.id}`;
+                      return (
+                        <>
+                          <PipelineRow
+                            ctx={ctx}
+                            org={o.org}
+                            project={p.project}
+                            pl={pl}
+                            arranging={arranging}
+                            onRun={() => setOpenForm(openForm === formKey ? undefined : formKey)}
+                          />
+                          {openForm === formKey && (
+                            <OtherRunForm
+                              ctx={ctx}
+                              org={o.org}
+                              project={p.project}
+                              pl={pl}
+                              onDone={() => setOpenForm(undefined)}
+                            />
+                          )}
+                        </>
+                      );
+                    }}
                   />
                 </div>
               );
