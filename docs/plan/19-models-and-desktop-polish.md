@@ -52,3 +52,4 @@
 - [x] The model button names the model as the picker does ("Opus Plan Mode", not `opusplan`)
 - [x] HTML templates and fragments open as Source; only pages render in Preview (D-154)
 - [x] Angular templates edited with Angular's grammar, control-flow blocks as keywords (D-155)
+- [x] Each HTML element's tag in a colour of its own, from the theme (D-156)

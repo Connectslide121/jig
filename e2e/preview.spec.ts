@@ -66,6 +66,11 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   const block = template.locator(".cm-content span", { hasText: /^@if$/ });
   await expect(block).toHaveCount(1);
   await expect(block).toHaveAttribute("class", /\S/);
+  // Each element in a colour of its own, brackets included: <nav> and </nav> alike.
+  const nav = template.locator(".cm-content span[style*='color']", { hasText: /^nav$/ });
+  await expect(nav).toHaveCount(2);
+  const bracket = template.locator(".cm-content span[style*='color']", { hasText: /^<\/$/ }).last();
+  expect(await bracket.getAttribute("style")).toBeTruthy();
   await template.getByTestId("preview-mode-preview").click();
   await expect(template.getByTestId("preview-html")).toBeVisible();
 

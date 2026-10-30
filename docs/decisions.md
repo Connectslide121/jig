@@ -1539,3 +1539,16 @@ the editor) and Claude, on my own (how) · **Date:** 2026-10-30
   by a small decorator (`editorSyntax`).
 - Shiki in the editor (VS Code's exact grammars) stays an option if this isn't enough.
 
+### D-156 — Each HTML element in a colour of its own; no Shiki in the editor
+**Decided by:** Jon ("buttons have a color, divs another color, aside another, nav another… if we
+can get it without the Shiki changes, revert them") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- In markup files (HTML, Angular, Vue, XML) every tag name CodeMirror's grammar finds gets a colour
+  by its name, opening and closing tag alike: common elements in a fixed order that keeps `div`,
+  `nav`, `aside`, `button` and `a` apart; others from their name.
+- The colours are the theme's own syntax colours, without greys and near-identical hues (Jig Dark's
+  three oranges count once); a theme with fewer than four gives Jig's accent, info, success,
+  warning and danger. Only the visible part of the file is coloured.
+- Shiki (VS Code's grammars) in the editor was built and tried, then reverted: it was only wanted
+  for this, and it colours whole files (about 10 ms per KB), needing a worker.
+
