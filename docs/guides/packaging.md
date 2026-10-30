@@ -14,8 +14,8 @@ npm run dist          # = npm run build + electron-builder --win
                       # when done, opens the installer's folder (not with --no-open or CI)
 ```
 
-The result is `apps/desktop/release/Jig-Setup-<version>.exe` (NSIS, per user, no admin rights; you may
-change the folder; Start menu and desktop shortcuts) plus `release/win-unpacked/` (the same app without
+The result is `apps/desktop/release/Jig-Setup-<version>.exe` (NSIS, per user, no admin rights; fixed install folder; Start menu shortcut only, so a taskbar pin and a missing desktop
+shortcut survive reinstalling, D-165) plus `release/win-unpacked/` (the same app without
 installer — handy for a quick try). On Linux/macOS `npm run dist` makes `release/linux-unpacked/` or
 `release/mac/` (unsigned, for testing).
 

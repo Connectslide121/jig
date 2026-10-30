@@ -39,8 +39,8 @@ win:
 nsis:
   oneClick: false
   perMachine: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: false
   createStartMenuShortcut: true
   shortcutName: Jig
   artifactName: Jig-Setup-${version}.${ext}

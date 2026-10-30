@@ -1727,3 +1727,11 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
   `chatList.pinnedOrder` (ids), not a field on the chat, so reordering doesn't count as activity and
   change a chat's "last updated". Pinned chats not in the list follow, newest first. Pure logic in
   `features/sessions/grouping.ts`.
+
+### D-165 — Reinstalling keeps the user's shortcuts
+
+Running a new installer removed Jon's taskbar pin and added a desktop shortcut. electron-builder only
+keeps existing shortcuts when the installer has no folder page (`allowToChangeInstallationDirectory:
+false`); otherwise it recreates the Start menu shortcut, which drops the pin. So the installer now has a
+fixed folder and `createDesktopShortcut: false`; the Start menu shortcut remains. Decided by Jon;
+the exact mechanism is Claude's. Verify by installing over an existing install with a pinned Jig.
