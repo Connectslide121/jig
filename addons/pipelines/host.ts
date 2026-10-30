@@ -340,6 +340,7 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
   const found = await inBatches([...remotes.values()], PARALLEL, async (r) => {
     const common = ["--org", orgUrl(r.org), "--project", r.project];
     try {
+      const repoDefault = await repoDefaultBranch(api, r.repo, r.org, r.project);
       const listed =
         (await az<Array<{ id: number; name: string; queueStatus?: string }>>(api, [
           "pipelines",
@@ -382,7 +383,7 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
             repoName: r.name,
             repoId: known.repoId,
             yaml: known.yaml,
-            defaultBranch: known.defaultBranch,
+            defaultBranch: repoDefault || known.defaultBranch,
             params: text ? parseParameters(text) : known.params,
           };
         },
@@ -490,6 +491,35 @@ function fromKey(key: string): { org: string; project: string; id: number } {
 const describeCache = remembered<PipelineInfo>(5 * 60_000);
 
 /**
+ * The repository's own default branch. A pipeline's `repository.defaultBranch` is the branch set on the
+ * pipeline itself and can lag behind (master after the repository moved to develop), so the Run form
+ * asks the repository. '' when it can't be read.
+ */
+async function repoDefaultBranch(
+  api: AddonHostApi,
+  repo: string,
+  org: string,
+  project: string,
+): Promise<string> {
+  try {
+    // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+    const shown = await az<any>(api, [
+      "repos",
+      "show",
+      "--repository",
+      repo,
+      "--org",
+      orgUrl(org),
+      "--project",
+      project,
+    ]);
+    return String(shown?.defaultBranch ?? "").replace(/^refs\/heads\//, "");
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Any pipeline of any organisation, as Azure DevOps knows it: its YAML file and repository, and the
  * run-time parameters read from that YAML on the repository's default branch. A pipeline of a repository
  * that isn't checked out gets the same Run form as the others.
@@ -512,7 +542,9 @@ export async function describe(
       project,
     ]);
     const repo = shown?.repository ?? {};
-    const defaultBranch = String(repo.defaultBranch ?? "refs/heads/main").replace(/^refs\/heads\//, "");
+    const defaultBranch =
+      (repo.id ? await repoDefaultBranch(api, String(repo.id), org, project) : "") ||
+      String(repo.defaultBranch ?? "refs/heads/main").replace(/^refs\/heads\//, "");
     const info: PipelineInfo = {
       key,
       org: orgName(org),
