@@ -412,7 +412,7 @@ function StepsRow({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex min-w-0 items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-xs text-muted hover:bg-hover hover:text-fg"
+        className="flex max-w-full min-w-0 items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-xs text-muted hover:bg-hover hover:text-fg"
         data-testid="steps-toggle"
       >
         {summary.running ? (
