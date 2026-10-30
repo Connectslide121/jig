@@ -31,7 +31,10 @@ CSS variable `--jig-<token>`; Tailwind colour name in brackets (use as `bg-…`,
 | `focus` | `focus` | focus ring |
 | `code` | `code` | code block background (also the Shiki background) |
 | `success` `warning` `danger` `info` | same | status colours; `on-danger` for text on danger |
-| `shadow` | — | used by `shadow-popover`, `shadow-card` and the dialog backdrop (`bg-shadow`) |
+| `shadow` | — | used by `shadow-popover`, `shadow-card` |
+
+`scrim` is derived, not themed: the canvas pushed towards black at 72 %, the backdrop of every modal
+(`bg-scrim`, with `backdrop-blur-sm`), so it dims clearly in light and dark themes alike.
 
 Soft variants for tinted backgrounds: `accent-soft`, `success-soft`, `warning-soft`, `danger-soft`,
 `info-soft` (16 % of the colour over transparent).

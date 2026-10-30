@@ -32,7 +32,12 @@ function fakeAz(jigHome: string) {
   return `
 const args = process.argv.slice(2);
 const has = (...words) => words.every((w) => args.includes(w));
-const say = (value) => { process.stdout.write(JSON.stringify(value)); process.exit(0); };
+const say = (value) => {
+  const file = args.includes("--out-file") ? args[args.indexOf("--out-file") + 1] : "";
+  if (file) require("node:fs").writeFileSync(file, JSON.stringify(value));
+  else process.stdout.write(JSON.stringify(value));
+  process.exit(0);
+};
 const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
 if (has("pipelines", "list") && !has("runs")) say([
   { id: 12, name: "Shop CI", queueStatus: "enabled" },

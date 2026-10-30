@@ -66,6 +66,22 @@ async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Pro
   return (r.stdout.trim() ? JSON.parse(r.stdout) : undefined) as T;
 }
 
+/**
+ * `az devops invoke` through a file (`--out-file`, as the server sent it). On Windows az prints in the
+ * console code page, which breaks characters like ö in what it prints; the file is UTF-8.
+ */
+async function azSaved<T>(api: AddonHostApi, args: string[], accept = "application/json"): Promise<T> {
+  const dir = await mkdtemp(join(tmpdir(), "jig-pipeline-"));
+  try {
+    const file = join(dir, "answer");
+    await az<unknown>(api, [...args, "--accept-media-type", accept, "--out-file", file]);
+    const text = await readFile(file, "utf8");
+    return (accept.endsWith("json") ? JSON.parse(text) : text) as T;
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 /** Remembers an answer for a while (in this process only); a failed answer is asked again. */
 function remembered<T>(ms: number) {
   const values = new Map<string, { at: number; value: Promise<T> }>();
@@ -436,7 +452,7 @@ export async function latest(
         const stageKey = `${org}/${project}/${run.id}`;
         let stages = finishedStages.get(stageKey);
         if (!stages) {
-          const timeline = await az<{ records?: Array<Record<string, unknown>> }>(api, [
+          const timeline = await azSaved<{ records?: Array<Record<string, unknown>> }>(api, [
             "devops",
             "invoke",
             "--area",
@@ -521,45 +537,36 @@ async function resolve(key: string, api: AddonHostApi): Promise<PipelineInfo> {
   return found ?? describe(fromKey(key), api);
 }
 
-/**
- * The pipeline's YAML on a branch, read from its repository in Azure DevOps ('' when it can't be). It goes
- * through a file: on Windows az prints in the console code page, which breaks characters like ö, while
- * `--out-file` saves the response as it is.
- */
+/** The pipeline's YAML on a branch, read from its repository in Azure DevOps ('' when it can't be). */
 async function yamlAt(api: AddonHostApi, p: PipelineInfo, branch: string): Promise<string> {
   if (!p.repoId || !p.yaml) return "";
-  const dir = await mkdtemp(join(tmpdir(), "jig-pipeline-"));
   try {
-    const file = join(dir, "pipeline.yml");
-    await az<unknown>(api, [
-      "devops",
-      "invoke",
-      "--area",
-      "git",
-      "--resource",
-      "items",
-      "--route-parameters",
-      `project=${p.project}`,
-      `repositoryId=${p.repoId}`,
-      "--query-parameters",
-      `path=/${p.yaml}`,
-      `versionDescriptor.version=${branch}`,
-      "versionDescriptor.versionType=branch",
-      "--accept-media-type",
+    return await azSaved<string>(
+      api,
+      [
+        "devops",
+        "invoke",
+        "--area",
+        "git",
+        "--resource",
+        "items",
+        "--route-parameters",
+        `project=${p.project}`,
+        `repositoryId=${p.repoId}`,
+        "--query-parameters",
+        `path=/${p.yaml}`,
+        `versionDescriptor.version=${branch}`,
+        "versionDescriptor.versionType=branch",
+        "--org",
+        orgUrl(p.org),
+        "--api-version",
+        "7.1",
+      ],
       "text/plain",
-      "--out-file",
-      file,
-      "--org",
-      orgUrl(p.org),
-      "--api-version",
-      "7.1",
-    ]);
-    return await readFile(file, "utf8");
+    );
   } catch {
     // Not on that branch (yet), or a repository Jig can't read: the form keeps the parameters it has.
     return "";
-  } finally {
-    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
