@@ -422,8 +422,8 @@ shell, `core.quotepath=off`, `GIT_TERMINAL_PROMPT=0`) and parses machine-readabl
 (`addons/git/lib/parse.ts`). Rebase, graph and blame are out of scope. Jig does not run VS Code
 extensions or embed VS Code (D-019, D-022).
 
-The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, Open in
-VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
+The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
+branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
 `addons/scripts` (scripts view and Tools-menu actions), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated

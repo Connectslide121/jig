@@ -80,9 +80,9 @@ function useOverview() {
   return { repos, reload: () => refresh(ctx) };
 }
 
-async function act(ctx: AddonUiContext, label: string, method: string, path: string) {
+async function act(ctx: AddonUiContext, label: string, method: string, path: string, extra?: object) {
   try {
-    await ctx.host.call(method, { path });
+    await ctx.host.call(method, { path, ...extra });
     ctx.notify({ title: label, tone: "success" });
   } catch (error) {
     ctx.notify({ title: `${label} failed`, message: (error as Error).message, tone: "danger" });
@@ -247,8 +247,17 @@ function RepoRow({
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
         >
-          <GitBranch className="size-3 shrink-0" />
-          <span className="truncate">{repo.branch ?? "—"}</span>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded px-1 text-left hover:bg-hover hover:text-fg"
+            title={`${repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}\nSwitch branch`}
+            onClick={(e) => !arranging && void switchBranchMenu(ctx, repo, name, e.currentTarget)}
+            data-testid={`repo-branch-${name}`}
+          >
+            <GitBranch className="size-3 shrink-0" />
+            <span className="truncate">{repo.branch ?? "—"}</span>
+            <ChevronDown className="size-3 shrink-0" />
+          </button>
         </span>
         <IconButton
           icon={MoreHorizontal}
@@ -264,6 +273,44 @@ function RepoRow({
       {repo.error && <div className="truncate pb-1 pl-4 text-xs text-danger">{repo.error}</div>}
       {expanded && !arranging && !repo.error && <Commits ctx={ctx} repo={repo} />}
     </div>
+  );
+}
+
+async function switchBranchMenu(ctx: AddonUiContext, repo: RepoState, name: string, anchor: HTMLElement) {
+  let list: Array<{ name: string; current: boolean; remote: boolean }>;
+  try {
+    list = await ctx.host.call("branches", { path: repo.path });
+  } catch (error) {
+    ctx.notify({
+      title: `Couldn't list ${name}'s branches`,
+      message: (error as Error).message,
+      tone: "danger",
+    });
+    return;
+  }
+  const item = (b: (typeof list)[number]) => ({
+    label: b.name,
+    checked: b.current,
+    onSelect: () => {
+      if (!b.current)
+        void act(ctx, `${name}: switched to ${b.name}`, "switchBranch", repo.path, {
+          name: b.name,
+          remote: b.remote,
+        });
+    },
+  });
+  const remote = list.filter((b) => b.remote);
+  ctx.menu(
+    [
+      ...list.filter((b) => !b.remote).map(item),
+      ...(remote.length
+        ? [
+            { separator: true as const },
+            { label: "Remote branches", icon: "cloud", submenu: remote.map(item) },
+          ]
+        : []),
+    ],
+    anchor,
   );
 }
 

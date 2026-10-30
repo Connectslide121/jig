@@ -16,6 +16,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
+
 - **Phase 0–1 (done):** docs, plan, tooling; the Electron app with the typed host bridge, config in
   `~/.jig/config.json`, window state, host log in `~/.jig/logs/main.log`.
 - **Phase 2 (done): design system & themes.**

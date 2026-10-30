@@ -1741,3 +1741,12 @@ the exact mechanism is Claude's. Verify by installing over an existing install w
 - Status: accepted. Decided by Jon ("it looks idle"); the look is Claude's.
 - While a chat's turn is Done but commands or subagents still run in the background, their row shows a
   spinner and "Working in the background", and each task chip gets `.jig-working` (the glow of D-165).
+
+## D-172: `develop` is the default branch; Repos switches branches
+
+- Status: accepted. Decided by Jon; the implementation is Claude's.
+- Work happens on `develop`, which is the repository's default branch (`main` stays for stable code).
+  Changing the default on GitHub needs repository admin rights (Settings → Branches).
+- In the Repos add-on a row's branch is a dropdown that switches branches, like the Git view's (local
+  branches, remote ones as tracking branches). Host methods `branches` and `switchBranch` in
+  `addons/repos/host.ts`.

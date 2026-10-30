@@ -38,6 +38,7 @@ window.** Rebase, graph and blame are out of scope.
 - [x] All registered projects' repos: branch, dirty count, ahead/behind, last fetch
 - [x] Per repo: fetch, pull, push; click a repo → its Git tab
 - [x] Status bar item: repos needing a push/pull
+- [x] Branch is a dropdown to switch branches (D-172)
 - [x] Context menu on a project: "Open in VS Code", "Open in Explorer"
 
 ### Pipelines (`addons/pipelines`)
