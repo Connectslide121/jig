@@ -63,6 +63,7 @@ in this order:
 | "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones) |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |
+| contains "several questions" | asks three questions in steps (one choice, several choices, one to answer in your own words); the reply lists the answers joined by " \| " |
 | contains "question" | asks a multiple-choice question |
 | "write <file>" | writes the file (a file checkpoint: Restore files puts it back) |
 | contains "build" | asks Jig's builder for a tool (`jig_request_build`) |

@@ -1607,3 +1607,14 @@ don't want any of those flagged") and Claude, on my own (how) · **Date:** 2026-
   unchanged, and a failing one is still flagged.
 - Applies to new chats and to ones started again; a chat already running keeps its servers.
 
+### D-161 — Claude's questions are asked step by step
+**Decided by:** Jon ("not a big fan of this questions UI… better to have it step by step, with a
+nicer UI") and Claude, on my own (how) · **Date:** 2026-10-30
+
+- All questions used to be on one card, with options as small wrapping chips and a permanent text
+  field under each. Now `QuestionCard`: one question per step, a progress strip you can click, each
+  option a full-width row (circle or square, label, description, "Recommended" badge for a label
+  ending in "(Recommended)"), "Something else…" opening its own field, Back / Skip / Next, and a
+  single Answer at the last step that sends all answers (Claude's tool takes them together).
+- Answering logic is pure and tested (`question.ts`); the fake engine has "several questions".
+

@@ -600,18 +600,42 @@ export class FakeEngine implements Engine {
           }
         } else if (lower.includes("question")) {
           const toolId = `tool-${randomUUID()}`;
-          const input = {
-            questions: [
-              {
-                question: "Which colour should the button be?",
-                header: "Colour",
-                multiSelect: false,
-                options: [
-                  { label: "Accent", description: "The theme's accent colour" },
-                  { label: "Neutral", description: "A quiet secondary button" },
-                ],
-              },
+          const colour = {
+            question: "Which colour should the button be?",
+            header: "Colour",
+            multiSelect: false,
+            options: [
+              { label: "Accent", description: "The theme's accent colour" },
+              { label: "Neutral", description: "A quiet secondary button" },
             ],
+          };
+          // "several questions": three steps (one choice, several choices, your own words).
+          const input = {
+            questions: lower.includes("several questions")
+              ? [
+                  {
+                    question: "Which step should come first?",
+                    header: "First step",
+                    multiSelect: false,
+                    options: [
+                      { label: "Capture Jenkins (Recommended)", description: "Export the job configs" },
+                      { label: "Update docs", description: "Bring the inventory up to date" },
+                    ],
+                  },
+                  {
+                    question: "Which checks should stay?",
+                    header: "Checks",
+                    multiSelect: true,
+                    options: [{ label: "check-stage" }, { label: "check-demo" }, { label: "check-websites" }],
+                  },
+                  {
+                    question: "What happened to the credentials?",
+                    header: "Credentials",
+                    multiSelect: false,
+                    options: [{ label: "Access removed" }, { label: "I changed them" }],
+                  },
+                ]
+              : [colour],
           };
           onEvent({ type: "tool_use", id: toolId, name: "AskUserQuestion", input });
           const decision = await options.askPermission(
@@ -621,7 +645,7 @@ export class FakeEngine implements Engine {
           const answers = (decision.behavior === "allow" ? decision.updatedInput?.answers : undefined) as
             | Record<string, string>
             | undefined;
-          const answer = answers ? Object.values(answers)[0] : undefined;
+          const answer = answers ? Object.values(answers).join(" | ") : undefined;
           onEvent({
             type: "tool_result",
             toolUseId: toolId,

@@ -48,6 +48,37 @@ test("chat: answering Claude's question", async ({ page, jigHome }) => {
   await expect(page.getByTestId("assistant-message").last()).toContainText("Neutral it is");
 });
 
+test("chat: several questions are asked one step at a time", async ({ page, jigHome }) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  await say(page, "ask me several questions");
+  const card = page.getByTestId("question-card");
+  await expect(card.getByTestId("question-step")).toHaveText("1 of 3");
+  // Nothing to go on with before an answer; the recommended option is marked.
+  await expect(card.getByTestId("question-next")).toBeDisabled();
+  await expect(card).toContainText("Recommended");
+  await card.getByTestId("option-Capture Jenkins (Recommended)").click();
+  await card.getByTestId("question-next").click();
+  // Several choices at once.
+  await expect(card.getByTestId("question-step")).toHaveText("2 of 3");
+  await card.getByTestId("option-check-stage").click();
+  await card.getByTestId("option-check-demo").click();
+  await card.getByTestId("question-next").click();
+  // Your own words; Back keeps what was chosen.
+  await card.getByTestId("question-back").click();
+  await expect(card.getByTestId("option-check-demo")).toHaveAttribute("aria-pressed", "true");
+  await card.getByTestId("question-next").click();
+  await expect(card.getByTestId("question-submit")).toBeDisabled();
+  await card.getByTestId("option-other").click();
+  await card.getByTestId("question-other").fill("I removed the accounts");
+  await card.getByTestId("question-submit").click();
+  await expect(page.getByTestId("assistant-message").last()).toContainText(
+    "Capture Jenkins (Recommended) | check-stage, check-demo | I removed the accounts",
+  );
+  // Answered: a summary of what you said.
+  await expect(page.getByTestId("question-card")).toContainText("I removed the accounts");
+});
+
 test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page, jigHome }) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");

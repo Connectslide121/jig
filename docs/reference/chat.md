@@ -33,6 +33,11 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 
 ## Beyond the terminal
 
+- **Claude's questions** (AskUserQuestion) are asked one at a time (D-161): a strip of the steps
+  (green once answered; click one to go back), the question with its options as rows — a circle for
+  one choice, a square for several, a "Recommended" badge, "Something else…" with its own field —
+  then Back, Skip and Next; the last step's Answer sends every answer to Claude together. Once
+  answered, the card is a summary of what you said.
 - **Compact or Detailed** (switch in the chat's top bar; setting `chat.view`, D-159): Compact, the
   default, shows what you and Claude say, with each run of steps between (commands, reads, edits,
   searches, agents, thinking) folded into one line — "Ran 3 commands, read a file, edited cart.ts
