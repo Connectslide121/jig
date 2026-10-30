@@ -373,14 +373,14 @@ export function Composer({
             <div className="text-2xs font-medium text-hint uppercase">Sends after this turn</div>
             {queue.map((q) => (
               <div key={q.id} className="flex items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs">
-                <span className="min-w-0 flex-1 truncate">
+                <span className="flex min-w-0 flex-1 items-center gap-1">
                   {q.attachments?.length ? (
-                    <span className="mr-1 inline-flex items-center gap-0.5 text-muted">
+                    <span className="flex shrink-0 items-center gap-0.5 text-muted">
                       <Paperclip className="size-3" />
                       {q.attachments.length}
                     </span>
                   ) : null}
-                  {q.text}
+                  <span className="min-w-0 truncate">{q.text}</span>
                 </span>
                 {busy && (
                   <IconButton
