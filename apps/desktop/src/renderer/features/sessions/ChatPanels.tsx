@@ -12,7 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
-import { cn, IconButton, Kbd } from "../../ui";
+import { cn, IconButton, Kbd, Spinner } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { TodoList, toolSummary } from "./ToolCard";
 
@@ -66,11 +66,12 @@ export function BackgroundTasks({ meta }: { meta: SessionMeta }) {
   return (
     <div className="mx-auto w-full max-w-[var(--jig-chat-width)] px-6" data-testid="background-tasks">
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="text-2xs font-medium text-hint uppercase">In the background</span>
+        <Spinner size="sm" className="text-accent" />
+        <span className="text-2xs font-medium text-accent uppercase">Working in the background</span>
         {tasks.map((t) => (
           <span
             key={t.id}
-            className="flex h-6 items-center gap-1 rounded-full border border-line bg-surface pr-0.5 pl-2"
+            className="jig-working flex h-6 items-center gap-1 rounded-full border border-line bg-surface pr-0.5 pl-2"
             title={`${t.type} ${t.id}`}
           >
             {t.type.includes("agent") ? (

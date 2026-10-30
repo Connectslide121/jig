@@ -1735,3 +1735,9 @@ keeps existing shortcuts when the installer has no folder page (`allowToChangeIn
 false`); otherwise it recreates the Start menu shortcut, which drops the pin. So the installer now has a
 fixed folder and `createDesktopShortcut: false`; the Start menu shortcut remains. Decided by Jon;
 the exact mechanism is Claude's. Verify by installing over an existing install with a pinned Jig.
+
+## D-171: Background tasks look busy
+
+- Status: accepted. Decided by Jon ("it looks idle"); the look is Claude's.
+- While a chat's turn is Done but commands or subagents still run in the background, their row shows a
+  spinner and "Working in the background", and each task chip gets `.jig-working` (the glow of D-165).
