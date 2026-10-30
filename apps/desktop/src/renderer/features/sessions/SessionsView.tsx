@@ -2,6 +2,8 @@ import {
   Archive,
   ChevronDown,
   ChevronRight,
+  Clock,
+  ListFilter,
   MessageSquarePlus,
   MessageSquareShare,
   MoreHorizontal,
@@ -11,12 +13,14 @@ import {
 import { useEffect, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
 import { call } from "../../lib/host";
-import { cn, contextMenu, Empty, IconButton, ListRow, openMenuAt } from "../../ui";
+import { updateConfig, useConfig } from "../../stores/config";
+import { cn, contextMenu, Empty, IconButton, ListRow, type MenuEntry, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { useWorkbench, workbench } from "../../workbench/store";
-import { projectDotClass } from "../projects/colors";
+import { ProjectSwatch, projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
+import { CHAT_LIST_VIEWS, type ChatGroup, type GroupMark, groupChats, movePinned } from "./grouping";
 import { sessionMenu } from "./menus";
 import { showProjectOf } from "./project";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
@@ -33,23 +37,38 @@ function relative(iso: string): string {
 
 const DRAG_TYPE = "application/x-jig-chat";
 
-/** Pinned first, then the most recent. */
-const order = (a: SessionMeta, b: SessionMeta) =>
-  Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.updatedAt.localeCompare(a.updatedAt);
+/** The mark in front of a group's name: a project's square, or an icon for the other groupings. */
+function GroupMarkView({ mark }: { mark: GroupMark }) {
+  const { projects } = useProjects();
+  if (mark.kind === "project") {
+    const color = projects.find((p) => p.id === mark.projectId)?.color;
+    return (
+      <span className={cn("size-2.5 shrink-0 rounded-xs", color ? projectDotClass(color) : "bg-hint")} />
+    );
+  }
+  if (mark.kind === "none") return <span className="size-2.5 shrink-0 rounded-xs bg-hint" />;
+  if (mark.kind === "pinned") return <Pin className="size-3 shrink-0" />;
+  if (mark.kind === "status") return <StatusDot status={mark.status} className="mx-0.5" />;
+  return <Clock className="size-3 shrink-0" />;
+}
 
 /**
- * Every chat, grouped by project (D-102): the active project first and open, the other projects below
- * (collapsed until you open them), then "No project". Drag a chat onto a group to move it there; pinned
- * chats stay at the top of their group.
+ * Every chat, in the grouping you chose (D-102): by project (the default: the active project first
+ * and open, the other projects collapsed, then "No project"), by status, by day, or as one list. Drag a
+ * chat onto a project to move it there; drag a pinned chat onto another pinned chat to reorder them.
  */
 export function SessionsView() {
   const metas = Object.values(useSessions((s) => s.metas)).filter((m) => m.kind !== "builder");
   const { projects, activeId } = useProjects();
+  const view = useConfig((s) => s.config?.chatList.view) ?? "project";
+  const pinnedOrder = useConfig((s) => s.config?.chatList.pinnedOrder) ?? [];
   const activeTab = useWorkbench((s) => s.layout?.main.tabs.find((t) => t.id === s.layout?.main.active));
   const [showArchived, setShowArchived] = useState(false);
   // Groups opened or closed by hand; by default only the active project and "No project" are open.
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const [dropOn, setDropOn] = useState<string>();
+  const [dragId, setDragId] = useState<string>();
+  const [dropBefore, setDropBefore] = useState<string>();
   // Re-render every 30 s so "3 min" stays true.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -57,148 +76,184 @@ export function SessionsView() {
     return () => clearInterval(timer);
   }, []);
   const visible = metas.filter((m) => showArchived || !m.archived);
-  const groups = [...projects].sort((a, b) => (a.id === activeId ? -1 : b.id === activeId ? 1 : 0));
+  const groups = groupChats(view, visible, projects, activeId, pinnedOrder);
   const open = (m: SessionMeta) => {
     workbench.openTab("jig.chat", { sessionId: m.id });
     // Also when its tab is already in front: choosing a chat here means working in its project.
     showProjectOf(m.projectId);
   };
-  const row = (m: SessionMeta) => (
-    <ListRow
-      key={m.id}
-      data-testid={`session-${m.title}`}
-      selected={activeTab?.type === "jig.chat" && activeTab.params.sessionId === m.id}
-      onClick={() => open(m)}
-      onContextMenu={contextMenu(() => sessionMenu(m))}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData(DRAG_TYPE, m.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
-      leading={<StatusDot status={m.status} />}
-      className={cn("ml-4", m.archived && "opacity-60")}
-      trailing={
-        <>
-          {m.pinned && <Pin className="size-3 shrink-0 text-hint group-hover:hidden" aria-label="Pinned" />}
-          {m.status === "needs_you" || m.status === "error" ? (
-            <span
-              className={cn("group-hover:hidden", m.status === "needs_you" ? "text-warning" : "text-danger")}
-            >
-              {STATUS_LABEL[m.status]}
-            </span>
-          ) : (
-            <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
-          )}
-          <IconButton
-            icon={m.pinned ? PinOff : Pin}
-            label={m.pinned ? "Unpin" : "Pin to the top"}
-            size="sm"
-            data-testid={`session-pin-${m.title}`}
-            className="hidden group-hover:inline-flex group-focus-within:inline-flex"
-            onClick={(e) => {
-              e.stopPropagation();
-              void call("sessions.setPinned", { id: m.id, pinned: !m.pinned });
-            }}
-          />
-          <IconButton
-            icon={MoreHorizontal}
-            label="Chat options"
-            size="sm"
-            className="hidden group-hover:inline-flex group-focus-within:inline-flex"
-            onClick={(e) => {
-              e.stopPropagation();
-              openMenuAt(e.currentTarget, sessionMenu(m), true);
-            }}
-          />
-        </>
-      }
-    >
-      {m.title}
-    </ListRow>
-  );
-  /** A group: header (click to open/close, drop target) and its chats. */
-  const group = (key: string, title: string, dot: string, list: SessionMeta[], projectId?: string) => {
-    const isOpen = toggled[key] ?? (key === "none" || projectId === activeId);
-    const target = projectId ?? "";
+  const dragged = dragId ? useSessions.getState().metas[dragId] : undefined;
+  const row = (m: SessionMeta, indent: boolean) => {
+    const project = view === "project" ? undefined : projects.find((p) => p.id === m.projectId);
+    // A pinned chat dropped on another pinned chat takes its place.
+    const reorder = Boolean(dragged?.pinned && m.pinned && dragged.id !== m.id);
+    return (
+      <ListRow
+        key={m.id}
+        data-testid={`session-${m.title}`}
+        selected={activeTab?.type === "jig.chat" && activeTab.params.sessionId === m.id}
+        onClick={() => open(m)}
+        onContextMenu={contextMenu(() => sessionMenu(m))}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData(DRAG_TYPE, m.id);
+          e.dataTransfer.effectAllowed = "move";
+          setDragId(m.id);
+        }}
+        onDragEnd={() => {
+          setDragId(undefined);
+          setDropBefore(undefined);
+        }}
+        onDragOver={(e) => {
+          if (!reorder) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "move";
+          setDropBefore(m.id);
+        }}
+        onDrop={(e) => {
+          if (!reorder || !dragged) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setDropBefore(undefined);
+          setDropOn(undefined);
+          const next = movePinned(metas, pinnedOrder, dragged.id, m.id);
+          if (next) void updateConfig({ chatList: { pinnedOrder: next } });
+        }}
+        leading={<StatusDot status={m.status} />}
+        className={cn(
+          indent && "ml-7",
+          m.archived && "opacity-60",
+          dropBefore === m.id && reorder && "bg-accent-soft ring-1 ring-accent",
+        )}
+        trailing={
+          <>
+            {project && (
+              <span title={project.name} className="group-hover:hidden">
+                <ProjectSwatch color={project.color} />
+              </span>
+            )}
+            {m.pinned && <Pin className="size-3 shrink-0 text-hint group-hover:hidden" aria-label="Pinned" />}
+            {m.status === "needs_you" || m.status === "error" ? (
+              <span
+                className={cn(
+                  "group-hover:hidden",
+                  m.status === "needs_you" ? "text-warning" : "text-danger",
+                )}
+              >
+                {STATUS_LABEL[m.status]}
+              </span>
+            ) : (
+              <span className="group-hover:hidden">{relative(m.updatedAt)}</span>
+            )}
+            <IconButton
+              icon={m.pinned ? PinOff : Pin}
+              label={m.pinned ? "Unpin" : "Pin to the top"}
+              size="sm"
+              data-testid={`session-pin-${m.title}`}
+              className="hidden group-hover:inline-flex group-focus-within:inline-flex"
+              onClick={(e) => {
+                e.stopPropagation();
+                void call("sessions.setPinned", { id: m.id, pinned: !m.pinned });
+              }}
+            />
+            <IconButton
+              icon={MoreHorizontal}
+              label="Chat options"
+              size="sm"
+              className="hidden group-hover:inline-flex group-focus-within:inline-flex"
+              onClick={(e) => {
+                e.stopPropagation();
+                openMenuAt(e.currentTarget, sessionMenu(m), true);
+              }}
+            />
+          </>
+        }
+      >
+        {m.title}
+      </ListRow>
+    );
+  };
+  /** A group: header (click to open/close; a project's is also a drop target) and its chats. */
+  const group = (g: ChatGroup) => {
+    const key = `${view}:${g.key}`;
+    const isOpen = toggled[key] ?? (view !== "project" || g.key === "none" || g.projectId === activeId);
+    const projectId = g.projectId || undefined;
     return (
       <div
         key={key}
         className={cn("mb-1 rounded-md", dropOn === key && "bg-accent-soft")}
-        data-testid={`chat-group-${title}`}
+        data-testid={`chat-group-${g.title}`}
         onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+          if (g.projectId === undefined || !e.dataTransfer.types.includes(DRAG_TYPE)) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
           setDropOn(key);
+          setDropBefore(undefined);
         }}
         onDragLeave={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropOn(undefined);
         }}
         onDrop={(e) => {
           setDropOn(undefined);
+          if (g.projectId === undefined) return;
           const id = e.dataTransfer.getData(DRAG_TYPE);
           if (!id) return;
           e.preventDefault();
-          if ((useSessions.getState().metas[id]?.projectId ?? "") === target) return;
+          if ((useSessions.getState().metas[id]?.projectId ?? "") === g.projectId) return;
           void call("sessions.setProject", { id, ...(projectId ? { projectId } : {}) });
           setToggled((t) => ({ ...t, [key]: true }));
         }}
       >
-        <div className="group flex h-7 items-center gap-1 px-1 text-xs font-medium text-muted">
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-fg"
-            aria-expanded={isOpen}
-            onClick={() => setToggled((t) => ({ ...t, [key]: !isOpen }))}
-          >
-            {isOpen ? (
-              <ChevronDown className="size-3 shrink-0" />
-            ) : (
-              <ChevronRight className="size-3 shrink-0" />
+        {!g.headerless && (
+          <div className="group flex h-7 items-center gap-1 px-1 text-xs font-medium text-muted">
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-fg"
+              aria-expanded={isOpen}
+              onClick={() => setToggled((t) => ({ ...t, [key]: !isOpen }))}
+            >
+              {isOpen ? (
+                <ChevronDown className="size-3 shrink-0" />
+              ) : (
+                <ChevronRight className="size-3 shrink-0" />
+              )}
+              <GroupMarkView mark={g.mark} />
+              <span className="min-w-0 truncate">{g.title}</span>
+              {!isOpen && g.chats.length > 0 && (
+                <span className="font-normal text-hint">{g.chats.length}</span>
+              )}
+            </button>
+            {projectId && (
+              <IconButton
+                icon={MessageSquarePlus}
+                label={`New chat in ${g.title}`}
+                size="sm"
+                data-testid={`new-session-${g.title}`}
+                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                onClick={() => void newSession(projectId)}
+              />
             )}
-            <span className={cn("size-2.5 shrink-0 rounded-xs", dot)} />
-            <span className="min-w-0 truncate">{title}</span>
-            {!isOpen && list.length > 0 && <span className="font-normal text-hint">{list.length}</span>}
-          </button>
-          {projectId && (
-            <IconButton
-              icon={MessageSquarePlus}
-              label={`New chat in ${title}`}
-              size="sm"
-              data-testid={`new-session-${title}`}
-              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-              onClick={() => void newSession(projectId)}
-            />
-          )}
-        </div>
-        {isOpen && list.length === 0 && (
-          <div className="px-6 pb-1 text-xs text-hint">
+          </div>
+        )}
+        {isOpen && g.chats.length === 0 && (
+          <div className="ml-7 px-2 pb-1 text-xs text-hint">
             {projectId ? "No chats — drag one here or start a new one" : "Chats you take out of a project"}
           </div>
         )}
-        {isOpen && list.map(row)}
+        {isOpen && g.chats.map((m) => row(m, !g.headerless))}
       </div>
     );
   };
-  const loose = visible
-    .filter((m) => !m.projectId || !projects.some((p) => p.id === m.projectId))
-    .sort(order);
-  if (projects.length === 0 && loose.length === 0)
+  if (projects.length === 0 && visible.length === 0)
     return <Empty title="No chats yet">Create a project, or start a chat in a folder.</Empty>;
   return (
     <div className="flex h-full flex-col" data-testid="sessions-view">
       <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-        {groups.map((project) =>
-          group(
-            project.id,
-            project.name,
-            projectDotClass(project.color),
-            visible.filter((m) => m.projectId === project.id).sort(order),
-            project.id,
-          ),
-        )}
-        {(loose.length > 0 || dropOn === "none" || projects.length > 0) &&
-          group("none", "No project", "bg-hint", loose)}
+        {groups
+          // "No project" only shows when it has chats, when there are projects, or while a chat is dragged over.
+          .filter((g) => g.key !== "none" || g.chats.length > 0 || projects.length > 0 || dropOn)
+          .map(group)}
       </div>
       {metas.some((m) => m.archived) && (
         <button
@@ -215,8 +270,25 @@ export function SessionsView() {
 
 export function SessionsHeaderActions() {
   const activeId = useProjects((s) => s.activeId);
+  const view = useConfig((s) => s.config?.chatList.view) ?? "project";
+  const viewMenu = (): MenuEntry[] => [
+    { heading: "Group chats" },
+    ...CHAT_LIST_VIEWS.map((v) => ({
+      label: v.label,
+      checked: v.value === view,
+      testId: `chat-view-${v.value}`,
+      onSelect: () => void updateConfig({ chatList: { view: v.value } }),
+    })),
+  ];
   return (
     <>
+      <IconButton
+        icon={ListFilter}
+        label="Group chats…"
+        size="sm"
+        data-testid="chat-list-view"
+        onClick={(e) => openMenuAt(e.currentTarget, viewMenu(), true)}
+      />
       <IconButton
         icon={MessageSquareShare}
         label="Open a Claude Code chat…"

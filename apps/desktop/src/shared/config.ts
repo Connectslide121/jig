@@ -70,6 +70,15 @@ export const ConfigSchema = z.object({
       view: z.enum(["compact", "detailed"]).default("compact"),
     })
     .prefault({}),
+  /** The Chats list: how it groups chats, and the order you gave pinned chats. */
+  chatList: z
+    .object({
+      /** `project` (default), `status` (pinned, needs you, working…), `recent` (by day) or `all` (one list). */
+      view: z.enum(["project", "status", "recent", "all"]).default("project"),
+      /** Pinned chats' ids, in the order you dragged them; pinned chats not listed follow, newest first. */
+      pinnedOrder: z.array(z.string()).default([]),
+    })
+    .prefault({}),
   notifications: z
     .object({
       /** A system notification when a chat needs you or finishes while Jig isn't in front. */

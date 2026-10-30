@@ -1713,3 +1713,17 @@ project should switch") and Claude, on my own (how) · **Date:** 2026-10-30
   new chat whose first message (`profileInterviewPrompt`) tells Claude to ask one question at a time,
   follow up, and save facts with `jig_update_profile` every couple of answers. The same chat starts from
   **Fill it in with Claude** in What Jig knows about me, so it's also reachable without the toast.
+
+## D-170: The Chats list has four groupings, and pinned chats keep your order
+
+- Status: accepted
+- **Decided by:** Jon (chats under a project looked aligned with it, wanted pinned chats reorderable and
+  more ways to group). **Claude, on my own:** the four groupings, keeping the order in settings.
+- The Chats header's filter button switches `chatList.view`: **By project** (default, D-102), **By
+  status** (Pinned, Needs you, Working, Error, Idle), **By day** (Pinned, Today, Yesterday, Last 7 days,
+  Older) or **One list**. Outside the project view each chat shows its project's square. Chats are
+  indented a full step under their group header so the dot no longer lines up with the project square.
+- Dragging a pinned chat onto another pinned chat puts it in front of it. The order is
+  `chatList.pinnedOrder` (ids), not a field on the chat, so reordering doesn't count as activity and
+  change a chat's "last updated". Pinned chats not in the list follow, newest first. Pure logic in
+  `features/sessions/grouping.ts`.

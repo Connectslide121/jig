@@ -607,7 +607,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "Drag chats between projects; pin the ones you keep coming back to",
+                "Drag chats between projects; pin the ones you keep coming back to and put them in your order; group the list by project, status or day",
                 "Instructions per project, added to what Claude reads in its chats",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",

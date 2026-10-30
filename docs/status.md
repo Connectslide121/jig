@@ -191,8 +191,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     Home. ⋯ → Project settings… changes them.
   - **Chats:** the active project's group comes first and open, the other projects below (click to
     open), then "No project". Drag a chat onto a group to move it; pin a chat (hover → pin) to keep it
-    on top; the chat's menu has Pin and Move to project. Removing a project moves its chats to "No
-    project".
+    on top, and drag pinned chats to reorder them; the chat's menu has Pin and Move to project.
+    Removing a project moves its chats to "No project". The filter button in the header groups the list
+    by project, status, day, or as one list (D-170).
   - **Home** uses the project's starter prompts. Its chat box has a folder picker (any workspace or
     one of its repositories; the project's default workspace first).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
