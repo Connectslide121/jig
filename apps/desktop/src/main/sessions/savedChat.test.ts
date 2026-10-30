@@ -37,4 +37,24 @@ describe("opening a saved Claude Code conversation", () => {
     ];
     expect(savedChatItems(cut, meta, "x")).toMatchObject([{ kind: "tool", status: "done" }]);
   });
+
+  it("shows a subagent's hand-back as a step, not as your message", () => {
+    const items = savedChatItems(
+      [
+        {
+          type: "user",
+          uuid: "h",
+          parent_tool_use_id: null,
+          message: {
+            content:
+              'Another Claude session sent a message:\n<agent-message from="a1">Report</agent-message>',
+          },
+        },
+      ],
+      meta,
+      "x",
+    );
+    expect(items).toMatchObject([{ kind: "tool", name: "SubagentMessage", status: "done" }]);
+    expect(items.some((i) => i.kind === "user")).toBe(false);
+  });
 });

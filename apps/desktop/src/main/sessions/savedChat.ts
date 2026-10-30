@@ -9,6 +9,12 @@ import { Normalizer } from "../engine/normalize";
 const NOT_TYPED =
   /^\s*<(system-reminder|command-name|command-message|command-args|local-command-stdout|local-command-caveat|bash-input|bash-stdout|bash-stderr|user-prompt-submit-hook)>|^\[Request interrupted/;
 
+/**
+ * A subagent's report or another Claude session's message, which Claude Code delivers as a user
+ * message: shown as a step ("Message from subagent"), not as something you typed.
+ */
+const HAND_BACK = /^(Another Claude session sent a message|<agent-message\b|<task-notification>)/;
+
 /** What you typed in a user message: its text, or its text blocks; '' for tool results and what Claude Code added. */
 export function typedText(message: unknown): string {
   const content = (message as { content?: unknown } | null)?.content;
@@ -36,7 +42,21 @@ export function savedChatItems(messages: SavedClaudeMessage[], meta: SessionMeta
     if (m.parent_tool_use_id) continue;
     if (m.type === "user") {
       const text = typedText(m.message);
-      if (text)
+      const handBack = HAND_BACK.test(text);
+      if (handBack)
+        applyUpdate(state.items, {
+          op: "upsert",
+          item: {
+            kind: "tool",
+            id: `message-${m.uuid}`,
+            name: "SubagentMessage",
+            input: {},
+            output: text,
+            status: "done",
+            at,
+          },
+        });
+      else if (text)
         applyUpdate(state.items, { op: "upsert", item: { kind: "user", id: `user-${m.uuid}`, text, at } });
     }
     if (m.type !== "user" && m.type !== "assistant") continue;

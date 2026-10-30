@@ -39,19 +39,33 @@ describe("the compact chat view", () => {
       tool("b2", "Bash", { command: "npm run lint" }),
       tool("r1", "Read", { file_path: "cart.ts" }),
       tool("r2", "Read", { file_path: "cart.ts" }),
-      tool("e1", "Edit", { file_path: "cart.ts" }),
-      tool("e2", "Write", { file_path: "total.ts" }),
+      tool("e1", "Edit", { file_path: "src/cart.ts" }),
+      tool("e2", "Write", { file_path: "src/total.ts", content: "a\nb\nc" }),
       tool("g1", "Grep", { pattern: "total" }),
       tool("m1", "mcp__jig__jig_browser_open", { url: "http://localhost" }),
       tool("x1", "Bash", { command: "npm run build", description: "Build the app" }, "running"),
     ].map(entry);
     expect(stepsSummary(steps)).toEqual({
-      text: "Ran 3 commands, read 1 file, edited 2 files, searched 1 time, used 1 tool",
+      text: "Ran 3 commands, read a file, created total.ts, edited cart.ts, searched the code, used a tool",
+      added: 3,
+      removed: 0,
       failed: 1,
       running: "Build the app",
     });
     expect(stepsSummary([entry({ kind: "thinking", id: "t", text: "", at } as ChatItem)]).text).toBe(
       "Thought",
     );
+  });
+
+  it("reads like Claude Code for a single step: the command's description, a message from a subagent", () => {
+    expect(
+      stepsSummary([entry(tool("b", "Bash", { command: "ls", description: "List the repos" }))]),
+    ).toMatchObject({
+      text: "Ran a command",
+      detail: "List the repos",
+    });
+    const edit = { ...tool("e", "Edit", { file_path: "cart.ts" }), diff: "@@\n-a\n+b\n+c" } as ChatItem;
+    expect(stepsSummary([entry(edit)])).toMatchObject({ text: "Edited cart.ts", added: 2, removed: 1 });
+    expect(stepsSummary([entry(tool("m", "SubagentMessage", {}))]).text).toBe("Received a message");
   });
 });

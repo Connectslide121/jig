@@ -126,3 +126,15 @@ test("chat: compact view folds Claude's steps into one line; Detailed shows ever
   const config = (await hostCall(page, "config.get")) as { value: { chat: { view: string } } };
   expect(config.value.chat.view).toBe("detailed");
 });
+
+test("chat: long unbroken text never makes the transcript scroll sideways", async ({ page, jigHome }) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  const long = `${"x".repeat(240)}/${"y".repeat(240)}`;
+  await say(page, `Check ${long} and \`${long}\``);
+  await expect(page.getByTestId("turn-result")).toContainText("Done", { timeout: 15000 });
+  const sizes = await page
+    .locator("[data-testid=transcript]:visible")
+    .evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+  expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 1);
+});

@@ -160,7 +160,7 @@ const Item = memo(function Item({
         <div className="group/message relative flex flex-col items-end gap-1.5" data-testid="user-message">
           <ChatAttachments files={item.attachments ?? item.images ?? []} className="justify-end" />
           {item.text && (
-            <div className="selectable max-w-[var(--jig-chat-bubble)] rounded-lg bg-active px-3 py-2 text-sm whitespace-pre-wrap text-fg">
+            <div className="selectable max-w-[var(--jig-chat-bubble)] min-w-0 rounded-lg bg-active px-3 py-2 text-sm wrap-anywhere whitespace-pre-wrap text-fg">
               {item.text}
             </div>
           )}
@@ -423,6 +423,15 @@ function StepsRow({
           <ChevronRight className="size-3.5 shrink-0" />
         )}
         <span className="truncate">{summary.text}</span>
+        {(summary.added > 0 || summary.removed > 0) && (
+          <span className="shrink-0 font-mono text-2xs">
+            {summary.added > 0 && <span className="text-success">+{summary.added}</span>}
+            {summary.removed > 0 && <span className="ml-1 text-danger">−{summary.removed}</span>}
+          </span>
+        )}
+        {summary.detail && !summary.running && (
+          <span className="min-w-0 truncate text-hint">· {summary.detail}</span>
+        )}
         {summary.failed > 0 && <span className="shrink-0 text-danger">· {summary.failed} failed</span>}
         {summary.running && <span className="min-w-0 truncate text-hint">· {summary.running}</span>}
       </button>
@@ -520,7 +529,7 @@ export function Transcript({
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={ref}
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
         onScroll={(e) => {
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
@@ -528,7 +537,7 @@ export function Transcript({
         }}
         data-testid="transcript"
       >
-        <div className="mx-auto flex max-w-[var(--jig-chat-width)] flex-col gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-[var(--jig-chat-width)] min-w-0 flex-col gap-3 px-6 py-4 wrap-anywhere">
           {rowsOf(groupItems(items), compact, pending).map((row) =>
             row.kind === "steps" ? (
               <StepsRow

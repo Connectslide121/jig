@@ -104,6 +104,7 @@ export function toolSummary(name: string, input: Record<string, unknown>): strin
 }
 
 export function toolLabel(name: string): string {
+  if (name === "SubagentMessage") return "Message from subagent";
   const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
   if (mcp) return `${mcp[2]} (${mcp[1]})`;
   return name;
