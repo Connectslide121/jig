@@ -1,11 +1,20 @@
 import type { AddonManifest } from "@jig/sdk";
+import * as lucide from "lucide-react";
 import { icons, type LucideProps, Puzzle } from "lucide-react";
 
-/** A Lucide icon by its kebab-case name ("git-branch" → GitBranch), as manifests name them. */
+type LucideComponent = (typeof icons)[keyof typeof icons];
+
+/**
+ * A Lucide icon by its kebab-case name ("git-branch" → GitBranch), as manifests name them. Aliases
+ * such as "history" are only named exports, not in `icons`, so those are tried too.
+ */
 export function iconByName(name: string | undefined) {
   if (!name) return undefined;
   const pascal = name.replace(/(^|-)(\w)/g, (_m, _d, c: string) => c.toUpperCase());
-  return (icons as Record<string, (typeof icons)[keyof typeof icons]>)[pascal];
+  const found = (icons as Record<string, LucideComponent>)[pascal];
+  if (found) return found;
+  const alias = (lucide as unknown as Record<string, unknown>)[pascal];
+  return alias && typeof alias === "object" && pascal !== "Icons" ? (alias as LucideComponent) : undefined;
 }
 
 /**

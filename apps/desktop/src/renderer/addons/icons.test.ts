@@ -5,6 +5,7 @@ describe("add-on icons", () => {
   it("finds Lucide icons by kebab-case name", () => {
     expect(iconByName("git-branch")).toBeDefined();
     expect(iconByName("rocket")).toBeDefined();
+    expect(iconByName("history")).toBeDefined();
     expect(iconByName("no-such-icon")).toBeUndefined();
     expect(iconByName(undefined)).toBeUndefined();
   });
