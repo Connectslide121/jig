@@ -9,7 +9,7 @@ import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/en
 import { JigError } from "../../shared/ipc";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
-import { appWindows } from "../appWindows";
+import { appWindows, focusJig } from "../appWindows";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer, jigToolHandlers, turnContext } from "../engine/jigTools";
@@ -177,6 +177,7 @@ export function startSessions(): void {
 
   // A system notification when a chat needs you or finishes while Jig is in the background.
   const lastStatus = new Map<string, SessionStatus>();
+  const shown = new Set<Notification>();
   function notifyStatus(meta: SessionMeta) {
     const previous = lastStatus.get(meta.id);
     lastStatus.set(meta.id, meta.status);
@@ -187,15 +188,14 @@ export function startSessions(): void {
     if (meta.status === "needs_you") for (const w of windows) w.flashFrame(true);
     if (!Notification.isSupported()) return;
     const n = new Notification({ title: note.title, body: note.body, icon: APP_ICON });
+    // Electron only delivers a click to a notification that is still referenced.
+    shown.add(n);
     n.on("click", () => {
-      const w = appWindows()[0];
-      if (w) {
-        if (w.isMinimized()) w.restore();
-        w.show();
-        w.focus();
-      }
+      focusJig();
       emit("sessions.reveal", { sessionId: meta.id });
     });
+    n.on("close", () => shown.delete(n));
+    n.on("failed", () => shown.delete(n));
     n.show();
   }
 

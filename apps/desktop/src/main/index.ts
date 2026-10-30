@@ -5,7 +5,7 @@ import { registerAboutHandlers } from "./about";
 import { addonNodePaths, addonThemes, installAddonProtocol, onAddonsChange, startAddons } from "./addons";
 import { registerAiHandlers } from "./ai";
 import { registerAppHandlers } from "./app";
-import { appWindows } from "./appWindows";
+import { appWindows, focusJig } from "./appWindows";
 import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
 import { startBrowser, stopBrowser } from "./browser";
@@ -50,11 +50,7 @@ if (!app.requestSingleInstanceLock({ jigHome: jigHome() })) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    const [window] = appWindows();
-    if (window) {
-      if (window.isMinimized()) window.restore();
-      window.focus();
-    }
+    focusJig();
   });
   void start();
 }

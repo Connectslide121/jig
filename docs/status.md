@@ -604,7 +604,9 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 - **Previews on Windows**: a PDF, a video (seeking) and an HTML page with scripts from your own repos;
   Markdown with images in a sibling folder.
 - **Desktop notifications on Windows**: put Jig in the background during a long turn; a Windows
-  notification should appear when it finishes (and the taskbar button flash on a permission prompt).
+  notification should appear when it finishes (and the taskbar button flash on a permission prompt), and clicking it should bring Jig to the front and open that chat (`focusJig`: restores,
+  shows, briefly sets always-on-top because Windows refuses focus to a background process; the
+  notification is kept referenced, as Electron drops clicks on a collected one). Not yet tried on Windows.
 - **Restore files and fork with your real Claude Code**: let Claude edit a file, then Restore files to
   before that message (the preview should list it); fork a chat and check the fork remembers the
   conversation while the original doesn't see the fork's messages.
