@@ -123,7 +123,7 @@ function Shot({ src, alt }: { src: string; alt: string }) {
             aria-label="Close"
             data-testid="about-lightbox"
             onClick={() => setOpen(false)}
-            className="no-drag fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-scrim p-6 backdrop-blur-sm"
+            className="no-drag fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-scrim p-6 backdrop-blur-xs"
           >
             <img
               src={src}

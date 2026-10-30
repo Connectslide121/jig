@@ -34,7 +34,7 @@ export function Dialog({
   if (!open) return null;
   return createPortal(
     <div
-      className="no-drag fixed inset-0 z-40 flex items-center justify-center bg-scrim p-6 backdrop-blur-sm"
+      className="no-drag fixed inset-0 z-40 flex items-center justify-center bg-scrim p-6 backdrop-blur-xs"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

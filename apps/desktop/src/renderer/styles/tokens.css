@@ -22,7 +22,7 @@
   --color-accent-hover: var(--jig-accent-hover);
   --color-on-accent: var(--jig-on-accent);
   /* The dimming behind a modal: the canvas pushed towards black, so it reads in light and dark themes. */
-  --color-scrim: color-mix(in srgb, color-mix(in srgb, var(--jig-canvas), black 70%) 72%, transparent);
+  --color-scrim: color-mix(in srgb, color-mix(in srgb, var(--jig-canvas), black 60%) 45%, transparent);
   --color-accent-soft: color-mix(in srgb, var(--jig-accent) 16%, transparent);
   --color-hover: var(--jig-hover);
   --color-active: var(--jig-active);
