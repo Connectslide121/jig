@@ -1543,12 +1543,13 @@ the editor) and Claude, on my own (how) · **Date:** 2026-10-30
 **Decided by:** Jon ("buttons have a color, divs another color, aside another, nav another… if we
 can get it without the Shiki changes, revert them") and Claude, on my own (how) · **Date:** 2026-10-30
 
-- In markup files (HTML, Angular, Vue, XML) every tag name CodeMirror's grammar finds gets a colour
-  by its name, opening and closing tag alike: common elements in a fixed order that keeps `div`,
-  `nav`, `aside`, `button` and `a` apart; others from their name.
-- The colours are the theme's own syntax colours, without greys and near-identical hues (Jig Dark's
-  three oranges count once); a theme with fewer than four gives Jig's accent, info, success,
-  warning and danger. Only the visible part of the file is coloured.
+- In markup files (HTML, Angular, Vue, XML) every tag (its name and brackets) CodeMirror's grammar
+  finds gets a colour by its name (FNV-1a hash), opening and closing tag alike. No fixed slots for
+  common elements: Jon wanted more variety than that gave.
+- The colours are a wheel of twelve hues, 30° apart, starting at the theme's tag colour, at the
+  average saturation and lightness of the theme's own syntax colours (greys left out), so they
+  fit dark and light themes. A theme with almost no syntax colours gets Jig's accent, info,
+  success, warning and danger. Only the visible part of the file is coloured.
 - Shiki (VS Code's grammars) in the editor was built and tried, then reverted: it was only wanted
   for this, and it colours whole files (about 10 ms per KB), needing a worker.
 

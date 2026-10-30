@@ -125,7 +125,7 @@ function angularBlocks(style: HighlightStyle): Extension {
   );
 }
 
-/** The theme's colours a tag name can take, most tag-like first; Jig's tokens for a theme with few. */
+/** The theme's syntax colours the tag wheel takes its saturation and lightness from. */
 const TAG_KINDS: SyntaxKind[] = [
   "tag",
   "function",
@@ -137,9 +137,9 @@ const TAG_KINDS: SyntaxKind[] = [
   "constant",
   "method",
   "attribute",
-  "property",
   "string",
 ];
+/** For a theme with almost no syntax colours: Jig's own. */
 const TOKEN_COLORS = [
   "var(--color-accent)",
   "var(--color-info)",
@@ -147,105 +147,72 @@ const TOKEN_COLORS = [
   "var(--color-warning)",
   "var(--color-danger)",
 ];
+/** How many colours tags spread over: twelve hues, 30° apart. */
+export const TAG_HUES = 12;
 const palettes = new WeakMap<JigTheme, string[]>();
 
-/** A colour a tag can stand out in: not a grey or white (the theme's plain text often is). */
-export function colorful(hex: string): boolean {
+/** A `#rrggbb` colour's hue (0–360), saturation and lightness (0–1). */
+export function toHsl(hex: string): { h: number; s: number; l: number } | undefined {
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(hex);
-  if (!m) return false;
+  if (!m) return undefined;
   const [r, g, b] = [m[1], m[2], m[3]].map((x) => Number.parseInt(x!, 16) / 255) as [number, number, number];
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  const light = (max + min) / 2;
-  const saturation = max === min ? 0 : (max - min) / (1 - Math.abs(2 * light - 1));
-  return saturation >= 0.3;
+  const d = max - min;
+  const l = (max + min) / 2;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  const h = d === 0 ? 0 : max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s, l };
 }
 
-/** A colour's hue in degrees (0–360). */
-export function hue(hex: string): number {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(hex);
-  if (!m) return 0;
-  const [r, g, b] = [m[1], m[2], m[3]].map((x) => Number.parseInt(x!, 16) / 255) as [number, number, number];
-  const max = Math.max(r, g, b);
-  const d = max - Math.min(r, g, b);
-  if (d === 0) return 0;
-  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return (h * 60 + 360) % 360;
+/** A colour a tag can stand out in: not a grey or white (the theme's plain text often is). */
+export function colorful(hex: string): boolean {
+  return (toHsl(hex)?.s ?? 0) >= 0.3;
 }
 
-/** Keeps colours whose hues are at least `apart` degrees from every one kept before, in order. */
-export function distinctHues(colors: string[], apart = 25): string[] {
-  const kept: string[] = [];
-  for (const c of colors) {
-    const h = hue(c);
-    if (kept.every((k) => Math.min(Math.abs(hue(k) - h), 360 - Math.abs(hue(k) - h)) >= apart)) kept.push(c);
-  }
-  return kept;
-}
-
+/**
+ * The colours tags take (D-156): a wheel of twelve hues, 30° apart, starting at the theme's tag
+ * colour, at the saturation and lightness of the theme's own syntax colours, so they sit with the
+ * theme in light and dark alike. A theme with almost no syntax colours gets Jig's tokens.
+ */
 export function tagPalette(theme: JigTheme | undefined): string[] {
   if (!theme) return TOKEN_COLORS;
   const hit = palettes.get(theme);
   if (hit) return hit;
   const styles = syntaxStyles(theme);
-  const colors = [
-    ...new Set(
-      TAG_KINDS.map((kind) => styles[kind]?.color?.toLowerCase()).filter(
-        (c): c is string => !!c && colorful(c),
-      ),
-    ),
-  ];
-  // Tags must read as different: near-identical hues (three oranges) count once.
-  const distinct = distinctHues(colors);
-  const palette = distinct.length >= 4 ? distinct : TOKEN_COLORS;
+  const hsl = TAG_KINDS.map((kind) => styles[kind]?.color)
+    .map((c) => (c ? toHsl(c) : undefined))
+    .filter((c): c is NonNullable<typeof c> => !!c && c.s >= 0.3);
+  let palette = TOKEN_COLORS;
+  if (hsl.length >= 3) {
+    const average = (pick: (c: (typeof hsl)[number]) => number) =>
+      hsl.reduce((sum, c) => sum + pick(c), 0) / hsl.length;
+    const saturation = Math.round(
+      Math.min(
+        average((c) => c.s),
+        0.8,
+      ) * 100,
+    );
+    const lightness = Math.round(average((c) => c.l) * 100);
+    const first = hsl[0]!.h;
+    palette = Array.from(
+      { length: TAG_HUES },
+      (_, i) => `hsl(${Math.round((first + i * (360 / TAG_HUES)) % 360)} ${saturation}% ${lightness}%)`,
+    );
+  }
   palettes.set(theme, palette);
   return palette;
 }
 
-/**
- * Common elements in an order that keeps the ones usually found together apart: with five colours,
- * `div`, `nav`, `aside`, `button` and `a` all differ. Other tags get a colour from their name.
- */
-const COMMON_TAGS = [
-  "div",
-  "nav",
-  "aside",
-  "button",
-  "a",
-  "span",
-  "p",
-  "img",
-  "section",
-  "header",
-  "ul",
-  "li",
-  "main",
-  "footer",
-  "form",
-  "input",
-  "label",
-  "h1",
-  "h2",
-  "h3",
-  "table",
-  "tr",
-  "td",
-  "th",
-  "select",
-  "option",
-  "textarea",
-  "strong",
-  "em",
-  "i",
-];
-
 /** The same colour for a tag name everywhere (`div` is always one colour, `button` another). */
 export function tagColorIndex(name: string, size: number): number {
-  const common = COMMON_TAGS.indexOf(name.toLowerCase());
-  if (common >= 0) return common % size;
-  let hash = 0;
-  for (const char of name.toLowerCase()) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-  return Math.abs(hash) % size;
+  // FNV-1a: similar names (h1, h2) still land far apart.
+  let hash = 0x811c9dc5;
+  for (const char of name.toLowerCase()) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0) % size;
 }
 
 /** Tags whose name and brackets are coloured, and those parts. */

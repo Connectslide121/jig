@@ -1,33 +1,27 @@
 import { jigDark, jigLight } from "@jig/themes";
 import { describe, expect, it } from "vitest";
-import { colorful, distinctHues, tagColorIndex, tagPalette } from "./editorSyntax";
+import { colorful, TAG_HUES, tagColorIndex, tagPalette, toHsl } from "./editorSyntax";
 
 describe("tag colours", () => {
-  it("gives a tag name the same colour everywhere, case aside", () => {
-    expect(tagColorIndex("div", 7)).toBe(tagColorIndex("DIV", 7));
-    expect(tagColorIndex("button", 7)).toBeLessThan(7);
-    // Elements usually found together differ, even with five colours.
-    const together = ["div", "nav", "aside", "button", "a"];
-    expect(new Set(together.map((n) => tagColorIndex(n, 5))).size).toBe(5);
-    expect(tagColorIndex("lucide-icon", 5)).toBe(tagColorIndex("lucide-icon", 5));
+  it("gives a tag name the same colour everywhere, and spreads names over many colours", () => {
+    expect(tagColorIndex("div", TAG_HUES)).toBe(tagColorIndex("DIV", TAG_HUES));
+    const names = ["div", "nav", "aside", "button", "a", "span", "p", "img", "section", "header", "ul", "li"];
+    expect(new Set(names.map((n) => tagColorIndex(n, TAG_HUES))).size).toBeGreaterThanOrEqual(7);
   });
 
-  it("takes the theme's colourful syntax colours, never greys", () => {
+  it("builds a wheel of hues at the theme's own saturation and lightness", () => {
     expect(colorful("#c792ea")).toBe(true);
     expect(colorful("#dfe1e5")).toBe(false);
-    expect(colorful("#808080")).toBe(false);
+    expect(toHsl("#ff0000")).toEqual({ h: 0, s: 1, l: 0.5 });
     for (const theme of [jigDark, jigLight]) {
       const palette = tagPalette(theme);
-      expect(palette.length).toBeGreaterThanOrEqual(4);
-      expect(palette.every((c) => c.startsWith("var(") || colorful(c))).toBe(true);
+      expect(palette).toHaveLength(TAG_HUES);
+      expect(new Set(palette).size).toBe(TAG_HUES);
+      expect(palette[0]).toMatch(/^hsl\(\d+ \d+% \d+%\)$/);
     }
+    // Dark themes get light colours, light themes darker ones.
+    const lightness = (c: string) => Number(/(\d+)%\)$/.exec(c)?.[1]);
+    expect(lightness(tagPalette(jigDark)[0]!)).toBeGreaterThan(lightness(tagPalette(jigLight)[0]!));
     expect(tagPalette(undefined)[0]).toBe("var(--color-accent)");
-    // Three oranges count once; blue, purple and green stay.
-    expect(distinctHues(["#e5c07b", "#6cb6ff", "#e0a458", "#cf8e6d", "#c792ea", "#8fbf7f"])).toEqual([
-      "#e5c07b",
-      "#6cb6ff",
-      "#c792ea",
-      "#8fbf7f",
-    ]);
   });
 });
