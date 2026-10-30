@@ -61,6 +61,11 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   const template = await preview(page, "sidebar.component.html");
   await expect(template.getByTestId("preview-mode-source")).toHaveAttribute("aria-selected", "true");
   await expect(template).toContainText("@if (open())");
+  // Edited with Angular's grammar; its @if block reads as a keyword.
+  await expect(template.getByTestId("editor-language")).toHaveText("Angular Template");
+  const block = template.locator(".cm-content span", { hasText: /^@if$/ });
+  await expect(block).toHaveCount(1);
+  await expect(block).toHaveAttribute("class", /\S/);
   await template.getByTestId("preview-mode-preview").click();
   await expect(template.getByTestId("preview-html")).toBeVisible();
 

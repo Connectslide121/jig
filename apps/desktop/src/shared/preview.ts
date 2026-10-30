@@ -129,3 +129,18 @@ export function isHtmlPage(path: string, text: string | undefined): boolean {
   if (!/<!doctype html|<html[\s>]|<head[\s>]|<body[\s>]/i.test(head)) return false;
   return !TEMPLATE_MARKS.some((mark) => mark.test(head));
 }
+
+/** Angular's own template syntax: control flow, structural directives, property and event bindings. */
+const ANGULAR_MARKS = [/@(if|for|switch|defer)\s*\(/, /\*ng[A-Z]/, /\s\[[\w.-]+\]=/, /\s\([\w.-]+\)=/];
+
+/**
+ * Whether an `.html` file is an Angular template, to edit with Angular's grammar (D-155): a
+ * `*.component.html`, or HTML with Angular's control flow, directives or bindings (`{{ }}` alone
+ * could be Vue or Jinja).
+ */
+export function isAngularTemplate(path: string, text: string): boolean {
+  if (/\.component\.html$/i.test(path)) return true;
+  if (!/\.html?$/i.test(path)) return false;
+  const head = text.slice(0, 20_000);
+  return ANGULAR_MARKS.some((mark) => mark.test(head));
+}

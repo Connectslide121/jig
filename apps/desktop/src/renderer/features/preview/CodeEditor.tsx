@@ -8,7 +8,6 @@ import {
   indentOnInput,
   indentUnit,
   LanguageDescription,
-  syntaxHighlighting,
   unfoldAll,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
@@ -39,11 +38,12 @@ import { ChevronDown, MoreHorizontal, Pilcrow, WrapText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { JigConfig } from "../../../shared/config";
 import { detectIndent, type Indent } from "../../../shared/indent";
+import { isAngularTemplate } from "../../../shared/preview";
 import { useAppearance } from "../../stores/appearance";
 import { updateConfig, useConfig } from "../../stores/config";
 import { cn, IconButton, openMenuAt } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
-import { themeHighlight } from "./editorSyntax";
+import { editorSyntax } from "./editorSyntax";
 
 /**
  * Colours from Jig's tokens, so the editor's frame follows the theme (Jig Dark, Jig Light or an
@@ -196,11 +196,14 @@ export function CodeEditor({
   // The file's own indentation; you can change it for this file from the status line.
   const [indent, setIndent] = useState<Indent>(() => detectIndent(value) ?? { kind: "spaces", size: 4 });
   const detected = useRef(false);
+  // An Angular template gets Angular's grammar and its control-flow blocks (D-155).
+  const angular = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the editor is made once per file; the rest updates below.
   useEffect(() => {
     if (!host.current) return;
     const p = parts.current;
+    angular.current = isAngularTemplate(path, value);
     const found = detectIndent(value);
     detected.current = Boolean(found);
     const first: Indent = found ?? { kind: "spaces", size: settings?.tabSize ?? 4 };
@@ -226,7 +229,7 @@ export function CodeEditor({
           highlightSelectionMatches(),
           search({ top: true }),
           guides,
-          p.syntax.of(syntaxHighlighting(themeHighlight(theme))),
+          p.syntax.of(editorSyntax(theme, angular.current)),
           p.language.of([]),
           p.wrap.of(settings?.wordWrap ? EditorView.lineWrapping : []),
           p.whitespace.of(
@@ -263,7 +266,9 @@ export function CodeEditor({
     view.current = v;
     setCursor(cursorOf(v.state));
     // The language loads on demand (only the one this file needs).
-    const lang = findLanguage(path, value);
+    const lang = angular.current
+      ? LanguageDescription.matchLanguageName(languages, "Angular Template", false)
+      : findLanguage(path, value);
     setLanguage(lang?.name);
     if (lang)
       void lang.load().then((support) => {
@@ -285,7 +290,7 @@ export function CodeEditor({
   // The theme and the editor settings apply to open editors right away.
   useEffect(() => {
     view.current?.dispatch({
-      effects: parts.current.syntax.reconfigure(syntaxHighlighting(themeHighlight(theme))),
+      effects: parts.current.syntax.reconfigure(editorSyntax(theme, angular.current)),
     });
   }, [theme]);
   useEffect(() => {

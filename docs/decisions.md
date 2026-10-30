@@ -1526,3 +1526,16 @@ Claude, on my own (how) · **Date:** 2026-10-30
   app, so they open as Source; Preview stays one click away. Decided once per tab, when the file
   loads (`isHtmlPage`, `shared/preview.ts`).
 
+### D-155 — Angular templates get Angular's grammar in the editor
+**Decided by:** Jon (asked for better highlighting; chose CodeMirror's Angular grammar over Shiki in
+the editor) and Claude, on my own (how) · **Date:** 2026-10-30
+
+- An `.html` file that is an Angular template (`*.component.html`, or Angular control flow,
+  `*ng…`, `[prop]=`, `(event)=`) opens with `@codemirror/lang-angular` (already in Jig through
+  `@codemirror/language-data`): interpolation, bindings and their expressions are coloured by the
+  theme like code. `{{ }}` alone doesn't decide it (Vue, Jinja).
+- `lang-angular` 0.1.4 (the newest) doesn't know the control-flow blocks, so `@if`, `@else`,
+  `@for`, `@empty`, `@switch`, `@case`, `@defer`, `@let`… are marked with the theme's keyword style
+  by a small decorator (`editorSyntax`).
+- Shiki in the editor (VS Code's exact grammars) stays an option if this isn't enough.
+

@@ -1,4 +1,13 @@
-import { HighlightStyle } from "@codemirror/language";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import type { Extension } from "@codemirror/state";
+import {
+  Decoration,
+  type DecorationSet,
+  type EditorView,
+  MatchDecorator,
+  ViewPlugin,
+  type ViewUpdate,
+} from "@codemirror/view";
 import { type JigTheme, type SyntaxKind, syntaxStyles } from "@jig/themes";
 import { type Tag, tags as t } from "@lezer/highlight";
 
@@ -88,4 +97,36 @@ export function themeHighlight(theme: JigTheme | undefined): HighlightStyle {
   const style = specs.length >= 3 ? HighlightStyle.define(specs) : FALLBACK;
   cache.set(theme, style);
   return style;
+}
+
+/**
+ * Angular's control-flow blocks (`@if`, `@else`, `@for`, `@switch`, `@defer`, `@let`…), which its
+ * CodeMirror grammar (0.1.x) doesn't know yet: marked as keywords, in the theme's keyword style.
+ */
+const BLOCKS =
+  /(?<=^|[\s}])@(?:else\s+if|if|else|for|empty|switch|case|default|defer|placeholder|loading|error|let)\b/g;
+
+function angularBlocks(style: HighlightStyle): Extension {
+  const decorator = new MatchDecorator({
+    regexp: BLOCKS,
+    decoration: Decoration.mark({ class: style.style([t.controlKeyword]) ?? style.style([t.keyword]) ?? "" }),
+  });
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      constructor(view: EditorView) {
+        this.decorations = decorator.createDeco(view);
+      }
+      update(update: ViewUpdate) {
+        this.decorations = decorator.updateDeco(update, this.decorations);
+      }
+    },
+    { decorations: (plugin) => plugin.decorations },
+  );
+}
+
+/** The editor's highlighting for a theme, with Angular's blocks for an Angular template (D-155). */
+export function editorSyntax(theme: JigTheme | undefined, angular: boolean): Extension {
+  const style = themeHighlight(theme);
+  return angular ? [syntaxHighlighting(style), angularBlocks(style)] : syntaxHighlighting(style);
 }
