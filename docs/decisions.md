@@ -1553,3 +1553,12 @@ can get it without the Shiki changes, revert them") and Claude, on my own (how) 
 - Shiki (VS Code's grammars) in the editor was built and tried, then reverted: it was only wanted
   for this, and it colours whole files (about 10 ms per KB), needing a worker.
 
+### D-157 — The logo without its tile
+**Decided by:** Jon ("remove the dark bg, just have the actual icon, the orange one, so it takes up
+more space… I don't want the black card or tile") · **Date:** 2026-10-30
+
+- The app icon (installer, taskbar, window) is the amber corner jig alone on a transparent
+  background, scaled to fill the image with a small margin; the graphite rounded square is gone.
+  The About page's logo follows. `make-icon.mjs` writes the `.ico` with every size Windows shows
+  (16–256 px), each drawn at its size.
+

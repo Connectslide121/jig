@@ -276,7 +276,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     list focuses it (status bar, Tools → Git actions).
   - Chats start in the project's default workspace, or anywhere you pick. Repos lists every
     workspace's repositories, whatever the project.
-- **Jig's logo:** the amber corner jig (an L-shaped fence holding a square) on graphite is the app icon (installer, taskbar, window) and appears in
+- **Jig's logo:** the amber corner jig (an L-shaped fence holding a square), with no tile behind it (D-157), is the app icon (installer, taskbar, window) and appears in
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
   see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
