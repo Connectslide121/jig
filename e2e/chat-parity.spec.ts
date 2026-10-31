@@ -25,6 +25,7 @@ test("composer: / commands, @ files, ! shell, # memory, history, Shift+Tab", asy
   await input.fill("/us");
   const picker = page.getByTestId("composer-picker");
   await expect(picker).toContainText("/usage");
+  await expect(picker).toBeInViewport();
   // A command without arguments runs on Enter, like in Claude Code.
   await page.keyboard.press("Enter");
   await expect(input).toHaveValue("");

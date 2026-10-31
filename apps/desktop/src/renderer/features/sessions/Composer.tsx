@@ -366,8 +366,11 @@ export function Composer({
   const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text ? [i.text] : []));
 
   return (
-    <div className="shrink-0 border-t border-line bg-canvas px-6 pt-2 pb-3">
-      <div className="mx-auto flex max-w-[var(--jig-chat-width)] flex-col gap-2">
+    <div
+      className="shrink-0 border-t border-line bg-canvas pt-2 pb-3"
+      style={{ paddingRight: "var(--jig-scrollbar-size)" }}
+    >
+      <div className="mx-auto flex max-w-[var(--jig-chat-width)] flex-col gap-2 px-6">
         {queue.length > 0 && (
           <div className="flex flex-col gap-1" data-testid="queue">
             <div className="text-2xs font-medium text-hint uppercase">Sends after this turn</div>

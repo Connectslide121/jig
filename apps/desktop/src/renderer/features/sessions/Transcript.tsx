@@ -530,6 +530,7 @@ export function Transcript({
       <div
         ref={ref}
         className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+        style={{ scrollbarGutter: "stable" }}
         onScroll={(e) => {
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;

@@ -62,8 +62,10 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
   the background until it runs.
 
 - **Chat overview** (chart button in the header, setting `chat.overview`, D-184): a small card at the
-  top right of the chat, in its own column beside the transcript (so it covers nothing; the composer
-  keeps the full width). It shows turns and time Claude worked, tool calls, files changed (+/−),
+  top right of the chat, in its own reserved column beside the conversation (D-189). The transcript,
+  queue and composer share a column and matching content edges. The overview's space stays reserved
+  when hidden and before the first message, so showing it never shifts the conversation. It shows
+  turns and time Claude worked, tool calls, files changed (+/−),
   skills, subagents, add-ons, MCP calls and tokens. An add-on is used when Claude calls one of its tools
   or Jig's tools for its data. **Show details** (or ⋯ → Chat overview…) opens a modal: tiles, then
   tables of tools (calls, failed), skills and commands, subagents (tools, tokens, time, status),

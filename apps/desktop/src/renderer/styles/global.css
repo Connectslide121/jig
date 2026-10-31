@@ -8,6 +8,7 @@
 
 @layer base {
   html {
+    --jig-scrollbar-size: 10px;
     font-size: var(--jig-font-size);
     color-scheme: dark;
   }
@@ -74,8 +75,8 @@
       -8px 0;
   }
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: var(--jig-scrollbar-size);
+    height: var(--jig-scrollbar-size);
   }
   ::-webkit-scrollbar-thumb {
     background: color-mix(in srgb, var(--jig-fg) 18%, transparent);

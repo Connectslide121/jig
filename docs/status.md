@@ -1,5 +1,12 @@
 # Status
 
+Chat alignment (2026-10-31): transcript and input now share a column and matching content edges.
+The overview card's column remains reserved when hidden and in empty/loading chats, preventing
+sideways movement as it appears or disappears. Work continues directly on `main` with logical commits.
+Validation: build and `npm run check` pass (592 tests, 8 skipped). Five fake-engine Electron checks
+pass, covering exact input/message alignment at narrow and wide widths, no movement when the overview
+is hidden or first appears, visible command pickers, queued messages, streaming and long-text overflow.
+
 Task entry (2026-10-31): Add tasks uses compact single-line prompt rows with inline filename chips.
 The attachment area reserves its width and scrolls horizontally; files never grow a row or move its
 controls. Click a filename to preview or × to remove; paste, drop and paperclip still work.

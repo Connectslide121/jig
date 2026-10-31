@@ -1898,7 +1898,7 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   used"). How it fits is **Claude, on my own**:
   - A small card at the top right of the chat, in its own narrow column beside the transcript: part of
     the chat's layout, so it never covers what Claude says, and only as tall as its content. The
-    composer keeps the full width.
+    composer originally kept the full width (superseded by D-189).
   - It counts turns, tool calls, files, skills, subagents, add-ons, MCP calls and tokens. An add-on
     counts as used when Claude calls one of its tools (`mcp__jig__addon_<id>_<tool>`, matched against
     the installed add-ons' tools) or Jig's tools for its data (`jig_get_addon_data`…, by `addonId`).
@@ -1964,3 +1964,14 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   (multiline text still works with internal scrolling). Filename chips with preview and remove actions
   sit beside the prompt in a reserved horizontal scroll area. Files cannot grow a row or shrink its
   prompt; paperclip and task menu columns stay aligned. Results and Edit keep their existing previews.
+
+## D-189: Keep the chat input aligned with its thread
+
+- Status: accepted. Decided by Jon ("the input area at the bottom to be aligned with the thread at
+  all times"). Implementation details are **Claude, on my own**: transcript, task panels and composer
+  share one column; transcript and composer use matching content padding and a reserved scrollbar
+  gutter. Composer padding shares the global scrollbar-size variable, keeping its pickers unclipped.
+  The overview column stays reserved while hidden, loading or empty, so its visibility never shifts
+  the conversation. Its details still open in a modal.
+- Jon also directed work to stay on `main`, with no new branches. The existing compact-task branch
+  was merged into `main`, and `AGENTS.md` now records this workflow alongside incremental commits.

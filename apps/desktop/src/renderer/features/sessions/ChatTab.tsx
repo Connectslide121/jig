@@ -167,35 +167,35 @@ export function ChatTab({ params, active, focused }: TabProps) {
         />
       )}
       {meta.needsLogin && <LoginBanner />}
-      {transcript ? (
-        transcript.items.length === 0 ? (
-          <ChatWelcome
-            title={`New chat${project ? ` in ${project.name}` : ""}`}
-            cwd={meta.cwd}
-            onPick={(text) => fillComposer(id, text)}
-          />
-        ) : (
-          <div className="flex min-h-0 flex-1">
-            <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col" data-testid="chat-conversation">
+          {transcript ? (
+            transcript.items.length === 0 ? (
+              <ChatWelcome
+                title={`New chat${project ? ` in ${project.name}` : ""}`}
+                cwd={meta.cwd}
+                onPick={(text) => fillComposer(id, text)}
+              />
+            ) : (
               <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
+            )
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner />
             </div>
-            {overview && (
-              <div className="shrink-0 pt-3 pr-3">
-                <ChatOverview meta={meta} items={transcript.items} onDetails={() => setDetails(true)} />
-              </div>
-            )}
+          )}
+          <div className="flex shrink-0 flex-col gap-1.5 pt-1.5 empty:hidden">
+            {transcript && <TodoPanel items={transcript.items} />}
+            <BackgroundTasks meta={meta} />
           </div>
-        )
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <Spinner />
+          <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
         </div>
-      )}
-      <div className="flex shrink-0 flex-col gap-1.5 pt-1.5 empty:hidden">
-        {transcript && <TodoPanel items={transcript.items} />}
-        <BackgroundTasks meta={meta} />
+        <div className="box-content w-52 shrink-0 pt-3 pr-3" data-testid="chat-overview-slot">
+          {overview && transcript && transcript.items.length > 0 && (
+            <ChatOverview meta={meta} items={transcript.items} onDetails={() => setDetails(true)} />
+          )}
+        </div>
       </div>
-      <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
       <ChatDetailsDialog
         meta={meta}
         items={transcript?.items ?? []}

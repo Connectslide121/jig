@@ -78,3 +78,7 @@ Panel view tabs (Files, Pipelines, etc.) use `h-7`, `text-sm` and `size-4` icons
 Regular text buttons use `text-sm` with `leading-none` and a non-shrinking `size-4` icon. Composer model/permission controls use the same text size and `size-3.5` icons. Panel view tabs use `text-sm`; toolbar icon-only buttons keep their larger sizes.
 
 Menu hover/keyboard selection uses bg-accent-soft with an inset ring-accent/60 outline, rather than bg-hover against the elevated menu surface. The ring does not affect layout; disabled items do not receive this highlight. The all-tools picker uses the same treatment.
+
+`--jig-scrollbar-size` in `styles/global.css` defines the shared scrollbar thickness. The transcript
+reserves its gutter with `scrollbar-gutter: stable`; the composer reserves the same width with padding,
+keeping its content aligned while allowing command/file pickers to extend above it without clipping.

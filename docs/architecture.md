@@ -195,6 +195,10 @@ grants, never from arbitrary paths. Reference: `docs/reference/preview.md`.
 **The chat.** It follows Claude Code's own UI: `/` commands and skills, `@` files, `!` shell, `#`
 memory, history, modes, steering a running turn, rewind, todos, plans, diffs, subagents, background
 tasks, MCP status and effort, all also in menus. Reference: `docs/reference/chat.md`.
+The transcript and composer share one conversation column, with matching content widths, padding
+and a reserved scrollbar gutter (the composer uses `--jig-scrollbar-size` padding so its pickers can
+extend above the input without clipping). The overview card has a permanently reserved column alongside it,
+including empty/loading chats and when hidden, so its visibility never moves the conversation (D-189).
 
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in Claude's browser: one offscreen

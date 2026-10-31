@@ -210,8 +210,13 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
   const tab = page.locator("[data-tab-id]:not(.hidden)");
+  const conversation = tab.getByTestId("chat-conversation");
+  const emptyChat = await conversation.boundingBox();
   await say(page, "use a skill to explain the code");
   await expect(tab.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
+  const populatedChat = await conversation.boundingBox();
+  expect(populatedChat!.x).toBe(emptyChat!.x);
+  expect(populatedChat!.width).toBe(emptyChat!.width);
   await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
   await page.keyboard.press("Enter");
   await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
@@ -220,6 +225,19 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
   await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
+  // The input and messages share their edges, both below and above the max chat width.
+  for (const width of [1100, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(async () => {
+      const message = await tab.getByTestId("assistant-message").first().boundingBox();
+      const composer = await tab.getByTestId("composer").boundingBox();
+      expect(Math.abs(message!.x - composer!.x)).toBeLessThan(1);
+      expect(Math.abs(message!.width - composer!.width)).toBeLessThan(1);
+    }).toPass();
+  }
+  const beforeHide = await tab.getByTestId("composer").boundingBox();
+  const messageBeforeHide = await tab.getByTestId("assistant-message").first().boundingBox();
+  await page.screenshot({ path: "test-results/chat-aligned-overview.png" });
   await card.getByTestId("chat-overview-details").click();
   const details = page.getByTestId("chat-details-dialog");
   await expect(details.getByTestId("chat-details-tools")).toContainText("Skill");
@@ -236,6 +254,8 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await page.keyboard.press("Escape");
   await tab.getByTestId("chat-overview-toggle").click();
   await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
+  expect(await tab.getByTestId("composer").boundingBox()).toEqual(beforeHide);
+  expect(await tab.getByTestId("assistant-message").first().boundingBox()).toEqual(messageBeforeHide);
   const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
   expect(config.value.chat.overview).toBe(false);
   // Jig learns from it too: "How Claude worked for you" sums it over all chats (D-185).
