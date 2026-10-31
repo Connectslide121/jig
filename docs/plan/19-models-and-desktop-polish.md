@@ -42,6 +42,7 @@
 - [x] Remove the duplicate Tools dropdown; use grouped menus and one shared search, including add-on actions.
 - [x] Keep search visible in the center of the top bar with results immediately beneath it.
 - [x] Remove duplicate divider footers inside pipeline cards; retain side divider buttons.
+- [x] Page Chats by ten including pins, retain all pins above ten, and move view type to the options submenu.
 - [x] Scripts like the scripts plugin: running list, groups with Start/Stop, folder → repository → package tree (D-142)
 - [x] Notes as a built-in add-on: per-chat notes you and Claude write (D-147)
 - [x] Pipelines like the pipelines plugin: your repositories' pipelines, newest run and stages, a Run

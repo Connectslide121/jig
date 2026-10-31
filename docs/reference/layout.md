@@ -187,3 +187,9 @@ Top-bar menus form one menu bar: click to open a group, then hovering another gr
 Menus survive window blur (including the Windows screenshot overlay). Escape, selecting an action and clicking outside within Jig still dismiss them.
 
 Jig-wide actions appear once in the main Jig logo/name menu; the duplicate Jig group button is omitted. The main menu derives those actions from the existing registry and adds Keyboard shortcuts/Extension slots.
+
+Chats shows ten chats per group initially, including pinned chats. All pinned chats remain visible
+when there are more than ten. **Show more** adds up to ten unpinned chats at a time; each group keeps
+its own expanded count while the view stays mounted. The header has New chat and the view's ⋯ menu.
+**⋯ → View type** offers By project, By status, By day and One list. Chats board and Claude Code import
+remain in the Chats top-bar menu and search (D-193).

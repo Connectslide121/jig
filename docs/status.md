@@ -1,5 +1,11 @@
 # Status
 
+Chats list (2026-10-31): ten chats per group initially, including pins; all pins stay visible above
+ten. Show more reveals ten more at a time. The header now has only New chat and ⋯; View type is a
+submenu in ⋯. Chats board and Open a Claude Code chat remain in the Chats top-bar menu and search.
+Validation: `npm run check` passes (595 tests, 8 skipped). Electron checks cover ordinary and >10-pin
+paging, View type, board/import access, shared search and stable anchored results at two window widths.
+
 Search bar (2026-10-31): search is always visible in the center of the top bar. Results drop from
 directly beneath it; Ctrl+P/Ctrl+K focus it. Escape/outside clicks close results without moving content.
 
@@ -7,7 +13,7 @@ Pipeline arrangement (2026-10-31): nested cards no longer show the duplicate Add
 Use the small side divider icon; the outer list retains its footer.
 
 Menus (2026-10-31): the duplicate Tools dropdown is removed. Use the grouped top-bar menus or the
-magnifier's Go to search (Ctrl+P and Ctrl+K). `tools.action` add-ons remain available in those menus
+top-bar Go to search (Ctrl+P and Ctrl+K). `tools.action` add-ons remain available in those menus
 and search, including a dedicated menu for their own groups; no action is exclusive to the old picker.
 
 Chat alignment (2026-10-31): transcript and input now share a column and matching content edges.
@@ -44,7 +50,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
-- Navigation and layouts (D-175, D-176): **Ctrl+P** (or the magnifier in the top bar) opens Go to:
+- Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
   moving the same way and suggests placing them.
@@ -376,7 +382,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     - **Home:** with no tab open, a project shows a box that starts a chat, starter prompts, recent
       chats with their status, and "Next steps" tiles. It is also the project dashboard.
     - **New chat** is a button in the top bar.
-    - **Ctrl+K** opens the Tools menu.
+    - **Ctrl+K** focuses the top-bar search field.
     - **Tabs** show a dot when their chat works, needs you, failed, or finished while you looked
       elsewhere.
   - **In a chat:**

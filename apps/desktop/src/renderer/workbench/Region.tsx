@@ -21,8 +21,11 @@ const regionIcons = {
 
 export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
   const owner = useRegistry.getState().views[viewId]?.owner;
+  const entries = useRegistry.getState().views[viewId]?.headerMenu?.() ?? [];
   const addonId = owner && owner !== "core" ? owner : undefined;
   return [
+    ...entries,
+    ...(entries.length ? [{ separator: true } as const] : []),
     ...(addonId
       ? [
           {

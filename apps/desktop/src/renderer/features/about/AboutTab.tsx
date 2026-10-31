@@ -582,6 +582,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Paste screenshots, drop PDFs, Word, Excel and PowerPoint files",
                 "Permission cards: allow once, always, or deny",
                 "Queue messages while Claude works",
+                "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
@@ -691,7 +692,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
                 "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
                 "Named layouts: save how the views are arranged and switch between them (View → Layout → Layouts)",
-                "Go to (Ctrl+P, or the magnifier in the top bar): any chat, view, action or file",
+                "Search in the center of the top bar (Ctrl+P or Ctrl+K): any chat, view, action or file, with results directly below",
                 "Right-click a file to open it in VS Code or ask Claude about it",
               ]}
             />

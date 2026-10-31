@@ -1,10 +1,29 @@
 import { describe, expect, it } from "vitest";
 import type { SessionMeta } from "../../../shared/engine";
-import { groupChats, movePinned, pinnedInOrder, sortChats } from "./grouping";
+import { chatPage, groupChats, movePinned, pinnedInOrder, sortChats } from "./grouping";
 
 const chat = (id: string, patch: Partial<SessionMeta> = {}) =>
   ({ id, title: id, status: "idle", updatedAt: "2026-10-30T10:00:00.000Z", ...patch }) as SessionMeta;
 const now = new Date("2026-10-30T12:00:00");
+
+describe("chatPage", () => {
+  it("counts pinned chats toward ten and expands ten at a time", () => {
+    const chats = Array.from({ length: 25 }, (_, i) => chat(String(i), { pinned: i < 3 }));
+    expect(chatPage(chats).chats).toEqual(chats.slice(0, 10));
+    expect(chatPage(chats).remaining).toBe(15);
+    expect(chatPage(chats, 1).chats).toEqual(chats.slice(0, 20));
+    expect(chatPage(chats, 2)).toEqual({ chats, remaining: 0 });
+  });
+  it("shows all pins even above ten, then expands unpinned chats by ten", () => {
+    const chats = Array.from({ length: 30 }, (_, i) => chat(String(i), { pinned: i < 12 }));
+    expect(chatPage(chats).chats).toEqual(chats.slice(0, 12));
+    expect(chatPage(chats, 1).chats).toEqual(chats.slice(0, 22));
+  });
+  it("handles empty and short lists without a remaining count", () => {
+    expect(chatPage([])).toEqual({ chats: [], remaining: 0 });
+    expect(chatPage([chat("one")])).toEqual({ chats: [chat("one")], remaining: 0 });
+  });
+});
 
 describe("pinned order", () => {
   const list = [

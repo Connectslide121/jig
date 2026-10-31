@@ -1,5 +1,6 @@
-import { PanelTop } from "lucide-react";
+import { MoreHorizontal, PanelTop } from "lucide-react";
 import { VIEW_TAB } from "../../shared/layout";
+import { IconButton, openMenuAt } from "../ui";
 import { registerTabType, type TabProps, useRegistry } from "./registry";
 
 const viewIdOf = (params: Record<string, unknown>) => String(params.viewId ?? "");
@@ -13,9 +14,18 @@ function ViewTab({ params }: TabProps) {
   const HeaderActions = view.headerActions;
   return (
     <div className="flex h-full flex-col bg-surface" data-testid={`view-in-main-${id}`}>
-      {HeaderActions && (
+      {(HeaderActions || view.headerMenu) && (
         <header className="flex h-8 shrink-0 items-center justify-end gap-0.5 border-b border-line px-1.5">
-          <HeaderActions viewId={id} region="main" />
+          {HeaderActions && <HeaderActions viewId={id} region="main" />}
+          {view.headerMenu && (
+            <IconButton
+              icon={MoreHorizontal}
+              label={`${view.title} options`}
+              size="sm"
+              data-testid={`view-menu-${id}`}
+              onClick={(e) => openMenuAt(e.currentTarget, view.headerMenu!(), true)}
+            />
+          )}
         </header>
       )}
       <div className="min-h-0 flex-1 overflow-hidden">

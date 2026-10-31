@@ -30,6 +30,14 @@ export interface ChatGroup {
   headerless?: boolean;
 }
 
+/** Ten chats initially, counting pins; all pins stay visible. Each expansion adds ten more. */
+export function chatPage(chats: SessionMeta[], expansions = 0): { chats: SessionMeta[]; remaining: number } {
+  const pinned = chats.filter((m) => m.pinned);
+  const limit = Math.max(10, pinned.length) + Math.max(0, expansions) * 10;
+  const visible = [...pinned, ...chats.filter((m) => !m.pinned).slice(0, limit - pinned.length)];
+  return { chats: visible, remaining: chats.length - visible.length };
+}
+
 /** Pinned chats in the order you gave them (not listed: after them, newest first). */
 export function pinnedInOrder(metas: SessionMeta[], pinnedOrder: string[]): SessionMeta[] {
   const rank = new Map(pinnedOrder.map((id, i) => [id, i]));

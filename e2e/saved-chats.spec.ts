@@ -4,7 +4,8 @@ test("Open a Claude Code chat: its history in No project, continued as a copy, t
   page,
 }) => {
   await page.getByTestId("view-tab-jig.sessions").click();
-  await page.getByTestId("open-saved-chat").click();
+  await page.getByTestId("tools-group-Chats").click();
+  await page.getByRole("menuitem", { name: "Open a Claude Code chat…", exact: true }).click();
   const dialog = page.getByTestId("saved-chats");
   await expect(dialog.getByTestId("saved-chat-Fix the cart total")).toContainText("main");
   await expect(dialog.getByTestId("saved-chat-Plan the checkout")).toBeVisible();
@@ -33,7 +34,8 @@ test("Open a Claude Code chat: its history in No project, continued as a copy, t
   expect(opened.projectId).toBeUndefined();
 
   // Opened once: the list says it's in Jig and opens that chat.
-  await page.getByTestId("open-saved-chat").click();
+  await page.getByTestId("tools-group-Chats").click();
+  await page.getByRole("menuitem", { name: "Open a Claude Code chat…", exact: true }).click();
   await expect(dialog.getByTestId("saved-chat-open-Fix the cart total")).toContainText("In Jig");
   await dialog.getByTestId("saved-chat-open-Fix the cart total").click();
   const after = (await hostCall(page, "sessions.list")) as { value: Array<Record<string, unknown>> };

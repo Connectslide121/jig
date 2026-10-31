@@ -1,4 +1,10 @@
-import { MessageSquare, MessageSquarePlus, MessagesSquare, SquareKanban } from "lucide-react";
+import {
+  MessageSquare,
+  MessageSquarePlus,
+  MessageSquareShare,
+  MessagesSquare,
+  SquareKanban,
+} from "lucide-react";
 import { useEffect } from "react";
 import { useHostEvent } from "../../lib/host";
 import { useProjects } from "../../workbench/projects";
@@ -7,10 +13,18 @@ import { workbench } from "../../workbench/store";
 import { newSession } from "./actions";
 import { ChatsBoard } from "./ChatsBoard";
 import { ChatTab } from "./ChatTab";
-import { SessionsHeaderActions, SessionsView } from "./SessionsView";
+import { openSavedChatsDialog } from "./SavedChatsDialog";
+import { SessionsHeaderActions, SessionsView, sessionsHeaderMenu } from "./SessionsView";
 import { applySessionUpdates, loadSessions, useSeenTurns, useSessions } from "./store";
 
 export function registerSessions(): void {
+  registerAction({
+    id: "jig.openSavedChat",
+    title: "Open a Claude Code chat…",
+    group: "Chats",
+    icon: MessageSquareShare,
+    run: openSavedChatsDialog,
+  });
   registerView({
     id: "jig.sessions",
     title: "Chats",
@@ -18,6 +32,7 @@ export function registerSessions(): void {
     defaultRegion: "left",
     component: SessionsView,
     headerActions: SessionsHeaderActions,
+    headerMenu: sessionsHeaderMenu,
     owner: "core",
   });
   registerTabType({

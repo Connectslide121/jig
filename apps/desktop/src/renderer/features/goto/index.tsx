@@ -14,7 +14,7 @@ import { useSessions } from "../sessions/store";
 
 /**
  * Go to… (Ctrl+P, D-176): chats, views, actions and the active project's files in one list. A menu
- * you see (the magnifier in the top bar), not a command line: typing only filters.
+ * you see (the search field in the top bar), not a command line: typing only filters.
  */
 const useGoTo = create<{ open: boolean; query: string; index: number }>(() => ({
   open: false,

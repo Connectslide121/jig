@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { create } from "zustand";
 import type { SideRegion } from "../../shared/layout";
+import type { MenuEntry } from "../ui/Menu";
 import { recordUi } from "./recordUi";
 
 /**
@@ -22,6 +23,8 @@ export interface ViewDef {
   component: ComponentType<ViewProps>;
   /** Extra buttons in the region header while this view is active. */
   headerActions?: ComponentType<ViewProps>;
+  /** View-specific entries prepended to its options menu. */
+  headerMenu?: () => MenuEntry[];
   /** `core` or the add-on id. */
   owner?: string;
   /** Open its region the first time it is placed (views of add-ons you built). */

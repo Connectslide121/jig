@@ -5,11 +5,9 @@ import {
   Clock,
   ListFilter,
   MessageSquarePlus,
-  MessageSquareShare,
   MoreHorizontal,
   Pin,
   PinOff,
-  SquareKanban,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
@@ -17,15 +15,20 @@ import { call } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { cn, contextMenu, Empty, IconButton, ListRow, type MenuEntry, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
-import { runAction } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { ProjectSwatch, projectDotClass } from "../projects/colors";
 import { newSession } from "./actions";
-import { CHAT_LIST_VIEWS, type ChatGroup, type GroupMark, groupChats, movePinned } from "./grouping";
+import {
+  CHAT_LIST_VIEWS,
+  type ChatGroup,
+  chatPage,
+  type GroupMark,
+  groupChats,
+  movePinned,
+} from "./grouping";
 import { sessionMenu } from "./menus";
 import { showProjectOf } from "./project";
-import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { useSessions } from "./store";
 
@@ -66,6 +69,7 @@ export function SessionsView() {
   const pinnedOrder = useConfig((s) => s.config?.chatList.pinnedOrder) ?? [];
   const activeTab = useWorkbench((s) => s.layout?.main.tabs.find((t) => t.id === s.layout?.main.active));
   const [showArchived, setShowArchived] = useState(false);
+  const [expansions, setExpansions] = useState<Record<string, number>>({});
   // Groups opened or closed by hand; by default only the active project and "No project" are open.
   const [toggled, setToggled] = useState<Record<string, boolean>>({});
   const [dropOn, setDropOn] = useState<string>();
@@ -184,6 +188,7 @@ export function SessionsView() {
     const key = `${view}:${g.key}`;
     const isOpen = toggled[key] ?? (view !== "project" || g.key === "none" || g.projectId === activeId);
     const projectId = g.projectId || undefined;
+    const page = chatPage(g.chats, expansions[key] ?? 0);
     return (
       <div
         key={key}
@@ -246,7 +251,17 @@ export function SessionsView() {
             {projectId ? "No chats — drag one here or start a new one" : "Chats you take out of a project"}
           </div>
         )}
-        {isOpen && g.chats.map((m) => row(m, !g.headerless))}
+        {isOpen && page.chats.map((m) => row(m, !g.headerless))}
+        {isOpen && page.remaining > 0 && (
+          <button
+            type="button"
+            className="ml-7 flex h-7 items-center gap-1.5 px-2 text-xs text-muted hover:text-fg"
+            data-testid={`chat-show-more-${g.key}`}
+            onClick={() => setExpansions((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }))}
+          >
+            Show {Math.min(10, page.remaining)} more ({page.remaining} remaining)
+          </button>
+        )}
       </div>
     );
   };
@@ -273,49 +288,33 @@ export function SessionsView() {
   );
 }
 
+export function sessionsHeaderMenu(): MenuEntry[] {
+  const view = useConfig.getState().config?.chatList.view ?? "project";
+  return [
+    {
+      label: "View type",
+      icon: ListFilter,
+      testId: "chat-list-view",
+      submenu: CHAT_LIST_VIEWS.map((v) => ({
+        label: v.label,
+        checked: v.value === view,
+        testId: `chat-view-${v.value}`,
+        onSelect: () => void updateConfig({ chatList: { view: v.value } }),
+      })),
+    },
+  ];
+}
+
 export function SessionsHeaderActions() {
   const activeId = useProjects((s) => s.activeId);
-  const view = useConfig((s) => s.config?.chatList.view) ?? "project";
-  const viewMenu = (): MenuEntry[] => [
-    { heading: "Group chats" },
-    ...CHAT_LIST_VIEWS.map((v) => ({
-      label: v.label,
-      checked: v.value === view,
-      testId: `chat-view-${v.value}`,
-      onSelect: () => void updateConfig({ chatList: { view: v.value } }),
-    })),
-  ];
   return (
-    <>
-      <IconButton
-        icon={ListFilter}
-        label="Group chats…"
-        size="sm"
-        data-testid="chat-list-view"
-        onClick={(e) => openMenuAt(e.currentTarget, viewMenu(), true)}
-      />
-      <IconButton
-        icon={SquareKanban}
-        label="Chats board: every chat by what it needs"
-        size="sm"
-        data-testid="open-chats-board"
-        onClick={() => runAction("jig.chatsBoard")}
-      />
-      <IconButton
-        icon={MessageSquareShare}
-        label="Open a Claude Code chat…"
-        size="sm"
-        data-testid="open-saved-chat"
-        onClick={openSavedChatsDialog}
-      />
-      <IconButton
-        icon={MessageSquarePlus}
-        label={`New chat (${formatShortcut("Mod+N")})`}
-        size="sm"
-        data-testid="new-session"
-        disabled={!activeId}
-        onClick={() => activeId && void newSession(activeId)}
-      />
-    </>
+    <IconButton
+      icon={MessageSquarePlus}
+      label={`New chat (${formatShortcut("Mod+N")})`}
+      size="sm"
+      data-testid="new-session"
+      disabled={!activeId}
+      onClick={() => activeId && void newSession(activeId)}
+    />
   );
 }

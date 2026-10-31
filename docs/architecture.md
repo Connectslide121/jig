@@ -299,6 +299,8 @@ shared **Go to** search (search field, Ctrl+P or Ctrl+K), toasts and keyboard sh
 also an action in a menu). `renderer/features/<feature>/` registers its views, tabs and actions
 (`features/index.ts`). Views, tabs and status items each render inside an error boundary. Tab bodies
 stay mounted once opened, so a chat or terminal keeps its state while you switch tabs.
+Core `ViewDef.headerMenu()` contributes view-specific entries to a sidebar's existing ⋯ menu and
+to the view's options menu when opened as a main tab. Chats uses it for the View type submenu (D-193).
 
 ## 7. Design system and themes
 

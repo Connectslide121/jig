@@ -2003,3 +2003,16 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   owns the query. Go to results appear in an overlay directly below it, following its position on
   resize without changing the workbench layout. Ctrl+P/Ctrl+K focus the same field; arrows select,
   Enter opens, Escape/outside clicks close results. Clearing/closing resets the query.
+
+## D-193: A shorter Chats list and header
+
+- Status: accepted. Decided by Jon: ten chats per project, counting pinned chats, Show more adds ten,
+  and more than ten pinned chats must all stay visible. Remove board/import icons from the header;
+  keep New chat, and place view choices in a submenu in the existing ⋯ menu.
+- Implementation details are **Claude, on my own**: each grouping uses the same paging rule, and
+  expansion is local to each group while mounted. `chatPage` preserves all pinned chats and fills
+  the remaining ten-chat budget from the existing recent order. Data and archived-chat filtering
+  are unchanged. Board stays in the Chats top-bar menu and search. Import, previously only wired
+  to the header button, is registered as `jig.openSavedChat` so it is available in both too.
+- A generic core `ViewDef.headerMenu()` supplies view-specific entries to the sidebar and main-tab
+  options menus. Chats supplies View type → By project / By status / By day / One list there.
