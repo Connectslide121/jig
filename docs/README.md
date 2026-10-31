@@ -31,7 +31,7 @@ root [`README.md`](../README.md).
 | [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |
 | [usage.md](reference/usage.md) | Plan usage (5-hour and weekly windows) |
-| [layout.md](reference/layout.md) | Layout as data, regions, views and sections, split view, tabs, where views start, shortcuts |
+| [layout.md](reference/layout.md) | Layout as data, regions, split sidebars, views, reset, split view, tabs, where views start, shortcuts |
 | [slots.md](reference/slots.md) | The 17 extension slots |
 | [addon-api.md](reference/addon-api.md) | The add-on API (`ctx`), manifest and permissions |
 | [builder.md](reference/builder.md) | The builder: levels, jobs, worktrees, validation, proposals |
@@ -49,13 +49,14 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | Add-on | What it does |
 |---|---|
 | [Git](../addons/git/README.md) | Git for the project's repositories: changes, commits, branches, history, diffs, Claude's help |
-| [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push |
+| [Repos](../addons/repos/README.md) | Every repository at a glance, with fetch/pull/push and a branch switcher |
 | [Files](../addons/files/README.md) | The project's file tree with git colours |
 | [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
 | [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |
 | [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
 | [Notes](../addons/notes/README.md) | Short notes for the chat you're in, written by you and by Claude |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
+| [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
 
 ## Guides (how-tos)
 

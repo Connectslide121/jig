@@ -544,7 +544,7 @@ function CommitBox({
         });
         return;
       }
-      const answer = await ctx.ai.ask(commitMessagePrompt(c), { cwd: project.path });
+      const answer = await ctx.ai.ask(commitMessagePrompt(c), { cwd: project.path, quick: true });
       setMessage(cleanMessage(answer));
     } catch (error) {
       ctx.notify({ title: "Couldn't write the message", message: (error as Error).message, tone: "danger" });

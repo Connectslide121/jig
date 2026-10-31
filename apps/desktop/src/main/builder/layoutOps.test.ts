@@ -10,16 +10,16 @@ const views = [
 const ids = views.map((v) => v.id);
 
 describe("applyLayoutOps", () => {
-  it("shows a view below another and moves it back to its own tab", () => {
+  it("shows a view beside another, in the lower half of its sidebar, and moves it back", () => {
     const layout = normalizeLayout(defaultLayout(), views);
     const below = applyLayoutOps(
       layout,
       [{ op: "below", view: "addon.repos.overview", host: "addon.git.git" }],
       ids,
     );
-    expect(below.sections).toEqual({ "addon.git.git": ["addon.repos.overview"] });
+    expect(below.left2.views).toEqual(["addon.repos.overview"]);
     const own = applyLayoutOps(below, [{ op: "move", view: "addon.repos.overview", region: "right" }], ids);
-    expect(own.sections).toEqual({});
+    expect(own.left2.views).toEqual([]);
     expect(own.right.views).toEqual(["addon.repos.overview"]);
   });
 
@@ -31,5 +31,14 @@ describe("applyLayoutOps", () => {
     expect(() => applyLayoutOps(layout, [{ op: "below", view: "addon.repos.overview" }], ids)).toThrow(
       "Incomplete",
     );
+  });
+
+  it("saves and switches to named layouts", () => {
+    const layout = normalizeLayout(defaultLayout(), views);
+    const saved = applyLayoutOps(layout, [{ op: "save", name: "Review" }], ids);
+    const moved = applyLayoutOps(saved, [{ op: "move", view: "addon.git.git", region: "right" }], ids);
+    const back = applyLayoutOps(moved, [{ op: "use", name: "Review" }], ids);
+    expect(back.left.views).toContain("addon.git.git");
+    expect(() => applyLayoutOps(back, [{ op: "use", name: "Nope" }], ids)).toThrow('No layout named "Nope"');
   });
 });

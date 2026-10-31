@@ -37,15 +37,18 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
-- **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. Action groups each have their own top-bar menu.
+- **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
-  needs you.
+  needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.
+- **A task queue.** Queue prompts (or ask Claude to make one task per spec); Claude does them in order,
+  each in a new chat or continuing the one before, and reports how each went — outcome, summary,
+  things to know, follow-ups — in one table with links to the chats.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
   default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
   between them; pin the ones you keep.
 - **Open your whole repos folder.** A folder of repositories works as one workspace: one Git panel that
   follows the repo you work in (show others next to it when you need them, Repos below for all of
-  them at a glance), every repo's scripts, and chats that can look at another repo for inspiration.
+  them at a glance, with fetch, pull, push and a branch switcher), every repo's scripts, and chats that can look at another repo for inspiration.
 - **Files and a real editor.** The project's tree with git colours, and code that is editable right in
   Preview: your theme's code colours, indentation guides, closing brackets, several cursors, folding,
   find and replace, go to line and a status line. Two tabs side by side when you need both.
@@ -54,10 +57,12 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   and releases in one action; it warns when production gets a build without a version.
 - **Jig learns how you work.** Locally, it notices what you repeat, what slows you down and what you
   tell Claude you do by hand, and suggests what would help: a tool, a **workflow**, a CLAUDE.md line, a
-  routine, a tip. One page shows everything it knows, and you can edit or delete it.
+  routine, a tip. One page shows everything it knows, and you can edit or delete it. Workflows can run
+  on a schedule, after you push, or when a pipeline finishes.
 - **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
   an add-on. You review it before it's kept. When an add-on can't do it, the builder writes a
-  development request (spec, prompt, mockup) that one button emails to the developers.
+  development request (spec, prompt, mockup) that one button emails to the developers. Share add-ons
+  as a file, or install them from an **add-on gallery**: a git repository or folder your team keeps.
 - **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
   worktree and from its own angle; Claude judges the results and you keep the best.
 - **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig,
@@ -229,8 +234,13 @@ And more:
   - A standup written from your commits and chats.
   - Desktop notifications when a chat needs you.
 - **The workbench:**
-  - Resizable panes, and views shown below another as collapsible sections.
-  - A scripts runner with groups, and Azure DevOps pipelines — hide, reorder and group them.
+  - **Go to** (Ctrl+P): jump to any chat, view, action or file.
+  - Resizable panes, split sidebars (a lower half with its own tabs), named layouts to switch
+    between, and Reset layout.
+  - Drag any view anywhere: a sidebar, the bottom panel or the main area as a tab. Views you use now
+    and then (Releases, Workflows, Links, Suggestions) open as tabs from the menus.
+  - A scripts runner with groups, and Azure DevOps pipelines as compact rows (details in a dialog) —
+    hide, reorder and group them.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
   - A Tools menu with keyboard shortcuts.
 
@@ -269,8 +279,8 @@ They can plug into 17 places:
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 
-Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases** and
-**Workflows** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
+Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Notes**,
+**Workflows** and **Tasks** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
 reference: [`docs/reference/slots.md`](docs/reference/slots.md),
 [`docs/reference/addon-api.md`](docs/reference/addon-api.md).
 

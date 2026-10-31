@@ -14,6 +14,7 @@ import {
   frictionPatterns,
   pastePatterns,
   unusedToolPatterns,
+  viewHabitPatterns,
 } from "./signals";
 
 const ev = (day: number, kind: ActivityEvent["kind"], text: string, detail?: Record<string, string>) => ({
@@ -166,5 +167,37 @@ describe("derived friction", () => {
     expect(derivedFriction(hops).map((e) => e.detail?.signal)).toEqual(["hopping"]);
     const patterns = frictionPatterns([...chat(1, "a"), ...chat(4, "c"), ...chat(5, "d")]);
     expect(patterns.map((p) => p.summary)).toEqual(["A long chat ended without a commit"]);
+  });
+});
+
+describe("what you do in Jig's UI", () => {
+  const open = (day: number) =>
+    ev(day, "ui", "open Releases as a tab", {
+      op: "open-tab",
+      view: "addon.releases.releases",
+      title: "Releases",
+    });
+
+  it("spots a view you keep opening as a tab, until you move it to a sidebar", () => {
+    const events = [1, 2, 3, 3].map(open);
+    const [p] = viewHabitPatterns(events);
+    expect(p).toMatchObject({ kind: "view-habit", count: 4, days: 3 });
+    expect(p!.summary).toContain("Releases");
+    const moved = ev(4, "ui", "move Releases to left", {
+      op: "move",
+      view: "addon.releases.releases",
+      region: "left",
+    });
+    expect(viewHabitPatterns([...events, moved])).toEqual([]);
+    expect(viewHabitPatterns([1, 2, 3].map(open))).toEqual([]);
+  });
+
+  it("finds a sequence of a git push and opening a view", () => {
+    const events = [1, 2, 3].flatMap((day) => [
+      { ...ev(day, "terminal.command", "git push"), at: `2026-10-0${day}T10:00:00.000Z` },
+      { ...open(day), at: `2026-10-0${day}T10:01:00.000Z` },
+    ]);
+    const sequence = mine(events).find((p) => p.kind === "sequence");
+    expect(sequence?.summary).toMatch(/git push → jig: open releases as a tab/i);
   });
 });

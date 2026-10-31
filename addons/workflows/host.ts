@@ -3,10 +3,15 @@ import { join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
   describeWorkflow,
+  type EventTrigger,
+  eventFires,
   isDue,
+  isEventTrigger,
   markStep,
   newRun,
   nextStep,
+  pipelineResultMatches,
+  pushMark,
   type Run,
   runsUnattended,
   type Step,
@@ -21,8 +26,9 @@ import {
 
 /**
  * Workflows (D-112): stored per project in this add-on's storage (private to you, in `~/.jig`). Runs
- * are driven by the workflow tab; commands and pipelines run here. Schedules fire while Jig is open:
- * a workflow Jig can do alone runs; otherwise you get a notification to start it.
+ * are driven by the workflow tab; commands and pipelines run here. Schedules and events (a push, a
+ * pipeline finishing; D-177) fire while Jig is open: a workflow Jig can do alone runs; otherwise you
+ * get a notification to start it.
  */
 const key = (projectId: string) => `workflows:${projectId}`;
 
@@ -119,8 +125,13 @@ export async function exportSkill(
 }
 
 /** Runs an unattended workflow (every step an automatic command or pipeline) here, start to end. */
-async function runUnattended(wf: Workflow, folder: string, api: AddonHostApi): Promise<Run> {
-  let run = newRun(wf, "schedule");
+async function runUnattended(
+  wf: Workflow,
+  folder: string,
+  api: AddonHostApi,
+  by: Run["by"] = "schedule",
+): Promise<Run> {
+  let run = newRun(wf, by);
   await saveRun({ run }, api);
   for (let next = nextStep(wf, run); next; next = nextStep(wf, run)) {
     const s = next.step;
@@ -134,32 +145,121 @@ async function runUnattended(wf: Workflow, folder: string, api: AddonHostApi): P
   return run;
 }
 
-/** Watcher (every minute): scheduled workflows that are due. */
+/** Runs a triggered workflow if Jig can do it alone, else tells you it's time to run it. */
+async function fire(
+  wf: Workflow,
+  project: { name: string; path: string },
+  api: AddonHostApi,
+  by: Run["by"],
+  why: string,
+) {
+  if (runsUnattended(wf)) {
+    const run = await runUnattended(wf, project.path, api, by);
+    api.notify({
+      title: `${wf.name} ${run.status === "done" ? "ran" : "failed"}`,
+      message:
+        run.status === "done"
+          ? `${project.name}: ${why}; every step done.`
+          : `${project.name}: ${why}; a step failed. Open Workflows for the output.`,
+      tone: run.status === "done" ? "success" : "danger",
+    });
+  } else
+    api.notify({
+      title: `Time for ${wf.name}`,
+      message: `${project.name}: ${why}. Open Workflows to run it (some steps need you).`,
+      tone: "info",
+    });
+}
+
+/** What an event trigger watches right now: the pushed commit, or the newest finished pipeline run. */
+async function eventMark(
+  trigger: EventTrigger,
+  folder: string,
+  api: AddonHostApi,
+): Promise<{ mark?: string; result?: string }> {
+  if (trigger.kind === "push") {
+    const git = (...args: string[]) => api.exec("git", args, { cwd: folder, timeoutMs: 10_000 });
+    const branch = trigger.branch?.trim() || (await git("rev-parse", "--abbrev-ref", "HEAD")).stdout.trim();
+    if (!branch || branch === "HEAD") return {};
+    const upstream = await git("rev-parse", "--symbolic-full-name", `${branch}@{u}`);
+    if (upstream.code !== 0 || !upstream.stdout.trim()) return {};
+    const reflog = await git("reflog", "show", "-n1", "--format=%H%x09%gs", upstream.stdout.trim());
+    return { mark: reflog.code === 0 ? pushMark(reflog.stdout) : undefined };
+  }
+  const { org, project, id } = trigger.pipeline;
+  if (!org || !project || !id) return {};
+  const r = await api.exec(
+    "az",
+    [
+      "pipelines",
+      "runs",
+      "list",
+      "--pipeline-ids",
+      String(id),
+      "--org",
+      org,
+      "--project",
+      project,
+      "--status",
+      "completed",
+      "--top",
+      "1",
+      "-o",
+      "json",
+      "--only-show-errors",
+    ],
+    { timeoutMs: 60_000, env: { AZURE_CORE_NO_COLOR: "1" } },
+  );
+  if (r.code !== 0) return {};
+  try {
+    const [run] = JSON.parse(r.stdout) as Array<{ id?: number; result?: string }>;
+    return run?.id ? { mark: String(run.id), result: run.result ?? "" } : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Watcher (every minute): scheduled workflows that are due, and workflows whose event happened. */
 export async function checkSchedules(_: unknown, api: AddonHostApi) {
   const triggered = (await api.storage.get<Record<string, string>>("triggered")) ?? {};
+  const marks = (await api.storage.get<Record<string, string>>("marks")) ?? {};
   const now = new Date();
   for (const project of await api.projects()) {
     for (const wf of await list({ projectId: project.id }, api)) {
-      if (!isDue(wf.trigger, triggered[wf.id], now, wf.createdAt)) continue;
+      const trigger = wf.trigger;
+      if (isEventTrigger(trigger)) {
+        const seen: { mark?: string; result?: string } = await eventMark(trigger, project.path, api).catch(
+          () => ({}),
+        );
+        if (!seen.mark) continue;
+        // Keyed by what it watches too: changing the branch or pipeline starts afresh.
+        const markKey = `${wf.id}:${JSON.stringify(trigger)}`;
+        const last = marks[markKey];
+        if (last === seen.mark) continue;
+        // Saved before it runs, like a schedule: a long run must not fire twice.
+        marks[markKey] = seen.mark;
+        await api.storage.set("marks", marks);
+        if (!eventFires(last, seen.mark)) continue;
+        if (trigger.kind === "pipeline" && !pipelineResultMatches(trigger.result, seen.result ?? ""))
+          continue;
+        triggered[wf.id] = now.toISOString();
+        await api.storage.set("triggered", triggered);
+        await fire(
+          wf,
+          project,
+          api,
+          "event",
+          trigger.kind === "push"
+            ? `you pushed ${trigger.branch || "your branch"}`
+            : `pipeline ${trigger.pipeline.id} finished (${seen.result || "done"})`,
+        );
+        continue;
+      }
+      if (!isDue(trigger, triggered[wf.id], now, wf.createdAt)) continue;
       // Saved before it runs: a long run must not look due again (or after a restart mid-run).
       triggered[wf.id] = now.toISOString();
       await api.storage.set("triggered", triggered);
-      if (runsUnattended(wf)) {
-        const run = await runUnattended(wf, project.path, api);
-        api.notify({
-          title: `${wf.name} ${run.status === "done" ? "ran" : "failed"}`,
-          message:
-            run.status === "done"
-              ? `${project.name}: every step done.`
-              : `${project.name}: a step failed. Open Workflows for the output.`,
-          tone: run.status === "done" ? "success" : "danger",
-        });
-      } else
-        api.notify({
-          title: `Time for ${wf.name}`,
-          message: `${project.name}: open Workflows to run it (some steps need you).`,
-          tone: "info",
-        });
+      await fire(wf, project, api, "schedule", "it's time");
     }
   }
 }

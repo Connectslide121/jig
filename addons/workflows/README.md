@@ -15,6 +15,9 @@ Lists of steps you repeat, per project: a release, a deploy, a morning routine (
 - **Schedules** (every day, weekdays, once a week, at a time) fire **while Jig is open** (watcher
   `schedules`, every minute). A workflow whose steps are all automatic commands or pipelines runs by
   itself and notifies you; otherwise you get a notification to start it.
+- **Events** (D-177): **After you push** (any branch or one) — seen in the upstream's reflog — and
+  **When a pipeline finishes** (any result, succeeded or failed; through your `az`), checked by the
+  same watcher. The first check only remembers the latest push or run, so old events never fire.
 - **Export as skill** writes `.claude/skills/<name>/SKILL.md` in the project, so Claude can do it from
   any chat. **Move to the cloud** opens a chat that turns it into a Claude Code routine or an Azure
   DevOps pipeline.

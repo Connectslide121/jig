@@ -5,6 +5,7 @@ import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { StandupHost } from "../features/digest";
+import { GoToHost } from "../features/goto";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
@@ -20,7 +21,7 @@ import { useUsageSync } from "../stores/usage";
 import { DialogHost, ErrorBoundary, MenuHost } from "../ui";
 import { MainArea } from "./MainArea";
 import { useProjects } from "./projects";
-import { Region } from "./Region";
+import { Region, ViewDropEdges } from "./Region";
 import { useRegistry } from "./registry";
 import { StartupBanner } from "./StartupBanner";
 import { StatusBar } from "./StatusBar";
@@ -86,7 +87,8 @@ export function Workbench() {
       <Topbar />
       <StartupBanner />
       {ready && (
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
+          <ViewDropEdges />
           <Region region="left" />
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1">
@@ -100,6 +102,7 @@ export function Workbench() {
       <StatusBar />
       <MenuHost />
       <ToolsMenuHost />
+      <GoToHost />
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />

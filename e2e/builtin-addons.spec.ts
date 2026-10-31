@@ -122,6 +122,17 @@ test("Repos overview lists repositories with their state", async ({ page, jigHom
   await expect(row).not.toContainText("Fix total");
 });
 
+test("Repos: the branch is a dropdown that switches branches", async ({ page, jigHome }) => {
+  const dir = await setup(page, jigHome);
+  git(dir, "stash", "-u");
+  await page.getByTestId("tools-button").click();
+  await page.getByTestId("tools-filter").fill("show all repos");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("repo-branch-shop").click();
+  await page.getByRole("menuitem", { name: "feature/pay" }).click();
+  await expect(page.getByTestId("repo-branch-shop")).toContainText("feature/pay", { timeout: 15000 });
+});
+
 test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await setup(page, jigHome);
   await page.getByTestId("layout-button").click();

@@ -10,18 +10,44 @@ import {
   PanelRight,
   RefreshCw,
   RotateCcw,
+  Save,
   Settings,
   Wrench,
   X,
 } from "lucide-react";
-import { cycleTab, defaultLayout, findView } from "../../shared/layout";
+import { cycleTab, findView } from "../../shared/layout";
 import { openNewProjectDialog } from "../features/projects/ProjectDialog";
 import { call, errorMessage } from "../lib/host";
+import { confirmDialog, promptDialog } from "../ui";
 import { useProjects } from "./projects";
 import { registerAction, useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
 import { openToolsMenu } from "./ToolsMenu";
 import { notify } from "./toasts";
+
+/** Puts every view back where it started (after asking); open tabs stay. */
+export async function resetLayout(): Promise<void> {
+  const ok = await confirmDialog({
+    title: "Reset the layout?",
+    message: "Every view goes back to where it started, and sizes and sidebars as new. Open tabs stay.",
+    confirmLabel: "Reset",
+  });
+  if (ok) workbench.resetLayout();
+}
+
+/** Asks for a name and saves where every view is under it (replacing a layout with that name). */
+export async function saveLayoutAs(): Promise<void> {
+  const name = await promptDialog({
+    title: "Save this layout",
+    message:
+      "Where every view is, and the sizes. Switch back to it from View → Layouts. Open tabs aren't saved.",
+    placeholder: "Coding, Review, Release…",
+    confirmLabel: "Save",
+  });
+  if (!name?.trim()) return;
+  workbench.saveLayoutAs(name);
+  notify({ title: `Saved the layout "${name.trim()}"`, tone: "success" });
+}
 
 /** A new project: the dialog asks for its name, default workspace and defaults (D-101). */
 export async function addProject(): Promise<void> {
@@ -144,7 +170,14 @@ export function registerCoreActions(): void {
     title: "Reset layout",
     group: "Layout",
     icon: RotateCcw,
-    run: () => updateLayout((l) => ({ ...defaultLayout(), main: l.main })),
+    run: () => void resetLayout(),
+  });
+  registerAction({
+    id: "jig.saveLayout",
+    title: "Save layout as…",
+    group: "Layout",
+    icon: Save,
+    run: () => void saveLayoutAs(),
   });
   registerAction({
     id: "jig.closeTab",

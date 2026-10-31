@@ -40,14 +40,17 @@ test("Claude configures Jig from a chat; each change has a card with Undo", asyn
   await page.getByTestId("change-card").nth(1).getByTestId("change-undo").click();
   await expect(page.getByTestId("region-right")).toHaveCount(0);
 
-  // A view below another, as a collapsible section in its tab.
+  // A view beside another, in the lower half of its sidebar.
   await page.getByTestId("composer-input").fill("put pipelines below git");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("change-card").nth(2)).toContainText("Changed Jig's layout", {
     timeout: 15000,
   });
-  await page.getByTestId("view-tab-addon.git.git").click();
-  await expect(page.getByTestId("section-addon.pipelines.pipelines")).toBeVisible();
+  await expect(
+    page.getByTestId("region-left2").getByTestId("view-tab-addon.pipelines.pipelines"),
+  ).toBeVisible();
   await page.getByTestId("change-card").nth(2).getByTestId("change-undo").click();
-  await expect(page.getByTestId("section-addon.pipelines.pipelines")).toHaveCount(0);
+  await expect(
+    page.getByTestId("region-left2").getByTestId("view-tab-addon.pipelines.pipelines"),
+  ).toHaveCount(0);
 });

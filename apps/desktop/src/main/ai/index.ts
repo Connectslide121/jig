@@ -24,7 +24,7 @@ export function checkAiAccess(
  * turn: it can only answer, never change anything). Counts against the user's plan like a chat.
  */
 export function registerAiHandlers(): void {
-  handle("ai.ask", async ({ addonId, prompt, cwd }) => {
+  handle("ai.ask", async ({ addonId, prompt, cwd, quick }) => {
     const addon = addonService()
       .list()
       .find((a) => a.id === addonId);
@@ -34,7 +34,7 @@ export function registerAiHandlers(): void {
     const { engine } = getConfig();
     const answer = await getEngine().oneShot(prompt, {
       cwd: cwd || jigHome(),
-      model: engine.helperModel,
+      model: quick ? engine.quickModel : engine.helperModel,
       appendSystemPrompt: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench around Claude Code). Answer with exactly what was asked, without preamble.`,
       env: sessionEnv(process.env, engine.allowApiKey),
       claudePath: engine.claudePath,

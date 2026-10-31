@@ -38,6 +38,7 @@ import { runAction, type TabProps, useRegistry } from "../../workbench/registry"
 import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "../builder/BuildDialog";
+import { openGallery } from "../gallery";
 import { newSession } from "../sessions/actions";
 import { BUILD_EXAMPLES, CONFIGURE_EXAMPLES, CONFIGURE_TOOLS, SLOT_EXAMPLES } from "./content";
 import browserShot from "./shots/browser.jpg";
@@ -596,6 +597,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "After a turn that changed files: Review, Walk me through or Undo, right there",
                 "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
+                "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
+                "Task queue (Chats menu): prompts Claude does in order, each reporting outcome, summary, things to know and follow-ups in a table with links to the chats; Claude can queue tasks too",
               ]}
             />
           </Section>
@@ -614,7 +617,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Files: the project's tree with git colours, a filter and Preview on click",
                 "Links per project in your groups (Stage, Prod…): Azure resources, sites, Azure DevOps — or pick them from Azure",
                 "Start a chat in any repo from its menu",
-                "Repos overview with branch and changes",
+                "Repos overview with branch (switch it from the row) and changes",
               ]}
             />
           </Section>
@@ -685,6 +688,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Live: the tree follows changes on disk, from you or Claude",
                 "If Claude changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
+                "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
+                "Named layouts: save how the views are arranged and switch between them (View → Layout → Layouts)",
+                "Go to (Ctrl+P, or the magnifier in the top bar): any chat, view, action or file",
                 "Right-click a file to open it in VS Code or ask Claude about it",
               ]}
             />
@@ -710,7 +716,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="git"
             title="Git"
-            lead="The repository you work in, plus any you show next to it (or all of them), with Repos below for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
+            lead="The repository you work in, plus any you show next to it (or all of them), with Repos in the lower half of the sidebar for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
             shot={{ src: git, alt: "The Git view with changes in several repositories" }}
           />
           <Section
@@ -769,12 +775,15 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="addons"
             title="Your add-ons"
-            lead="What is installed now, and which slots each one uses."
+            lead="What is installed now, and which slots each one uses. Share an add-on as a file, or install from the add-on gallery: a git repository or folder of add-ons your team keeps."
           >
             <AddonList />
-            <div className="mt-3">
+            <div className="mt-3 flex gap-2">
               <Button size="sm" onClick={() => openSettings("addons")}>
                 Manage add-ons…
+              </Button>
+              <Button size="sm" onClick={() => void openGallery()} data-testid="about-gallery">
+                Add-on gallery
               </Button>
             </div>
           </Section>
@@ -812,7 +821,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "An empty profile? Jig offers a short interview chat where Claude asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
-                "Pipelines of your repositories: the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Views you keep opening as tabs: Jig suggests a place for them",
+                "Pipelines of your repositories, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
                 "Notes for the chat you're in: what it waits on, where its work is, steps left, decisions — you and Claude write them, Claude reads them before it works",
               ]}
             />
@@ -830,6 +840,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Run step by step, with each command's output",
                 "On a schedule while Jig is open: alone when Jig can do every step, otherwise it reminds you",
+                "After you push, or when a pipeline finishes (succeeded, failed or either)",
                 "Export as a Claude Code skill, or Move to the cloud as a routine or a pipeline",
                 "Suggestions draft workflows from what you tell Claude you do by hand",
               ]}

@@ -2,6 +2,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "vitest/config";
 
+// Tests set the author with `git config user.name/email`; GIT_AUTHOR_* / GIT_COMMITTER_* from the
+// environment (CI, dev containers) would override it.
+for (const key of ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"])
+  delete process.env[key];
+
 export default defineConfig({
   test: {
     include: [

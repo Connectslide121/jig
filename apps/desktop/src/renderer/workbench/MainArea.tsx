@@ -1,4 +1,4 @@
-import { Columns2, Settings, Sparkles, Square, X } from "lucide-react";
+import { Columns2, PanelBottom, PanelLeft, PanelRight, Settings, Sparkles, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   closeOtherTabs,
@@ -10,6 +10,7 @@ import {
   paneOf,
   paneTabs,
   unsplit,
+  VIEW_TAB,
 } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { AboutPage } from "../features/about/AboutTab";
@@ -19,7 +20,7 @@ import { confirmClose, useDirtyTabs } from "./dirty";
 import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
 import { useRegistry } from "./registry";
-import { updateLayout, useWorkbench, workbench } from "./store";
+import { startViewDrag, updateLayout, useWorkbench, VIEW_DRAG, workbench } from "./store";
 
 const noTitle = () => "";
 /** The tab's title; `useTitle` hooks re-render it when the title changes. */
@@ -79,6 +80,7 @@ function TabButton({
   const title = useTabTitle(tab);
   const dirty = useDirtyTabs((s) => s.tabs[tab.id] !== undefined);
   const Icon = (def && (def.iconFor?.(tab.params) ?? def.icon)) || Settings;
+  const viewId = tab.type === VIEW_TAB ? String(tab.params.viewId) : undefined;
   const filePath =
     def?.filePath?.(tab.params) ??
     (typeof tab.params.fileIcon === "string" ? tab.params.fileIcon : undefined);
@@ -90,7 +92,14 @@ function TabButton({
       data-testid={`tab-${tab.type}`}
       title={title}
       draggable
-      onDragStart={(e) => e.dataTransfer.setData("jig/tab", tab.id)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("jig/tab", tab.id);
+        // A view's tab can also go back to a sidebar or the bottom panel.
+        if (viewId) {
+          e.dataTransfer.setData(VIEW_DRAG, viewId);
+          startViewDrag(viewId);
+        }
+      }}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("jig/tab")) {
           e.preventDefault();
@@ -121,6 +130,23 @@ function TabButton({
                 icon: Sparkles,
                 onSelect: () => requestBuild({ goal: "", addonId: def.owner, origin: "addon" }),
               },
+              { separator: true } as const,
+            ]
+          : []),
+        ...(viewId
+          ? [
+              ...(
+                [
+                  ["left", "Move to left sidebar", PanelLeft],
+                  ["right", "Move to right sidebar", PanelRight],
+                  ["bottom", "Move to bottom panel", PanelBottom],
+                ] as const
+              ).map(([region, label, icon]) => ({
+                label,
+                icon,
+                testId: `move-view-${region}`,
+                onSelect: () => workbench.moveView(viewId, region),
+              })),
               { separator: true } as const,
             ]
           : []),
@@ -308,7 +334,11 @@ export function MainArea() {
   const [ratio, setRatio, resetRatio] = useSplitRatio("main.split", 0.5);
   const [edge, setEdge] = useState(false);
   const area = useRef<HTMLDivElement>(null);
+  const [viewOver, setViewOver] = useState(false);
   if (!layout || !main) return <div className="flex-1" />;
+  // A view dragged from a sidebar or the bottom panel (not a main tab, which has its own drops).
+  const isViewDrop = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes(VIEW_DRAG) && !e.dataTransfer.types.includes("jig/tab");
   const split = Boolean(main.split);
   const leftActive = paneActive(layout, "left");
   const rightActive = paneActive(layout, "right");
@@ -316,7 +346,27 @@ export function MainArea() {
   for (const id of mounted) if (!main.tabs.some((t) => t.id === id)) mounted.delete(id);
   const focus = main.split?.focus ?? "left";
   return (
-    <main className="flex min-w-0 flex-1 flex-col bg-canvas">
+    <main
+      className="relative flex min-w-0 flex-1 flex-col bg-canvas"
+      data-testid="main-area"
+      onDragOver={(e) => {
+        if (!isViewDrop(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setViewOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setViewOver(false);
+      }}
+      onDrop={(e) => {
+        setViewOver(false);
+        if (!isViewDrop(e)) return;
+        const id = e.dataTransfer.getData(VIEW_DRAG);
+        if (!id) return;
+        e.preventDefault();
+        workbench.openViewTab(id);
+      }}
+    >
       {main.tabs.length === 0 ? (
         <div className="min-h-0 flex-1">
           <EmptyMain />
@@ -407,6 +457,14 @@ export function MainArea() {
               data-testid="main-split-drop"
             />
           )}
+        </div>
+      )}
+      {viewOver && (
+        <div
+          data-testid="main-view-drop"
+          className="pointer-events-none absolute inset-2 flex items-center justify-center rounded-md border-2 border-dashed border-accent bg-accent-soft text-sm font-medium text-accent"
+        >
+          Drop to open as a tab
         </div>
       )}
     </main>

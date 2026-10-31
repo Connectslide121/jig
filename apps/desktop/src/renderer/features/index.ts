@@ -1,4 +1,5 @@
 import { registerCoreActions } from "../workbench/actions";
+import { registerViewTab } from "../workbench/ViewTab";
 import { registerAbout } from "./about";
 import { registerArtifacts } from "./artifacts";
 import { registerAttempts } from "./attempts";
@@ -6,6 +7,8 @@ import { registerBrowser } from "./browser";
 import { registerBuilder } from "./builder";
 import { registerDigest } from "./digest";
 import { registerFiles } from "./files";
+import { registerGallery } from "./gallery";
+import { registerGoTo } from "./goto";
 import { registerLearning } from "./learning";
 import { registerLinks } from "./links";
 import { registerPreview } from "./preview";
@@ -22,6 +25,7 @@ import { registerWorktrees } from "./worktrees";
 /** Registers every core view, tab type and action. Add-ons register theirs at runtime (phase 6). */
 export function registerFeatures(): void {
   registerCoreActions();
+  registerViewTab();
   registerProjects();
   registerLinks();
   registerSessions();
@@ -40,5 +44,7 @@ export function registerFeatures(): void {
   registerDigest();
   registerUsage();
   registerWorktrees();
+  registerGoTo();
+  registerGallery();
   registerAbout();
 }

@@ -10,10 +10,12 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
   out. Kept (storage `found`) and looked for again after 4 minutes, every 5 minutes while the view is
   open, when **More pipelines** opens, and on **Find pipelines again** (header), so a new pipeline joins its
   repository by itself; one seen before is not looked up again (D-166).
-- **View Pipelines** (right sidebar): a card per repository; per pipeline the newest run as a chip
-  (✓ 12m, ▶ Running 35m, ◷ Queued 3m, Cancelled…), its branch, why (CI, manual, PR…), who and what
-  it changed from the defaults ("Deploy to: production"), and its stages (`Build ✓ → Deploy ▶`,
-  skipped ones left out). Click the name to open the run (or the pipeline) in the browser; ⋯ for both.
+- **View Pipelines** (right sidebar): a card per repository; each pipeline is one compact row (D-180):
+  its name, how long ago the newest run started (Run and ⋯ in that place on hover) and its state icon
+  at the far right. Click a row (or ⋯ → Details…) for a dialog with the newest run as a chip
+  (✓ 12m, ▶ Running 35m, ◷ Queued 3m, Cancelled…), its branch, why (CI, manual, PR…), who, what it
+  changed from the defaults ("Deploy to: production"), its times and stages (`Build ✓ → Deploy ▶`,
+  skipped ones left out), and buttons to open the pipeline or the run in the browser, or Run….
 - **Run form** (Run on a pipeline, or Tools → Run a pipeline…): the branch (the default first, then
   local and origin branches), a picker per parameter with `values`, a checkbox per boolean, a text
   field otherwise, and a summary of what will run. The parameters are read from the pipeline's YAML in

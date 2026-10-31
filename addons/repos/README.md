@@ -16,7 +16,7 @@ folder), one row each:
   read) and **pills only when there is something to do**: `↓2 ↑1` and ✎ with the number of changed
   files. Press them to sync: pull when there is something to pull, then push (also a new branch
   without an upstream). Host `sync`. A clean repository shows no pill, so a long list stays calm.
-- **Its branch**, with a branch icon (dimmed without an upstream).
+- **Its branch**, with a branch icon (dimmed without an upstream), as a dropdown like the Git view's: pick a local branch (✓ marks the current one) or a remote one (it gets a tracking branch) to switch. Host `branches`, `switchBranch`.
 - **In fixed columns** (D-152): name, changes (✎), sync (↓ ↑), branch, so pills and branches line
   up down the list; ⋯ shows over the row's end on hover. ✎ opens the repository in Git.
 - ⋯ / right-click: Show commits, Open in Git (the repository becomes the active project and its
@@ -27,8 +27,8 @@ folder), one row each:
 what follows) — each row has a button that adds a divider right above it. One arrangement for all
 your projects (the add-on's global storage, `arrangement`); new repositories come after it.
 
-- View **Repos**: a collapsible section at the bottom of the Git panel (`"under": "addon.git.git"`,
-  D-099), like GitLens below Source Control. Its ⋯ menu moves it to its own tab. Header: how many
+- View **Repos**: starts in the lower half of the left sidebar (`"region": "left2"`, a split sidebar,
+  D-173), under the left sidebar's tabs. Its ⋯ menu moves it anywhere. Header: how many
   repositories, then ↑ / ↓ / ✎ counts (to push, to pull, with changes); Fetch all; Refresh. Status bar item
   "N to push/pull", Tools → Fetch all repos.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.

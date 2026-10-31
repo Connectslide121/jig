@@ -7,6 +7,7 @@ import { app, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
 import { appWindows } from "../appWindows";
+import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
   registerJigTools,
@@ -19,11 +20,13 @@ import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
-import { sessionManager } from "../sessions";
+import { createChat, onSessionStatus, sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { addonChats } from "./chats";
 import { addonContext, addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
+import { galleryRecords, readGallery, sourceFolder } from "./gallery";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
 import { commitAll } from "./repo";
@@ -136,6 +139,20 @@ export async function startAddons(): Promise<void> {
   if (tokens) setTokensFile(tokens);
   else log.warn("tokens.css not found; add-on CSS will be empty");
 
+  const chats = addonChats({
+    // Checked here too: the host process enforces it, but main doesn't trust it.
+    hasPermission: (id) =>
+      !!service
+        ?.list()
+        .find((a) => a.id === id)
+        ?.manifest?.permissions.includes("chat"),
+    create: (input) => createChat(input),
+    send: (sessionId, text) => sessionManager().send(sessionId, text),
+    snapshot: (sessionId) => sessionManager().snapshot(sessionId),
+    notify: (id, change) => addonService().call(id, "chatChanged", change),
+  });
+  onSessionStatus((meta) => chats.statusChanged(meta));
+
   service = new AddonService({
     builtinDir: builtinAddonsDir(),
     userDir: paths.addons(),
@@ -160,6 +177,12 @@ export async function startAddons(): Promise<void> {
         return (await projectStore().state()).projects;
       } else if (op === "workspaces") {
         return (await projectStore().state()).workspaces;
+      } else if (op === "chats.create") {
+        return chats.create(addonId, args as never);
+      } else if (op === "chats.send") {
+        return chats.send(addonId, args as never);
+      } else if (op === "chats.get") {
+        return chats.get(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "log") {
         const { message, detail } = args as { message: string; detail?: unknown };
         log.info(`[${addonId}] ${message}`, detail);
@@ -264,6 +287,30 @@ export async function startAddons(): Promise<void> {
     await commitAll(
       paths.addons(),
       `Import ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""}`,
+      pkg.id,
+    ).catch(() => undefined);
+    await s.reloadAll();
+    return { id: pkg.id, name: pkg.name };
+  });
+  const installedForGallery = () =>
+    s
+      .list()
+      .filter((a) => !a.preview)
+      .map((a) => ({ id: a.id, source: a.source, version: a.version }));
+  handle("addons.gallery", async (args) =>
+    readGallery(getConfig().addonGallery.sources, paths.cache(), installedForGallery(), args?.refresh),
+  );
+  handle("addons.galleryInstall", async ({ source, id, replace }) => {
+    // Only from a source you added in Settings, never one a caller makes up.
+    if (!getConfig().addonGallery.sources.some((x) => x.trim() === source.trim()))
+      throw new JigError("invalid_args", "Not a gallery source in Settings");
+    const records = await galleryRecords(await sourceFolder(source, paths.cache()));
+    const record = records.find((r) => r.id === id);
+    if (!record) throw new JigError("not_found", "That add-on isn't in this gallery");
+    const pkg = await installPackage(await packAddon(record.dir, id), paths.addons(), { replace });
+    await commitAll(
+      paths.addons(),
+      `Install ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""} from the gallery`,
       pkg.id,
     ).catch(() => undefined);
     await s.reloadAll();

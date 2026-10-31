@@ -96,15 +96,18 @@ export interface AddonUiContext {
   /**
    * Starts a new chat and opens it: in the active project (or `projectId`), in `cwd` if given (a folder
    * inside it), with `draft` in the message box (not sent: the user reads it and presses Enter).
+   * With `sessionId`, opens that existing chat instead.
    */
-  openChat(options?: { projectId?: string; cwd?: string; draft?: string }): Promise<void>;
+  openChat(options?: { projectId?: string; cwd?: string; draft?: string; sessionId?: string }): Promise<void>;
   /**
    * Asks Claude a one-shot question through the user's Claude Code and returns the answer text. No
    * tools and a single turn, so it can only answer (summaries, commit messages, explanations). Uses the
    * user's plan. Needs the `ai` permission. `cwd`: the folder it runs in (default Jig's data folder).
+   * `quick`: a short, simple answer (a commit message, a label) on the quick model (Haiku by default)
+   * instead of the helper model.
    */
   ai: {
-    ask(prompt: string, options?: { cwd?: string }): Promise<string>;
+    ask(prompt: string, options?: { cwd?: string; quick?: boolean }): Promise<string>;
     /**
      * Opens a guided tour of the uncommitted changes of the repository `cwd` is in: Claude orders the
      * changes for understanding and explains each step next to its diff. `focus` says what they're for.
@@ -206,6 +209,31 @@ export interface ExecResult {
   stderr: string;
 }
 
+export interface AddonChatSend {
+  text: string;
+  sessionId?: string;
+  projectId?: string;
+  cwd?: string;
+  title?: string;
+  /** For a new chat; never bypasses permissions. Default: the project's (or Jig's) default. */
+  permissionMode?: "default" | "acceptEdits" | "plan";
+}
+
+export interface AddonChatInfo {
+  id: string;
+  title: string;
+  status: "idle" | "starting" | "working" | "needs_you" | "error";
+  projectId?: string;
+  cwd: string;
+  costUsd: number;
+  /** Messages waiting in the chat's queue. */
+  queued: number;
+  /** Claude's last answer and when it came. */
+  lastAnswer?: string;
+  lastAnswerAt?: string;
+  error?: string;
+}
+
 export interface AddonHostApi {
   addon: { id: string; dir: string; dataDir: string };
   /** Runs a program with arguments (no shell). Needs `exec` or `exec:<name>`. */
@@ -244,6 +272,17 @@ export interface AddonHostApi {
   projects(): Promise<AddonProject[]>;
   /** Every folder the user added, with its repositories. */
   workspaces(): Promise<AddonWorkspace[]>;
+  /**
+   * Chats this add-on runs (the `chat` permission). `create` starts an empty chat (in `projectId` with
+   * its defaults, or in `cwd`); `send` sends a message to a chat, creating one first unless `sessionId`
+   * is given; a busy chat queues it. Chats it created, sent to or asked about report their status
+   * changes to the host export `chatChanged({ sessionId, status })`.
+   */
+  chats: {
+    create(input: Omit<AddonChatSend, "text" | "sessionId">): Promise<{ sessionId: string }>;
+    send(input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }>;
+    get(sessionId: string): Promise<AddonChatInfo>;
+  };
   log(message: string, detail?: unknown): void;
 }
 

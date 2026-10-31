@@ -38,7 +38,17 @@ test("an add-on's data per project: each project has its own copy", async ({ pag
   const id = (name: string) => state.value.projects.find((p) => p.name === name)!.id;
 
   await hostCall(page, "projects.setActive", { id: id("shop") });
-  await page.getByTestId("suggestions-badge").click(); // opens the right sidebar, where the view starts
+  // The view starts in the right sidebar: open it if it isn't showing.
+  await expect
+    .poll(async () => {
+      const layout = (await hostCall(page, "layout.get")) as { value: { right: { views: string[] } } };
+      return layout.value.right.views.includes("addon.notes.main");
+    })
+    .toBe(true);
+  if (!(await page.getByTestId("region-right").isVisible())) {
+    await page.getByTestId("layout-button").click();
+    await page.getByRole("menuitem", { name: "Right sidebar" }).click();
+  }
   await expect(page.getByTestId("view-tab-addon.notes.main")).toBeVisible({ timeout: 15000 });
   await page.getByTestId("view-tab-addon.notes.main").click();
   await page.getByTestId("note").fill("Shop: ship on Friday");

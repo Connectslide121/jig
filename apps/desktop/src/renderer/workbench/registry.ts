@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { create } from "zustand";
 import type { SideRegion } from "../../shared/layout";
+import { recordUi } from "./recordUi";
 
 /**
  * Everything the workbench can show or do, registered by core features and (phase 6) add-ons. The
@@ -9,7 +10,8 @@ import type { SideRegion } from "../../shared/layout";
  */
 export interface ViewProps {
   viewId: string;
-  region: SideRegion;
+  /** Where the view shows: a sidebar half, the bottom panel, or `main` (a tab in the main area). */
+  region: SideRegion | "main";
 }
 
 export interface ViewDef {
@@ -24,8 +26,8 @@ export interface ViewDef {
   owner?: string;
   /** Open its region the first time it is placed (views of add-ons you built). */
   reveal?: boolean;
-  /** Placed the first time as a collapsible section below this view (e.g. `addon.git.git`). */
-  under?: string;
+  /** Starts out of the sidebars: its action (top bar menus) or the Views list opens it as a main-area tab. */
+  startHidden?: boolean;
 }
 
 export interface TabProps {
@@ -146,7 +148,9 @@ export function unregisterOwner(owner: string): void {
 
 export function runAction(id: string): void {
   const action = useRegistry.getState().actions[id];
-  if (action) void action.run();
+  if (!action) return;
+  recordUi("action", action.title, { action: id });
+  void action.run();
 }
 
 export type { ReactNode };

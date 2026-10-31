@@ -1,5 +1,6 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Locator, Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
 test("shows the shell with Jig's own top bar and the projects view", async ({ page }) => {
@@ -129,48 +130,106 @@ test("sidebars and panes resize by dragging or with the keyboard, and remember i
     .toBe(272);
 });
 
-test("drag a view's tab to reorder it, or onto another sidebar to move it there", async ({ page }) => {
+/** Drags with the mouse, for drop targets that only appear once a drag has started. */
+async function dragOnto(page: Page, from: Locator, to: () => Locator, at?: { x: number; y: number }) {
+  await from.hover();
+  await page.mouse.down();
+  const box = (await from.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2 + 20, { steps: 4 });
+  await to().hover({ position: at });
+  await page.mouse.up();
+}
+
+test("views go anywhere: sidebars, the bottom panel and the main area, by dragging their tabs", async ({
+  page,
+}) => {
   const left = page.getByTestId("region-left");
-  const right = page.getByTestId("region-right");
+  // A view that starts out of the sidebars opens as a tab in the main area.
   await page.getByTestId("suggestions-badge").click();
-  await expect(right.getByTestId("view-tab-jig.suggestions")).toBeVisible();
-  await right.getByTestId("view-tab-jig.suggestions").dragTo(left.getByTestId("view-tab-jig.sessions"));
+  await expect(page.getByTestId("view-in-main-jig.suggestions")).toBeVisible();
+  // Its tab dragged onto a sidebar's tabs: it moves there, before that tab, and the main tab closes.
+  await page.getByTestId("tab-jig.view").dragTo(left.getByTestId("view-tab-jig.sessions"));
   await expect(left.getByTestId("view-tab-jig.suggestions")).toBeVisible();
-  await expect(right.getByTestId("view-tab-jig.suggestions")).toHaveCount(0);
-  const leftViews = async () =>
-    ((await hostCall(page, "layout.get")) as { value: { left: { views: string[] } } }).value.left.views;
+  await expect(page.getByTestId("tab-jig.view")).toHaveCount(0);
+  const layout = async () =>
+    (await hostCall(page, "layout.get")) as {
+      value: { left: { views: string[] }; right: { views: string[] }; hidden: string[] };
+    };
   await expect
     .poll(async () => {
-      const v = await leftViews();
+      const v = (await layout()).value.left.views;
       return v.indexOf("jig.suggestions") === v.indexOf("jig.sessions") - 1;
     })
     .toBe(true);
-  // Within the sidebar: dropped on the bar's empty end, it goes last.
-  await left.getByTestId("view-tab-jig.suggestions").dragTo(left.getByTestId("view-tabs-left"), {
-    targetPosition: { x: 2, y: 2 },
-  });
-  await expect.poll(async () => (await leftViews()).includes("jig.suggestions")).toBe(true);
+  // A sidebar tab dragged onto the main area: it opens there as a tab.
+  await dragOnto(page, left.getByTestId("view-tab-jig.suggestions"), () => page.getByTestId("main-area"));
+  await expect(page.getByTestId("view-in-main-jig.suggestions")).toBeVisible();
+  await expect(left.getByTestId("view-tab-jig.suggestions")).toHaveCount(0);
+  // The right sidebar isn't showing: dragging offers a drop target at the window's edge.
+  await dragOnto(page, page.getByTestId("tab-jig.view"), () => page.getByTestId("view-drop-right"));
+  await expect(page.getByTestId("region-right").getByTestId("view-tab-jig.suggestions")).toBeVisible();
+  await expect(page.getByTestId("tab-jig.view")).toHaveCount(0);
+  await expect.poll(async () => (await layout()).value.right.views.includes("jig.suggestions")).toBe(true);
 });
 
-test("a submenu opens beside its menu, on the left when there's no room on the right", async ({ page }) => {
-  // The bottom panel's ⋯ is at the window's right edge.
-  await page.keyboard.press("Control+`");
-  await page.getByTestId("region-bottom").locator("[data-testid^=view-menu-]").first().click();
-  await page.getByTestId("place-below").hover();
+test("drag a tab onto a sidebar's lower half to split it; Reset layout puts it back", async ({ page }) => {
+  const left = page.getByTestId("region-left");
+  const right = page.getByTestId("region-right");
+  await page.getByTestId("layout-button").click();
+  await page.getByRole("menuitem", { name: "Right sidebar" }).click();
+  await expect(right).toBeVisible();
+  await expect(page.getByTestId("region-right2")).toHaveCount(0);
+  await dragOnto(page, left.getByTestId("view-tab-jig.sessions"), () => right, {
+    x: 100,
+    y: (await right.boundingBox())!.height - 60,
+  });
+  const lower = page.getByTestId("region-right2");
+  await expect(lower.getByTestId("view-tab-jig.sessions")).toBeVisible();
+  await expect(right.getByTestId("stack-right")).toBeVisible();
+  // The split is made by dragging only: the view menu has no "lower" entries.
+  await lower.getByTestId("view-tab-jig.sessions").click({ button: "right" });
+  await expect(page.getByTestId("move-view-left")).toBeVisible();
+  await expect(page.getByTestId("move-view-right2")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await page.getByTestId("layout-button").click();
+  await page.getByTestId("reset-layout").click();
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await expect(left.getByTestId("view-tab-jig.sessions")).toBeVisible();
+  await expect(page.getByTestId("region-right2")).toHaveCount(0);
+});
+
+test("a submenu opens beside its menu, never over it, and stays in the window", async ({ page }) => {
+  // The layout button is near the window's right edge.
+  await page.getByTestId("layout-button").click();
+  await page.getByRole("menuitem", { name: "Views" }).hover();
   const menus = page.getByRole("menu");
   await expect(menus).toHaveCount(2);
   const [parent, sub] = [(await menus.nth(0).boundingBox())!, (await menus.nth(1).boundingBox())!];
-  expect(sub.x + sub.width).toBeLessThanOrEqual(parent.x + 4);
+  // It may overlap the parent's padding by a few pixels (like native menus), never its items.
+  const beside = sub.x >= parent.x + parent.width - 10 || sub.x + sub.width <= parent.x + 10;
+  expect(beside).toBe(true);
+  const width = await page.evaluate(() => window.innerWidth);
+  expect(sub.x + sub.width).toBeLessThanOrEqual(width);
 });
 
-test("action groups open separate menus and model defaults remain configurable", async ({ page }) => {
+test("action groups are merged into a few top bar menus and model defaults remain configurable", async ({
+  page,
+}) => {
   await expect(page.getByTestId("tools-group-Jig")).toHaveCount(0);
   await page.getByTestId("jig-menu").click();
   await expect(page.getByRole("menuitem", { name: "Reload window", exact: true })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "What Jig can do", exact: true })).toHaveCount(1);
   await page.keyboard.press("Escape");
-  await page.getByTestId("tools-group-Layout").click();
+  await expect(page.getByTestId("tools-group-Projects")).toHaveCount(0);
+  await expect(page.getByTestId("tools-group-Layout")).toHaveCount(0);
+  await page.getByTestId("tools-group-View").click();
   await expect(page.getByRole("menuitem", { name: /Toggle bottom panel/ })).toBeVisible();
+  await expect(page.getByText("Appearance", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // Project actions are in the project switcher.
+  await page.getByTestId("project-switcher").click();
+  await expect(page.getByRole("menuitem", { name: /Add workspace folder/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-engine").click();
@@ -188,8 +247,8 @@ test("the top menu bar switches groups on hover only while a menu is open", asyn
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.getByTestId("tools-group-Build").click();
   await expect(page.getByRole("menuitem", { name: /Build something/ })).toBeVisible();
-  await page.getByTestId("tools-group-Projects").hover();
-  await expect(page.getByRole("menuitem", { name: /New project/ })).toBeVisible();
+  await page.getByTestId("tools-group-View").hover();
+  await expect(page.getByRole("menuitem", { name: /Reset layout/ })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /Build something/ })).toHaveCount(0);
   await expect(page.getByRole("menu")).toHaveCount(1);
   await page.keyboard.press("Escape");

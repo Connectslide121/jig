@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { cn, Kbd } from "../ui";
-import { type ActionDef, useRegistry } from "./registry";
+import { type ActionDef, runAction, useRegistry } from "./registry";
 import { formatShortcut } from "./shortcuts";
 
 /**
@@ -72,7 +72,7 @@ export function ToolsMenuHost() {
   const run = (action: ActionDef | undefined) => {
     if (!action) return;
     closeToolsMenu();
-    void action.run();
+    runAction(action.id);
   };
   let n = -1;
   return createPortal(

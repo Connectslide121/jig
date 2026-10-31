@@ -9,7 +9,7 @@ that can only answer. Each feature has a visible button or menu entry (D-083).
 | Restore files to before a message | your message's ⋯ → Rewind to before this message → Only the files | file checkpoints, `sessions.rewindFiles` |
 | Edit and send again / rewind the chat | your message's ⋯ | `sessions.rewind` (`docs/reference/chat.md`) |
 | Fork chat | chat ⋯ | `sessions.fork` (Claude Code's fork) |
-| Write the commit message | Git commit box → Write | `ctx.ai.ask` with the diff and recent subjects |
+| Write the commit message | Git commit box → Write | `ctx.ai.ask` (quick: Haiku) with the diff and recent subjects |
 | Check before committing | Git → ✨ menu | `ctx.ai.ask`: secrets, debug output, unfinished code, likely bugs → findings under the commit box |
 | Walk me through the changes | Git → ✨ menu, a workspace repo's menu, chat ⋯, `ctx.ai.tour` | `tour.create` (below) |
 | Explain / review changes | Git file and repo menus, ✨ → Review in a chat | a chat with the request typed in |

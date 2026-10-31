@@ -202,6 +202,14 @@ export function since(ms: number, now = Date.now()): string {
   return hours < 48 ? `${hours}h` : `${Math.round(hours / 24)}d`;
 }
 
+/** How long a run has been queued or running, or how long ago it ended: the compact row's time. */
+export function runAge(run: PipelineRun | null | undefined, now = Date.now()): string {
+  if (!run) return "";
+  if (run.status === "notStarted") return since(run.queued, now);
+  if (isActive(run)) return since(run.started || run.queued, now);
+  return since(run.finished || run.queued, now);
+}
+
 /** The run chip: Queued or Running and for how long, else the outcome and how long ago it ended. */
 export function runLabel(run: PipelineRun | null | undefined, now = Date.now()): string {
   if (!run) return "never run";

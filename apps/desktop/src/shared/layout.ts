@@ -5,8 +5,17 @@ import { z } from "zod";
  * area holds tabs. Every change is a pure function here, so the renderer, the host and the builder
  * (level 1: "move pipelines to the right") share the same rules. Documented in docs/reference/layout.md.
  */
-export const SIDE_REGIONS = ["left", "right", "bottom"] as const;
+export const SIDE_REGIONS = ["left", "left2", "right", "right2", "bottom"] as const;
 export type SideRegion = (typeof SIDE_REGIONS)[number];
+
+/**
+ * A sidebar can be split in two: `left2` / `right2` are the lower halves of the left and right
+ * sidebar, each with its own tabs. The upper half owns the width and collapsed state.
+ */
+const COLUMN: Partial<Record<SideRegion, SideRegion>> = { left2: "left", right2: "right" };
+export const LOWER_HALF: Partial<Record<SideRegion, SideRegion>> = { left: "left2", right: "right2" };
+/** The region that owns the width and collapsed state: a lower half belongs to its sidebar. */
+export const columnOf = (region: SideRegion): SideRegion => COLUMN[region] ?? region;
 
 const RegionSchema = (size: number, collapsed: boolean) =>
   z
@@ -29,24 +38,43 @@ export const TabSchema = z.object({
 });
 export type LayoutTab = z.infer<typeof TabSchema>;
 
+const SavedRegionSchema = z.object({
+  views: z.array(z.string()).default([]),
+  active: z.string().optional(),
+  size: z.number().min(120).max(2000),
+  collapsed: z.boolean(),
+});
+const SavedLayoutSchema = z.object({
+  name: z.string().min(1).max(60),
+  left: SavedRegionSchema,
+  left2: SavedRegionSchema,
+  right: SavedRegionSchema,
+  right2: SavedRegionSchema,
+  bottom: SavedRegionSchema,
+  hidden: z.array(z.string()).default([]),
+  panes: z.record(z.string(), z.number()).default({}),
+});
+export type SavedLayout = z.infer<typeof SavedLayoutSchema>;
+
+export const MAX_SAVED_LAYOUTS = 20;
+
 export const LayoutSchema = z.object({
   version: z.literal(1).default(1),
   left: RegionSchema(280, false),
   right: RegionSchema(320, true),
+  /** The lower half of the left sidebar (a split sidebar): `size` is its height. */
+  left2: RegionSchema(260, false),
+  /** The lower half of the right sidebar. */
+  right2: RegionSchema(260, false),
   bottom: RegionSchema(260, true),
   /** Views the user hid; they come back from the Views menu. */
   hidden: z.array(z.string()).default([]),
-  /**
-   * Views shown as collapsible sections below another view, in the same tab (like GitLens below
-   * Source Control in VS Code): host view id → section view ids, top to bottom.
-   */
-  sections: z.record(z.string(), z.array(z.string())).default({}),
-  /** Sections that are collapsed to their header. */
-  closedSections: z.array(z.string()).default([]),
-  /** Views placed in a region for now because the view they go below hasn't loaded yet. */
-  waitingUnder: z.array(z.string()).default([]),
+  /** Old layouts: views shown below another view. Moved into the lower half of that sidebar on load. */
+  sections: z.record(z.string(), z.array(z.string())).optional(),
   /** Sizes of resizable panes inside views and tabs (`Pane id` → px, or a 0–1 ratio for splits). */
   panes: z.record(z.string(), z.number()).default({}),
+  /** Named layouts (D-175): where the views were, by name, to switch back to. Never the open tabs. */
+  saved: z.array(SavedLayoutSchema).default([]),
   main: z
     .object({
       tabs: z.array(TabSchema).default([]),
@@ -76,26 +104,25 @@ export interface ViewPlacement {
   defaultRegion: SideRegion;
   /** Expand the region when the view is placed for the first time (new add-on views). */
   reveal?: boolean;
-  /** Placed for the first time as a section below this view (`addon.git.git`), when it exists. */
-  under?: string;
+  /** Starts hidden: reached from a menu (top bar) instead of taking room in a sidebar. */
+  hidden?: boolean;
 }
 
 export const MAX_TABS = 50;
+
+/** Tab type of a view opened in the main area (`params.viewId`): views not in a sidebar open as one. */
+export const VIEW_TAB = "jig.view";
+
+const isViewTab = (viewId: string) => (tab: LayoutTab) =>
+  tab.type === VIEW_TAB && tab.params.viewId === viewId;
 
 function clone(layout: Layout): Layout {
   return structuredClone(layout);
 }
 
-/** The view a section is shown below, if `viewId` is a section. */
-export function hostOf(layout: Layout, viewId: string): string | undefined {
-  return Object.keys(layout.sections).find((host) => layout.sections[host]!.includes(viewId));
-}
-
-/** The region a view is in (a section: its host's region). */
+/** The region a view is in. */
 function regionOf(layout: Layout, viewId: string): SideRegion | undefined {
-  const host = hostOf(layout, viewId);
-  const id = host ?? viewId;
-  return SIDE_REGIONS.find((r) => layout[r].views.includes(id));
+  return SIDE_REGIONS.find((r) => layout[r].views.includes(viewId));
 }
 
 export function findView(layout: Layout, viewId: string): SideRegion | "hidden" | undefined {
@@ -111,12 +138,6 @@ function removeEverywhere(layout: Layout, viewId: string) {
     if (region.active === viewId) region.active = region.views[Math.max(0, index - 1)];
   }
   layout.hidden = layout.hidden.filter((v) => v !== viewId);
-  for (const host of Object.keys(layout.sections)) {
-    const list = layout.sections[host]!.filter((v) => v !== viewId);
-    if (list.length) layout.sections[host] = list;
-    else delete layout.sections[host];
-  }
-  layout.waitingUnder = layout.waitingUnder.filter((v) => v !== viewId);
 }
 
 /**
@@ -133,48 +154,36 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
     layout[r].views = layout[r].views.filter((v) => !seen.has(v) && seen.add(v));
   }
   layout.hidden = layout.hidden.filter((v) => !seen.has(v) && seen.add(v));
-  // Sections: one level only, each view once, never below itself.
-  for (const host of Object.keys(layout.sections)) {
-    const list = layout.sections[host]!.filter((v) => v !== host && !seen.has(v) && seen.add(v));
-    if (list.length) layout.sections[host] = list;
-    else delete layout.sections[host];
+  // Old layouts had views below another view: they go to the lower half of that view's sidebar.
+  const legacy = layout.sections ?? {};
+  delete layout.sections;
+  for (const [host, list] of Object.entries(legacy)) {
+    const side = SIDE_REGIONS.find((r) => layout[r].views.includes(host));
+    if (!side) continue;
+    const target = LOWER_HALF[side] ?? side;
+    for (const id of list) if (!seen.has(id) && seen.add(id)) layout[target].views.push(id);
   }
-  layout.closedSections = layout.closedSections.filter((v) => hostOf(layout, v));
-  const byId = new Map(views.map((v) => [v.id, v]));
-  const placed = (id: string) => known.has(id) && seen.has(id) && !hostOf(layout, id);
-  // New views: those that go below another view after the others, so that one is placed first.
-  const fresh = views
-    .filter((v) => !seen.has(v.id))
-    .sort((a, b) => Number(Boolean(a.under)) - Number(Boolean(b.under)));
-  for (const view of fresh) {
+  for (const view of views) {
+    if (seen.has(view.id)) continue;
     seen.add(view.id);
-    if (view.under && view.under !== view.id) {
-      if (placed(view.under)) {
-        layout.sections[view.under] = [...(layout.sections[view.under] ?? []), view.id];
-        continue;
-      }
-      layout.waitingUnder.push(view.id);
+    if (view.hidden) {
+      layout.hidden.push(view.id);
+      continue;
     }
     layout[view.defaultRegion].views.push(view.id);
     if (view.reveal) {
-      layout[view.defaultRegion].collapsed = false;
+      layout[columnOf(view.defaultRegion)].collapsed = false;
       layout[view.defaultRegion].active = view.id;
     }
   }
-  // A view waiting for the view it goes below: move it there once that one is placed.
-  layout.waitingUnder = layout.waitingUnder.filter((id) => {
-    const under = byId.get(id)?.under;
-    if (!under || !seen.has(id)) return false;
-    if (!placed(under)) return true;
-    const region = regionOf(layout, id);
-    if (region) {
-      const r = layout[region];
-      r.views = r.views.filter((v) => v !== id);
-      if (r.active === id) r.active = undefined;
-      layout.sections[under] = [...(layout.sections[under] ?? []), id];
+  // A lower half needs an upper one: when the upper is empty, the lower moves up.
+  for (const [upper, lower] of Object.entries(LOWER_HALF) as Array<[SideRegion, SideRegion]>) {
+    if (layout[upper].views.length === 0 && layout[lower].views.length > 0) {
+      layout[upper].views = layout[lower].views;
+      layout[lower].views = [];
+      layout[lower].active = undefined;
     }
-    return false;
-  });
+  }
   for (const r of SIDE_REGIONS) {
     const region = layout[r];
     if (!region.active || !region.views.includes(region.active))
@@ -183,16 +192,20 @@ export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   if (layout.main.active && !layout.main.tabs.some((t) => t.id === layout.main.active))
     layout.main.active = layout.main.tabs[0]?.id;
   normalizeSplit(layout);
-  return layout;
+  // A view is in one place: in a sidebar, its main-area tab closes.
+  return closeTabsWhere(
+    layout,
+    (t) => t.type === VIEW_TAB && regionOf(layout, String(t.params.viewId)) !== undefined,
+  );
 }
 
-/** Moves a view to a region (at the end) and shows it there. */
+/** Moves a view to a region (at the end) and shows it there. A view is in one place: its main tab closes. */
 export function moveView(input: Layout, viewId: string, to: SideRegion): Layout {
-  const layout = clone(input);
+  const layout = clone(closeTabsWhere(input, isViewTab(viewId)));
   removeEverywhere(layout, viewId);
   layout[to].views.push(viewId);
   layout[to].active = viewId;
-  layout[to].collapsed = false;
+  layout[columnOf(to)].collapsed = false;
   return layout;
 }
 
@@ -203,48 +216,36 @@ export function hideView(input: Layout, viewId: string): Layout {
   return layout;
 }
 
-/**
- * Shows a view: un-hides it (into `fallback`) if needed, activates it and expands its region. A
- * section: its host is activated and the section opened.
- */
+/** Shows a view: un-hides it (into `fallback`) if needed, activates it and expands its sidebar. */
 export function showView(input: Layout, viewId: string, fallback: SideRegion): Layout {
   const region = regionOf(input, viewId);
   if (!region) return moveView(input, viewId, fallback);
   const layout = clone(input);
-  layout[region].active = hostOf(layout, viewId) ?? viewId;
-  layout[region].collapsed = false;
-  layout.closedSections = layout.closedSections.filter((v) => v !== viewId);
+  layout[region].active = viewId;
+  layout[columnOf(region)].collapsed = false;
   return layout;
 }
 
 /**
- * Shows `viewId` as a section below `hostId`, in the host's tab. A view that had sections of its own
- * hands them to the host (sections are one level deep). Nothing happens for a host that is itself a
- * section.
+ * Opens a view as a tab in the main area (or focuses its tab); it leaves its sidebar (it is then
+ * `hidden`, which means "not in a sidebar"). Dragging its tab onto a sidebar puts it back there.
  */
-export function placeBelow(input: Layout, viewId: string, hostId: string): Layout {
-  if (viewId === hostId || hostOf(input, hostId)) return input;
+export function openViewTab(input: Layout, viewId: string): { layout: Layout; tabId: string } {
   const layout = clone(input);
-  const own = layout.sections[viewId] ?? [];
-  delete layout.sections[viewId];
   removeEverywhere(layout, viewId);
-  layout.sections[hostId] = [...(layout.sections[hostId] ?? []), viewId, ...own];
-  layout.closedSections = layout.closedSections.filter((v) => v !== viewId);
-  const region = regionOf(layout, hostId);
-  if (region) {
-    layout[region].active = hostId;
-    layout[region].collapsed = false;
-  }
-  return layout;
+  layout.hidden.push(viewId);
+  return openTab(layout, { type: VIEW_TAB, params: { viewId } });
 }
 
-/** Collapses a section to its header, or opens it again. */
-export function toggleSection(input: Layout, viewId: string): Layout {
-  const layout = clone(input);
-  layout.closedSections = layout.closedSections.includes(viewId)
-    ? layout.closedSections.filter((v) => v !== viewId)
-    : [...layout.closedSections, viewId];
-  return layout;
+/**
+ * Shows `viewId` in the same sidebar as `hostId`, in its lower half (a split sidebar), so both are
+ * visible at once. A host in the bottom panel just moves the view there.
+ */
+export function splitBeside(input: Layout, viewId: string, hostId: string): Layout {
+  const host = regionOf(input, hostId);
+  if (!host || viewId === hostId) return input;
+  const target = host === "bottom" ? host : (LOWER_HALF[columnOf(host)] ?? host);
+  return moveView(input, viewId, target);
 }
 
 export function setRegion(
@@ -253,7 +254,9 @@ export function setRegion(
   patch: Partial<Pick<Layout["left"], "size" | "collapsed" | "active">>,
 ): Layout {
   const layout = clone(input);
-  Object.assign(layout[region], patch);
+  const { collapsed, ...rest } = patch;
+  Object.assign(layout[region], rest);
+  if (collapsed !== undefined) layout[columnOf(region)].collapsed = collapsed;
   if (patch.size !== undefined) layout[region].size = Math.round(Math.min(2000, Math.max(120, patch.size)));
   return layout;
 }
@@ -270,7 +273,7 @@ export function setPaneSize(input: Layout, id: string, size: number): Layout {
 }
 
 export function toggleRegion(input: Layout, region: SideRegion): Layout {
-  return setRegion(input, region, { collapsed: !input[region].collapsed });
+  return setRegion(input, region, { collapsed: !input[columnOf(region)].collapsed });
 }
 
 /** Moves a view within its region's tab strip. */
@@ -279,26 +282,26 @@ export function reorderView(input: Layout, viewId: string, toIndex: number): Lay
   if (!region) return input;
   const layout = clone(input);
   const views = layout[region].views;
-  // A section (shown below another view) isn't in the strip: dropView moves it there first.
-  if (!views.includes(viewId)) return input;
   views.splice(views.indexOf(viewId), 1);
   views.splice(Math.max(0, Math.min(toIndex, views.length)), 0, viewId);
   return layout;
 }
 
 /**
- * A view dropped on a region's tab bar (drag and drop): moved there if it was elsewhere (or a section),
+ * A view dropped on a region's tab bar (drag and drop): moved there if it was elsewhere,
  * placed before `beforeId` (or at the end), and shown.
  */
 export function dropView(input: Layout, viewId: string, region: SideRegion, beforeId?: string): Layout {
   if (viewId === beforeId) return input;
-  const inStrip = regionOf(input, viewId) === region && !hostOf(input, viewId);
-  let layout = inStrip ? input : moveView(input, viewId, region);
+  let layout = regionOf(input, viewId) === region ? input : moveView(input, viewId, region);
   if (regionOf(layout, viewId) !== region) return layout;
   const others = layout[region].views.filter((v) => v !== viewId);
   const at = beforeId && others.includes(beforeId) ? others.indexOf(beforeId) : others.length;
   layout = reorderView(layout, viewId, at);
-  return { ...layout, [region]: { ...layout[region], active: viewId, collapsed: false } };
+  layout = clone(layout);
+  layout[region].active = viewId;
+  layout[columnOf(region)].collapsed = false;
+  return layout;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -510,5 +513,46 @@ export function updateTabParams(input: Layout, tabId: string, params: Record<str
   const layout = clone(input);
   const tab = layout.main.tabs.find((t) => t.id === tabId);
   if (tab) tab.params = { ...tab.params, ...params };
+  return layout;
+}
+
+/** Saves where every view is under a name (replacing one with the same name). Open tabs aren't saved. */
+export function saveNamedLayout(input: Layout, name: string): Layout {
+  const trimmed = name.trim().slice(0, 60);
+  if (!trimmed) throw new Error("A layout needs a name");
+  const layout = clone(input);
+  const snapshot: SavedLayout = {
+    name: trimmed,
+    left: structuredClone(layout.left),
+    left2: structuredClone(layout.left2),
+    right: structuredClone(layout.right),
+    right2: structuredClone(layout.right2),
+    bottom: structuredClone(layout.bottom),
+    hidden: [...layout.hidden],
+    panes: { ...layout.panes },
+  };
+  const others = layout.saved.filter((l) => l.name.toLowerCase() !== trimmed.toLowerCase());
+  layout.saved = [...others, snapshot].slice(-MAX_SAVED_LAYOUTS);
+  return layout;
+}
+
+/**
+ * Switches to a named layout: its regions, hidden views and pane sizes. Open tabs and the other named
+ * layouts stay; `normalizeLayout` then places views that are new since and closes view tabs whose
+ * view is now in a region.
+ */
+export function applyNamedLayout(input: Layout, name: string): Layout {
+  const saved = input.saved.find((l) => l.name === name);
+  if (!saved) throw new Error(`No layout named "${name}"`);
+  const layout = clone(input);
+  for (const r of SIDE_REGIONS) layout[r] = structuredClone(saved[r]);
+  layout.hidden = [...saved.hidden];
+  layout.panes = { ...saved.panes };
+  return layout;
+}
+
+export function deleteNamedLayout(input: Layout, name: string): Layout {
+  const layout = clone(input);
+  layout.saved = layout.saved.filter((l) => l.name !== name);
   return layout;
 }

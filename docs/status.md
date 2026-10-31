@@ -8,13 +8,39 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 2. Clone ThinkRail beside it for reference: `git clone --depth 1 https://github.com/JetBrains/thinkrail ../thinkrail`.
    Which parts to read for which phase: `docs/reference/reference-repos.md`.
 3. Read `AGENTS.md`, `docs/vision.md`, `docs/architecture.md`, `docs/decisions.md`.
-4. Phases 0–18 in `docs/plan/README.md` are ✅ (phase 18 was Jon's list: file explorer, editing in
+4. Phases 0–18 in `docs/plan/README.md` are ✅ (19 is 🟡: only the Windows taskbar-icon check is left) (phase 18 was Jon's list: file explorer, editing in
    Preview, projects you manage, arranging panels, split view, project links, Releases, Learning 2
    with Workflows). What's left of it is in `docs/plan/99-backlog.md`. Next: try phase 18 on Windows
    ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
+
+- Navigation and layouts (D-175, D-176): **Ctrl+P** (or the magnifier in the top bar) opens Go to:
+  chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
+  between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
+  moving the same way and suggests placing them.
+- Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
+- Task queue (D-182): Chats menu → Task queue. Add tasks (one per line), choose per task whether it
+  starts a new chat or continues the previous one, then Start. Claude does them in order and reports
+  each (outcome, summary, things to know, follow-ups) in the table; click a row for details, the chat
+  icon opens its chat. In a chat, ask Claude to queue tasks (for example one per spec in a folder):
+  it uses `addon_tasks_add`. Known gaps: which add-on follows which chat is kept in memory, so after a
+  restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
+  Claude's last answer instead. Needs testing on a real machine with real Claude Code.
+- Workflows (D-177) can run **after you push** or **when a pipeline finishes**. Needs testing on a
+  real machine: a real push and a real Azure DevOps pipeline (the e2e tests use a fake `az`).
+- Add-on gallery (D-179): Tools → Add-on gallery, or Settings → Add-ons. Add a git URL or a folder,
+  then Install. Needs testing on a real machine: a private git repository over https and ssh.
+- Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Claude Code → Quick model).
+- Pipelines (D-180): each pipeline is one compact row; click it for the details dialog.
+- Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
+- Layout (D-173, D-174): **View menu → Reset layout** puts every view back. Sidebars hold only daily
+  views; Suggestions, Links, Releases and Workflows open as main tabs from the top bar menus. Drag
+  any view's tab anywhere: another region, a sidebar's lower part (splits it), the main area, or the
+  dashed edge target of a hidden sidebar/bottom panel. Top bar menus are merged into Chats, Code,
+  Build and View; project actions are in the project switcher. Needs testing on a real machine:
+  drag and drop with a mouse on Windows, and old layouts loading.
 
 - **Phase 0–1 (done):** docs, plan, tooling; the Electron app with the typed host bridge, config in
   `~/.jig/config.json`, window state, host log in `~/.jig/logs/main.log`.
@@ -82,8 +108,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     terminal, the desktop app or an IDE, filtered by title/folder/branch; opening one brings its
     history into a chat in No project that continues it as a copy.
   - **Repos** (click a repository: its commits to pull and push, a commit's files and diffs; D-149)
-    (a collapsible section at the bottom of the Git panel; its ⋯ menu moves it to its own
-    tab, and any view can be shown below another the same way), like the Git plugin (D-143): every
+    (in the lower half of the left sidebar, D-173; drag its tab anywhere, D-174), like the Git plugin (D-143): every
     repository by its own name, a sync chip (pull, then push) and its branch; Arrange hides,
     reorders and groups them with dividers, once for all projects; "N to push/pull" in the status
     bar; right-click a project → Open in VS Code / Explorer.
@@ -153,7 +178,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       **Fill it in with Claude** in What Jig knows about me. Needs testing with real Claude.
     - **Check-in** (Settings → Learning, off by default; offered once after two weeks): a short chat
       with 3–5 questions that adds what it learns to your profile.
-    - **Workflows** (left sidebar, Tools → Show workflows; a new built-in add-on): lists of steps you
+    - **Workflows** (opens as a main tab: Chats menu → Show workflows, D-173/D-174; a new built-in add-on): lists of steps you
       repeat, per project. Each step is yours (a check), "ask me first" or done by Jig (a command, a
       script, a pipeline, a message to Claude). Run it step by step with the output shown; schedule it
       (while Jig is open); export it as a Claude Code skill; Move to the cloud asks Claude to make it a
@@ -208,7 +233,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Arrange Scripts and Pipelines:** Arrange in each panel's header hides items, lets you drag them
   into your order and adds dividers (optionally titled). It's the same in every project. Scripts
   shows one group per folder, whatever the active project.
-- **Releases** (right sidebar, Tools → Show releases; a "N to release" item in the status bar): versions,
+- **Releases** (opens as a main tab: Code menu → Show releases, D-173/D-174; a "N to release" item in the status bar): versions,
   changelogs and release notes per repository (D-110).
   - **Set up** a repository once: Jig shows what it found (version files, tags, changelog, conventional
     commits, tools such as GitVersion) and **Set up with Claude** opens a chat that proposes a release

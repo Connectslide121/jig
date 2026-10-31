@@ -260,21 +260,26 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
 
 ## 6. The workbench — layout as data
 
-The window is divided into **regions**: `topbar`, `left` sidebar, `main` (tabs; splitting is in the
-backlog), `right` sidebar, `bottom` panel, `statusbar`. The arrangement is plain data in `layout.json`
+The window is divided into **regions**: `topbar`, `left` sidebar (its lower half `left2`), `main`
+(tabs, optionally split in two), `right` sidebar (lower half `right2`), `bottom` panel, `statusbar`.
+A view not in a region opens as a main tab (`jig.view`); any view's tab can be dragged to any of
+them (D-173, D-174). The arrangement is plain data in `layout.json`
 (`apps/desktop/src/shared/layout.ts`, reference: `docs/reference/layout.md`):
 
 ```jsonc
 {
   "left":   { "views": ["jig.projects", "jig.sessions"], "size": 280, "collapsed": false },
-  "right":  { "views": ["addon.repos.overview"], "size": 320, "collapsed": true },
+  "left2":  { "views": ["addon.repos.overview"], "size": 260, "collapsed": false },
+  "right":  { "views": ["addon.scripts.scripts"], "size": 320, "collapsed": true },
+  "hidden": ["addon.releases.releases"],
   "bottom": { "views": ["jig.terminal"], "size": 240, "collapsed": true },
   "main":   { "tabs": [ { "type": "jig.chat", "params": { "sessionId": "…" } } ] }
 }
 ```
 
 **No native menu bar.** The window has no OS title bar and no Electron menu bar on Windows/Linux:
-the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings). macOS keeps a
+the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings, and a few merged
+action menus: Chats, Code, Build, View — D-174). macOS keeps a
 minimal application menu so Cmd+C/V/Q and window shortcuts keep working (D-023).
 
 Core features and add-ons contribute **views** with stable ids; the layout decides where they appear.
@@ -422,9 +427,9 @@ shell, `core.quotepath=off`, `GIT_TERMINAL_PROMPT=0`) and parses machine-readabl
 (`addons/git/lib/parse.ts`). Rebase, graph and blame are out of scope. Jig does not run VS Code
 extensions or embed VS Code (D-019, D-022).
 
-The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, Open in
-VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
-`addons/scripts` (scripts view and Tools-menu actions), `addons/releases` (versions, changelogs and
+The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
+branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
+`addons/scripts` (scripts view and Tools-menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (per-chat notes you and Claude write; sent to Claude through `claude.context`, D-151), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
 lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are

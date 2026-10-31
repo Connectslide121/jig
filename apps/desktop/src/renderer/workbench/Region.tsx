@@ -1,51 +1,27 @@
-import {
-  ChevronDown,
-  ChevronRight,
-  EyeOff,
-  MoreHorizontal,
-  PanelBottom,
-  PanelLeft,
-  PanelRight,
-  Rows3,
-  Sparkles,
-  SquareStack,
-} from "lucide-react";
-import { useState } from "react";
-import { hostOf, type SideRegion } from "../../shared/layout";
+import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight, PanelTop, Sparkles } from "lucide-react";
+import { type DragEvent, useState } from "react";
+import { LOWER_HALF, type SideRegion } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
 import { useRegistry } from "./registry";
-import { useWorkbench, workbench } from "./store";
+import { startViewDrag, useViewDrag, useWorkbench, VIEW_DRAG, workbench } from "./store";
 
 const regionNames: Record<SideRegion, string> = {
   left: "left sidebar",
+  left2: "lower left sidebar",
   right: "right sidebar",
+  right2: "lower right sidebar",
   bottom: "bottom panel",
 };
-const regionIcons = { left: PanelLeft, right: PanelRight, bottom: PanelBottom };
-
-/** The views a view can be shown below: every placed view that isn't a section (nor itself). */
-function hostChoices(viewId: string): MenuEntry[] {
-  const layout = useWorkbench.getState().layout;
-  const views = useRegistry.getState().views;
-  if (!layout) return [];
-  return (["left", "right", "bottom"] as const)
-    .flatMap((r) => layout[r].views)
-    .filter((id) => id !== viewId && views[id] && layout.sections[id]?.includes(viewId) !== true)
-    .map((id) => ({
-      label: views[id]!.title,
-      icon: views[id]!.icon,
-      testId: `place-below-${id}`,
-      onSelect: () => workbench.placeBelow(viewId, id),
-    }));
-}
+const regionIcons = {
+  left: PanelLeft,
+  right: PanelRight,
+  bottom: PanelBottom,
+};
 
 export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
   const owner = useRegistry.getState().views[viewId]?.owner;
   const addonId = owner && owner !== "core" ? owner : undefined;
-  const layout = useWorkbench.getState().layout;
-  const isSection = layout ? Boolean(hostOf(layout, viewId)) : false;
-  const below = hostChoices(viewId);
   return [
     ...(addonId
       ? [
@@ -58,19 +34,7 @@ export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
           { separator: true } as const,
         ]
       : []),
-    ...(isSection
-      ? [
-          {
-            label: "Move to its own tab",
-            icon: SquareStack,
-            testId: "section-own-tab",
-            onSelect: () => workbench.moveView(viewId, region),
-          },
-        ]
-      : []),
-    ...(below.length
-      ? [{ label: "Show below…", icon: Rows3, testId: "place-below", submenu: below } as MenuEntry]
-      : []),
+    // A lower half (split sidebar) is made by dragging a tab there, not from this menu (D-173).
     ...(["left", "right", "bottom"] as const)
       .filter((r) => r !== region)
       .map((r) => ({
@@ -79,19 +43,31 @@ export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
         onSelect: () => workbench.moveView(viewId, r),
         testId: `move-view-${r}`,
       })),
+    {
+      label: "Open as a tab",
+      icon: PanelTop,
+      onSelect: () => workbench.openViewTab(viewId),
+      testId: "move-view-main",
+    },
     { separator: true },
     { label: "Hide", icon: EyeOff, onSelect: () => workbench.hideView(viewId), testId: "hide-view" },
   ];
 }
 
-const DEFAULT_SIZE: Record<SideRegion, number> = { left: 280, right: 320, bottom: 260 };
+const DEFAULT_SIZE: Record<SideRegion, number> = {
+  left: 280,
+  left2: 260,
+  right: 320,
+  right2: 260,
+  bottom: 260,
+};
 const MIN_MAIN = 320;
 
 /** Drag handle that resizes a region; the main area keeps at least 320px. */
 function Resizer({ region, size }: { region: SideRegion; size: number }) {
   const max = () => {
     const layout = useWorkbench.getState().layout;
-    if (region === "bottom") return window.innerHeight * 0.75;
+    if (region === "bottom" || region === "left2" || region === "right2") return window.innerHeight * 0.75;
     const other = region === "left" ? layout?.right : layout?.left;
     const otherSize = other && !other.collapsed && other.views.length ? other.size : 0;
     return window.innerWidth - otherSize - MIN_MAIN;
@@ -110,23 +86,27 @@ function Resizer({ region, size }: { region: SideRegion; size: number }) {
   );
 }
 
-/** A side region: a header with one tab per view, and the active view below. */
-/** Drag data of a view tab (drag a tab to reorder it, or onto another sidebar's tabs to move it). */
-const VIEW_DRAG = "application/x-jig-view";
-
+/**
+ * A side region: the bottom panel, or a sidebar with one stack of views, or two when it is split (the
+ * lower half has its own tabs and height).
+ */
 export function Region({ region }: { region: SideRegion }) {
   const state = useWorkbench((s) => s.layout?.[region]);
-  const [over, setOver] = useState<string | null>(null);
+  const lowerId = LOWER_HALF[region];
+  const lower = useWorkbench((s) => (lowerId ? s.layout?.[lowerId] : undefined));
   const views = useRegistry((s) => s.views);
-  const sectionMap = useWorkbench((s) => s.layout?.sections) ?? {};
+  const [splitDrop, setSplitDrop] = useState(false);
   if (!state || state.collapsed) return null;
-  const visible = state.views.map((id) => views[id]).filter((v) => v !== undefined);
-  if (visible.length === 0) return null;
-  const active = visible.find((v) => v.id === state.active) ?? visible[0]!;
-  const sections = (sectionMap[active.id] ?? []).filter((id) => views[id]);
-  const View = active.component;
-  const HeaderActions = active.headerActions;
+  const upper = state.views.some((id) => views[id]);
+  const split = Boolean(lowerId && lower?.views.some((id) => views[id]));
+  if (!upper && !split) return null;
   const horizontal = region !== "bottom";
+  // Not split yet: dragging a view tab over the lower half of the sidebar offers to split it there.
+  const canSplit = Boolean(lowerId && !split);
+  const inLowerHalf = (e: DragEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return e.clientY > rect.top + rect.height / 2;
+  };
   return (
     <section
       data-testid={`region-${region}`}
@@ -138,7 +118,64 @@ export function Region({ region }: { region: SideRegion }) {
         region === "right" && "border-l border-line",
         region === "bottom" && "border-t border-line",
       )}
+      onDragOver={(e) => {
+        if (!canSplit || !e.dataTransfer.types.includes(VIEW_DRAG) || e.defaultPrevented) return;
+        const lowerHalf = inLowerHalf(e);
+        setSplitDrop(lowerHalf);
+        if (!lowerHalf) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSplitDrop(false);
+      }}
+      onDrop={(e) => {
+        const on = splitDrop;
+        setSplitDrop(false);
+        const id = e.dataTransfer.getData(VIEW_DRAG);
+        if (!canSplit || !lowerId || !on || !id || e.defaultPrevented) return;
+        e.preventDefault();
+        workbench.dropView(id, lowerId);
+      }}
     >
+      <Stack region={region} />
+      {lowerId && lower && split && (
+        <section
+          data-testid={`region-${lowerId}`}
+          aria-label={regionNames[lowerId]}
+          style={upper ? { height: lower.size } : undefined}
+          className={cn("relative flex min-h-0 flex-col", upper ? "shrink-0 border-t border-line" : "flex-1")}
+        >
+          {upper && <Resizer region={lowerId} size={lower.size} />}
+          <Stack region={lowerId} />
+        </section>
+      )}
+      {splitDrop && (
+        <div
+          data-testid={`split-drop-${region}`}
+          className="pointer-events-none absolute inset-x-1 bottom-1 top-1/2 flex items-center justify-center rounded-md border-2 border-dashed border-accent bg-accent-soft text-sm font-medium text-accent"
+        >
+          Drop to split the sidebar
+        </div>
+      )}
+      <Resizer region={region} size={state.size} />
+    </section>
+  );
+}
+
+/** One stack of views: a header with a tab per view, and the active view below. */
+function Stack({ region }: { region: SideRegion }) {
+  const state = useWorkbench((s) => s.layout?.[region]);
+  const [over, setOver] = useState<string | null>(null);
+  const views = useRegistry((s) => s.views);
+  if (!state) return null;
+  const visible = state.views.map((id) => views[id]).filter((v) => v !== undefined);
+  if (visible.length === 0) return null;
+  const active = visible.find((v) => v.id === state.active) ?? visible[0]!;
+  const View = active.component;
+  const HeaderActions = active.headerActions;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-testid={`stack-${region}`}>
       <header className="flex h-8 shrink-0 items-center gap-0.5 border-b border-line px-1.5">
         <div
           className={cn(
@@ -180,6 +217,7 @@ export function Region({ region }: { region: SideRegion }) {
                 onDragStart={(e) => {
                   e.dataTransfer.setData(VIEW_DRAG, view.id);
                   e.dataTransfer.effectAllowed = "move";
+                  startViewDrag(view.id);
                 }}
                 onDragOver={(e) => e.dataTransfer.types.includes(VIEW_DRAG) && setOver(view.id)}
                 onDragEnd={() => setOver(null)}
@@ -214,78 +252,59 @@ export function Region({ region }: { region: SideRegion }) {
           <View viewId={active.id} region={region} />
         </ErrorBoundary>
       </div>
-      {sections.map((id) => (
-        <Section key={id} viewId={id} region={region} />
-      ))}
-      <Resizer region={region} size={state.size} />
-    </section>
+    </div>
   );
 }
 
-const SECTION_HEIGHT = 240;
-
 /**
- * A view shown below the active view, in the same tab (like GitLens below Source Control): a header
- * that collapses it, and its content at a height you drag (`panes["section:<view>"]`).
+ * While a view is dragged: a drop target at the edge of the window for each sidebar or the bottom
+ * panel that isn't showing (collapsed or empty), so a view can go anywhere. Overlays: nothing moves.
  */
-function Section({ viewId, region }: { viewId: string; region: SideRegion }) {
-  const view = useRegistry((s) => s.views[viewId]);
-  const closed = useWorkbench((s) => s.layout?.closedSections.includes(viewId) ?? false);
-  const height = useWorkbench((s) => s.layout?.panes[`section:${viewId}`]) ?? SECTION_HEIGHT;
-  if (!view) return null;
-  const View = view.component;
-  const Icon = view.icon;
-  const HeaderActions = view.headerActions;
+export function ViewDropEdges() {
+  const dragging = useViewDrag((s) => s.viewId);
+  const layout = useWorkbench((s) => s.layout);
+  const views = useRegistry((s) => s.views);
+  const [over, setOver] = useState<SideRegion | null>(null);
+  if (!dragging || !layout) return null;
+  const showing = (r: "left" | "right" | "bottom") => {
+    const lower = LOWER_HALF[r];
+    const ids = [...layout[r].views, ...(lower ? layout[lower].views : [])];
+    return !layout[r].collapsed && ids.some((id) => views[id]);
+  };
+  const edges = (["left", "right", "bottom"] as const).filter((r) => !showing(r));
   return (
-    <div
-      className="relative flex shrink-0 flex-col border-t border-line"
-      style={closed ? undefined : { height: Math.max(80, height) }}
-      data-testid={`section-${viewId}`}
-    >
-      {!closed && (
-        <ResizeHandle
-          edge="top"
-          size={height}
-          min={80}
-          max={() => window.innerHeight * 0.7}
-          label={`Resize ${view.title}`}
-          onResize={(next) => workbench.resizePane(`section:${viewId}`, next)}
-          onReset={() => workbench.resetPane(`section:${viewId}`)}
-        />
-      )}
-      <div className="group flex h-7 shrink-0 items-center gap-1 px-1.5">
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 items-center gap-1 text-2xs font-semibold tracking-wide text-muted uppercase hover:text-fg"
-          aria-expanded={!closed}
-          data-testid={`section-toggle-${viewId}`}
-          onClick={() => workbench.toggleSection(viewId)}
-        >
-          {closed ? (
-            <ChevronRight className="size-3.5 shrink-0" />
-          ) : (
-            <ChevronDown className="size-3.5 shrink-0" />
+    <>
+      {edges.map((r) => (
+        <div
+          key={r}
+          data-testid={`view-drop-${r}`}
+          className={cn(
+            "absolute z-10 flex items-center justify-center rounded-md border-2 border-dashed border-accent text-xs font-medium text-accent",
+            over === r ? "bg-accent-soft" : "bg-surface",
+            r === "left" && "inset-y-2 left-2 w-24",
+            r === "right" && "inset-y-2 right-2 w-24",
+            r === "bottom" && "inset-x-28 bottom-2 h-12",
           )}
-          <Icon className="size-4 shrink-0" />
-          <span className="truncate">{view.title}</span>
-        </button>
-        {!closed && HeaderActions && <HeaderActions viewId={viewId} region={region} />}
-        <IconButton
-          icon={MoreHorizontal}
-          label={`${view.title} options`}
-          size="sm"
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-          data-testid={`view-menu-${viewId}`}
-          onClick={(e) => openMenuAt(e.currentTarget, viewMenu(viewId, region), true)}
-        />
-      </div>
-      {!closed && (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <ErrorBoundary key={viewId} label={view.title}>
-            <View viewId={viewId} region={region} />
-          </ErrorBoundary>
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(VIEW_DRAG)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "move";
+            setOver(r);
+          }}
+          onDragLeave={() => setOver(null)}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData(VIEW_DRAG);
+            setOver(null);
+            if (!id) return;
+            e.preventDefault();
+            e.stopPropagation();
+            workbench.moveView(id, r);
+          }}
+        >
+          {regionNames[r]}
         </div>
-      )}
-    </div>
+      ))}
+    </>
   );
 }

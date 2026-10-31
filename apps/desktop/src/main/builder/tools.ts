@@ -6,14 +6,16 @@ import type { AddonInfo } from "../../shared/addons";
 import type { BuildJob, BuildKind, ExtensionProposal, LayoutOp } from "../../shared/builds";
 import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
 import {
+  applyNamedLayout,
   hideView,
-  hostOf,
   type Layout,
   moveView,
-  placeBelow,
+  SIDE_REGIONS,
   type SideRegion,
+  saveNamedLayout,
   setRegion,
   showView,
+  splitBeside,
 } from "../../shared/layout";
 
 /**
@@ -91,10 +93,12 @@ export function applyLayoutOps(layout: Layout, ops: LayoutOp[], viewIds: string[
     if (op.op === "move" && op.view && op.region) next = moveView(next, op.view, op.region);
     else if (op.op === "hide" && op.view) next = hideView(next, op.view);
     else if (op.op === "show" && op.view) next = showView(next, op.view, op.region ?? "left");
-    else if (op.op === "below" && op.view && op.host) next = placeBelow(next, op.view, op.host);
+    else if (op.op === "below" && op.view && op.host) next = splitBeside(next, op.view, op.host);
     else if (op.op === "resize" && op.region && op.size) next = setRegion(next, op.region, { size: op.size });
     else if (op.op === "collapse" && op.region) next = setRegion(next, op.region, { collapsed: true });
     else if (op.op === "expand" && op.region) next = setRegion(next, op.region, { collapsed: false });
+    else if (op.op === "save" && op.name) next = saveNamedLayout(next, op.name);
+    else if (op.op === "use" && op.name) next = applyNamedLayout(next, op.name);
     else throw new Error(`Incomplete operation: ${JSON.stringify(op)}`);
   }
   return next;
@@ -111,17 +115,15 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
         const layout = await env.layout();
         const views = allViews(env.addons())
           .map((v) => {
-            const host = hostOf(layout, v.id);
-            const where = host
-              ? `below ${host}`
-              : ((["left", "right", "bottom"] as const).find((r) => layout[r].views.includes(v.id)) ??
-                (layout.hidden.includes(v.id) ? "hidden" : v.region));
+            const where =
+              SIDE_REGIONS.find((r) => layout[r].views.includes(v.id)) ??
+              (layout.hidden.includes(v.id) ? "hidden" : v.region);
             return `- ${v.id} — ${v.title}: ${where}`;
           })
           .join("\n");
-        const regions = (["left", "right", "bottom"] as const)
-          .map((r) => `${r}: ${layout[r].collapsed ? "collapsed" : "open"}, ${layout[r].size}px`)
-          .join("; ");
+        const regions = SIDE_REGIONS.map(
+          (r) => `${r}: ${layout[r].collapsed ? "collapsed" : "open"}, ${layout[r].size}px`,
+        ).join("; ");
         const readmes = env
           .addons()
           .filter((a) => a.readme)
@@ -176,14 +178,14 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "stage_layout",
       description:
-        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "below", view, host } | { op: "resize", region, size } | { op: "collapse" | "expand", region }]. "below" shows view as a collapsible section under host, in the same tab; "move" puts a section back in its own tab. View ids come from the catalog.',
+        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "below", view, host } | { op: "resize", region, size } | { op: "collapse" | "expand", region }]. "below" shows view in the lower half of the host\'s sidebar (a split sidebar); regions: left, left2 (lower left), right, right2 (lower right), bottom. View ids come from the catalog.',
       shape: {
         ops: z.array(
           z.object({
             op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
             host: z.string().optional(),
             view: z.string().optional(),
-            region: z.enum(["left", "right", "bottom"]).optional(),
+            region: z.enum(SIDE_REGIONS).optional(),
             size: z.number().optional(),
           }),
         ),

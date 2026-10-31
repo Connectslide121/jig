@@ -25,6 +25,14 @@ Fixtures: `jigHome`, `app` (ElectronApplication), `page` (main window, waits for
 `hostCall(page, method, args)` calls a host method and returns the raw `{ ok, value | error }`
 envelope.
 
+Both `vitest.config.ts` and `playwright.config.ts` remove `GIT_AUTHOR_*` / `GIT_COMMITTER_*` from the
+environment (some CI and dev containers set them), so tests see the git identity they configure
+themselves. A test that commits sets `git config user.name` / `user.email` in its repository.
+
+`az` is faked by writing `fake-bin/az` (and a `.cmd`) in the test's `JIG_HOME`: the fixture puts that
+folder first on `PATH` (`e2e/workflows.spec.ts` fakes a finished pipeline this way). Add-on watchers
+can be run at once with `hostCall(page, "addons.call", { id, method, args })`.
+
 On Linux without a display, run under Xvfb: `xvfb-run -a npx playwright test` (after `npm run build`).
 On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 
@@ -42,6 +50,8 @@ in this order:
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
+| a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>", or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups" |
+| "queue tasks for" | Claude queues two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` |
 | starts with "Test this in Claude's browser" (Tools → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
@@ -59,7 +69,7 @@ in this order:
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
-| "pipelines below git" (or "under") | Claude shows Pipelines as a section below Git (`jig_change_layout` op `below`) |
+| "pipelines below git" (or "under") | Claude shows Pipelines in the lower half of Git's sidebar (`jig_change_layout` op `below`) |
 | "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones) |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |

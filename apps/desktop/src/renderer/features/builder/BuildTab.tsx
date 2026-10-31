@@ -38,9 +38,12 @@ function describeOp(op: LayoutOp): string {
   const view = op.view?.replace(/^addon\.([^.]+)\./, "$1: ").replace(/^jig\./, "") ?? "";
   if (op.op === "move")
     return `Move ${view} to the ${op.region} ${op.region === "bottom" ? "panel" : "sidebar"}`;
+  if (op.op === "below") return `Show ${view} in the lower half of the sidebar with ${op.host}`;
   if (op.op === "hide") return `Hide ${view}`;
   if (op.op === "show") return `Show ${view}`;
   if (op.op === "resize") return `Make the ${op.region} region ${op.size}px`;
+  if (op.op === "save") return `Save the layout as "${op.name}"`;
+  if (op.op === "use") return `Switch to the layout "${op.name}"`;
   return `${op.op === "collapse" ? "Collapse" : "Expand"} the ${op.region} region`;
 }
 

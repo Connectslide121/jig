@@ -1,6 +1,6 @@
 /**
- * Workflows (pure, tested; D-112): a named list of steps per project, run by hand, with help, or on a
- * schedule while Jig is open. Each step is manual (you tick it), auto (Jig or Claude does it) or "ask
+ * Workflows (pure, tested; D-112): a named list of steps per project, run by hand, with help, on a
+ * schedule or after an event (a push, a pipeline finishing; D-177) while Jig is open. Each step is manual (you tick it), auto (Jig or Claude does it) or "ask
  * me" (Jig asks before doing it).
  */
 export type StepKind = "check" | "command" | "script" | "pipeline" | "claude" | "wait";
@@ -25,7 +25,43 @@ export interface Step {
 export type Trigger =
   | { kind: "none" }
   /** Every day, every weekday (Mon–Fri) or one day of the week (0 = Sunday), at `time` (HH:MM, local). */
-  | { kind: "schedule"; every: "day" | "weekday" | "week"; time: string; day?: number };
+  | { kind: "schedule"; every: "day" | "weekday" | "week"; time: string; day?: number }
+  /** After you push `branch` (blank: the branch checked out), from Jig, a terminal or anywhere. */
+  | { kind: "push"; branch?: string }
+  /** When a run of an Azure DevOps pipeline finishes: any outcome, or only when it succeeded or failed. */
+  | {
+      kind: "pipeline";
+      pipeline: { org: string; project: string; id: number };
+      result?: "any" | "succeeded" | "failed";
+    };
+
+export type EventTrigger = Extract<Trigger, { kind: "push" | "pipeline" }>;
+
+export const isEventTrigger = (t: Trigger): t is EventTrigger => t.kind === "push" || t.kind === "pipeline";
+
+/**
+ * What a push trigger watches, from the newest reflog entry of the branch's upstream
+ * (`git reflog -n1 --format=%H%x09%gs <upstream>`): the pushed commit, or nothing when the upstream
+ * last moved by a fetch or pull (someone else's commits aren't your push).
+ */
+export function pushMark(reflogLine: string): string | undefined {
+  const [sha, subject] = reflogLine.trim().split("\t");
+  return sha && subject?.startsWith("update by push") ? sha : undefined;
+}
+
+/** Whether a pipeline run's outcome is the one a pipeline trigger waits for. */
+export function pipelineResultMatches(want: "any" | "succeeded" | "failed" | undefined, result: string) {
+  if (!want || want === "any") return true;
+  return want === "succeeded" ? result === "succeeded" : result !== "succeeded";
+}
+
+/**
+ * Whether an event happened: what it watches changed since it was last seen. The first look only
+ * remembers (a workflow doesn't fire for a push made before it was saved).
+ */
+export function eventFires(last: string | undefined, now: string | undefined): boolean {
+  return last !== undefined && now !== undefined && now !== last;
+}
 
 export interface Workflow {
   id: string;
@@ -47,8 +83,8 @@ export interface Run {
   startedAt: string;
   finishedAt?: string;
   status: "running" | "done" | "failed" | "stopped";
-  /** Started by you, or by the schedule. */
-  by: "you" | "schedule";
+  /** Started by you, by the schedule, or by an event (a push, a pipeline finishing). */
+  by: "you" | "schedule" | "event";
   steps: Array<{ id: string; status: StepStatus; output?: string; at?: string }>;
 }
 
@@ -185,6 +221,12 @@ export function runsUnattended(wf: Workflow): boolean {
 }
 
 export function triggerLabel(t: Trigger): string {
+  if (t.kind === "push") return t.branch ? `After you push ${t.branch}` : "After you push";
+  if (t.kind === "pipeline") {
+    const name = t.pipeline.id ? `pipeline ${t.pipeline.id}` : "a pipeline";
+    const when = t.result === "succeeded" ? "succeeds" : t.result === "failed" ? "fails" : "finishes";
+    return `When ${name} ${when}`;
+  }
   if (t.kind !== "schedule") return "By hand";
   const days = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
   const when = t.every === "day" ? "Every day" : t.every === "weekday" ? "Weekdays" : days[t.day ?? 1];

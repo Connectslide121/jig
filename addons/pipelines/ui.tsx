@@ -47,6 +47,7 @@ import {
   type PipelineRun,
   REASONS,
   type RunKind,
+  runAge,
   runKind,
   runLabel,
   stageLine,
@@ -119,16 +120,23 @@ function PipelineRow({
   project: string;
   pl: OrgPipelines["projects"][number]["pipelines"][number];
   arranging: boolean;
-  /** Opens the Run form under the row. */
+  /** Opens the Run form. */
   onRun: () => void;
 }) {
   const open = () =>
     ctx.openExternal(pl.latest ? runUrl(org, project, pl.latest.id) : pipelineUrl(org, project, pl.id));
+  const latest = pl.latest;
+  const info = latest
+    ? [latest.branch, when(latest.finishTime ?? latest.startTime ?? latest.queueTime), latest.requestedBy]
+        .filter(Boolean)
+        .join(" · ")
+    : "Never run";
   return (
     <div
       role="button"
       tabIndex={0}
       data-testid={`pipeline-${pl.name}`}
+      title={`${pl.name}\n${info}`}
       onClick={() => !arranging && open()}
       onKeyDown={(e) => e.key === "Enter" && open()}
       onContextMenu={(e) => {
@@ -145,12 +153,12 @@ function PipelineRow({
               icon: "external-link",
               onSelect: () => ctx.openExternal(pipelineUrl(org, project, pl.id)),
             },
-            ...(pl.latest
+            ...(latest
               ? [
                   {
                     label: "Open latest run",
                     icon: "external-link",
-                    onSelect: () => ctx.openExternal(runUrl(org, project, pl.latest!.id)),
+                    onSelect: () => ctx.openExternal(runUrl(org, project, latest.id)),
                   },
                 ]
               : []),
@@ -158,18 +166,13 @@ function PipelineRow({
           e.nativeEvent,
         );
       }}
-      className="group flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
+      className="group flex h-7 cursor-default items-center gap-2 rounded-md px-2 hover:bg-hover"
     >
-      <RunStateIcon run={pl.latest} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm">{pl.name}</div>
-        <div className="truncate text-xs text-muted">
-          {pl.latest
-            ? `${pl.latest.branch} · ${when(pl.latest.finishTime ?? pl.latest.startTime ?? pl.latest.queueTime)}${pl.latest.requestedBy ? ` · ${pl.latest.requestedBy}` : ""}`
-            : "never run"}
-        </div>
-      </div>
-      <span className="hidden group-hover:flex group-focus-within:flex">
+      <span className="min-w-0 flex-1 truncate text-sm">{pl.name}</span>
+      <TimeOrActions
+        time={latest ? when(latest.finishTime ?? latest.startTime ?? latest.queueTime) : ""}
+        arranging={arranging}
+      >
         <IconButton
           icon={Play}
           size="sm"
@@ -188,8 +191,48 @@ function PipelineRow({
             ctx.openExternal(pipelineUrl(org, project, pl.id));
           }}
         />
-      </span>
+      </TimeOrActions>
+      <RunStateIcon run={latest} />
     </div>
+  );
+}
+
+/**
+ * A row's fixed time column: how long ago, and the row's buttons in the same place while you point at
+ * it. One width either way, so nothing in the row moves.
+ */
+function TimeOrActions({
+  time,
+  arranging,
+  loading = false,
+  children,
+}: {
+  time: string;
+  arranging: boolean;
+  loading?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="flex w-16 shrink-0 items-center justify-end">
+      {loading ? (
+        <span
+          className="block h-3 w-10 animate-pulse rounded-sm bg-active"
+          title="Loading the latest run"
+          data-testid="pipeline-loading"
+        />
+      ) : (
+        <span
+          className={cn(
+            "truncate text-xs text-muted tabular-nums",
+            !arranging && "group-hover:hidden group-focus-within:hidden",
+          )}
+          data-testid="pipeline-time"
+        >
+          {time}
+        </span>
+      )}
+      {!arranging && <span className="hidden group-hover:flex group-focus-within:flex">{children}</span>}
+    </span>
   );
 }
 
@@ -398,7 +441,7 @@ function RunForm({
   );
 }
 
-/** One pipeline: its state, the newest run (chip, branch, why, who, what it changed), its stages. */
+/** One pipeline as one line: its name, how long ago it last ran, its state. The rest is in Details. */
 function PipelineCard({
   ctx,
   pipeline,
@@ -417,17 +460,14 @@ function PipelineCard({
   onOpen: (open: boolean) => void;
   arranging: boolean;
 }) {
+  const [details, setDetails] = useState(false);
   const org = orgUrl(pipeline.org);
   const kind = runKind(run);
-  const details = run
-    ? [run.branch, REASONS[run.reason] ?? run.reason, run.by, changedParams(pipeline, run.params)].filter(
-        Boolean,
-      )
-    : [];
   const menu = (e: React.MouseEvent) =>
     ctx.menu(
       [
         { label: "Run…", icon: "play", onSelect: () => onOpen(true) },
+        { label: "Details…", icon: "info", onSelect: () => setDetails(true) },
         ...(run
           ? [
               {
@@ -446,19 +486,45 @@ function PipelineCard({
       e.nativeEvent,
     );
   return (
-    <div
-      className={cn(
-        "group rounded-md px-2 py-1.5",
-        open ? "bg-hover" : "hover:bg-hover",
-        isActive(run) && "border-l-2 border-info",
-      )}
-      data-testid={`pipeline-${pipeline.name}`}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        menu(e);
-      }}
-    >
-      <div className="flex items-center gap-2">
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn(
+          "group flex h-7 cursor-default items-center gap-2 rounded-md px-2",
+          open || details ? "bg-hover" : "hover:bg-hover",
+        )}
+        data-testid={`pipeline-${pipeline.name}`}
+        title={run ? `${pipeline.name}\n${runLabel(run)} · ${run.branch}` : pipeline.name}
+        onClick={() => !arranging && setDetails(true)}
+        onKeyDown={(e) => e.key === "Enter" && !arranging && setDetails(true)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          menu(e);
+        }}
+      >
+        <span className="min-w-0 flex-1 truncate text-sm">{pipeline.name}</span>
+        <TimeOrActions time={runAge(run)} arranging={arranging} loading={loading}>
+          <IconButton
+            icon={Play}
+            size="sm"
+            label={`Run ${pipeline.name}…`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(true);
+            }}
+            data-testid={`pipeline-run-${pipeline.name}`}
+          />
+          <IconButton
+            icon={MoreHorizontal}
+            size="sm"
+            label="More"
+            onClick={(e) => {
+              e.stopPropagation();
+              menu(e);
+            }}
+          />
+        </TimeOrActions>
         {loading ? (
           <LoaderCircle
             className="size-4 shrink-0 animate-spin text-hint"
@@ -467,64 +533,114 @@ function PipelineCard({
         ) : (
           <StateIcon kind={kind} run={run} />
         )}
-        <button
-          type="button"
-          className="min-w-0 flex-1 truncate text-left text-sm"
-          title={run ? "Open this run in the browser" : "Open the pipeline in the browser"}
-          disabled={arranging}
-          onClick={() =>
-            ctx.openExternal(
-              run ? runUrl(org, pipeline.project, run.id) : pipelineUrl(org, pipeline.project, pipeline.id),
-            )
-          }
-        >
-          {pipeline.name}
-        </button>
-        <span className="shrink-0" data-testid="pipeline-chip">
-          {loading ? (
-            <span
-              className="block h-4 w-14 animate-pulse rounded-sm bg-active"
-              title="Loading the latest run"
-              data-testid="pipeline-loading"
-            />
-          ) : (
-            <Badge tone={KIND_TONE[kind]}>{runLabel(run)}</Badge>
-          )}
-        </span>
-        {!arranging && (
-          <>
-            <Button
-              size="sm"
-              variant={open ? "primary" : "secondary"}
-              icon={Play}
-              onClick={() => onOpen(!open)}
-              data-testid={`pipeline-run-${pipeline.name}`}
-              title={`Run ${pipeline.name}…`}
-            >
-              Run
-            </Button>
-            <IconButton
-              icon={MoreHorizontal}
-              size="sm"
-              label="More"
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100"
-              onClick={(e) => menu(e)}
-            />
-          </>
-        )}
       </div>
-      {details.length > 0 && (
-        <div className="truncate pl-6 text-xs text-muted" title={details.join(" · ")}>
-          {details.join(" · ")}
-        </div>
-      )}
-      {run && (
-        <div className="pl-6">
-          <Stages run={run} />
-        </div>
+      {details && (
+        <PipelineDetails
+          ctx={ctx}
+          pipeline={pipeline}
+          run={run}
+          onRun={() => {
+            setDetails(false);
+            onOpen(true);
+          }}
+          onClose={() => setDetails(false)}
+        />
       )}
       {open && <RunForm ctx={ctx} pipeline={pipeline} last={run} onDone={() => onOpen(false)} />}
-    </div>
+    </>
+  );
+}
+
+/** Everything about a pipeline's newest run, in a modal so the list stays compact and still. */
+function PipelineDetails({
+  ctx,
+  pipeline,
+  run,
+  onRun,
+  onClose,
+}: {
+  ctx: AddonUiContext;
+  pipeline: PipelineInfo;
+  run?: PipelineRun | null;
+  onRun: () => void;
+  onClose: () => void;
+}) {
+  const org = orgUrl(pipeline.org);
+  const kind = runKind(run);
+  const at = (ms: number) => (ms ? new Date(ms).toLocaleString() : "");
+  const rows: [string, string][] = run
+    ? [
+        ["Run", run.number],
+        ["Branch", run.branch],
+        ["Why", REASONS[run.reason] ?? run.reason],
+        ["By", run.by],
+        ["Parameters", changedParams(pipeline, run.params) || "The defaults"],
+        ["Queued", at(run.queued)],
+        ["Started", at(run.started)],
+        ["Finished", at(run.finished)],
+      ].filter((row): row is [string, string] => Boolean(row[1]))
+    : [];
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={pipeline.name}
+      testId={`pipeline-details-${pipeline.name}`}
+      footer={
+        <>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Rocket}
+            onClick={() => ctx.openExternal(pipelineUrl(org, pipeline.project, pipeline.id))}
+          >
+            Open the pipeline
+          </Button>
+          {run && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={ExternalLink}
+              onClick={() => ctx.openExternal(runUrl(org, pipeline.project, run.id))}
+            >
+              Open this run
+            </Button>
+          )}
+          <Button size="sm" variant="primary" icon={Play} onClick={onRun} data-testid="pipeline-details-run">
+            Run…
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <span className="min-w-0 flex-1 truncate">
+            {pipeline.repoName} · {pipeline.org}/{pipeline.project}
+          </span>
+          <span className="shrink-0" data-testid="pipeline-chip">
+            <Badge tone={KIND_TONE[kind]}>{runLabel(run)}</Badge>
+          </span>
+        </div>
+        {rows.length > 0 && (
+          <dl className="flex flex-col gap-1 text-sm" data-testid="pipeline-run-details">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex gap-3">
+                <dt className="w-24 shrink-0 text-muted">{label}</dt>
+                <dd className="min-w-0 truncate" title={value}>
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {run && (
+          <div className="flex flex-col gap-1">
+            <div className="text-xs text-muted">Stages</div>
+            <Stages run={run} />
+          </div>
+        )}
+      </div>
+    </Dialog>
   );
 }
 

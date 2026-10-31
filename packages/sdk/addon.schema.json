@@ -65,7 +65,10 @@
               "region": {
                 "default": "left",
                 "type": "string",
-                "enum": ["left", "right", "bottom"]
+                "enum": ["left", "left2", "right", "right2", "bottom"]
+              },
+              "hidden": {
+                "type": "boolean"
               },
               "under": {
                 "type": "string"

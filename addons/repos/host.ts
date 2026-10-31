@@ -224,3 +224,43 @@ export async function commitDiff(
   const paths = from ? [from, file] : [file];
   return hunks(await git(api, path, [...diffTree(hash), "-p", "-U3", "--", ...paths]));
 }
+
+/** A repository's local branches, then the remote ones that have no local copy yet. */
+export async function branches(
+  { path }: { path: string },
+  api: AddonHostApi,
+): Promise<{ name: string; current: boolean; remote: boolean }[]> {
+  const out = await git(api, path, [
+    "for-each-ref",
+    "--format=%(refname)\t%(refname:short)\t%(HEAD)\t%(upstream:short)",
+    "refs/heads",
+    "refs/remotes",
+  ]);
+  const rows = out
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => {
+      const [ref = "", name = "", head = "", upstream = ""] = l.split("\t");
+      return { ref, name, head, upstream };
+    })
+    .filter((r) => !r.ref.endsWith("/HEAD") && r.name);
+  const local = rows.filter((r) => r.ref.startsWith("refs/heads/"));
+  const upstreams = new Set(local.map((r) => r.upstream));
+  return [
+    ...local.map((r) => ({ name: r.name, current: r.head === "*", remote: false })),
+    ...rows
+      .filter((r) => r.ref.startsWith("refs/remotes/") && !upstreams.has(r.name))
+      .map((r) => ({ name: r.name, current: false, remote: true })),
+  ];
+}
+
+export async function switchBranch(
+  { path, name, remote }: { path: string; name: string; remote?: boolean },
+  api: AddonHostApi,
+) {
+  if (remote) {
+    const local = name.replace(/^[^/]+\//, "");
+    const have = (await branches({ path }, api)).some((b) => !b.remote && b.name === local);
+    await git(api, path, have ? ["switch", local] : ["switch", "--track", name]);
+  } else await git(api, path, ["switch", name]);
+}

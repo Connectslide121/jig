@@ -8,7 +8,7 @@ import { outputText, type ToolOutput } from "./types";
  * A scripted builder for tests and `JIG_ENGINE=fake`: it calls the real `jig-builder` tools, so the
  * whole pipeline (staging, worktree, validation, preview, accept) runs without Claude Code.
  *
- * - goal mentions "below" / "under" → level 1: shows Pipelines below Git
+ * - goal mentions "below" / "under" → level 1: shows Pipelines in the lower half of Git's sidebar
  * - goal mentions "move" / "layout" → level 1: moves Terminals to the right sidebar
  * - "compact" / "setting" → level 1: density compact
  * - "broken" → writes an add-on with a design-token problem first, then fixes it after validation
@@ -58,8 +58,13 @@ export async function runFakeBuilder(
     await call("stage_layout", {
       ops: [{ op: "below", view: "addon.pipelines.pipelines", host: "addon.git.git" }],
     });
-    await call("finish", { summary: "Pipelines shows below Git.", kind: "layout" });
-    return say("I staged a layout change: Pipelines shows below Git, as a section you can collapse.");
+    await call("finish", {
+      summary: "Pipelines shows in the lower half of the sidebar with Git.",
+      kind: "layout",
+    });
+    return say(
+      "I staged a layout change: Pipelines shows in the lower half of the sidebar, below Git, as a split sidebar.",
+    );
   }
   if (/\b(move|layout)\b/.test(lower)) {
     await call("stage_layout", { ops: [{ op: "move", view: "jig.terminals", region: "right" }] });

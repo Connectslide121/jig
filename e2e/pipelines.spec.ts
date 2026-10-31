@@ -97,14 +97,26 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await expect(view).not.toContainText("(old) Shop");
   // Each pipeline shows it's loading until its newest run comes (az answers slowly here).
   await expect(card.getByTestId("pipeline-loading")).toBeVisible();
-  // The newest run: when, branch, why, who, what it changed; its stages without the skipped one.
-  await expect(card.getByTestId("pipeline-chip")).toContainText("✓ 12m");
-  await expect(card).toContainText("main · manual · Ann Demo · Deploy to: staging");
-  await expect(card.getByTestId("pipeline-stages")).toContainText("Build");
-  await expect(card.getByTestId("pipeline-stages")).toContainText("Deploy to staging");
-  await expect(card.getByTestId("pipeline-stages")).not.toContainText("Deploy to none");
+  // A compact row: the name, how long ago, the state. The card keeps one height.
+  await expect(card.getByTestId("pipeline-time")).toHaveText("12m");
+  await expect(card.getByLabel("Succeeded")).toBeVisible();
+  const height = (await card.boundingBox())!.height;
+  // Details in a modal: the run's chip, branch, why, who, what it changed; its stages without the skipped one.
+  await card.click();
+  const details = page.getByTestId("pipeline-details-Shop CI");
+  await expect(details.getByTestId("pipeline-chip")).toContainText("✓ 12m");
+  const facts = details.getByTestId("pipeline-run-details");
+  for (const text of ["main", "manual", "Ann Demo", "Deploy to: staging"])
+    await expect(facts).toContainText(text);
+  await expect(details.getByTestId("pipeline-stages")).toContainText("Build");
+  await expect(details.getByTestId("pipeline-stages")).toContainText("Deploy to staging");
+  await expect(details.getByTestId("pipeline-stages")).not.toContainText("Deploy to none");
+  await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
 
   // The Run form (a modal, so the list doesn't move): branch picker, a picker per parameter, a checkbox for the boolean; nothing runs yet.
+  await card.hover();
+  expect((await card.boundingBox())!.height).toBe(height);
   await card.getByTestId("pipeline-run-Shop CI").click();
   const form = page.getByTestId("pipeline-form-Shop CI");
   await expect(form.getByTestId("pipeline-summary")).toContainText("on main with the defaults");

@@ -1741,3 +1741,137 @@ the exact mechanism is Claude's. Verify by installing over an existing install w
 - Status: accepted. Decided by Jon ("it looks idle"); the look is Claude's.
 - While a chat's turn is Done but commands or subagents still run in the background, their row shows a
   spinner and "Working in the background", and each task chip gets `.jig-working` (the glow of D-165).
+
+## D-172: `develop` is the default branch; Repos switches branches
+
+- Status: accepted. Decided by Jon; the implementation is Claude's.
+- Work happens on `develop`, which is the repository's default branch (`main` stays for stable code).
+  Changing the default on GitHub needs repository admin rights (Settings → Branches).
+- In the Repos add-on a row's branch is a dropdown that switches branches, like the Git view's (local
+  branches, remote ones as tracking branches). Host methods `branches` and `switchBranch` in
+  `addons/repos/host.ts`.
+
+## D-173: Split sidebars replace "below another view"; daily views only in sidebars; Reset layout
+
+- Status: accepted. Decided by Jon ("the side panels are too crowded", "a split sidebar slot … not
+  tied to under another add-on", a button to put every view back); the model and names are Claude's.
+- Each sidebar can be split: `left2` / `right2` are its lower half, with their own tabs and height.
+  Width and collapsed stay with the sidebar (`columnOf`). Replaces D-099's sections (a view below
+  another, in its tab): any view can go to a lower half, without a host view, by dragging its tab
+there (D-174 removed the menu entries: a split is made by drag and drop only). Old
+  layouts' sections move to the lower half on load; manifests' `under` is ignored.
+- Only daily views start in a sidebar (Projects, Chats, Files, Git, Repos, Scripts, Pipelines,
+  Browser, Notes). Views used now and then start hidden (`hidden` in a manifest, `startHidden` for
+  core views): Suggestions, Links, Releases, Workflows, opened from their actions in the top bar
+  menus (as main tabs since D-174). Notes stays in the sidebar because it follows the chat you're in. This applies to new placements; Reset
+  layout applies it to an existing layout.
+- **Reset layout** is in the top bar's layout menu (and Settings → Layout, and an action); it asks
+  first, then restores the default layout, keeping open tabs.
+
+## D-174: Fewer top bar menus; views open as main tabs; drag any view anywhere
+
+- Status: accepted. Decided by Jon ("we have too many menus, we can probably merge some", views not in
+  the sidebars "should open as a new tab in the main window", "drag and drop any window to any of the
+  slots"); which groups merge and which views stay in sidebars is **Claude, on my own** (Jon: "You
+  decide").
+- Top bar menus: **Chats** (Chats, Claude, Workflows), **Code** (Git, Files, Terminals, Pipelines),
+  **Build**, **View** (Layout, Appearance). Groups keep a heading inside the merged menu. Project
+  actions are in the project switcher, Jig's in the Jig menu. Add-ons' own groups keep their own menu.
+- A view that isn't in a region opens as a main tab (`jig.view`, `params.viewId`); the same view is
+  never in a region and a tab at once (`normalizeLayout` closes the tab). The pure `showView` used by
+  the builder and settings tools still places a view in a region.
+- Drag a view's tab to any region's tab bar, a sidebar's lower part (splits it), the main area, or
+  the edge target of a region that isn't showing. Splitting a sidebar is drag-only: the "Move to lower
+  … sidebar" menu entries are gone.
+
+## D-175: Named layouts; Learning also notices how you arrange views
+
+- Status: accepted. Requested by Jon ("do everything" of the suggested improvements); the design is
+  **Claude, on my own**.
+- `layout.json` gains `saved`: named copies of the arrangement (regions, sizes, tabs per region; not
+  the open chats). **View → Layout → Layouts** saves the current one, switches and manages them;
+  Settings → Layout lists them; chats can save and use them (`layout` ops `save` / `use` in the
+  builder and configure tools). Switching keeps open tabs that aren't views.
+- Learning records UI habits as activity kind `"ui"` (an action run from a menu or Go to, a view
+  opened as a tab, a view moved), only ids and regions, never content. The `view-habit` pattern
+  suggests placing a view you keep opening or moving the same way. Keyboard shortcuts are not
+  recorded (Ctrl+Tab and Mod+W would drown the signal).
+
+## D-176: Go to (Ctrl+P): one place to jump to chats, views, actions and files
+
+- Status: accepted. Requested by Jon; the design is **Claude, on my own**.
+- **Ctrl+P / ⌘P** (and the magnifier in the top bar) opens Go to, a fixed-size overlay: chats,
+  views, actions and the active project's files (searched through `files.search`). Ranking is pure
+  (`workbench/quickOpen.ts`): prefix and word-start matches first, then recent use. It doesn't
+  replace the Tools menu (actions only) nor the chat's `/` picker (Claude Code's commands).
+
+## D-177: Workflows run on events: after you push, when a pipeline finishes
+
+- Status: accepted. Requested by Jon; the design is **Claude, on my own**.
+- Two new triggers beside the schedule: **After you push** (optionally one branch; seen in the
+  upstream's reflog, "update by push" entries) and **When a pipeline finishes** (any result,
+  succeeded or failed; through your `az`). Add-on hosts have no event subscriptions, so the
+  scheduler's check (each minute) compares a mark per workflow and trigger with the last one it saw;
+  the first look only remembers, so adding a trigger never fires on old events. Runs say "on an
+  event" in the history.
+
+## D-178: The chats board
+
+- Status: accepted. Requested by Jon; the design is **Claude, on my own**.
+- **Chats board** (button in the Chats view, action in the Chats menu): every chat across projects
+  in columns — Needs you, Working, Unread, Errors, Recent (last 7 days, at most 30) — with a summary
+  of totals and cost. Columns come from the chats' states (`features/sessions/board.ts`); it's a
+  view of chats, nothing is dragged between columns.
+
+## D-179: The add-on gallery
+
+- Status: accepted. Requested by Jon; the design is **Claude, on my own**.
+- **Add-on gallery** (Tools, Settings → Add-ons): browse add-ons from sources you add — a git
+  repository over https/ssh, cloned with your own git (no prompts, `GIT_ALLOW_PROTOCOL=https:ssh`)
+  into `~/.jig/cache/galleries`, or a folder. A source's add-ons are its folders with an
+  `addon.json`, at the top or under `addons/`. Install / Update shows the permissions first and goes
+  through the same package checks as importing a `.zip` (links aren't packed); it's committed to
+  `~/.jig/addons` like any change.
+- `addonGallery.sources` is a protected setting (D-077): it decides where code comes from, so chats
+  can't change it; installing only works from a source in the list. There's no central catalogue:
+  a team shares a repository.
+
+## D-180: Compact pipeline cards with details in a dialog
+
+- Status: accepted. Decided by Jon ("the card for each pipeline is too busy … let me see details in
+  a modal"); what stays on the row is **Claude, on my own**.
+- A pipeline is one line: name, the last run's age (the Run button and ⋯ on hover, in the same slot)
+  and the state icon at the far right. Clicking it (or ⋯ → Details…) opens a dialog with the run
+  (branch, reason, who, parameters, times), its stages and the open/run buttons.
+
+## D-181: Commit messages on Haiku (a quick model for short answers)
+
+- Status: accepted. Decided by Jon ("for the commit messages AI function, do we use haiku? We should");
+  the setting's shape is **Claude, on my own**.
+- New setting `engine.quickModel` (default `haiku`, Settings → Claude Code → Quick model). Add-ons ask
+  for it with `ctx.ai.ask(prompt, { quick: true })`; without `quick` they get `engine.helperModel`
+  (Sonnet). The Git add-on's Write (commit message) uses quick; Check before committing and reviews
+  keep the helper model, because they need more judgement.
+
+## D-182: The task queue (Tasks add-on) and add-ons that run chats
+
+- Status: accepted. Requested by Jon ("queue multiple tasks … structured way of showing it all … maybe
+  in a table … let me decide what task should start a new session", "links to the chats", "Claude
+  should be able to create a list as well"); the design is **Claude, on my own**.
+- A built-in add-on, **Tasks** (Chats → Task queue, opens as a main tab), not core code: you queue
+  prompts; the add-on's host runs them in order, each in a new chat or continuing the chat of the task
+  before it (chosen per task); Claude reports each with the `addon_tasks_report` tool (outcome done /
+  partial / failed / blocked, summary, things to know, follow-ups). The table links every task to its
+  chat; follow-ups go into the queue with one click. "Stop when a task fails" (on by default) pauses
+  the queue after a failed, blocked or broken task. Claude can fill the queue (`addon_tasks_add`, not
+  read-only, so you approve it, and it starts the queue only when you say so).
+- Instructions reach the task's chat through `contributes.context` each turn while the task runs, not
+  in the prompt, so the transcript shows only your prompt. The task is saved as running before its
+  message is sent so the first turn already gets them.
+- New host API `api.chats` (`create`, `send`, `get`; the `chat` permission, checked in the host and
+  again in main): add-ons can start and follow chats. Main tells the add-on that created, sent to or
+  asked about a chat when its status changes (host export `chatChanged`); this is in memory, so the
+  add-on catches up with `get` (Tasks: a watcher every minute). `bypassPermissions` can't be asked
+  for. `ctx.openChat({ sessionId })` opens an existing chat.
+- New permission modes default to "Accept file edits" in the add dialog, so an unattended queue doesn't
+  stop at every edit; commands still ask, and a task that needs you shows "Needs you" and notifies.
