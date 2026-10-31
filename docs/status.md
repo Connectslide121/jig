@@ -1,11 +1,13 @@
 # Status
 
-Chat drafts (2026-10-31): unsent new chats stay memory-only and out of history/search/restored
-tabs; the first prompt saves the chat and its open tab. Legacy empty records are ignored without
-deletion. Unit checks and the draft/sent-chat restart, paging and project UI regressions pass.
-
-JSON Source (2026-10-31): JSON-classified files open as editable Source, with tree Preview a click
-away. The real-app preview regression passes; full checks pass (606 tests, 8 skipped).
+Desktop polish (2026-10-31): JSON opens as editable Source, with tree Preview a click away.
+Unsent new chats stay memory-only and out of history/search/restored tabs; the first prompt saves
+the chat and its open tab. Legacy empty records are ignored without deletion. Extension slots are
+one card per row with independent animated disclosures; shared dialogs/menus and workbench panel
+toggles use short reduced-motion-aware animations (D-198–D-200). About screenshots reserve their
+aspect ratio before loading. Build/check pass (606 tests, 8 skipped). Electron regressions verify
+JSON Source/Preview, draft and sent-chat restart behavior, chat paging, project actions, stationary
+slot headers and shared panel/modal interactions including reduced motion.
 
 Model attribution (2026-10-31): the overview card counts reported models; the wider details modal
 lists model/tool-call counts, caller models per tool, and reported/requested subagent models separately.

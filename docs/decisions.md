@@ -2079,3 +2079,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   ignored on load, without deleting their files. Imported conversations, forks and builder sessions
   retain their existing persistence. Existing chats are never discarded just because a rewind empties
   them: new persisted sessions explicitly carry `draft: false`.
+
+## D-200: Stable slot cards and shared interaction motion
+
+- Status: accepted. Decided by Jon: one extension-slot card per row, animated expansion/collapse,
+  and shared motion for panel toggles and modals. This explicitly authorizes those disclosures;
+  forms/pickers and asynchronous loading still follow the no-layout-shift rule.
+- Implementation is **Claude, on my own**: independent slot disclosures keep the clicked header in
+  place; the shared `Collapse` animates grid height/opacity. Shared menus and dialogs enter with a
+  short fade/transform. Dialog close controls, Escape, backdrop and footer buttons using the same
+  close callback animate before invoking it; mounted dialogs also retain content on `open=false`.
+  Parents that immediately unmount on successful actions still own that lifecycle.
+- Workbench regions animate explicit collapsed-state toggles, not drag resizing or add-on loading.
+  About screenshots reserve their intrinsic dimensions before loading to prevent unrelated shifts.
+  Duration is 160 ms; reduced-motion preferences disable these animations. Closing content is
+  removed after the transition, and collapsed disclosure content cannot receive focus.

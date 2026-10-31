@@ -13,6 +13,7 @@ export {
   Button,
   Card,
   CodeBlock,
+  Collapse,
   CountBadge,
   cn,
   Dialog,

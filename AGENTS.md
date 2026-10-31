@@ -108,6 +108,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   existing content, no spinner that swaps for a differently sized result. A form or picker that needs
   room is a modal (`Dialog`); something that loads reserves its space first (a fixed-height slot, a
   skeleton) or appears in a modal/overlay. Applies to Jig's UI and to every add-on.
+- **Interaction motion (Jon, D-200).** Explicit extension-slot disclosures and workbench panel toggles
+  may animate their requested expansion/collapse. Use shared `Collapse` and modal/menu motion (160 ms),
+  honoring reduced motion. Do not animate arbitrary loading changes; forms and pickers remain modal.
 - **Align everything (hard rule, Jon).** Things in a list or row line up in columns, always: a fixed
   slot per element (an empty one when it has nothing), the same position in every row, numbers and
   times right-aligned. Status marks, badges and colour swatches go at the far right edge, so they form

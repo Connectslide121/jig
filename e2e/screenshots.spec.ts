@@ -290,12 +290,23 @@ test("screenshots for the About page", async () => {
   // What Jig can do: the overview, then the extension slots with one opened.
   await key("Control+Alt+B"); // close the right sidebar: the page needs the room
   await page.getByTestId("about-button").click();
+  await page.getByTestId("tab-jig.about").click({ button: "right" });
+  const onePane = page.getByRole("menuitem", { name: "One pane", exact: true });
+  if (await onePane.count()) await onePane.click();
+  else await page.keyboard.press("Escape");
+  if (await page.getByTestId("region-bottom").isVisible()) await key("Control+j");
   await page.waitForTimeout(800);
   await shot("about");
   await page.getByTestId("about-nav-slots").click();
   await page.waitForTimeout(900);
   await page.getByTestId("about-slot-view").locator("button").first().click();
   await page.waitForTimeout(500);
+  await page.locator("[data-section=slots]").evaluate((el) => {
+    let scroller = el.parentElement;
+    while (scroller && getComputedStyle(scroller).overflowY !== "auto") scroller = scroller.parentElement;
+    if (scroller)
+      scroller.scrollTop += el.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
+  });
   await shot("slots");
 
   // A Markdown preview with a Mermaid diagram.

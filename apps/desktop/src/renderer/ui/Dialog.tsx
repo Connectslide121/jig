@@ -1,10 +1,11 @@
 import { X } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Children, cloneElement, isValidElement, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { Button, IconButton } from "./Button";
 import { cn } from "./cn";
 import { Input } from "./Input";
+import { MOTION_MS, reducedMotion, usePresence } from "./motion";
 
 export function Dialog({
   open,
@@ -30,18 +31,44 @@ export function Dialog({
   testId?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const present = usePresence(open, closing ? 0 : MOTION_MS);
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const close = () => {
+    if (closing) return;
+    if (reducedMotion()) {
+      onClose();
+      return;
+    }
+    setClosing(true);
+    closeTimer.current = setTimeout(onClose, MOTION_MS);
+  };
   useEffect(() => {
-    if (!open) return;
+    if (open) setClosing(false);
+  }, [open]);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+  // Footer Cancel buttons conventionally receive the same close callback as the Dialog.
+  const animatedFooter = (node: ReactNode): ReactNode =>
+    Children.map(node, (child) => {
+      if (!isValidElement<{ children?: ReactNode; onClick?: unknown }>(child)) return child;
+      return cloneElement(child, {
+        ...(child.props.onClick === onClose ? { onClick: close } : {}),
+        ...(child.props.children ? { children: animatedFooter(child.props.children) } : {}),
+      });
+    });
+  useEffect(() => {
+    if (!present) return;
     const previous = document.activeElement as HTMLElement | null;
     const first = ref.current?.querySelector<HTMLElement>("input, textarea, select, [data-autofocus]");
     (first ?? ref.current)?.focus();
     return () => previous?.focus?.();
-  }, [open]);
-  if (!open) return null;
+  }, [present]);
+  if (!present) return null;
   return createPortal(
     <div
-      className="no-drag fixed inset-0 z-40 flex items-center justify-center bg-scrim p-6 backdrop-blur-xs"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      className="jig-modal-layer no-drag fixed inset-0 z-40 flex items-center justify-center bg-scrim p-6 backdrop-blur-xs"
+      data-closing={closing || !open}
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
       <div
         ref={ref}
@@ -52,23 +79,25 @@ export function Dialog({
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.stopPropagation();
-            onClose();
+            close();
           }
         }}
         className={cn(
-          "flex max-h-full w-full flex-col rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none",
+          "jig-modal-panel flex max-h-full w-full flex-col rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none",
           { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-6xl" }[width],
         )}
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
           <div className="min-w-0 flex-1 truncate text-base font-semibold">{title}</div>
-          <IconButton icon={X} label="Close" size="sm" onClick={onClose} />
+          <IconButton icon={X} label="Close" size="sm" onClick={close} />
         </div>
         <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm", column && "flex flex-col")}>
           {children}
         </div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>
+          <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2.5">
+            {animatedFooter(footer)}
+          </div>
         )}
       </div>
     </div>,
@@ -150,16 +179,17 @@ function PendingDialog({ pending }: { pending: Pending }) {
     usePending.setState({ pending: undefined });
     pending.resolve(result);
   };
+  const cancel = () => finish(undefined);
   return (
     <Dialog
       open
       width="sm"
       title={pending.title}
-      onClose={() => finish(undefined)}
+      onClose={cancel}
       testId="dialog"
       footer={
         <>
-          <Button variant="ghost" onClick={() => finish(undefined)}>
+          <Button variant="ghost" onClick={cancel}>
             Cancel
           </Button>
           <Button

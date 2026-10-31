@@ -108,7 +108,7 @@ are add-ons':
 | `confirm({…})`, `prompt({…})` | Jig dialogs |
 
 `@jig/sdk/ui` exports: `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
-`CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Tooltip`, `Spinner`,
+`CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Collapse`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useActiveChat()` (the chat in front, or the last one: `{ sessionId, title, projectId }`), `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
 → `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists), `ArrangeList` (a list the user can arrange: hide items, drag them into an order, group them with dividers, each row offering a divider above it; keep its `Arrangement` in `ctx.storage`, with the pure helpers `arrange`, `moveKey`, `toggleHidden`, `addDivider`, `renameDivider`, `removeDivider` from `@jig/sdk`),

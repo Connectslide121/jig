@@ -334,3 +334,26 @@ test("many tabs: the tab strip scrolls without a scrollbar squeezing the tabs", 
   expect(before).toBeGreaterThan(0);
   expect(await strip.evaluate((el) => el.scrollLeft)).toBe(0);
 });
+
+test("shared motion: panel toggles, modal dismissal and reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const region = page.getByTestId("region-left");
+  const width = (await region.boundingBox())!.width;
+  await page.keyboard.press("Control+B");
+  await expect(region).toBeHidden();
+  await page.keyboard.press("Control+B");
+  await expect.poll(async () => (await region.boundingBox())?.width).toBe(width);
+  await page.getByTestId("view-tab-jig.projects").click();
+  await page.getByTestId("projects-new").click();
+  const dialog = page.getByTestId("project-dialog");
+  await expect(dialog).toHaveCSS("animation-name", "jig-surface-in");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByTestId("projects-new").click();
+  await expect(dialog).toHaveCSS("animation-name", "none");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press("Control+B");
+  await expect(region).toBeHidden();
+});

@@ -197,3 +197,5 @@ remain in the Chats top-bar menu and search (D-193).
 Disk layouts omit regular chat tabs whose sessions are unsent drafts or no longer exist; the live
 layout retains draft tabs until closed. Sending the first prompt rewrites the current disk layout
 so the now-persistent chat tab restores normally. Startup prunes missing/legacy-empty tabs (D-199).
+Explicit workbench panel toggles animate for 160 ms, respecting reduced motion; loading and drag
+resizing do not trigger those animations (D-200).

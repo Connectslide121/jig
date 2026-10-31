@@ -241,3 +241,75 @@ html[data-platform="darwin"] .topbar-insets {
     border-color: var(--jig-accent);
   }
 }
+
+/* Shared interaction motion: never animate arbitrary loading/layout changes. */
+.jig-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 160ms ease-out,
+    opacity 160ms ease-out;
+}
+.jig-collapse[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+@keyframes jig-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes jig-surface-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.99);
+  }
+}
+@keyframes jig-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes jig-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.jig-modal-layer {
+  animation: jig-fade-in 160ms ease-out both;
+}
+.jig-modal-panel,
+.jig-menu-panel {
+  animation: jig-surface-in 160ms ease-out both;
+}
+.jig-modal-layer[data-closing="true"] {
+  animation: jig-fade-out 160ms ease-in both;
+}
+.jig-modal-layer[data-closing="true"] .jig-modal-panel {
+  animation: jig-surface-out 160ms ease-in both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jig-collapse,
+  .jig-modal-layer,
+  .jig-modal-panel,
+  .jig-menu-panel {
+    animation: none;
+    transition: none;
+  }
+}

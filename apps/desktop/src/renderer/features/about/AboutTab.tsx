@@ -30,7 +30,7 @@ import type { SkillInfo } from "../../../shared/about";
 import { PROTECTED_SETTINGS } from "../../../shared/config";
 import { useAddons } from "../../addons/loader";
 import { call } from "../../lib/host";
-import { Badge, Button, Card, CodeBlock, cn, JigLogo, Kbd } from "../../ui";
+import { Badge, Button, Card, CodeBlock, Collapse, cn, JigLogo, Kbd } from "../../ui";
 import { addProject, openSettings } from "../../workbench/actions";
 import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
@@ -115,7 +115,7 @@ function Shot({ src, alt }: { src: string; alt: string }) {
         title="Click to enlarge"
         className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-line bg-canvas shadow-popover transition-opacity hover:opacity-90"
       >
-        <img src={src} alt={alt} className="block w-full" loading="lazy" />
+        <img src={src} alt={alt} width={1440} height={900} className="block w-full" loading="lazy" />
       </button>
       {open &&
         createPortal(
@@ -287,23 +287,26 @@ function BuildLevels() {
 
 function SlotGrid() {
   const addons = useAddons((s) => s.addons);
-  const [open, setOpen] = useState<SlotId>();
+  const [open, setOpen] = useState<Set<SlotId>>(() => new Set());
   const users = (slot: SlotId) => addons.filter((a) => slotsUsed(a.manifest).has(slot));
   return (
-    <div className="grid gap-2 md:grid-cols-2" data-testid="about-slots">
+    <div className="flex flex-col gap-2" data-testid="about-slots">
       {(Object.keys(SLOTS) as SlotId[]).map((slot) => {
         const using = users(slot);
-        const expanded = open === slot;
+        const expanded = open.has(slot);
         return (
-          <Card
-            key={slot}
-            className={cn("p-0", expanded && "md:col-span-2")}
-            data-testid={`about-slot-${slot}`}
-          >
+          <Card key={slot} className="overflow-hidden p-0" data-testid={`about-slot-${slot}`}>
             <button
               type="button"
               className="flex w-full items-start gap-2 p-3 text-left hover:bg-hover"
-              onClick={() => setOpen(expanded ? undefined : slot)}
+              onClick={() =>
+                setOpen((current) => {
+                  const next = new Set(current);
+                  if (next.has(slot)) next.delete(slot);
+                  else next.add(slot);
+                  return next;
+                })
+              }
               aria-expanded={expanded}
             >
               <div className="min-w-0 flex-1">
@@ -313,9 +316,14 @@ function SlotGrid() {
                 </div>
                 <div className="mt-0.5 text-xs text-muted">{SLOTS[slot]}</div>
               </div>
-              <ChevronDown className={cn("mt-0.5 size-4 shrink-0 text-hint", expanded && "rotate-180")} />
+              <ChevronDown
+                className={cn(
+                  "mt-0.5 size-4 shrink-0 text-hint transition-transform motion-reduce:transition-none",
+                  expanded && "rotate-180",
+                )}
+              />
             </button>
-            {expanded && (
+            <Collapse open={expanded}>
               <div className="flex flex-col gap-2 border-t border-line p-3">
                 <div className="text-xs text-fg">
                   <span className="text-muted">Good for: </span>
@@ -352,7 +360,7 @@ function SlotGrid() {
                   </Button>
                 </div>
               </div>
-            )}
+            </Collapse>
           </Card>
         );
       })}
@@ -768,8 +776,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             title="Extension slots"
             lead={
               <>
-                Every place an add-on can plug into. Click one to see an example. Add-ons are folders in{" "}
-                <code className="font-mono">~/.jig/addons</code> with an{" "}
+                Every place an add-on can plug into. One card per row; click to expand or collapse an example.
+                Panels and dialogs also use short animations, respecting reduced motion. Add-ons are folders
+                in <code className="font-mono">~/.jig/addons</code> with an{" "}
                 <code className="font-mono">addon.json</code>, React components and optional host code.
               </>
             }

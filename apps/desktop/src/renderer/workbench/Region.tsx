@@ -1,8 +1,9 @@
 import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight, PanelTop, Sparkles } from "lucide-react";
-import { type DragEvent, useState } from "react";
+import { type DragEvent, useLayoutEffect, useRef, useState } from "react";
 import { LOWER_HALF, type SideRegion } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
+import { MOTION_MS, reducedMotion, usePresence } from "../ui/motion";
 import { useRegistry } from "./registry";
 import { startViewDrag, useViewDrag, useWorkbench, VIEW_DRAG, workbench } from "./store";
 
@@ -99,10 +100,40 @@ export function Region({ region }: { region: SideRegion }) {
   const lower = useWorkbench((s) => (lowerId ? s.layout?.[lowerId] : undefined));
   const views = useRegistry((s) => s.views);
   const [splitDrop, setSplitDrop] = useState(false);
-  if (!state || state.collapsed) return null;
-  const upper = state.views.some((id) => views[id]);
+  const upper = Boolean(state?.views.some((id) => views[id]));
   const split = Boolean(lowerId && lower?.views.some((id) => views[id]));
-  if (!upper && !split) return null;
+  const open = Boolean(state && !state.collapsed && (upper || split));
+  const present = usePresence(open);
+  const panel = useRef<HTMLElement>(null);
+  const size = useRef(state?.size ?? 0);
+  const collapsed = state?.collapsed;
+  const previousCollapsed = useRef(collapsed);
+  size.current = state?.size ?? 0;
+  useLayoutEffect(() => {
+    const toggled = previousCollapsed.current !== undefined && previousCollapsed.current !== collapsed;
+    previousCollapsed.current = collapsed;
+    // Animate explicit panel toggles, not asynchronous view/add-on loading or drag resizing.
+    if (!toggled) return;
+    if (!present || !panel.current || reducedMotion()) return;
+    const property = region === "bottom" ? "height" : "width";
+    const element = panel.current;
+    element.style.overflow = "hidden";
+    const animation = element.animate(
+      [
+        { [property]: open ? "0px" : `${size.current}px`, opacity: open ? 0 : 1 },
+        { [property]: open ? `${size.current}px` : "0px", opacity: open ? 1 : 0 },
+      ],
+      { duration: MOTION_MS, easing: "ease-out" },
+    );
+    animation.onfinish = () => {
+      element.style.overflow = "";
+    };
+    return () => {
+      animation.cancel();
+      element.style.overflow = "";
+    };
+  }, [open, present, region, collapsed]);
+  if (!state || !present) return null;
   const horizontal = region !== "bottom";
   // Not split yet: dragging a view tab over the lower half of the sidebar offers to split it there.
   const canSplit = Boolean(lowerId && !split);
@@ -112,9 +143,12 @@ export function Region({ region }: { region: SideRegion }) {
   };
   return (
     <section
+      ref={panel}
+      inert={!open}
+      aria-hidden={!open}
       data-testid={`region-${region}`}
       aria-label={regionNames[region]}
-      style={horizontal ? { width: state.size } : { height: state.size }}
+      style={horizontal ? { width: open ? state.size : 0 } : { height: open ? state.size : 0 }}
       className={cn(
         "relative flex shrink-0 flex-col bg-surface",
         region === "left" && "border-r border-line",

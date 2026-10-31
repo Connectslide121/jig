@@ -20,10 +20,26 @@ test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page
   // Every slot, with the add-ons that use it.
   await expect(about.getByTestId("about-slots").locator("[data-testid^=about-slot-]")).toHaveCount(18);
   const view = about.getByTestId("about-slot-view");
+  const header = view.getByRole("button").first();
+  await header.evaluate((el) => el.scrollIntoView({ behavior: "instant", block: "center" }));
+  const before = await header.boundingBox();
+  const next = about.getByTestId("about-slot-workbench.tab");
+  const nextBox = await next.boundingBox();
+  expect(nextBox!.y).toBeGreaterThan(before!.y);
+  expect(nextBox!.x).toBe((await view.boundingBox())!.x);
+  expect(nextBox!.width).toBe((await view.boundingBox())!.width);
   await expect(view).toContainText("in use");
   await view.locator("button").first().click();
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  const after = await header.boundingBox();
+  expect(after).toEqual(before);
   await expect(view).toContainText("contributes.views");
   await expect(view).toContainText("Git");
+  await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "false");
+  await expect
+    .poll(async () => view.locator(".jig-collapse").evaluate((el) => el.getBoundingClientRect().height))
+    .toBe(0);
 
   // The project's skills.
   await about.getByTestId("about-nav-skills").click();

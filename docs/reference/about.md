@@ -45,3 +45,9 @@ bump the `?v=` number on the README's image links so the new pictures show.
 shows the same screenshots as the project's landing page.
 
 The spec builds a demo workspace (`<tmp>/jig-demo`) with four repositories and uses the fake engine.
+
+Extension slots use one card per row with independent animated disclosures; opening a slot never moves its header into another column. Motion respects reduced-motion preferences (D-200).
+
+About screenshots reserve their 1440×900 aspect ratio before lazy loading, so navigation and slot headers do not move as screenshots arrive.
+
+The screenshot scenario returns About to one main pane and hides the bottom panel before capturing the overview and slot cards.

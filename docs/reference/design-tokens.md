@@ -82,3 +82,10 @@ Menu hover/keyboard selection uses bg-accent-soft with an inset ring-accent/60 o
 `--jig-scrollbar-size` in `styles/global.css` defines the shared scrollbar thickness. The transcript
 reserves its gutter with `scrollbar-gutter: stable`; the composer reserves the same width with padding,
 keeping its content aligned while allowing command/file pickers to extend above it without clipping.
+
+Shared interaction motion (D-200): `Collapse` animates an explicitly requested disclosure's grid
+height/opacity; closed content is inert. Dialogs and menus use 160 ms fade/transform entry. Dialog
+close controls and footer callbacks identical to `onClose` delay dismissal for the exit animation;
+`open=false` retains mounted content during exit. Immediate parent unmounts still close immediately.
+Workbench collapsed-state toggles animate width/height, with no resize/loading animation. All respect
+`prefers-reduced-motion`; do not add animations to asynchronous layout changes. Forms remain modal.

@@ -13,6 +13,7 @@ export * from "./ListRow";
 export * from "./Markdown";
 export * from "./Menu";
 export * from "./Mermaid";
+export * from "./motion";
 export * from "./OverlayScrollbar";
 export * from "./ResizeHandle";
 export * from "./Spinner";
