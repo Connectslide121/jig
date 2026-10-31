@@ -1952,7 +1952,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
     the chat reads only its own folder and is deleted with its session, while the add-on's copy stays
     with the task. An add-on deletes only its own files (`api.attachments.remove`).
   - In the Tasks add-on each task field takes pasted, dropped or picked (paperclip) files, shown under
-    the field; Edit changes a queued task's files. A task may be only files. The files stay with the
+    the field originally (Add tasks now uses D-188); Edit changes a queued task's files. A task may be only files. The files stay with the
     task (Run again sends them again) and open from a **Files** column in the results (one file opens
     directly, several from a menu), from the row's ⋯ → Files, and in the details. The host deletes
     files no task uses when the queue changes (`unusedFiles`), and those kept in a cancelled dialog.
+
+## D-188: Compact task entry with inline files
+
+- Status: accepted. Decided by Jon ("each task can take too much height … more compact … more inline").
+  Implementation details are **Claude, on my own**: Add tasks uses fixed-height, single-line textareas
+  (multiline text still works with internal scrolling). Filename chips with preview and remove actions
+  sit beside the prompt in a reserved horizontal scroll area. Files cannot grow a row or shrink its
+  prompt; paperclip and task menu columns stay aligned. Results and Edit keep their existing previews.

@@ -6,6 +6,7 @@ import {
   cn,
   Dialog,
   Empty,
+  FileIcon,
   IconButton,
   Markdown,
   Select,
@@ -36,6 +37,7 @@ import {
   Play,
   Plus,
   SkipForward,
+  X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -1015,10 +1017,10 @@ function AddDialog({
                   data-testid={`tasks-add-chat-menu-${ci}`}
                 />
               </div>
-              <div className="flex flex-col gap-2 p-2">
+              <div className="flex flex-col gap-1 p-2">
                 {chat.steps.map((step, si) => (
-                  <div key={step.id} className="flex flex-col gap-2">
-                    <div className="flex items-start gap-2">
+                  <div key={step.id} data-testid={`tasks-add-row-${ci}-${si}`}>
+                    <div className="flex h-9 items-center gap-2">
                       <span className="flex h-7 w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint">
                         {si === 0 ? (
                           <MessageSquare className="size-3.5" />
@@ -1027,15 +1029,11 @@ function AddDialog({
                         )}
                       </span>
                       <Textarea
-                        rows={2}
+                        rows={1}
                         autoFocus={step.id === focus || (!focus && ci === 0 && si === 0)}
-                        className="min-w-0 flex-1 resize-none"
+                        className="h-9 min-w-0 flex-1 resize-none"
                         value={step.text}
-                        placeholder={
-                          si === 0
-                            ? "What Claude should do. Say everything it needs: this starts a new chat."
-                            : "Then, in the same chat…"
-                        }
+                        placeholder={si === 0 ? "What should Claude do?" : "Then, in the same chat…"}
                         onChange={(e) => setChats(setStep(chats, ci, si, e.target.value))}
                         onPaste={(e) => {
                           if (takeFiles(ctx, e.clipboardData.files, (f) => attach(ci, si, f))) {
@@ -1060,6 +1058,36 @@ function AddDialog({
                         }}
                         data-testid={`tasks-add-text-${ci}-${si}`}
                       />
+                      <div
+                        role="group"
+                        className="flex h-9 w-40 shrink-0 items-center gap-1 overflow-x-scroll overflow-y-hidden"
+                        aria-label="Task attachments"
+                        data-testid={`tasks-add-files-${ci}-${si}`}
+                      >
+                        {step.files.map((file) => (
+                          <div
+                            key={file.path}
+                            className="flex h-7 w-36 shrink-0 items-center rounded border border-line bg-raised"
+                            data-testid="chat-attachment"
+                          >
+                            <button
+                              type="button"
+                              className="flex min-w-0 flex-1 items-center gap-1 px-1 text-xs hover:text-accent"
+                              title={`Open ${fileName(file)}`}
+                              onClick={() => openFile(ctx, file)}
+                            >
+                              <FileIcon path={fileName(file)} className="size-3.5 shrink-0" />
+                              <span className="truncate">{fileName(file)}</span>
+                            </button>
+                            <IconButton
+                              size="sm"
+                              icon={X}
+                              label={`Remove ${fileName(file)}`}
+                              onClick={() => setChats(removeFile(chats, ci, si, file.path))}
+                            />
+                          </div>
+                        ))}
+                      </div>
                       <IconButton
                         size="sm"
                         icon={Paperclip}
@@ -1075,13 +1103,6 @@ function AddDialog({
                         data-testid={`tasks-add-task-menu-${ci}-${si}`}
                       />
                     </div>
-                    {step.files.length > 0 && (
-                      <Attachments
-                        className="pl-8"
-                        files={step.files}
-                        onRemove={(f) => setChats(removeFile(chats, ci, si, f.path))}
-                      />
-                    )}
                   </div>
                 ))}
                 <div className="pl-8">

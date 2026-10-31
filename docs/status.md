@@ -1,5 +1,12 @@
 # Status
 
+Task entry (2026-10-31): Add tasks uses compact single-line prompt rows with inline filename chips.
+The attachment area reserves its width and scrolls horizontally; files never grow a row or move its
+controls. Click a filename to preview or × to remove; paste, drop and paperclip still work.
+Validation: production build and `npm run check` pass (592 tests, 8 skipped). The fake-engine task
+queue regression verifies image paste, document drop, unchanged row/prompt geometry, retained files
+in results and attachments delivered to the chat. Screenshot: `test-results/tasks-add-compact.png`.
+
 _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
