@@ -55,8 +55,10 @@ What a project is:
   - **Follow the project:** Git, Files and Home.
   - **Chats:** the active project's chats come first, pinned at the top; the other projects are
     listed below, still grouped, and you can drag chats between them.
-  - **Exception:** Repos stays below Git on the left and stays global.
-  - **Right panel:** Scripts, Pipelines, Suggestions and Claude's browser are global.
+  - **Exception:** Repos stays in the lower half of the left sidebar and stays global (D-173).
+  - **Right panel:** Scripts, Pipelines, Notes and Claude's browser; Suggestions, Releases, Links and
+    Workflows start hidden and open as main tabs from the top bar menus (D-173, D-174). Any view
+    can be dragged anywhere.
   - The behaviour belongs to the view, not the side: Git moved to the right still follows the
     project. The rule only decides where views start.
 
@@ -382,3 +384,6 @@ true"). This step checks the whole picture again:
 - [x] Sign-in: `claude auth login`, Jig confirms it and closes the terminal; Get started shows it (D-126)
 - [x] Scripts leaves out git worktrees inside a folder (D-127)
 - [x] Chats list: indented under groups, four groupings (project, status, day, one list), reorder pinned chats by dragging (D-170)
+- [x] Repos: switch a repository's branch from its row (D-172)
+- [x] Split sidebars, daily views only in sidebars, Reset layout (D-173)
+- [x] Fewer top bar menus, views open as main tabs, drag any view anywhere (D-174)

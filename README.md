@@ -37,7 +37,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
-- **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. Action groups each have their own top-bar menu.
+- **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
@@ -229,7 +229,9 @@ And more:
   - A standup written from your commits and chats.
   - Desktop notifications when a chat needs you.
 - **The workbench:**
-  - Resizable panes, and views shown below another as collapsible sections.
+  - Resizable panes, split sidebars (a lower half with its own tabs), and Reset layout.
+  - Drag any view anywhere: a sidebar, the bottom panel or the main area as a tab. Views you use now
+    and then (Releases, Workflows, Links, Suggestions) open as tabs from the menus.
   - A scripts runner with groups, and Azure DevOps pipelines — hide, reorder and group them.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
   - A Tools menu with keyboard shortcuts.

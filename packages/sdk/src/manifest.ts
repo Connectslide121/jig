@@ -35,8 +35,10 @@ export const ManifestSchema = z.object({
             id: Id,
             title: z.string(),
             icon: Icon,
-            region: z.enum(["left", "right", "bottom"]).default("left"),
-            /** Shown the first time as a collapsible section below this view (`addon.git.git`, `jig.files`). */
+            region: z.enum(["left", "left2", "right", "right2", "bottom"]).default("left"),
+            /** Starts hidden, not in a sidebar: opened from an action in the top bar menus or the Views list. */
+            hidden: z.boolean().optional(),
+            /** Ignored (older add-ons used it to start below another view; see `left2` / `right2`). */
             under: z.string().optional(),
             component: ExportName,
           }),

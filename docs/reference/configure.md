@@ -13,7 +13,7 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_get_layout` | views per region, sizes, hidden views, every view id | no |
 | `jig_list_addons` | add-ons and what they do | no |
 | `jig_update_settings { patch }` | changes settings (validated against `ConfigSchema`; theme and icon-theme ids checked) | yes |
-| `jig_change_layout { ops }` | move / hide / show / resize / collapse / expand / below (a view as a section under another) | yes |
+| `jig_change_layout { ops }` | move / hide / show / resize / collapse / expand / below (a view in the lower half of another view's sidebar); regions left, left2, right, right2, bottom | yes |
 | `jig_set_addon_enabled { id, enabled }` | switches an add-on on or off | yes |
 | `jig_list_projects` | projects with their settings, workspaces with their repositories, recent chats and their project | no (read-only) |
 | `jig_create_project { name, path, color?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | a new project (Undo removes it) | yes |

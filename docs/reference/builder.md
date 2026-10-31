@@ -45,13 +45,13 @@ edits its own source (D-074): when no slot fits, the builder writes a developmen
 | `read_addon { id }` | every file of an add-on (built-in ones are examples) |
 | `start_addon { id, mode: "change" \| "new" }` | prepares the folder in the worktree (a built-in add-on is copied there — your copy replaces it, D-043) and returns its path |
 | `validate { id }` | the checks above |
-| `stage_layout { ops }` | `move`/`hide`/`show` a view, `below` (a view as a section under `host`), `resize`/`collapse`/`expand` a region |
+| `stage_layout { ops }` | `move`/`hide`/`show` a view, `below` (a view in the lower half of `host`'s sidebar), regions `left`/`left2`/`right`/`right2`/`bottom`, `resize`/`collapse`/`expand` a region |
 | `stage_settings { patch }` | a partial `config.json`, validated |
 | `propose_extension_point { title, reason, proposal, userStory?, acceptance?, addonPlan?, mockupHtml? }` | no slot can do it: the job ends (`needs_you`, kind `app`) with `job.proposal`, a **development request** (D-119). The Build tab walks you through it: **1. Try it** (the mockup runs live in a sandboxed frame), **2. Is this what you want?** (your feedback goes to the builder with `builds.reviseRequest`, which calls this tool again: version 2, 3…; **This is what I want** confirms the version), **3. Send it** (**Email to developers**, only once the current version is confirmed: a new email to support@sprinta.se with the package attached), plus **Copy prompt** and **Show package** |
 | `finish { summary, kind, addonId? }` | validate and go to preview |
 
 The same tools are plain functions for the fake engine: with `JIG_ENGINE=fake` a scripted builder
-(`main/engine/fakeBuilder.ts`) runs the real pipeline — "below"/"under" → Pipelines as a section below Git, "move …" → layout, "compact" → settings, a
+(`main/engine/fakeBuilder.ts`) runs the real pipeline — "below"/"under" → Pipelines in the lower half of Git's sidebar, "move …" → layout, "compact" → settings, a
 target add-on → changes it, anything else → a new add-on (with a deliberate token problem first when
 the goal says "broken").
 

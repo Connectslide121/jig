@@ -260,21 +260,26 @@ registered shortcuts. Its examples start a build or open a chat with a draft. Re
 
 ## 6. The workbench — layout as data
 
-The window is divided into **regions**: `topbar`, `left` sidebar, `main` (tabs; splitting is in the
-backlog), `right` sidebar, `bottom` panel, `statusbar`. The arrangement is plain data in `layout.json`
+The window is divided into **regions**: `topbar`, `left` sidebar (its lower half `left2`), `main`
+(tabs, optionally split in two), `right` sidebar (lower half `right2`), `bottom` panel, `statusbar`.
+A view not in a region opens as a main tab (`jig.view`); any view's tab can be dragged to any of
+them (D-173, D-174). The arrangement is plain data in `layout.json`
 (`apps/desktop/src/shared/layout.ts`, reference: `docs/reference/layout.md`):
 
 ```jsonc
 {
   "left":   { "views": ["jig.projects", "jig.sessions"], "size": 280, "collapsed": false },
-  "right":  { "views": ["addon.repos.overview"], "size": 320, "collapsed": true },
+  "left2":  { "views": ["addon.repos.overview"], "size": 260, "collapsed": false },
+  "right":  { "views": ["addon.scripts.scripts"], "size": 320, "collapsed": true },
+  "hidden": ["addon.releases.releases"],
   "bottom": { "views": ["jig.terminal"], "size": 240, "collapsed": true },
   "main":   { "tabs": [ { "type": "jig.chat", "params": { "sessionId": "…" } } ] }
 }
 ```
 
 **No native menu bar.** The window has no OS title bar and no Electron menu bar on Windows/Linux:
-the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings). macOS keeps a
+the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings, and a few merged
+action menus: Chats, Code, Build, View — D-174). macOS keeps a
 minimal application menu so Cmd+C/V/Q and window shortcuts keep working (D-023).
 
 Core features and add-ons contribute **views** with stable ids; the layout decides where they appear.

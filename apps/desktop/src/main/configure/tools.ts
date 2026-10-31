@@ -19,7 +19,7 @@ import {
   PERMISSION_MODES,
   type SessionMeta,
 } from "../../shared/engine";
-import type { Layout } from "../../shared/layout";
+import { type Layout, SIDE_REGIONS } from "../../shared/layout";
 import {
   defaultLinkLabel,
   guessLinkType,
@@ -246,19 +246,15 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const layout = await deps.layout();
         const views = allViews(deps.addons());
         const title = (id: string) => views.find((v) => v.id === id)?.title ?? id;
-        const regions = (["left", "right", "bottom"] as const).map((r) => {
+        const regions = SIDE_REGIONS.map((r) => {
           const reg = layout[r];
-          const below = (v: string) =>
-            layout.sections[v]?.length
-              ? ` with below it: ${layout.sections[v].map((s) => `${title(s)} [${s}]`).join(", ")}`
-              : "";
-          return `${r} (${reg.collapsed ? "collapsed" : "open"}, ${reg.size}px): ${reg.views.map((v) => `${title(v)} [${v}]${v === reg.active ? " (shown)" : ""}${below(v)}`).join(", ") || "empty"}`;
+          return `${r} (${reg.collapsed ? "collapsed" : "open"}, ${reg.size}px): ${reg.views.map((v) => `${title(v)} [${v}]${v === reg.active ? " (shown)" : ""}`).join(", ") || "empty"}`;
         });
         return [
           ...regions,
           `hidden: ${layout.hidden.map((v) => `${title(v)} [${v}]`).join(", ") || "none"}`,
           `All views: ${views.map((v) => `${v.id} (${v.title})`).join("; ")}`,
-          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view as a collapsible section under host, in the same tab; "move" puts it back in its own tab).',
+          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view in the lower half of the host sidebar, a split sidebar; regions: left, left2 = lower left, right, right2 = lower right, bottom).',
         ].join("\n");
       },
     },
@@ -272,7 +268,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
             host: z.string().optional(),
             view: z.string().optional(),
-            region: z.enum(["left", "right", "bottom"]).optional(),
+            region: z.enum(SIDE_REGIONS).optional(),
             size: z.number().optional(),
           }),
         ),

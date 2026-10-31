@@ -21,9 +21,10 @@ Create `~/.jig/addons/hello/addon.json`:
 }
 ```
 
-A view can also start as a collapsible section below another view, in that view's tab, instead of
-its own tab: add `"under": "addon.git.git"` (or `jig.sessions`, …), as the Repos add-on does. The user
-can move it to its own tab from its ⋯ menu (`docs/reference/layout.md` → sections).
+A view can start in the lower half of a sidebar (`"region": "left2"` or `"right2"`, a split sidebar),
+as the Repos add-on does. A view used now and then can start hidden (`"hidden": true`) and be opened
+from an action (`ctx.showView`) in the top bar menus, so the sidebars keep only daily views
+(`docs/reference/layout.md` → Split sidebar, hidden).
 
 `~/.jig/addons/hello/ui.tsx`:
 

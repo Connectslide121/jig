@@ -102,16 +102,13 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   await page.getByTestId("git-repo-hide-client-a/portal").click();
   await expect(view.getByTestId("git-repo-client-a/portal")).toHaveCount(0);
 
-  // Every repository at a glance in the Repos section below the list.
-  const repos = page.getByTestId("section-addon.repos.overview");
+  // Every repository at a glance in the Repos view, in the lower half of the sidebar.
+  const repos = page.getByTestId("region-left2");
   // Each repository by its own name (not repos/client-a/portal), with its sync chip and branch.
   const portal = repos.getByTestId("repo-repos/client-a/portal");
   await expect(portal).toContainText("portal", { timeout: 15000 });
   await expect(portal).not.toContainText("repos/");
   await expect(portal.getByTestId("repo-sync-portal")).toBeVisible();
-  await page.getByTestId("section-toggle-addon.repos.overview").click();
-  await expect(repos.getByTestId("repos-view")).toHaveCount(0);
-  await page.getByTestId("section-toggle-addon.repos.overview").click();
   await expect(repos.getByTestId("repos-view")).toBeVisible();
 
   // Arrange, for all projects: a titled divider right above web, and api hidden.

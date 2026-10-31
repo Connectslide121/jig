@@ -14,14 +14,25 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { cycleTab, defaultLayout, findView } from "../../shared/layout";
+import { cycleTab, findView } from "../../shared/layout";
 import { openNewProjectDialog } from "../features/projects/ProjectDialog";
 import { call, errorMessage } from "../lib/host";
+import { confirmDialog } from "../ui";
 import { useProjects } from "./projects";
 import { registerAction, useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
 import { openToolsMenu } from "./ToolsMenu";
 import { notify } from "./toasts";
+
+/** Puts every view back where it started (after asking); open tabs stay. */
+export async function resetLayout(): Promise<void> {
+  const ok = await confirmDialog({
+    title: "Reset the layout?",
+    message: "Every view goes back to where it started, and sizes and sidebars as new. Open tabs stay.",
+    confirmLabel: "Reset",
+  });
+  if (ok) workbench.resetLayout();
+}
 
 /** A new project: the dialog asks for its name, default workspace and defaults (D-101). */
 export async function addProject(): Promise<void> {
@@ -144,7 +155,7 @@ export function registerCoreActions(): void {
     title: "Reset layout",
     group: "Layout",
     icon: RotateCcw,
-    run: () => updateLayout((l) => ({ ...defaultLayout(), main: l.main })),
+    run: () => void resetLayout(),
   });
   registerAction({
     id: "jig.closeTab",

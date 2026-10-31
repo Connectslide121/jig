@@ -59,7 +59,7 @@ in this order:
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
-| "pipelines below git" (or "under") | Claude shows Pipelines as a section below Git (`jig_change_layout` op `below`) |
+| "pipelines below git" (or "under") | Claude shows Pipelines in the lower half of Git's sidebar (`jig_change_layout` op `below`) |
 | "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones) |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |

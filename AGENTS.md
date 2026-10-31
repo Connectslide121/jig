@@ -134,8 +134,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   make side panes resizable with `Pane` instead of fixed widths.
 - Every view must look right in Jig Dark, Jig Light and an imported VS Code theme.
 - **Where a view starts** (D-102, a guideline): views about the active project start on the left and
-  follow it; views that cover everything start on the right. Pick `region` (and `under`, for a
-  section below another view) by that, and list new ids in `docs/reference/layout.md`.
+  follow it; views that cover everything start on the right. Pick `region` (`left2`/`right2`
+  for the lower half of a sidebar) by that, and list new ids in `docs/reference/layout.md`. Only
+  daily views start in a sidebar; ones used now and then start hidden (`hidden` / `startHidden`)
+  and open from an action in the top bar menus (D-173).
 - **Typed lists live in one place:** link types in `shared/links.ts` (`LINK_TYPES`: icon, label, how
   to guess it), workflow step kinds in `addons/workflows/lib/workflow.ts`, suggestion kinds in
   `shared/learning.ts`, a repository's release policy shape in `addons/releases/lib/policy.ts`. Add

@@ -8,7 +8,7 @@ add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced b
 
 | Slot | Manifest key | Fields | Export receives | Where it shows |
 |---|---|---|---|---|
-| `view` | `views` | `id`, `title`, `icon?`, `region` (`left`/`right`/`bottom`, default left), `under?` (a view id such as `addon.git.git`: start as a collapsible section below it), `component` | `{ ctx }` | a sidebar or the bottom panel, or a section below another view; the user can move/hide it; a new view opens its region the first time |
+| `view` | `views` | `id`, `title`, `icon?`, `region` (`left`/`left2`/`right`/`right2`/`bottom`, default left; `left2`/`right2` are the lower halves of the sidebars), `hidden?` (start hidden, opened as a main tab from an action in the top bar menus; for views used now and then), `component` | `{ ctx }` | a sidebar (upper or lower half), the bottom panel, or a main tab; the user can drag it anywhere or hide it; a new view opens its region the first time |
 | `workbench.tab` | `tabs` | `type`, `title`, `icon?`, `component` | `{ ctx, params, tabId, active }` | main-area tabs, opened with `ctx.openTab(type, params)` (`params.title` overrides the tab title) |
 | `topbar.item` | `topbar` | `id`, `component` | `{ ctx }` | right side of the top bar |
 | `statusbar.item` | `statusbar` | `id`, `side` (`left`/`right`, default `right`), `component` | `{ ctx }` | status bar |

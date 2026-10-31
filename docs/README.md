@@ -31,7 +31,7 @@ root [`README.md`](../README.md).
 | [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |
 | [usage.md](reference/usage.md) | Plan usage (5-hour and weekly windows) |
-| [layout.md](reference/layout.md) | Layout as data, regions, views and sections, split view, tabs, where views start, shortcuts |
+| [layout.md](reference/layout.md) | Layout as data, regions, split sidebars, views, reset, split view, tabs, where views start, shortcuts |
 | [slots.md](reference/slots.md) | The 17 extension slots |
 | [addon-api.md](reference/addon-api.md) | The add-on API (`ctx`), manifest and permissions |
 | [builder.md](reference/builder.md) | The builder: levels, jobs, worktrees, validation, proposals |

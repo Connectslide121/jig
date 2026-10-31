@@ -43,26 +43,23 @@ test("a layout request is a level-1 change shown before it applies", async ({ pa
   await expect(page.getByTestId("region-right").getByTestId("view-tab-jig.terminals")).toBeVisible();
 });
 
-test("the builder can show a view below another, as a collapsible section", async ({ page }) => {
+test("the builder can show a view beside another, in the lower half of its sidebar", async ({ page }) => {
   await page.keyboard.press("Control+Shift+B");
   await page.getByTestId("build-goal").fill("put the pipelines under git");
   await page.getByTestId("build-submit").click();
-  await expect(page.getByTestId("build-tab")).toContainText("Pipelines shows below Git", { timeout: 20000 });
+  await expect(page.getByTestId("build-tab")).toContainText("Pipelines shows in the lower half", {
+    timeout: 20000,
+  });
   await page.getByTestId("build-accept").click();
-  await page.getByTestId("view-tab-addon.git.git").click();
-  const section = page.getByTestId("section-addon.pipelines.pipelines");
-  await expect(section).toBeVisible();
-  // Collapse it, then put it back in its own tab from its menu.
-  await page.getByTestId("section-toggle-addon.pipelines.pipelines").click();
-  await expect(section.getByTestId("section-toggle-addon.pipelines.pipelines")).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
-  await section.hover();
-  await page.getByTestId("view-menu-addon.pipelines.pipelines").click();
-  await page.getByTestId("section-own-tab").click();
-  await expect(section).toHaveCount(0);
-  await expect(page.getByTestId("view-tab-addon.pipelines.pipelines")).toBeVisible();
+  const lower = page.getByTestId("region-left2");
+  await expect(lower.getByTestId("view-tab-addon.pipelines.pipelines")).toBeVisible();
+  // Put it back in the sidebar's own tabs from its menu.
+  await page.getByTestId("view-tab-addon.pipelines.pipelines").click({ button: "right" });
+  await page.getByTestId("move-view-left").click();
+  await expect(lower.getByTestId("view-tab-addon.pipelines.pipelines")).toHaveCount(0);
+  await expect(
+    page.getByTestId("region-left").getByTestId("view-tab-addon.pipelines.pipelines"),
+  ).toBeVisible();
 });
 
 test("Discard leaves nothing behind", async ({ page }) => {

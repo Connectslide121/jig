@@ -23,9 +23,9 @@ export type BuildKind = "layout" | "settings" | "change-addon" | "new-addon" | "
 export interface LayoutOp {
   op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below";
   view?: string;
-  /** For "below": the view to show `view` under, as a collapsible section in its tab. */
+  /** For "below": the view to show `view` beside, in the lower half of that view's sidebar. */
   host?: string;
-  region?: "left" | "right" | "bottom";
+  region?: "left" | "left2" | "right" | "right2" | "bottom";
   size?: number;
 }
 

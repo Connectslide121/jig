@@ -506,7 +506,7 @@ export class FakeEngine implements Engine {
             });
             await stream(
               `${msg}:text:0`,
-              "Pipelines now shows below Git, as a section you can collapse.",
+              "Pipelines now shows in the lower half of the sidebar, below Git.",
               signal,
             );
           } else if (/terminals? to the right/.test(lower)) {

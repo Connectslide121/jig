@@ -27,8 +27,8 @@ folder), one row each:
 what follows) — each row has a button that adds a divider right above it. One arrangement for all
 your projects (the add-on's global storage, `arrangement`); new repositories come after it.
 
-- View **Repos**: a collapsible section at the bottom of the Git panel (`"under": "addon.git.git"`,
-  D-099), like GitLens below Source Control. Its ⋯ menu moves it to its own tab. Header: how many
+- View **Repos**: starts in the lower half of the left sidebar (`"region": "left2"`, a split sidebar,
+  D-173), under the left sidebar's tabs. Its ⋯ menu moves it anywhere. Header: how many
   repositories, then ↑ / ↓ / ✎ counts (to push, to pull, with changes); Fetch all; Refresh. Status bar item
   "N to push/pull", Tools → Fetch all repos.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.

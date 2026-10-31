@@ -70,6 +70,7 @@ export function registerLearning(): void {
     title: "Suggestions",
     icon: Lightbulb,
     defaultRegion: "right",
+    startHidden: true,
     component: SuggestionsView,
     owner: "core",
   });

@@ -13,6 +13,7 @@
         "title": "Releases",
         "icon": "tag",
         "region": "right",
+        "hidden": true,
         "component": "ReleasesView"
       }
     ],

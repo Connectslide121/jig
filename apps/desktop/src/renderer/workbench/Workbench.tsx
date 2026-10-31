@@ -20,7 +20,7 @@ import { useUsageSync } from "../stores/usage";
 import { DialogHost, ErrorBoundary, MenuHost } from "../ui";
 import { MainArea } from "./MainArea";
 import { useProjects } from "./projects";
-import { Region } from "./Region";
+import { Region, ViewDropEdges } from "./Region";
 import { useRegistry } from "./registry";
 import { StartupBanner } from "./StartupBanner";
 import { StatusBar } from "./StatusBar";
@@ -86,7 +86,8 @@ export function Workbench() {
       <Topbar />
       <StartupBanner />
       {ready && (
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
+          <ViewDropEdges />
           <Region region="left" />
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1">

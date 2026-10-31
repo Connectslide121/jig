@@ -2,19 +2,21 @@ import { create } from "zustand";
 import {
   activateTab,
   closeTab,
+  defaultLayout,
   dropView,
+  findView,
   hideView,
   type Layout,
   moveView,
   normalizeLayout,
   openTab,
-  placeBelow,
+  openViewTab,
   type SideRegion,
   setPaneSize,
   setRegion,
   showView,
+  splitBeside,
   toggleRegion,
-  toggleSection,
   updateTabParams,
 } from "../../shared/layout";
 import { call } from "../lib/host";
@@ -31,6 +33,17 @@ interface WorkbenchState {
 
 export const useWorkbench = create<WorkbenchState>(() => ({ layout: undefined }));
 
+/** Drag data of a view (a sidebar's view tab, or the main-area tab of a view): its id. */
+export const VIEW_DRAG = "application/x-jig-view";
+
+/** The view being dragged, so every place it can go shows a drop target (sidebars, bottom, main). */
+export const useViewDrag = create<{ viewId?: string }>(() => ({}));
+export const startViewDrag = (viewId: string) => useViewDrag.setState({ viewId });
+// A drop can unmount the dragged tab, so its own dragend may never come: end it on any drop or dragend.
+if (typeof window !== "undefined")
+  for (const type of ["drop", "dragend"])
+    window.addEventListener(type, () => setTimeout(() => useViewDrag.setState({ viewId: undefined })), true);
+
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 function scheduleSave(layout: Layout) {
   clearTimeout(saveTimer);
@@ -42,7 +55,7 @@ function placements() {
     id: v.id,
     defaultRegion: v.defaultRegion,
     reveal: v.reveal,
-    under: v.under,
+    hidden: v.startHidden,
   }));
 }
 
@@ -96,9 +109,19 @@ export const workbench = {
   dropView: (viewId: string, region: SideRegion, beforeId?: string) =>
     updateLayout((l) => dropView(l, viewId, region, beforeId)),
   hideView: (viewId: string) => updateLayout((l) => hideView(l, viewId)),
-  placeBelow: (viewId: string, hostId: string) => updateLayout((l) => placeBelow(l, viewId, hostId)),
-  toggleSection: (viewId: string) => updateLayout((l) => toggleSection(l, viewId)),
+  /** Shows a view in the lower half of the sidebar another view is in (a split sidebar). */
+  splitBeside: (viewId: string, hostId: string) => updateLayout((l) => splitBeside(l, viewId, hostId)),
+  /** Every view back where it started, every size and sidebar as new. Open tabs stay. */
+  resetLayout: () => updateLayout((l) => ({ ...defaultLayout(), main: l.main })),
+  /** Opens a view as a tab in the main area (out of its sidebar). */
+  openViewTab: (viewId: string) => updateLayout((l) => openViewTab(l, viewId).layout),
+  /** Shows a view where it is: its sidebar tab, or (not in a sidebar) a tab in the main area. */
   showView(viewId: string) {
+    const layout = useWorkbench.getState().layout;
+    if (layout && findView(layout, viewId) === "hidden") {
+      updateLayout((l) => openViewTab(l, viewId).layout);
+      return;
+    }
     const fallback = useRegistry.getState().views[viewId]?.defaultRegion ?? "left";
     updateLayout((l) => showView(l, viewId, fallback));
   },

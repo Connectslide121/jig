@@ -10,15 +10,17 @@ import {
   PanelLeft,
   PanelRight,
   Puzzle,
+  RotateCcw,
   Settings,
   Wrench,
 } from "lucide-react";
+import { LOWER_HALF } from "../../shared/layout";
 import { openAbout } from "../features/about";
 import { ProjectSwatch } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
-import { addProject, hiddenViews, openSettings } from "./actions";
+import { addProject, hiddenViews, openSettings, resetLayout } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { type ActionDef, runAction, useRegistry } from "./registry";
 import { formatShortcut } from "./shortcuts";
@@ -26,6 +28,39 @@ import { useWorkbench, workbench } from "./store";
 import { filterActions, openToolsMenu } from "./ToolsMenu";
 
 const TOPBAR_MENU = "topbar";
+/**
+ * Top bar menus merge related action groups (D-174), so the bar stays short; each group is a heading
+ * inside its menu. Project actions are in the project switcher. Groups not listed (an add-on's own)
+ * get a menu of their own. The Tools menu (Ctrl+K) still lists every group.
+ */
+const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
+  { menu: "Chats", groups: ["Chats", "Claude", "Workflows"] },
+  { menu: "Code", groups: ["Git", "Files", "Terminals", "Pipelines"] },
+  { menu: "Build", groups: ["Build"] },
+  { menu: "View", groups: ["Layout", "Appearance"] },
+];
+const OWN_MENU = new Set(["Jig", "Projects"]);
+
+function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>) {
+  const byGroup = new Map(groups.map((g) => [g.group, g.actions]));
+  const merged = TOPBAR_MENUS.map(({ menu, groups: names }) => {
+    const parts = names.flatMap((name) => {
+      const actions = byGroup.get(name);
+      return actions?.length ? [{ name, actions }] : [];
+    });
+    const entries: MenuEntry[] =
+      parts.length === 1
+        ? actionMenu(parts[0]!.actions)
+        : parts.flatMap(({ name, actions }) => [{ heading: name } as const, ...actionMenu(actions)]);
+    return { menu, entries };
+  }).filter((m) => m.entries.length > 0);
+  const taken = new Set([...OWN_MENU, ...TOPBAR_MENUS.flatMap((m) => m.groups)]);
+  const others = groups
+    .filter((g) => !taken.has(g.group))
+    .map((g) => ({ menu: g.group, entries: actionMenu(g.actions) }));
+  return [...merged, ...others];
+}
+
 function actionMenu(actions: ActionDef[]): MenuEntry[] {
   return actions.map((action) => ({
     label: action.title,
@@ -33,6 +68,11 @@ function actionMenu(actions: ActionDef[]): MenuEntry[] {
     shortcut: action.shortcut,
     onSelect: () => runAction(action.id),
   }));
+}
+
+function projectActions(): ActionDef[] {
+  const all = filterActions(Object.values(useRegistry.getState().actions), "");
+  return all.find((g) => g.group === "Projects")?.actions ?? [];
 }
 
 function projectMenu(): MenuEntry[] {
@@ -48,6 +88,9 @@ function projectMenu(): MenuEntry[] {
     })),
     ...(projects.length ? [{ separator: true } as const] : []),
     { label: "New project…", icon: FolderPlus, onSelect: () => void addProject(), testId: "project-add" },
+    ...actionMenu(
+      projectActions().filter((a) => a.title !== "New project…" && a.title !== "Open project dashboard"),
+    ),
     ...(activeId
       ? [
           {
@@ -67,7 +110,10 @@ function layoutMenu(): MenuEntry[] {
   const regionEntries = (["left", "right", "bottom"] as const).map((r) => ({
     label: { left: "Left sidebar", right: "Right sidebar", bottom: "Bottom panel" }[r],
     icon: { left: PanelLeft, right: PanelRight, bottom: PanelBottom }[r],
-    checked: layout ? !layout[r].collapsed && layout[r].views.some((v) => views[v]) : false,
+    checked: layout
+      ? !layout[r].collapsed &&
+        [...layout[r].views, ...(LOWER_HALF[r] ? layout[LOWER_HALF[r]].views : [])].some((v) => views[v])
+      : false,
     onSelect: () => workbench.toggleRegion(r),
   }));
   return [
@@ -86,6 +132,13 @@ function layoutMenu(): MenuEntry[] {
           // Opens the view (hide it from its own ⋯ menu).
           onSelect: () => workbench.showView(v.id),
         })),
+    },
+    { separator: true },
+    {
+      label: "Reset layout",
+      icon: RotateCcw,
+      testId: "reset-layout",
+      onSelect: () => void resetLayout(),
     },
   ];
 }
@@ -125,7 +178,7 @@ export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
   const actions = useRegistry((s) => s.actions);
-  const groups = filterActions(Object.values(actions), "").filter((group) => group.group !== "Jig");
+  const menus = topbarMenus(filterActions(Object.values(actions), ""));
   return (
     <header
       className={cn(
@@ -168,17 +221,17 @@ export function Topbar() {
           if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
         }}
       >
-        {groups.map(({ group, actions: entries }) => (
+        {menus.map(({ menu, entries }) => (
           <button
             type="button"
-            key={group}
+            key={menu}
             className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
             aria-haspopup="menu"
-            data-testid={`tools-group-${group}`}
-            onClick={(e) => openMenuAt(e.currentTarget, actionMenu(entries), false, TOPBAR_MENU)}
-            onMouseEnter={(e) => switchMenuAt(e.currentTarget, actionMenu(entries), TOPBAR_MENU)}
+            data-testid={`tools-group-${menu}`}
+            onClick={(e) => openMenuAt(e.currentTarget, entries, false, TOPBAR_MENU)}
+            onMouseEnter={(e) => switchMenuAt(e.currentTarget, entries, TOPBAR_MENU)}
           >
-            {group}
+            {menu}
           </button>
         ))}
       </div>

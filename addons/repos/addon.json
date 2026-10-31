@@ -12,8 +12,7 @@
         "id": "overview",
         "title": "Repos",
         "icon": "folder-git-2",
-        "region": "right",
-        "under": "addon.git.git",
+        "region": "left2",
         "component": "ReposView"
       }
     ],

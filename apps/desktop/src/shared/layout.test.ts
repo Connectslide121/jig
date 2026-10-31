@@ -9,7 +9,6 @@ import {
   dropView,
   findView,
   hideView,
-  hostOf,
   LayoutSchema,
   MAX_TABS,
   moveTab,
@@ -17,17 +16,18 @@ import {
   moveView,
   normalizeLayout,
   openTab,
+  openViewTab,
   paneActive,
   paneTabs,
-  placeBelow,
   reorderView,
   setPaneSize,
   setRegion,
   showView,
+  splitBeside,
   tabKey,
   toggleRegion,
-  toggleSection,
   updateTabParams,
+  VIEW_TAB,
 } from "./layout";
 
 const views = [
@@ -201,71 +201,107 @@ describe("setPaneSize", () => {
   });
 });
 
-describe("sections (a view below another, in the same tab)", () => {
-  const git = { id: "addon.git.git", defaultRegion: "left" as const };
-  const repos = { id: "addon.repos.overview", defaultRegion: "right" as const, under: "addon.git.git" };
-
-  it("places a new view below its host when the host is there", () => {
-    const layout = normalizeLayout(defaultLayout(), [...views, repos, git]);
-    expect(layout.sections).toEqual({ "addon.git.git": ["addon.repos.overview"] });
-    expect(layout.right.views).toEqual([]);
-    expect(findView(layout, "addon.repos.overview")).toBe("left");
-    expect(hostOf(layout, "addon.repos.overview")).toBe("addon.git.git");
+describe("views as main tabs", () => {
+  it("opens a view as a tab, out of its sidebar, and focuses that tab again", () => {
+    const { layout, tabId } = openViewTab(base(), "jig.sessions");
+    expect(layout.left.views).not.toContain("jig.sessions");
+    expect(findView(layout, "jig.sessions")).toBe("hidden");
+    expect(layout.main.tabs).toEqual([{ id: tabId, type: VIEW_TAB, params: { viewId: "jig.sessions" } }]);
+    expect(layout.main.active).toBe(tabId);
+    const again = openViewTab(layout, "jig.sessions");
+    expect(again.tabId).toBe(tabId);
+    expect(again.layout.main.tabs).toHaveLength(1);
   });
 
-  it("waits in its own region while the host hasn't loaded, then moves below it", () => {
-    const first = normalizeLayout(defaultLayout(), [...views, repos]);
-    expect(first.right.views).toEqual(["addon.repos.overview"]);
-    expect(first.waitingUnder).toEqual(["addon.repos.overview"]);
-    const later = normalizeLayout(first, [...views, repos, git]);
-    expect(later.right.views).toEqual([]);
-    expect(later.sections["addon.git.git"]).toEqual(["addon.repos.overview"]);
-    expect(later.waitingUnder).toEqual([]);
+  it("closes the view's tab when it moves into a sidebar (a view is in one place)", () => {
+    const { layout } = openViewTab(base(), "jig.sessions");
+    const opened = openTab(layout, { type: "jig.chat", params: { sessionId: "a" } }).layout;
+    const moved = dropView(opened, "jig.sessions", "right2");
+    expect(moved.right2.views).toEqual(["jig.sessions"]);
+    expect(moved.right.collapsed).toBe(false);
+    expect(moved.main.tabs.map((t) => t.type)).toEqual(["jig.chat"]);
+  });
+
+  it("normalizing closes the tab of a view that is back in a sidebar (Reset layout)", () => {
+    const { layout } = openViewTab(base(), "jig.sessions");
+    const reset = normalizeLayout({ ...defaultLayout(), main: layout.main }, views);
+    expect(reset.left.views).toContain("jig.sessions");
+    expect(reset.main.tabs).toEqual([]);
+  });
+});
+
+describe("split sidebar (a lower half with its own tabs)", () => {
+  const git = { id: "addon.git.git", defaultRegion: "left" as const };
+  const repos = { id: "addon.repos.overview", defaultRegion: "left2" as const };
+
+  it("starts a view in a lower half and keeps it there", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
+    expect(layout.left2.views).toEqual(["addon.repos.overview"]);
+    expect(findView(layout, "addon.repos.overview")).toBe("left2");
+  });
+
+  it("moves a lower half up when its sidebar has nothing else", () => {
+    const layout = normalizeLayout(defaultLayout(), [repos]);
+    expect(layout.left.views).toEqual(["addon.repos.overview"]);
+    expect(layout.left2.views).toEqual([]);
+  });
+
+  it("splits a view beside another and moves it back", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, git]);
+    const split = splitBeside(layout, "addon.git.git", "jig.sessions");
+    expect(split.left2.views).toEqual(["addon.git.git"]);
+    expect(split.left2.active).toBe("addon.git.git");
+    expect(split.left.views).not.toContain("addon.git.git");
+    const back = moveView(split, "addon.git.git", "left");
+    expect(back.left2.views).toEqual([]);
+    expect(back.left.views).toContain("addon.git.git");
+    expect(splitBeside(layout, "jig.sessions", "jig.sessions")).toBe(layout);
+  });
+
+  it("opens and collapses the whole sidebar from its lower half", () => {
+    let layout = normalizeLayout(defaultLayout(), [...views, repos]);
+    layout = toggleRegion(layout, "left2");
+    expect(layout.left.collapsed).toBe(true);
+    layout = showView(layout, "addon.repos.overview", "left");
+    expect(layout.left.collapsed).toBe(false);
+    expect(layout.left2.active).toBe("addon.repos.overview");
+    expect(setRegion(layout, "left2", { size: 400 }).left2.size).toBe(400);
+  });
+
+  it("a lower half takes drops on its tab bar", () => {
+    const layout = normalizeLayout(defaultLayout(), [...views, repos]);
+    const next = dropView(layout, "jig.sessions", "left2", "addon.repos.overview");
+    expect(next.left2.views).toEqual(["jig.sessions", "addon.repos.overview"]);
+    expect(next.left2.active).toBe("jig.sessions");
   });
 
   it("keeps a view you moved yourself where you put it", () => {
     const first = normalizeLayout(defaultLayout(), [...views, repos]);
     const moved = moveView(first, "addon.repos.overview", "bottom");
-    const later = normalizeLayout(moved, [...views, repos, git]);
-    expect(later.bottom.views).toContain("addon.repos.overview");
-    expect(later.sections).toEqual({});
+    expect(normalizeLayout(moved, [...views, repos, git]).bottom.views).toContain("addon.repos.overview");
   });
 
-  it("moves a section to its own tab, below another view, collapses it and shows it", () => {
-    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
-    const own = moveView(layout, "addon.repos.overview", "right");
-    expect(own.sections).toEqual({});
-    expect(own.right.views).toEqual(["addon.repos.overview"]);
-    const below = placeBelow(own, "addon.repos.overview", "jig.sessions");
-    expect(below.sections).toEqual({ "jig.sessions": ["addon.repos.overview"] });
-    expect(below.right.views).toEqual([]);
-    expect(below.left.active).toBe("jig.sessions");
-    const closed = toggleSection(below, "addon.repos.overview");
-    expect(closed.closedSections).toEqual(["addon.repos.overview"]);
-    const shown = showView(
-      { ...closed, left: { ...closed.left, active: "jig.projects" } },
-      "addon.repos.overview",
-      "left",
-    );
-    expect(shown.left.active).toBe("jig.sessions");
-    expect(shown.closedSections).toEqual([]);
+  it("a view that starts hidden is not placed until it is shown", () => {
+    const releases = { id: "addon.releases.releases", defaultRegion: "right" as const, hidden: true };
+    const layout = normalizeLayout(defaultLayout(), [...views, releases]);
+    expect(layout.hidden).toEqual(["addon.releases.releases"]);
+    expect(layout.right.views).toEqual([]);
+    const shown = showView(layout, "addon.releases.releases", "right");
+    expect(shown.right.views).toEqual(["addon.releases.releases"]);
+    expect(shown.hidden).toEqual([]);
+    expect(normalizeLayout(hideView(shown, "addon.releases.releases"), [...views, releases]).hidden).toEqual([
+      "addon.releases.releases",
+    ]);
   });
 
-  it("is one level deep, and never below itself", () => {
-    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
-    expect(placeBelow(layout, "jig.sessions", "addon.repos.overview")).toBe(layout);
-    expect(placeBelow(layout, "jig.sessions", "jig.sessions")).toBe(layout);
-    // A host placed below another view hands its sections over.
-    const merged = placeBelow(layout, "addon.git.git", "jig.sessions");
-    expect(merged.sections).toEqual({ "jig.sessions": ["addon.git.git", "addon.repos.overview"] });
-  });
-
-  it("hiding a section hides only it", () => {
-    const layout = normalizeLayout(defaultLayout(), [...views, git, repos]);
-    const hidden = hideView(layout, "addon.repos.overview");
-    expect(hidden.sections).toEqual({});
-    expect(hidden.hidden).toContain("addon.repos.overview");
-    expect(hidden.left.views).toContain("addon.git.git");
+  it("moves views that old layouts showed below another view into the lower half", () => {
+    const old = LayoutSchema.parse({
+      left: { views: ["jig.projects", "jig.sessions"] },
+      sections: { "jig.sessions": ["addon.repos.overview"] },
+    });
+    const layout = normalizeLayout(old, [...views, repos]);
+    expect(layout.left2.views).toEqual(["addon.repos.overview"]);
+    expect(layout.sections).toBeUndefined();
   });
 });
 
@@ -337,16 +373,5 @@ describe("dropView", () => {
     l = dropView(l, "jig.sessions", "right");
     expect(l.right.views).toEqual(["jig.sessions"]);
     expect(dropView(l, "jig.terminal", "left", "jig.terminal")).toBe(l);
-  });
-
-  it("drops a section into its host's strip without losing a view", () => {
-    const git = { id: "addon.git.git", defaultRegion: "left" as const };
-    const repos = { id: "addon.repos.overview", defaultRegion: "right" as const, under: "addon.git.git" };
-    const l = normalizeLayout(defaultLayout(), [...views, git, repos]);
-    expect(hostOf(l, "addon.repos.overview")).toBe("addon.git.git");
-    const before = l.left.views;
-    const next = dropView(l, "addon.repos.overview", "left", before[0]);
-    expect(next.left.views).toEqual(["addon.repos.overview", ...before]);
-    expect(hostOf(next, "addon.repos.overview")).toBeUndefined();
   });
 });

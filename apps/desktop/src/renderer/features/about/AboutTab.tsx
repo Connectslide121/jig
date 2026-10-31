@@ -685,6 +685,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Live: the tree follows changes on disk, from you or Claude",
                 "If Claude changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
+                "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
                 "Right-click a file to open it in VS Code or ask Claude about it",
               ]}
             />
@@ -710,7 +711,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="git"
             title="Git"
-            lead="The repository you work in, plus any you show next to it (or all of them), with Repos below for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
+            lead="The repository you work in, plus any you show next to it (or all of them), with Repos in the lower half of the sidebar for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
             shot={{ src: git, alt: "The Git view with changes in several repositories" }}
           />
           <Section

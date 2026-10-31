@@ -1,13 +1,12 @@
 import { Eye, FolderOpen, RotateCcw, Search, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
-import { defaultLayout } from "../../../shared/layout";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, confirmDialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
-import { addWorkspace, hiddenViews } from "../../workbench/actions";
+import { addWorkspace, hiddenViews, resetLayout } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
-import { updateLayout, useWorkbench, workbench } from "../../workbench/store";
+import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { lookForPatterns, useLearning } from "../learning/store";
 import { SettingRow, SettingsSection } from "./parts";
@@ -29,11 +28,7 @@ export function LayoutSettings() {
         </SettingRow>
       ))}
       <SettingRow label="Reset layout" description="Put every view back where it started. Open tabs stay.">
-        <Button
-          size="sm"
-          icon={RotateCcw}
-          onClick={() => updateLayout((l) => ({ ...defaultLayout(), main: l.main }))}
-        >
+        <Button size="sm" icon={RotateCcw} onClick={() => void resetLayout()}>
           Reset
         </Button>
       </SettingRow>

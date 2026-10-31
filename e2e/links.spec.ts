@@ -10,8 +10,13 @@ test("project links: grouped, typed, added by hand, shown on Home, and by Claude
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
+  await openLinks(page);
   const links = page.getByTestId("links-view");
   await expect(links).toBeVisible();
+  // Kept beside the chats: its tab moves to the left sidebar.
+  await page.getByTestId("tab-jig.view").click({ button: "right" });
+  await page.getByTestId("move-view-left").click();
+  await expect(page.getByTestId("region-left").getByTestId("links-view")).toBeVisible();
 
   // Add a link by hand: type and label come from the address.
   await links.getByTestId("links-add").click();
@@ -85,6 +90,7 @@ else console.log(JSON.stringify([
   const dir = join(home, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
+  await openLinks(page);
   const links = page.getByTestId("links-view");
   await links.getByTestId("links-azure").click();
   const dialog = page.getByTestId("azure-dialog");
@@ -104,3 +110,9 @@ else console.log(JSON.stringify([
   await expect(links.getByTestId("link-group-Stage")).toContainText("shopdb");
   await app.close();
 });
+
+/** Opens the active project's links (a tab, from the project switcher). */
+async function openLinks(page: import("@playwright/test").Page) {
+  await page.getByTestId("project-switcher").click();
+  await page.getByRole("menuitem", { name: "Project links", exact: true }).click();
+}

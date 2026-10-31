@@ -13,6 +13,7 @@
         "title": "Workflows",
         "icon": "list-checks",
         "region": "left",
+        "hidden": true,
         "component": "WorkflowsView"
       }
     ],

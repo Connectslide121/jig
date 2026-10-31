@@ -1750,3 +1750,36 @@ the exact mechanism is Claude's. Verify by installing over an existing install w
 - In the Repos add-on a row's branch is a dropdown that switches branches, like the Git view's (local
   branches, remote ones as tracking branches). Host methods `branches` and `switchBranch` in
   `addons/repos/host.ts`.
+
+## D-173: Split sidebars replace "below another view"; daily views only in sidebars; Reset layout
+
+- Status: accepted. Decided by Jon ("the side panels are too crowded", "a split sidebar slot … not
+  tied to under another add-on", a button to put every view back); the model and names are Claude's.
+- Each sidebar can be split: `left2` / `right2` are its lower half, with their own tabs and height.
+  Width and collapsed stay with the sidebar (`columnOf`). Replaces D-099's sections (a view below
+  another, in its tab): any view can go to a lower half, without a host view, by dragging its tab
+there (D-174 removed the menu entries: a split is made by drag and drop only). Old
+  layouts' sections move to the lower half on load; manifests' `under` is ignored.
+- Only daily views start in a sidebar (Projects, Chats, Files, Git, Repos, Scripts, Pipelines,
+  Browser, Notes). Views used now and then start hidden (`hidden` in a manifest, `startHidden` for
+  core views): Suggestions, Links, Releases, Workflows, opened from their actions in the top bar
+  menus (as main tabs since D-174). Notes stays in the sidebar because it follows the chat you're in. This applies to new placements; Reset
+  layout applies it to an existing layout.
+- **Reset layout** is in the top bar's layout menu (and Settings → Layout, and an action); it asks
+  first, then restores the default layout, keeping open tabs.
+
+## D-174: Fewer top bar menus; views open as main tabs; drag any view anywhere
+
+- Status: accepted. Decided by Jon ("we have too many menus, we can probably merge some", views not in
+  the sidebars "should open as a new tab in the main window", "drag and drop any window to any of the
+  slots"); which groups merge and which views stay in sidebars is **Claude, on my own** (Jon: "You
+  decide").
+- Top bar menus: **Chats** (Chats, Claude, Workflows), **Code** (Git, Files, Terminals, Pipelines),
+  **Build**, **View** (Layout, Appearance). Groups keep a heading inside the merged menu. Project
+  actions are in the project switcher, Jig's in the Jig menu. Add-ons' own groups keep their own menu.
+- A view that isn't in a region opens as a main tab (`jig.view`, `params.viewId`); the same view is
+  never in a region and a tab at once (`normalizeLayout` closes the tab). The pure `showView` used by
+  the builder and settings tools still places a view in a region.
+- Drag a view's tab to any region's tab bar, a sidebar's lower part (splits it), the main area, or
+  the edge target of a region that isn't showing. Splitting a sidebar is drag-only: the "Move to lower
+  … sidebar" menu entries are gone.

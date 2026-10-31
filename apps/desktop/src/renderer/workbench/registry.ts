@@ -9,7 +9,8 @@ import type { SideRegion } from "../../shared/layout";
  */
 export interface ViewProps {
   viewId: string;
-  region: SideRegion;
+  /** Where the view shows: a sidebar half, the bottom panel, or `main` (a tab in the main area). */
+  region: SideRegion | "main";
 }
 
 export interface ViewDef {
@@ -24,8 +25,8 @@ export interface ViewDef {
   owner?: string;
   /** Open its region the first time it is placed (views of add-ons you built). */
   reveal?: boolean;
-  /** Placed the first time as a collapsible section below this view (e.g. `addon.git.git`). */
-  under?: string;
+  /** Starts out of the sidebars: its action (top bar menus) or the Views list opens it as a main-area tab. */
+  startHidden?: boolean;
 }
 
 export interface TabProps {
