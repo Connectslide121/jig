@@ -120,7 +120,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - Reuse the base components in `apps/desktop/src/renderer/ui/` before writing new ones.
 - **Loading is `<Spinner center />`:** a panel, tab or section that is loading shows one spinner,
   centered in its space; never "Loading…" text and never a spinner in a corner. **Filter and search
-  fields are `SearchInput`** (the magnifier beside the text, × to clear), never an `Input` with an
+  fields are `SearchInput`** (the top-bar search field beside the text, × to clear), never an `Input` with an
   icon laid over it.
 - **Menus go through `ui/Menu.tsx`** (`openMenu`, `openMenuAt`, `MenuButton`, `contextMenu`; add-ons
   through the SDK), never a hand-made dropdown. A submenu opens beside its parent, from its chevron,

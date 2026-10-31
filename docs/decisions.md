@@ -1995,3 +1995,11 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Implementation is **Claude, on my own**: shared `ArrangeList.showFooter` defaults to true; nested
   pipeline lists set it false, leaving other add-ons unchanged.
 
+## D-192: Search stays visible in the center of the top bar
+
+- Status: accepted. Decided by Jon ("search bar to always be visible in the center of the topbar"
+  with results "dropping down from the center of the topbar").
+- Implementation is **Claude, on my own**: a permanent SearchInput in the middle top-bar column
+  owns the query. Go to results appear in an overlay directly below it, following its position on
+  resize without changing the workbench layout. Ctrl+P/Ctrl+K focus the same field; arrows select,
+  Enter opens, Escape/outside clicks close results. Clearing/closing resets the query.

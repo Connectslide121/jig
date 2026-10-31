@@ -295,7 +295,7 @@ Moving, hiding or resizing a view is a layout change — which is also what the 
 **Renderer structure.** `renderer/workbench/` is the shell: a **registry** (views, tab types, menu
 actions, status-bar items — a store, so add-ons can register and unregister at runtime), the layout
 store, the top bar, regions, main-area tabs, status bar, the **grouped menus** (every action),
-shared **Go to** search (magnifier, Ctrl+P or Ctrl+K), toasts and keyboard shortcuts (every shortcut is
+shared **Go to** search (search field, Ctrl+P or Ctrl+K), toasts and keyboard shortcuts (every shortcut is
 also an action in a menu). `renderer/features/<feature>/` registers its views, tabs and actions
 (`features/index.ts`). Views, tabs and status items each render inside an error boundary. Tab bodies
 stay mounted once opened, so a chat or terminal keeps its state while you switch tabs.

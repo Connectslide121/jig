@@ -13,12 +13,12 @@ import {
   Puzzle,
   RotateCcw,
   Save,
-  Search,
   Settings,
   Settings2,
 } from "lucide-react";
 import { LOWER_HALF } from "../../shared/layout";
 import { openAbout } from "../features/about";
+import { TopbarSearch } from "../features/goto";
 import { ProjectSwatch } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
@@ -27,7 +27,6 @@ import { filterActions } from "./actionGroups";
 import { addProject, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { type ActionDef, runAction, useRegistry } from "./registry";
-import { formatShortcut } from "./shortcuts";
 import { useWorkbench, workbench } from "./store";
 
 const TOPBAR_MENU = "topbar";
@@ -201,101 +200,95 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        "drag topbar-insets flex shrink-0 items-center gap-1 border-b border-line bg-titlebar px-2 text-sm",
+        "drag topbar-insets grid shrink-0 grid-cols-3 items-center gap-3 border-b border-line bg-titlebar px-2 text-sm",
       )}
     >
-      <button
-        type="button"
-        data-testid="jig-menu"
-        className={cn(
-          "no-drag flex h-7 items-center gap-1.5 rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
-          !mac && "ml-0.5",
-        )}
-        onClick={(e) => openMenuAt(e.currentTarget, jigMenu(), false, TOPBAR_MENU)}
-        onMouseEnter={(e) => switchMenuAt(e.currentTarget, jigMenu(), TOPBAR_MENU)}
-      >
-        <JigLogo className="size-4" />
-        Jig
-      </button>
-      <button
-        type="button"
-        data-testid="project-switcher"
-        className="no-drag flex h-7 max-w-64 items-center gap-1.5 rounded-md px-2 hover:bg-hover"
-        onClick={(e) => openMenuAt(e.currentTarget, projectMenu(), false, TOPBAR_MENU)}
-        onMouseEnter={(e) => switchMenuAt(e.currentTarget, projectMenu(), TOPBAR_MENU)}
-      >
-        {project ? (
-          <>
-            <ProjectSwatch color={project.color} />
-            <span className="truncate font-medium">{project.name}</span>
-          </>
-        ) : (
-          <span className="text-muted">No project</span>
-        )}
-        <ChevronDown className="size-3.5 text-muted" />
-      </button>
-      <div
-        className="tab-strip no-drag flex min-w-0 items-center overflow-x-auto"
-        onWheel={(e) => {
-          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
-        }}
-      >
-        {menus.map(({ menu, entries }) => (
-          <button
-            type="button"
-            key={menu}
-            className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
-            aria-haspopup="menu"
-            data-testid={`tools-group-${menu}`}
-            onClick={(e) => openMenuAt(e.currentTarget, entries, false, TOPBAR_MENU)}
-            onMouseEnter={(e) => switchMenuAt(e.currentTarget, entries, TOPBAR_MENU)}
-          >
-            {menu}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        data-testid="goto-button"
-        title={`Go to a chat, file, view or action (${formatShortcut("Mod+P")})`}
-        className="no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-fg hover:bg-hover"
-        onClick={() => runAction("jig.goTo")}
-      >
-        <Search className="size-4 text-muted" />
-        <span className="sr-only">Go to</span>
-      </button>
-      {project && (
+      <div className="flex min-w-0 items-center gap-1">
         <button
           type="button"
-          data-testid="topbar-new-chat"
-          className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
-          onClick={() => runAction("jig.newSession")}
+          data-testid="jig-menu"
+          className={cn(
+            "no-drag flex h-7 items-center gap-1.5 rounded-md px-1.5 font-semibold tracking-tight text-accent hover:bg-hover",
+            !mac && "ml-0.5",
+          )}
+          onClick={(e) => openMenuAt(e.currentTarget, jigMenu(), false, TOPBAR_MENU)}
+          onMouseEnter={(e) => switchMenuAt(e.currentTarget, jigMenu(), TOPBAR_MENU)}
         >
-          <MessageSquarePlus className="size-4 text-accent" />
-          New chat
+          <JigLogo className="size-4" />
+          Jig
         </button>
-      )}
-      <div className="flex-1" />
-      <TopbarItems />
-      <IconButton
-        icon={PanelLeft}
-        label="Layout and views"
-        data-testid="layout-button"
-        onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true, TOPBAR_MENU)}
-        onMouseEnter={(e) => switchMenuAt(e.currentTarget, layoutMenu(), TOPBAR_MENU, true)}
-      />
-      <IconButton
-        icon={CircleHelp}
-        label="What Jig can do"
-        data-testid="about-button"
-        onClick={() => openAbout()}
-      />
-      <IconButton
-        icon={Settings}
-        label="Settings"
-        data-testid="settings-button"
-        onClick={() => openSettings()}
-      />
+        <button
+          type="button"
+          data-testid="project-switcher"
+          className="no-drag flex h-7 max-w-64 items-center gap-1.5 rounded-md px-2 hover:bg-hover"
+          onClick={(e) => openMenuAt(e.currentTarget, projectMenu(), false, TOPBAR_MENU)}
+          onMouseEnter={(e) => switchMenuAt(e.currentTarget, projectMenu(), TOPBAR_MENU)}
+        >
+          {project ? (
+            <>
+              <ProjectSwatch color={project.color} />
+              <span className="truncate font-medium">{project.name}</span>
+            </>
+          ) : (
+            <span className="text-muted">No project</span>
+          )}
+          <ChevronDown className="size-3.5 text-muted" />
+        </button>
+        <div
+          className="tab-strip no-drag flex min-w-0 items-center overflow-x-auto"
+          onWheel={(e) => {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+          }}
+        >
+          {menus.map(({ menu, entries }) => (
+            <button
+              type="button"
+              key={menu}
+              className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
+              aria-haspopup="menu"
+              data-testid={`tools-group-${menu}`}
+              onClick={(e) => openMenuAt(e.currentTarget, entries, false, TOPBAR_MENU)}
+              onMouseEnter={(e) => switchMenuAt(e.currentTarget, entries, TOPBAR_MENU)}
+            >
+              {menu}
+            </button>
+          ))}
+        </div>
+        {project && (
+          <button
+            type="button"
+            data-testid="topbar-new-chat"
+            className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
+            onClick={() => runAction("jig.newSession")}
+          >
+            <MessageSquarePlus className="size-4 text-accent" />
+            New chat
+          </button>
+        )}
+      </div>
+      <TopbarSearch />
+      <div className="flex min-w-0 items-center justify-end gap-1">
+        <TopbarItems />
+        <IconButton
+          icon={PanelLeft}
+          label="Layout and views"
+          data-testid="layout-button"
+          onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true, TOPBAR_MENU)}
+          onMouseEnter={(e) => switchMenuAt(e.currentTarget, layoutMenu(), TOPBAR_MENU, true)}
+        />
+        <IconButton
+          icon={CircleHelp}
+          label="What Jig can do"
+          data-testid="about-button"
+          onClick={() => openAbout()}
+        />
+        <IconButton
+          icon={Settings}
+          label="Settings"
+          data-testid="settings-button"
+          onClick={() => openSettings()}
+        />
+      </div>
     </header>
   );
 }

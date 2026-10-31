@@ -1,5 +1,8 @@
 # Status
 
+Search bar (2026-10-31): search is always visible in the center of the top bar. Results drop from
+directly beneath it; Ctrl+P/Ctrl+K focus it. Escape/outside clicks close results without moving content.
+
 Pipeline arrangement (2026-10-31): nested cards no longer show the duplicate Add divider/help row.
 Use the small side divider icon; the outer list retains its footer.
 

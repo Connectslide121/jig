@@ -175,12 +175,12 @@ middle-click or `×` closes; right-click → Close, Close others, Close all; dra
 
 Top-bar menus (D-174) merge action groups into a few menus, each group under its own heading:
 The separate Tools dropdown is removed (D-190). In this documentation, **Search →** means open the
-magnifier (Go to), type the item's name and select it. `tools.action` keeps its manifest name for
+top-bar search field (Go to), type the item's name and select it. `tools.action` keeps its manifest name for
 compatibility and contributes to the grouped menus and search; it has no exclusive dropdown.
 **Chats** (Chats, Claude, Workflows), **Code** (Git, Files, Terminals, Pipelines), **Build** and
 **View** (Layout, Appearance; Reset layout is here). The Projects group's actions are in the project
 switcher; the Jig group is in the Jig menu. Any other group (an add-on's own) keeps its own menu
-(`TOPBAR_MENUS` in `workbench/Topbar.tsx`). Groups scroll horizontally on narrow windows; the magnifier, Ctrl+P and Ctrl+K provide a single search for chats, files, views and actions. No new view IDs or slots.
+(`TOPBAR_MENUS` in `workbench/Topbar.tsx`). Groups scroll horizontally on narrow windows; the top-bar search field, Ctrl+P and Ctrl+K provide a single search for chats, files, views and actions. No new view IDs or slots.
 
 Top-bar menus form one menu bar: click to open a group, then hovering another group switches the open menu. Hovering while closed leaves menus closed; Escape, selecting an action or clicking outside ends menu-bar navigation. Panel view tabs use `text-sm` labels, `size-4` icons and `h-7` controls; action-group labels in the top bar use `text-sm`.
 

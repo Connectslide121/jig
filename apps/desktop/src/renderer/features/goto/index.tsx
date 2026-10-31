@@ -1,5 +1,5 @@
 import { AppWindow, MessageSquare, Search, Wrench } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { call } from "../../lib/host";
@@ -16,9 +16,46 @@ import { useSessions } from "../sessions/store";
  * Go to… (Ctrl+P, D-176): chats, views, actions and the active project's files in one list. A menu
  * you see (the magnifier in the top bar), not a command line: typing only filters.
  */
-const useGoTo = create<{ open: boolean }>(() => ({ open: false }));
-export const openGoTo = () => useGoTo.setState({ open: true });
-const closeGoTo = () => useGoTo.setState({ open: false });
+const useGoTo = create<{ open: boolean; query: string; index: number }>(() => ({
+  open: false,
+  query: "",
+  index: 0,
+}));
+export const openGoTo = () => {
+  useGoTo.setState({ open: true });
+  document.getElementById("jig-search")?.focus();
+};
+const closeGoTo = () => {
+  useGoTo.setState({ open: false, query: "", index: 0 });
+  document.getElementById("jig-search")?.blur();
+};
+const setQuery = (query: string) => useGoTo.setState({ query, index: 0, open: true });
+const setIndex = (index: number) => useGoTo.setState({ index });
+
+/** A permanent search field; results overlay the page directly below it. */
+export function TopbarSearch() {
+  const { open, query, index } = useGoTo();
+  return (
+    <div className="no-drag mx-auto w-full max-w-96 min-w-0" data-testid="goto-button">
+      <SearchInput
+        id="jig-search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onClear={() => setQuery("")}
+        onFocus={openGoTo}
+        onClick={openGoTo}
+        placeholder="Search chats, files, views, actions…"
+        aria-label="Search chats, files, views and actions"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={open ? "jig-search-options" : undefined}
+        aria-activedescendant={open && index >= 0 ? `jig-search-option-${index}` : undefined}
+        data-testid="goto-input"
+      />
+    </div>
+  );
+}
 
 const ICON = { chat: MessageSquare, view: AppWindow, action: Wrench } as const;
 
@@ -84,8 +121,8 @@ export function GoToHost() {
 }
 
 function GoTo() {
-  const [query, setQuery] = useState("");
-  const [index, setIndex] = useState(0);
+  const { query, index } = useGoTo();
+  const [place, setPlace] = useState({ top: 0, left: 0 });
   const project = useActiveProject();
   const projects = useProjects((s) => s.projects);
   const metas = useSessions((s) => s.metas);
@@ -124,7 +161,11 @@ function GoTo() {
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) closeGoTo();
+      if (
+        !ref.current?.contains(e.target as Node) &&
+        !document.querySelector('[data-testid="goto-button"]')?.contains(e.target as Node)
+      )
+        closeGoTo();
     };
     window.addEventListener("mousedown", onDown, true);
     return () => window.removeEventListener("mousedown", onDown, true);
@@ -139,6 +180,37 @@ function GoTo() {
     else openPreview(item.id);
   };
 
+  useLayoutEffect(() => {
+    const anchor = document.querySelector('[data-testid="goto-button"]');
+    const position = () => {
+      const rect = anchor?.getBoundingClientRect();
+      if (rect) setPlace({ top: rect.bottom + 4, left: rect.left + rect.width / 2 });
+    };
+    position();
+    const observer = new ResizeObserver(position);
+    if (anchor) observer.observe(anchor);
+    window.addEventListener("resize", position);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", position);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.isComposing) return;
+      if (e.key === "ArrowDown") setIndex(Math.min(flat.length - 1, index + 1));
+      else if (e.key === "ArrowUp") setIndex(Math.max(0, index - 1));
+      else if (e.key === "Enter") go(flat[index]);
+      else if (e.key === "Escape") closeGoTo();
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  });
+
   let n = -1;
   return createPortal(
     <div
@@ -146,33 +218,11 @@ function GoTo() {
       role="dialog"
       aria-label="Go to"
       data-testid="goto"
-      className="no-drag fixed top-12 left-1/2 z-50 flex h-112 w-xl -translate-x-1/2 flex-col rounded-lg border border-line bg-elevated text-sm text-fg shadow-popover"
-      onKeyDown={(e) => {
-        if (e.key === "ArrowDown") setIndex((i) => Math.min(flat.length - 1, i + 1));
-        else if (e.key === "ArrowUp") setIndex((i) => Math.max(0, i - 1));
-        else if (e.key === "Enter") go(flat[index]);
-        else if (e.key === "Escape") closeGoTo();
-        else return;
-        e.preventDefault();
-      }}
+      id="jig-search-results"
+      style={{ top: place.top, left: place.left, maxHeight: `calc(100vh - ${place.top + 8}px)` }}
+      className="no-drag fixed z-50 flex h-112 w-xl max-w-full -translate-x-1/2 flex-col rounded-lg border border-line bg-elevated text-sm text-fg shadow-popover"
     >
-      <div className="border-b border-line p-2">
-        <SearchInput
-          autoFocus
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIndex(0);
-          }}
-          onClear={() => setQuery("")}
-          placeholder={
-            project ? `Chats, views, actions, files in ${project.name}…` : "Chats, views, actions…"
-          }
-          data-testid="goto-input"
-          aria-label="Go to"
-        />
-      </div>
-      <div role="listbox" className="min-h-0 flex-1 overflow-y-auto p-1">
+      <div id="jig-search-options" role="listbox" className="min-h-0 flex-1 overflow-y-auto p-1">
         {flat.length === 0 && (
           <div className="px-3 py-4 text-center text-muted">Nothing matches “{query}”.</div>
         )}
@@ -189,6 +239,7 @@ function GoTo() {
               return (
                 <div
                   key={`${item.kind}:${item.id}`}
+                  id={`jig-search-option-${i}`}
                   role="option"
                   aria-selected={i === index}
                   tabIndex={-1}

@@ -29,6 +29,37 @@ test("keyboard shortcuts run actions", async ({ page }) => {
   await expect(page.getByTestId("region-left")).toBeVisible();
 });
 
+test("search stays in the top bar with results directly beneath it and no layout shift", async ({ page }) => {
+  const input = page.getByTestId("goto-input");
+  await expect(input).toBeVisible();
+  for (const width of [1100, 1600]) {
+    await page.setViewportSize({ width, height: 900 });
+    const before = await page.getByTestId("region-left").boundingBox();
+    await input.fill("settings");
+    const results = page.getByTestId("goto");
+    await expect(results).toBeVisible();
+    const anchor = await page.getByTestId("goto-button").boundingBox();
+    const dropdown = await results.boundingBox();
+    expect(Math.abs(dropdown!.y - anchor!.y - anchor!.height - 4)).toBeLessThan(1);
+    expect(Math.abs(dropdown!.x + dropdown!.width / 2 - anchor!.x - anchor!.width / 2)).toBeLessThan(1);
+    expect(await page.getByTestId("region-left").boundingBox()).toEqual(before);
+    await page.keyboard.press("Escape");
+    await expect(results).toHaveCount(0);
+    await expect(input).toBeVisible();
+  }
+  for (const shortcut of ["Control+K", "Control+P"]) {
+    await page.keyboard.press(shortcut);
+    await expect(input).toBeFocused();
+    await expect(page.getByTestId("goto")).toBeVisible();
+    await page.keyboard.press("Escape");
+  }
+  await input.fill("settings");
+  await page.screenshot({ path: "test-results/topbar-search.png" });
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("settings")).toBeVisible();
+  await expect(input).toHaveValue("");
+});
+
 test("views move between regions from their ⋯ menu and the layout is saved", async ({ page, jigHome }) => {
   await page.getByTestId("view-menu-jig.projects").click();
   await page.getByTestId("move-view-right").click();
