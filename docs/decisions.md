@@ -1875,3 +1875,17 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   for. `ctx.openChat({ sessionId })` opens an existing chat.
 - New permission modes default to "Accept file edits" in the add dialog, so an unattended queue doesn't
   stop at every edit; commands still ask, and a task that needs you shows "Needs you" and notifies.
+
+## D-183: Pipelines load when Jig starts; watchers can run at start
+
+- Status: accepted. Decided by Jon ("I want the pipelines to load when jig opens, not every time the
+  pipelines tab opens … refresh in the bg when the tab opens, without locking the ui"); the mechanism
+  is **Claude, on my own**.
+- Watchers get `atStart` (manifest): besides every interval, they run once 3 s after the add-on loads
+  (so at Jig's start, without slowing it). A general hook for warming caches, not a pipelines special.
+- Pipelines' `refresh` watcher (at start, every 5 minutes) finds the pipelines and their newest runs
+  and saves them (`found`, `latest`). The view starts from what it showed last (in memory) or the saved
+  copy, and refreshes in the background with only the header's small spinner. The full-panel spinner
+  stays only for the very first time, when nothing was ever saved.
+- Cost: `az pipelines runs list` once per Azure DevOps project every 5 minutes while Jig runs, even with
+  the view closed; with no Azure DevOps remotes it only reads `git remote` of each checkout.

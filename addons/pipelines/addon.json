@@ -37,6 +37,12 @@
         "id": "runs",
         "every": "1m",
         "run": "checkTrackedRuns"
+      },
+      {
+        "id": "refresh",
+        "every": "5m",
+        "run": "refresh",
+        "atStart": true
       }
     ],
     "settings": {

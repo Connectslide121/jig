@@ -15,6 +15,8 @@ import { AddonHostProcess, type HostChannelFactory, type RpcHandler } from "./ho
 import { commitAll, ensureRepo, history, rollback } from "./repo";
 
 const log = logger("addons");
+/** How long after loading an add-on its `atStart` watchers first run. */
+const AT_START_DELAY = 3_000;
 
 const StateSchema = z.object({ disabled: z.array(z.string()).default([]) });
 
@@ -211,20 +213,21 @@ export class AddonService {
         for (const watcher of manifest.contributes.watchers) {
           // A run that takes longer than the interval isn't started again until it's done.
           let running = false;
-          loaded.timers.push(
-            setInterval(() => {
-              if (running || !loaded.host) return;
-              running = true;
-              void loaded.host
-                .call(watcher.run, {})
-                .catch((error: Error) =>
-                  log.warn(`Watcher ${record.id}/${watcher.id} failed: ${error.message}`),
-                )
-                .finally(() => {
-                  running = false;
-                });
-            }, intervalMs(watcher.every)),
-          );
+          const tick = () => {
+            if (running || !loaded.host) return;
+            running = true;
+            void loaded.host
+              .call(watcher.run, {})
+              .catch((error: Error) =>
+                log.warn(`Watcher ${record.id}/${watcher.id} failed: ${error.message}`),
+              )
+              .finally(() => {
+                running = false;
+              });
+          };
+          loaded.timers.push(setInterval(tick, intervalMs(watcher.every)));
+          // A few seconds in, so starting Jig isn't slowed by every add-on's first run.
+          if (watcher.atStart) loaded.timers.push(setTimeout(tick, AT_START_DELAY));
         }
       }
     } else if (manifest.contributes.watchers.length > 0) {

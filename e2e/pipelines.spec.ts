@@ -95,8 +95,6 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   // Grouped per repository; a retired pipeline isn't listed.
   await expect(view.getByTestId("pipelines-repo-shop")).toContainText("contoso/Shop");
   await expect(view).not.toContainText("(old) Shop");
-  // Each pipeline shows it's loading until its newest run comes (az answers slowly here).
-  await expect(card.getByTestId("pipeline-loading")).toBeVisible();
   // A compact row: the name, how long ago, the state. The card keeps one height.
   await expect(card.getByTestId("pipeline-time")).toHaveText("12m");
   await expect(card.getByLabel("Succeeded")).toBeVisible();
@@ -134,4 +132,17 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
     expect.arrayContaining(["--id", "12", "--branch", "develop", "deployTo=production", "runTests=false"]),
   );
   expect(args[args.indexOf("--project") + 1]).toBe("Shop");
+
+  // Opened again (here after a reload), the pipelines and their last runs show at once from what was
+  // saved; the refresh (az answers slowly here) runs in the background, without a loading row.
+  await page.reload();
+  const again = page.getByTestId("pipelines-view");
+  if (!(await again.isVisible())) {
+    await page.getByTestId("tools-button").click();
+    await page.getByTestId("tools-filter").fill("show pipelines");
+    await page.keyboard.press("Enter");
+  }
+  const cardAgain = again.getByTestId("pipeline-Shop CI");
+  await expect(cardAgain.getByTestId("pipeline-time")).toHaveText("12m", { timeout: 1000 });
+  await expect(cardAgain.getByTestId("pipeline-loading")).toHaveCount(0);
 });

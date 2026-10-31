@@ -478,7 +478,26 @@ export async function latest(
       error = (e as Error).message;
     }
   });
+  // Kept so the view shows the last runs at once when it opens; a failed read doesn't replace them.
+  if (!error) await api.storage.set("latest", { at: Date.now(), runs } satisfies SavedLatest);
   return { runs, error };
+}
+
+/** The newest runs saved by `latest`, for the view to show while it asks again. */
+export interface SavedLatest {
+  at: number;
+  runs: Record<string, PipelineRun | null>;
+}
+
+/**
+ * Watcher (at start, then every few minutes): finds the pipelines and reads their newest runs in the
+ * background, so the view opens with them already there; tells an open view.
+ */
+export async function refresh(_: unknown, api: AddonHostApi) {
+  const found = await pipelines({}, api);
+  if (!found.pipelines.length) return;
+  const result = await latest({ keys: found.pipelines.map((p) => p.key) }, api);
+  api.emit("refreshed", { found, latest: result });
 }
 
 /** A pipeline's coordinates out of a key (`<org>/<project>/<id>`). */

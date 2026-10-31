@@ -822,7 +822,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
-                "Pipelines of your repositories, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
                 "Notes for the chat you're in: what it waits on, where its work is, steps left, decisions — you and Claude write them, Claude reads them before it works",
               ]}
             />
