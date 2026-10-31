@@ -35,6 +35,8 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 
 ## How to work the plan
 
+Phase 19 also includes compact task entry with inline attachments (D-188); its status remains in progress.
+
 1. Pick the first unchecked item of the earliest unfinished phase (phases can overlap when an item
    does not depend on the previous phase).
 2. Build it with tests; run `npm run check`.

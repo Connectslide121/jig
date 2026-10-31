@@ -13,8 +13,10 @@ went, so you read the results as a table instead of scrolling one long chat.
   ⋯ → Edit on a queued task changes its prompt, files, whether it continues the chat before, and
   permissions.
 - **Files** (D-187): paste or drop images and documents into a task, or attach them with its
-  paperclip, as in the chat (images ≤ 5 MB, PDFs, Word/Excel/PowerPoint, text files); they show under
-  the field and go with the prompt. They stay with the task: the results' **Files** column opens them
+  paperclip, as in the chat (images ≤ 5 MB, PDFs, Word/Excel/PowerPoint, text files). In Add tasks,
+  compact filename chips sit beside the single-line prompt in a reserved horizontal scroll area;
+  click to preview, × to remove. Files never increase the row height or change the prompt width.
+  They go with the prompt and stay with the task: the results' **Files** column opens them
   (one directly, several from a menu), so do ⋯ → Files and the details. Run again sends them again.
   They're kept in `~/.jig/attachments/addon-tasks/` (copied into the chat when sent) and deleted when
   no task uses them any more (`unusedFiles`) or the dialog is cancelled (the host's `discard`).

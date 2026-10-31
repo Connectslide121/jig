@@ -26,6 +26,9 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await add.getByTestId("tasks-add-text-0-0").fill("fix the cart with follow-ups");
   // A task takes files like the chat: a pasted screenshot and a dropped document.
   const field = add.getByTestId("tasks-add-text-0-0");
+  const row = add.getByTestId("tasks-add-row-0-0");
+  const rowBefore = await row.boundingBox();
+  const fieldBefore = await field.boundingBox();
   await field.evaluate((el, b64) => {
     const data = new DataTransfer();
     data.items.add(
@@ -39,6 +42,11 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
     el.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
   });
   await expect(add.getByTestId("chat-attachment")).toHaveCount(2);
+  expect(await row.boundingBox()).toEqual(rowBefore);
+  expect(await field.boundingBox()).toEqual(fieldBefore);
+  expect(rowBefore!.height).toBeLessThanOrEqual(36);
+  await expect(add.getByTitle("Open cart-notes.md", { exact: true })).toHaveCount(1);
+  await page.screenshot({ path: "test-results/tasks-add-compact.png" });
   await expect(field).toHaveValue("fix the cart with follow-ups");
   await add.getByTestId("tasks-add-chat").click();
   await add.getByTestId("tasks-add-text-1-0").fill("fail this task please");
