@@ -103,6 +103,25 @@ function useQueue() {
 }
 
 /** The task queue: prompts Claude does one after another, each with its report, as a table. */
+
+/** A switch with its label beside it (the base `Switch` only names itself for screen readers). */
+function LabeledSwitch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (on: boolean) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted">
+      <Switch checked={checked} onChange={onChange} label={label} />
+      <span className="truncate">{label}</span>
+    </div>
+  );
+}
+
 export function TasksView({ ctx }: AddonComponentProps) {
   const { queue, error } = useQueue();
   const [adding, setAdding] = useState<{ prompts?: string; from?: Task } | undefined>();
@@ -178,7 +197,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
           {n.total ? `${n.queued} queued · ${n.finished} of ${n.total} finished` : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Switch
+          <LabeledSwitch
             checked={queue.stopOnFailure}
             onChange={(on) => void call("setStopOnFailure", { on })}
             label="Stop when a task fails"
@@ -632,8 +651,10 @@ function AddDialog({
           }}
           data-testid="tasks-add-text"
         />
-        {!task && <Switch checked={eachLine} onChange={setEachLine} label="Each line is its own task" />}
-        <Switch
+        {!task && (
+          <LabeledSwitch checked={eachLine} onChange={setEachLine} label="Each line is its own task" />
+        )}
+        <LabeledSwitch
           checked={sameChat}
           onChange={setSameChat}
           label={
