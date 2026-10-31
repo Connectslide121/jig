@@ -63,7 +63,7 @@ function GroupMarkView({ mark }: { mark: GroupMark }) {
  * chat onto a project to move it there; drag a pinned chat onto another pinned chat to reorder them.
  */
 export function SessionsView() {
-  const metas = Object.values(useSessions((s) => s.metas)).filter((m) => m.kind !== "builder");
+  const metas = Object.values(useSessions((s) => s.metas)).filter((m) => m.kind !== "builder" && !m.draft);
   const { projects, activeId } = useProjects();
   const view = useConfig((s) => s.config?.chatList.view) ?? "project";
   const pinnedOrder = useConfig((s) => s.config?.chatList.pinnedOrder) ?? [];

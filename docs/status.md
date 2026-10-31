@@ -1,5 +1,9 @@
 # Status
 
+Chat drafts (2026-10-31): unsent new chats stay memory-only and out of history/search/restored
+tabs; the first prompt saves the chat and its open tab. Legacy empty records are ignored without
+deletion. Unit checks and the draft/sent-chat restart, paging and project UI regressions pass.
+
 JSON Source (2026-10-31): JSON-classified files open as editable Source, with tree Preview a click
 away. The real-app preview regression passes; full checks pass (606 tests, 8 skipped).
 

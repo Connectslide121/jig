@@ -73,3 +73,4 @@
 - [x] The model picker names Opus Plan Mode like the button (D-164)
 
 - [x] Open JSON-classified files in Source by default, with Preview still available (D-198).
+- [x] Keep unsent chats memory-only and omit them from restored tabs and history (D-199).

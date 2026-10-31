@@ -51,4 +51,4 @@ its status remains in progress.
 
 Phase 19 also includes reported model attribution in Detailed chat and overview details (D-197).
 
-Phase 19 also includes JSON Source defaults (D-198).
+Phase 19 also includes JSON Source defaults and unsent chat drafts (D-198–D-199).

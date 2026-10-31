@@ -56,7 +56,10 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
     (await hostCall(page, "projects.create", { name: "Elearning", path: repos })) as { value: { id: string } }
   ).value;
   await hostCall(page, "projects.setActive", { id: project.id });
-  await hostCall(page, "sessions.create", { cwd: repos, title: "Loose chat" });
+  const createdLoosechat = (await hostCall(page, "sessions.create", { cwd: repos, title: "Loose chat" })) as {
+    value: { id: string };
+  };
+  await hostCall(page, "sessions.send", { id: createdLoosechat.value.id, text: "Hello" });
   await page.getByTestId("view-tab-jig.sessions").click();
   const view = page.getByTestId("sessions-view");
   await expect(view.getByTestId("chat-group-No project")).toContainText("Loose chat");
@@ -68,7 +71,11 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
     .toBe(other.id);
 
   // Pin the first chat: it stays on top of its project.
-  await hostCall(page, "sessions.create", { projectId: project.id, title: "Newer chat" });
+  const createdNewerchat = (await hostCall(page, "sessions.create", {
+    projectId: project.id,
+    title: "Newer chat",
+  })) as { value: { id: string } };
+  await hostCall(page, "sessions.send", { id: createdNewerchat.value.id, text: "Hello" });
   const shop = view.getByTestId("chat-group-Shop");
   await expect(shop.locator("[data-testid^=session-]").first()).toContainText("Newer chat");
   await shop.getByTestId(`session-${first!.title}`).hover();
@@ -90,7 +97,10 @@ test("Claude can make a project and put the chat in it, with Undo", async ({ pag
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "workspaces.add", { path: dir });
-  await hostCall(page, "sessions.create", { cwd: dir, title: "Planning" });
+  const createdPlanning = (await hostCall(page, "sessions.create", { cwd: dir, title: "Planning" })) as {
+    value: { id: string };
+  };
+  await hostCall(page, "sessions.send", { id: createdPlanning.value.id, text: "Hello" });
   await page.getByTestId("view-tab-jig.sessions").click();
   await page.getByTestId("session-Planning").click();
   await page.getByTestId("composer-input").fill("make a project for this chat");

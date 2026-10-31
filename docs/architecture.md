@@ -475,3 +475,7 @@ The shared menu state optionally carries a menu-bar identity. Topbar uses that i
 On Windows, main windows remain off the taskbar until ready-to-show has set their icon; relaunch metadata points at the branded executable. Hidden browser helpers explicitly skip the taskbar.
 
 `engine.models` discovers the model catalogue through the existing no-prompt SDK control-process lifecycle. Appearance font choices use bundled fonts and generic system families with custom input/reset; no renderer filesystem access or OS font scan is introduced. Open VSX UI debounces search and ignores responses superseded by newer queries.
+
+Regular chats are drafts until the first prompt is sent (`SessionMeta.draft`, D-199). The main
+session manager suppresses draft disk writes. The main layout module filters draft/missing session
+tabs on disk while retaining the live layout; the first send persists its existing open tab.

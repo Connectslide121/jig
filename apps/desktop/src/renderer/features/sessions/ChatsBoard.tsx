@@ -21,7 +21,7 @@ export function ChatsBoard() {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
-  const list = useMemo(() => Object.values(metas), [metas]);
+  const list = useMemo(() => Object.values(metas).filter((m) => !m.draft), [metas]);
   const columns = useMemo(() => boardColumns(list, seen, now), [list, seen, now]);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="chats-board">

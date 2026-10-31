@@ -2067,3 +2067,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Status: accepted. Decided by Jon: JSON files should open in Source rather than Preview.
   Implementation is **Claude, on my own**: initialize the mode from the path before the file loads,
   covering all JSON-classified extensions without a tree flash. Preview remains available manually.
+
+## D-199: Save regular chats only after a prompt is sent
+
+- Status: accepted. Decided by Jon: empty chats should not persist. Implementation is **Claude,
+  on my own**: ordinary new sessions carry optional `SessionMeta.draft`, stay in memory and open
+  tabs, and stay out of Chats, the board and search until a nonempty text/attachment message is sent.
+  Saving the first prompt also saves its already-open tab. Layout writes omit draft/missing chat tabs;
+  startup prunes them. Draft discovery/settings changes and shutdown never create session files.
+- Legacy regular sessions without prompts, queue, turns or meaningful assistant/tool history are
+  ignored on load, without deleting their files. Imported conversations, forks and builder sessions
+  retain their existing persistence. Existing chats are never discarded just because a rewind empties
+  them: new persisted sessions explicitly carry `draft: false`.

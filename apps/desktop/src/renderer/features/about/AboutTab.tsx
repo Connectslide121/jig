@@ -586,6 +586,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
+                "New chats stay unsaved until you send a prompt",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
                 "Your plan usage as bars in the status bar, always visible",
                 "How full the context window is, with a breakdown on hover and Compact on click",

@@ -135,7 +135,7 @@ function GoTo() {
     const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? "No project";
     return [
       ...Object.values(metas)
-        .filter((m) => m.kind !== "builder" && !m.archived)
+        .filter((m) => m.kind !== "builder" && !m.archived && !m.draft)
         .map((m) => ({
           kind: "chat" as const,
           id: m.id,

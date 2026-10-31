@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
@@ -301,4 +301,42 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(usage.getByTestId("knowledge-usage-addons")).toContainText("Releases");
   await expect(usage.getByTestId("knowledge-usage-mcp")).toContainText("github");
   await expect(usage.getByTestId("knowledge-usage-subagents")).toContainText("Explore");
+});
+
+test("chat: unsent drafts are not saved or restored, sent prompts are", async ({ app, page, jigHome }) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("composer-input").fill("Unsent draft");
+  const drafts = (await hostCall(page, "sessions.list")) as { value: Array<{ id: string; draft?: boolean }> };
+  const draft = drafts.value.find((m) => m.draft)!;
+  expect(draft).toBeTruthy();
+  await expect(page.getByTestId("session-New chat")).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const layout = JSON.parse(await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}"));
+      return layout.main?.tabs.some(
+        (tab: { params: { sessionId?: string } }) => tab.params.sessionId === draft.id,
+      );
+    })
+    .toBe(false);
+  await app.close();
+  await expect(readFile(join(jigHome, "sessions", `${draft.id}.json`))).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+  const again = await launchJig(jigHome);
+  const page2 = await again.firstWindow();
+  await page2.waitForSelector("[data-testid=app-root]");
+  await expect(page2.getByTestId("tab-jig.chat")).toHaveCount(0);
+  await page2.keyboard.press("Control+N");
+  await page2.getByTestId("composer-input").fill("Saved prompt");
+  await page2.keyboard.press("Enter");
+  await expect(page2.getByTestId("turn-result")).toHaveCount(1);
+  await again.close();
+  const third = await launchJig(jigHome);
+  const page3 = await third.firstWindow();
+  await page3.waitForSelector("[data-testid=app-root]");
+  await expect(page3.getByTestId("composer-input")).toBeVisible();
+  await page3.getByTestId("view-tab-jig.sessions").click();
+  await expect(page3.getByTestId("session-Saved prompt")).toBeVisible();
+  await third.close();
 });

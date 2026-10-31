@@ -24,7 +24,7 @@ import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { registerRoutineHandlers } from "./routines";
 import { registerScriptHandlers } from "./scripts";
-import { startSessions } from "./sessions";
+import { sessionManager, startSessions } from "./sessions";
 import { registerSetupHandlers } from "./setup";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
@@ -65,7 +65,9 @@ async function start() {
   installRouter();
   registerAppHandlers();
   registerConfigHandlers();
-  registerLayoutHandlers();
+  registerLayoutHandlers(
+    async () => new Set((await sessionManager().list()).filter((m) => !m.draft).map((m) => m.id)),
+  );
   startProjects();
   startSessions();
   startAttempts();

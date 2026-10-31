@@ -125,6 +125,8 @@ export interface SavedClaudeMessage {
 
 export interface SessionMeta {
   id: string;
+  /** New regular chat with no submitted prompt yet: memory-only, absent from saved layout/history. */
+  draft?: boolean;
   /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */
   projectId?: string;
   /** Stays at the top of its project in the Chats list. */

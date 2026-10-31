@@ -193,3 +193,7 @@ when there are more than ten. **Show more** adds up to ten unpinned chats at a t
 its own expanded count while the view stays mounted. The header has New chat and the view's ⋯ menu.
 **⋯ → View type** offers By project, By status, By day and One list. Chats board and Claude Code import
 remain in the Chats top-bar menu and search (D-193).
+
+Disk layouts omit regular chat tabs whose sessions are unsent drafts or no longer exist; the live
+layout retains draft tabs until closed. Sending the first prompt rewrites the current disk layout
+so the now-persistent chat tab restores normally. Startup prunes missing/legacy-empty tabs (D-199).

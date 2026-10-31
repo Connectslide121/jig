@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -49,6 +49,31 @@ beforeEach(async () => {
 });
 
 describe("SessionManager", () => {
+  it("keeps unsent chats memory-only, even after model discovery or settings changes", async () => {
+    const m = manager();
+    const draft = await create(m);
+    await m.setModel(draft.id, "sonnet");
+    await m.commands(draft.id);
+    expect((await m.snapshot(draft.id)).meta.draft).toBe(true);
+    await m.shutdown();
+    await expect(readFile(join(dir, `${draft.id}.json`))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await manager().list()).toEqual([]);
+  });
+
+  it("starts persistence with the first prompt and ignores legacy empty records without deleting them", async () => {
+    const m = manager();
+    const draft = await create(m);
+    const old = { ...draft, id: "legacy-empty", draft: undefined };
+    await writeFile(join(dir, "legacy-empty.json"), JSON.stringify({ meta: old, items: [], queue: [] }));
+    await m.send(draft.id, "Keep this chat");
+    await until(async () => (await metaOf(m, draft.id)).turns === 1);
+    await m.shutdown();
+    const saved = JSON.parse(await readFile(join(dir, `${draft.id}.json`), "utf8"));
+    expect(saved.meta.draft).toBe(false);
+    expect(saved.items.some((item: { kind: string }) => item.kind === "user")).toBe(true);
+    expect((await manager().list()).map((meta) => meta.id)).toEqual([draft.id]);
+    await expect(readFile(join(dir, "legacy-empty.json"))).resolves.toBeTruthy();
+  });
   it("runs a turn: user item, streamed reply, result, title and persisted cache", async () => {
     const m = manager();
     const session = await create(m);

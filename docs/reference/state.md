@@ -97,3 +97,8 @@ Settings → Claude Code edits the model strings through pickers populated by Cl
 Chat transcript assistant/thinking/tool items may include optional `model` (the SDK-reported calling
 assistant model). This stays with the historical call across model changes and restarts. Existing
 cache files without it remain readable and display Not reported; no current-model backfill is made.
+
+Regular chats start with optional `SessionMeta.draft: true` in memory only. The first sent prompt
+(including attachment-only messages) clears it to false and enables session-file persistence.
+Unsent drafts are hidden from history/search and omitted from disk layouts; startup ignores legacy
+empty regular chats without deleting files. Imported/forked/builder chats retain persistence (D-199).

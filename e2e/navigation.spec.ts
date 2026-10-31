@@ -125,6 +125,7 @@ test("Chats: ten per project including pins, more by tens, and view choices in o
         projectId: added.value.id,
         title: `${title} ${String(i).padStart(2, "0")}`,
       })) as { value: { id: string } };
+      await hostCall(page, "sessions.send", { id: created.value.id, text: "Hello" });
       if (i < pinned) await hostCall(page, "sessions.setPinned", { id: created.value.id, pinned: true });
     }
   }

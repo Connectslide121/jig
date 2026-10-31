@@ -220,3 +220,7 @@ read from the SDK assistant message's own `message.model`, never inferred from a
 agent request. Parent ids keep subagent messages scoped correctly. Imported Claude Code transcripts
 use the same normalizer; absent model data remains unknown. The fake skill/subagent examples report
 the caller and child models for UI regression coverage.
+
+`SessionMeta.draft?: boolean` marks a memory-only unsent regular chat. A nonempty send clears it
+before starting/queuing the turn. Metadata/discovery updates never persist a draft. Imported/forked
+sessions have history and explicitly clear the flag; builder sessions keep existing persistence.

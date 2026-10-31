@@ -16,6 +16,8 @@ import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer, jigToolHandlers, turnContext } from "../engine/jigTools";
 import type { ToolOutput } from "../engine/types";
 import { emit, handle } from "../ipc/router";
+import { persistCurrentLayout } from "../layout";
+import { logger } from "../log";
 import { projectStore } from "../projects";
 import { routinesChanged } from "../routines";
 import { paths } from "../state/paths";
@@ -88,6 +90,7 @@ export function sessionManager(): SessionManager {
 
 export function startSessions(): void {
   const statusOf = new Map<string, SessionStatus>();
+  const drafts = new Set<string>();
   // Names and instructions of the projects, for Jig's addition to the system prompt.
   const projects = new Map<string, { name: string; instructions?: string }>();
   const known = new Set<string>();
@@ -160,6 +163,11 @@ export function startSessions(): void {
       emit("sessions.update", { sessionId, updates });
       for (const u of updates)
         if (u.op === "meta") {
+          if (u.meta.draft) drafts.add(u.meta.id);
+          else if (drafts.delete(u.meta.id))
+            void persistCurrentLayout().catch((error) =>
+              logger("layout").error("Saving sent chat tab failed", error),
+            );
           notifyStatus(u.meta);
           if (statusOf.get(u.meta.id) !== u.meta.status) {
             statusOf.set(u.meta.id, u.meta.status);

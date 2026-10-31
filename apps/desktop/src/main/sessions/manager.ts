@@ -150,6 +150,16 @@ export class SessionManager {
       for (const file of files) {
         try {
           const data = await readJson(join(this.options.dir, file), SessionFileSchema, null);
+          const legacyEmpty =
+            data.meta.draft === undefined &&
+            !data.meta.kind &&
+            !data.meta.importedFrom &&
+            !data.meta.turns &&
+            data.queue.length === 0 &&
+            !data.items.some(
+              (item) => item.kind === "user" || item.kind === "assistant" || item.kind === "tool",
+            );
+          if (data.meta.draft || legacyEmpty) continue;
           // A process can't survive a restart: anything "working" is idle now.
           const status = data.meta.status === "error" ? "error" : "idle";
           this.sessions.set(data.meta.id, {
@@ -183,7 +193,7 @@ export class SessionManager {
    * coming (a long streamed turn), so a crash loses little.
    */
   private scheduleSave(live: Live, immediate = false): Promise<void> | undefined {
-    if (live.deleted) return undefined;
+    if (live.deleted || live.state.meta.draft) return undefined;
     clearTimeout(live.saveTimer);
     live.saveTimer = undefined;
     const save = () => {
@@ -234,6 +244,7 @@ export class SessionManager {
     const at = new Date().toISOString();
     const meta: SessionMeta = {
       id: randomUUID(),
+      draft: !input.kind,
       projectId: input.projectId,
       cwd: input.cwd,
       title: input.title ?? "New chat",
@@ -476,6 +487,7 @@ export class SessionManager {
     const live = await this.live(id);
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
+    if (live.state.meta.draft) this.setMeta(live, { draft: false });
     const busy = ["working", "needs_you", "starting"].includes(live.state.meta.status);
     // Sent "now" while the turn is still starting: wait until its message has gone, then join it.
     if (busy && now && !live.engine && live.starting) await live.starting;
@@ -543,6 +555,7 @@ export class SessionManager {
     });
     this.setMeta(live, {
       engineSessionId: source.meta.engineSessionId,
+      draft: false,
       forkPending: true,
       turns: source.meta.turns,
       context: source.meta.context,
@@ -606,6 +619,7 @@ export class SessionManager {
     });
     this.setMeta(live, {
       engineSessionId: saved.sessionId,
+      draft: false,
       forkPending: true,
       importedFrom: saved.sessionId,
       turns: live.state.items.filter((i) => i.kind === "user").length,
