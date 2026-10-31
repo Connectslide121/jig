@@ -301,6 +301,8 @@ also an action in a menu). `renderer/features/<feature>/` registers its views, t
 stay mounted once opened, so a chat or terminal keeps its state while you switch tabs.
 Core `ViewDef.headerMenu()` contributes view-specific entries to a sidebar's existing ⋯ menu and
 to the view's options menu when opened as a main tab. Chats uses it for the View type submenu (D-193).
+Shared Dialog supports an `xl` width for longer forms. Add tasks uses it, with a compact one-line
+hint and batch permissions in the footer; task rows retain their fixed height (D-194).
 
 ## 7. Design system and themes
 

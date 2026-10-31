@@ -934,15 +934,30 @@ function AddDialog({
     <Dialog
       open
       onClose={cancel}
-      width="lg"
+      width="xl"
       column
       testId="tasks-add-dialog"
       title="Add tasks"
       footer={
         <>
-          <span className="mr-auto text-xs text-muted">
-            Ctrl+Enter adds them · paste a list for a task per item · paste or drop files
+          <span className="mr-auto min-w-0 self-center truncate text-xs text-muted">
+            Ctrl+Enter to add · Paste lists or files
           </span>
+          <label htmlFor="tasks-mode" className="flex shrink-0 items-center gap-2 text-xs text-muted">
+            Permissions
+            <Select
+              id="tasks-mode"
+              className="w-44"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as PermissionMode)}
+            >
+              {MODES.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          </label>
           <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
           </Button>
@@ -962,27 +977,9 @@ function AddDialog({
       }
     >
       <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <p className="min-w-0 flex-1 text-xs text-muted">
-            Claude does the tasks in order. Each chat's first task starts a new chat; the next ones continue
-            in it, so they can build on what it did.
-          </p>
-          <label htmlFor="tasks-mode" className="flex shrink-0 items-center gap-2 text-xs text-muted">
-            Permissions
-            <Select
-              id="tasks-mode"
-              className="w-44"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PermissionMode)}
-            >
-              {MODES.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-        </div>
+        <p className="truncate text-xs text-muted" data-testid="tasks-add-hint">
+          Tasks run in order. Tasks in the same chat share context.
+        </p>
         <div className="flex min-h-96 flex-1 flex-col gap-3 overflow-y-auto" data-testid="tasks-add-chats">
           {chats.map((chat, ci) => (
             <div

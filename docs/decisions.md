@@ -2017,3 +2017,11 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   to the header button, is registered as `jig.openSavedChat` so it is available in both too.
 - A generic core `ViewDef.headerMenu()` supplies view-specific entries to the sidebar and main-tab
   options menus. Chats supplies View type → By project / By status / By day / One list there.
+
+## D-194: Give task prompts more width and move permissions to the footer
+
+- Status: accepted. Decided by Jon: widen Add tasks, keep its hint compact and place permissions
+  in the footer. Implementation details are **Claude, on my own**: shared Dialog adds `xl`
+  (`max-w-6xl`), with footer controls centered vertically. Add tasks uses that width, a single-line
+  hint, and footer permissions between the keyboard hint and Cancel/Add. The per-task row geometry
+  and inline attachment slots stay fixed.

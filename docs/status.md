@@ -1,5 +1,8 @@
 # Status
 
+Task dialog (2026-10-31): Add tasks is wider, with a one-line hint and Permissions in the footer
+beside Cancel/Add. Prompts get more horizontal space; attachments retain the compact row layout.
+
 Chats list (2026-10-31): ten chats per group initially, including pins; all pins stay visible above
 ten. Show more reveals ten more at a time. The header now has only New chat and ⋯; View type is a
 submenu in ⋯. Chats board and Open a Claude Code chat remain in the Chats top-bar menu and search.

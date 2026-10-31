@@ -21,7 +21,7 @@ export function Dialog({
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  width?: "sm" | "md" | "lg";
+  width?: "sm" | "md" | "lg" | "xl";
   /**
    * Lay the content out as a flex column, so a part of it (a list you add to, `min-h-0 flex-1
    * overflow-y-auto`) grows with the dialog up to the window's height and then scrolls on its own.
@@ -57,7 +57,7 @@ export function Dialog({
         }}
         className={cn(
           "flex max-h-full w-full flex-col rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none",
-          { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl" }[width],
+          { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-6xl" }[width],
         )}
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
@@ -67,7 +67,9 @@ export function Dialog({
         <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm", column && "flex flex-col")}>
           {children}
         </div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>}
+        {footer && (
+          <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>
+        )}
       </div>
     </div>,
     document.body,

@@ -5,7 +5,9 @@ went, so you read the results as a table instead of scrolling one long chat.
 
 - **Open it:** Chats → Task queue (it opens as a tab in the main area).
 - **Add tasks** (D-186): the tasks grouped in chats, one field per task. A chat's first task starts a
-  new chat and the next ones ("Then, in this chat…") continue it, in order; **New chat with tasks**
+  new chat. The wider dialog leaves more room for prompts, keeps its hint on one line, and places
+  the batch Permissions control beside Cancel/Add in the footer (D-194). The next tasks
+  ("Then, in this chat…") continue it, in order; **New chat with tasks**
   adds another chat. Each chat has its project; the permissions (Accept file edits by default, so the
   queue doesn't stop at every edit; Ask before edits; Plan only) are for all of them. A task's ⋯:
   Start a new chat from here, Move up/down, Remove; a chat's ⋯: Continue the chat before, Move

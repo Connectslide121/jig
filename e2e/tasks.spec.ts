@@ -23,6 +23,13 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   // One field per task, grouped in chats: chat 1 has one task, chat 2 two (the second continues it).
   await view.getByTestId("tasks-add").first().click();
   const add = page.getByTestId("tasks-add-dialog");
+  expect((await add.boundingBox())!.width).toBeGreaterThan(800);
+  const permissions = add.locator("#tasks-mode");
+  expect((await permissions.boundingBox())!.y).toBeGreaterThan(
+    (await add.getByTestId("tasks-add-chats").boundingBox())!.y,
+  );
+  const hint = add.getByTestId("tasks-add-hint");
+  expect(await hint.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   await add.getByTestId("tasks-add-text-0-0").fill("fix the cart with follow-ups");
   // A task takes files like the chat: a pasted screenshot and a dropped document.
   const field = add.getByTestId("tasks-add-text-0-0");
