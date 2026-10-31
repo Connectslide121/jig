@@ -21,7 +21,9 @@ export type BuildStatus =
 export type BuildKind = "layout" | "settings" | "change-addon" | "new-addon" | "app" | "nothing";
 
 export interface LayoutOp {
-  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below";
+  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below" | "save" | "use";
+  /** For "save" / "use": a named layout (D-175). */
+  name?: string;
   view?: string;
   /** For "below": the view to show `view` beside, in the lower half of that view's sidebar. */
   host?: string;

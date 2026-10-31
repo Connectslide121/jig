@@ -165,3 +165,32 @@ export function unusedToolPatterns(events: ActivityEvent[], min = { count: 5, da
     })
     .filter((p) => p.count >= min.count && p.days >= min.days);
 }
+
+/**
+ * A view you keep opening as a main tab (4+ times on 3+ days) and never moved to a sidebar or the
+ * bottom panel since: it may belong in one. The reflection can suggest a layout change for it.
+ */
+export function viewHabitPatterns(events: ActivityEvent[], min = { count: 4, days: 3 }): Pattern[] {
+  const opened = new Map<string, ActivityEvent[]>();
+  const movedAt = new Map<string, string>();
+  for (const e of events) {
+    const view = e.kind === "ui" ? e.detail?.view : undefined;
+    if (!view) continue;
+    if (e.detail?.op === "open-tab") opened.set(view, [...(opened.get(view) ?? []), e]);
+    if (e.detail?.op === "move" && e.at > (movedAt.get(view) ?? "")) movedAt.set(view, e.at);
+  }
+  return [...opened.entries()]
+    .map(([view, all]) => {
+      const list = all.filter((e) => e.at > (movedAt.get(view) ?? ""));
+      const s = summarizeGroup(list);
+      const title = list[list.length - 1]?.detail?.title ?? view;
+      return {
+        key: `v-${hashKey(view)}`,
+        kind: "view-habit" as const,
+        summary: `You opened ${title} (${view}) as a tab again and again; it isn't in a sidebar`,
+        ...s,
+        score: s.count * 0.7 * Math.sqrt(s.days),
+      };
+    })
+    .filter((p) => p.count >= min.count && p.days >= min.days);
+}

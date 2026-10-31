@@ -467,7 +467,9 @@ function Runner({
                 }
               />
               <span className="flex-1 text-muted">{new Date(r.startedAt).toLocaleString()}</span>
-              <span className="text-xs text-hint">{r.by === "schedule" ? "on schedule" : "by you"}</span>
+              <span className="text-xs text-hint">
+                {r.by === "schedule" ? "on schedule" : r.by === "event" ? "on an event" : "by you"}
+              </span>
             </div>
           ))}
         </Card>
@@ -609,56 +611,12 @@ function Editor({
             </Select>
           )}
           {s.kind === "pipeline" && (
-            <div className="flex gap-2">
-              <Input
-                className="flex-1"
-                placeholder="https://dev.azure.com/org"
-                value={s.pipeline?.org ?? ""}
-                onChange={(e) =>
-                  setStep(s.id, {
-                    pipeline: {
-                      org: e.target.value,
-                      project: s.pipeline?.project ?? "",
-                      id: s.pipeline?.id ?? 0,
-                      branch: s.pipeline?.branch,
-                    },
-                  })
-                }
-                aria-label="Organisation"
-              />
-              <Input
-                className="w-40"
-                placeholder="Project"
-                value={s.pipeline?.project ?? ""}
-                onChange={(e) =>
-                  setStep(s.id, {
-                    pipeline: {
-                      org: s.pipeline?.org ?? "",
-                      project: e.target.value,
-                      id: s.pipeline?.id ?? 0,
-                      branch: s.pipeline?.branch,
-                    },
-                  })
-                }
-                aria-label="Azure DevOps project"
-              />
-              <Input
-                className="w-24"
-                placeholder="Id"
-                value={s.pipeline?.id ? String(s.pipeline.id) : ""}
-                onChange={(e) =>
-                  setStep(s.id, {
-                    pipeline: {
-                      org: s.pipeline?.org ?? "",
-                      project: s.pipeline?.project ?? "",
-                      id: Number(e.target.value) || 0,
-                      branch: s.pipeline?.branch,
-                    },
-                  })
-                }
-                aria-label="Pipeline id"
-              />
-            </div>
+            <PipelineFields
+              value={s.pipeline}
+              onChange={(pipeline) =>
+                setStep(s.id, { pipeline: { ...pipeline, branch: s.pipeline?.branch } })
+              }
+            />
           )}
           {s.kind === "claude" && (
             <Textarea
@@ -683,28 +641,65 @@ function Editor({
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
         When:
         <Select
-          className="w-40"
-          value={trigger.kind === "schedule" ? trigger.every : "none"}
+          className="w-48"
+          value={trigger.kind === "schedule" ? trigger.every : trigger.kind}
           aria-label="When"
-          onChange={(e) =>
-            setTrigger(
-              e.target.value === "none"
-                ? { kind: "none" }
-                : {
-                    kind: "schedule",
-                    every: e.target.value as "day" | "weekday" | "week",
-                    time: trigger.kind === "schedule" ? trigger.time : "09:00",
-                    day: trigger.kind === "schedule" ? trigger.day : 1,
-                  },
-            )
-          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "none") setTrigger({ kind: "none" });
+            else if (v === "push") setTrigger({ kind: "push" });
+            else if (v === "pipeline")
+              setTrigger({ kind: "pipeline", pipeline: { org: "", project: "", id: 0 }, result: "any" });
+            else
+              setTrigger({
+                kind: "schedule",
+                every: v as "day" | "weekday" | "week",
+                time: trigger.kind === "schedule" ? trigger.time : "09:00",
+                day: trigger.kind === "schedule" ? trigger.day : 1,
+              });
+          }}
           data-testid="workflow-trigger"
         >
           <option value="none">By hand</option>
           <option value="day">Every day</option>
           <option value="weekday">Weekdays</option>
           <option value="week">Once a week</option>
+          <option value="push">After you push</option>
+          <option value="pipeline">When a pipeline finishes</option>
         </Select>
+        {trigger.kind === "push" && (
+          <Input
+            className="w-40"
+            placeholder="Any branch you're on"
+            value={trigger.branch ?? ""}
+            onChange={(e) => setTrigger({ kind: "push", branch: e.target.value || undefined })}
+            aria-label="Branch"
+            data-testid="workflow-trigger-branch"
+          />
+        )}
+        {trigger.kind === "pipeline" && (
+          <Select
+            className="w-32"
+            value={trigger.result ?? "any"}
+            aria-label="Outcome"
+            onChange={(e) =>
+              setTrigger({ ...trigger, result: e.target.value as "any" | "succeeded" | "failed" })
+            }
+            data-testid="workflow-trigger-result"
+          >
+            <option value="any">Any outcome</option>
+            <option value="succeeded">Succeeded</option>
+            <option value="failed">Failed</option>
+          </Select>
+        )}
+        {trigger.kind === "pipeline" && (
+          <div className="basis-full">
+            <PipelineFields
+              value={trigger.pipeline}
+              onChange={(pipeline) => setTrigger({ ...trigger, pipeline })}
+            />
+          </div>
+        )}
         {trigger.kind === "schedule" && trigger.every === "week" && (
           <Select
             className="w-32"
@@ -728,7 +723,7 @@ function Editor({
             aria-label="Time"
           />
         )}
-        {trigger.kind === "schedule" && <span className="text-xs text-hint">while Jig is open</span>}
+        {trigger.kind !== "none" && <span className="text-xs text-hint">while Jig is open</span>}
       </div>
       <div className="flex gap-2">
         <Button
@@ -757,6 +752,42 @@ function Editor({
           Delete
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** An Azure DevOps pipeline: its organisation, project and id (a step to start, or a trigger to wait for). */
+function PipelineFields({
+  value,
+  onChange,
+}: {
+  value?: { org: string; project: string; id: number };
+  onChange: (pipeline: { org: string; project: string; id: number }) => void;
+}) {
+  const v = { org: value?.org ?? "", project: value?.project ?? "", id: value?.id ?? 0 };
+  return (
+    <div className="flex gap-2">
+      <Input
+        className="flex-1"
+        placeholder="https://dev.azure.com/org"
+        value={v.org}
+        onChange={(e) => onChange({ ...v, org: e.target.value })}
+        aria-label="Organisation"
+      />
+      <Input
+        className="w-40"
+        placeholder="Project"
+        value={v.project}
+        onChange={(e) => onChange({ ...v, project: e.target.value })}
+        aria-label="Azure DevOps project"
+      />
+      <Input
+        className="w-24"
+        placeholder="Id"
+        value={v.id ? String(v.id) : ""}
+        onChange={(e) => onChange({ ...v, id: Number(e.target.value) || 0 })}
+        aria-label="Pipeline id"
+      />
     </div>
   );
 }

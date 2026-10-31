@@ -1,10 +1,10 @@
-import { Eye, FolderOpen, RotateCcw, Search, Sparkles, Trash2 } from "lucide-react";
+import { Eye, FolderOpen, LayoutTemplate, RotateCcw, Save, Search, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
-import { Badge, Button, confirmDialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
-import { addWorkspace, hiddenViews, resetLayout } from "../../workbench/actions";
+import { Badge, Button, confirmDialog, IconButton, Input, Select, Spinner, Switch, Textarea } from "../../ui";
+import { addWorkspace, hiddenViews, resetLayout, saveLayoutAs } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -27,12 +27,54 @@ export function LayoutSettings() {
           </Button>
         </SettingRow>
       ))}
+      <SavedLayouts />
       <SettingRow label="Reset layout" description="Put every view back where it started. Open tabs stay.">
         <Button size="sm" icon={RotateCcw} onClick={() => void resetLayout()}>
           Reset
         </Button>
       </SettingRow>
     </SettingsSection>
+  );
+}
+
+/** Named layouts (D-175): switch to one or delete it; save the current one. */
+function SavedLayouts() {
+  const saved = useWorkbench((s) => s.layout?.saved) ?? [];
+  return (
+    <>
+      {saved.map((layout) => (
+        <SettingRow key={layout.name} label={layout.name} description="Saved layout">
+          <div className="flex items-center gap-2" data-testid={`saved-layout-${layout.name}`}>
+            <Button size="sm" icon={LayoutTemplate} onClick={() => workbench.switchLayout(layout.name)}>
+              Use
+            </Button>
+            <IconButton
+              size="sm"
+              icon={Trash2}
+              label={`Delete the layout ${layout.name}`}
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: `Delete the layout "${layout.name}"?`,
+                    confirmLabel: "Delete",
+                    danger: true,
+                  })
+                )
+                  workbench.deleteLayout(layout.name);
+              }}
+            />
+          </div>
+        </SettingRow>
+      ))}
+      <SettingRow
+        label="Save this layout"
+        description="Where every view is, and the sizes, under a name. Open tabs aren't saved."
+      >
+        <Button size="sm" icon={Save} onClick={() => void saveLayoutAs()}>
+          Save as…
+        </Button>
+      </SettingRow>
+    </>
   );
 }
 
@@ -187,6 +229,7 @@ export function EngineSettings() {
                 defaultPermissionMode: "plan",
                 subagentModel: "sonnet",
                 helperModel: "sonnet",
+                quickModel: "haiku",
                 testerModel: "haiku",
               },
             })
@@ -210,10 +253,17 @@ export function EngineSettings() {
       />
       <ModelSetting
         label="Helper model"
-        description="For add-on questions, such as commit messages and reviews."
+        description="For add-on questions that need thought, such as reviews."
         value={e.helperModel}
         models={models}
         onSave={(helperModel) => void updateConfig({ engine: { helperModel } })}
+      />
+      <ModelSetting
+        label="Quick model"
+        description="For short, simple answers, such as commit messages."
+        value={e.quickModel}
+        models={models}
+        onSave={(quickModel) => void updateConfig({ engine: { quickModel } })}
       />
       <ModelSetting
         label="Subagent fallback model"

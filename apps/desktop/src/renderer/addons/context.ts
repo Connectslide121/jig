@@ -131,7 +131,12 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
     ai: {
       async ask(prompt, options = {}) {
         if (!has(addon, "ai")) throw new Error(`${addon.name} needs the "ai" permission`);
-        return call("ai.ask", { addonId: id, prompt, cwd: options.cwd }) as Promise<string>;
+        return call("ai.ask", {
+          addonId: id,
+          prompt,
+          cwd: options.cwd,
+          quick: options.quick,
+        }) as Promise<string>;
       },
       async tour(cwd, options = {}) {
         if (!has(addon, "ai")) throw new Error(`${addon.name} needs the "ai" permission`);

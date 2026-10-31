@@ -16,6 +16,7 @@ Sources publish to `main/activity/bus.ts`; the log appends one JSON line per eve
 | `terminal.command` | lines typed in Jig terminals (not in private ones, like the Claude sign-in) |
 | `script.run` | scripts started from Jig |
 | `addon.action` | add-on Tools actions and menu entries |
+| `ui` | Jig's own actions run from a menu or Go to (`text` the action id), a view opened as a main tab (`view.open`) or moved to a region (`view.move`); only ids and regions (D-175). Keyboard shortcuts aren't recorded |
 | `git` | commit/push/pull/fetch/switch/branch/stage/discard from the Git add-on |
 | `project.switch` | switching the active project |
 | `friction` | `detail.signal`: `interrupt` (Stop while Claude works), `rewind`, `denied` (a permission), `correction` (a message like "no, I meant…"), `tool-errors` (3 failed tool calls in a turn), `script-failed` (a script that exits non-zero by itself) |
@@ -66,6 +67,8 @@ start and daily), open the folder, delete all.
   ≥ 0.5 on content words; ≥ 3 on ≥ 2 days). Each pattern has a stable `key`, counts, distinct days and
   projects, examples, and a score; the top 20 survive. Patterns you said "Never" to, or that already
   have a suggestion, are left out.
+- **View habits** (`viewHabitPatterns`, D-175): a view you keep opening as a main tab (4+ times on
+  3+ days) and haven't moved to a region since; the reflection may suggest placing it.
 - Learning 2 signals (`signals.ts`): **friction** that repeats (3+ on 2+ days, one pattern per
   signal; per script for failing scripts; plus two found from the log itself, `derivedFriction`: a
   chat with 15+ messages over an hour and no commit — messages carry `detail.chat` — and 6+ project

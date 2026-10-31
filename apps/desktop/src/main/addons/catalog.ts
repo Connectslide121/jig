@@ -75,7 +75,7 @@ export async function readAddon(
   };
 }
 
-async function scanDir(root: string, source: AddonRecord["source"]): Promise<AddonRecord[]> {
+export async function scanDir(root: string, source: AddonRecord["source"]): Promise<AddonRecord[]> {
   let entries: string[];
   try {
     entries = await readdir(root);

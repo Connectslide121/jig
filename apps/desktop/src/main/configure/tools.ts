@@ -70,14 +70,14 @@ export interface ConfigureDeps {
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
 export const SETTINGS_GUIDE = `appearance.themeId: colour theme id (see jig_list_themes); followSystem: switch between lightThemeId and darkThemeId with the OS; density: compact|comfortable; radius: sharp|soft|round; uiFont / monoFont: font family names; fontSize: 11–18; fileIconTheme: "vscode" (same as VS Code) | "jig" | an icon theme id from jig_list_themes.
-engine.helperModel: model for add-on questions such as commit messages and reviews (default "sonnet"); engine.subagentModel: optional fallback model for subagents without explicit choices (empty respects Claude Code); engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message; engine.testerModel: model alias or id for testing in Claude's browser (the jig-tester subagent and Test something…; default "haiku"); engine.claudeAiConnectors: true|false, load the connectors of the user's claude.ai account (Asana, Notion, Linear…) into new chats (default false: none are loaded, so none is flagged as needing sign-in).
+engine.helperModel: model for add-on questions that need thought, such as reviews (default "sonnet"); engine.quickModel: model for short, simple add-on answers such as commit messages (default "haiku"); engine.subagentModel: optional fallback model for subagents without explicit choices (empty respects Claude Code); engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message; engine.testerModel: model alias or id for testing in Claude's browser (the jig-tester subagent and Test something…; default "haiku"); engine.claudeAiConnectors: true|false, load the connectors of the user's claude.ai account (Asana, Notion, Linear…) into new chats (default false: none are loaded, so none is flagged as needing sign-in).
 chat.view: "compact" (each run of steps folds into one line, the default) or "detailed" (every step as its card), how chats show Claude's work; chatList.view: "project" (default) | "status" (pinned, needs you, working, error, idle) | "recent" (pinned, today, yesterday, last 7 days, older) | "all" (one list), how the Chats list groups chats (chatList.pinnedOrder is set by dragging pinned chats, don't edit it); editor.wordWrap: true|false, long lines wrap in the file editor (Preview); editor.showWhitespace: true|false, show spaces and tabs; editor.closeBrackets: true|false, typing a bracket or quote adds the closing one; editor.tabSize: 1–8, indentation for files that don't show their own (the editor follows each file's own indentation).
 notifications.desktop: true|false, a system notification when a chat needs the user or finishes while Jig is in the background.
 browser.showWhenUsed: true|false, open the Claude's browser view when Claude starts using its browser (default true; false: it stays out of sight and the user opens the view from Tools). The page has its own size either way, so the view's size never limits Claude.
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it; checkIn: off|weekly|biweekly, a short check-in chat about how the user works (off by default).
 setup.firstRunDone: true|false.
-Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*.`;
+Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*, addonGallery.sources (git URLs or folders add-ons are installed from; the user adds them in Add-on gallery).`;
 
 const show = (v: unknown) => (typeof v === "string" ? `"${v}"` : JSON.stringify(v));
 
@@ -120,6 +120,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             defaultModel: engine.defaultModel,
             subagentModel: engine.subagentModel,
             helperModel: engine.helperModel,
+            quickModel: engine.quickModel,
             defaultPermissionMode: engine.defaultPermissionMode,
             promptSuggestions: engine.promptSuggestions,
             fileCheckpoints: engine.fileCheckpoints,
@@ -253,19 +254,21 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         return [
           ...regions,
           `hidden: ${layout.hidden.map((v) => `${title(v)} [${v}]`).join(", ") || "none"}`,
+          `named layouts: ${layout.saved.map((l) => l.name).join(", ") || "none"}`,
           `All views: ${views.map((v) => `${v.id} (${v.title})`).join("; ")}`,
-          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view in the lower half of the host sidebar, a split sidebar; regions: left, left2 = lower left, right, right2 = lower right, bottom).',
+          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view in the lower half of the host sidebar, a split sidebar; regions: left, left2 = lower left, right, right2 = lower right, bottom) | { op: "save", name } (save where every view is as a named layout) | { op: "use", name } (switch to a named layout).',
         ].join("\n");
       },
     },
     {
       name: "jig_change_layout",
       description:
-        "Move, hide, show or resize views, show a view below another (a collapsible section in the same tab), or collapse/expand a region. Applied at once; the user can undo it from the chat.",
+        "Move, hide, show or resize views, put a view in the lower half of a sidebar (a split sidebar), collapse/expand a region, or save / switch to a named layout. Applied at once; the user can undo it from the chat.",
       shape: {
         ops: z.array(
           z.object({
-            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
+            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below", "save", "use"]),
+            name: z.string().max(60).optional(),
             host: z.string().optional(),
             view: z.string().optional(),
             region: z.enum(SIDE_REGIONS).optional(),
@@ -279,7 +282,14 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const next = applyLayoutOps(before, ops, viewIds());
         await deps.setLayout(next);
         const details = ops.map((o) =>
-          [o.op, o.view, o.host && `under ${o.host}`, o.region && `→ ${o.region}`, o.size && `${o.size}px`]
+          [
+            o.op,
+            o.name && `"${o.name}"`,
+            o.view,
+            o.host && `under ${o.host}`,
+            o.region && `→ ${o.region}`,
+            o.size && `${o.size}px`,
+          ]
             .filter(Boolean)
             .join(" "),
         );

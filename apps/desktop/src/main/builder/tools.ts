@@ -6,11 +6,13 @@ import type { AddonInfo } from "../../shared/addons";
 import type { BuildJob, BuildKind, ExtensionProposal, LayoutOp } from "../../shared/builds";
 import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
 import {
+  applyNamedLayout,
   hideView,
   type Layout,
   moveView,
   SIDE_REGIONS,
   type SideRegion,
+  saveNamedLayout,
   setRegion,
   showView,
   splitBeside,
@@ -95,6 +97,8 @@ export function applyLayoutOps(layout: Layout, ops: LayoutOp[], viewIds: string[
     else if (op.op === "resize" && op.region && op.size) next = setRegion(next, op.region, { size: op.size });
     else if (op.op === "collapse" && op.region) next = setRegion(next, op.region, { collapsed: true });
     else if (op.op === "expand" && op.region) next = setRegion(next, op.region, { collapsed: false });
+    else if (op.op === "save" && op.name) next = saveNamedLayout(next, op.name);
+    else if (op.op === "use" && op.name) next = applyNamedLayout(next, op.name);
     else throw new Error(`Incomplete operation: ${JSON.stringify(op)}`);
   }
   return next;

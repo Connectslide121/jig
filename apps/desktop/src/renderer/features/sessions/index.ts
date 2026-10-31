@@ -1,10 +1,11 @@
-import { MessageSquare, MessageSquarePlus, MessagesSquare } from "lucide-react";
+import { MessageSquare, MessageSquarePlus, MessagesSquare, SquareKanban } from "lucide-react";
 import { useEffect } from "react";
 import { useHostEvent } from "../../lib/host";
 import { useProjects } from "../../workbench/projects";
 import { registerAction, registerTabType, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { newSession } from "./actions";
+import { ChatsBoard } from "./ChatsBoard";
 import { ChatTab } from "./ChatTab";
 import { SessionsHeaderActions, SessionsView } from "./SessionsView";
 import { applySessionUpdates, loadSessions, useSeenTurns, useSessions } from "./store";
@@ -36,6 +37,24 @@ export function registerSessions(): void {
     },
     component: ChatTab,
     owner: "core",
+  });
+  registerTabType({
+    type: "jig.chatsBoard",
+    title: () => "Chats board",
+    icon: SquareKanban,
+    component: ChatsBoard,
+    singleton: true,
+    owner: "core",
+  });
+  registerAction({
+    id: "jig.chatsBoard",
+    title: "Chats board",
+    group: "Chats",
+    icon: SquareKanban,
+    keywords: ["all chats", "overview", "kanban", "status"],
+    run: () => {
+      workbench.openTab("jig.chatsBoard", {});
+    },
   });
   registerAction({
     id: "jig.newSession",

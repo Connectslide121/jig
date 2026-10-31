@@ -1,5 +1,5 @@
 import { jaccard, normalizeCommand, promptTokens } from "./normalize";
-import { frictionPatterns, pastePatterns, unusedToolPatterns } from "./signals";
+import { frictionPatterns, pastePatterns, unusedToolPatterns, viewHabitPatterns } from "./signals";
 
 export type ActivityKind =
   | "prompt"
@@ -14,7 +14,12 @@ export type ActivityKind =
   /** A note Claude saved from a chat (`jig_note_evidence`), `detail.category`. */
   | "evidence"
   /** Lines Claude wrote with Edit/Write: `text` is the file, `detail.lines` comma-joined line hashes. */
-  | "ai.lines";
+  | "ai.lines"
+  /**
+   * What you do in Jig's own UI (`detail.op`): `action` (a menu action, `text` its title), `open-tab` /
+   * `move` (a view opened as a main tab, moved to `detail.region`; `detail.view` its id).
+   */
+  | "ui";
 
 export interface ActivityEvent {
   at: string; // ISO time
@@ -33,7 +38,7 @@ export interface Evidence {
 export interface Pattern {
   /** Stable key: the same repetition gets the same key next week (used to block "Never" patterns). */
   key: string;
-  kind: "command" | "sequence" | "prompt" | "friction" | "paste" | "unused-tool";
+  kind: "command" | "sequence" | "prompt" | "friction" | "paste" | "unused-tool" | "view-habit";
   /** The template, sequence ("a → b") or a representative prompt. */
   summary: string;
   count: number;
@@ -62,6 +67,7 @@ const COMMAND_KINDS = new Set<ActivityKind>([
   "script.run",
   "addon.action",
   "git",
+  "ui",
 ]);
 
 const day = (iso: string) => iso.slice(0, 10);
@@ -79,7 +85,8 @@ function template(event: ActivityEvent): string | undefined {
   if (!COMMAND_KINDS.has(event.kind)) return undefined;
   const t = normalizeCommand(event.text);
   if (!t || TRIVIAL.test(t)) return undefined;
-  return event.kind === "addon.action" ? `action: ${t}` : t;
+  if (event.kind === "addon.action") return `action: ${t}`;
+  return event.kind === "ui" ? `jig: ${t}` : t;
 }
 
 export function summarizeGroup(events: ActivityEvent[]) {
@@ -215,6 +222,7 @@ export function mine(events: ActivityEvent[], options: MineOptions = {}): Patter
     ...frictionPatterns(events),
     ...pastePatterns(events),
     ...unusedToolPatterns(events),
+    ...viewHabitPatterns(events),
   ]
     .filter((p) => !blocked.has(p.key))
     .sort((a, b) => b.score - a.score)

@@ -32,3 +32,24 @@ export interface AddonCommit {
   date: string;
   message: string;
 }
+
+/** An add-on offered by a gallery source (D-179). */
+export interface GalleryAddon {
+  id: string;
+  name: string;
+  version?: string;
+  description?: string;
+  icon?: string;
+  permissions: string[];
+  /** Problems with its manifest; it can't be installed while there are any. */
+  errors: string[];
+  /** The one you have with this id: yours, or a built-in one it would replace. */
+  installed?: { source: "builtin" | "user"; version?: string };
+}
+
+/** A gallery source (a git URL or a folder from Settings → Add-ons) and what it offers. */
+export interface GallerySource {
+  source: string;
+  error?: string;
+  addons: GalleryAddon[];
+}

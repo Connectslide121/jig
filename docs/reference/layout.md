@@ -54,6 +54,10 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
 - Old layouts (before D-173) had `sections`, `closedSections` and `waitingUnder` (views shown below
   another view, D-099). On load, sections move to the lower half of their host's sidebar and the
   other two fields are dropped.
+- **saved** (D-175): named layouts (at most 20), `[{ name, left, left2, right, right2, bottom, hidden, panes }]` — where every view is,
+  sizes and sidebars, not the open chats. **View → Layout → Layouts** saves the current one
+  (`saveNamedLayout`), switches (`applyNamedLayout`, keeps tabs that aren't views) and manages them;
+  Settings → Layout lists them with Use / Delete; chats use the `save` / `use` layout ops.
 - **main**: tabs in the main area, in order, and the active one. A tab is `{ id, type, params }`;
   opening a tab whose `type` + `params` already exist focuses that tab instead (`tabKey`). At most
   50 tabs (the oldest is closed). Tab types marked `singleton` (Settings) reuse their one tab.

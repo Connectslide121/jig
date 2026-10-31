@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import {
   activateTab,
+  applyNamedLayout,
   closeTab,
   defaultLayout,
+  deleteNamedLayout,
   dropView,
   findView,
   hideView,
@@ -12,16 +14,37 @@ import {
   openTab,
   openViewTab,
   type SideRegion,
+  saveNamedLayout,
   setPaneSize,
   setRegion,
   showView,
   splitBeside,
   toggleRegion,
   updateTabParams,
+  VIEW_TAB,
 } from "../../shared/layout";
 import { call } from "../lib/host";
 import { confirmClose, dirtyTabIds } from "./dirty";
+import { recordUi } from "./recordUi";
 import { useRegistry } from "./registry";
+
+const viewTitle = (viewId: string) => useRegistry.getState().views[viewId]?.title ?? viewId;
+
+function recordOpenTab(viewId: string) {
+  const layout = useWorkbench.getState().layout;
+  if (layout?.main.tabs.some((t) => t.type === VIEW_TAB && t.params.viewId === viewId)) return;
+  recordUi("open-tab", `open ${viewTitle(viewId)} as a tab`, { view: viewId, title: viewTitle(viewId) });
+}
+
+function recordMove(viewId: string, region: SideRegion) {
+  const layout = useWorkbench.getState().layout;
+  if (layout && findView(layout, viewId) === region) return;
+  recordUi("move", `move ${viewTitle(viewId)} to ${region}`, {
+    view: viewId,
+    title: viewTitle(viewId),
+    region,
+  });
+}
 
 /**
  * The workbench layout in the renderer. Edits go through `updateLayout(fn)` with the pure functions
@@ -104,21 +127,37 @@ export const workbench = {
     updateLayout((l) => tabIds.reduce((acc, id) => closeTab(acc, id), l));
   },
   activateTab: (tabId: string) => updateLayout((l) => activateTab(l, tabId)),
-  moveView: (viewId: string, region: SideRegion) => updateLayout((l) => moveView(l, viewId, region)),
+  moveView(viewId: string, region: SideRegion) {
+    recordMove(viewId, region);
+    updateLayout((l) => moveView(l, viewId, region));
+  },
   /** A view dragged onto a region's tab bar, before another view's tab (or at the end). */
-  dropView: (viewId: string, region: SideRegion, beforeId?: string) =>
-    updateLayout((l) => dropView(l, viewId, region, beforeId)),
+  dropView(viewId: string, region: SideRegion, beforeId?: string) {
+    recordMove(viewId, region);
+    updateLayout((l) => dropView(l, viewId, region, beforeId));
+  },
   hideView: (viewId: string) => updateLayout((l) => hideView(l, viewId)),
   /** Shows a view in the lower half of the sidebar another view is in (a split sidebar). */
   splitBeside: (viewId: string, hostId: string) => updateLayout((l) => splitBeside(l, viewId, hostId)),
   /** Every view back where it started, every size and sidebar as new. Open tabs stay. */
-  resetLayout: () => updateLayout((l) => ({ ...defaultLayout(), main: l.main })),
+  resetLayout: () => updateLayout((l) => ({ ...defaultLayout(), main: l.main, saved: l.saved })),
+  /** Named layouts (D-175): save where every view is, switch to one, delete one. */
+  saveLayoutAs: (name: string) => updateLayout((l) => saveNamedLayout(l, name)),
+  switchLayout(name: string) {
+    recordUi("action", `use the ${name} layout`, { layout: name });
+    updateLayout((l) => applyNamedLayout(l, name));
+  },
+  deleteLayout: (name: string) => updateLayout((l) => deleteNamedLayout(l, name)),
   /** Opens a view as a tab in the main area (out of its sidebar). */
-  openViewTab: (viewId: string) => updateLayout((l) => openViewTab(l, viewId).layout),
+  openViewTab(viewId: string) {
+    recordOpenTab(viewId);
+    updateLayout((l) => openViewTab(l, viewId).layout);
+  },
   /** Shows a view where it is: its sidebar tab, or (not in a sidebar) a tab in the main area. */
   showView(viewId: string) {
     const layout = useWorkbench.getState().layout;
     if (layout && findView(layout, viewId) === "hidden") {
+      recordOpenTab(viewId);
       updateLayout((l) => openViewTab(l, viewId).layout);
       return;
     }

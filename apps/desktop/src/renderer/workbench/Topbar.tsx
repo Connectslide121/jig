@@ -5,13 +5,17 @@ import {
   FolderPlus,
   Keyboard,
   LayoutDashboard,
+  LayoutTemplate,
   MessageSquarePlus,
   PanelBottom,
   PanelLeft,
   PanelRight,
   Puzzle,
   RotateCcw,
+  Save,
+  Search,
   Settings,
+  Settings2,
   Wrench,
 } from "lucide-react";
 import { LOWER_HALF } from "../../shared/layout";
@@ -20,7 +24,7 @@ import { ProjectSwatch } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
-import { addProject, hiddenViews, openSettings, resetLayout } from "./actions";
+import { addProject, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { type ActionDef, runAction, useRegistry } from "./registry";
 import { formatShortcut } from "./shortcuts";
@@ -133,6 +137,22 @@ function layoutMenu(): MenuEntry[] {
           onSelect: () => workbench.showView(v.id),
         })),
     },
+    {
+      label: "Layouts",
+      icon: LayoutTemplate,
+      testId: "layouts-menu",
+      submenu: [
+        ...(layout?.saved ?? []).map((saved) => ({
+          label: saved.name,
+          onSelect: () => workbench.switchLayout(saved.name),
+        })),
+        ...(layout?.saved.length ? [{ separator: true as const }] : []),
+        { label: "Save layout as…", icon: Save, testId: "save-layout", onSelect: () => void saveLayoutAs() },
+        ...(layout?.saved.length
+          ? [{ label: "Manage layouts…", icon: Settings2, onSelect: () => openSettings("layout") }]
+          : []),
+      ],
+    },
     { separator: true },
     {
       label: "Reset layout",
@@ -235,6 +255,16 @@ export function Topbar() {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        data-testid="goto-button"
+        title={`Go to a chat, file, view or action (${formatShortcut("Mod+P")})`}
+        className="no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-fg hover:bg-hover"
+        onClick={() => runAction("jig.goTo")}
+      >
+        <Search className="size-4 text-muted" />
+        <span className="sr-only">Go to</span>
+      </button>
       <button
         type="button"
         data-testid="tools-button"

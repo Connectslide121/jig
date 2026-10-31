@@ -34,6 +34,8 @@ export const ConfigSchema = z.object({
       subagentModel: z.string().default("sonnet"),
       /** No-tools questions from add-ons (commit messages, reviews and other helpers). */
       helperModel: z.string().default("sonnet"),
+      /** Short, simple answers from add-ons that ask for `quick` (commit messages): a small model. */
+      quickModel: z.string().default("haiku"),
       defaultPermissionMode: z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]).default("plan"),
       /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
       promptSuggestions: z.boolean().default(true),
@@ -118,6 +120,12 @@ export const ConfigSchema = z.object({
       shell: z.string().default(""),
     })
     .prefault({}),
+  /** Add-on gallery sources (D-179): git URLs (https/ssh) or folders with add-on folders. */
+  addonGallery: z
+    .object({
+      sources: z.array(z.string()).default([]),
+    })
+    .prefault({}),
   learning: z
     .object({
       recording: z.boolean().default(true),
@@ -169,13 +177,15 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
 
 /**
  * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
- * program runs as Claude Code, and shell commands Jig runs (updates). D-077.
+ * program runs as Claude Code, shell commands Jig runs (updates), and where add-on code comes from
+ * (the gallery's sources). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "engine.claudePath",
   "engine.allowApiKey",
   "terminal.shell",
   "updates",
+  "addonGallery",
 ] as const;
 
 /** Dotted paths of the leaves a patch sets (`{ appearance: { themeId } }` → `appearance.themeId`). */

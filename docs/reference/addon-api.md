@@ -90,7 +90,7 @@ are add-ons':
 | `useWorkspaceList()` (from `@jig/sdk/ui`) | the same, re-rendering when folders change |
 | `workspaces.list()` | `{ id, name, path, isGitRepo, exists, repos }[]`: every folder the user added, whatever the projects (for views covering all repositories, like Repos) |
 | `openChat({ projectId?, cwd?, draft? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent |
-| `ai.ask(prompt, { cwd? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
+| `ai.ask(prompt, { cwd?, quick? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). `quick` uses the quick model (Haiku) for short, simple answers instead of the helper model. Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
 | `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
 | `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |

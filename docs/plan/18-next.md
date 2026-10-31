@@ -387,3 +387,11 @@ true"). This step checks the whole picture again:
 - [x] Repos: switch a repository's branch from its row (D-172)
 - [x] Split sidebars, daily views only in sidebars, Reset layout (D-173)
 - [x] Fewer top bar menus, views open as main tabs, drag any view anywhere (D-174)
+- [x] Named layouts, and Learning noticing how you arrange views (D-175)
+- [x] Go to (Ctrl+P): chats, views, actions, files (D-176)
+- [x] Workflows triggered by a push or a finished pipeline (D-177)
+- [x] Chats board across projects (D-178)
+- [x] Add-on gallery from git repositories or folders (D-179)
+- [x] Compact pipeline rows with a details dialog (D-180)
+- [x] Unit and e2e tests independent of the environment's git identity
+- [x] Commit messages on a quick model (Haiku), `engine.quickModel` (D-181)

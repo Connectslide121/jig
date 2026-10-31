@@ -28,6 +28,7 @@ const KIND: Record<string, string> = {
   friction: "Friction (stops, rewinds, denials, corrections, failing scripts)",
   evidence: "Notes from chats",
   "ai.lines": "Files Claude wrote in",
+  ui: "Menus and views in Jig",
 };
 
 type Knowledge = {

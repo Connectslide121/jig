@@ -32,4 +32,13 @@ describe("applyLayoutOps", () => {
       "Incomplete",
     );
   });
+
+  it("saves and switches to named layouts", () => {
+    const layout = normalizeLayout(defaultLayout(), views);
+    const saved = applyLayoutOps(layout, [{ op: "save", name: "Review" }], ids);
+    const moved = applyLayoutOps(saved, [{ op: "move", view: "addon.git.git", region: "right" }], ids);
+    const back = applyLayoutOps(moved, [{ op: "use", name: "Review" }], ids);
+    expect(back.left.views).toContain("addon.git.git");
+    expect(() => applyLayoutOps(back, [{ op: "use", name: "Nope" }], ids)).toThrow('No layout named "Nope"');
+  });
 });

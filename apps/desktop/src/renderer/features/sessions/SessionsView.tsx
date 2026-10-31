@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Pin,
   PinOff,
+  SquareKanban,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SessionMeta } from "../../../shared/engine";
@@ -16,6 +17,7 @@ import { call } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { cn, contextMenu, Empty, IconButton, ListRow, type MenuEntry, openMenuAt } from "../../ui";
 import { useProjects } from "../../workbench/projects";
+import { runAction } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { ProjectSwatch, projectDotClass } from "../projects/colors";
@@ -291,6 +293,13 @@ export function SessionsHeaderActions() {
         size="sm"
         data-testid="chat-list-view"
         onClick={(e) => openMenuAt(e.currentTarget, viewMenu(), true)}
+      />
+      <IconButton
+        icon={SquareKanban}
+        label="Chats board: every chat by what it needs"
+        size="sm"
+        data-testid="open-chats-board"
+        onClick={() => runAction("jig.chatsBoard")}
       />
       <IconButton
         icon={MessageSquareShare}

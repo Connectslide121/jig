@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "workflows",
   "name": "Workflows",
-  "description": "Lists of steps you repeat, per project \u2014 a release, a deploy, a morning routine. Jig does the steps it can, asks first, or leaves them to you; on a schedule while Jig is open; export as a Claude Code skill or move to the cloud.",
+  "description": "Lists of steps you repeat, per project \u2014 a release, a deploy, a morning routine. Jig does the steps it can, asks first, or leaves them to you; on a schedule or after a push or pipeline while Jig is open; export as a Claude Code skill or move to the cloud.",
   "version": "1.0.0",
   "icon": "list-checks",
   "permissions": ["exec", "exec:az", "fs:write", "chat", "terminal"],
@@ -104,7 +104,7 @@
           },
           "trigger": {
             "type": "object",
-            "description": "{kind:'schedule', every:'day'|'weekday'|'week', time:'HH:MM', day?:0-6} to run on a schedule while Jig is open",
+            "description": "When it runs by itself while Jig is open: {kind:'schedule', every:'day'|'weekday'|'week', time:'HH:MM', day?:0-6}; {kind:'push', branch?} after the user pushes (any way); {kind:'pipeline', pipeline:{org, project, id}, result?:'any'|'succeeded'|'failed'} when an Azure DevOps pipeline run finishes",
             "optional": true
           }
         },

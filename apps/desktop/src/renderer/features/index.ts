@@ -7,6 +7,8 @@ import { registerBrowser } from "./browser";
 import { registerBuilder } from "./builder";
 import { registerDigest } from "./digest";
 import { registerFiles } from "./files";
+import { registerGallery } from "./gallery";
+import { registerGoTo } from "./goto";
 import { registerLearning } from "./learning";
 import { registerLinks } from "./links";
 import { registerPreview } from "./preview";
@@ -42,5 +44,7 @@ export function registerFeatures(): void {
   registerDigest();
   registerUsage();
   registerWorktrees();
+  registerGoTo();
+  registerGallery();
   registerAbout();
 }

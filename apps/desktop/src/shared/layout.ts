@@ -38,6 +38,26 @@ export const TabSchema = z.object({
 });
 export type LayoutTab = z.infer<typeof TabSchema>;
 
+const SavedRegionSchema = z.object({
+  views: z.array(z.string()).default([]),
+  active: z.string().optional(),
+  size: z.number().min(120).max(2000),
+  collapsed: z.boolean(),
+});
+const SavedLayoutSchema = z.object({
+  name: z.string().min(1).max(60),
+  left: SavedRegionSchema,
+  left2: SavedRegionSchema,
+  right: SavedRegionSchema,
+  right2: SavedRegionSchema,
+  bottom: SavedRegionSchema,
+  hidden: z.array(z.string()).default([]),
+  panes: z.record(z.string(), z.number()).default({}),
+});
+export type SavedLayout = z.infer<typeof SavedLayoutSchema>;
+
+export const MAX_SAVED_LAYOUTS = 20;
+
 export const LayoutSchema = z.object({
   version: z.literal(1).default(1),
   left: RegionSchema(280, false),
@@ -53,6 +73,8 @@ export const LayoutSchema = z.object({
   sections: z.record(z.string(), z.array(z.string())).optional(),
   /** Sizes of resizable panes inside views and tabs (`Pane id` → px, or a 0–1 ratio for splits). */
   panes: z.record(z.string(), z.number()).default({}),
+  /** Named layouts (D-175): where the views were, by name, to switch back to. Never the open tabs. */
+  saved: z.array(SavedLayoutSchema).default([]),
   main: z
     .object({
       tabs: z.array(TabSchema).default([]),
@@ -491,5 +513,46 @@ export function updateTabParams(input: Layout, tabId: string, params: Record<str
   const layout = clone(input);
   const tab = layout.main.tabs.find((t) => t.id === tabId);
   if (tab) tab.params = { ...tab.params, ...params };
+  return layout;
+}
+
+/** Saves where every view is under a name (replacing one with the same name). Open tabs aren't saved. */
+export function saveNamedLayout(input: Layout, name: string): Layout {
+  const trimmed = name.trim().slice(0, 60);
+  if (!trimmed) throw new Error("A layout needs a name");
+  const layout = clone(input);
+  const snapshot: SavedLayout = {
+    name: trimmed,
+    left: structuredClone(layout.left),
+    left2: structuredClone(layout.left2),
+    right: structuredClone(layout.right),
+    right2: structuredClone(layout.right2),
+    bottom: structuredClone(layout.bottom),
+    hidden: [...layout.hidden],
+    panes: { ...layout.panes },
+  };
+  const others = layout.saved.filter((l) => l.name.toLowerCase() !== trimmed.toLowerCase());
+  layout.saved = [...others, snapshot].slice(-MAX_SAVED_LAYOUTS);
+  return layout;
+}
+
+/**
+ * Switches to a named layout: its regions, hidden views and pane sizes. Open tabs and the other named
+ * layouts stay; `normalizeLayout` then places views that are new since and closes view tabs whose
+ * view is now in a region.
+ */
+export function applyNamedLayout(input: Layout, name: string): Layout {
+  const saved = input.saved.find((l) => l.name === name);
+  if (!saved) throw new Error(`No layout named "${name}"`);
+  const layout = clone(input);
+  for (const r of SIDE_REGIONS) layout[r] = structuredClone(saved[r]);
+  layout.hidden = [...saved.hidden];
+  layout.panes = { ...saved.panes };
+  return layout;
+}
+
+export function deleteNamedLayout(input: Layout, name: string): Layout {
+  const layout = clone(input);
+  layout.saved = layout.saved.filter((l) => l.name !== name);
   return layout;
 }

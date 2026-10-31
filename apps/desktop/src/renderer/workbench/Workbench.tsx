@@ -5,6 +5,7 @@ import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { StandupHost } from "../features/digest";
+import { GoToHost } from "../features/goto";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
@@ -101,6 +102,7 @@ export function Workbench() {
       <StatusBar />
       <MenuHost />
       <ToolsMenuHost />
+      <GoToHost />
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />

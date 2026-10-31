@@ -62,8 +62,18 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "learning.checkIn": z.object({ action: z.enum(["enable", "decline", "start", "skip"]) }),
   "addons.inspectPackage": z.object({ path: path.optional() }),
   "addons.importPackage": z.object({ path, replace: z.boolean().optional() }),
+  "addons.galleryInstall": z.object({
+    source: z.string().min(1).max(2000),
+    id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+    replace: z.boolean().optional(),
+  }),
   "worktrees.start": z.object({ repo: path, name: z.string().max(200), projectId: id.optional() }),
-  "ai.ask": z.object({ addonId, prompt: z.string().max(200_000), cwd: path.optional() }),
+  "ai.ask": z.object({
+    addonId,
+    prompt: z.string().max(200_000),
+    cwd: path.optional(),
+    quick: z.boolean().optional(),
+  }),
   "attempts.start": z.object({
     projectId: id,
     repo: path,
@@ -96,7 +106,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "devRequests.approve": z.object({ buildId: id }),
   "builds.reviseRequest": z.object({ id, feedback: z.string().min(1).max(20_000) }),
   "learning.record": z.object({
-    kind: z.literal("addon.action"),
+    kind: z.enum(["addon.action", "ui"]),
     text: z.string().max(2000),
     projectId: id.optional(),
     detail: z.record(z.string(), z.string().max(2000)).optional(),

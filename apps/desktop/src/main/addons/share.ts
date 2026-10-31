@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 import { type AddonManifest, parseManifest } from "@jig/sdk";
 import { unzipSync, zipSync } from "fflate";
@@ -19,7 +19,8 @@ async function files(dir: string, base = dir): Promise<string[]> {
   for (const name of await readdir(dir)) {
     if (SKIP.has(name)) continue;
     const full = join(dir, name);
-    const s = await stat(full);
+    // lstat: a link (to a file outside the add-on) is never packed.
+    const s = await lstat(full);
     if (s.isDirectory()) out.push(...(await files(full, base)));
     else if (s.isFile()) out.push(relative(base, full).split(sep).join("/"));
   }

@@ -8,6 +8,7 @@ import {
   newestPerPipeline,
   parseParameters,
   parseRemote,
+  runAge,
   runKind,
   runLabel,
   runParameters,
@@ -110,6 +111,10 @@ describe("pipelines from your repositories", () => {
     expect(runLabel({ ...run, status: "inProgress", result: "" }, now)).toBe("▶ Running 35m");
     expect(runLabel({ ...run, status: "notStarted", result: "", started: 0 }, now)).toBe("◷ Queued 40m");
     expect(runLabel(null, now)).toBe("never run");
+    expect(runAge(run, now)).toBe("12m");
+    expect(runAge({ ...run, status: "inProgress", result: "" }, now)).toBe("35m");
+    expect(runAge({ ...run, status: "notStarted", result: "", started: 0 }, now)).toBe("40m");
+    expect(runAge(null, now)).toBe("");
     expect(runLabel({ ...run, result: "canceled" }, now)).toBe("Cancelled 12m");
     expect(runKind({ ...run, result: "failed" })).toBe("failed");
     expect(runKind({ ...run, status: "notStarted", result: "" })).toBe("other");

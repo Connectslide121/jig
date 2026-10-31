@@ -16,6 +16,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Navigation and layouts (D-175, D-176): **Ctrl+P** (or the magnifier in the top bar) opens Go to:
+  chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
+  between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
+  moving the same way and suggests placing them.
+- Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
+- Workflows (D-177) can run **after you push** or **when a pipeline finishes**. Needs testing on a
+  real machine: a real push and a real Azure DevOps pipeline (the e2e tests use a fake `az`).
+- Add-on gallery (D-179): Tools → Add-on gallery, or Settings → Add-ons. Add a git URL or a folder,
+  then Install. Needs testing on a real machine: a private git repository over https and ssh.
+- Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Claude Code → Quick model).
+- Pipelines (D-180): each pipeline is one compact row; click it for the details dialog.
 - Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
 - Layout (D-173, D-174): **View menu → Reset layout** puts every view back. Sidebars hold only daily
   views; Suggestions, Links, Releases and Workflows open as main tabs from the top bar menus. Drag

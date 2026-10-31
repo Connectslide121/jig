@@ -23,6 +23,7 @@ it("starts new chats with native Opus planning and Sonnet execution, preserving 
     defaultPermissionMode: "plan",
     subagentModel: "sonnet",
     helperModel: "sonnet",
+    quickModel: "haiku",
     testerModel: "haiku",
   });
   expect(

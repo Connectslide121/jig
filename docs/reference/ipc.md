@@ -44,7 +44,7 @@ settings, add-on permissions.
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
 | `files.write` | `{ path, text, expectedMtimeMs? }` | `{ size, mtimeMs }` | the Preview editor saves: only inside a workspace or a file opened in Preview this run; with `expectedMtimeMs`, `changed` when the file changed on disk since; written next to the file and renamed over it. Errors `not_allowed`, `not_a_file`, `changed`, `write_failed` |
-| `ai.ask` | `{ addonId, prompt, cwd? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`) |
+| `ai.ask` | `{ addonId, prompt, cwd?, quick? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`); `quick` uses `engine.quickModel` (schema) |
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |
 | `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code saved on this computer, newest first; `chatId` when one is already a Jig chat (D-150) |
 | `sessions.openSaved` | `{ sessionId }` | `SessionMeta` | opens one as a chat in No project with its history; its first message continues it as a copy (validated id; folder and title from Claude Code's list) |
@@ -152,7 +152,7 @@ settings, add-on permissions.
 | `learning.runNow` | — | `PatternRun` | look for patterns now; no AI call when nothing repeats; `busy` |
 | `learning.answer` | `{ id, answer: "build" \| "act" \| "snooze" \| "dismiss" \| "never" }` | — | `act`: the kind's own action was taken (a profile one is written here) |
 | `learning.clearActivity` | — | — | deletes the activity log |
-| `learning.record` | `{ kind: "addon.action", text, projectId?, detail? }` | — | activity from the renderer |
+| `learning.record` | `{ kind: "addon.action" \| "ui", text, projectId?, detail? }` | — | activity from the renderer |
 | `learning.knowledge` | — | `{ profile, profileExists, profileEmpty, notes, activity }` | What Jig knows about me |
 | `learning.interview` | — | `{ prompt }` | the first message of the profile interview chat (D-169) |
 | `learning.setProfile` | `{ text }` | — | writes `profile.md` (schema) |
@@ -164,6 +164,8 @@ settings, add-on permissions.
 | `addons.export` | `{ id }` | `string \| undefined` | saves the add-on as a `.zip` (save dialog); without `.git` and `node_modules` |
 | `addons.inspectPackage` | `{ path? }` | package info `\| undefined` | reads a `.zip` (open dialog without `path`): id, name, version, permissions, files, problems, `exists` (schema) |
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
+| `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
+| `addons.galleryInstall` | `{ source, id, replace? }` | `{ id, name }` | installs an add-on from a source in Settings (no other), like `addons.importPackage` (schema) |
 
 ## Events
 

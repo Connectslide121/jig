@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   activateTab,
+  applyNamedLayout,
   closeOtherTabs,
   closeTab,
   closeTabsWhere,
   cycleTab,
   defaultLayout,
+  deleteNamedLayout,
   dropView,
   findView,
   hideView,
@@ -20,6 +22,7 @@ import {
   paneActive,
   paneTabs,
   reorderView,
+  saveNamedLayout,
   setPaneSize,
   setRegion,
   showView,
@@ -198,6 +201,38 @@ describe("setPaneSize", () => {
     layout = setPaneSize(layout, "tiny", 10);
     expect(layout.panes).toEqual({ "jig.terminals.list": 250, "addon.git.diff": 0.9, tiny: 48 });
     expect(setPaneSize(layout, "", 100)).toBe(layout);
+  });
+});
+
+describe("named layouts", () => {
+  it("saves where the views are and switches back, keeping open tabs", () => {
+    const coding = saveNamedLayout(base(), "Coding");
+    const moved = setRegion(moveView(coding, "jig.terminal", "right"), "left", { size: 400 });
+    const review = saveNamedLayout(moved, "Review");
+    expect(review.saved.map((l) => l.name)).toEqual(["Coding", "Review"]);
+    const withTab = openTab(review, { type: "jig.chat", params: { sessionId: "a" } }).layout;
+    const back = normalizeLayout(applyNamedLayout(withTab, "Coding"), views);
+    expect(back.bottom.views).toEqual(["jig.terminal"]);
+    expect(back.left.size).toBe(280);
+    expect(back.main.tabs.map((t) => t.type)).toEqual(["jig.chat"]);
+    expect(back.saved).toHaveLength(2);
+  });
+
+  it("replaces a layout with the same name, deletes one, and needs a name", () => {
+    const once = saveNamedLayout(base(), "Coding");
+    const twice = saveNamedLayout(moveView(once, "jig.terminal", "right"), " coding ");
+    expect(twice.saved.map((l) => l.name)).toEqual(["coding"]);
+    expect(twice.saved[0]!.right.views).toContain("jig.terminal");
+    expect(deleteNamedLayout(twice, "coding").saved).toEqual([]);
+    expect(() => saveNamedLayout(base(), "  ")).toThrow();
+    expect(() => applyNamedLayout(base(), "Nope")).toThrow();
+  });
+
+  it("places views that are new since the layout was saved", () => {
+    const saved = saveNamedLayout(base(), "Coding");
+    const more = [...views, { id: "addon.git.git", defaultRegion: "left" as const }];
+    const back = normalizeLayout(applyNamedLayout(normalizeLayout(saved, more), "Coding"), more);
+    expect(back.left.views).toContain("addon.git.git");
   });
 });
 

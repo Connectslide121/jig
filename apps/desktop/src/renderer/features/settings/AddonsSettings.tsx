@@ -8,6 +8,7 @@ import {
   RefreshCw,
   RotateCcw,
   Sparkles,
+  Store,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { useConfig } from "../../stores/config";
 import { Badge, Button, confirmDialog, Dialog, Empty, IconButton, Spinner, Switch } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
+import { openGallery } from "../gallery";
 import { SettingsSection } from "./parts";
 
 function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => void }) {
@@ -281,6 +283,9 @@ export function AddonsSettings() {
           </Button>
           <Button size="sm" icon={FileUp} onClick={() => void importAddon()} data-testid="addon-import">
             Import add-on…
+          </Button>
+          <Button size="sm" icon={Store} onClick={() => void openGallery()} data-testid="addon-gallery-open">
+            Add-on gallery
           </Button>
           <Button size="sm" icon={RefreshCw} onClick={() => void call("addons.reload", {})}>
             Reload all

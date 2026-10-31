@@ -9,7 +9,7 @@
  */
 
 import type { SkillInfo } from "./about";
-import type { AddonCommit, AddonInfo } from "./addons";
+import type { AddonCommit, AddonInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "./browser";
@@ -119,7 +119,7 @@ export interface HostMethods {
   "attempts.discard": { args: { id: string }; result: AttemptRun };
   "attempts.repoDirty": { args: { id: string }; result: boolean };
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
-  "ai.ask": { args: { addonId: string; prompt: string; cwd?: string }; result: string };
+  "ai.ask": { args: { addonId: string; prompt: string; cwd?: string; quick?: boolean }; result: string };
   "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "engine.models": { args: void; result: ModelInfo[] };
@@ -368,6 +368,13 @@ export interface HostMethods {
   };
   /** Installs a package into ~/.jig/addons (replacing yours with `replace`) and loads it. */
   "addons.importPackage": { args: { path: string; replace?: boolean }; result: { id: string; name: string } };
+  /** The add-on gallery: each source in Settings with its add-ons; `refresh` updates git sources. */
+  "addons.gallery": { args: { refresh?: boolean }; result: GallerySource[] };
+  /** Installs an add-on from a gallery source in Settings (replacing yours with `replace`) and loads it. */
+  "addons.galleryInstall": {
+    args: { source: string; id: string; replace?: boolean };
+    result: { id: string; name: string };
+  };
   "builds.list": { args: void; result: BuildJob[] };
   "builds.start": { args: BuildRequestInput; result: BuildJob };
   /** Applies a build in preview: layout/settings, or merges the add-on into ~/.jig/addons. */
@@ -419,9 +426,9 @@ export interface HostMethods {
     args: { action: "enable" | "decline" | "start" | "skip" };
     result: { prompt?: string };
   };
-  /** Activity that happens in the renderer (add-on actions). */
+  /** Activity that happens in the renderer (add-on actions; Jig's own menu actions and view moves). */
   "learning.record": {
-    args: { kind: "addon.action"; text: string; projectId?: string; detail?: Record<string, string> };
+    args: { kind: "addon.action" | "ui"; text: string; projectId?: string; detail?: Record<string, string> };
     result: void;
   };
 }

@@ -11,7 +11,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `window-state.json` | JSON | main window size, position, maximised |
 | `logs/main.log` | text | host log |
 | `electron/` | Electron's own data | only when `JIG_HOME` is set: Electron's data folder (and so its one-instance lock) moves here, so a Jig with another home runs next to your usual one (your usual Jig keeps Electron's default folder) |
-| `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs — see `docs/reference/layout.md` |
+| `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs, named layouts (`saved`) — see `docs/reference/layout.md` |
 | `dev-requests/<build id>/` | `files/` (README.md, SPEC.md, PROMPT.md, mockup.html, context.json), `jig-request-<title>-<id>.zip`, `request.json` (`DevRequestInfo` and `approvedHash`, the version you confirmed) | development requests (D-119), written again from the build each time |
 | `worktree-chats.json`, `worktrees/<id>/` | `{ chats: WorktreeChat[] }`; git worktrees | chats in their own worktree (New chat in a worktree…), removed from the chat's ⋯ menu |
 | `attempts/<run>.json`, `attempts/<run>/<n>/` | JSON `AttemptRun`; git worktrees | "Try several ways" runs and the attempts' worktrees (removed on Keep or Discard) |
@@ -23,6 +23,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
+| `cache/galleries/<hash>/` | git clones | add-on gallery sources (D-179), shallow clones made with your git (safe to delete) |
 | `cache/artifacts/<id>.html` | HTML | claude.ai artifacts Claude Code read back, for the Preview tab (safe to delete) |
 | `builds.json` | JSON `{ jobs: BuildJob[] }` | build jobs (last 200) |
 | `work/<job>/` | git worktree | a build's workspace (branch `build/<job>` of `addons/`), removed on Accept/Discard |
@@ -59,7 +60,8 @@ A new state file is documented here in the same commit that adds it.
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `"opusplan"` | new chats: Opus in Plan mode, Sonnet for execution; empty follows Claude Code |
 | `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
-| `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions (commit messages, reviews, etc.) |
+| `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions that need thought (reviews, explanations) |
+| `engine.quickModel` | `"haiku"` | add-on questions asked with `quick` (commit messages): short, simple answers |
 | `engine.claudeAiConnectors` | `false` | load your claude.ai account's connectors (Asana, Notion, Linear…) into new chats; off sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, so none is flagged as needing sign-in; the MCP servers in your Claude Code settings are unaffected (D-160) |
 | `engine.defaultPermissionMode` | `plan` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
 | `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Tools → Test something… (D-124) |
@@ -86,5 +88,6 @@ A new state file is documented here in the same commit that adds it.
 | `setup.firstRunDone` | `false` | Get started was closed (an installed Jig opens it until then) |
 | `updates.sourcePath` | `""` | Jig's git clone for "Pull, build and restart"; empty = the repo Jig runs from |
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
+| `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |
 
 Settings → Claude Code edits the model strings through pickers populated by Claude Code. Use recommended defaults is a primary action. Appearance offers bundled/system font choices, an optional custom font field and per-font Reset to the schema defaults.

@@ -39,7 +39,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Rewind and edit, effort levels, MCP status.
 - **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
-  needs you.
+  needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
   default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
   between them; pin the ones you keep.
@@ -54,10 +54,12 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   and releases in one action; it warns when production gets a build without a version.
 - **Jig learns how you work.** Locally, it notices what you repeat, what slows you down and what you
   tell Claude you do by hand, and suggests what would help: a tool, a **workflow**, a CLAUDE.md line, a
-  routine, a tip. One page shows everything it knows, and you can edit or delete it.
+  routine, a tip. One page shows everything it knows, and you can edit or delete it. Workflows can run
+  on a schedule, after you push, or when a pipeline finishes.
 - **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
   an add-on. You review it before it's kept. When an add-on can't do it, the builder writes a
-  development request (spec, prompt, mockup) that one button emails to the developers.
+  development request (spec, prompt, mockup) that one button emails to the developers. Share add-ons
+  as a file, or install them from an **add-on gallery**: a git repository or folder your team keeps.
 - **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
   worktree and from its own angle; Claude judges the results and you keep the best.
 - **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig,
@@ -229,10 +231,13 @@ And more:
   - A standup written from your commits and chats.
   - Desktop notifications when a chat needs you.
 - **The workbench:**
-  - Resizable panes, split sidebars (a lower half with its own tabs), and Reset layout.
+  - **Go to** (Ctrl+P): jump to any chat, view, action or file.
+  - Resizable panes, split sidebars (a lower half with its own tabs), named layouts to switch
+    between, and Reset layout.
   - Drag any view anywhere: a sidebar, the bottom panel or the main area as a tab. Views you use now
     and then (Releases, Workflows, Links, Suggestions) open as tabs from the menus.
-  - A scripts runner with groups, and Azure DevOps pipelines — hide, reorder and group them.
+  - A scripts runner with groups, and Azure DevOps pipelines as compact rows (details in a dialog) —
+    hide, reorder and group them.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
   - A Tools menu with keyboard shortcuts.
 

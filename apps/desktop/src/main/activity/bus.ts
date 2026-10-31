@@ -12,7 +12,8 @@ export type ActivityKind =
   | "project.switch"
   | "friction"
   | "evidence"
-  | "ai.lines";
+  | "ai.lines"
+  | "ui";
 
 export interface ActivityInput {
   kind: ActivityKind;

@@ -25,6 +25,14 @@ Fixtures: `jigHome`, `app` (ElectronApplication), `page` (main window, waits for
 `hostCall(page, method, args)` calls a host method and returns the raw `{ ok, value | error }`
 envelope.
 
+Both `vitest.config.ts` and `playwright.config.ts` remove `GIT_AUTHOR_*` / `GIT_COMMITTER_*` from the
+environment (some CI and dev containers set them), so tests see the git identity they configure
+themselves. A test that commits sets `git config user.name` / `user.email` in its repository.
+
+`az` is faked by writing `fake-bin/az` (and a `.cmd`) in the test's `JIG_HOME`: the fixture puts that
+folder first on `PATH` (`e2e/workflows.spec.ts` fakes a finished pipeline this way). Add-on watchers
+can be run at once with `hostCall(page, "addons.call", { id, method, args })`.
+
 On Linux without a display, run under Xvfb: `xvfb-run -a npx playwright test` (after `npm run build`).
 On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 

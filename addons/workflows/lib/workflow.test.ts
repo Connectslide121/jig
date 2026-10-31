@@ -4,11 +4,15 @@ import {
   describeWorkflow,
   draftWorkflow,
   effectiveMode,
+  eventFires,
   isDue,
+  isEventTrigger,
   lastDue,
   markStep,
   newRun,
   nextStep,
+  pipelineResultMatches,
+  pushMark,
   runsUnattended,
   stepFromText,
   toSkill,
@@ -69,6 +73,36 @@ describe("workflows", () => {
     expect(isDue({ kind: "none" }, undefined, now)).toBe(false);
     expect(triggerLabel(weekly)).toBe("Fridays at 16:00");
     expect(triggerLabel({ kind: "schedule", every: "weekday", time: "07:30" })).toBe("Weekdays at 07:30");
+  });
+
+  it("fires after a push or when a pipeline finishes, never for what happened before", () => {
+    const push = { kind: "push" as const, branch: "main" };
+    const pipeline = {
+      kind: "pipeline" as const,
+      pipeline: { org: "https://dev.azure.com/contoso", project: "Shop", id: 12 },
+      result: "failed" as const,
+    };
+    expect(isEventTrigger(push)).toBe(true);
+    expect(isEventTrigger(pipeline)).toBe(true);
+    expect(isEventTrigger({ kind: "none" })).toBe(false);
+    expect(isDue(push, undefined, new Date())).toBe(false);
+    expect(triggerLabel(push)).toBe("After you push main");
+    expect(triggerLabel({ kind: "push" })).toBe("After you push");
+    expect(triggerLabel(pipeline)).toBe("When pipeline 12 fails");
+    expect(triggerLabel({ ...pipeline, result: "any" })).toBe("When pipeline 12 finishes");
+    // Only a push moves the upstream "by push"; a fetch or pull doesn't count.
+    expect(pushMark("abc123\tupdate by push\n")).toBe("abc123");
+    expect(pushMark("abc123\tfetch: fast-forward")).toBeUndefined();
+    expect(pushMark("")).toBeUndefined();
+    // The first look only remembers; then each change fires once.
+    expect(eventFires(undefined, "abc")).toBe(false);
+    expect(eventFires("abc", "abc")).toBe(false);
+    expect(eventFires("abc", "def")).toBe(true);
+    expect(eventFires("abc", undefined)).toBe(false);
+    expect(pipelineResultMatches("failed", "partiallySucceeded")).toBe(true);
+    expect(pipelineResultMatches("failed", "succeeded")).toBe(false);
+    expect(pipelineResultMatches("succeeded", "succeeded")).toBe(true);
+    expect(pipelineResultMatches("any", "canceled")).toBe(true);
   });
 
   it("runs unattended only when every step is an automatic command or pipeline", () => {
