@@ -1,5 +1,8 @@
 # Status
 
+JSON Source (2026-10-31): JSON-classified files open as editable Source, with tree Preview a click
+away. The real-app preview regression passes; full checks pass (606 tests, 8 skipped).
+
 Model attribution (2026-10-31): the overview card counts reported models; the wider details modal
 lists model/tool-call counts, caller models per tool, and reported/requested subagent models separately.
 Detailed tool headers reserve a model column and agent cards a model row; compact mode remains uncluttered.

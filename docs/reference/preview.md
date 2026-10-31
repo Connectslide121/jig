@@ -16,7 +16,7 @@ read. Open it from:
 | PDF | `.pdf` | Chromium's PDF viewer (`plugins: true` in the window) |
 | Table | `.csv .tsv` | table with row filter (delimiter guessed: `,` `;` tab) |
 | Excel | `.xlsx` | sheets as tables (`xlsxToSheets` in `@jig/documents`) |
-| JSON | `.json .jsonc .geojson .webmanifest` | collapsible tree (comments and trailing commas allowed) |
+| JSON | `.json .jsonc .geojson .webmanifest` | **Source** by default; optional collapsible tree in Preview (comments and trailing commas allowed) |
 | Notebook | `.ipynb` | Markdown cells, code cells, text/image/error outputs |
 | Diagram | `.mmd .mermaid` | Mermaid, in the theme's colours |
 | Image, SVG | `.png .jpg .gif .webp .bmp .ico .avif .svg` | fit / actual size |

@@ -701,7 +701,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="previews"
             title="Previews"
-            lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as a tree, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
+            lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as editable source with an optional tree preview, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
           >
             <Bullets
               items={[

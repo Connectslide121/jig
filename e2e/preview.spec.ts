@@ -45,6 +45,9 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   await expect(csv.getByTestId("preview-table")).toContainText("1 of 3");
 
   const json = await preview(page, "config.json");
+  await expect(json.getByTestId("preview-mode-source")).toHaveAttribute("aria-selected", "true");
+  await expect(json.getByTestId("preview-json")).toHaveCount(0);
+  await json.getByTestId("preview-mode-preview").click();
   await expect(json.getByTestId("preview-json")).toContainText("discounts");
 
   const nb = await preview(page, "analysis.ipynb");

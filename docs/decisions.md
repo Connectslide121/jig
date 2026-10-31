@@ -2061,3 +2061,9 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   requests, tokens or billing), with an unattributed bucket for older/missing data. Fixed-width model
   columns and a reserved agent-model row avoid shifts as metadata arrives. Compact mode hides these
   annotations. Model details have a reserved scroll area and the modal is wider to fit columns.
+
+## D-198: JSON opens as source
+
+- Status: accepted. Decided by Jon: JSON files should open in Source rather than Preview.
+  Implementation is **Claude, on my own**: initialize the mode from the path before the file loads,
+  covering all JSON-classified extensions without a tree flash. Preview remains available manually.

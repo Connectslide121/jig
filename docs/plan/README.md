@@ -50,3 +50,5 @@ its status remains in progress.
 4. Commit (one coherent change per commit).
 
 Phase 19 also includes reported model attribution in Detailed chat and overview details (D-197).
+
+Phase 19 also includes JSON Source defaults (D-198).

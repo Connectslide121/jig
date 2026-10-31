@@ -2,7 +2,13 @@ import { Code, Eye, FileX, FolderOpen, Play, Save, Sparkles, SquareArrowOutUpRig
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lineEnding } from "../../../shared/indent";
 import { unifiedDiff } from "../../../shared/lineDiff";
-import { type FilePreview, HAS_SOURCE, isHtmlPage, type PreviewKind } from "../../../shared/preview";
+import {
+  type FilePreview,
+  HAS_SOURCE,
+  isHtmlPage,
+  type PreviewKind,
+  previewKind,
+} from "../../../shared/preview";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn, Empty, FileIcon, IconButton, Markdown, Spinner } from "../../ui";
 import { setTabDirty } from "../../workbench/dirty";
@@ -175,7 +181,7 @@ export function PreviewTab({ params, active, tabId }: TabProps) {
   const path = String(params.path ?? "");
   const [preview, setPreview] = useState<FilePreview>();
   const [error, setError] = useState<string>();
-  const [source, setSource] = useState(false);
+  const [source, setSource] = useState(() => previewKind(path) === "json");
   // A component template or fragment opens as source; a page as a preview (D-154). Decided once,
   // when the file first loads: switching by hand sticks.
   const decided = useRef(false);
