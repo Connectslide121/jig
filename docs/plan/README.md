@@ -38,7 +38,8 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 Phase 19 also includes compact task entry with inline attachments (D-188) and aligned chat input with
 a stable overview column (D-189), one shared top-bar search with grouped action menus (D-190/D-192),
 compact pipeline arrangement (D-191), paged Chats with simpler header controls (D-193), and wider
-task entry with footer permissions (D-194), and stable model aliases with opusplan inheritance (D-195);
+task entry with footer permissions (D-194), stable model aliases with opusplan inheritance (D-195),
+and repository membership rescanning on manual Refresh (D-196);
 its status remains in progress.
 
 1. Pick the first unchecked item of the earliest unfinished phase (phases can overlap when an item

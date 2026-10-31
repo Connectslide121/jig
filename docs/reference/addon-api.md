@@ -86,7 +86,7 @@ are add-ons':
 | `host.call(method, args)` | calls an export of `host.ts` |
 | `on(topic, listener)` | events from `api.emit` in host code |
 | `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }`: a project (a group of chats the user manages, D-101). `path` and the facts are about its default workspace; `repos` lists the repositories inside it (`[{ path, name }]`, empty for a single repository) |
-| `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | the project's default Git repository (Git panel, status bar, Git actions); look for repositories again |
+| `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | the project's default Git repository (Git panel, status bar, Git actions); look for repositories again in a project or workspace by id (Repos uses workspace ids on manual Refresh) |
 | `useWorkspaceList()` (from `@jig/sdk/ui`) | the same, re-rendering when folders change |
 | `workspaces.list()` | `{ id, name, path, isGitRepo, exists, repos }[]`: every folder the user added, whatever the projects (for views covering all repositories, like Repos) |
 | `openChat({ projectId?, cwd?, draft?, sessionId? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent. With `sessionId`, opens that existing chat |

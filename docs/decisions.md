@@ -2037,3 +2037,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   available. Existing configured aliases and project-override precedence remain intact. Tests cover
   alias labels with versioned discovery, inherited opusplan, cleared overrides and engine init reporting
   a concrete active model without replacing the selected alias.
+
+## D-196: Repos Refresh rescans workspace membership
+
+- Status: accepted. Decided by Jon: removed repos/worktrees should disappear on Refresh without
+  restarting Jig. Implementation is **Claude, on my own**: the Repos refresh button calls the existing
+  `projects.rescanRepos` API for each added workspace, then rereads its overview. It waits for any
+  status reads already running before and after scanning, so a stale in-flight read cannot satisfy
+  the manual refresh. Periodic/focus/status refreshes retain the inexpensive cached inventory path.
+- The overview subscribes to workspace facts and repository paths, rather than project ids alone,
+  so workspace-only additions and rescanned membership update the view and status bar together.
+- Present repositories with genuine Git errors remain visible; no rows are hidden merely because
+  they have an error, and no project/workspace registrations or arrangement preferences are deleted.

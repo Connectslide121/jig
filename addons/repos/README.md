@@ -31,6 +31,10 @@ your projects (the add-on's global storage, `arrangement`); new repositories com
   D-173), under the left sidebar's tabs. Its ⋯ menu moves it anywhere. Header: how many
   repositories, then ↑ / ↓ / ✎ counts (to push, to pull, with changes); Fetch all; Refresh. Status bar item
   "N to push/pull", Search → Fetch all repos.
+- **Refresh** rescans every added workspace before reading Git status. Repositories and worktrees
+  removed from disk disappear without restarting Jig, and newly added repositories appear. A status
+  refresh already running is allowed to finish before the fresh inventory is read. Errors for
+  repositories still present remain visible; refresh does not discard their saved arrangements.
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
 Uses your own `git` and `code`.

@@ -1,5 +1,12 @@
 # Status
 
+Repos refresh (2026-10-31): the Refresh button now rescans workspace folders before updating Git
+status. Deleted repos/worktrees disappear and new repos appear without restarting. Present repos
+with Git errors remain visible; automatic status polling keeps using the cached workspace inventory.
+The real-app regression passes for removing a repository and Git worktree, discovering a newly
+created repo, and retaining the error on an existing broken repo. It also covers workspace-only additions.
+Production build and `npm run check` pass (599 tests, 8 skipped).
+
 Model aliases (2026-10-31): chat, project and Settings pickers show Opus, Sonnet, Haiku and Opus Plan
 Mode for aliases, even if discovery names their resolved version. Settings remain unpinned aliases;
 explicit version selections are still available. New chats inherit `opusplan` unless a project model

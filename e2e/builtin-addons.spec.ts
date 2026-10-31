@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
@@ -120,6 +120,44 @@ test("Repos overview lists repositories with their state", async ({ page, jigHom
   // Clicking the name again closes it.
   await page.getByTestId("repo-toggle-shop").click();
   await expect(row).not.toContainText("Fix total");
+});
+
+test("Repos: Refresh rescans removed repos and worktrees without restarting", async ({ page, jigHome }) => {
+  const workspace = join(jigHome, "workspace");
+  await mkdir(workspace, { recursive: true });
+  const source = await repo(workspace);
+  const worktree = join(workspace, "review-worktree");
+  git(source, "worktree", "add", "--detach", worktree, "HEAD");
+  const removed = join(workspace, "removed");
+  await mkdir(removed);
+  git(removed, "init", "-q", "-b", "main");
+  // A present but broken repo must keep its error; Refresh must not just filter every error row.
+  await mkdir(join(workspace, "broken", ".git"), { recursive: true });
+  await hostCall(page, "workspaces.add", { path: workspace });
+  await page.getByTestId("goto-input").fill("show all repos");
+  await page.keyboard.press("Enter");
+  const view = page.getByTestId("repos-view");
+  await expect(view.getByTestId("repo-workspace/review-worktree")).toBeVisible({ timeout: 15000 });
+  await expect(view.getByTestId("repo-workspace/removed")).toBeVisible();
+  git(source, "worktree", "remove", worktree);
+  await rm(removed, { recursive: true, force: true });
+  // The cached inventory still mentions removed paths before manual Refresh.
+  const stale = (await hostCall(page, "addons.call", { id: "repos", method: "overview" })) as {
+    value: Array<{ path: string; error?: string }>;
+  };
+  expect(stale.value.find((r) => r.path === removed)?.error).toBeTruthy();
+  expect(stale.value.find((r) => r.path === worktree)?.error).toBeTruthy();
+  await view.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(view.getByTestId("repo-workspace/removed")).toHaveCount(0);
+  await expect(view.getByTestId("repo-workspace/review-worktree")).toHaveCount(0);
+  await expect(view.getByTestId("repo-workspace/shop")).toBeVisible();
+  await expect(view.getByTestId("repo-workspace/broken")).toContainText("not a git repository");
+  // The same refresh discovers a repository created since the original scan.
+  const added = join(workspace, "added");
+  await mkdir(added);
+  git(added, "init", "-q", "-b", "main");
+  await view.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(view.getByTestId("repo-workspace/added")).toBeVisible();
 });
 
 test("Repos: the branch is a dropdown that switches branches", async ({ page, jigHome }) => {

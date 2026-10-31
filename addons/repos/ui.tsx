@@ -15,6 +15,7 @@ import {
   useAddon,
   useProjectList,
   useStorage,
+  useWorkspaceList,
 } from "@jig/sdk/ui";
 import {
   Check,
@@ -49,9 +50,9 @@ let inflight: Promise<void> | undefined;
 function refresh(ctx: AddonUiContext) {
   inflight ??= ctx.host
     .call<RepoState[]>("overview")
-    .then((r) => {
-      cache = r;
-      for (const s of subscribers) s(r);
+    .then((repos) => {
+      cache = repos;
+      for (const subscriber of subscribers) subscriber(repos);
     })
     .catch(() => {})
     .finally(() => {
@@ -60,11 +61,22 @@ function refresh(ctx: AddonUiContext) {
   return inflight;
 }
 
+/** Manual refresh discovers added/removed repos before rereading status, even during a status poll. */
+async function rescan(ctx: AddonUiContext) {
+  await inflight;
+  for (const workspace of ctx.workspaces.list()) await ctx.projects.rescanRepos(workspace.id);
+  // A project update or focus refresh may have started a read while the folders were rescanning.
+  await inflight;
+  await refresh(ctx);
+}
+
 function useOverview() {
   const ctx = useAddon();
-  const projects = useProjectList();
+  const workspaces = useWorkspaceList();
   const [repos, setRepos] = useState(cache);
-  const key = projects.map((p) => `${p.id}:${p.isGitRepo}`).join(",");
+  const key = JSON.stringify(
+    workspaces.map((w) => [w.id, w.path, w.exists, w.isGitRepo, w.repos?.map((r) => r.path)]),
+  );
   useEffect(() => {
     subscribers.add(setRepos);
     void refresh(ctx);
@@ -77,7 +89,7 @@ function useOverview() {
       clearInterval(timer);
     };
   }, [ctx, key]);
-  return { repos, reload: () => refresh(ctx) };
+  return { repos, reload: () => rescan(ctx) };
 }
 
 async function act(ctx: AddonUiContext, label: string, method: string, path: string, extra?: object) {
