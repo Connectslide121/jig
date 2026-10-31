@@ -94,3 +94,10 @@ resolved active model is recorded separately and never replaces the selected ali
 
 `/name` (a command prints, a skill answers), "todo list", "make a plan", "subagent",
 "background job", "edit <file>" (`e2e/chat-parity.spec.ts`).
+
+Model attribution (D-197): Detailed tool cards show their reported caller model in a fixed column.
+Agent cards also reserve a line for reported child model(s) and separately show an explicit requested
+model. Compact mode omits these annotations. The overview's Models row opens into the details'
+reported-model/tool-call totals, caller-model column and agent-model column. Full reported ids are
+in tooltips. A tool is a program: these labels identify the calling assistant, not a hidden model
+inside an MCP server. Older/missing metadata stays Not reported.

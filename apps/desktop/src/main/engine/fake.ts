@@ -303,7 +303,7 @@ export class FakeEngine implements Engine {
           ];
           for (const call of calls) {
             const toolId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input });
+            onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input, model: "opus" });
             await sleep(this.delayMs, signal);
             onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
           }
@@ -355,9 +355,11 @@ export class FakeEngine implements Engine {
             type: "tool_use",
             id: toolId,
             name: "Task",
+            model: model === "opusplan" ? "opus" : model,
             input: {
               description: "Explore the cart code",
               subagent_type: "Explore",
+              model: "sonnet",
               prompt: "Find the cart",
             },
           });
@@ -374,6 +376,7 @@ export class FakeEngine implements Engine {
             name: "Grep",
             input: { pattern: "total" },
             parentId: toolId,
+            model: "sonnet",
           });
           await sleep(this.delayMs * 2, signal);
           onEvent({ type: "tool_result", toolUseId: inner, output: "src/cart.ts", isError: false });

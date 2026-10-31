@@ -211,10 +211,28 @@ export type ChatItem =
       /** Older transcripts (images only). */
       images?: ChatAttachment[];
     }
-  | { kind: "assistant"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
-  | { kind: "thinking"; id: string; text: string; at: string; streaming?: boolean; parentId?: string }
+  | {
+      kind: "assistant";
+      id: string;
+      text: string;
+      at: string;
+      streaming?: boolean;
+      parentId?: string;
+      model?: string;
+    }
+  | {
+      kind: "thinking";
+      id: string;
+      text: string;
+      at: string;
+      streaming?: boolean;
+      parentId?: string;
+      model?: string;
+    }
   | {
       kind: "tool";
+      /** Reported model of the assistant that called this tool, not a model run by the tool. */
+      model?: string;
       id: string;
       name: string;
       input: Record<string, unknown>;
@@ -338,8 +356,22 @@ export type EngineEvent =
     }
   | { type: "block_start"; id: string; block: "text" | "thinking"; parentId?: string }
   | { type: "block_delta"; id: string; text: string }
-  | { type: "block_end"; id: string; block: "text" | "thinking"; text: string; parentId?: string }
-  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown>; parentId?: string }
+  | {
+      type: "block_end";
+      id: string;
+      block: "text" | "thinking";
+      text: string;
+      parentId?: string;
+      model?: string;
+    }
+  | {
+      type: "tool_use";
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+      parentId?: string;
+      model?: string;
+    }
   | {
       type: "tool_result";
       toolUseId: string;

@@ -306,6 +306,7 @@ export class Normalizer {
 
   private assistant(m: Msg): EngineEvent[] {
     const message = m.message ?? {};
+    const model = typeof message.model === "string" && message.model.trim() ? message.model : undefined;
     const parentId = m.parent_tool_use_id ?? undefined;
     if (!parentId && typeof m.uuid === "string") this.lastChainUuid = m.uuid;
     const events: EngineEvent[] = [];
@@ -337,9 +338,23 @@ export class Normalizer {
         const id = `${messageId}:${kind}:${counter[kind]++}`;
         const text = kind === "text" ? block.text : block.thinking;
         if (text || this.streamed.get(messageId)?.byIndex.size)
-          events.push({ type: "block_end", id, block: kind, text: text ?? "", parentId });
+          events.push({
+            type: "block_end",
+            id,
+            block: kind,
+            text: text ?? "",
+            parentId,
+            ...(model ? { model } : {}),
+          });
       } else if (block?.type === "tool_use" || block?.type === "server_tool_use") {
-        events.push({ type: "tool_use", id: block.id, name: block.name, input: block.input ?? {}, parentId });
+        events.push({
+          type: "tool_use",
+          id: block.id,
+          name: block.name,
+          input: block.input ?? {},
+          parentId,
+          ...(model ? { model } : {}),
+        });
       }
     }
     return events;

@@ -48,3 +48,5 @@ its status remains in progress.
 3. Tick it here and in the phase file; update `docs/status.md` if something user-visible changed;
    record any decision you made on your own in `docs/decisions.md`.
 4. Commit (one coherent change per commit).
+
+Phase 19 also includes reported model attribution in Detailed chat and overview details (D-197).

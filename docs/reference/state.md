@@ -93,3 +93,7 @@ A new state file is documented here in the same commit that adds it.
 | `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |
 
 Settings → Claude Code edits the model strings through pickers populated by Claude Code. Use recommended defaults is a primary action. Appearance offers bundled/system font choices, an optional custom font field and per-font Reset to the schema defaults.
+
+Chat transcript assistant/thinking/tool items may include optional `model` (the SDK-reported calling
+assistant model). This stays with the historical call across model changes and restarts. Existing
+cache files without it remain readable and display Not reported; no current-model backfill is made.

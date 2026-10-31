@@ -10,6 +10,41 @@ const stream = (event: unknown, parent: string | null = null) => ({
 });
 
 describe("Normalizer", () => {
+  it("keeps each assistant message's reported model on tools and subagent responses", () => {
+    const n = new Normalizer();
+    const events = n.handle({
+      type: "assistant",
+      message: {
+        id: "m",
+        model: "opus",
+        content: [{ type: "tool_use", id: "t", name: "Agent", input: { model: "haiku" } }],
+      },
+    });
+    expect(events[0]).toMatchObject({ type: "tool_use", model: "opus" });
+    const child = n.handle({
+      type: "assistant",
+      parent_tool_use_id: "t",
+      message: {
+        id: "a",
+        model: "sonnet",
+        content: [
+          { type: "text", text: "Done" },
+          { type: "tool_use", id: "read", name: "Read", input: {} },
+        ],
+      },
+    });
+    expect(child).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "block_end", parentId: "t", model: "sonnet" }),
+        expect.objectContaining({ type: "tool_use", parentId: "t", model: "sonnet" }),
+      ]),
+    );
+    const missing = n.handle({
+      type: "assistant",
+      message: { id: "old", content: [{ type: "tool_use", id: "old-tool", name: "Read" }] },
+    });
+    expect(missing[0]).not.toHaveProperty("model");
+  });
   it("reports init with the auth source", () => {
     const n = new Normalizer();
     expect(

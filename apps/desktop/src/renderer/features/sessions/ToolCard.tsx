@@ -26,7 +26,10 @@ import { type ReactNode, useEffect, useState } from "react";
 import { artifactFromTool } from "../../../shared/artifacts";
 import type { ChatItem } from "../../../shared/engine";
 import { isImagePath } from "../../../shared/files";
+import { modelName } from "../../../shared/models";
+import { reportedModelName } from "../../../shared/toolModels";
 import { call } from "../../lib/host";
+import { useConfig } from "../../stores/config";
 import { Button, CodeBlock, cn, FileIcon, IconButton, ImagePreview, Spinner } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -332,13 +335,16 @@ export function ToolCard({
   sessionId,
   waiting,
   children,
+  agentModels = [],
 }: {
   item: ToolItem;
   sessionId?: string;
   /** Waiting for your permission: it hasn't started, so it can't go to the background. */
   waiting?: boolean;
   children?: ReactNode;
+  agentModels?: string[];
 }) {
+  const detailed = useConfig((s) => s.config?.chat.view === "detailed");
   const [open, setOpen] = useState(false);
   const [allDiff, setAllDiff] = useState(false);
   const custom = useToolRenderers()[item.name];
@@ -377,6 +383,19 @@ export function ToolCard({
           <span className="shrink-0 font-medium text-fg">{toolLabel(item.name)}</span>
           {filePath && FILE_TOOLS.has(item.name) && <FileIcon path={filePath} className="size-3.5" />}
           <span className="min-w-0 flex-1 truncate font-mono text-muted">{summary}</span>
+          {detailed && (
+            <span
+              className="w-28 shrink-0 truncate text-right text-2xs text-hint"
+              data-testid="tool-caller-model"
+              title={
+                item.model
+                  ? `Called by ${item.model}; the tool itself is a program`
+                  : "No caller model was reported for this call"
+              }
+            >
+              {item.model ? reportedModelName(item.model) : "Not reported"}
+            </span>
+          )}
           {item.diff && <DiffCount diff={item.diff} />}
           {item.status === "running" && !waiting && <Elapsed since={item.at} />}
           {item.status === "running" &&
@@ -415,6 +434,25 @@ export function ToolCard({
           />
         )}
       </div>
+      {detailed && (item.name === "Task" || item.name === "Agent") && (
+        <div
+          className="flex h-6 min-w-0 items-center gap-1 truncate px-2 text-2xs text-muted"
+          data-testid="tool-agent-model"
+          title={
+            agentModels.length
+              ? `Reported agent models: ${agentModels.join(", ")}`
+              : "Claude Code has not reported the subagent's model"
+          }
+        >
+          <span className="shrink-0">Agent model:</span>
+          <span className="min-w-0 truncate">
+            {agentModels.length ? agentModels.map(reportedModelName).join(", ") : "Not reported"}
+          </span>
+          {str(item.input.model) && (
+            <span className="ml-auto shrink-0">Requested: {modelName(str(item.input.model) ?? "")}</span>
+          )}
+        </div>
+      )}
       {custom && !open ? <div className="px-2 pb-2">{custom.render(item)}</div> : null}
       {!custom && !open && item.name === "TodoWrite" && Array.isArray(item.input.todos) && (
         <TodoList todos={item.input.todos as Todo[]} className="px-3 pb-2" />

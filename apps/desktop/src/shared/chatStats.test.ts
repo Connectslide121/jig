@@ -75,6 +75,40 @@ const items: ChatItem[] = [
 ];
 
 describe("chatStats", () => {
+  it("separates caller, reported subagent, requested and missing models across a model switch", () => {
+    const s = chatStats([
+      {
+        kind: "tool",
+        id: "agent",
+        at,
+        name: "Agent",
+        input: { model: "haiku" },
+        status: "done",
+        model: "opus",
+      },
+      { kind: "assistant", id: "text", at, text: "Done", parentId: "agent", model: "sonnet" },
+      {
+        kind: "tool",
+        id: "read",
+        at,
+        name: "Read",
+        input: {},
+        status: "done",
+        parentId: "agent",
+        model: "sonnet",
+      },
+      { kind: "tool", id: "old", at, name: "Read", input: {}, status: "done" },
+      { kind: "tool", id: "new", at, name: "Read", input: {}, status: "done", model: "haiku" },
+    ]);
+    expect(s.models).toEqual([
+      { name: "haiku", count: 1 },
+      { name: "opus", count: 1 },
+      { name: "sonnet", count: 1 },
+    ]);
+    expect(s.unreportedToolCalls).toBe(1);
+    expect(s.subagents[0]).toMatchObject({ models: ["sonnet"], requestedModel: "haiku" });
+    expect(s.tools.find((t) => t.name === "Read")?.models).toEqual(["sonnet", "haiku"]);
+  });
   it("counts tools, skills, subagents, MCP, files, turns and permissions", () => {
     const s = chatStats(items);
     expect(s).toMatchObject({
@@ -95,8 +129,8 @@ describe("chatStats", () => {
       web: 1,
       permissions: { asked: 2, allowed: 1, denied: 1 },
     });
-    expect(s.tools[0]).toEqual({ name: "Read", calls: 3, errors: 0 });
-    expect(s.tools.find((t) => t.name === "Bash")).toEqual({ name: "Bash", calls: 1, errors: 1 });
+    expect(s.tools[0]).toEqual({ name: "Read", calls: 3, errors: 0, models: [] });
+    expect(s.tools.find((t) => t.name === "Bash")).toEqual({ name: "Bash", calls: 1, errors: 1, models: [] });
     expect(s.skills).toEqual([{ name: "explain-code", count: 1 }]);
     expect(s.commands).toEqual([{ name: "review", count: 1 }]);
     expect(s.mcp).toEqual([{ server: "jig", calls: 2, tools: 2 }]);
@@ -111,6 +145,7 @@ describe("chatStats", () => {
         toolUses: 2,
         tokens: 900,
         durationMs: undefined,
+        models: [],
       },
     ]);
   });

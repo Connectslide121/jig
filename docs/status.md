@@ -1,5 +1,11 @@
 # Status
 
+Model attribution (2026-10-31): the overview card counts reported models; the wider details modal
+lists model/tool-call counts, caller models per tool, and reported/requested subagent models separately.
+Detailed tool headers reserve a model column and agent cards a model row; compact mode remains uncluttered.
+Missing historical data stays Not reported. This identifies the assistant calling a tool, not an AI
+inside a tool or MCP service. Build/check pass (604 tests, 8 skipped); the overview UI regression passes.
+
 Repos refresh (2026-10-31): the Refresh button now rescans workspace folders before updating Git
 status. Deleted repos/worktrees disappear and new repos appear without restarting. Present repos
 with Git errors remain visible; automatic status polling keeps using the cached workspace inventory.

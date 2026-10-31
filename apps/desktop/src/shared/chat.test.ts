@@ -21,6 +21,21 @@ const meta = (): SessionMeta => ({
 const state = (): ChatState => ({ meta: meta(), items: [] });
 
 describe("reduceEvent", () => {
+  it("persists reported caller models through tool results and assistant completion", () => {
+    const s = state();
+    reduceEvent(s, { type: "tool_use", id: "t", name: "Read", input: {}, model: "sonnet" });
+    reduceEvent(s, { type: "tool_result", toolUseId: "t", output: "ok", isError: false });
+    expect(s.items[0]).toMatchObject({ kind: "tool", model: "sonnet", status: "done" });
+    reduceEvent(s, {
+      type: "block_end",
+      id: "a",
+      block: "text",
+      text: "Done",
+      model: "haiku",
+      parentId: "t",
+    });
+    expect(s.items[1]).toMatchObject({ kind: "assistant", model: "haiku", parentId: "t" });
+  });
   it("keeps opusplan selected when init reports a resolved Opus version", () => {
     const s = state();
     s.meta.model = "opusplan";

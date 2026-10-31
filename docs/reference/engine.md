@@ -214,3 +214,9 @@ Add-on one-turn questions use `engine.helperModel` (Sonnet), or `engine.quickMod
 Sources: [model configuration](https://code.claude.com/docs/en/model-config#opusplan-model-setting), [subagent models](https://code.claude.com/docs/en/sub-agents#choose-a-model). Checked 2026-10-29 against SDK 0.3.296.
 
 Settings discovers available model choices through `engine.models`, using a prompt-free, tools-free, non-persistent SDK control process, shared with the usage control-request lifecycle. No model list is hard-coded; opusplan is offered separately as the native planning/execution policy, and existing saved custom IDs remain selectable.
+
+Reported model attribution (D-197): `EngineEvent.block_end` and `tool_use` have optional `model`,
+read from the SDK assistant message's own `message.model`, never inferred from a current setting or
+agent request. Parent ids keep subagent messages scoped correctly. Imported Claude Code transcripts
+use the same normalizer; absent model data remains unknown. The fake skill/subagent examples report
+the caller and child models for UI regression coverage.

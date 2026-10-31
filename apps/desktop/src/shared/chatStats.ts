@@ -1,4 +1,5 @@
 import type { ChatItem, SessionMeta } from "./engine";
+import { agentModels } from "./toolModels";
 
 /** Tools that change a file, and the input field naming it. */
 const EDIT_TOOLS: Record<string, string> = {
@@ -19,6 +20,7 @@ export interface ToolStat {
   name: string;
   calls: number;
   errors: number;
+  models: string[];
 }
 
 export interface FileStat {
@@ -36,6 +38,8 @@ export interface SubagentStat {
   toolUses: number;
   tokens?: number;
   durationMs?: number;
+  models: string[];
+  requestedModel?: string;
 }
 
 export interface AddonStat {
@@ -67,6 +71,9 @@ export interface ChatStats {
   toolErrors: number;
   /** Calls made by subagents (part of `toolCalls`). */
   subagentToolCalls: number;
+  /** Reported model ids, counted by calls they made (not API requests or token billing). */
+  models: Counted[];
+  unreportedToolCalls: number;
   tools: ToolStat[];
   /** Skills Claude used (the Skill tool). */
   skills: Counted[];
@@ -172,6 +179,8 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
     toolCalls: 0,
     toolErrors: 0,
     subagentToolCalls: 0,
+    models: [],
+    unreportedToolCalls: 0,
     tools: [],
     skills: [],
     commands: [],
@@ -188,6 +197,15 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
     permissions: { asked: 0, allowed: 0, denied: 0 },
   };
   const tools = new Map<string, ToolStat>();
+  const models = new Map<string, number>();
+  const agentChildren = new Map<string, ChatItem[]>();
+  for (const item of items) {
+    if ("parentId" in item && item.parentId) {
+      const list = agentChildren.get(item.parentId) ?? [];
+      list.push(item);
+      agentChildren.set(item.parentId, list);
+    }
+  }
   const skills = new Map<string, number>();
   const commands = new Map<string, number>();
   const mcp = new Map<string, { calls: number; tools: Set<string> }>();
@@ -206,6 +224,7 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
       }
       case "assistant":
         if (!item.parentId) stats.replies++;
+        if (item.model && !models.has(item.model)) models.set(item.model, 0);
         break;
       case "thinking":
         stats.thinking++;
@@ -228,7 +247,11 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         if (item.parentId) stats.subagentToolCalls++;
         const failed = item.status === "error";
         if (failed) stats.toolErrors++;
-        const tool = tools.get(item.name) ?? { name: item.name, calls: 0, errors: 0 };
+        const tool = tools.get(item.name) ?? { name: item.name, calls: 0, errors: 0, models: [] };
+        if (item.model) {
+          bump(models, item.model);
+          if (!tool.models.includes(item.model)) tool.models.push(item.model);
+        } else stats.unreportedToolCalls++;
         tool.calls++;
         if (failed) tool.errors++;
         tools.set(item.name, tool);
@@ -260,6 +283,8 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
             toolUses: item.task?.toolUses ?? children.get(item.id) ?? 0,
             tokens: item.task?.tokens,
             durationMs: item.task?.durationMs,
+            models: agentModels(agentChildren.get(item.id) ?? []),
+            ...(str(input.model) ? { requestedModel: str(input.model) } : {}),
           });
         } else if (item.name === "Bash") {
           stats.bash++;
@@ -286,6 +311,7 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
     }
   }
   stats.tools = [...tools.values()].sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name));
+  stats.models = byCount(models);
   stats.skills = byCount(skills);
   stats.commands = byCount(commands);
   stats.mcp = [...mcp]

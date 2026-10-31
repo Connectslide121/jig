@@ -2049,3 +2049,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   so workspace-only additions and rescanned membership update the view and status bar together.
 - Present repositories with genuine Git errors remain visible; no rows are hidden merely because
   they have an error, and no project/workspace registrations or arrangement preferences are deleted.
+
+## D-197: Report model attribution without guessing
+
+- Status: accepted. Decided by Jon: show models used by tools/subagents in the chat overview, details
+  modal and Detailed chat view. Implementation is **Claude, on my own**: preserve the SDK assistant
+  message's reported `model` on completed text/thinking blocks and tool calls, including parent ids.
+  Normal tools are programs; their model column identifies the calling assistant. Subagent models
+  come from their own child messages/calls, separately from an explicitly requested input model.
+- The overview counts distinct reported models; details aggregate tool-call counts (not model API
+  requests, tokens or billing), with an unattributed bucket for older/missing data. Fixed-width model
+  columns and a reserved agent-model row avoid shifts as metadata arrives. Compact mode hides these
+  annotations. Model details have a reserved scroll area and the modal is wider to fit columns.

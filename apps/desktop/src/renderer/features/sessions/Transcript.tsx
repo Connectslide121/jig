@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
+import { agentModels } from "../../../shared/toolModels";
 import { tourFolder } from "../../../shared/tour";
 import { useConfig } from "../../stores/config";
 import { Button, cn, FileIcon, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
@@ -216,7 +217,7 @@ const Item = memo(function Item({
       return <Thinking item={item} />;
     case "tool":
       return (
-        <ToolCard item={item} sessionId={sessionId} waiting={waiting}>
+        <ToolCard item={item} sessionId={sessionId} waiting={waiting} agentModels={agentModels(nested ?? [])}>
           {nested && nested.length > 0
             ? nested.map((child) => <Item key={child.id} item={child} sessionId={sessionId} />)
             : null}

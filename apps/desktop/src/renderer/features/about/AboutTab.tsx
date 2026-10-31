@@ -585,6 +585,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
+                "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
                 "Your plan usage as bars in the status bar, always visible",
                 "How full the context window is, with a breakdown on hover and Compact on click",

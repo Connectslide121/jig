@@ -27,6 +27,8 @@ import {
   totalTokens,
 } from "../../../shared/chatStats";
 import type { ChatItem, SessionMeta } from "../../../shared/engine";
+import { modelName } from "../../../shared/models";
+import { reportedModelName } from "../../../shared/toolModels";
 import { useAddons } from "../../addons/loader";
 import { updateConfig } from "../../stores/config";
 import { Badge, type BadgeTone, Button, cn, Dialog, FileIcon, IconButton } from "../../ui";
@@ -112,6 +114,12 @@ export function ChatOverview({
       />
       <Row icon={Wrench} label="Tool calls" value={num(stats.toolCalls)} testId="chat-overview-tools" />
       <Row
+        icon={Brain}
+        label="Models"
+        value={stats.models.length || "Not reported"}
+        testId="chat-overview-models"
+      />
+      <Row
         icon={FilePen}
         label={`Files changed${stats.files.length ? ` · ${stats.files.length}` : ""}`}
         value={
@@ -193,16 +201,19 @@ function Line({
   name,
   cells,
   onClick,
+  model,
 }: {
   leading?: ReactNode;
   name: ReactNode;
   cells: ReactNode[];
   onClick?: () => void;
+  model?: ReactNode;
 }) {
   const content = (
     <>
       <span className="flex size-4 shrink-0 items-center justify-center">{leading}</span>
       <span className="min-w-0 flex-1 truncate text-left">{name}</span>
+      {model !== undefined && <span className="w-28 shrink-0 truncate text-right text-hint">{model}</span>}
       {cells.map((c, i) => (
         <span key={i} className="w-16 shrink-0 truncate text-right tabular-nums">
           {c}
@@ -220,11 +231,12 @@ function Line({
   );
 }
 
-function Head({ cells }: { cells: string[] }) {
+function Head({ cells, model }: { cells: string[]; model?: string }) {
   return (
     <div className="flex h-6 items-center gap-2 border-b border-line bg-surface px-2 text-2xs text-hint">
       <span className="size-4 shrink-0" />
       <span className="flex-1" />
+      {model && <span className="w-28 shrink-0 text-right">{model}</span>}
       {cells.map((c) => (
         <span key={c} className="w-16 shrink-0 text-right">
           {c}
@@ -315,11 +327,7 @@ function Details({
           value={skillUses}
           sub={stats.skills.length ? `${stats.skills.length} different` : undefined}
         />
-        <Tile
-          label="Subagents"
-          value={stats.subagents.length}
-          sub={meta.activeModel || meta.model || undefined}
-        />
+        <Tile label="Subagents" value={stats.subagents.length} sub="Models reported below" />
         <Tile
           label="Add-ons"
           value={stats.addons.length}
@@ -337,14 +345,39 @@ function Details({
         />
       </div>
 
+      <Section title="Models reported" count={stats.models.length} testId="chat-details-models">
+        <Head cells={["Tool calls"]} />
+        <div className="h-32 overflow-y-auto">
+          {stats.models.map((m) => (
+            <Line
+              key={m.name}
+              name={<span title={m.name}>{reportedModelName(m.name)}</span>}
+              cells={[m.count]}
+            />
+          ))}
+          {(stats.unreportedToolCalls > 0 || stats.models.length === 0) && (
+            <Line name="Not reported" cells={[stats.unreportedToolCalls || "—"]} />
+          )}
+        </div>
+      </Section>
+      <p className="text-2xs text-hint">
+        Tool models identify the assistant calling a program, not an AI inside that program. Missing or older
+        data stays Not reported; requested agent models are separate.
+      </p>
+
       <Section title="Tools" count={stats.tools.length} testId="chat-details-tools">
-        <Head cells={["Calls", "Failed"]} />
+        <Head model="Called by" cells={["Calls", "Failed"]} />
         {stats.tools.length ? (
           stats.tools.map((t) => (
             <Line
               key={t.name}
               leading={<Wrench className="size-3.5 text-hint" />}
               name={toolLabel(t.name)}
+              model={
+                <span title={t.models.join(", ") || "No model was reported"}>
+                  {t.models.length ? t.models.map(reportedModelName).join(", ") : "Not reported"}
+                </span>
+              }
               cells={[
                 t.calls,
                 t.errors ? (
@@ -390,7 +423,7 @@ function Details({
 
       {stats.subagents.length > 0 && (
         <Section title="Subagents" count={stats.subagents.length} testId="chat-details-subagents">
-          <Head cells={["Tools", "Tokens", "Time", ""]} />
+          <Head model="Agent model" cells={["Tools", "Tokens", "Time", ""]} />
           {stats.subagents.map((a) => (
             <Line
               key={a.id}
@@ -398,7 +431,15 @@ function Details({
               name={
                 <>
                   {a.description || a.type} <span className="text-hint">{a.type}</span>
+                  {a.requestedModel && (
+                    <span className="text-hint"> · requested {modelName(a.requestedModel)}</span>
+                  )}
                 </>
+              }
+              model={
+                <span title={a.models.join(", ") || "No model was reported"}>
+                  {a.models.length ? a.models.map(reportedModelName).join(", ") : "Not reported"}
+                </span>
               }
               cells={[
                 a.toolUses || "—",
@@ -530,7 +571,7 @@ export function ChatDetailsDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      width="lg"
+      width="xl"
       title={`Overview · ${meta.title}`}
       testId="chat-details-dialog"
     >

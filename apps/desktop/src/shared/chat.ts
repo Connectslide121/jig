@@ -107,6 +107,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         text: event.text,
         at: existing?.at ?? now(),
         parentId: event.parentId,
+        ...(event.model ? { model: event.model } : {}),
       });
       break;
     }
@@ -119,6 +120,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         status: "running",
         at: now(),
         parentId: event.parentId,
+        ...(event.model ? { model: event.model } : {}),
       });
       break;
     case "tool_result": {

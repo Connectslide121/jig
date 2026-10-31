@@ -46,6 +46,7 @@
 - [x] Widen Add tasks, keep its hint on one line and move batch permissions to the footer.
 - [x] Keep model-family alias names stable across discovery and verify opusplan/project-default inheritance.
 - [x] Rescan workspace membership on Repos Refresh so removed repos/worktrees disappear without restarting.
+- [x] Preserve reported caller models and show model attribution in detailed tools, subagents and chat overviews.
 - [x] Scripts like the scripts plugin: running list, groups with Start/Stop, folder → repository → package tree (D-142)
 - [x] Notes as a built-in add-on: per-chat notes you and Claude write (D-147)
 - [x] Pipelines like the pipelines plugin: your repositories' pipelines, newest run and stages, a Run

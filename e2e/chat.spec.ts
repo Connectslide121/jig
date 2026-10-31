@@ -248,6 +248,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
   await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
+  await expect(card.getByTestId("chat-overview-models")).toHaveText("Models2");
+  await expect(tab.getByTestId("tool-caller-model").filter({ hasText: "Opus" }).first()).toBeVisible();
+  await expect(tab.getByTestId("tool-agent-model")).toContainText("Sonnet");
   // The input and messages share their edges, both below and above the max chat width.
   for (const width of [800, 1100, 1600]) {
     await page.setViewportSize({ width, height: 900 });
@@ -272,6 +275,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(details.getByTestId("chat-details-subagents")).toContainText("Explore the cart code");
   await expect(details.getByTestId("chat-details-mcp")).toContainText("github");
   await expect(details.getByTestId("chat-details-addons")).toContainText("Releases");
+  await expect(details.getByTestId("chat-details-models")).toContainText("Opus");
+  await expect(details.getByTestId("chat-details-models")).toContainText("Sonnet");
+  await expect(details.getByTestId("chat-details-subagents")).toContainText("requested Sonnet");
   await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);
   // Also from the chat's ⋯ menu; and the top bar's chart button hides it (a setting).
@@ -285,6 +291,8 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   expect(await tab.getByTestId("assistant-message").first().boundingBox()).toEqual(messageBeforeHide);
   const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
   expect(config.value.chat.overview).toBe(false);
+  await tab.getByTestId("chat-view-compact").click();
+  await expect(tab.getByTestId("tool-caller-model")).toHaveCount(0);
   // Jig learns from it too: "How Claude worked for you" sums it over all chats (D-185).
   await page.getByTestId("suggestions-badge").click();
   await page.getByTestId("open-knowledge").click();
