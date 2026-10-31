@@ -1,5 +1,14 @@
 # Status
 
+Model aliases (2026-10-31): chat, project and Settings pickers show Opus, Sonnet, Haiku and Opus Plan
+Mode for aliases, even if discovery names their resolved version. Settings remain unpinned aliases;
+explicit version selections are still available. New chats inherit `opusplan` unless a project model
+overrides it. The user corrected the reported project override; the agent changed no user settings.
+Validation: production build and `npm run check` pass (599 tests, 8 skipped). Focused Electron checks
+verify the wider task dialog, footer permissions, stable attachment geometry, model/permission menus,
+short alias labels in Settings and new-chat opusplan inheritance with optional project overrides.
+The refreshed task-dialog screenshot is `test-results/tasks-add-compact.png`.
+
 Task dialog (2026-10-31): Add tasks is wider, with a one-line hint and Permissions in the footer
 beside Cancel/Add. Prompts get more horizontal space; attachments retain the compact row layout.
 

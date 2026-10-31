@@ -21,6 +21,20 @@ const meta = (): SessionMeta => ({
 const state = (): ChatState => ({ meta: meta(), items: [] });
 
 describe("reduceEvent", () => {
+  it("keeps opusplan selected when init reports a resolved Opus version", () => {
+    const s = state();
+    s.meta.model = "opusplan";
+    reduceEvent(s, {
+      type: "init",
+      engineSessionId: "e",
+      model: "claude-opus-version",
+      permissionMode: "plan",
+      authSource: "subscription",
+      slashCommands: [],
+    });
+    expect(s.meta.model).toBe("opusplan");
+    expect(s.meta.activeModel).toBe("claude-opus-version");
+  });
   it("streams a block and finalises it", () => {
     const s = state();
     reduceEvent(s, { type: "block_start", id: "b", block: "text" });

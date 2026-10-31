@@ -303,6 +303,8 @@ Core `ViewDef.headerMenu()` contributes view-specific entries to a sidebar's exi
 to the view's options menu when opened as a main tab. Chats uses it for the View type submenu (D-193).
 Shared Dialog supports an `xl` width for longer forms. Add tasks uses it, with a compact one-line
 hint and batch permissions in the footer; task rows retain their fixed height (D-194).
+`shared/models.ts` supplies stable family-alias labels and options to chat, project and settings
+pickers. It combines aliases with discovered explicit versions without pinning defaults (D-195).
 
 ## 7. Design system and themes
 

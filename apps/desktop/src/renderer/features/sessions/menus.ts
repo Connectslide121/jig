@@ -29,6 +29,7 @@ import {
   type SessionMeta,
 } from "../../../shared/engine";
 import { closeTabsWhere } from "../../../shared/layout";
+import { modelName, modelOptions } from "../../../shared/models";
 import { call, errorMessage } from "../../lib/host";
 import { confirmDialog, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
 import { useProjects } from "../../workbench/projects";
@@ -41,14 +42,6 @@ import { compactMenu } from "./ContextMeter";
 import { chatRecipe } from "./recipe";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { ensureTranscript, forgetSession, useSessions } from "./store";
-
-export const MODEL_CHOICES = [
-  { id: "", label: "Default model" },
-  { id: "opus", label: "Opus" },
-  { id: "sonnet", label: "Sonnet" },
-  { id: "haiku", label: "Haiku" },
-  { id: "opusplan", label: "Opus Plan Mode" },
-];
 
 /** The models Claude Code offers, asked once (it starts Claude Code for the chat if needed). */
 let models: ModelInfo[] | undefined;
@@ -97,27 +90,13 @@ function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
 /** "default" is how Claude Code names its default; Jig stores it as an empty model. */
 const modelId = (value: string) => (value === "default" ? "" : value);
 
-/**
- * Aliases Claude Code accepts but doesn't list: added to its list, so the picker names the chat's
- * model the way the button does ("Opus Plan Mode", not `opusplan`) and you can pick it again.
- */
-const ALIASES = [{ id: "opusplan", label: "Opus Plan Mode", description: "Opus plans, Sonnet executes" }];
-function withAliases<T extends { id: string; label: string; description?: string }>(
-  list: T[],
-): Array<T | (typeof ALIASES)[number]> {
-  return [...list, ...ALIASES.filter((a) => !list.some((m) => m.id === a.id))];
-}
-
-/** Models to choose from outside a chat: Claude Code's list once a chat asked for it, else the aliases. */
+/** Stable family aliases plus Claude Code's discovered explicit versions. */
 export function modelChoices(): Array<{ id: string; label: string }> {
-  if (!models?.length) return MODEL_CHOICES;
-  const list = withAliases(models.map((m) => ({ id: modelId(m.value), label: m.displayName })));
-  return list.some((m) => m.id === "") ? list : [MODEL_CHOICES[0]!, ...list];
+  return modelOptions(models);
 }
 
 export function modelLabel(meta: SessionMeta): string {
-  const known = models?.find((m) => modelId(m.value) === meta.model);
-  const name = known?.displayName ?? MODEL_CHOICES.find((m) => m.id === meta.model)?.label ?? meta.model;
+  const name = modelName(meta.model, models);
   return meta.effort ? `${name} · ${meta.effort}` : name;
 }
 
@@ -130,11 +109,7 @@ const EFFORT_LABELS: Record<EffortLevel, string> = {
 };
 
 export function modelMenu(meta: SessionMeta): MenuEntry[] {
-  const choices = models
-    ? withAliases(
-        models.map((m) => ({ id: modelId(m.value), label: m.displayName, description: m.description })),
-      )
-    : MODEL_CHOICES;
+  const choices = modelOptions(models);
   const known = choices.some((m) => m.id === meta.model);
   const current = models?.find((m) => modelId(m.value) === meta.model);
   const efforts = current ? (current.efforts ?? []) : [...EFFORT_LEVELS];

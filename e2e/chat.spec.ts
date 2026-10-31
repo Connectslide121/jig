@@ -26,6 +26,29 @@ test("chat: send, stream a markdown reply with highlighted code, show usage", as
   await expect(page.getByTestId("chat-status")).toHaveText("Idle");
 });
 
+test("chat: new chats inherit opusplan, while explicit project overrides remain optional", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const projectId = projects.value.projects[0]!.id;
+  await page.keyboard.press("Control+N");
+  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
+  await say(page, "Hello");
+  await expect(page.getByTestId("turn-result")).toHaveCount(1);
+  const list = (await hostCall(page, "sessions.list")) as { value: Array<{ model: string }> };
+  expect(list.value[0]!.model).toBe("opusplan");
+  await hostCall(page, "projects.update", { id: projectId, model: "sonnet" });
+  await page.keyboard.press("Control+N");
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("model-menu")).toContainText("Sonnet");
+  await hostCall(page, "projects.update", { id: projectId, model: "" });
+  await page.keyboard.press("Control+N");
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("model-menu")).toContainText(
+    "Opus Plan Mode",
+  );
+});
+
 test("chat: permission prompts can be allowed or denied", async ({ page, jigHome }) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");

@@ -7,6 +7,12 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 
 ## Claude Code next to Jig
 
+Model pickers use stable family aliases: Opus (`opus`), Sonnet (`sonnet`), Haiku (`haiku`) and
+Opus Plan Mode (`opusplan`). Discovery may report a versioned display name for an alias; Jig keeps
+the short name and sends the alias unchanged. Explicit version choices remain available separately.
+New chats inherit the project's model when set, otherwise `engine.defaultModel`. The engine's
+resolved active model is recorded separately and never replaces the selected alias (D-195).
+
 | Claude Code (terminal) | Jig |
 | --- | --- |
 | `/` commands and skills | `/` in the message box opens a picker of Claude Code's own commands and skills (`sessions.commands`, from the running Claude Code, cached per folder). The **+** button → Commands and skills does the same |

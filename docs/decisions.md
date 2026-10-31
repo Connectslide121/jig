@@ -2025,3 +2025,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   (`max-w-6xl`), with footer controls centered vertically. Add tasks uses that width, a single-line
   hint, and footer permissions between the keyboard hint and Cancel/Add. The per-task row geometry
   and inline attachment slots stay fixed.
+
+## D-195: Keep family aliases visible and preserve opusplan inheritance
+
+- Status: accepted. Decided by Jon: restore Haiku/Sonnet/Opus aliases rather than versioned default
+  names, and honor `opusplan` for new chats. Investigation found the defaults already held aliases;
+  Claude Code discovery supplied versioned labels. The reported Opus selection came from an explicit
+  project override, which the user corrected. No user settings were changed by the agent.
+- Implementation is **Claude, on my own**: shared `modelName`/`modelOptions` keep family aliases first
+  and their labels stable in chat/project/settings pickers. Deliberate version selections remain
+  available. Existing configured aliases and project-override precedence remain intact. Tests cover
+  alias labels with versioned discovery, inherited opusplan, cleared overrides and engine init reporting
+  a concrete active model without replacing the selected alias.

@@ -1,6 +1,7 @@
 import { Eye, FolderOpen, LayoutTemplate, RotateCcw, Save, Search, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
+import { modelOptions } from "../../../shared/models";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, confirmDialog, IconButton, Input, Select, Spinner, Switch, Textarea } from "../../ui";
@@ -148,9 +149,8 @@ function ModelSetting({
   onSave: (value: string) => void;
   hybrid?: boolean;
 }) {
-  const choices = new Map(models.filter((m) => m.value !== "opusplan").map((m) => [m.value, m.displayName]));
+  const choices = new Map(modelOptions(models, hybrid).map((m) => [m.id, m.label]));
   choices.set("", "Follow Claude Code");
-  if (hybrid) choices.set("opusplan", "Opus plans · Sonnet executes");
   if (value && !choices.has(value)) choices.set(value, `${value} (saved choice)`);
   return (
     <SettingRow label={label} description={description}>

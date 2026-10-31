@@ -59,7 +59,7 @@ A new state file is documented here in the same commit that adds it.
 | `appearance.fontSize` | `13` | base UI font size in px (11–18) |
 | `engine.claudePath` | `""` | your own `claude` binary; empty = the one shipped with the Agent SDK |
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
-| `engine.defaultModel` | `"opusplan"` | new chats: Opus in Plan mode, Sonnet for execution; empty follows Claude Code |
+| `engine.defaultModel` | `"opusplan"` | new chats: Opus in Plan mode, Sonnet for execution; empty follows Claude Code; an explicit project model overrides it |
 | `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
 | `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions that need thought (reviews, explanations) |
 | `engine.quickModel` | `"haiku"` | add-on questions asked with `quick` (commit messages): short, simple answers |
