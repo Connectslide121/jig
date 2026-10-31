@@ -5,6 +5,8 @@ ten. Show more reveals ten more at a time. The header now has only New chat and 
 submenu in ⋯. Chats board and Open a Claude Code chat remain in the Chats top-bar menu and search.
 Validation: `npm run check` passes (595 tests, 8 skipped). Electron checks cover ordinary and >10-pin
 paging, View type, board/import access, shared search and stable anchored results at two window widths.
+The full screenshot suite passes, and the About/README screenshots now show the permanent search field
+and reduced Chats header. A production build bundles the refreshed assets.
 
 Search bar (2026-10-31): search is always visible in the center of the top bar. Results drop from
 directly beneath it; Ctrl+P/Ctrl+K focus it. Escape/outside clicks close results without moving content.
