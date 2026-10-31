@@ -2094,3 +2094,10 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   About screenshots reserve their intrinsic dimensions before loading to prevent unrelated shifts.
   Duration is 160 ms; reduced-motion preferences disable these animations. Closing content is
   removed after the transition, and collapsed disclosure content cannot receive focus.
+
+## D-201: More room for repository branch names
+
+- Status: accepted. Decided by Jon: remove the branch chevron and move branch names left without
+  widening the sidebar. Implementation is **Claude, on my own**: give the branch column one third
+  of the row rather than one quarter and remove its trailing chevron. The branch icon, full-name
+  tooltip and branch-switch menu remain. Fixed status columns and row height remain aligned.

@@ -1,5 +1,10 @@
 # Status
 
+Repos branch readability (2026-10-31): the branch column starts farther left and occupies one third
+of the row; its trailing chevron is removed. Sidebar width stays unchanged; full names remain in
+tooltips, and clicking the branch still opens the switch menu (D-201). The production build and
+real-app branch-switch regression pass.
+
 Desktop polish (2026-10-31): JSON opens as editable Source, with tree Preview a click away.
 Unsent new chats stay memory-only and out of history/search/restored tabs; the first prompt saves
 the chat and its open tab. Legacy empty records are ignored without deletion. Extension slots are

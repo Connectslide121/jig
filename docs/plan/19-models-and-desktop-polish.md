@@ -75,3 +75,4 @@
 - [x] Open JSON-classified files in Source by default, with Preview still available (D-198).
 - [x] Keep unsent chats memory-only and omit them from restored tabs and history (D-199).
 - [x] Use single-column extension slots and shared reduced-motion-aware interaction animations (D-200).
+- [x] Give Repos branch names more row width and remove their trailing chevron (D-201).

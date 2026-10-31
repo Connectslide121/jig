@@ -52,3 +52,5 @@ its status remains in progress.
 Phase 19 also includes reported model attribution in Detailed chat and overview details (D-197).
 
 Phase 19 also includes JSON Source defaults, unsent chat drafts and shared interaction motion (D-198–D-200).
+
+Phase 19 also includes more readable Repos branch names without wider sidebars (D-201).

@@ -254,7 +254,7 @@ function RepoRow({
         </span>
         <span
           className={cn(
-            "flex w-1/4 min-w-0 shrink-0 items-center gap-1 text-xs",
+            "flex w-1/3 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
@@ -268,7 +268,6 @@ function RepoRow({
           >
             <GitBranch className="size-3 shrink-0" />
             <span className="truncate">{repo.branch ?? "—"}</span>
-            <ChevronDown className="size-3 shrink-0" />
           </button>
         </span>
         <IconButton
