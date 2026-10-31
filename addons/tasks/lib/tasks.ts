@@ -282,13 +282,73 @@ export function counts(queue: Queue): { queued: number; finished: number; total:
   };
 }
 
-export function duration(task: Task, now = Date.now()): string {
-  if (!task.sentAt) return "";
-  const ms = (task.finishedAt ? Date.parse(task.finishedAt) : now) - Date.parse(task.sentAt);
-  const s = Math.max(0, Math.round(ms / 1000));
+/** How long a task ran (still running: until now), in ms; 0 before it starts. */
+export function durationMs(task: Task, now = Date.now()): number {
+  if (!task.sentAt) return 0;
+  return Math.max(0, (task.finishedAt ? Date.parse(task.finishedAt) : now) - Date.parse(task.sentAt));
+}
+
+export function formatMs(ms: number): string {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.round(s / 60);
   return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+export function duration(task: Task, now = Date.now()): string {
+  return task.sentAt ? formatMs(durationMs(task, now)) || "0s" : "";
+}
+
+/** The tasks of one chat, in queue order, with their place in the queue. */
+export interface ChatGroup {
+  tasks: Array<{ task: Task; index: number }>;
+  /** The chat once it started (the first task with one). */
+  sessionId?: string;
+  chatTitle?: string;
+  projectId?: string;
+}
+
+/**
+ * The queue as chats: a task that starts its own chat (or comes first, or is in another project than
+ * the one before) begins a group; the others join the group before, as they continue its chat.
+ */
+export function chatGroups(queue: Queue): ChatGroup[] {
+  const groups: ChatGroup[] = [];
+  queue.tasks.forEach((task, index) => {
+    const last = groups[groups.length - 1];
+    if (!last || task.newChat || last.projectId !== task.projectId)
+      groups.push({ tasks: [], projectId: task.projectId });
+    const group = groups[groups.length - 1]!;
+    group.tasks.push({ task, index });
+    if (!group.sessionId && task.sessionId) {
+      group.sessionId = task.sessionId;
+      group.chatTitle = task.chatTitle;
+    }
+    if (task.chatTitle && task.sessionId === group.sessionId) group.chatTitle = task.chatTitle;
+  });
+  return groups;
+}
+
+/** How many tasks are in each status, and the summed time and cost. */
+export function tally(
+  tasks: Task[],
+  now = Date.now(),
+): {
+  byStatus: Partial<Record<TaskStatus, number>>;
+  finished: number;
+  ms: number;
+  costUsd: number;
+} {
+  const byStatus: Partial<Record<TaskStatus, number>> = {};
+  let ms = 0;
+  let costUsd = 0;
+  for (const t of tasks) {
+    byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+    ms += durationMs(t, now);
+    costUsd += t.costUsd ?? 0;
+  }
+  return { byStatus, finished: tasks.filter(isFinished).length, ms, costUsd };
 }
 
 /** One line per task for Claude (the list tool). */

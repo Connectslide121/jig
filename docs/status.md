@@ -21,10 +21,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
   moving the same way and suggests placing them.
 - Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
-- Task queue (D-182): Chats menu → Task queue. Add tasks (one per line), choose per task whether it
-  starts a new chat or continues the previous one, then Start. Claude does them in order and reports
-  each (outcome, summary, things to know, follow-ups) in the table; click a row for details, the chat
-  icon opens its chat. In a chat, ask Claude to queue tasks (for example one per spec in a folder):
+- Task queue (D-182): Chats menu → Task queue. Add tasks grouped in chats, one field per task
+  (a chat's first task starts it, the next ones continue it; D-186), then Start. Claude does them in
+  order and reports each (outcome, summary, things to know, follow-ups); the results show a card per
+  chat (its link, project, time, cost, progress) with a row per task, and a status bar on top; click
+  a row for details. In a chat, ask Claude to queue tasks (for example one per spec in a folder):
   it uses `addon_tasks_add`. Known gaps: which add-on follows which chat is kept in memory, so after a
   restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
   Claude's last answer instead. Needs testing on a real machine with real Claude Code.

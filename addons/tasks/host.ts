@@ -8,6 +8,7 @@ import {
   isActive,
   listing,
   moveTask,
+  type NewTask,
   nextTask,
   type PermissionMode,
   parseNewTasks,
@@ -167,7 +168,8 @@ export async function list(_args: unknown, api: AddonHostApi): Promise<Queue> {
 
 export async function add(
   args: {
-    prompts: string[];
+    /** Prompts, or tasks that say whether they start a new chat (the Add tasks dialog's chats). */
+    prompts: Array<string | NewTask>;
     projectId?: string;
     newChat: boolean;
     permissionMode?: PermissionMode;

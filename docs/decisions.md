@@ -1921,3 +1921,20 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
     the weekly reflection as a section (`usageText()`), so suggestions can point at a skill or add-on
     that fits what Claude keeps doing by hand, or one never used. No extra AI call.
   - Older events have no tags; they count as tool calls only. Nothing new leaves the machine.
+
+## D-186: Tasks are added and shown grouped in chats
+
+- Status: accepted. Decided by Jon ("I don't want one input field, I want one per task … or even better
+  UI, group them in chats"; "the results table … could be nicer, better structured and show more
+  details"). The design is **Claude, on my own**:
+  - The add dialog is a list of chats, each with one field per task. A chat's first task starts a new
+    chat and the others continue it (stored as each task's `newChat`, as before, so the queue and
+    Claude's `addon_tasks_add` are unchanged). Menus split a chat at a task, merge a chat into the one
+    before, move tasks and chats. The project is per chat; the permissions are for the whole batch.
+    The list has a fixed height and scrolls, so adding tasks never resizes the dialog. Pasting a list
+    into an empty task makes one task per item (it replaces the "each line is its own task" switch).
+    The host's `add` takes `{ prompt, newChat }` items; the dialog sends one `add` per chat.
+  - The results group the queue the same way (`chatGroups`: a task that starts a chat, or is in
+    another project, begins a group). Each chat is a card with its link, project, time, cost and
+    progress; each task row adds the summary on two lines, start time and the notes count. A bar and
+    counts per status (`tally`) sit on top. The pure parts are in `lib/draft.ts` and `lib/tasks.ts`.

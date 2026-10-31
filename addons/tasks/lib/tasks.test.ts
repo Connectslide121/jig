@@ -3,6 +3,7 @@ import {
   addTasks,
   type ChatState,
   chatFinished,
+  chatGroups,
   chatToContinue,
   counts,
   duration,
@@ -18,6 +19,7 @@ import {
   requeue,
   shouldPause,
   type Task,
+  tally,
   taskContext,
   titleOf,
 } from "./tasks";
@@ -235,5 +237,42 @@ describe("taskContext, counts, duration, listing", () => {
     expect(listing(emptyQueue())).toMatch(/empty/);
     const q = queued(["a"]);
     expect(listing(q)).toContain("1. [Queued] a (id t1)");
+  });
+});
+
+describe("chatGroups and tally", () => {
+  it("groups tasks by the chat they run in", () => {
+    let q = addTasks(
+      emptyQueue(),
+      [
+        { prompt: "a", newChat: true },
+        { prompt: "b", newChat: false },
+        { prompt: "c", newChat: true },
+      ],
+      { projectId: "p1", newChat: true },
+    );
+    q = addTasks(q, [{ prompt: "d", newChat: false }], { projectId: "p2", newChat: false });
+    q.tasks[1] = { ...q.tasks[1]!, sessionId: "s1", chatTitle: "Fix a" };
+    const groups = chatGroups(q);
+    expect(groups.map((g) => g.tasks.map((t) => t.task.prompt))).toEqual([["a", "b"], ["c"], ["d"]]);
+    expect(groups[0]).toMatchObject({ sessionId: "s1", chatTitle: "Fix a", projectId: "p1" });
+    expect(groups[2]!.tasks[0]!.index).toBe(3);
+  });
+  it("sums statuses, time and cost", () => {
+    const q = queued(["a", "b", "c"]);
+    q.tasks[0] = {
+      ...q.tasks[0]!,
+      status: "done",
+      sentAt: "2025-01-01T10:00:00Z",
+      finishedAt: "2025-01-01T10:01:00Z",
+      costUsd: 0.25,
+    };
+    q.tasks[1] = { ...q.tasks[1]!, status: "failed", costUsd: 0.5 };
+    expect(tally(q.tasks)).toEqual({
+      byStatus: { done: 1, failed: 1, queued: 1 },
+      finished: 2,
+      ms: 60_000,
+      costUsd: 0.75,
+    });
   });
 });

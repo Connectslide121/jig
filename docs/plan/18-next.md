@@ -399,3 +399,4 @@ true"). This step checks the whole picture again:
 - [x] Chat overview: a small card at the top right of each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens) with the full breakdown in a modal; `chat.overview` (D-184)
 - [x] Learning: "How Claude worked for you" — tool calls tagged with the skill, subagent, add-on or MCP server they used; summed in What Jig knows about me and given to the weekly reflection (D-185)
 - [x] Task queue: prompts Claude does in order, each reporting back in a table with links to the chats; Claude can queue tasks; add-ons can run chats (`api.chats`) (D-182)
+- [x] Tasks: the add dialog groups tasks in chats with one field per task (split, merge, move, paste a list); the results show a card per chat and a status bar (D-186)
