@@ -113,7 +113,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.scripts.scripts` | right | scripts of every workspace folder |
 | view | `addon.pipelines.pipelines` | right | Azure DevOps pipelines |
 | view | `addon.releases.releases` | hidden (right) | releases of every repository (D-110) |
-| view | `addon.notes.notes` | right | the active chat's notes |
+| view | `addon.notes.notes` | left | the active project's shared notes (saved layouts retain placement) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |
 | view | `jig.browser` | right | Claude's browser |
 | view | `jig.terminals` | bottom | terminals |

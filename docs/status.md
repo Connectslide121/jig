@@ -1,5 +1,26 @@
 # Status
 
+Whole-chat file summary (2026-11-01): the per-turn file cards are replaced by a reserved row
+above the composer: X files changed, +/− totals, Walk me through and Undo changes. Review is removed.
+The file count opens a modal snapshot with full paths, edit counts and per-file line totals (D-204).
+Counts span all successful recorded file edits in the chat, including subagents; they are not a
+live Git diff. Production build/check pass (609 tests, 8 skipped). Hidden Electron checks verify
+stationary scrolling/input geometry, modal alignment, compact/detailed parity, reload persistence,
+and Undo after commit/push to a temporary local remote. That test confirms histories stay intact
+and a new commit can record/push the restoration. The confirmation explains its local-file scope.
+About/README screenshots have been regenerated and visually inspected.
+
+Project notes and busy buttons (2026-10-31): notes now describe the project and are shared
+across its chats (D-202), with Waiting on, Note and Link kinds. Claude receives current notes
+each turn and guidance to retain important project knowledge beyond the current task/chat.
+Legacy chat notes are ignored. Search for Show this project's notes; Add/Edit uses a modal.
+Busy buttons retain full contrast and a fixed icon slot; spinners inherit their text colour (D-203).
+Validation: production build and `npm run check` pass (609 tests, 8 skipped). Hidden real-app
+regressions pass for shared/isolated notes, reload persistence, editor closure on project switches,
+stationary modal headers and the pipeline queue spinner's colour, opacity and button geometry.
+Real Claude's editorial judgment about which facts to retain still needs everyday use; automated
+checks cover the guidance and project boundaries, not live model behavior.
+
 Repos branch readability (2026-10-31): the branch column starts farther left and occupies one third
 of the row; its trailing chevron is removed. Sidebar width stays unchanged; full names remain in
 tooltips, and clicking the branch still opens the switch menu (D-201). The production build and
@@ -200,9 +221,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     repository by its own name, a sync chip (pull, then push) and its branch; Arrange hides,
     reorders and groups them with dividers, once for all projects; "N to push/pull" in the status
     bar; right-click a project → Open in VS Code / Explorer.
-  - **Notes** (right sidebar; D-147): short notes for the chat you're in (waiting on, where, to-do,
-    note, link), like the notes plugin; Claude gets them with every message (D-151) and keeps them
-    current on its own; its Notes tools are always loaded, never behind tool search (D-158).
+  - **Project notes** (left sidebar for new placements; D-202): important project knowledge shared
+    across all chats, with Waiting on, Note and Link kinds. Claude gets current notes with every
+    message and tools stay always loaded. Add/Edit uses modals; legacy chat notes are ignored.
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
     changed parameters) and its stages; **Run** opens a modal form with the branch, a picker per YAML
@@ -429,8 +450,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **In a chat:**
     - **Empty chats** show starter prompts and the message box's shortcuts.
     - **Hovering a message** shows Edit (your messages) and Copy without opening a menu.
-    - **After a turn that changed files**, a bar shows them with **Review**, **Walk me through** and
-      **Undo changes**.
+    - **Whole-chat file changes** stay fixed above the composer: a clickable file count and +/−
+      totals beside Walk me through and Undo. The modal lists full paths and per-file
+      edit/line counts. Undo restores to the first message's checkpoint after confirmation (D-204).
   - **Wording:** "chat" everywhere you see it, instead of a mix of "session" and "chat".
 - **Icons for add-ons:** add-ons use Jig's own icon set, Lucide:
   - names in `addon.json`, imports from `lucide-react`, and `<Icon name>` for icons chosen at runtime;

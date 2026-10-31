@@ -54,16 +54,28 @@ resolved active model is recorded separately and never replaces the selected ali
   +4 −1", a single command's description, failures counted, a spinner and the current step while
   it runs; click it for the cards. Subagents' hand-backs in chats opened from Claude Code are a
   step too ("Message from subagent"). Questions,
-  permission prompts, plans, results, the changed-files bar and notices stay in view. Detailed shows
-  every step as its card. Find in chat opens the line that holds a match.
+  permission prompts, plans, results and notices stay in view. The whole-chat changes row stays
+  above the input. Detailed shows every step as its card. Find in chat opens the line that holds a match.
 - **An empty chat** shows where Claude runs, starter prompts (a click puts one in the box) and the
   message box's shortcuts.
 - **Message actions on hover:**
   - your messages: Edit and send again, Copy, and ⋯ (rewind, restore files, add-on entries);
   - Claude's answers: Copy and ⋯.
-- **After a turn that changed files**, a bar lists them with +/− counts. Each file opens in Preview,
-  and the bar has **Review** (Git), **Walk me through** (a tour) and **Undo changes** (restore files to
-  before your message, after confirming). `turnChanges()` in `Transcript.tsx` computes it.
+- **Whole-chat changes** (D-204): one fixed-height row above the composer, outside the scrolling
+  transcript. It shows **X files changed**, accumulated +/− line counts,
+  **Walk me through** (the first listed repository's tour) and **Undo changes**. The row's space
+  is reserved before any edits; it scrolls horizontally at narrow widths instead of wrapping.
+  Clicking the count opens a modal snapshot of the whole chat's file edits: full paths, edit
+  counts and aligned +/− columns. File paths open Preview. The modal has a bounded scrolling list.
+  Counts include successful recorded Edit/MultiEdit/Write/NotebookEdit calls, including subagents,
+  across every turn; repeated paths are combined. Running and failed calls are excluded. Counts
+  sum captured edit hunks, not a current Git diff; shell-only changes may be absent. Restoring files
+  preserves the recorded history; rewinding the transcript removes the rewound edits from totals.
+  Undo previews and confirms restoration to the first message's checkpoint; it is disabled while
+  working or when that checkpoint is unavailable. `ChatChanges.tsx` shares `chatStats()` with the
+  overview, keeping both displays consistent. No per-turn changed-files cards remain.
+  Checkpoint restoration changes local file contents only, leaving commits/pushed history intact;
+  it can replace later edits. Review and commit the resulting diff to record a restoration.
 - **A tool waiting for your permission** says "waiting for you" instead of a spinner, and can't go to
   the background until it runs.
 

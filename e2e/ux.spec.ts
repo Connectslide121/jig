@@ -19,10 +19,10 @@ test("Home: start a chat from the box; New chat in the top bar; tab dots; Ctrl+K
   const chat = page.locator("[data-tab-id]:not(.hidden)").getByTestId("chat");
   await expect(chat.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
 
-  // The turn's changes, with Undo (restores the file after confirming).
-  const changes = chat.getByTestId("turn-changes");
-  await expect(changes).toContainText("Changed 1 file");
-  await changes.getByTestId("turn-undo").click();
+  // Whole-chat changes, with Undo (restores the files after confirming).
+  const changes = chat.getByTestId("chat-changes");
+  await expect(changes).toContainText("1 file changed");
+  await changes.getByTestId("chat-changes-undo").click();
   await page.getByTestId("dialog-confirm").click();
   await expect.poll(() => readFile(join(dir, "notes.txt"), "utf8")).toBe("one\ntwo\n");
 

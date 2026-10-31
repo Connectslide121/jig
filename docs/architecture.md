@@ -440,7 +440,7 @@ extensions or embed VS Code (D-019, D-022).
 
 The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
 branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
-`addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (per-chat notes you and Claude write; sent to Claude through `claude.context`, D-151), `addons/releases` (versions, changelogs and
+`addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (project knowledge shared across chats, stored with project scope; sent with every message through `claude.context`, D-202), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
 lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are
@@ -479,3 +479,7 @@ On Windows, main windows remain off the taskbar until ready-to-show has set thei
 Regular chats are drafts until the first prompt is sent (`SessionMeta.draft`, D-199). The main
 session manager suppresses draft disk writes. The main layout module filters draft/missing session
 tabs on disk while retaining the live layout; the first send persists its existing open tab.
+
+The chat's whole-chat file summary (D-204) sits outside the transcript scroll area above the composer,
+with reserved space from the empty chat onward. It shares `chatStats` with the overview; its modal
+shows a snapshot of per-file edit/line totals, and Undo uses the first message's checkpoint.

@@ -102,3 +102,10 @@ Regular chats start with optional `SessionMeta.draft: true` in memory only. The 
 (including attachment-only messages) clears it to false and enables session-file persistence.
 Unsent drafts are hidden from history/search and omitted from disk layouts; startup ignores legacy
 empty regular chats without deleting files. Imported/forked/builder chats retain persistence (D-199).
+
+### Project notes (D-202)
+
+`addon-data/notes.json` stores `@project(<projectId>) notes`: an array of
+`{ id, kind: "wait" | "note" | "link", text, url?, done?, by: "you" | "claude", createdAt }`.
+Every chat in the project shares it; projectless chats do not read it. Host operations explicitly
+pass project scope. Legacy global `chat:<id>` entries are unused and are not migrated.

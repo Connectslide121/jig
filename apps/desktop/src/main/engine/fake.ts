@@ -497,8 +497,11 @@ export class FakeEngine implements Engine {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
           } else if (/remember in the notes/.test(lower)) {
-            // The Notes add-on's tool: a note for this chat (it shows in the Notes view).
-            await call("addon_notes_add", { kind: "wait", text: "the API review from the backend team" });
+            // The Notes add-on's tool: a note for this project (it shows in the Notes view).
+            await call("addon_notes_add", {
+              kind: "wait",
+              text: "Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete",
+            });
             await stream(`${msg}:text:0`, "Noted: this chat waits on the API review.", signal);
           } else if (/in the releases data/.test(lower)) {
             await call("jig_get_addon", { addonId: "releases" });

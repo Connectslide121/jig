@@ -5,6 +5,7 @@ import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../..
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
+import { ChatChanges } from "./ChatChanges";
 import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
@@ -188,6 +189,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
             {transcript && <TodoPanel items={transcript.items} />}
             <BackgroundTasks meta={meta} />
           </div>
+          <ChatChanges key={id} meta={meta} items={transcript?.items ?? []} />
           <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
         </div>
         <div className="box-content w-52 shrink-0 pt-3 pr-3" data-testid="chat-overview-slot">

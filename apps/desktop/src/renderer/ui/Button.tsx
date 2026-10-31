@@ -45,16 +45,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       type={type}
       disabled={disabled || busy}
+      aria-busy={busy || undefined}
       className={cn(
         "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
-        "disabled:pointer-events-none disabled:opacity-50",
+        "disabled:pointer-events-none",
+        !busy && "disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,
       )}
       {...rest}
     >
-      {busy ? <Spinner size="sm" /> : Icon ? <Icon className="block size-4 shrink-0" /> : null}
+      {(Icon || busy !== undefined) && (
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          {busy ? (
+            <Spinner size="sm" tone="inherit" />
+          ) : Icon ? (
+            <Icon className="block size-4 shrink-0" />
+          ) : null}
+        </span>
+      )}
       {children}
     </button>
   );

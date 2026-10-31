@@ -54,7 +54,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Scripts](../addons/scripts/README.md) | Scripts of every workspace folder, started and stopped in one click |
 | [Pipelines](../addons/pipelines/README.md) | Azure DevOps pipelines through `az` |
 | [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
-| [Notes](../addons/notes/README.md) | Short notes for the chat you're in, written by you and by Claude |
+| [Notes](../addons/notes/README.md) | Important project knowledge shared across chats, maintained by you and Claude |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
 | [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
 

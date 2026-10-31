@@ -64,7 +64,7 @@
 - [x] HTML templates and fragments open as Source; only pages render in Preview (D-154)
 - [x] Angular templates edited with Angular's grammar, control-flow blocks as keywords (D-155)
 - [x] Each HTML element's tag in a colour of its own, from the theme (D-156)
-- [x] Notes' tools always loaded (no tool search first), and a check before each turn ends (D-158)
+- [x] Notes' tools always loaded (D-158); project-knowledge capture guidance now follows D-202
 - [x] Compact chats by default: steps fold into one line; Compact | Detailed switch in the top bar (D-159)
 - [x] claude.ai connectors off in chats by default, a switch in Settings (D-160); long text no longer scrolls the transcript sideways
 - [x] Claude's questions step by step with a nicer card (D-161)
@@ -76,3 +76,8 @@
 - [x] Keep unsent chats memory-only and omit them from restored tabs and history (D-199).
 - [x] Use single-column extension slots and shared reduced-motion-aware interaction animations (D-200).
 - [x] Give Repos branch names more row width and remove their trailing chevron (D-201).
+
+- [x] Replace chat notes with shared project knowledge and modal editors (D-202).
+- [x] Keep shared busy-button spinners readable without changing button size (D-203).
+
+- [x] Replace per-turn changed-file cards with a whole-chat summary above the input and modal breakdown (D-204).

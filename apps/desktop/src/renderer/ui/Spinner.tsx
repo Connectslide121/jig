@@ -9,14 +9,20 @@ export function Spinner({
   size = "md",
   className,
   center,
+  tone = "muted",
 }: {
   size?: "sm" | "md" | "lg";
   className?: string;
   center?: boolean;
+  /** Buttons inherit their foreground, including primary/danger contrast colours. */
+  tone?: "muted" | "inherit";
 }) {
   const s = { sm: "size-3.5", md: "size-4", lg: "size-6" }[size];
   const icon = (
-    <LoaderCircle aria-label="Loading" className={cn("animate-spin text-muted", s, !center && className)} />
+    <LoaderCircle
+      aria-label="Loading"
+      className={cn("block shrink-0 animate-spin", tone === "muted" && "text-muted", s, !center && className)}
+    />
   );
   if (!center) return icon;
   return (

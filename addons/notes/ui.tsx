@@ -2,20 +2,19 @@ import type { AddonComponentProps, AddonUiContext } from "@jig/sdk";
 import {
   Button,
   cn,
+  Dialog,
   Empty,
   Icon,
   IconButton,
   Input,
   Select,
-  useActiveChat,
-  useAddon,
+  Spinner,
+  useActiveProject,
   useAddonEvent,
-  useWorkspaceList,
 } from "@jig/sdk/ui";
-import { Check, ExternalLink, NotebookPen, Pencil, Plus, Square, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, ExternalLink, NotebookPen, Pencil, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
-  addNote,
   isDone,
   KIND_ORDER,
   KINDS,
@@ -26,263 +25,236 @@ import {
   sorted,
 } from "./lib/notes";
 
-const TONES: Record<NoteKind, string> = {
-  wait: "text-warning",
-  where: "text-info",
-  todo: "text-muted",
-  note: "text-muted",
-  link: "text-accent",
-};
-
-/** The active chat's notes, reloaded when they change (you here, or Claude through its tools). */
-function useNotes(ctx: AddonUiContext, sessionId: string | undefined) {
-  const [notes, setNotes] = useState<Note[]>();
-  const load = useCallback(() => {
-    if (!sessionId) return setNotes(undefined);
-    void ctx.host.call<Note[]>("list", { sessionId }).then(setNotes);
-  }, [ctx, sessionId]);
-  useEffect(load, [load]);
-  useAddonEvent("changed", (payload) => {
-    if ((payload as { sessionId?: string })?.sessionId === sessionId) load();
-  });
-  const save = (next: Note[]) => {
-    setNotes(next);
-    if (sessionId) void ctx.host.call("save", { sessionId, notes: next });
-  };
-  return [notes, save] as const;
-}
-
-function NoteRow({
+function NoteEditor({
   note,
-  onChange,
-  onRemove,
+  save,
+  close,
 }: {
-  note: Note;
-  onChange: (n: Note) => void;
-  onRemove: () => void;
+  note?: Note;
+  save: (fields: { kind: NoteKind; text: string; url?: string }) => Promise<void>;
+  close: () => void;
 }) {
-  const ctx = useAddon();
-  const [editing, setEditing] = useState(false);
-  const done = isDone(note);
-  const toggles = note.kind === "wait" || note.kind === "todo";
-  const editValue =
-    note.kind === "where"
-      ? (note.branch ?? "")
-      : note.kind === "link"
-        ? [note.text, note.url].filter(Boolean).join(" ")
-        : note.text;
-  const [value, setValue] = useState(editValue);
-  const submit = () => {
-    setEditing(false);
-    const words = value.trim();
-    if (!words) return onRemove();
-    if (note.kind === "link") onChange({ ...note, ...(parseLink(words) ?? { text: words }), by: "you" });
-    else if (note.kind === "where") onChange({ ...note, branch: words, by: "you" });
-    else onChange({ ...note, text: words, by: "you" });
+  const [kind, setKind] = useState<NoteKind>(note?.kind ?? "note");
+  const [text, setText] = useState(note ? [note.text, note.url].filter(Boolean).join(" ") : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async () => {
+    const words = text.trim();
+    const link = kind === "link" ? parseLink(words) : null;
+    if (!words || (kind === "link" && !link))
+      return setError("Enter text, or a link with an https:// address.");
+    setBusy(true);
+    try {
+      await save({ kind, ...(link ?? { text: words }) });
+      close();
+    } catch (e) {
+      setError(String(e));
+      setBusy(false);
+    }
   };
   return (
-    <div
-      className={cn(
-        "group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-hover",
-        done && "opacity-60",
-      )}
-      data-testid={`note-${note.id}`}
+    <Dialog
+      open
+      title={note ? "Edit project note" : "Add project note"}
+      onClose={close}
+      footer={
+        <>
+          <Button onClick={close}>Cancel</Button>
+          <Button disabled={busy} onClick={() => void submit()} data-testid="note-save">
+            Save
+          </Button>
+        </>
+      }
     >
-      {toggles ? (
-        <button
-          type="button"
-          title={done ? "Open it again" : note.kind === "wait" ? "Mark it cleared" : "Mark it done"}
-          onClick={() => onChange({ ...note, done: !note.done, by: "you" })}
-          className={cn(
-            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border",
-            done ? "border-success bg-success text-on-accent" : cn("border-line-strong", TONES[note.kind]),
-          )}
-          data-testid={`note-toggle-${note.id}`}
+      <div className="flex flex-col gap-3 p-4">
+        <p className="text-xs text-muted">
+          Important context about the project, useful across chats: decisions, constraints and dependencies.
+          Keep task plans and progress in the chat.
+        </p>
+        <Select
+          aria-label="Kind of note"
+          value={kind}
+          disabled={!!note}
+          onChange={(e) => setKind(e.target.value as NoteKind)}
+          data-testid="note-kind"
         >
-          {done ? (
-            <Check className="size-3" />
-          ) : note.kind === "wait" ? (
-            <Icon name="hourglass" className="size-2.5" />
-          ) : null}
-        </button>
-      ) : (
-        <Icon name={KINDS[note.kind].icon} className={cn("mt-0.5 size-4 shrink-0", TONES[note.kind])} />
-      )}
-      <div className="min-w-0 flex-1">
-        {editing ? (
-          <Input
-            autoFocus
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={submit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submit();
-              if (e.key === "Escape") setEditing(false);
-            }}
-          />
-        ) : (
-          <div
-            className={cn(
-              "text-sm break-words",
-              note.kind === "wait" && !done && "text-warning",
-              done && note.kind === "todo" && "line-through",
-            )}
-          >
-            {noteText(note)}
-          </div>
-        )}
-        <div className="text-2xs text-hint">
-          {KINDS[note.kind].label}
-          {note.by === "claude" ? " · by Claude" : ""}
+          {KIND_ORDER.map((k) => (
+            <option key={k} value={k}>
+              {KINDS[k].label}
+            </option>
+          ))}
+        </Select>
+        <Input
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !busy) void submit();
+          }}
+          placeholder={KINDS[kind].placeholder}
+          data-testid="note-input"
+        />
+        <div className="h-8 text-xs text-warning" role="status">
+          {error}
         </div>
       </div>
-      <span className="invisible flex shrink-0 items-center group-hover:visible group-focus-within:visible">
-        {note.kind === "link" && note.url && (
-          <IconButton
-            icon={ExternalLink}
-            size="sm"
-            label="Open"
-            onClick={() => ctx.openExternal(note.url!)}
-          />
+    </Dialog>
+  );
+}
+
+/** Keyed by project so a slow response or open editor can never follow a project switch. */
+function ProjectNotes({ ctx, projectId, name }: { ctx: AddonUiContext; projectId: string; name: string }) {
+  const [notes, setNotes] = useState<Note[]>();
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [editor, setEditor] = useState<Note | "new">();
+  useAddonEvent("changed", (payload) => {
+    if ((payload as { projectId?: string })?.projectId === projectId) setRevision((n) => n + 1);
+  });
+  useEffect(() => {
+    let live = true;
+    void ctx.host.call<Note[]>("list", { projectId }).then(
+      (value) => {
+        if (live) {
+          setNotes(value);
+          setError("");
+        }
+      },
+      (e) => {
+        if (live) setError(String(e));
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [ctx, projectId, revision]);
+  const change = async (method: string, fields: object) => {
+    await ctx.host.call(method, { projectId, ...fields });
+    setRevision((n) => n + 1);
+  };
+  const run = (method: string, fields: object) =>
+    void change(method, fields).catch((e) =>
+      ctx.notify({ title: "Couldn't save project notes", message: String(e), tone: "warning" }),
+    );
+  const list = sorted(notes ?? []);
+  const open = list.filter((n) => n.kind === "wait" && !n.done).length;
+  return (
+    <div className="flex h-full flex-col" data-testid="notes-view">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-2">
+        <NotebookPen className="size-4 shrink-0 text-muted" />
+        <span className="min-w-0 flex-1 truncate text-xs font-medium" title={name}>
+          {name}
+        </span>
+        <span className="w-16 shrink-0 text-right text-2xs text-hint">
+          {open ? `${open} open` : `${list.length} notes`}
+        </span>
+        <IconButton
+          icon={Plus}
+          label="Add project note"
+          onClick={() => setEditor("new")}
+          disabled={!notes}
+          data-testid="note-add"
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-1">
+        {error ? (
+          <Empty icon={NotebookPen} title="Couldn't load project notes">
+            {error}
+          </Empty>
+        ) : !notes ? (
+          <Spinner center />
+        ) : list.length === 0 ? (
+          <Empty icon={NotebookPen} title="No notes yet">
+            Project context shared across chats. Add a decision, constraint, dependency or reference.
+          </Empty>
+        ) : (
+          list.map((note) => (
+            <div
+              key={note.id}
+              className={cn(
+                "group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-hover",
+                isDone(note) && "opacity-60",
+              )}
+              data-testid={`note-${note.id}`}
+            >
+              <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
+                {note.kind === "wait" ? (
+                  <button
+                    type="button"
+                    title={note.done ? "Open dependency again" : "Mark dependency cleared"}
+                    className="flex size-4 items-center justify-center rounded border border-line-strong text-warning"
+                    onClick={() => run("update", { id: note.id, done: !note.done })}
+                    data-testid={`note-toggle-${note.id}`}
+                  >
+                    {note.done ? (
+                      <Check className="size-3" />
+                    ) : (
+                      <Icon name="hourglass" className="size-2.5" />
+                    )}
+                  </button>
+                ) : (
+                  <Icon name={KINDS[note.kind].icon} className="size-4 text-muted" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div
+                  className={cn("text-sm break-words", note.kind === "wait" && !note.done && "text-warning")}
+                >
+                  {noteText(note)}
+                </div>
+                <div className="text-2xs text-hint">
+                  {KINDS[note.kind].label}
+                  {note.by === "claude" ? " · by Claude" : ""}
+                </div>
+              </div>
+              <span className="invisible flex w-20 shrink-0 items-center justify-end group-hover:visible group-focus-within:visible">
+                <span className="w-6 shrink-0">
+                  {note.kind === "link" && note.url && (
+                    <IconButton
+                      icon={ExternalLink}
+                      size="sm"
+                      label="Open"
+                      onClick={() => ctx.openExternal(note.url!)}
+                    />
+                  )}
+                </span>
+                <IconButton icon={Pencil} size="sm" label="Edit" onClick={() => setEditor(note)} />
+                <IconButton
+                  icon={X}
+                  size="sm"
+                  label="Remove"
+                  onClick={() => run("remove", { id: note.id })}
+                  data-testid={`note-remove-${note.id}`}
+                />
+              </span>
+            </div>
+          ))
         )}
-        <IconButton
-          icon={Pencil}
-          size="sm"
-          label="Edit"
-          onClick={() => {
-            setValue(editValue);
-            setEditing(true);
-          }}
+      </div>
+      {editor && (
+        <NoteEditor
+          note={editor === "new" ? undefined : editor}
+          close={() => setEditor(undefined)}
+          save={(fields) =>
+            change(editor === "new" ? "add" : "update", {
+              ...fields,
+              ...(editor === "new" ? {} : { id: editor.id }),
+            })
+          }
         />
-        <IconButton
-          icon={X}
-          size="sm"
-          label="Remove"
-          onClick={onRemove}
-          data-testid={`note-remove-${note.id}`}
-        />
-      </span>
+      )}
     </div>
   );
 }
 
-/**
- * The chat you're in: its notes, like the notes plugin (D-147). Pick a kind, type, press Enter;
- * waits and to-dos tick off; ✎ edits, × removes. Claude reads them with its tools before it works,
- * and writes them too (they show "by Claude").
- */
 export function NotesView({ ctx }: AddonComponentProps) {
-  const chat = useActiveChat();
-  const [notes, save] = useNotes(ctx, chat?.sessionId);
-  const workspaces = useWorkspaceList();
-  const [kind, setKind] = useState<NoteKind>("note");
-  const [repo, setRepo] = useState("");
-  const [text, setText] = useState("");
-  if (!chat)
-    return (
-      <Empty icon={NotebookPen} title="No chat open">
-        Open a chat: its notes show here.
-      </Empty>
-    );
-  const repos = [
-    ...new Set(
-      workspaces.flatMap((w) =>
-        w.isGitRepo ? [w.name] : w.repos.map((r) => r.name.split("/").pop() ?? r.name),
-      ),
-    ),
-  ].sort((a, b) => a.localeCompare(b));
-  const list = sorted(notes ?? []);
-  const open = list.filter((n) => (n.kind === "wait" || n.kind === "todo") && !n.done).length;
-  const add = () => {
-    const words = text.trim();
-    const current = notes ?? [];
-    if (kind === "where") {
-      if (!repo && !words) return;
-      save(
-        addNote(current, { kind, text: "", repo: repo || undefined, branch: words || undefined, by: "you" }),
-      );
-    } else if (kind === "link") {
-      const link = parseLink(words);
-      if (!link) return ctx.notify({ title: "A link needs an address (https://…)", tone: "warning" });
-      save(addNote(current, { kind, ...link, by: "you" }));
-    } else {
-      if (!words) return;
-      save(addNote(current, { kind, text: words, by: "you" }));
-    }
-    setText("");
-  };
-  return (
-    <div className="flex h-full flex-col" data-testid="notes-view">
-      <div className="shrink-0 border-b border-line p-2">
-        <div className="flex items-center gap-1.5 pb-2">
-          <NotebookPen className="size-3.5 shrink-0 text-muted" />
-          <span className="min-w-0 flex-1 truncate text-xs font-medium" title={chat.title}>
-            {chat.title}
-          </span>
-          <span className="shrink-0 text-2xs text-hint">
-            {open ? `${open} open` : `${list.length} note${list.length === 1 ? "" : "s"}`}
-          </span>
-        </div>
-        <div className="flex gap-1.5">
-          <Select
-            value={kind}
-            onChange={(e) => setKind(e.target.value as NoteKind)}
-            aria-label="Kind of note"
-            className="w-auto shrink-0"
-            data-testid="note-kind"
-          >
-            {KIND_ORDER.map((k) => (
-              <option key={k} value={k}>
-                {KINDS[k].label}
-              </option>
-            ))}
-          </Select>
-          {kind === "where" && repos.length > 0 && (
-            <Select
-              value={repo}
-              onChange={(e) => setRepo(e.target.value)}
-              aria-label="Repository"
-              className="min-w-0"
-            >
-              <option value="">No repository</option>
-              {repos.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </Select>
-          )}
-        </div>
-        <div className="mt-1.5 flex gap-1.5">
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder={KINDS[kind].placeholder}
-            data-testid="note-input"
-          />
-          <Button size="sm" icon={Plus} onClick={add} data-testid="note-add">
-            Add
-          </Button>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        {list.length === 0 ? (
-          <Empty icon={Square} title="No notes yet">
-            Add one above, or ask Claude to note something.
-          </Empty>
-        ) : (
-          list.map((n) => (
-            <NoteRow
-              key={n.id}
-              note={n}
-              onChange={(next) => save((notes ?? []).map((x) => (x.id === n.id ? next : x)))}
-              onRemove={() => save((notes ?? []).filter((x) => x.id !== n.id))}
-            />
-          ))
-        )}
-      </div>
-    </div>
+  const project = useActiveProject();
+  return project ? (
+    <ProjectNotes key={project.id} ctx={ctx} projectId={project.id} name={project.name} />
+  ) : (
+    <Empty icon={NotebookPen} title="No project selected">
+      Choose a project to read its shared notes.
+    </Empty>
   );
 }
 

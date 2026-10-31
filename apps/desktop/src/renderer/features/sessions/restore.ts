@@ -25,7 +25,7 @@ export async function restoreFiles(sessionId: string, itemId: string): Promise<v
       files.slice(0, 8).map(fileName).join(", ") + (files.length > 8 ? ` and ${files.length - 8} more` : "");
     const ok = await confirmDialog({
       title: `Restore ${files.length} file${files.length === 1 ? "" : "s"}?`,
-      message: `${shown} go back to how they were before this message. The chat itself stays as it is.`,
+      message: `${shown} go back to how they were before this message, replacing any later edits to those files. This changes local file contents only; the chat, existing commits and pushed history stay intact. You can review the resulting diff and commit it as a new change.`,
       confirmLabel: "Restore files",
       danger: true,
     });

@@ -2,27 +2,27 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "notes",
   "name": "Notes",
-  "description": "Short notes for the chat you're in: what it waits on, where its work is, steps left, decisions, links. You and Claude write them; Claude gets them with every message and keeps them current.",
-  "version": "1.0.0",
+  "description": "Important project context shared across chats: decisions, constraints, dependencies, blockers and links. You and Claude keep it current.",
+  "version": "2.0.0",
   "icon": "notebook-pen",
   "permissions": [],
   "storage": {
-    "scope": "global"
+    "scope": "project"
   },
   "contributes": {
     "views": [
       {
         "id": "notes",
-        "title": "Notes",
+        "title": "Project notes",
         "icon": "notebook-pen",
-        "region": "right",
+        "region": "left",
         "component": "NotesView"
       }
     ],
     "actions": [
       {
         "id": "show",
-        "title": "Show this chat's notes",
+        "title": "Show this project's notes",
         "group": "Claude",
         "icon": "notebook-pen",
         "run": "showNotes"
@@ -34,33 +34,23 @@
     "tools": [
       {
         "id": "list",
-        "description": "This chat's notes (the Notes panel beside the chat), each with its id. They also come with every message (in <jig-context>); use this to read them again after changing several. A 'Waiting on' note that isn't cleared means that work shouldn't go ahead yet.",
+        "description": "Read the calling chat's project notes, shared with every chat in that project, with ids. They also arrive with each message. Open dependencies constrain only their described work.",
         "readOnly": true,
         "run": "toolList",
         "alwaysLoad": true
       },
       {
         "id": "add",
-        "description": "Adds a note to this chat's Notes panel, when the user asks and on your own for what this chat must keep in mind about its topic: what it waits on (wait), the branch its work lives on (where: repo and branch), decisions, constraints or facts later work must respect (note), parts deliberately left for later (todo), an address (link). Not a log: no notes for routine progress, files you change, commits to push or what you're doing now. A chat usually holds a handful; one short line each.",
+        "description": "Save important knowledge ABOUT THE PROJECT that remains useful to other chats beyond this task: lasting decisions, constraints, facts, project links, dependencies or blockers. Example wait: pipeline improvements deferred until the Jenkins-to-Azure-DevOps migration is complete. Not a to-do list, task reminder, progress log or handoff. Never save current work, routine next steps, temporary branches, changed files or commits. Keep notes concise; read first and update duplicates instead.",
         "params": {
           "kind": {
             "type": "string",
-            "enum": ["wait", "where", "todo", "note", "link"],
-            "description": "wait, where, todo, note or link"
+            "enum": ["wait", "note", "link"],
+            "description": "wait: project dependency/blocker; note: lasting project knowledge; link: project reference"
           },
           "text": {
             "type": "string",
-            "description": "The note, one short line; for where and link an optional remark",
-            "optional": true
-          },
-          "repo": {
-            "type": "string",
-            "description": "where: the repository's folder name",
-            "optional": true
-          },
-          "branch": {
-            "type": "string",
-            "description": "where: the branch",
+            "description": "Concise project context, useful beyond this task or chat",
             "optional": true
           },
           "url": {
@@ -75,21 +65,13 @@
       },
       {
         "id": "update",
-        "description": "Changes a note of this chat by its id: its words, repo, branch or url, or ticks a wait cleared / a to-do done (done: true) or opens it again. Update rather than add a near-duplicate.",
+        "description": "Update a project note by id when project facts change, or mark a dependency confirmed cleared (done: true). Update rather than duplicate. These notes are shared across the project's chats.",
         "params": {
           "id": {
             "type": "string",
             "description": "The note's id, as the list shows it"
           },
           "text": {
-            "type": "string",
-            "optional": true
-          },
-          "repo": {
-            "type": "string",
-            "optional": true
-          },
-          "branch": {
             "type": "string",
             "optional": true
           },
@@ -108,7 +90,7 @@
       },
       {
         "id": "remove",
-        "description": "Removes a note from this chat by its id, when it's no longer true.",
+        "description": "Remove obsolete project knowledge by id from the shared project notes.",
         "params": {
           "id": {
             "type": "string",

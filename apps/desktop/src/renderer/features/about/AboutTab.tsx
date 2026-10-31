@@ -605,7 +605,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
                 "Edit and send again: rewind the chat (and the files) to before any message",
-                "After a turn that changed files: Review, Walk me through or Undo, right there",
+                "Whole-chat file count and line totals fixed above the input: click for a file breakdown, Walk me through or Undo",
                 "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
                 "Chat overview: a small card in each chat counts tool calls, files, skills, subagents, add-ons, MCP calls and tokens; Show details for the full breakdown",
@@ -837,7 +837,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
-                "Notes for the chat you're in: what it waits on, where its work is, steps left, decisions — you and Claude write them, Claude reads them before it works",
+                "Project notes shared across chats: important decisions, constraints, dependencies and links — you and Claude keep project knowledge current, separate from task plans",
               ]}
             />
           </Section>

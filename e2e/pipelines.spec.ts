@@ -57,6 +57,7 @@ if (has("devops", "invoke")) say({ records: [
   { type: "Stage", name: "Deploy to staging", order: 3, state: "completed", result: "succeeded" },
 ]});
 if (has("pipelines", "run")) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2500);
   require("node:fs").writeFileSync(${out}, JSON.stringify(args));
   say({ id: 101, buildNumber: "20261029.2", status: "notStarted", sourceBranch: "refs/heads/develop" });
 }
@@ -129,7 +130,19 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await expect(form.getByTestId("pipeline-summary")).toContainText(
     "on develop with Deploy to: production · Run tests: false",
   );
-  await form.getByTestId("pipeline-queue").click();
+  const queue = form.getByTestId("pipeline-queue");
+  const box = await queue.boundingBox();
+  await queue.click();
+  await expect(queue).toHaveAttribute("aria-busy", "true");
+  await expect(queue).toBeDisabled();
+  await expect(queue).toHaveCSS("opacity", "1");
+  const spinner = queue.getByLabel("Loading");
+  await expect(spinner).toBeVisible();
+  expect(await spinner.evaluate((el) => getComputedStyle(el).color)).toBe(
+    await queue.evaluate((el) => getComputedStyle(el).color),
+  );
+  expect(await queue.boundingBox()).toEqual(box);
+  await page.screenshot({ path: "test-results/pipeline-queue-spinner.png" });
   await expect(page.getByTestId("toast")).toContainText("Shop CI queued");
   await expect(form).toHaveCount(0);
   const args = JSON.parse(await readFile(join(jigHome, "az-run.json"), "utf8")) as string[];

@@ -293,7 +293,7 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         } else if (item.name === "Read") {
           const path = str(input.file_path);
           if (path) read.add(path);
-        } else if (EDIT_TOOLS[item.name] && !failed) {
+        } else if (EDIT_TOOLS[item.name] && item.status === "done") {
           const path = str(input[EDIT_TOOLS[item.name]!]);
           if (path) {
             const file = files.get(path) ?? { path, edits: 0, added: 0, removed: 0 };

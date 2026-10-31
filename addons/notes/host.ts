@@ -1,61 +1,72 @@
 import type { AddonHostApi } from "@jig/sdk";
 import { addNote, KINDS, listing, type Note, type NoteKind, parseLink, turnContext } from "./lib/notes";
 
-/**
- * Each chat's notes, kept in the add-on's storage under `chat:<session id>` (global, so a chat keeps
- * its notes whatever project is active). The view and Claude's tools read and write the same list;
- * every change is announced (`changed`) so the view follows.
- */
-type ChatArgs = { chat?: { sessionId?: string } };
+/** Project notes shared by every chat. Legacy global chat:* records are deliberately unused. */
+type ChatArgs = { chat?: { projectId?: string } };
 
-const key = (sessionId: string) => `chat:${sessionId}`;
-
-export async function list({ sessionId }: { sessionId: string }, api: AddonHostApi): Promise<Note[]> {
-  return (await api.storage.get<Note[]>(key(sessionId))) ?? [];
+function scope(projectId: string) {
+  if (!projectId) throw new Error("Notes belong to a project. Choose a project first.");
+  return { scope: "project" as const, id: projectId };
 }
 
-/** The view saves the whole list after you add, tick, edit or remove a note. */
-export async function save({ sessionId, notes }: { sessionId: string; notes: Note[] }, api: AddonHostApi) {
-  await api.storage.set(key(sessionId), notes.length ? notes : undefined);
-  api.emit("changed", { sessionId });
+export async function list({ projectId }: { projectId: string }, api: AddonHostApi): Promise<Note[]> {
+  return (await api.storage.get<Note[]>("notes", scope(projectId))) ?? [];
 }
 
-function chatOf(args: ChatArgs): string {
-  const id = args.chat?.sessionId;
-  if (!id) throw new Error("Notes belong to a chat, and this call came from none.");
+/** Persist atomically through add-on storage. */
+async function save({ projectId, notes }: { projectId: string; notes: Note[] }, api: AddonHostApi) {
+  await api.storage.set("notes", notes.length ? notes : undefined, scope(projectId));
+  api.emit("changed", { projectId });
+}
+
+function projectOf(args: ChatArgs): string {
+  const id = args.chat?.projectId;
+  if (!id) throw new Error("Notes belong to a project. Choose a project first.");
   return id;
 }
 
-async function change(api: AddonHostApi, sessionId: string, fn: (notes: Note[]) => Note[]) {
-  const next = fn(await list({ sessionId }, api));
-  await save({ sessionId, notes: next }, api);
-  return next;
+// Serialize read-modify-write operations so simultaneous chats cannot overwrite each other.
+const pending = new Map<string, Promise<unknown>>();
+async function change(api: AddonHostApi, projectId: string, fn: (notes: Note[]) => Note[]) {
+  const previous = pending.get(projectId) ?? Promise.resolve();
+  const job = previous
+    .catch(() => {})
+    .then(async () => {
+      const next = fn(await list({ projectId }, api));
+      await save({ projectId, notes: next }, api);
+      return next;
+    });
+  pending.set(projectId, job);
+  try {
+    return await job;
+  } finally {
+    if (pending.get(projectId) === job) pending.delete(projectId);
+  }
 }
 
-// Claude's tools (contributes.tools): it reads the notes before working and writes what the chat
-// must keep in mind. They answer with every note as it now stands.
+// Claude's tools read and maintain lasting project context. They answer with every note as it now stands.
 
 export async function toolList(args: ChatArgs, api: AddonHostApi): Promise<string> {
-  return listing(await list({ sessionId: chatOf(args) }, api), "This chat's notes:");
+  return listing(await list({ projectId: projectOf(args) }, api), "This project's notes:");
 }
 
 export async function toolAdd(
-  args: ChatArgs & { kind?: string; text?: string; repo?: string; branch?: string; url?: string },
+  args: ChatArgs & { kind?: string; text?: string; url?: string },
   api: AddonHostApi,
+  author: Note["by"] = "claude",
 ): Promise<string> {
-  const sessionId = chatOf(args);
-  const kind: NoteKind = args.kind && args.kind in KINDS ? (args.kind as NoteKind) : "note";
+  const projectId = projectOf(args);
+  if (args.kind && !Object.hasOwn(KINDS, args.kind))
+    throw new Error("Use wait, note or link for project notes.");
+  const kind: NoteKind = (args.kind as NoteKind | undefined) ?? "note";
   const link = kind === "link" && !args.url ? parseLink(args.text ?? "") : null;
-  if (!args.text?.trim() && !args.repo && !args.branch && !args.url && !link)
-    throw new Error("A note needs text (or repo/branch for where, or url for a link).");
-  const notes = await change(api, sessionId, (list) =>
+  if (!args.text?.trim() && !args.url && !link) throw new Error("A note needs text (or a URL for a link).");
+  const notes = await change(api, projectId, (list) =>
     addNote(list, {
       kind,
       text: link ? link.text : (args.text ?? "").trim(),
-      repo: args.repo || undefined,
-      branch: args.branch || undefined,
       url: link?.url ?? (args.url || undefined),
-      by: "claude",
+      by: author,
     }),
   );
   return listing(notes, `Added note ${notes.at(-1)!.id}. The notes now:`);
@@ -65,41 +76,51 @@ export async function toolUpdate(
   args: ChatArgs & {
     id?: string;
     text?: string;
-    repo?: string;
-    branch?: string;
     url?: string;
     done?: boolean;
   },
   api: AddonHostApi,
+  author: Note["by"] = "claude",
 ): Promise<string> {
-  const sessionId = chatOf(args);
+  const projectId = projectOf(args);
   const id = String(args.id ?? "");
-  if (!(await list({ sessionId }, api)).some((n) => n.id === id)) throw new Error(`There is no note ${id}.`);
-  const notes = await change(api, sessionId, (list) =>
-    list.map((n) => {
+  const notes = await change(api, projectId, (list) => {
+    if (!list.some((n) => n.id === id)) throw new Error(`There is no note ${id}.`);
+    return list.map((n) => {
       if (n.id !== id) return n;
-      const next: Note = { ...n, by: "claude" };
+      const next: Note = { ...n, by: author };
       if (args.text !== undefined) next.text = args.text;
-      if (args.repo !== undefined) next.repo = args.repo || undefined;
-      if (args.branch !== undefined) next.branch = args.branch || undefined;
       if (args.url !== undefined) next.url = args.url || undefined;
       if (args.done !== undefined) next.done = args.done;
       return next;
-    }),
-  );
+    });
+  });
   return listing(notes, `Updated note ${id}. The notes now:`);
 }
 
 export async function toolRemove(args: ChatArgs & { id?: string }, api: AddonHostApi): Promise<string> {
-  const sessionId = chatOf(args);
+  const projectId = projectOf(args);
   const id = String(args.id ?? "");
-  if (!(await list({ sessionId }, api)).some((n) => n.id === id)) throw new Error(`There is no note ${id}.`);
-  const notes = await change(api, sessionId, (list) => list.filter((n) => n.id !== id));
+  const notes = await change(api, projectId, (list) => {
+    if (!list.some((n) => n.id === id)) throw new Error(`There is no note ${id}.`);
+    return list.filter((n) => n.id !== id);
+  });
   return listing(notes, `Removed note ${id}. The notes now:`);
 }
 
-/** contributes.context: the chat's notes and how to keep them, with every message to Claude (D-151). */
+/** contributes.context: the calling chat's project notes and how to keep them, with every message to Claude (D-151). */
 export async function context(args: ChatArgs, api: AddonHostApi): Promise<string> {
-  const sessionId = args.chat?.sessionId;
-  return sessionId ? turnContext(await list({ sessionId }, api)) : "";
+  const projectId = args.chat?.projectId;
+  return projectId ? turnContext(await list({ projectId }, api)) : "";
+}
+
+/** UI operations use the same serialized mutations as Claude, and retain the human author. */
+export function add(args: { projectId: string } & Parameters<typeof toolAdd>[0], api: AddonHostApi) {
+  return toolAdd({ ...args, chat: { projectId: args.projectId } }, api, "you");
+}
+export function update(args: { projectId: string } & Parameters<typeof toolUpdate>[0], api: AddonHostApi) {
+  return toolUpdate({ ...args, chat: { projectId: args.projectId } }, api, "you");
+}
+export function remove(args: { projectId: string; id: string }, api: AddonHostApi) {
+  return toolRemove({ ...args, chat: { projectId: args.projectId } }, api);
 }

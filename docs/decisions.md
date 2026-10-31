@@ -2101,3 +2101,45 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   widening the sidebar. Implementation is **Claude, on my own**: give the branch column one third
   of the row rather than one quarter and remove its trailing chevron. The branch icon, full-name
   tooltip and branch-switch menu remain. Fixed status columns and row height remain aligned.
+
+## D-202: Project notes hold project knowledge, shared across chats
+
+- Status: accepted. Decided by Jon: replace per-chat notes with per-project notes; existing chat
+  notes may go away. Notes describe the project, not current tasks, to-dos or progress.
+  Dependencies such as deferring pipeline improvements until a tooling migration belong here.
+- Supersedes D-147's chat scope and D-158's per-turn capture check. Claude receives project notes
+  each turn and always-loaded tools, with explicit guidance to retain only important facts useful
+  beyond the task/chat. Open dependencies affect only the work they describe.
+- Implementation is **Claude, on my own**: use declared project storage, key `notes`; ignore old
+  `chat:*` keys without migration or deletion. Remove Where/To-do kinds. Use active-project UI,
+  caller-project tools/context, serialized mutations and project-specific change events. New
+  placement is left; saved placement remains. Forms are modal and stale project loads are ignored.
+
+## D-203: Busy buttons retain readable foreground and stable size
+
+- Status: accepted. Decided by Jon: fix the barely visible loading spinner in the pipeline run
+  modal and shared buttons. Implementation is **Claude, on my own**: busy buttons retain full
+  opacity while disabled, and their spinner inherits the variant foreground instead of muted text.
+  Reserve one fixed icon slot when `busy` is supplied; expose `aria-busy`. Ordinary disabled buttons
+  retain their dimmed appearance. Standalone panel spinners keep their muted foreground.
+
+## D-204: One whole-chat file summary fixed above the input
+
+- Status: accepted. Decided by Jon: the per-turn file cards are cluttered and ambiguous. Show one
+  whole-chat file count and line totals inline with Walk me through and Undo above the
+  input; keep it stationary while scrolling. File details belong in a modal breakdown.
+- Implementation is **Claude, on my own**: reserve a fixed-height row from the empty chat onward,
+  with horizontal overflow at narrow widths. Use the overview's shared `chatStats` for unique files,
+  edit counts and accumulated captured +/− hunks, including subagents. Exclude running/failed calls.
+  A modal snapshot keeps the list stationary while work continues, with fixed numeric columns and
+  full paths opening Preview. Counts describe recorded chat history, not net uncommitted Git changes;
+  shell-only edits may be absent. Restoring files leaves history; transcript rewind changes totals.
+- Undo covers the whole chat using its first message's checkpoint, disabled when unavailable or
+  while working; the existing dry-run preview and confirmation remain. Jon also removed Review
+  because it only opened Git. Walk me through retains the existing affected-repository tour. Supersedes D-094's
+  per-turn changed-files bar.
+
+- Jon confirmed keeping **Undo changes** and its label after discussing committed/pushed work:
+  checkpoint restoration changes local file contents only. A new commit can record the reversal,
+  leaving earlier commits and pushed history intact. The confirmation makes this scope explicit,
+  including the possibility of replacing later edits; it is not a selective Git revert.

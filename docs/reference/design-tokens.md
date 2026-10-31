@@ -69,7 +69,7 @@ Reuse these before writing new ones; add-ons get the same components as `@jig/sd
 | `Tabs` | segmented tabs inside a view |
 | `Menu`: `openMenu`, `openMenuAt`, `contextMenu`, `MenuButton`, `MenuHost` | every menu and right-click menu; items with icon, shortcut, checked, danger, submenu |
 | `Dialog`, `confirmDialog`, `promptDialog`, `DialogHost` | modal dialogs; widths `sm`, `md`, `lg`, `xl` (`max-w-6xl`); footer controls align vertically; promise-based confirm and prompt; `column` lays the content out as a flex column, so a list in it grows with the dialog up to the window's height and then scrolls on its own |
-| `Tooltip`, `Spinner` | |
+| `Tooltip`, `Spinner` | Spinner: `size`, `center`; `tone="inherit"` uses its parent foreground in buttons |
 
 Menu items use `text-sm`; small and regular text buttons use `text-sm`. Icon buttons increase from `size-6/7` to `size-7/8`, with icons from `size-3.5/4` to `size-4/4.5`. Appearance font size still scales every control.
 
@@ -89,3 +89,5 @@ close controls and footer callbacks identical to `onClose` delay dismissal for t
 `open=false` retains mounted content during exit. Immediate parent unmounts still close immediately.
 Workbench collapsed-state toggles animate width/height, with no resize/loading animation. All respect
 `prefers-reduced-motion`; do not add animations to asynchronous layout changes. Forms remain modal.
+
+Busy buttons keep full opacity and inherit the variant foreground for their spinner. Supplying `busy` reserves a fixed leading slot, so loading does not resize the button (D-203).
