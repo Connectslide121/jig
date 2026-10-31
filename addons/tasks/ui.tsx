@@ -939,7 +939,7 @@ function AddDialog({
       footer={
         <>
           <span className="mr-auto text-xs text-muted">
-            Ctrl+Enter adds them · paste a list for one task per item, or images and files to send them
+            Ctrl+Enter adds them · paste a list for a task per item · paste or drop files
           </span>
           <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
