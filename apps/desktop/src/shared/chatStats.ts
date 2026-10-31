@@ -38,6 +38,14 @@ export interface SubagentStat {
   durationMs?: number;
 }
 
+export interface AddonStat {
+  /** The add-on's id (or, for a tool Jig can't place, the part of its name after `addon_`). */
+  id: string;
+  calls: number;
+  /** Its tools Claude used, and Jig's tools that read or changed its data. */
+  tools: number;
+}
+
 export interface McpStat {
   server: string;
   calls: number;
@@ -66,6 +74,8 @@ export interface ChatStats {
   commands: Counted[];
   subagents: SubagentStat[];
   mcp: McpStat[];
+  /** Add-ons Claude used: their tools, and Jig's tools for their data (`jig_get_addon_data`…). */
+  addons: AddonStat[];
   files: FileStat[];
   linesAdded: number;
   linesRemoved: number;
@@ -106,8 +116,31 @@ export function toolLabel(name: string): string {
   return mcp ? `${mcp[1]} · ${mcp[2]}` : name;
 }
 
-/** Counts what happened in a chat: tools, skills, subagents, MCP, files, turns, permissions. */
-export function chatStats(items: ChatItem[]): ChatStats {
+/** Jig's tools that work on one add-on, named by their `addonId` argument. */
+const ADDON_DATA_TOOLS = new Set([
+  "mcp__jig__jig_get_addon",
+  "mcp__jig__jig_get_addon_data",
+  "mcp__jig__jig_set_addon_data",
+  "mcp__jig__jig_delete_addon_data",
+]);
+
+/**
+ * The add-on a tool belongs to: `addonOf` knows the installed add-ons' tools (their ids can't be told
+ * from the name alone: `a-b` + `c` and `a` + `b_c` give the same name); without it, the name's rest.
+ */
+export function toolAddon(
+  name: string,
+  input: Record<string, unknown> | undefined,
+  addonOf?: (tool: string) => string | undefined,
+): string | undefined {
+  if (ADDON_DATA_TOOLS.has(name)) return str(input?.addonId) || undefined;
+  const tool = /^mcp__jig__addon_(.+)$/.exec(name);
+  if (!tool) return undefined;
+  return addonOf?.(name) ?? tool[1];
+}
+
+/** Counts what happened in a chat: tools, skills, subagents, add-ons, MCP, files, turns, permissions. */
+export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string | undefined): ChatStats {
   const stats: ChatStats = {
     messages: 0,
     replies: 0,
@@ -123,6 +156,7 @@ export function chatStats(items: ChatItem[]): ChatStats {
     commands: [],
     subagents: [],
     mcp: [],
+    addons: [],
     files: [],
     linesAdded: 0,
     linesRemoved: 0,
@@ -136,6 +170,7 @@ export function chatStats(items: ChatItem[]): ChatStats {
   const skills = new Map<string, number>();
   const commands = new Map<string, number>();
   const mcp = new Map<string, { calls: number; tools: Set<string> }>();
+  const addons = new Map<string, { calls: number; tools: Set<string> }>();
   const files = new Map<string, FileStat>();
   const read = new Set<string>();
   const children = new Map<string, number>();
@@ -177,6 +212,13 @@ export function chatStats(items: ChatItem[]): ChatStats {
         if (failed) tool.errors++;
         tools.set(item.name, tool);
         const input = item.input ?? {};
+        const addon = toolAddon(item.name, input, addonOf);
+        if (addon) {
+          const a = addons.get(addon) ?? { calls: 0, tools: new Set<string>() };
+          a.calls++;
+          a.tools.add(item.name);
+          addons.set(addon, a);
+        }
         const server = /^mcp__(.+?)__(.+)$/.exec(item.name);
         if (server) {
           const s = mcp.get(server[1]!) ?? { calls: 0, tools: new Set<string>() };
@@ -228,6 +270,9 @@ export function chatStats(items: ChatItem[]): ChatStats {
   stats.mcp = [...mcp]
     .map(([server, s]) => ({ server, calls: s.calls, tools: s.tools.size }))
     .sort((a, b) => b.calls - a.calls || a.server.localeCompare(b.server));
+  stats.addons = [...addons]
+    .map(([id, a]) => ({ id, calls: a.calls, tools: a.tools.size }))
+    .sort((a, b) => b.calls - a.calls || a.id.localeCompare(b.id));
   stats.files = [...files.values()].sort((a, b) => b.edits - a.edits || a.path.localeCompare(b.path));
   stats.filesRead = read.size;
   return stats;

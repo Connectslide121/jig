@@ -297,6 +297,7 @@ export class FakeEngine implements Engine {
             { name: "Skill", input: { skill: "explain-code" }, output: "Launching skill: explain-code" },
             { name: "Read", input: { file_path: join(options.cwd, "README.md") }, output: "# Shop" },
             { name: "mcp__github__list_issues", input: { repo: "contoso/shop" }, output: "[]" },
+            { name: "mcp__jig__addon_releases_overview", input: {}, output: "shop: 1.2.0, 3 unreleased" },
           ];
           for (const call of calls) {
             const toolId = `tool-${randomUUID()}`;

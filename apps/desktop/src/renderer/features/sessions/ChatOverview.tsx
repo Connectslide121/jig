@@ -1,3 +1,4 @@
+import { addonToolName } from "@jig/sdk";
 import {
   Brain,
   ChartColumn,
@@ -6,8 +7,8 @@ import {
   Globe,
   Maximize2,
   MessageSquare,
-  Minimize2,
   Plug,
+  Puzzle,
   ShieldCheck,
   ShieldX,
   Sparkles,
@@ -16,7 +17,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo } from "react";
 import {
   type ChatStats,
   chatStats,
@@ -26,39 +27,30 @@ import {
   totalTokens,
 } from "../../../shared/chatStats";
 import type { ChatItem, SessionMeta } from "../../../shared/engine";
+import { useAddons } from "../../addons/loader";
 import { updateConfig } from "../../stores/config";
 import { Badge, type BadgeTone, Button, cn, Dialog, FileIcon, IconButton } from "../../ui";
 import { openPreview } from "../preview/actions";
 import { formatTokens } from "./Transcript";
 
-/** The card's width (w-56, in rem) and the room it keeps from the chat's text (its column's padding helps). */
-const CARD_REM = 14;
-const GAP_PX = 4;
-
 const num = (n: number) => (n > 0 ? n.toLocaleString() : "—");
 
-/**
- * Whether the chat's right margin (beside its centred column) has room for the card, so the card
- * never covers what Claude says. Measured on the box the card floats in.
- */
-function useRoomForCard(box: React.RefObject<HTMLDivElement | null>) {
-  const [room, setRoom] = useState(false);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const measure = () => {
-      const root = getComputedStyle(document.documentElement);
-      const rem = Number.parseFloat(root.fontSize) || 16;
-      const column = (Number.parseFloat(root.getPropertyValue("--jig-chat-width")) || 52) * rem;
-      const margin = (el.clientWidth - Math.min(el.clientWidth, column)) / 2;
-      setRoom(margin >= CARD_REM * rem + GAP_PX);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [box]);
-  return room;
+/** Installed add-ons' tools, so a chat's tool calls can be put to the add-on they came from. */
+export function useAddonNames(): {
+  addonOf: (tool: string) => string | undefined;
+  name: (id: string) => string;
+} {
+  const addons = useAddons((s) => s.addons);
+  return useMemo(() => {
+    const byTool = new Map<string, string>();
+    const names = new Map<string, string>();
+    for (const a of addons) {
+      names.set(a.id, a.name);
+      for (const t of a.manifest?.contributes?.tools ?? [])
+        byTool.set(`mcp__jig__${addonToolName(a.id, t.id)}`, a.id);
+    }
+    return { addonOf: (tool) => byTool.get(tool), name: (id) => names.get(id) ?? id };
+  }, [addons]);
 }
 
 function Row({
@@ -73,7 +65,7 @@ function Row({
   testId?: string;
 }) {
   return (
-    <div className="flex h-6 items-center gap-2 text-xs" data-testid={testId}>
+    <div className="flex h-6 items-center gap-2 px-3 text-xs" data-testid={testId}>
       <Icon className="size-3.5 shrink-0 text-hint" />
       <span className="min-w-0 flex-1 truncate text-muted">{label}</span>
       <span className="shrink-0 text-right tabular-nums text-fg">{value}</span>
@@ -81,11 +73,42 @@ function Row({
   );
 }
 
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col border-t border-line py-2">
+      <h3 className="flex h-6 items-center px-3 text-2xs font-semibold text-hint uppercase">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+/** The most-used few of a list, then "+N more" for the rest (all of them are in the details). */
+function Top<T>({
+  list,
+  limit = 5,
+  render,
+  empty,
+}: {
+  list: T[];
+  limit?: number;
+  render: (item: T) => ReactNode;
+  empty: string;
+}) {
+  if (!list.length) return <div className="flex h-6 items-center px-3 text-xs text-hint">{empty}</div>;
+  return (
+    <>
+      {list.slice(0, limit).map(render)}
+      {list.length > limit && (
+        <div className="flex h-6 items-center px-3 text-xs text-hint">+{list.length - limit} more</div>
+      )}
+    </>
+  );
+}
+
 /**
- * The chat overview (D-184): a small card floating at the chat's right with what happened so far
- * (turns, tool calls, files, skills, subagents, MCP, tokens), and Details for everything. Where the
- * chat has no room beside its column it shrinks to a pill, so it never covers the transcript unless you
- * open it.
+ * The chat overview (D-184): a panel on the chat's right, part of its window, with what happened so
+ * far (turns, tool calls, files, skills, subagents, add-ons, MCP, tokens) and the most-used tools,
+ * add-ons and skills; Show details opens everything in a modal.
  */
 export function ChatOverview({
   meta,
@@ -96,38 +119,30 @@ export function ChatOverview({
   items: ChatItem[];
   onDetails: () => void;
 }) {
-  const box = useRef<HTMLDivElement>(null);
-  const room = useRoomForCard(box);
-  // Without room the pill opens the card over the chat on purpose; it folds back with Minimize.
-  const [expanded, setExpanded] = useState(false);
-  const stats = useMemo(() => chatStats(items), [items]);
+  const { addonOf, name } = useAddonNames();
+  const stats = useMemo(() => chatStats(items, addonOf), [items, addonOf]);
   return (
-    <div ref={box} className="pointer-events-none absolute inset-0 z-10">
-      {room || expanded ? (
-        <div
-          className="pointer-events-auto absolute top-3 right-5 w-56 rounded-lg border border-line bg-elevated p-2 shadow-popover"
-          data-testid="chat-overview"
-        >
-          <div className="flex h-6 items-center gap-1.5 pb-1">
-            <ChartColumn className="size-3.5 shrink-0 text-muted" />
-            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">This chat</span>
-            {!room && (
-              <IconButton
-                icon={Minimize2}
-                size="sm"
-                label="Fold into a small pill"
-                onClick={() => setExpanded(false)}
-                data-testid="chat-overview-fold"
-              />
-            )}
-            <IconButton
-              icon={X}
-              size="sm"
-              label="Hide the overview (the chart button in the chat's top bar brings it back)"
-              onClick={() => void updateConfig({ chat: { overview: false } })}
-              data-testid="chat-overview-hide"
-            />
-          </div>
+    <aside className="flex h-full flex-col border-l border-line bg-surface" data-testid="chat-overview">
+      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-line pr-1 pl-3">
+        <ChartColumn className="size-3.5 shrink-0 text-muted" />
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">Overview</span>
+        <IconButton
+          icon={Maximize2}
+          size="sm"
+          label="Show details"
+          onClick={onDetails}
+          data-testid="chat-overview-expand"
+        />
+        <IconButton
+          icon={X}
+          size="sm"
+          label="Hide the overview (the chart button in the chat's top bar brings it back)"
+          onClick={() => void updateConfig({ chat: { overview: false } })}
+          data-testid="chat-overview-hide"
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col py-2">
           <Row
             icon={Clock}
             label={`${stats.turns} turn${stats.turns === 1 ? "" : "s"}`}
@@ -156,6 +171,7 @@ export function ChatOverview({
             testId="chat-overview-skills"
           />
           <Row icon={Users} label="Subagents" value={num(stats.subagents.length)} />
+          <Row icon={Puzzle} label="Add-ons" value={num(stats.addons.length)} testId="chat-overview-addons" />
           <Row icon={Plug} label="MCP calls" value={num(stats.mcp.reduce((n, s) => n + s.calls, 0))} />
           <Row
             icon={MessageSquare}
@@ -166,30 +182,42 @@ export function ChatOverview({
                 : "—"
             }
           />
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={Maximize2}
-            className="mt-1 w-full justify-center"
-            onClick={onDetails}
-            data-testid="chat-overview-details"
-          >
-            Show details
-          </Button>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="pointer-events-auto absolute top-2 right-5 flex h-6 items-center gap-1.5 rounded-full border border-line bg-elevated px-2 text-2xs text-muted shadow-popover hover:text-fg"
-          onClick={() => setExpanded(true)}
-          title="This chat's overview: tools, skills, subagents, files, tokens"
-          data-testid="chat-overview-pill"
+        <Group title="Most used tools">
+          <Top
+            list={stats.tools}
+            empty="None yet"
+            render={(t) => <Row key={t.name} icon={Wrench} label={toolLabel(t.name)} value={t.calls} />}
+          />
+        </Group>
+        <Group title="Add-ons">
+          <Top
+            list={stats.addons}
+            empty="None used"
+            render={(a) => <Row key={a.id} icon={Puzzle} label={name(a.id)} value={a.calls} />}
+          />
+        </Group>
+        <Group title="Skills">
+          <Top
+            list={stats.skills}
+            empty="None used"
+            render={(sk) => <Row key={sk.name} icon={Sparkles} label={sk.name} value={sk.count} />}
+          />
+        </Group>
+      </div>
+      <div className="shrink-0 border-t border-line p-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Maximize2}
+          className="w-full justify-center"
+          onClick={onDetails}
+          data-testid="chat-overview-details"
         >
-          <ChartColumn className="size-3" />
-          <span className="tabular-nums">{`${stats.toolCalls} tool${stats.toolCalls === 1 ? "" : "s"}`}</span>
-        </button>
-      )}
-    </div>
+          Show details
+        </Button>
+      </div>
+    </aside>
   );
 }
 
@@ -279,12 +307,20 @@ const SUBAGENT_TONE: Record<string, BadgeTone> = {
   stopped: "neutral",
 };
 
-function Details({ meta, stats }: { meta: SessionMeta; stats: ChatStats }) {
+function Details({
+  meta,
+  stats,
+  addonName,
+}: {
+  meta: SessionMeta;
+  stats: ChatStats;
+  addonName: (id: string) => string;
+}) {
   const u = meta.usage;
   const skillUses = stats.skills.reduce((n, s) => n + s.count, 0);
   return (
     <div className="flex flex-col gap-4" data-testid="chat-details">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         <Tile
           label="Turns"
           value={stats.turns}
@@ -292,7 +328,7 @@ function Details({ meta, stats }: { meta: SessionMeta; stats: ChatStats }) {
             stats.failedTurns ? (
               <span className="text-danger">{stats.failedTurns} failed</span>
             ) : (
-              `${stats.messages} messages from you`
+              `${stats.messages} from you`
             )
           }
         />
@@ -349,6 +385,21 @@ function Details({ meta, stats }: { meta: SessionMeta; stats: ChatStats }) {
           label="Subagents"
           value={stats.subagents.length}
           sub={meta.activeModel || meta.model || undefined}
+        />
+        <Tile
+          label="Add-ons"
+          value={stats.addons.length}
+          sub={(() => {
+            const calls = stats.addons.reduce((n, a) => n + a.calls, 0);
+            return calls ? `${calls} call${calls === 1 ? "" : "s"}` : undefined;
+          })()}
+        />
+        <Tile
+          label="MCP calls"
+          value={stats.mcp.reduce((n, m) => n + m.calls, 0)}
+          sub={
+            stats.mcp.length ? `${stats.mcp.length} server${stats.mcp.length === 1 ? "" : "s"}` : undefined
+          }
         />
       </div>
 
@@ -423,6 +474,20 @@ function Details({ meta, stats }: { meta: SessionMeta; stats: ChatStats }) {
                   {a.status === "completed" ? "done" : a.status}
                 </Badge>,
               ]}
+            />
+          ))}
+        </Section>
+      )}
+
+      {stats.addons.length > 0 && (
+        <Section title="Add-ons" count={stats.addons.length} testId="chat-details-addons">
+          <Head cells={["Tools", "Calls"]} />
+          {stats.addons.map((a) => (
+            <Line
+              key={a.id}
+              leading={<Puzzle className="size-3.5 text-hint" />}
+              name={addonName(a.id)}
+              cells={[a.tools, a.calls]}
             />
           ))}
         </Section>
@@ -525,7 +590,8 @@ export function ChatDetailsDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const stats = useMemo(() => (open ? chatStats(items) : undefined), [open, items]);
+  const { addonOf, name } = useAddonNames();
+  const stats = useMemo(() => (open ? chatStats(items, addonOf) : undefined), [open, items, addonOf]);
   return (
     <Dialog
       open={open}
@@ -534,7 +600,7 @@ export function ChatDetailsDialog({
       title={`Overview · ${meta.title}`}
       testId="chat-details-dialog"
     >
-      {stats && <Details meta={meta} stats={stats} />}
+      {stats && <Details meta={meta} stats={stats} addonName={name} />}
     </Dialog>
   );
 }

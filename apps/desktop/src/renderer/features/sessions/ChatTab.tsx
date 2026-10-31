@@ -2,6 +2,7 @@ import { ChartColumn, LogIn, MessageSquareX, MoreHorizontal, Search } from "luci
 import { useCallback, useEffect, useState } from "react";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
+import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
@@ -156,42 +157,53 @@ export function ChatTab({ params, active, focused }: TabProps) {
           }
         />
       </header>
-      {finding && transcript && (
-        <FindBar
-          items={transcript.items}
-          onMatch={onMatch}
-          onClose={() => {
-            setFinding(false);
-            setMatch(undefined);
-          }}
-        />
-      )}
-      {meta.needsLogin && <LoginBanner />}
-      {transcript ? (
-        transcript.items.length === 0 ? (
-          <ChatWelcome
-            title={`New chat${project ? ` in ${project.name}` : ""}`}
-            cwd={meta.cwd}
-            onPick={(text) => fillComposer(id, text)}
-          />
-        ) : (
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
-            {overview && (
-              <ChatOverview meta={meta} items={transcript.items} onDetails={() => setDetails(true)} />
-            )}
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {finding && transcript && (
+            <FindBar
+              items={transcript.items}
+              onMatch={onMatch}
+              onClose={() => {
+                setFinding(false);
+                setMatch(undefined);
+              }}
+            />
+          )}
+          {meta.needsLogin && <LoginBanner />}
+          {transcript ? (
+            transcript.items.length === 0 ? (
+              <ChatWelcome
+                title={`New chat${project ? ` in ${project.name}` : ""}`}
+                cwd={meta.cwd}
+                onPick={(text) => fillComposer(id, text)}
+              />
+            ) : (
+              <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
+            )
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner />
+            </div>
+          )}
+          <div className="flex shrink-0 flex-col gap-1.5 pt-1.5 empty:hidden">
+            {transcript && <TodoPanel items={transcript.items} />}
+            <BackgroundTasks meta={meta} />
           </div>
-        )
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <Spinner />
+          <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
         </div>
-      )}
-      <div className="flex shrink-0 flex-col gap-1.5 pt-1.5 empty:hidden">
-        {transcript && <TodoPanel items={transcript.items} />}
-        <BackgroundTasks meta={meta} />
+        {overview && (
+          <Pane
+            id="jig.chat.overview"
+            edge="left"
+            defaultSize={240}
+            min={200}
+            max={420}
+            label="Resize the overview"
+          >
+            <ChatOverview meta={meta} items={transcript?.items ?? []} onDetails={() => setDetails(true)} />
+          </Pane>
+        )}
       </div>
-      <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
       <ChatDetailsDialog
         meta={meta}
         items={transcript?.items ?? []}

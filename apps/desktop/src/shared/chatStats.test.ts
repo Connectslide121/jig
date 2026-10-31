@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { chatStats, diffLines, formatDuration, relativeTo, toolLabel, totalTokens } from "./chatStats";
+import {
+  chatStats,
+  diffLines,
+  formatDuration,
+  relativeTo,
+  toolAddon,
+  toolLabel,
+  totalTokens,
+} from "./chatStats";
 import type { ChatItem } from "./engine";
 
 const at = "2026-10-31T10:00:00.000Z";
@@ -118,6 +126,41 @@ describe("chatStats", () => {
     ]);
     expect(s.subagents[0]).toMatchObject({ type: "general-purpose", status: "running", toolUses: 1 });
     expect(s.skills).toEqual([{ name: "pdf", count: 1 }]);
+  });
+});
+
+describe("add-ons", () => {
+  const tool = (id: string, name: string, input: Record<string, unknown> = {}): ChatItem => ({
+    kind: "tool",
+    id,
+    name,
+    input,
+    status: "done",
+    at,
+  });
+  it("counts add-on tools and Jig's tools for add-on data, by add-on", () => {
+    const addonOf = (t: string) => (t === "mcp__jig__addon_task_queue_add" ? "task-queue" : undefined);
+    const stats = chatStats(
+      [
+        tool("a", "mcp__jig__addon_releases_overview"),
+        tool("b", "mcp__jig__addon_task_queue_add"),
+        tool("c", "mcp__jig__addon_task_queue_add"),
+        tool("d", "mcp__jig__jig_get_addon_data", { addonId: "releases" }),
+        tool("e", "mcp__jig__jig_open_url"),
+      ],
+      addonOf,
+    );
+    expect(stats.addons).toEqual([
+      { id: "task-queue", calls: 2, tools: 1 },
+      { id: "releases", calls: 1, tools: 1 },
+      { id: "releases_overview", calls: 1, tools: 1 },
+    ]);
+  });
+  it("toolAddon", () => {
+    expect(toolAddon("mcp__jig__addon_notes_add", {}, () => "notes")).toBe("notes");
+    expect(toolAddon("mcp__jig__jig_set_addon_data", { addonId: "tasks" })).toBe("tasks");
+    expect(toolAddon("mcp__jig__jig_set_addon_data", {})).toBeUndefined();
+    expect(toolAddon("mcp__github__list_issues", {})).toBeUndefined();
   });
 });
 

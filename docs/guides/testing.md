@@ -55,7 +55,7 @@ in this order:
 | starts with "Test this in Claude's browser" (Tools → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
-| "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, then a short answer (the chat overview test) |
+| "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" | a plan to approve (ExitPlanMode); the reply says the mode after approval |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |

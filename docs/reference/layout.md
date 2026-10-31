@@ -40,7 +40,7 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   edge. A view's ⋯ menu also has Move to left/right/bottom, **Open as a tab** and Hide; a view's
   main tab's context menu has Move to left sidebar/right sidebar/bottom panel.
 - **panes**: sizes of resizable panes inside views and tabs, by pane id — px, or a 0–1 ratio for a
-  two-column split (`setPaneSize`). Core panes: `jig.terminals.list`, `jig.settings.nav`; the Git
+  two-column split (`setPaneSize`). Core panes: `jig.terminals.list`, `jig.settings.nav`, `jig.chat.overview` (the chat overview, D-184); the Git
   add-on's diff uses `addon.git.diff`. Add-ons use `Pane` / `useSplitRatio` from `@jig/sdk/ui`.
 - **hidden**: views that are not in a sidebar or the bottom panel. Showing one (its action in the
   top bar menus, layout menu → Views) opens it as a **main tab** (`jig.view`, `params.viewId`,

@@ -203,7 +203,7 @@ test("chat: opening a chat of another project makes that project the active one"
   await expect(switcher).toContainText("two");
 });
 
-test("chat: the overview card counts tools, skills, subagents and MCP; details in a modal", async ({
+test("chat: the overview panel counts tools, skills, subagents, add-ons and MCP; details in a modal", async ({
   page,
   jigHome,
 }) => {
@@ -215,21 +215,19 @@ test("chat: the overview card counts tools, skills, subagents and MCP; details i
   await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
   await page.keyboard.press("Enter");
   await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
-  // Beside the chat when there's room; else a pill that opens the card.
-  const pill = tab.getByTestId("chat-overview-pill");
-  if (await pill.isVisible()) {
-    await expect(pill).toContainText("5 tools");
-    await pill.click();
-  }
+  // A panel on the chat's right, part of its window.
   const card = tab.getByTestId("chat-overview");
-  await expect(card.getByTestId("chat-overview-tools")).toContainText("5");
+  await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
+  await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
+  await expect(card).toContainText("Releases");
   await card.getByTestId("chat-overview-details").click();
   const details = page.getByTestId("chat-details-dialog");
   await expect(details.getByTestId("chat-details-tools")).toContainText("Skill");
   await expect(details.getByTestId("chat-details-skills")).toContainText("explain-code");
   await expect(details.getByTestId("chat-details-subagents")).toContainText("Explore the cart code");
   await expect(details.getByTestId("chat-details-mcp")).toContainText("github");
+  await expect(details.getByTestId("chat-details-addons")).toContainText("Releases");
   await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);
   // Also from the chat's ⋯ menu; and the top bar's chart button hides it (a setting).
@@ -239,7 +237,6 @@ test("chat: the overview card counts tools, skills, subagents and MCP; details i
   await page.keyboard.press("Escape");
   await tab.getByTestId("chat-overview-toggle").click();
   await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
-  await expect(pill).toHaveCount(0);
   const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
   expect(config.value.chat.overview).toBe(false);
 });
