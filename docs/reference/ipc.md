@@ -158,6 +158,7 @@ settings, add-on permissions.
 | `learning.setProfile` | `{ text }` | — | writes `profile.md` (schema) |
 | `learning.removeNote` / `learning.clearNotes` | `{ id }` / — | — | notes from chats |
 | `learning.worked` | `{ refresh? }` | `WorkedState` | "How you worked", cached an hour |
+| `learning.usage` | — | `UsageSummary` | "How Claude worked for you": tools, skills, subagents, add-ons and MCP servers over 4 weeks (D-185) |
 | `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 | `addons.remove` | `{ id }` | — | your add-ons only: deletes the folder as a commit (stays in the history), keeps its stored data; a built-in it replaced comes back (schema, D-122) |

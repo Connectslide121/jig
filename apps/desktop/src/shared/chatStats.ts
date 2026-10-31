@@ -139,6 +139,27 @@ export function toolAddon(
   return addonOf?.(name) ?? tool[1];
 }
 
+/**
+ * What a tool call used, for the learning log (D-185): a skill, a subagent, an add-on or another MCP
+ * server, with its name. Plain tools (Read, Bash…) return undefined.
+ */
+export function toolUse(
+  name: string,
+  input: Record<string, unknown> | undefined,
+  addonOf?: (tool: string) => string | undefined,
+): { use: "skill" | "subagent" | "addon" | "mcp"; name: string } | undefined {
+  const addon = toolAddon(name, input, addonOf);
+  if (addon) return { use: "addon", name: addon };
+  const server = /^mcp__(.+?)__/.exec(name);
+  if (server) return { use: "mcp", name: server[1]! };
+  if (name === "Skill") {
+    const skill = (str(input?.skill) || str(input?.command) || str(input?.name)).replace(/^\//, "");
+    return skill ? { use: "skill", name: skill } : undefined;
+  }
+  if (AGENT_TOOLS.has(name)) return { use: "subagent", name: str(input?.subagent_type) || "general-purpose" };
+  return undefined;
+}
+
 /** Counts what happened in a chat: tools, skills, subagents, add-ons, MCP, files, turns, permissions. */
 export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string | undefined): ChatStats {
   const stats: ChatStats = {

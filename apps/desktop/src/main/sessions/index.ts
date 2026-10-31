@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { aiLineHashes, correctionSignal } from "@jig/learning";
 import { app, BrowserWindow, dialog, Notification } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
+import { toolUse } from "../../shared/chatStats";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
@@ -38,6 +39,12 @@ export interface SessionKindHooks {
   onTurnEnd?: (meta: SessionMeta) => void;
   onWorking?: (meta: SessionMeta) => void;
 }
+/** Which add-on owns an add-on tool for Claude (set by the add-ons module), for the learning log. */
+let toolAddons: (tool: string) => string | undefined = () => undefined;
+export function setToolAddons(resolve: (tool: string) => string | undefined): void {
+  toolAddons = resolve;
+}
+
 const kindHooks = new Map<string, SessionKindHooks>();
 export function registerSessionKind(kind: NonNullable<SessionMeta["kind"]>, hooks: SessionKindHooks): void {
   kindHooks.set(kind, hooks);
@@ -201,7 +208,11 @@ export function startSessions(): void {
         kind: "session.tool",
         text: event.text,
         projectId,
-        detail: { tool: event.tool ?? "" },
+        detail: {
+          tool: event.tool ?? "",
+          chat: event.session.id,
+          ...(event.tool ? toolUse(event.tool, event.input, toolAddons) : {}),
+        },
       });
       // The lines Claude writes, as hashes, to tell them from hand-written ones at commit time (2e).
       const file = event.input?.file_path;

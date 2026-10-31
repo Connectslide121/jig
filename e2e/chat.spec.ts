@@ -238,4 +238,12 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
   const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
   expect(config.value.chat.overview).toBe(false);
+  // Jig learns from it too: "How Claude worked for you" sums it over all chats (D-185).
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("open-knowledge").click();
+  const usage = page.getByTestId("knowledge-usage");
+  await expect(usage.getByTestId("knowledge-usage-skills")).toContainText("explain-code");
+  await expect(usage.getByTestId("knowledge-usage-addons")).toContainText("Releases");
+  await expect(usage.getByTestId("knowledge-usage-mcp")).toContainText("github");
+  await expect(usage.getByTestId("knowledge-usage-subagents")).toContainText("Explore");
 });

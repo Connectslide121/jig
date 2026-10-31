@@ -205,7 +205,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
     <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/knowledge.jpg?v=13" alt="What Jig knows about me">
       <b>What Jig knows about you, in plain sight.</b> Your profile (how you work), the notes Claude saved
-      from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand.
+      from your chats, your activity by kind, how you worked this week — lines by Claude vs by hand — and
+      how Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats.
       All local; edit or delete anything. An optional weekly check-in fills in the gaps.
     </td>
   </tr>

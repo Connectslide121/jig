@@ -9,7 +9,7 @@ import { profileIsEmpty } from "./knowledge";
  * past answers, and returns at most 3 suggestions as JSON, validated here.
  */
 export const REFLECTION_INSTRUCTIONS = `You help Jig, a desktop workbench around Claude Code, help its user work better.
-You get: patterns mined from the user's local activity (repeated commands, sequences, similar prompts, friction such as interrupts and corrections, what they paste into chats, Jig tools that fit but were never used, views they keep opening as a tab: a "view-habit", which may belong in a sidebar), notes Claude saved from their chats (manual work, work outside Jig, frustration), their profile (how they work), a summary of lines written by Claude vs by hand, the add-ons that exist, and their past answers with whether built suggestions helped.
+You get: patterns mined from the user's local activity (repeated commands, sequences, similar prompts, friction such as interrupts and corrections, what they paste into chats, Jig tools that fit but were never used, views they keep opening as a tab: a "view-habit", which may belong in a sidebar), notes Claude saved from their chats (manual work, work outside Jig, frustration), their profile (how they work), a summary of lines written by Claude vs by hand, how Claude worked for them across chats (tools, skills, subagents, add-ons and MCP servers used; heavy manual tool use where a skill or add-on exists, or one never used, is evidence too), the add-ons that exist, and their past answers with whether built suggestions helped.
 Suggest AT MOST 3 things, only where the evidence is strong, each of one kind:
 - a tool: "layout" or "settings" (level 1), "change-addon" with its addonId or "new-addon" (level 2), or only if nothing else can, "app" (level 3: a new extension point). "goal" is what to ask Jig's builder.
 - "workflow": a repeated multi-step chore (e.g. a release by hand). "steps": the steps in order. "goal": what it is for.
@@ -34,6 +34,8 @@ export interface ReflectionContext {
   notes?: EvidenceNote[];
   profile?: string;
   worked?: string;
+  /** How Claude worked across chats (`usageText`, D-185). */
+  usage?: string;
   tipsAllowed?: boolean;
 }
 
@@ -61,6 +63,7 @@ export function reflectionPrompt(
     `## Notes from chats\n${notes}`,
     `## Profile\n${context.profile?.trim() || "(empty)"}`,
     `## How they worked (last 7 days)\n${context.worked || "(no commits measured)"}`,
+    `## How Claude worked for them (last 4 weeks)\n${context.usage || "(no chats recorded)"}`,
     `## Add-ons\n${catalog}`,
     `## Past answers\n${past}`,
     `Tips allowed: ${context.tipsAllowed === false ? "no" : "yes (at most one)"}`,

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { addonToolName } from "@jig/sdk";
 import { slugify } from "@jig/themes";
 import { app, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
@@ -20,7 +21,7 @@ import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
-import { createChat, onSessionStatus, sessionManager } from "../sessions";
+import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
 import { addonChats } from "./chats";
@@ -194,6 +195,11 @@ export async function startAddons(): Promise<void> {
       emit("addons.changed", addons);
       // Add-ons' tools for Claude follow the add-ons (new chats get the current set).
       setAddonTools(addonTools(addons, (id, method, args) => addonService().call(id, method, args)));
+      const owners = new Map<string, string>();
+      for (const a of addons)
+        for (const t of a.manifest?.contributes.tools ?? [])
+          owners.set(`mcp__jig__${addonToolName(a.id, t.id)}`, a.id);
+      setToolAddons((tool) => owners.get(tool));
       for (const listener of changeListeners) listener(addons);
     },
   });

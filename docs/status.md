@@ -40,6 +40,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   tokens. **Show details** opens a modal with every tool, skill, subagent, add-on, MCP server and file.
   Toggle it with the chart button in the chat's top bar; ⋯ → Chat overview… opens the details; setting
   `chat.overview`.
+- How Claude worked for you (D-185): What Jig knows about me sums the overview's counts over 4 weeks
+  of chats (skills, subagents, add-ons, MCP servers, most used tools; calls and chats each), and the
+  weekly reflection reads it. Tool calls recorded before this have no skill/add-on tag, so they count
+  only as tools.
 - Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
 - Layout (D-173, D-174): **View menu → Reset layout** puts every view back. Sidebars hold only daily
   views; Suggestions, Links, Releases and Workflows open as main tabs from the top bar menus. Drag

@@ -12,7 +12,7 @@ Sources publish to `main/activity/bus.ts`; the log appends one JSON line per eve
 | `kind` | From |
 |---|---|
 | `prompt` | every message you send in a chat (pastes collapsed, secrets masked — see below) |
-| `session.tool` | tool calls in sessions (the command for Bash) |
+| `session.tool` | tool calls in sessions (the command for Bash); `detail`: `tool`, `chat` and, for a skill, subagent, add-on or MCP tool, `use` (`skill`/`subagent`/`addon`/`mcp`) and `name` (D-185) |
 | `terminal.command` | lines typed in Jig terminals (not in private ones, like the Claude sign-in) |
 | `script.run` | scripts started from Jig |
 | `addon.action` | add-on Tools actions and menu entries |
@@ -51,7 +51,9 @@ start and daily), open the folder, delete all.
   card with Undo) let chats use it.
 - **What Jig knows about me** (tab `jig.knowledge`: Suggestions view's person button, Tools, Settings →
   Learning): the profile in an editor (Ctrl+S), the notes (delete one or all), the activity of the last
-  4 weeks per kind, and "How you worked".
+  4 weeks per kind, "How you worked", and "How Claude worked for you" (D-185): the chat overview's
+  counts summed over 4 weeks (`usageSummary` in `@jig/learning`, IPC `learning.usage`): chats,
+  messages, tool calls, and per skill, subagent, add-on, MCP server and tool its calls and chats.
 - **Profile interview** (D-169): an empty profile (only headings) makes Jig offer a chat where Claude
   interviews you one question at a time and writes with `jig_update_profile`: a toast when Jig opens
   (once per launch, a project active, "Don't ask again" in localStorage) and **Fill it in with Claude**
@@ -100,7 +102,7 @@ Only when there are patterns or notes: one Claude Code query without tools (`Eng
 `learning.model`, default `haiku`) gets the patterns, the add-on catalog and your past answers, with
 instructions to return at most 3 suggestions as JSON (title, why with evidence, goal, level, kind,
 minutes saved per week, pattern keys, note ids, workflow steps) plus `profileUpdates`. Learning 2 adds
-the notes, the profile, "How you worked", past answers with their "did it help?" outcome, and whether
+the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 a tip is allowed (at most one coaching tip a week). The reply is validated (`main/learning/reflect.ts`):
 extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
 **No patterns and no notes → no AI call → no quota used.**

@@ -397,4 +397,5 @@ true"). This step checks the whole picture again:
 - [x] Commit messages on a quick model (Haiku), `engine.quickModel` (D-181)
 - [x] Pipelines load when Jig starts and refresh in the background when opened; watchers' `atStart` (D-183)
 - [x] Chat overview: a small card at the top right of each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens) with the full breakdown in a modal; `chat.overview` (D-184)
+- [x] Learning: "How Claude worked for you" — tool calls tagged with the skill, subagent, add-on or MCP server they used; summed in What Jig knows about me and given to the weekly reflection (D-185)
 - [x] Task queue: prompts Claude does in order, each reporting back in a table with links to the chats; Claude can queue tasks; add-ons can run chats (`api.chats`) (D-182)

@@ -1906,3 +1906,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
     and unit-tested); nothing new is recorded or asked of Claude Code.
   - On by default; the chart button in the chat's top bar, the card's × and setting `chat.overview`
     turn it off. ⋯ → Chat overview… opens the details modal directly.
+
+## D-185: Jig learns how Claude works for you across chats
+
+- Status: accepted. Decided by Jon ("this could also be logged as what Jig learns about how you work,
+  like a global stats, to help with suggestions"). How it works is **Claude, on my own**:
+  - Each recorded `session.tool` event gets `detail.chat` and, when the call used a skill, subagent,
+    add-on or other MCP server, `detail.use` and `detail.name` (`toolUse()` in `shared/chatStats.ts`,
+    the same rules as the chat overview; add-on tools are matched to their add-on by the add-ons
+    module). Only names, never inputs, are added; the event's text stays as before (masked).
+  - `usageSummary()` in `@jig/learning` (pure, tested) sums the last 4 weeks: chats, messages, tool
+    calls, and each tool, skill, subagent, add-on and MCP server with its calls and number of chats.
+  - Shown as "How Claude worked for you" in What Jig knows about me (IPC `learning.usage`), and given to
+    the weekly reflection as a section (`usageText()`), so suggestions can point at a skill or add-on
+    that fits what Claude keeps doing by hand, or one never used. No extra AI call.
+  - Older events have no tags; they count as tool calls only. Nothing new leaves the machine.

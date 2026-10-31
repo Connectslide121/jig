@@ -6,6 +6,7 @@ import {
   relativeTo,
   toolAddon,
   toolLabel,
+  toolUse,
   totalTokens,
 } from "./chatStats";
 import type { ChatItem } from "./engine";
@@ -156,6 +157,16 @@ describe("add-ons", () => {
       { id: "releases_overview", calls: 1, tools: 1 },
     ]);
   });
+  it("toolUse", () => {
+    expect(toolUse("Skill", { skill: "/pdf" })).toEqual({ use: "skill", name: "pdf" });
+    expect(toolUse("Task", { subagent_type: "explore" })).toEqual({ use: "subagent", name: "explore" });
+    expect(toolUse("Agent", {})).toEqual({ use: "subagent", name: "general-purpose" });
+    expect(toolUse("mcp__jig__addon_notes_add", {}, () => "notes")).toEqual({ use: "addon", name: "notes" });
+    expect(toolUse("mcp__github__list_issues", {})).toEqual({ use: "mcp", name: "github" });
+    expect(toolUse("Read", {})).toBeUndefined();
+    expect(toolUse("Skill", {})).toBeUndefined();
+  });
+
   it("toolAddon", () => {
     expect(toolAddon("mcp__jig__addon_notes_add", {}, () => "notes")).toBe("notes");
     expect(toolAddon("mcp__jig__jig_set_addon_data", { addonId: "tasks" })).toBe("tasks");
