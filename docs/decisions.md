@@ -1889,3 +1889,16 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   stays only for the very first time, when nothing was ever saved.
 - Cost: `az pipelines runs list` once per Azure DevOps project every 5 minutes while Jig runs, even with
   the view closed; with no Azure DevOps remotes it only reads `git remote` of each checkout.
+
+## D-184: A chat overview card, with the details in a modal
+
+- Status: accepted. Decided by Jon ("a floating card showing an overview of the sessions, with how many
+  tool calls, skills used etc … and a show detail button to expand it to a modal with a full detail
+  view"). How it fits is **Claude, on my own**:
+  - The card floats at the top right of the transcript, in the margin beside the message column, so it
+    covers nothing. When the chat is too narrow it folds into a small "N tools" pill that opens the
+    card over the chat; nothing moves (no layout shift).
+  - The numbers come from the transcript Jig already has (`chatStats()` in `shared/chatStats.ts`, pure
+    and unit-tested); nothing new is recorded or asked of Claude Code.
+  - On by default; the chart button in the chat's top bar, the card's × and setting `chat.overview`
+    turn it off. ⋯ → Chat overview… opens the details modal directly.

@@ -291,6 +291,20 @@ export class FakeEngine implements Engine {
             isError: false,
           });
           await stream(`${msg}:text:0`, "I published the release notes as an artifact.", signal);
+        } else if (lower.includes("use a skill")) {
+          // A skill (the Skill tool), a file read and an MCP tool: for the chat overview.
+          const calls: Array<{ name: string; input: Record<string, unknown>; output: string }> = [
+            { name: "Skill", input: { skill: "explain-code" }, output: "Launching skill: explain-code" },
+            { name: "Read", input: { file_path: join(options.cwd, "README.md") }, output: "# Shop" },
+            { name: "mcp__github__list_issues", input: { repo: "contoso/shop" }, output: "[]" },
+          ];
+          for (const call of calls) {
+            const toolId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input });
+            await sleep(this.delayMs, signal);
+            onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
+          }
+          await stream(`${msg}:text:0`, "I explained the code with the explain-code skill.", signal);
         } else if (lower.includes("todo list")) {
           // Claude keeps a todo list (TodoWrite) and works through it.
           const todos = (done: number) =>

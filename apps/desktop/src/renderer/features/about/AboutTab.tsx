@@ -597,6 +597,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "After a turn that changed files: Review, Walk me through or Undo, right there",
                 "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
+                "Chat overview: a card beside each chat counts tool calls, files, skills, subagents, MCP calls and tokens; Show details for the full breakdown",
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
                 "Task queue (Chats menu): prompts Claude does in order, each reporting outcome, summary, things to know and follow-ups in a table with links to the chats; Claude can queue tasks too",
               ]}

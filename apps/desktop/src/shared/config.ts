@@ -70,6 +70,8 @@ export const ConfigSchema = z.object({
        * edits, thinking) folded into one line you can open; `detailed`: every step as its card.
        */
       view: z.enum(["compact", "detailed"]).default("compact"),
+      /** The overview card floating at a chat's right (turns, tools, files, skills…; D-184). */
+      overview: z.boolean().default(true),
     })
     .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */

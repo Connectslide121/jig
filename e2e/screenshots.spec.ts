@@ -350,6 +350,25 @@ test("screenshots for the About page", async () => {
   await page.getByTestId("plan-approve").click();
   await expect(results).toHaveCount(3, { timeout: 20000 });
 
+  // The chat overview: a card beside the chat, with the full detail in a modal.
+  await chatInput.fill("use a skill to explain the cart");
+  await page.keyboard.press("Enter");
+  await expect(results).toHaveCount(4, { timeout: 20000 });
+  await chatInput.fill("ask a subagent to explore the cart");
+  await page.keyboard.press("Enter");
+  await expect(results).toHaveCount(5, { timeout: 20000 });
+  const tab = page.locator("[data-tab-id]:not(.hidden)");
+  const pill = tab.getByTestId("chat-overview-pill");
+  if (await pill.isVisible()) await pill.click();
+  await expect(tab.getByTestId("chat-overview")).toBeVisible();
+  await page.waitForTimeout(400);
+  await shot("chat-overview");
+  await tab.getByTestId("chat-overview-details").click();
+  await expect(page.getByTestId("chat-details-dialog")).toBeVisible();
+  await page.waitForTimeout(400);
+  await shot("chat-details");
+  await page.keyboard.press("Escape");
+
   // Claude's browser: Claude checks the shop on a phone-sized page.
   const shopPage = join(ws, "webshop", "public", "index.html");
   await mkdir(join(ws, "webshop", "public"), { recursive: true });
@@ -403,11 +422,7 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
     .last()
     .click({ button: "right" });
   await page.getByTestId("tab-open-side").click();
-  await page
-    .getByTestId("main-pane-left")
-    .getByTestId("tab-jig.preview")
-    .filter({ hasText: "cart.ts" })
-    .click();
+  await page.getByTestId("tab-jig.preview").filter({ hasText: "cart.ts" }).first().click();
   await page.waitForTimeout(800);
   await shot("files");
 

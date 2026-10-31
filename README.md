@@ -37,6 +37,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
+  - An overview card beside each chat (tool calls, skills, subagents, MCP, files, tokens), with the full breakdown a click away.
 - **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.

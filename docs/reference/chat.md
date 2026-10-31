@@ -61,6 +61,18 @@ ToolCard, PermissionCard, ChatPanels, SessionDialogs, menus), host side in `main
 - **A tool waiting for your permission** says "waiting for you" instead of a spinner, and can't go to
   the background until it runs.
 
+- **Chat overview** (chart button in the header, setting `chat.overview`, D-184): a floating card at
+  the top right of the transcript with turns and time Claude worked, tool calls, files changed (+/−),
+  commands, skills, subagents, MCP calls and tokens. It sits in the margin beside the message column
+  when there's room; otherwise it folds into a pill ("N tools") that opens the card over the chat.
+  **Show details** (or ⋯ → Chat overview…) opens a modal: tiles, then tables of tools (calls, failed),
+  skills and commands, subagents (tools, tokens, time, status), MCP servers, files changed (click to
+  preview), activity (commands, `!` commands, web, thinking, permissions) and tokens. The counting is
+  `chatStats()` in `shared/chatStats.ts`, computed from the transcript, nothing extra recorded.
+
+  ![The chat overview card](../../apps/desktop/src/renderer/features/about/shots/chat-overview.jpg)
+  ![The chat details modal](../../apps/desktop/src/renderer/features/about/shots/chat-details.jpg)
+
 - **Find in chat** (Ctrl+F, or 🔍 in the header): matches in messages, tool calls, outputs and plans,
   newest first; Enter / Shift+Enter step, the transcript scrolls to each.
 - **Jump to latest** when you've scrolled up.

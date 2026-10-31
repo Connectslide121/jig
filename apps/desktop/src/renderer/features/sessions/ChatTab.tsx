@@ -1,10 +1,11 @@
-import { LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
+import { ChartColumn, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
+import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
@@ -47,6 +48,8 @@ export function ChatTab({ params, active, focused }: TabProps) {
   const loaded = useSessions((s) => s.loaded);
   const project = useProjects((s) => s.projects.find((p) => p.id === meta?.projectId));
   const [finding, setFinding] = useState(false);
+  const [details, setDetails] = useState(false);
+  const overview = useConfig((s) => s.config?.chat.overview ?? true);
   const [match, setMatch] = useState<string>();
   const onMatch = useCallback((m: string | undefined) => setMatch(m), []);
   useEffect(() => {
@@ -117,6 +120,15 @@ export function ChatTab({ params, active, focused }: TabProps) {
         )}
         <ChatViewSwitch />
         <IconButton
+          icon={ChartColumn}
+          label={overview ? "Hide the chat overview" : "Show the chat overview"}
+          size="sm"
+          active={overview}
+          aria-pressed={overview}
+          data-testid="chat-overview-toggle"
+          onClick={() => void updateConfig({ chat: { overview: !overview } })}
+        />
+        <IconButton
           icon={Search}
           label={`Find in this chat (${formatShortcut("Mod+F")})`}
           size="sm"
@@ -127,7 +139,21 @@ export function ChatTab({ params, active, focused }: TabProps) {
           icon={MoreHorizontal}
           label="Chat options"
           size="sm"
-          onClick={(e) => openMenuAt(e.currentTarget, sessionMenu(meta), true)}
+          onClick={(e) =>
+            openMenuAt(
+              e.currentTarget,
+              [
+                {
+                  label: "Chat overview…",
+                  icon: ChartColumn,
+                  onSelect: () => setDetails(true),
+                  testId: "session-overview",
+                },
+                ...sessionMenu(meta),
+              ],
+              true,
+            )
+          }
         />
       </header>
       {finding && transcript && (
@@ -149,7 +175,12 @@ export function ChatTab({ params, active, focused }: TabProps) {
             onPick={(text) => fillComposer(id, text)}
           />
         ) : (
-          <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
+            {overview && (
+              <ChatOverview meta={meta} items={transcript.items} onDetails={() => setDetails(true)} />
+            )}
+          </div>
         )
       ) : (
         <div className="flex flex-1 items-center justify-center">
@@ -161,6 +192,12 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <BackgroundTasks meta={meta} />
       </div>
       <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
+      <ChatDetailsDialog
+        meta={meta}
+        items={transcript?.items ?? []}
+        open={details}
+        onClose={() => setDetails(false)}
+      />
     </div>
   );
 }
