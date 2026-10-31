@@ -3,7 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
-import { addAttachment, readAttachments, removeAttachments } from "./attachments";
+import {
+  addAddonAttachment,
+  addAttachment,
+  copyAddonAttachments,
+  readAttachments,
+  removeAddonAttachments,
+  removeAttachments,
+} from "./attachments";
 
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -77,5 +84,33 @@ describe("chat attachments", () => {
     await expect(
       readAttachments(att, "s1", [{ path: join(root, "elsewhere.png"), mime: "image/png", kind: "image" }]),
     ).rejects.toMatchObject({ code: "invalid_args" });
+  });
+
+  it("keeps an add-on's files apart, copies them into a chat on send, and deletes only its own", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jig-att-"));
+    const att = join(root, "att");
+    const kept = await addAddonAttachment(att, "tasks", {
+      data: png.toString("base64"),
+      mime: "image/png",
+      name: "shot.png",
+    });
+    expect(kept.path.startsWith(join(att, "addon-tasks"))).toBe(true);
+    const [copy] = await copyAddonAttachments(att, "tasks", "s1", [kept]);
+    expect(copy).toMatchObject({ name: "shot.png", kind: "image", mime: "image/png" });
+    expect(copy!.path.startsWith(join(att, "s1"))).toBe(true);
+    expect(await readAttachments(att, "s1", [copy!])).toEqual([
+      { type: "image", mime: "image/png", data: png.toString("base64") },
+    ]);
+    // Another add-on's files, or a chat's, can't be sent or deleted as this one's.
+    const other = await addAddonAttachment(att, "notes", { data: png.toString("base64"), mime: "image/png" });
+    await expect(copyAddonAttachments(att, "tasks", "s1", [other])).rejects.toThrow(/isn't an attachment/);
+    await expect(addAddonAttachment(att, "../x", { data: "eA==", name: "a.txt" })).rejects.toThrow(
+      /add-on id/,
+    );
+    await removeAddonAttachments(att, "tasks", [kept.path, other.path, copy!.path]);
+    await expect(readFile(kept.path)).rejects.toThrow();
+    await expect(readFile(other.path)).resolves.toBeTruthy();
+    await expect(readFile(copy!.path)).resolves.toBeTruthy();
+    await expect(copyAddonAttachments(att, "tasks", "s1", [kept])).rejects.toThrow(/gone/);
   });
 });

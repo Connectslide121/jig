@@ -400,3 +400,4 @@ true"). This step checks the whole picture again:
 - [x] Learning: "How Claude worked for you" — tool calls tagged with the skill, subagent, add-on or MCP server they used; summed in What Jig knows about me and given to the weekly reflection (D-185)
 - [x] Task queue: prompts Claude does in order, each reporting back in a table with links to the chats; Claude can queue tasks; add-ons can run chats (`api.chats`) (D-182)
 - [x] Tasks: the add dialog groups tasks in chats with one field per task (split, merge, move, paste a list); the results show a card per chat and a status bar (D-186)
+- [x] Tasks take files like the chat (paste, drop, attach), kept with the task and opened from the results and details; add-ons get `ctx.attachments` and `chats.send({ attachments })` (D-187)

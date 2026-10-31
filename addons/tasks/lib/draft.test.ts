@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addFiles,
   addStep,
   type DraftChat,
   draftChat,
@@ -8,6 +9,7 @@ import {
   moveChat,
   moveStep,
   pastedList,
+  removeFile,
   removeStep,
   setChatProject,
   setStep,
@@ -71,5 +73,32 @@ describe("the add dialog's draft", () => {
       },
       { projectId: "p2", tasks: [{ prompt: "c", newChat: true }] },
     ]);
+  });
+
+  it("keeps files with their task and queues a task that has only files", () => {
+    const shot = { path: "/att/addon-tasks/a.png", mime: "image/png", name: "a.png", kind: "image" as const };
+    const spec = {
+      path: "/att/addon-tasks/b.pdf",
+      mime: "application/pdf",
+      name: "spec.pdf",
+      kind: "pdf" as const,
+    };
+    let chats = addStep([draftChat("p1", ["Fix the cart"])], 0);
+    chats = addFiles(chats, 0, 0, [shot]);
+    chats = addFiles(chats, 0, 0, [shot, spec]);
+    chats = addFiles(chats, 0, 1, [spec]);
+    expect(chats[0]!.steps[0]!.files).toEqual([shot, spec]);
+    expect(draftTasks(chats)).toEqual([
+      {
+        projectId: "p1",
+        tasks: [
+          { prompt: "Fix the cart", newChat: true, attachments: [shot, spec] },
+          { prompt: "", newChat: false, attachments: [spec] },
+        ],
+      },
+    ]);
+    chats = removeFile(chats, 0, 1, spec.path);
+    expect(draftTasks(chats)[0]!.tasks).toHaveLength(1);
+    expect(spreadStep(chats, 0, 0, ["a", "b"])[0]!.steps.map((s) => s.files.length)).toEqual([2, 0, 0]);
   });
 });

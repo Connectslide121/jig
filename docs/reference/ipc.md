@@ -135,6 +135,7 @@ settings, add-on permissions.
 | `addons.list` | — | `AddonInfo[]` | every add-on with manifest, errors, warnings, UI/CSS urls (`docs/reference/addon-api.md`) |
 | `addons.setEnabled` | `{ id, enabled }` | — | remembered in `addons-state.json` |
 | `addons.call` | `{ id, method, args? }` | `unknown` | calls a `host.ts` export; `disabled`, `no_host`, `addon_error` |
+| `addons.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment` | `ctx.attachments.add/pick`: keeps a file for a message the add-on's host sends later, in `attachments/addon-<id>/` (same types and limits as `sessions.addAttachment`); `api.chats.send({ attachments })` copies them into the chat |
 | `addons.storageGet` / `addons.storageSet` | `{ id, key }` / `{ id, key, value }` | `unknown` / — | per-add-on JSON |
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
 | `builds.list` | — | `BuildJob[]` | newest first (`docs/reference/builder.md`) |

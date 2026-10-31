@@ -135,8 +135,9 @@ export class FakeEngine implements Engine {
     };
 
     const runTurn = async (sent: string, uuid: string) => {
-      // The script answers what the user typed: add-ons' context (D-151) is left out of the matching.
-      const text = sent.replace(/^<jig-context>[\s\S]*?<\/jig-context>\s*/, "");
+      // The script answers what the user typed: add-ons' context (D-151) is left out of the matching
+      // (it follows the "[1 image]" tags when the message has files).
+      const text = sent.replace(/<jig-context>[\s\S]*?<\/jig-context>\s*/, "");
       messageOrder.push(uuid);
       const controller = new AbortController();
       turn = controller;
@@ -203,11 +204,12 @@ export class FakeEngine implements Engine {
           // A task from the Tasks add-on's queue (its context says so): do it and report back.
           const toolId = `tool-${randomUUID()}`;
           const failed = /fail this task/.test(lower);
+          const task = text.replace(/^(?:\[[^\]]+\]\s*)+/, "").trim();
           const input = {
             outcome: failed ? "failed" : "done",
-            summary: failed ? `Could not do it: ${text.trim()}` : `Did it: ${text.trim()}`,
+            summary: failed ? `Could not do it: ${task}` : `Did it: ${task}`,
             notes: ["A fake note to know"],
-            followUps: /with follow-ups/.test(lower) ? [`Follow up on: ${text.trim()}`] : [],
+            followUps: /with follow-ups/.test(lower) ? [`Follow up on: ${task}`] : [],
           };
           await stream(`${msg}:text:0`, "Working on the task.", signal);
           onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });

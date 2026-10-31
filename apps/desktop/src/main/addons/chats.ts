@@ -1,5 +1,5 @@
 import type { AddonChatInfo, AddonChatSend } from "@jig/sdk";
-import type { PermissionMode, SessionMeta, SessionSnapshot } from "../../shared/engine";
+import type { ChatAttachment, PermissionMode, SessionMeta, SessionSnapshot } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 
 /**
@@ -15,7 +15,9 @@ export interface ChatsDeps {
     title?: string;
     permissionMode?: PermissionMode;
   }): Promise<SessionMeta>;
-  send(sessionId: string, text: string): Promise<void>;
+  send(sessionId: string, text: string, attachments: ChatAttachment[]): Promise<void>;
+  /** Copies files the add-on kept (`addons.addAttachment`) into the chat's attachments. */
+  copyAttachments(addonId: string, sessionId: string, list: ChatAttachment[]): Promise<ChatAttachment[]>;
   snapshot(sessionId: string): Promise<SessionSnapshot>;
   notify(addonId: string, change: { sessionId: string; status: SessionMeta["status"] }): Promise<unknown>;
 }
@@ -70,14 +72,16 @@ export function addonChats(deps: ChatsDeps) {
     async send(addonId: string, input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }> {
       check(addonId);
       const text = String(input?.text ?? "").trim();
-      if (!text) throw new JigError("invalid_args", "Nothing to send");
+      const files = Array.isArray(input?.attachments) ? input.attachments : [];
+      if (!text && !files.length) throw new JigError("invalid_args", "Nothing to send");
       let sessionId = input.sessionId;
       if (sessionId) {
         await deps.snapshot(sessionId);
         watch(addonId, sessionId);
       } else sessionId = await create(addonId, input);
+      const attachments = files.length ? await deps.copyAttachments(addonId, sessionId, files) : [];
       const sentAt = new Date().toISOString();
-      await deps.send(sessionId, text);
+      await deps.send(sessionId, text, attachments);
       return { sessionId, sentAt };
     },
     async get(addonId: string, sessionId: string): Promise<AddonChatInfo> {

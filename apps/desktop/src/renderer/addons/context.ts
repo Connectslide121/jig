@@ -1,4 +1,5 @@
 import {
+  type AddonAttachment,
   type AddonProject,
   type AddonUiContext,
   type AddonWorkspace,
@@ -67,6 +68,19 @@ function activeScopeId(scope: StorageScope): string | undefined {
   const project = projects.find((p) => p.id === activeId);
   if (!project) return undefined;
   return scope === "project" ? project.id : (project.focusRepo ?? project.path);
+}
+
+/** Keeps files one by one, so one Claude can't take doesn't drop the others (it's reported). */
+async function keepAttachments(adds: Array<() => Promise<AddonAttachment>>): Promise<AddonAttachment[]> {
+  const out: AddonAttachment[] = [];
+  for (const add of adds) {
+    try {
+      out.push(await add());
+    } catch (error) {
+      notify({ title: "Couldn't attach the file", message: errorMessage(error), tone: "danger" });
+    }
+  }
+  return out;
 }
 
 export function makeContext(addon: AddonInfo): AddonUiContext {
@@ -181,6 +195,29 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         projectId: options.projectId ?? useProjects.getState().activeId,
       });
       showTerminal(t.id);
+    },
+    attachments: {
+      async add(files) {
+        const { readAsBase64 } = await import("../features/sessions/ChatAttachments");
+        return keepAttachments(
+          Array.from(files).map(
+            (file) => async () =>
+              call("addons.addAttachment", {
+                id,
+                data: await readAsBase64(file as File),
+                mime: file.type,
+                name: file.name,
+              }),
+          ),
+        );
+      },
+      async pick(options = {}) {
+        const picked = await call("app.pickFiles", {
+          title: options.title ?? "Attach files",
+          defaultPath: options.defaultPath,
+        });
+        return keepAttachments(picked.map((path) => () => call("addons.addAttachment", { id, path })));
+      },
     },
     async sendToChat(text, options = {}) {
       if (!has(addon, "chat")) throw new Error(`${addon.name} needs the "chat" permission`);

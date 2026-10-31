@@ -33,7 +33,8 @@ export type FromHost =
         | "log"
         | "chats.create"
         | "chats.send"
-        | "chats.get";
+        | "chats.get"
+        | "attachments.remove";
       args: unknown;
     };
 
@@ -151,6 +152,11 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         get: async (sessionId) => {
           need("chat");
           return rpc("chats.get", { sessionId }) as Promise<never>;
+        },
+      },
+      attachments: {
+        remove: async (list) => {
+          await rpc("attachments.remove", { attachments: list });
         },
       },
       log: (message, detail) => void rpc("log", { message, detail }),

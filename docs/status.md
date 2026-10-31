@@ -25,7 +25,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   (a chat's first task starts it, the next ones continue it; D-186), then Start. Claude does them in
   order and reports each (outcome, summary, things to know, follow-ups); the results show a card per
   chat (its link, project, time, cost, progress) with a row per task, and a status bar on top; click
-  a row for details. In a chat, ask Claude to queue tasks (for example one per spec in a folder):
+  a row for details. Paste, drop or attach (paperclip) images and documents in a task like in the
+  chat (D-187): they're sent with it and stay with it, in the Files column, ⋯ → Files and the details.
+  In a chat, ask Claude to queue tasks (for example one per spec in a folder):
   it uses `addon_tasks_add`. Known gaps: which add-on follows which chat is kept in memory, so after a
   restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
   Claude's last answer instead. Needs testing on a real machine with real Claude Code.

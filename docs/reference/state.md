@@ -18,6 +18,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `sessions/<id>.json` | JSON `{ meta, items, queue }` | chat session metadata and transcript cache (`shared/engine.ts`). Besides title, model, mode, usage and Claude Code's session id, `meta` keeps the chat's `effort`, extra folders (`addDirs`), background tasks, MCP status, the context window, and after a rewind the point to resume at (`resumeAt`, or `resetPending` to start over) |
 | `attachments/<session>/<uuid>.<ext>` | files | images and documents pasted, dropped or attached in a chat; deleted with the session |
 | `attachments/<session>/tool-<toolUseId>-<n>.png` | files | images a tool returned (a browser screenshot), shown in its tool card |
+| `attachments/addon-<id>/<uuid>.<ext>` | files | files an add-on kept for messages it sends later (`ctx.attachments`; the Tasks add-on's task files), copied into the chat when sent; the add-on deletes them (`api.attachments.remove`) |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |

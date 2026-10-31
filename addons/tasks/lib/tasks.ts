@@ -14,10 +14,20 @@ export interface TaskReport {
   followUps: string[];
 }
 
+/** A file sent with a task's prompt (kept by the add-on with `ctx.attachments`, like a chat's). */
+export interface TaskFile {
+  path: string;
+  mime: string;
+  name?: string;
+  kind?: "image" | "pdf" | "office" | "text";
+}
+
 export interface Task {
   id: string;
   title: string;
   prompt: string;
+  /** Images and documents sent with the prompt; kept with the task so they open from its results. */
+  attachments?: TaskFile[];
   projectId?: string;
   /** Starts its own chat; otherwise it continues the chat of the task before it. */
   newChat: boolean;
@@ -111,6 +121,15 @@ export interface NewTask {
   prompt: string;
   title?: string;
   newChat?: boolean;
+  attachments?: TaskFile[];
+}
+
+/** A file's name to show (its original name, else the end of its path). */
+export const fileName = (file: TaskFile): string => file.name ?? file.path.split(/[\\/]/).pop() ?? "file";
+
+/** A task's title: its prompt's first line, or its files' names when it has no text. */
+export function titleFor(prompt: string, files: TaskFile[] = []): string {
+  return titleOf(prompt) || titleOf(files.map(fileName).join(", ")) || "Untitled task";
 }
 
 export function addTasks(
@@ -127,12 +146,13 @@ export function addTasks(
   let seq = queue.seq;
   const added = items
     .map((item) => (typeof item === "string" ? { prompt: item } : item))
-    .filter((item) => item.prompt.trim())
+    .filter((item) => item.prompt.trim() || item.attachments?.length)
     .map(
       (item): Task => ({
         id: `t${++seq}`,
-        title: item.title?.trim() || titleOf(item.prompt),
+        title: item.title?.trim() || titleFor(item.prompt, item.attachments),
         prompt: item.prompt.trim(),
+        ...(item.attachments?.length ? { attachments: item.attachments } : {}),
         projectId: options.projectId,
         newChat: item.newChat ?? options.newChat,
         permissionMode: options.permissionMode,
@@ -253,11 +273,22 @@ export function moveTask(queue: Queue, id: string, delta: -1 | 1): Queue {
 export function requeue(queue: Queue, id: string): Queue {
   const task = queue.tasks.find((t) => t.id === id);
   if (!task) return queue;
-  return addTasks(queue, [{ prompt: task.prompt, title: task.title }], {
+  return addTasks(queue, [{ prompt: task.prompt, title: task.title, attachments: task.attachments }], {
     projectId: task.projectId,
     newChat: true,
     permissionMode: task.permissionMode,
   });
+}
+
+/**
+ * Files no task uses any more (after tasks were removed or changed): `before`'s files that are not in
+ * `after` and not in `keep` (files still in the Add tasks dialog, say). To delete.
+ */
+export function unusedFiles(before: Queue, after: Queue, keep: string[] = []): string[] {
+  const used = new Set([...keep, ...after.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path))]);
+  return [...new Set(before.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)))].filter(
+    (p) => !used.has(p),
+  );
 }
 
 /** What Claude is told in the chat running a task (each turn, while the task runs). */

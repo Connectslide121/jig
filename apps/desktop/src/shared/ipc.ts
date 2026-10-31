@@ -345,6 +345,14 @@ export interface HostMethods {
   "addons.setEnabled": { args: { id: string; enabled: boolean }; result: void };
   /** Calls a named export of the add-on's host.ts. */
   "addons.call": { args: { id: string; method: string; args?: unknown }; result: unknown };
+  /**
+   * Keeps a file for a message the add-on sends later (`api.chats.send({ attachments })`), before its
+   * chat exists: like `sessions.addAttachment`, in `attachments/addon-<id>/`.
+   */
+  "addons.addAttachment": {
+    args: { id: string; data?: string; mime?: string; name?: string; path?: string };
+    result: ChatAttachment;
+  };
   "addons.storageGet": { args: { id: string; key: string }; result: unknown };
   "addons.storageSet": { args: { id: string; key: string; value: unknown }; result: void };
   /** Rebuilds one add-on, or all when `id` is empty. */

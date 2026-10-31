@@ -22,6 +22,7 @@ import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
 import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
+import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
 import { addonChats } from "./chats";
@@ -148,7 +149,9 @@ export async function startAddons(): Promise<void> {
         .find((a) => a.id === id)
         ?.manifest?.permissions.includes("chat"),
     create: (input) => createChat(input),
-    send: (sessionId, text) => sessionManager().send(sessionId, text),
+    send: (sessionId, text, attachments) => sessionManager().send(sessionId, text, attachments),
+    copyAttachments: (addonId, sessionId, list) =>
+      copyAddonAttachments(paths.attachments(), addonId, sessionId, list),
     snapshot: (sessionId) => sessionManager().snapshot(sessionId),
     notify: (id, change) => addonService().call(id, "chatChanged", change),
   });
@@ -182,6 +185,13 @@ export async function startAddons(): Promise<void> {
         return chats.create(addonId, args as never);
       } else if (op === "chats.send") {
         return chats.send(addonId, args as never);
+      } else if (op === "attachments.remove") {
+        const list = (args as { attachments?: Array<{ path?: unknown }> }).attachments ?? [];
+        await removeAddonAttachments(
+          paths.attachments(),
+          addonId,
+          list.map((a) => a?.path).filter((p): p is string => typeof p === "string"),
+        );
       } else if (op === "chats.get") {
         return chats.get(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "log") {
@@ -237,6 +247,7 @@ export async function startAddons(): Promise<void> {
   handle("addons.list", () => s.list());
   handle("addons.setEnabled", ({ id, enabled }) => s.setEnabled(id, enabled));
   handle("addons.call", ({ id, method, args }) => s.call(id, method, args));
+  handle("addons.addAttachment", ({ id, ...input }) => addAddonAttachment(paths.attachments(), id, input));
   handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
   handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));
   handle("addons.reload", async ({ id }) => {

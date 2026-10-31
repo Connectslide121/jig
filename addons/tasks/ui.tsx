@@ -1,5 +1,6 @@
 import type { AddonComponentProps, AddonUiContext } from "@jig/sdk";
 import {
+  Attachments,
   Badge,
   Button,
   cn,
@@ -30,6 +31,7 @@ import {
   LoaderCircle,
   MessageSquare,
   MoreHorizontal,
+  Paperclip,
   Pause,
   Play,
   Plus,
@@ -37,6 +39,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import {
+  addFiles,
   addStep,
   type DraftChat,
   draftChat,
@@ -45,6 +48,7 @@ import {
   moveChat,
   moveStep,
   pastedList,
+  removeFile,
   removeStep,
   setChatProject,
   setStep,
@@ -56,6 +60,7 @@ import {
   chatGroups,
   counts,
   duration,
+  fileName,
   formatMs,
   isActive,
   isFinished,
@@ -64,6 +69,7 @@ import {
   type Queue,
   STATUS_LABEL,
   type Task,
+  type TaskFile,
   type TaskStatus,
   tally,
 } from "./lib/tasks";
@@ -105,6 +111,27 @@ function StatusIcon({ status }: { status: TaskStatus }) {
 /** A cost, $0.00 included; a dash when there's none yet (a task that hasn't finished). */
 function money(usd?: number) {
   return usd === undefined ? "—" : `$${usd.toFixed(2)}`;
+}
+
+/** Opens a task's file the way the chat does: images in the image viewer, documents in Preview. */
+function openFile(ctx: AddonUiContext, file: TaskFile) {
+  if ((file.kind ?? "image") === "image") ctx.openImage(file.path);
+  else ctx.openPreview(file.path);
+}
+
+/** Menu entries that open a task's files, one per file. */
+const fileEntries = (ctx: AddonUiContext, files: TaskFile[]) =>
+  files.map((f) => ({
+    label: fileName(f),
+    icon: (f.kind ?? "image") === "image" ? "image" : "file-text",
+    onSelect: () => openFile(ctx, f),
+  }));
+
+/** Files dropped or pasted (not text): kept for the task. True when there were files. */
+function takeFiles(ctx: AddonUiContext, list: FileList, then: (files: TaskFile[]) => void): boolean {
+  if (list.length === 0) return false;
+  void ctx.attachments.add(list).then(then);
+  return true;
 }
 
 /** The queue, kept current: it reloads when the host says it changed. */
@@ -161,6 +188,9 @@ export function TasksView({ ctx }: AddonComponentProps) {
     ctx.menu(
       [
         { label: "Details", icon: "panel-top-open", onSelect: () => setOpen(task.id) },
+        ...(task.attachments?.length
+          ? [{ label: "Files", icon: "paperclip", submenu: fileEntries(ctx, task.attachments) }]
+          : []),
         ...(task.sessionId
           ? [
               {
@@ -281,6 +311,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
               <span className="w-16 shrink-0 text-right">Started</span>
               <span className="w-12 shrink-0 text-right">Notes</span>
               <span className="w-20 shrink-0 text-right">Follow-ups</span>
+              <span className="w-12 shrink-0 text-right">Files</span>
               <span className="w-12 shrink-0 text-right">Time</span>
               <span className="w-14 shrink-0 text-right">Cost</span>
               <span className="w-7 shrink-0" />
@@ -464,6 +495,7 @@ function ChatCard({
       {group.tasks.map(({ task, index }) => (
         <TaskRow
           key={task.id}
+          ctx={ctx}
           task={task}
           index={index}
           continues={task !== tasks[0]}
@@ -479,12 +511,14 @@ const startedAt = (task: Task) =>
   task.sentAt ? new Date(task.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 
 function TaskRow({
+  ctx,
   task,
   index,
   continues,
   onOpen,
   onMenu,
 }: {
+  ctx: AddonUiContext;
   task: Task;
   index: number;
   continues: boolean;
@@ -494,6 +528,7 @@ function TaskRow({
   const detail = task.report?.summary ?? task.error ?? task.answer;
   const notes = task.report?.notes.length ?? 0;
   const followUps = task.report?.followUps.length ?? 0;
+  const files = task.attachments ?? [];
   const tags = [
     continues ? "same chat" : "",
     task.addedBy ? "queued by Claude" : "",
@@ -542,6 +577,24 @@ function TaskRow({
       </span>
       <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{notes || ""}</span>
       <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted">{followUps || ""}</span>
+      <span className="flex w-12 shrink-0 justify-end">
+        {files.length > 0 && (
+          <button
+            type="button"
+            title={`Open a file: ${files.map(fileName).join(", ")}`}
+            data-testid={`task-files-${task.id}`}
+            className="flex h-6 items-center gap-1 rounded-md px-1 text-xs tabular-nums text-muted hover:bg-surface hover:text-accent"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (files.length === 1) openFile(ctx, files[0]!);
+              else ctx.menu(fileEntries(ctx, files), e.currentTarget);
+            }}
+          >
+            <Paperclip className="size-3.5" />
+            {files.length}
+          </button>
+        )}
+      </span>
       <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{duration(task)}</span>
       <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">{money(task.costUsd)}</span>
       <span className="w-7 shrink-0">
@@ -669,6 +722,13 @@ function TaskDialog({
             </div>
           ))}
         </div>
+        {task.attachments?.length ? (
+          <Section title="Files sent with the prompt">
+            <div data-testid="task-files">
+              <Attachments files={task.attachments} />
+            </div>
+          </Section>
+        ) : null}
         {report && (
           <Section title="Summary">
             <div className="text-sm" data-testid="task-summary">
@@ -745,7 +805,8 @@ function TaskDialog({
 /**
  * Add tasks: chats, each with its tasks in order — one field per task. A chat's first task starts it
  * and the next ones continue in the same chat. Pasting a list into an empty field makes a task of
- * each item.
+ * each item; pasting, dropping or attaching files sends them with the task. Files kept but not queued
+ * (cancelled, removed) are deleted.
  */
 function AddDialog({
   onClose,
@@ -762,13 +823,29 @@ function AddDialog({
   const [mode, setMode] = useState<PermissionMode>("acceptEdits");
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string>();
+  const [kept, setKept] = useState<string[]>([]);
   const planned = draftTasks(chats).filter((c) => c.projectId);
   const total = planned.reduce((n, c) => n + c.tasks.length, 0);
+  const discard = (paths: string[]) =>
+    paths.length && void ctx.host.call("discard", { paths }).catch(() => {});
+  const cancel = () => {
+    discard(kept);
+    onClose();
+  };
+  const attach = (ci: number, si: number, files: TaskFile[]) => {
+    if (!files.length) return;
+    setKept((k) => [...k, ...files.map((f) => f.path)]);
+    setChats((cs) => addFiles(cs, ci, si, files));
+  };
   const save = async () => {
     if (!total) return;
     setBusy(true);
     try {
       await onSave(planned, mode);
+      const queued = new Set(
+        planned.flatMap((c) => c.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path))),
+      );
+      discard(kept.filter((p) => !queued.has(p)));
     } catch (e) {
       ctx.notify({ title: (e as Error).message, tone: "danger" });
     } finally {
@@ -854,7 +931,7 @@ function AddDialog({
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={cancel}
       width="lg"
       column
       testId="tasks-add-dialog"
@@ -862,9 +939,9 @@ function AddDialog({
       footer={
         <>
           <span className="mr-auto text-xs text-muted">
-            Ctrl+Enter adds them · paste a list into an empty task for one task per item
+            Ctrl+Enter adds them · paste a list for one task per item, or images and files to send them
           </span>
-          <Button size="sm" variant="ghost" onClick={onClose}>
+          <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
           </Button>
           <Button
@@ -940,44 +1017,71 @@ function AddDialog({
               </div>
               <div className="flex flex-col gap-2 p-2">
                 {chat.steps.map((step, si) => (
-                  <div key={step.id} className="flex items-start gap-2">
-                    <span className="flex h-7 w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint">
-                      {si === 0 ? (
-                        <MessageSquare className="size-3.5" />
-                      ) : (
-                        <CornerDownRight className="size-3.5" />
-                      )}
-                    </span>
-                    <Textarea
-                      rows={2}
-                      autoFocus={step.id === focus || (!focus && ci === 0 && si === 0)}
-                      className="min-w-0 flex-1 resize-none"
-                      value={step.text}
-                      placeholder={
-                        si === 0
-                          ? "What Claude should do. Say everything it needs: this starts a new chat."
-                          : "Then, in the same chat…"
-                      }
-                      onChange={(e) => setChats(setStep(chats, ci, si, e.target.value))}
-                      onPaste={(e) => {
-                        if (step.text.trim()) return;
-                        const items = pastedList(e.clipboardData.getData("text"));
-                        if (!items) return;
-                        e.preventDefault();
-                        setChats(spreadStep(chats, ci, si, items));
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void save();
-                      }}
-                      data-testid={`tasks-add-text-${ci}-${si}`}
-                    />
-                    <IconButton
-                      size="sm"
-                      icon={MoreHorizontal}
-                      label="Task actions"
-                      onClick={(e) => taskMenu(ci, si, e.currentTarget)}
-                      data-testid={`tasks-add-task-menu-${ci}-${si}`}
-                    />
+                  <div key={step.id} className="flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <span className="flex h-7 w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint">
+                        {si === 0 ? (
+                          <MessageSquare className="size-3.5" />
+                        ) : (
+                          <CornerDownRight className="size-3.5" />
+                        )}
+                      </span>
+                      <Textarea
+                        rows={2}
+                        autoFocus={step.id === focus || (!focus && ci === 0 && si === 0)}
+                        className="min-w-0 flex-1 resize-none"
+                        value={step.text}
+                        placeholder={
+                          si === 0
+                            ? "What Claude should do. Say everything it needs: this starts a new chat."
+                            : "Then, in the same chat…"
+                        }
+                        onChange={(e) => setChats(setStep(chats, ci, si, e.target.value))}
+                        onPaste={(e) => {
+                          if (takeFiles(ctx, e.clipboardData.files, (f) => attach(ci, si, f))) {
+                            e.preventDefault();
+                            return;
+                          }
+                          if (step.text.trim()) return;
+                          const items = pastedList(e.clipboardData.getData("text"));
+                          if (!items) return;
+                          e.preventDefault();
+                          setChats(spreadStep(chats, ci, si, items));
+                        }}
+                        onDragOver={(e) => {
+                          if ([...e.dataTransfer.items].some((i) => i.kind === "file")) e.preventDefault();
+                        }}
+                        onDrop={(e) => {
+                          if (takeFiles(ctx, e.dataTransfer.files, (f) => attach(ci, si, f)))
+                            e.preventDefault();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void save();
+                        }}
+                        data-testid={`tasks-add-text-${ci}-${si}`}
+                      />
+                      <IconButton
+                        size="sm"
+                        icon={Paperclip}
+                        label="Attach files"
+                        onClick={() => void ctx.attachments.pick().then((f) => attach(ci, si, f))}
+                        data-testid={`tasks-add-attach-${ci}-${si}`}
+                      />
+                      <IconButton
+                        size="sm"
+                        icon={MoreHorizontal}
+                        label="Task actions"
+                        onClick={(e) => taskMenu(ci, si, e.currentTarget)}
+                        data-testid={`tasks-add-task-menu-${ci}-${si}`}
+                      />
+                    </div>
+                    {step.files.length > 0 && (
+                      <Attachments
+                        className="pl-8"
+                        files={step.files}
+                        onRemove={(f) => setChats(removeFile(chats, ci, si, f.path))}
+                      />
+                    )}
                   </div>
                 ))}
                 <div className="pl-8">
@@ -1005,7 +1109,7 @@ function AddDialog({
   );
 }
 
-/** Edit a queued task: its prompt, whether it starts a new chat, its permissions. */
+/** Edit a queued task: its prompt and files, whether it starts a new chat, its permissions. */
 function EditDialog({
   task,
   onClose,
@@ -1013,18 +1117,38 @@ function EditDialog({
 }: {
   task: Task;
   onClose: () => void;
-  onSave: (input: { prompt: string; newChat: boolean; permissionMode: PermissionMode }) => Promise<void>;
+  onSave: (input: {
+    prompt: string;
+    newChat: boolean;
+    permissionMode: PermissionMode;
+    attachments: TaskFile[];
+  }) => Promise<void>;
 }) {
   const ctx = useAddon();
   const [text, setText] = useState(task.prompt);
+  const [files, setFiles] = useState<TaskFile[]>(task.attachments ?? []);
+  // Files added here: deleted again unless saved (the task's own go when the host sees them unused).
+  const [added, setAdded] = useState<string[]>([]);
+  const attach = (more: TaskFile[]) => {
+    setAdded((a) => [...a, ...more.map((f) => f.path)]);
+    setFiles((list) => [...list, ...more.filter((f) => !list.some((g) => g.path === f.path))]);
+  };
+  const discard = (paths: string[]) =>
+    paths.length && void ctx.host.call("discard", { paths }).catch(() => {});
+  const cancel = () => {
+    discard(added);
+    onClose();
+  };
+  const empty = !text.trim() && !files.length;
   const [sameChat, setSameChat] = useState(!task.newChat);
   const [mode, setMode] = useState<PermissionMode>(task.permissionMode ?? "acceptEdits");
   const [busy, setBusy] = useState(false);
   const save = async () => {
-    if (!text.trim()) return;
+    if (empty) return;
     setBusy(true);
     try {
-      await onSave({ prompt: text.trim(), newChat: !sameChat, permissionMode: mode });
+      await onSave({ prompt: text.trim(), newChat: !sameChat, permissionMode: mode, attachments: files });
+      discard(added.filter((p) => !files.some((f) => f.path === p)));
     } catch (e) {
       ctx.notify({ title: (e as Error).message, tone: "danger" });
     } finally {
@@ -1034,20 +1158,29 @@ function EditDialog({
   return (
     <Dialog
       open
-      onClose={onClose}
+      onClose={cancel}
       width="lg"
       testId="tasks-edit-dialog"
       title="Edit the task"
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Paperclip}
+            className="mr-auto"
+            onClick={() => void ctx.attachments.pick().then(attach)}
+          >
+            Attach files
+          </Button>
+          <Button size="sm" variant="ghost" onClick={cancel}>
             Cancel
           </Button>
           <Button
             size="sm"
             variant="primary"
             busy={busy}
-            disabled={!text.trim()}
+            disabled={empty}
             onClick={() => void save()}
             data-testid="tasks-edit-confirm"
           >
@@ -1062,10 +1195,28 @@ function EditDialog({
           rows={8}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            if (takeFiles(ctx, e.clipboardData.files, attach)) e.preventDefault();
+          }}
+          onDragOver={(e) => {
+            if ([...e.dataTransfer.items].some((i) => i.kind === "file")) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (takeFiles(ctx, e.dataTransfer.files, attach)) e.preventDefault();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void save();
           }}
         />
+        <div className="min-h-16">
+          {files.length > 0 ? (
+            <Attachments files={files} onRemove={(f) => setFiles(files.filter((g) => g.path !== f.path))} />
+          ) : (
+            <div className="flex h-16 items-center justify-center rounded-md border border-dashed border-line text-xs text-hint">
+              Paste, drop or attach images and files to send with the task
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <LabeledSwitch

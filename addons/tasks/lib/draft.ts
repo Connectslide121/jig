@@ -1,4 +1,4 @@
-import { type NewTask, parsePrompts } from "./tasks";
+import { type NewTask, parsePrompts, type TaskFile } from "./tasks";
 
 /**
  * The Add tasks dialog's draft: chats, each with its tasks in order. A chat's first task starts a new
@@ -7,6 +7,8 @@ import { type NewTask, parsePrompts } from "./tasks";
 export interface DraftStep {
   id: string;
   text: string;
+  /** Pasted, dropped or picked files sent with the task. */
+  files: TaskFile[];
 }
 
 export interface DraftChat {
@@ -18,12 +20,12 @@ export interface DraftChat {
 let seq = 0;
 const nextId = (prefix: string) => `${prefix}${++seq}`;
 
-export const draftStep = (text = ""): DraftStep => ({ id: nextId("s"), text });
+export const draftStep = (text = ""): DraftStep => ({ id: nextId("s"), text, files: [] });
 
 export const draftChat = (projectId: string, texts: string[] = [""]): DraftChat => ({
   id: nextId("c"),
   projectId,
-  steps: (texts.length ? texts : [""]).map(draftStep),
+  steps: (texts.length ? texts : [""]).map((t) => draftStep(t)),
 });
 
 const withChat = (chats: DraftChat[], ci: number, chat: DraftChat) =>
@@ -41,6 +43,27 @@ export function setStep(chats: DraftChat[], ci: number, si: number, text: string
   return withChat(chats, ci, { ...chat, steps: chat.steps.map((s, i) => (i === si ? { ...s, text } : s)) });
 }
 
+/** Adds files to a task (a file already there isn't added twice). */
+export function addFiles(chats: DraftChat[], ci: number, si: number, files: TaskFile[]): DraftChat[] {
+  const chat = chats[ci];
+  const step = chat?.steps[si];
+  if (!chat || !step || !files.length) return chats;
+  const added = files.filter((f) => !step.files.some((g) => g.path === f.path));
+  return withChat(chats, ci, {
+    ...chat,
+    steps: chat.steps.map((s, i) => (i === si ? { ...s, files: [...s.files, ...added] } : s)),
+  });
+}
+
+export function removeFile(chats: DraftChat[], ci: number, si: number, path: string): DraftChat[] {
+  const chat = chats[ci];
+  if (!chat?.steps[si]) return chats;
+  return withChat(chats, ci, {
+    ...chat,
+    steps: chat.steps.map((s, i) => (i === si ? { ...s, files: s.files.filter((f) => f.path !== path) } : s)),
+  });
+}
+
 /**
  * Text pasted into an empty task that is a list (two or more lines, each with a list mark such as
  * `-`, `*`, `1.` or `[ ]`): the items, to become one task each. Otherwise undefined.
@@ -56,7 +79,7 @@ export function spreadStep(chats: DraftChat[], ci: number, si: number, texts: st
   const chat = chats[ci];
   if (!chat?.steps[si] || !texts.length) return chats;
   const steps = [...chat.steps];
-  steps.splice(si, 1, { ...chat.steps[si]!, text: texts[0]! }, ...texts.slice(1).map(draftStep));
+  steps.splice(si, 1, { ...chat.steps[si]!, text: texts[0]! }, ...texts.slice(1).map((t) => draftStep(t)));
   return withChat(chats, ci, { ...chat, steps });
 }
 
@@ -114,16 +137,22 @@ export function setChatProject(chats: DraftChat[], ci: number, projectId: string
 
 /**
  * What to queue, one entry per chat in order: its project and its tasks, the first starting a new chat
- * and the rest continuing it. Empty tasks are left out, and chats without any.
+ * and the rest continuing it, with their files. Empty tasks (no text, no files) are left out, and chats
+ * without any.
  */
 export function draftTasks(chats: DraftChat[]): Array<{ projectId: string; tasks: NewTask[] }> {
   return chats
     .map((c) => ({
       projectId: c.projectId,
       tasks: c.steps
-        .map((s) => s.text.trim())
-        .filter(Boolean)
-        .map((prompt, i) => ({ prompt, newChat: i === 0 })),
+        .filter((s) => s.text.trim() || s.files.length)
+        .map(
+          (s, i): NewTask => ({
+            prompt: s.text.trim(),
+            newChat: i === 0,
+            ...(s.files.length ? { attachments: s.files } : {}),
+          }),
+        ),
     }))
     .filter((c) => c.tasks.length > 0);
 }

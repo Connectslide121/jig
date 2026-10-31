@@ -10,7 +10,14 @@ went, so you read the results as a table instead of scrolling one long chat.
   queue doesn't stop at every edit; Ask before edits; Plan only) are for all of them. A task's ⋯:
   Start a new chat from here, Move up/down, Remove; a chat's ⋯: Continue the chat before, Move
   up/down, Remove. Pasting a list (`-`, `1.`, `[ ]` …) into an empty task makes one task per item.
-  ⋯ → Edit on a queued task changes its prompt, whether it continues the chat before, and permissions.
+  ⋯ → Edit on a queued task changes its prompt, files, whether it continues the chat before, and
+  permissions.
+- **Files** (D-187): paste or drop images and documents into a task, or attach them with its
+  paperclip, as in the chat (images ≤ 5 MB, PDFs, Word/Excel/PowerPoint, text files); they show under
+  the field and go with the prompt. They stay with the task: the results' **Files** column opens them
+  (one directly, several from a menu), so do ⋯ → Files and the details. Run again sends them again.
+  They're kept in `~/.jig/attachments/addon-tasks/` (copied into the chat when sent) and deleted when
+  no task uses them any more (`unusedFiles`) or the dialog is cancelled (the host's `discard`).
 - **Start / Pause:** the queue runs in the add-on's host, so it goes on with the view closed. A task
   that needs you (a permission or a question) shows "Needs you" and notifies; answer in its chat and
   the queue goes on. With **Stop when a task fails** on (the default) a failed, blocked or broken task
@@ -23,7 +30,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   chat: its link (opens the chat), number of tasks, project, time, cost and "n of m finished". In it,
   a row per task: #, title (with "same chat", "queued by Claude", "a follow-up", non-default
   permissions), Claude's summary on two lines (or the error, or its last answer), started, notes,
-  follow-ups, time, cost, and the status at the far right. Click a row for the details: project,
+  follow-ups, files, time, cost, and the status at the far right. Click a row for the details: project,
   chat, permissions, started, finished, time, cost and who queued it; summary, things to know,
   follow-ups each with **Add to queue** (or all), the prompt, Open chat and Run again. Right-click or
   ⋯: Edit, Move up/down, Skip, Run again, Remove.

@@ -99,6 +99,7 @@ are add-ons':
 | `openSettings()` | this add-on's settings page |
 | `scripts.list/run/stop/restart/runGroup(projectId, …)`, `scripts.running()`, `scripts.show(terminalId)`, `scripts.onChange(listener)` (scripts or groups of a project changed; returns unsubscribe) | discovered scripts and their terminals (`docs/reference/terminals.md`) |
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
+| `attachments.add(files)`, `attachments.pick({ title?, defaultPath? })` → `AddonAttachment[]` | keeps pasted/dropped files (`clipboardData.files`, `dataTransfer.files`) or files the user picks, like the chat's message box: images ≤ 5 MB, PDFs, Word/Excel/PowerPoint and text files, in `~/.jig/attachments/addon-<id>/`. A file Claude can't take is reported in a toast and left out. Send them with `api.chats.send({ attachments })`; show them with `<Attachments files onRemove?>` from `@jig/sdk/ui` (thumbnails and chips that open the file) |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
 | `notify({ title, message?, tone? })` | toast |
 | `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
@@ -119,7 +120,8 @@ and the bare `ResizeHandle`. `FileIcon` (`<FileIcon path folder? expanded?>`) dr
 the user's file icon theme (`docs/reference/file-icons.md`); `fileIcon: <path>` in `openTab` params gives
 the tab that icon. For images: `ImagePreview` (`<ImagePreview src bytes? compact?>`: fitted on a
 checkerboard, 100% toggle, pixel and file size), `useImageFile(path)` → `{ data?: { dataUrl, bytes, mime }, error? }`
-(reads through the host), `isImagePath(path)` and `formatBytes(n)`. `@jig/sdk` also exports
+(reads through the host), `isImagePath(path)` and `formatBytes(n)`. `Attachments` (`<Attachments files onRemove? className?>`)
+shows a message's files as in the chat: image thumbnails and document chips that open them. `@jig/sdk` also exports
 `isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.
 
 ## Host (`host.ts`)
@@ -145,7 +147,8 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `projects()` | — | the user's projects |
 | `workspaces()` | — | every folder the user added, with its repositories |
 | `chats.create({ projectId?, cwd?, title?, permissionMode? })` → `{ sessionId }` | `chat` | an empty chat with the project's defaults (or in `cwd`); `permissionMode` is `default`, `acceptEdits` or `plan`, never bypass |
-| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId` |
+| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode?, attachments? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId`. `attachments` are files kept with `ctx.attachments` (copied into the chat, so the add-on's stay its own); the text may be empty when there are files |
+| `attachments.remove(list)` | — | deletes files this add-on kept (only its own, in `attachments/addon-<id>/`) |
 | `chats.get(sessionId)` → `{ id, title, status, projectId?, cwd, costUsd, queued, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and Claude's last answer |
 | `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |

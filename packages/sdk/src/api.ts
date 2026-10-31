@@ -145,6 +145,17 @@ export interface AddonUiContext {
     command: string,
     options?: { cwd?: string; title?: string; projectId?: string },
   ): Promise<void>;
+  /**
+   * Keeps files for a message the add-on's host sends later (`api.chats.send({ attachments })`), like
+   * the chat's message box: pasted or dropped files (`add`), or files the user picks (`pick`). Images
+   * (≤ 5 MB), PDFs, Word/Excel/PowerPoint and text files. A file Claude can't take is reported to the
+   * user and left out. Show them with `<Attachments>` from `@jig/sdk/ui`.
+   */
+  attachments: {
+    /** A `FileList` or `File[]` (from a paste or drop event's `clipboardData`/`dataTransfer`). */
+    add(files: ArrayLike<{ name: string; type: string }>): Promise<AddonAttachment[]>;
+    pick(options?: { title?: string; defaultPath?: string }): Promise<AddonAttachment[]>;
+  };
   /** Sends text to a chat (a new session in the active project unless `sessionId`). Needs `chat`. */
   sendToChat(text: string, options?: { sessionId?: string; send?: boolean }): Promise<void>;
   notify(input: { title: string; message?: string; tone?: NotifyTone }): void;
@@ -209,8 +220,22 @@ export interface ExecResult {
   stderr: string;
 }
 
+/**
+ * A file kept for a message (`ctx.attachments`), sent with `api.chats.send({ attachments })`: an image
+ * or PDF (sent as is), or an Office or text file (sent as text). The same as a chat's attachments.
+ */
+export interface AddonAttachment {
+  path: string;
+  mime: string;
+  /** The original file name. */
+  name?: string;
+  kind?: "image" | "pdf" | "office" | "text";
+}
+
 export interface AddonChatSend {
   text: string;
+  /** Files kept with `ctx.attachments` (copied into the chat when sent). */
+  attachments?: AddonAttachment[];
   sessionId?: string;
   projectId?: string;
   cwd?: string;
@@ -283,6 +308,8 @@ export interface AddonHostApi {
     send(input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }>;
     get(sessionId: string): Promise<AddonChatInfo>;
   };
+  /** Files this add-on kept with `ctx.attachments`: delete the ones it no longer needs. */
+  attachments: { remove(list: AddonAttachment[]): Promise<void> };
   log(message: string, detail?: unknown): void;
 }
 

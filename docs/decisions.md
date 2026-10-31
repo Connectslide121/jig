@@ -1931,10 +1931,28 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
     chat and the others continue it (stored as each task's `newChat`, as before, so the queue and
     Claude's `addon_tasks_add` are unchanged). Menus split a chat at a task, merge a chat into the one
     before, move tasks and chats. The project is per chat; the permissions are for the whole batch.
-    The list has a fixed height and scrolls, so adding tasks never resizes the dialog. Pasting a list
+    The list starts at a fixed height and grows with its tasks up to the window's height, then
+    scrolls (Jon: "that should be its max height, not a set height"). Pasting a list
     into an empty task makes one task per item (it replaces the "each line is its own task" switch).
     The host's `add` takes `{ prompt, newChat }` items; the dialog sends one `add` per chat.
   - The results group the queue the same way (`chatGroups`: a task that starts a chat, or is in
     another project, begins a group). Each chat is a card with its link, project, time, cost and
     progress; each task row adds the summary on two lines, start time and the notes count. A bar and
     counts per status (`tally`) sit on top. The pure parts are in `lib/draft.ts` and `lib/tasks.ts`.
+
+## D-187: Tasks take files, like the chat, and keep them
+
+- Status: accepted. Decided by Jon ("I need to be able to paste images and attach docs in each task,
+  just like we do in the chat"; "they should be easy to reach always, after done as well, from the
+  results table and/or detail pages"). The design is **Claude, on my own**:
+  - Add-ons get the chat's attachments: `ctx.attachments.add(files)` / `pick()` keep files through
+    the new IPC method `addons.addAttachment` in `attachments/addon-<id>/` (same types, limits and
+    checks as a chat's), `api.chats.send({ attachments })` sends them, and `<Attachments>` in
+    `@jig/sdk/ui` shows them. Main copies the files into the chat's own folder when sending, because
+    the chat reads only its own folder and is deleted with its session, while the add-on's copy stays
+    with the task. An add-on deletes only its own files (`api.attachments.remove`).
+  - In the Tasks add-on each task field takes pasted, dropped or picked (paperclip) files, shown under
+    the field; Edit changes a queued task's files. A task may be only files. The files stay with the
+    task (Run again sends them again) and open from a **Files** column in the results (one file opens
+    directly, several from a menu), from the row's ⋯ → Files, and in the details. The host deletes
+    files no task uses when the queue changes (`unusedFiles`), and those kept in a cancelled dialog.
