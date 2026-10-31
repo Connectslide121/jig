@@ -34,6 +34,17 @@ function sessionDir(root: string, sessionId: string): string {
   return join(root, sessionId);
 }
 
+const ADDON_ID = /^[a-z0-9][a-z0-9.-]*$/;
+
+/**
+ * Where an add-on keeps files for messages it sends later, before their chat exists
+ * (`attachments/addon-<id>/`; a session id never starts with `addon-`).
+ */
+export function addonAttachmentsDir(root: string, addonId: string): string {
+  if (!ADDON_ID.test(addonId)) throw new JigError("invalid_args", "Bad add-on id");
+  return join(root, `addon-${addonId}`);
+}
+
 function limitFor(kind: ChatAttachment["kind"]): number {
   return kind === "image"
     ? ATTACHMENT_LIMITS.imageBytes
@@ -50,13 +61,59 @@ const tooLarge = (kind: ChatAttachment["kind"]) =>
       : `The file is larger than ${limitFor(kind) / MB} MB, the most Jig sends to Claude`,
   );
 
+type AttachmentInput = { data?: string; mime?: string; name?: string; path?: string };
+
 /** Saves pasted/dropped bytes (base64) or copies a file into the session's attachments. */
 export async function addAttachment(
   root: string,
   sessionId: string,
-  input: { data?: string; mime?: string; name?: string; path?: string },
+  input: AttachmentInput,
 ): Promise<ChatAttachment> {
+  return keepFile(sessionDir(root, sessionId), input);
+}
+
+/** The same for an add-on: kept until it sends them with `chats.send` (copied into the chat then). */
+export async function addAddonAttachment(
+  root: string,
+  addonId: string,
+  input: AttachmentInput,
+): Promise<ChatAttachment> {
+  return keepFile(addonAttachmentsDir(root, addonId), input);
+}
+
+/** An add-on's kept files → copies in the chat's attachments, so the chat keeps them whatever the add-on does. */
+export async function copyAddonAttachments(
+  root: string,
+  addonId: string,
+  sessionId: string,
+  list: ChatAttachment[],
+): Promise<ChatAttachment[]> {
+  const from = addonAttachmentsDir(root, addonId);
   const dir = sessionDir(root, sessionId);
+  const out: ChatAttachment[] = [];
+  for (const a of list) {
+    if (typeof a?.path !== "string" || !isInside(a.path, from))
+      throw new JigError("invalid_args", "That file isn't an attachment of this add-on");
+    const info = await stat(a.path).catch(() => undefined);
+    if (!info?.isFile()) throw new JigError("not_found", `${a.name ?? basename(a.path)} is gone`);
+    const type = attachmentType(a.name ?? basename(a.path), a.mime);
+    if (type.kind === "unsupported") throw new JigError("not_supported", type.reason);
+    await mkdir(dir, { recursive: true });
+    const target = join(dir, `${randomUUID()}.${extensionOf(a.path) || "bin"}`);
+    await copyFile(a.path, target);
+    out.push({ path: target, mime: type.mime, name: a.name ?? basename(a.path), kind: type.kind });
+  }
+  return out;
+}
+
+/** Deletes files an add-on kept (only its own). */
+export async function removeAddonAttachments(root: string, addonId: string, paths: string[]): Promise<void> {
+  const dir = addonAttachmentsDir(root, addonId);
+  for (const p of paths)
+    if (typeof p === "string" && isInside(p, dir) && p !== dir) await rm(p, { force: true }).catch(() => {});
+}
+
+async function keepFile(dir: string, input: AttachmentInput): Promise<ChatAttachment> {
   const name = (input.path ? basename(input.path) : input.name) || "pasted";
   const type = attachmentType(name, input.mime);
   if (type.kind === "unsupported") throw new JigError("not_supported", type.reason);

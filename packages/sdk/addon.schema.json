@@ -302,6 +302,10 @@
               "run": {
                 "type": "string",
                 "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "atStart": {
+                "default": false,
+                "type": "boolean"
               }
             },
             "required": ["id", "every", "run"]

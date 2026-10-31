@@ -92,6 +92,13 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     name: z.string().max(500).optional(),
     path: path.optional(),
   }),
+  "addons.addAttachment": z.object({
+    id: addonId,
+    data: z.string().max(42_000_000).optional(),
+    mime: z.string().max(200).optional(),
+    name: z.string().max(500).optional(),
+    path: path.optional(),
+  }),
   "builds.start": z.object({
     goal: z.string().min(1).max(50_000),
     origin: z.enum(["tools", "addon", "chat", "suggestion", "settings"]),

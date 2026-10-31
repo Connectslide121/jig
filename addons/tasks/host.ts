@@ -8,6 +8,7 @@ import {
   isActive,
   listing,
   moveTask,
+  type NewTask,
   nextTask,
   type PermissionMode,
   parseNewTasks,
@@ -17,14 +18,18 @@ import {
   STATUS_LABEL,
   shouldPause,
   type Task,
+  type TaskFile,
   taskContext,
+  titleFor,
+  unusedFiles,
 } from "./lib/tasks";
 
 /**
  * The task queue runs here, in the add-on's host, so it goes on whether its view is open or not. One
  * queue (global storage, key `queue`). Changes go one at a time (`change`) and are announced
  * (`changed`) so the view follows. Main tells us when a chat we started changes status
- * (`chatChanged`); a watcher (`tick`) catches up after a restart.
+ * (`chatChanged`); a watcher (`tick`) catches up after a restart. A task's files stay as long as the
+ * task does (so they open from its results); `change` deletes the ones no task uses any more.
  */
 
 const KEY = "queue";
@@ -44,6 +49,8 @@ function change<T>(api: AddonHostApi, fn: (q: Queue) => Promise<[Queue, T]> | [Q
     if (JSON.stringify(next) !== json || JSON.stringify(await load(api)) !== json) {
       await api.storage.set(KEY, next);
       api.emit("changed");
+      const unused = unusedFiles(before, next);
+      if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
     }
     return result;
   };
@@ -110,7 +117,7 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         sawBusy: false,
       });
       await api.storage.set(KEY, q);
-      await api.chats.send({ text: task.prompt, sessionId });
+      await api.chats.send({ text: task.prompt, sessionId, attachments: task.attachments });
       return q;
     } catch (error) {
       const failed: Task = {
@@ -167,7 +174,8 @@ export async function list(_args: unknown, api: AddonHostApi): Promise<Queue> {
 
 export async function add(
   args: {
-    prompts: string[];
+    /** Prompts, or tasks that say whether they start a new chat (the Add tasks dialog's chats). */
+    prompts: Array<string | NewTask>;
     projectId?: string;
     newChat: boolean;
     permissionMode?: PermissionMode;
@@ -182,18 +190,28 @@ export async function add(
 }
 
 export async function update(
-  args: { id: string; prompt?: string; title?: string; newChat?: boolean; permissionMode?: PermissionMode },
+  args: {
+    id: string;
+    prompt?: string;
+    title?: string;
+    newChat?: boolean;
+    permissionMode?: PermissionMode;
+    attachments?: TaskFile[];
+  },
   api: AddonHostApi,
 ): Promise<void> {
   await change(api, (q) => {
     const task = q.tasks.find((t) => t.id === args.id);
     if (task?.status !== "queued") throw new Error("Only a queued task can be changed");
-    const prompt = args.prompt?.trim() || task.prompt;
+    const attachments = args.attachments ?? task.attachments ?? [];
+    const prompt =
+      args.prompt?.trim() || (args.prompt !== undefined && attachments.length ? "" : task.prompt);
     return [
       replace(q, {
         ...task,
         prompt,
-        title: args.title?.trim() || (args.prompt ? prompt.split("\n")[0]!.slice(0, 70) : task.title),
+        attachments: attachments.length ? attachments : undefined,
+        title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
         newChat: args.newChat ?? task.newChat,
         permissionMode: args.permissionMode ?? task.permissionMode,
       }),
@@ -208,6 +226,13 @@ export async function remove({ id }: { id: string }, api: AddonHostApi): Promise
     if (task && isActive(task)) throw new Error("A running task can't be removed; skip it in its chat first");
     return [{ ...q, tasks: q.tasks.filter((t) => t.id !== id) }, undefined];
   });
+}
+
+/** Deletes files the view kept but no task took (a cancelled dialog, a removed file). */
+export async function discard({ paths }: { paths: string[] }, api: AddonHostApi): Promise<void> {
+  const used = new Set((await load(api)).tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)));
+  const unused = (paths ?? []).filter((p) => typeof p === "string" && !used.has(p));
+  if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
 }
 
 export async function move({ id, delta }: { id: string; delta: -1 | 1 }, api: AddonHostApi): Promise<void> {

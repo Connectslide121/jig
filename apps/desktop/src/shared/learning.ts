@@ -1,5 +1,7 @@
 import type { Pattern } from "@jig/learning";
 
+export type { UsageCount, UsageSummary } from "@jig/learning";
+
 /** Suggestions and pattern runs (`~/.jig/suggestions.json`). Documented in docs/reference/learning.md. */
 export interface Suggestion {
   id: string;

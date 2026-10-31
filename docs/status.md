@@ -21,10 +21,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
   moving the same way and suggests placing them.
 - Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
-- Task queue (D-182): Chats menu → Task queue. Add tasks (one per line), choose per task whether it
-  starts a new chat or continues the previous one, then Start. Claude does them in order and reports
-  each (outcome, summary, things to know, follow-ups) in the table; click a row for details, the chat
-  icon opens its chat. In a chat, ask Claude to queue tasks (for example one per spec in a folder):
+- Task queue (D-182): Chats menu → Task queue. Add tasks grouped in chats, one field per task
+  (a chat's first task starts it, the next ones continue it; D-186), then Start. Claude does them in
+  order and reports each (outcome, summary, things to know, follow-ups); the results show a card per
+  chat (its link, project, time, cost, progress) with a row per task, and a status bar on top; click
+  a row for details. Paste, drop or attach (paperclip) images and documents in a task like in the
+  chat (D-187): they're sent with it and stay with it, in the Files column, ⋯ → Files and the details.
+  In a chat, ask Claude to queue tasks (for example one per spec in a folder):
   it uses `addon_tasks_add`. Known gaps: which add-on follows which chat is kept in memory, so after a
   restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
   Claude's last answer instead. Needs testing on a real machine with real Claude Code.
@@ -33,7 +36,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - Add-on gallery (D-179): Tools → Add-on gallery, or Settings → Add-ons. Add a git URL or a folder,
   then Install. Needs testing on a real machine: a private git repository over https and ssh.
 - Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Claude Code → Quick model).
-- Pipelines (D-180): each pipeline is one compact row; click it for the details dialog.
+- Pipelines (D-180): each pipeline is one compact row; click it for the details dialog. They load when
+  Jig starts (D-183) and opening the view shows them at once, refreshing in the background.
+- Chat overview (D-184): a small card at the top right of each chat, beside the transcript (it never
+  covers it), counts turns, tool calls, files changed, skills, subagents, add-ons, MCP calls and
+  tokens. **Show details** opens a modal with every tool, skill, subagent, add-on, MCP server and file.
+  Toggle it with the chart button in the chat's top bar; ⋯ → Chat overview… opens the details; setting
+  `chat.overview`.
+- How Claude worked for you (D-185): What Jig knows about me sums the overview's counts over 4 weeks
+  of chats (skills, subagents, add-ons, MCP servers, most used tools; calls and chats each), and the
+  weekly reflection reads it. Tool calls recorded before this have no skill/add-on tag, so they count
+  only as tools.
 - Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
 - Layout (D-173, D-174): **View menu → Reset layout** puts every view back. Sidebars hold only daily
   views; Suggestions, Links, Releases and Workflows open as main tabs from the top bar menus. Drag

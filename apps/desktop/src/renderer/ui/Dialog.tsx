@@ -13,6 +13,7 @@ export function Dialog({
   children,
   footer,
   width = "md",
+  column = false,
   testId,
 }: {
   open: boolean;
@@ -21,6 +22,11 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   width?: "sm" | "md" | "lg";
+  /**
+   * Lay the content out as a flex column, so a part of it (a list you add to, `min-h-0 flex-1
+   * overflow-y-auto`) grows with the dialog up to the window's height and then scrolls on its own.
+   */
+  column?: boolean;
   testId?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -58,7 +64,9 @@ export function Dialog({
           <div className="min-w-0 flex-1 truncate text-base font-semibold">{title}</div>
           <IconButton icon={X} label="Close" size="sm" onClick={onClose} />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm">{children}</div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm", column && "flex flex-col")}>
+          {children}
+        </div>
         {footer && <div className="flex justify-end gap-2 border-t border-line px-4 py-2.5">{footer}</div>}
       </div>
     </div>,

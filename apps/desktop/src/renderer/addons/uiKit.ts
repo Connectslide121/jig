@@ -5,6 +5,8 @@
 
 export { isImagePath } from "@jig/sdk";
 export { useImageFile } from "../features/files/images";
+/** A message's files: image thumbnails and document chips that open them; removable with `onRemove`. */
+export { ChatAttachments as Attachments } from "../features/sessions/ChatAttachments";
 export { languageForPath } from "../lib/highlight";
 export {
   Badge,

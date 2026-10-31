@@ -202,3 +202,48 @@ test("chat: opening a chat of another project makes that project the active one"
   await page.getByTestId("session-first in two").click();
   await expect(switcher).toContainText("two");
 });
+
+test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; details in a modal", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  const tab = page.locator("[data-tab-id]:not(.hidden)");
+  await say(page, "use a skill to explain the code");
+  await expect(tab.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
+  await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
+  await page.keyboard.press("Enter");
+  await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
+  // A small card at the chat's top right, beside the transcript.
+  const card = tab.getByTestId("chat-overview");
+  await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
+  await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
+  await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
+  await card.getByTestId("chat-overview-details").click();
+  const details = page.getByTestId("chat-details-dialog");
+  await expect(details.getByTestId("chat-details-tools")).toContainText("Skill");
+  await expect(details.getByTestId("chat-details-skills")).toContainText("explain-code");
+  await expect(details.getByTestId("chat-details-subagents")).toContainText("Explore the cart code");
+  await expect(details.getByTestId("chat-details-mcp")).toContainText("github");
+  await expect(details.getByTestId("chat-details-addons")).toContainText("Releases");
+  await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
+  // Also from the chat's ⋯ menu; and the top bar's chart button hides it (a setting).
+  await tab.getByRole("button", { name: "Chat options" }).click();
+  await page.getByTestId("session-overview").click();
+  await expect(details).toBeVisible();
+  await page.keyboard.press("Escape");
+  await tab.getByTestId("chat-overview-toggle").click();
+  await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
+  const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
+  expect(config.value.chat.overview).toBe(false);
+  // Jig learns from it too: "How Claude worked for you" sums it over all chats (D-185).
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("open-knowledge").click();
+  const usage = page.getByTestId("knowledge-usage");
+  await expect(usage.getByTestId("knowledge-usage-skills")).toContainText("explain-code");
+  await expect(usage.getByTestId("knowledge-usage-addons")).toContainText("Releases");
+  await expect(usage.getByTestId("knowledge-usage-mcp")).toContainText("github");
+  await expect(usage.getByTestId("knowledge-usage-subagents")).toContainText("Explore");
+});

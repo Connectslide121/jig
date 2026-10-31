@@ -45,6 +45,8 @@ export interface LearningServiceOptions {
   knowledge?: KnowledgeStore;
   /** "How you worked" in the last 7 days, for the reflection. */
   worked?: () => Promise<string | undefined>;
+  /** How Claude worked across chats, for the reflection (D-185). */
+  usage?: () => Promise<string | undefined>;
   checkInFrequency?: () => "off" | "weekly" | "biweekly";
   setCheckInFrequency?: (frequency: "weekly" | "biweekly") => Promise<void>;
 }
@@ -180,6 +182,7 @@ export class LearningService {
             notes,
             profile: profile?.exists ? profile.text : undefined,
             worked: await this.options.worked?.().catch(() => undefined),
+            usage: await this.options.usage?.().catch(() => undefined),
             tipsAllowed,
           }),
         );

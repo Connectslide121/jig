@@ -94,6 +94,22 @@ describe("AddonService", () => {
     s.stop();
   });
 
+  it("runs an atStart watcher shortly after loading, not only after its interval", async () => {
+    await addon(join(root, "builtin", "warm"), {
+      "addon.json": {
+        id: "warm",
+        name: "Warm",
+        description: "Warms a cache",
+        contributes: { watchers: [{ id: "w", every: "1h", run: "warm", atStart: true }] },
+      },
+      "host.ts": `export async function warm(_: unknown, api: any) { api.emit("warmed", 1); }`,
+    });
+    const s = service();
+    await s.start();
+    await expect.poll(() => rpcs.includes("emit"), { timeout: 8_000 }).toBe(true);
+    s.stop();
+  }, 10_000);
+
   it("switches add-ons off and on, and remembers it", async () => {
     const s = service();
     await s.start();

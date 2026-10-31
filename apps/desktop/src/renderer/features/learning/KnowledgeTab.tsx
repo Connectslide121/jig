@@ -1,11 +1,13 @@
 import { FolderOpen, MessageSquare, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import type { EvidenceNote, WorkedState } from "../../../shared/learning";
+import { toolLabel } from "../../../shared/chatStats";
+import type { EvidenceNote, UsageCount, UsageSummary, WorkedState } from "../../../shared/learning";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { Badge, Button, Card, confirmDialog, IconButton, Spinner } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { CodeEditor } from "../preview/CodeEditor";
+import { useAddonNames } from "../sessions/ChatOverview";
 import { startProfileInterview } from "./interview";
 
 const CATEGORY: Record<EvidenceNote["category"], string> = {
@@ -53,6 +55,12 @@ export function KnowledgeTab() {
   }, []);
   useEffect(load, [load]);
   useHostEvent("learning.knowledgeChanged", load);
+  const [usage, setUsage] = useState<UsageSummary>();
+  useEffect(() => {
+    void call("learning.usage")
+      .then(setUsage)
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     void call("learning.worked", {})
       .then(setWorked)
@@ -211,7 +219,66 @@ export function KnowledgeTab() {
               "No commits of yours in the last 7 days. Lines Claude writes are told apart from lines you write when you commit."}
           </p>
         </Card>
+
+        <ClaudeUsage usage={usage} />
       </div>
     </div>
+  );
+}
+
+/**
+ * "How Claude worked for you" (D-185): the chat overview's counts summed over the last 4 weeks, which
+ * the weekly reflection also reads.
+ */
+function ClaudeUsage({ usage }: { usage?: UsageSummary }) {
+  const { name: addonName } = useAddonNames();
+  const groups: Array<{ id: string; title: string; items: UsageCount[]; label?: (n: string) => string }> =
+    usage
+      ? [
+          { id: "skills", title: "Skills", items: usage.skills },
+          { id: "subagents", title: "Subagents", items: usage.subagents },
+          { id: "addons", title: "Add-ons", items: usage.addons, label: addonName },
+          { id: "mcp", title: "MCP servers", items: usage.mcp },
+          { id: "tools", title: "Most used tools", items: usage.tools.slice(0, 8), label: toolLabel },
+        ]
+      : [];
+  return (
+    <Card className="flex flex-col gap-1 p-4" data-testid="knowledge-usage">
+      <h2 className="mb-1 text-sm font-semibold text-fg">How Claude worked for you (last 4 weeks)</h2>
+      {!usage ? (
+        <p className="text-sm text-muted">Nothing recorded yet.</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted" data-testid="knowledge-usage-summary">
+            {usage.chats} {usage.chats === 1 ? "chat" : "chats"}, {usage.prompts}{" "}
+            {usage.prompts === 1 ? "message" : "messages"}, {usage.toolCalls}{" "}
+            {usage.toolCalls === 1 ? "tool call" : "tool calls"}
+          </p>
+          {groups.map((g) => (
+            <div key={g.id} className="mt-2 flex flex-col" data-testid={`knowledge-usage-${g.id}`}>
+              <div className="flex gap-3 text-xs text-hint">
+                <span className="flex-1">{g.title}</span>
+                <span className="w-16 text-right">Calls</span>
+                <span className="w-16 text-right">Chats</span>
+              </div>
+              {g.items.length === 0 && <p className="text-sm text-muted">None</p>}
+              {g.items.map((i) => (
+                <div key={i.name} className="flex gap-3 text-sm">
+                  <span className="min-w-0 flex-1 truncate text-fg">
+                    {g.label ? g.label(i.name) : i.name}
+                  </span>
+                  <span className="w-16 text-right text-muted tabular-nums">{i.count}</span>
+                  <span className="w-16 text-right text-muted tabular-nums">{i.chats}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+          <p className="mt-2 text-xs text-hint">
+            Counted from the activity log; the weekly reflection reads it to suggest skills, add-ons and
+            habits.
+          </p>
+        </>
+      )}
+    </Card>
   );
 }

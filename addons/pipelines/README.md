@@ -21,6 +21,10 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
   field otherwise, and a summary of what will run. The parameters are read from the pipeline's YAML in
   Azure DevOps on the picked branch (`az devops invoke … items`), like DevOps' own form; objects and
   other structured parameters keep their defaults. Nothing runs until **Queue run**.
+- **Loaded when Jig starts** (D-183): the `refresh` watcher finds the pipelines and reads their newest
+  runs a few seconds after Jig starts and every 5 minutes, and saves them (storage `found`, `latest`).
+  Opening the view shows them at once (and what it showed last, when opened again) and refreshes in
+  the background: a small spinner in the header, never a loading screen.
 - **Refreshing:** one `az pipelines runs list` per Azure DevOps project, every 20 s while a run runs
   and every minute otherwise, only while Jig is in front; a finished run's stages
   (`az devops invoke … Timeline`) are asked for once.

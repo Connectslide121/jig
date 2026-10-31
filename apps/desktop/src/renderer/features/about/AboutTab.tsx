@@ -597,8 +597,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "After a turn that changed files: Review, Walk me through or Undo, right there",
                 "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
+                "Chat overview: a small card in each chat counts tool calls, files, skills, subagents, add-ons, MCP calls and tokens; Show details for the full breakdown",
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
-                "Task queue (Chats menu): prompts Claude does in order, each reporting outcome, summary, things to know and follow-ups in a table with links to the chats; Claude can queue tasks too",
+                "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Claude does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Claude can queue tasks too",
               ]}
             />
           </Section>
@@ -818,11 +819,12 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "“Did it help?” a week after you act on one",
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
                 "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
+                "How Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats, which suggestions build on",
                 "An empty profile? Jig offers a short interview chat where Claude asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
-                "Pipelines of your repositories, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
                 "Notes for the chat you're in: what it waits on, where its work is, steps left, decisions — you and Claude write them, Claude reads them before it works",
               ]}
             />

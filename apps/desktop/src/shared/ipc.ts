@@ -32,7 +32,14 @@ import type {
 } from "./engine";
 import type { ImageData } from "./files";
 import type { Layout } from "./layout";
-import type { EvidenceNote, LearningState, PatternRun, SuggestionAnswer, WorkedState } from "./learning";
+import type {
+  EvidenceNote,
+  LearningState,
+  PatternRun,
+  SuggestionAnswer,
+  UsageSummary,
+  WorkedState,
+} from "./learning";
 import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
@@ -338,6 +345,14 @@ export interface HostMethods {
   "addons.setEnabled": { args: { id: string; enabled: boolean }; result: void };
   /** Calls a named export of the add-on's host.ts. */
   "addons.call": { args: { id: string; method: string; args?: unknown }; result: unknown };
+  /**
+   * Keeps a file for a message the add-on sends later (`api.chats.send({ attachments })`), before its
+   * chat exists: like `sessions.addAttachment`, in `attachments/addon-<id>/`.
+   */
+  "addons.addAttachment": {
+    args: { id: string; data?: string; mime?: string; name?: string; path?: string };
+    result: ChatAttachment;
+  };
   "addons.storageGet": { args: { id: string; key: string }; result: unknown };
   "addons.storageSet": { args: { id: string; key: string; value: unknown }; result: void };
   /** Rebuilds one add-on, or all when `id` is empty. */
@@ -419,6 +434,8 @@ export interface HostMethods {
   "learning.clearNotes": { args: void; result: void };
   /** "How you worked" in the last 7 days (computed at most once an hour unless `refresh`). */
   "learning.worked": { args: { refresh?: boolean }; result: WorkedState };
+  /** How Claude worked for you across chats in the last 4 weeks: tools, skills, subagents, add-ons, MCP (D-185). */
+  "learning.usage": { args: void; result: UsageSummary };
   /** The profile interview: the first message of a chat where Claude asks questions and fills the profile (D-169). */
   "learning.interview": { args: void; result: { prompt: string } };
   /** The weekly check-in: start returns the chat's first message. */

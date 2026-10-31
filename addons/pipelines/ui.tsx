@@ -659,9 +659,23 @@ function StateIcon({ kind, run }: { kind: RunKind; run?: PipelineRun | null }) {
 
 type Latest = { runs: Record<string, PipelineRun | null>; error?: string };
 
+/**
+ * What the view showed last (in memory, while Jig runs), so opening it again shows the pipelines and
+ * their runs at once and only refreshes them in the background. The first time, the host's saved copy
+ * (warmed when Jig starts) fills it.
+ */
+const shown: { found?: Found; latest?: Latest } = {};
+
 /** The newest runs, every 20 s while one runs and Jig is in front, else every minute. */
 function useLatest(ctx: AddonUiContext, keys: string[]) {
-  const [latest, setLatest] = useState<Latest>();
+  const [latest, setLatestState] = useState<Latest | undefined>(shown.latest);
+  const setLatest = useCallback((next: Latest | ((l: Latest | undefined) => Latest)) => {
+    setLatestState((l) => {
+      const value = typeof next === "function" ? next(l) : next;
+      shown.latest = value;
+      return value;
+    });
+  }, []);
   const [loading, setLoading] = useState(false);
   const joined = keys.join("|");
   const reload = useCallback(async () => {
@@ -675,10 +689,20 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [ctx, joined]);
+  }, [ctx, joined, setLatest]);
+  useEffect(() => {
+    if (!shown.latest)
+      void ctx.storage.get<Latest>("latest").then((saved) => {
+        if (saved && !shown.latest) setLatest({ runs: saved.runs });
+      });
+  }, [ctx, setLatest]);
   useEffect(() => {
     void reload();
   }, [reload]);
+  useAddonEvent("refreshed", (payload) => {
+    const r = (payload as { latest?: Latest } | undefined)?.latest;
+    if (r) setLatest(r);
+  });
   const busy = Object.values(latest?.runs ?? {}).some(isActive);
   useEffect(() => {
     const t = setInterval(
@@ -692,7 +716,11 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
 }
 
 export function PipelinesView({ ctx }: AddonComponentProps) {
-  const [found, setFound] = useState<Found>();
+  const [found, setFoundState] = useState<Found | undefined>(shown.found);
+  const setFound = useCallback((next: Found) => {
+    shown.found = next;
+    setFoundState(next);
+  }, []);
   const [finding, setFinding] = useState(false);
   const [findError, setFindError] = useState<string>();
   const find = useCallback(
@@ -707,9 +735,18 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
         setFinding(false);
       }
     },
-    [ctx],
+    [ctx, setFound],
   );
+  useAddonEvent("refreshed", (payload) => {
+    const f = (payload as { found?: Found } | undefined)?.found;
+    if (f) setFound(f);
+  });
   useEffect(() => {
+    // The saved list shows at once (no host process needed); the host then checks it again.
+    if (!shown.found)
+      void ctx.storage.get<Found>("found").then((saved) => {
+        if (saved && !shown.found) setFound(saved);
+      });
     void find();
     // Pipelines created in Azure DevOps join their repository on their own.
     const t = setInterval(() => document.visibilityState === "visible" && void find(), 5 * 60_000);

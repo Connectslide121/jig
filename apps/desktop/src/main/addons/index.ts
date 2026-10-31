@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { addonToolName } from "@jig/sdk";
 import { slugify } from "@jig/themes";
 import { app, dialog, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
@@ -20,7 +21,8 @@ import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
-import { createChat, onSessionStatus, sessionManager } from "../sessions";
+import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
+import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
 import { addonChats } from "./chats";
@@ -147,7 +149,9 @@ export async function startAddons(): Promise<void> {
         .find((a) => a.id === id)
         ?.manifest?.permissions.includes("chat"),
     create: (input) => createChat(input),
-    send: (sessionId, text) => sessionManager().send(sessionId, text),
+    send: (sessionId, text, attachments) => sessionManager().send(sessionId, text, attachments),
+    copyAttachments: (addonId, sessionId, list) =>
+      copyAddonAttachments(paths.attachments(), addonId, sessionId, list),
     snapshot: (sessionId) => sessionManager().snapshot(sessionId),
     notify: (id, change) => addonService().call(id, "chatChanged", change),
   });
@@ -181,6 +185,13 @@ export async function startAddons(): Promise<void> {
         return chats.create(addonId, args as never);
       } else if (op === "chats.send") {
         return chats.send(addonId, args as never);
+      } else if (op === "attachments.remove") {
+        const list = (args as { attachments?: Array<{ path?: unknown }> }).attachments ?? [];
+        await removeAddonAttachments(
+          paths.attachments(),
+          addonId,
+          list.map((a) => a?.path).filter((p): p is string => typeof p === "string"),
+        );
       } else if (op === "chats.get") {
         return chats.get(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "log") {
@@ -194,6 +205,11 @@ export async function startAddons(): Promise<void> {
       emit("addons.changed", addons);
       // Add-ons' tools for Claude follow the add-ons (new chats get the current set).
       setAddonTools(addonTools(addons, (id, method, args) => addonService().call(id, method, args)));
+      const owners = new Map<string, string>();
+      for (const a of addons)
+        for (const t of a.manifest?.contributes.tools ?? [])
+          owners.set(`mcp__jig__${addonToolName(a.id, t.id)}`, a.id);
+      setToolAddons((tool) => owners.get(tool));
       for (const listener of changeListeners) listener(addons);
     },
   });
@@ -231,6 +247,7 @@ export async function startAddons(): Promise<void> {
   handle("addons.list", () => s.list());
   handle("addons.setEnabled", ({ id, enabled }) => s.setEnabled(id, enabled));
   handle("addons.call", ({ id, method, args }) => s.call(id, method, args));
+  handle("addons.addAttachment", ({ id, ...input }) => addAddonAttachment(paths.attachments(), id, input));
   handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
   handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));
   handle("addons.reload", async ({ id }) => {

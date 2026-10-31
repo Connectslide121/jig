@@ -14,10 +14,20 @@ export interface TaskReport {
   followUps: string[];
 }
 
+/** A file sent with a task's prompt (kept by the add-on with `ctx.attachments`, like a chat's). */
+export interface TaskFile {
+  path: string;
+  mime: string;
+  name?: string;
+  kind?: "image" | "pdf" | "office" | "text";
+}
+
 export interface Task {
   id: string;
   title: string;
   prompt: string;
+  /** Images and documents sent with the prompt; kept with the task so they open from its results. */
+  attachments?: TaskFile[];
   projectId?: string;
   /** Starts its own chat; otherwise it continues the chat of the task before it. */
   newChat: boolean;
@@ -111,6 +121,15 @@ export interface NewTask {
   prompt: string;
   title?: string;
   newChat?: boolean;
+  attachments?: TaskFile[];
+}
+
+/** A file's name to show (its original name, else the end of its path). */
+export const fileName = (file: TaskFile): string => file.name ?? file.path.split(/[\\/]/).pop() ?? "file";
+
+/** A task's title: its prompt's first line, or its files' names when it has no text. */
+export function titleFor(prompt: string, files: TaskFile[] = []): string {
+  return titleOf(prompt) || titleOf(files.map(fileName).join(", ")) || "Untitled task";
 }
 
 export function addTasks(
@@ -127,12 +146,13 @@ export function addTasks(
   let seq = queue.seq;
   const added = items
     .map((item) => (typeof item === "string" ? { prompt: item } : item))
-    .filter((item) => item.prompt.trim())
+    .filter((item) => item.prompt.trim() || item.attachments?.length)
     .map(
       (item): Task => ({
         id: `t${++seq}`,
-        title: item.title?.trim() || titleOf(item.prompt),
+        title: item.title?.trim() || titleFor(item.prompt, item.attachments),
         prompt: item.prompt.trim(),
+        ...(item.attachments?.length ? { attachments: item.attachments } : {}),
         projectId: options.projectId,
         newChat: item.newChat ?? options.newChat,
         permissionMode: options.permissionMode,
@@ -253,11 +273,22 @@ export function moveTask(queue: Queue, id: string, delta: -1 | 1): Queue {
 export function requeue(queue: Queue, id: string): Queue {
   const task = queue.tasks.find((t) => t.id === id);
   if (!task) return queue;
-  return addTasks(queue, [{ prompt: task.prompt, title: task.title }], {
+  return addTasks(queue, [{ prompt: task.prompt, title: task.title, attachments: task.attachments }], {
     projectId: task.projectId,
     newChat: true,
     permissionMode: task.permissionMode,
   });
+}
+
+/**
+ * Files no task uses any more (after tasks were removed or changed): `before`'s files that are not in
+ * `after` and not in `keep` (files still in the Add tasks dialog, say). To delete.
+ */
+export function unusedFiles(before: Queue, after: Queue, keep: string[] = []): string[] {
+  const used = new Set([...keep, ...after.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path))]);
+  return [...new Set(before.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)))].filter(
+    (p) => !used.has(p),
+  );
 }
 
 /** What Claude is told in the chat running a task (each turn, while the task runs). */
@@ -282,13 +313,74 @@ export function counts(queue: Queue): { queued: number; finished: number; total:
   };
 }
 
-export function duration(task: Task, now = Date.now()): string {
-  if (!task.sentAt) return "";
-  const ms = (task.finishedAt ? Date.parse(task.finishedAt) : now) - Date.parse(task.sentAt);
-  const s = Math.max(0, Math.round(ms / 1000));
+/** How long a task ran (still running: until now), in ms; 0 before it starts. */
+export function durationMs(task: Task, now = Date.now()): number {
+  if (!task.sentAt) return 0;
+  return Math.max(0, (task.finishedAt ? Date.parse(task.finishedAt) : now) - Date.parse(task.sentAt));
+}
+
+export function formatMs(ms: number): string {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.round(s / 60);
   return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+export function duration(task: Task, now = Date.now()): string {
+  return task.sentAt ? formatMs(durationMs(task, now)) || "0s" : "";
+}
+
+/** The tasks of one chat, in queue order, with their place in the queue. */
+export interface ChatGroup {
+  tasks: Array<{ task: Task; index: number }>;
+  /** The chat once it started (the first task with one). */
+  sessionId?: string;
+  chatTitle?: string;
+  projectId?: string;
+}
+
+/**
+ * The queue as chats: a task that starts its own chat (or comes first, or is in another project than
+ * the one before) begins a group; the others join the group before, as they continue its chat.
+ */
+export function chatGroups(queue: Queue): ChatGroup[] {
+  const groups: ChatGroup[] = [];
+  queue.tasks.forEach((task, index) => {
+    const last = groups[groups.length - 1];
+    if (!last || task.newChat || last.projectId !== task.projectId)
+      groups.push({ tasks: [], projectId: task.projectId });
+    const group = groups[groups.length - 1]!;
+    group.tasks.push({ task, index });
+    if (!group.sessionId && task.sessionId) {
+      group.sessionId = task.sessionId;
+      group.chatTitle = task.chatTitle;
+    }
+    if (task.chatTitle && task.sessionId === group.sessionId) group.chatTitle = task.chatTitle;
+  });
+  return groups;
+}
+
+/** How many tasks are in each status, and the summed time and cost. */
+export function tally(
+  tasks: Task[],
+  now = Date.now(),
+): {
+  byStatus: Partial<Record<TaskStatus, number>>;
+  finished: number;
+  ms: number;
+  /** Undefined until a task has a cost (one that cost nothing has 0). */
+  costUsd?: number;
+} {
+  const byStatus: Partial<Record<TaskStatus, number>> = {};
+  let ms = 0;
+  let costUsd: number | undefined;
+  for (const t of tasks) {
+    byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+    ms += durationMs(t, now);
+    if (t.costUsd !== undefined) costUsd = (costUsd ?? 0) + t.costUsd;
+  }
+  return { byStatus, finished: tasks.filter(isFinished).length, ms, costUsd };
 }
 
 /** One line per task for Claude (the list tool). */

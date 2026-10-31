@@ -37,12 +37,13 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
+  - A small overview card in each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens), with the full breakdown a click away.
 - **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.
 - **A task queue.** Queue prompts (or ask Claude to make one task per spec); Claude does them in order,
-  each in a new chat or continuing the one before, and reports how each went — outcome, summary,
-  things to know, follow-ups — in one table with links to the chats.
+  grouped in chats you lay out (a chat's first task starts it, the next ones continue it), and reports
+  how each went — outcome, summary, things to know, follow-ups — in a card per chat, linked to it.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
   default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
   between them; pin the ones you keep.
@@ -204,7 +205,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
     <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/knowledge.jpg?v=13" alt="What Jig knows about me">
       <b>What Jig knows about you, in plain sight.</b> Your profile (how you work), the notes Claude saved
-      from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand.
+      from your chats, your activity by kind, how you worked this week — lines by Claude vs by hand — and
+      how Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats.
       All local; edit or delete anything. An optional weekly check-in fills in the gaps.
     </td>
   </tr>

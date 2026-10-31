@@ -3,6 +3,7 @@ import {
   addTasks,
   type ChatState,
   chatFinished,
+  chatGroups,
   chatToContinue,
   counts,
   duration,
@@ -18,8 +19,11 @@ import {
   requeue,
   shouldPause,
   type Task,
+  tally,
   taskContext,
+  titleFor,
   titleOf,
+  unusedFiles,
 } from "./tasks";
 
 const chat = (over: Partial<ChatState> = {}): ChatState => ({
@@ -235,5 +239,78 @@ describe("taskContext, counts, duration, listing", () => {
     expect(listing(emptyQueue())).toMatch(/empty/);
     const q = queued(["a"]);
     expect(listing(q)).toContain("1. [Queued] a (id t1)");
+  });
+});
+
+describe("chatGroups and tally", () => {
+  it("groups tasks by the chat they run in", () => {
+    let q = addTasks(
+      emptyQueue(),
+      [
+        { prompt: "a", newChat: true },
+        { prompt: "b", newChat: false },
+        { prompt: "c", newChat: true },
+      ],
+      { projectId: "p1", newChat: true },
+    );
+    q = addTasks(q, [{ prompt: "d", newChat: false }], { projectId: "p2", newChat: false });
+    q.tasks[1] = { ...q.tasks[1]!, sessionId: "s1", chatTitle: "Fix a" };
+    const groups = chatGroups(q);
+    expect(groups.map((g) => g.tasks.map((t) => t.task.prompt))).toEqual([["a", "b"], ["c"], ["d"]]);
+    expect(groups[0]).toMatchObject({ sessionId: "s1", chatTitle: "Fix a", projectId: "p1" });
+    expect(groups[2]!.tasks[0]!.index).toBe(3);
+  });
+  it("sums statuses, time and cost", () => {
+    const q = queued(["a", "b", "c"]);
+    q.tasks[0] = {
+      ...q.tasks[0]!,
+      status: "done",
+      sentAt: "2025-01-01T10:00:00Z",
+      finishedAt: "2025-01-01T10:01:00Z",
+      costUsd: 0.25,
+    };
+    q.tasks[1] = { ...q.tasks[1]!, status: "failed", costUsd: 0.5 };
+    expect(tally(q.tasks)).toEqual({
+      byStatus: { done: 1, failed: 1, queued: 1 },
+      finished: 2,
+      ms: 60_000,
+      costUsd: 0.75,
+    });
+  });
+  it("has no cost until a task has one, and keeps a cost of zero", () => {
+    const q = queued(["a", "b"]);
+    expect(tally(q.tasks).costUsd).toBeUndefined();
+    q.tasks[0] = { ...q.tasks[0]!, status: "done", costUsd: 0 };
+    expect(tally(q.tasks).costUsd).toBe(0);
+  });
+
+  it("keeps a task's files, runs them again, and tells which files no task uses any more", () => {
+    const shot = { path: "/att/a.png", mime: "image/png", name: "checkout.png", kind: "image" as const };
+    const spec = { path: "/att/b.pdf", mime: "application/pdf", name: "spec.pdf", kind: "pdf" as const };
+    let q = addTasks(
+      emptyQueue(),
+      [
+        { prompt: "Fix it", attachments: [shot] },
+        { prompt: " ", attachments: [spec] },
+      ],
+      {
+        newChat: true,
+      },
+    );
+    expect(q.tasks.map((t) => [t.title, t.attachments?.length])).toEqual([
+      ["Fix it", 1],
+      ["spec.pdf", 1],
+    ]);
+    expect(addTasks(emptyQueue(), [{ prompt: " ", attachments: [] }], { newChat: true }).tasks).toEqual([]);
+    expect(titleFor("", [])).toBe("Untitled task");
+    q = requeue(q, q.tasks[0]!.id);
+    expect(q.tasks[2]!.attachments).toEqual([shot]);
+    const without = {
+      ...q,
+      tasks: q.tasks.filter((t) => t.id !== q.tasks[0]!.id && t.id !== q.tasks[1]!.id),
+    };
+    expect(unusedFiles(q, without)).toEqual([spec.path]);
+    expect(unusedFiles(q, without, [spec.path])).toEqual([]);
+    expect(unusedFiles(q, q)).toEqual([]);
   });
 });

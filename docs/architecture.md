@@ -110,6 +110,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `projects.json` | registered projects |
 | `sessions/<id>.json` | chat session metadata + transcript cache |
 | `attachments/<session>/` | files sent in a chat and images tools returned |
+| `attachments/addon-<id>/` | files an add-on keeps for messages it sends later (a task's files) |
 | `attempts/` | "Try several ways" runs and their git worktrees |
 | `themes/` | user themes (Jig or VS Code format) and imported themes |
 | `addons/` | the user's add-ons — **a git repository** (§8) |

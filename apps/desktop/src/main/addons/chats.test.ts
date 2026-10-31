@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SessionMeta, SessionSnapshot } from "../../shared/engine";
+import type { ChatAttachment, SessionMeta, SessionSnapshot } from "../../shared/engine";
 import { addonChats, chatInfo } from "./chats";
 
 const meta = (over: Partial<SessionMeta> = {}): SessionMeta =>
@@ -34,6 +34,9 @@ function setup(permitted = true) {
     hasPermission: vi.fn(() => permitted),
     create: vi.fn(async (input: { title?: string }) => meta({ id: "new", title: input.title ?? "New chat" })),
     send: vi.fn(async () => {}),
+    copyAttachments: vi.fn(async (_addon: string, sessionId: string, list: ChatAttachment[]) =>
+      list.map((a) => ({ ...a, path: `/att/${sessionId}/${a.name}` })),
+    ),
     snapshot: vi.fn(async (id: string) => snap({ id })),
     notify: vi.fn(async () => undefined),
   };
@@ -80,7 +83,16 @@ describe("addonChats", () => {
       title: "T",
       permissionMode: "plan",
     });
-    expect(deps.send).toHaveBeenCalledWith("new", "do it");
+    expect(deps.send).toHaveBeenCalledWith("new", "do it", []);
+    expect(deps.copyAttachments).not.toHaveBeenCalled();
+  });
+
+  it("copies the add-on's files into the chat and sends them with the text", async () => {
+    const { chats, deps } = setup();
+    const file = { path: "/att/addon-tasks/a.png", mime: "image/png", name: "a.png", kind: "image" as const };
+    await chats.send("tasks", { text: "look", sessionId: "s1", attachments: [file] });
+    expect(deps.copyAttachments).toHaveBeenCalledWith("tasks", "s1", [file]);
+    expect(deps.send).toHaveBeenCalledWith("s1", "look", [{ ...file, path: "/att/s1/a.png" }]);
   });
 
   it("refuses empty text and bypassing permissions", async () => {

@@ -50,11 +50,12 @@ in this order:
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
-| a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>", or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups" |
+| a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups" |
 | "queue tasks for" | Claude queues two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` |
 | starts with "Test this in Claude's browser" (Tools → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
+| "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" | a plan to approve (ExitPlanMode); the reply says the mode after approval |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |

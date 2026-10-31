@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { maskSecrets } from "@jig/learning";
+import { maskSecrets, usageSummary, usageText } from "@jig/learning";
 import { z } from "zod";
 import type { EvidenceNote, WorkedState } from "../../shared/learning";
 import { onActivity, publishActivity } from "../activity/bus";
@@ -19,6 +19,9 @@ import { KnowledgeStore, profileIsEmpty } from "./knowledge";
 import { profileInterviewPrompt, REFLECTION_INSTRUCTIONS } from "./reflect";
 import { LearningService } from "./service";
 import { ANYWHERE, computeWorked } from "./worked";
+
+/** How far back "How Claude worked for you" looks (D-185). */
+const USAGE_DAYS = 28;
 
 let service: LearningService | undefined;
 let knowledge: KnowledgeStore | undefined;
@@ -102,6 +105,7 @@ export async function startLearning(): Promise<void> {
     notify: (n) => emit("notify", { title: n.title, message: n.message, tone: "info" }),
     knowledge: k,
     worked: async () => (await computeWorkedNow()).text || undefined,
+    usage: async () => usageText(usageSummary(await activity.read(USAGE_DAYS), USAGE_DAYS)),
     checkInFrequency: () => getConfig().learning.checkIn,
     setCheckInFrequency: async (frequency) => {
       await updateConfig({ learning: { checkIn: frequency } });
@@ -150,6 +154,7 @@ export async function startLearning(): Promise<void> {
   });
   handle("learning.clearNotes", () => k.clear());
   handle("learning.worked", ({ refresh }) => computeWorkedNow(refresh));
+  handle("learning.usage", async () => usageSummary(await activity.read(USAGE_DAYS), USAGE_DAYS));
   handle("learning.interview", async () => ({
     prompt: profileInterviewPrompt((await k.profile()).text, await k.recent(30)),
   }));

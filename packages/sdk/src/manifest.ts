@@ -81,6 +81,8 @@ export const ManifestSchema = z.object({
             /** Interval like "30s", "5m", "1h" (minimum 10s). */
             every: z.string().regex(/^\d+(s|m|h)$/),
             run: ExportName,
+            /** Also run once a few seconds after Jig starts (or the add-on loads), e.g. to warm a cache. */
+            atStart: z.boolean().default(false),
           }),
         )
         .default([]),

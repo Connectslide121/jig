@@ -1875,3 +1875,84 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   for. `ctx.openChat({ sessionId })` opens an existing chat.
 - New permission modes default to "Accept file edits" in the add dialog, so an unattended queue doesn't
   stop at every edit; commands still ask, and a task that needs you shows "Needs you" and notifies.
+
+## D-183: Pipelines load when Jig starts; watchers can run at start
+
+- Status: accepted. Decided by Jon ("I want the pipelines to load when jig opens, not every time the
+  pipelines tab opens … refresh in the bg when the tab opens, without locking the ui"); the mechanism
+  is **Claude, on my own**.
+- Watchers get `atStart` (manifest): besides every interval, they run once 3 s after the add-on loads
+  (so at Jig's start, without slowing it). A general hook for warming caches, not a pipelines special.
+- Pipelines' `refresh` watcher (at start, every 5 minutes) finds the pipelines and their newest runs
+  and saves them (`found`, `latest`). The view starts from what it showed last (in memory) or the saved
+  copy, and refreshes in the background with only the header's small spinner. The full-panel spinner
+  stays only for the very first time, when nothing was ever saved.
+- Cost: `az pipelines runs list` once per Azure DevOps project every 5 minutes while Jig runs, even with
+  the view closed; with no Azure DevOps remotes it only reads `git remote` of each checkout.
+
+## D-184: A chat overview card, with the details in a modal
+
+- Status: accepted. Decided by Jon ("an overview of the sessions, with how many tool calls, skills used
+  etc … and a show detail button to expand it to a modal with a full detail view"; then "I want it to
+  be part of the window", "a small card, not a full height sidebar", and "show how many add-ons were
+  used"). How it fits is **Claude, on my own**:
+  - A small card at the top right of the chat, in its own narrow column beside the transcript: part of
+    the chat's layout, so it never covers what Claude says, and only as tall as its content. The
+    composer keeps the full width.
+  - It counts turns, tool calls, files, skills, subagents, add-ons, MCP calls and tokens. An add-on
+    counts as used when Claude calls one of its tools (`mcp__jig__addon_<id>_<tool>`, matched against
+    the installed add-ons' tools) or Jig's tools for its data (`jig_get_addon_data`…, by `addonId`).
+  - The numbers come from the transcript Jig already has (`chatStats()` in `shared/chatStats.ts`, pure
+    and unit-tested); nothing new is recorded or asked of Claude Code.
+  - On by default; the chart button in the chat's top bar, the card's × and setting `chat.overview`
+    turn it off. ⋯ → Chat overview… opens the details modal directly.
+
+## D-185: Jig learns how Claude works for you across chats
+
+- Status: accepted. Decided by Jon ("this could also be logged as what Jig learns about how you work,
+  like a global stats, to help with suggestions"). How it works is **Claude, on my own**:
+  - Each recorded `session.tool` event gets `detail.chat` and, when the call used a skill, subagent,
+    add-on or other MCP server, `detail.use` and `detail.name` (`toolUse()` in `shared/chatStats.ts`,
+    the same rules as the chat overview; add-on tools are matched to their add-on by the add-ons
+    module). Only names, never inputs, are added; the event's text stays as before (masked).
+  - `usageSummary()` in `@jig/learning` (pure, tested) sums the last 4 weeks: chats, messages, tool
+    calls, and each tool, skill, subagent, add-on and MCP server with its calls and number of chats.
+  - Shown as "How Claude worked for you" in What Jig knows about me (IPC `learning.usage`), and given to
+    the weekly reflection as a section (`usageText()`), so suggestions can point at a skill or add-on
+    that fits what Claude keeps doing by hand, or one never used. No extra AI call.
+  - Older events have no tags; they count as tool calls only. Nothing new leaves the machine.
+
+## D-186: Tasks are added and shown grouped in chats
+
+- Status: accepted. Decided by Jon ("I don't want one input field, I want one per task … or even better
+  UI, group them in chats"; "the results table … could be nicer, better structured and show more
+  details"). The design is **Claude, on my own**:
+  - The add dialog is a list of chats, each with one field per task. A chat's first task starts a new
+    chat and the others continue it (stored as each task's `newChat`, as before, so the queue and
+    Claude's `addon_tasks_add` are unchanged). Menus split a chat at a task, merge a chat into the one
+    before, move tasks and chats. The project is per chat; the permissions are for the whole batch.
+    The list starts at a fixed height and grows with its tasks up to the window's height, then
+    scrolls (Jon: "that should be its max height, not a set height"). Pasting a list
+    into an empty task makes one task per item (it replaces the "each line is its own task" switch).
+    The host's `add` takes `{ prompt, newChat }` items; the dialog sends one `add` per chat.
+  - The results group the queue the same way (`chatGroups`: a task that starts a chat, or is in
+    another project, begins a group). Each chat is a card with its link, project, time, cost and
+    progress; each task row adds the summary on two lines, start time and the notes count. A bar and
+    counts per status (`tally`) sit on top. The pure parts are in `lib/draft.ts` and `lib/tasks.ts`.
+
+## D-187: Tasks take files, like the chat, and keep them
+
+- Status: accepted. Decided by Jon ("I need to be able to paste images and attach docs in each task,
+  just like we do in the chat"; "they should be easy to reach always, after done as well, from the
+  results table and/or detail pages"). The design is **Claude, on my own**:
+  - Add-ons get the chat's attachments: `ctx.attachments.add(files)` / `pick()` keep files through
+    the new IPC method `addons.addAttachment` in `attachments/addon-<id>/` (same types, limits and
+    checks as a chat's), `api.chats.send({ attachments })` sends them, and `<Attachments>` in
+    `@jig/sdk/ui` shows them. Main copies the files into the chat's own folder when sending, because
+    the chat reads only its own folder and is deleted with its session, while the add-on's copy stays
+    with the task. An add-on deletes only its own files (`api.attachments.remove`).
+  - In the Tasks add-on each task field takes pasted, dropped or picked (paperclip) files, shown under
+    the field; Edit changes a queued task's files. A task may be only files. The files stay with the
+    task (Run again sends them again) and open from a **Files** column in the results (one file opens
+    directly, several from a menu), from the row's ⋯ → Files, and in the details. The host deletes
+    files no task uses when the queue changes (`unusedFiles`), and those kept in a cancelled dialog.
