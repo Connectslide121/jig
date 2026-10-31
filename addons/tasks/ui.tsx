@@ -102,8 +102,9 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   return <CircleDashed className={cn(c, "text-hint")} />;
 }
 
+/** A cost, $0.00 included; a dash when there's none yet (a task that hasn't finished). */
 function money(usd?: number) {
-  return usd ? `$${usd.toFixed(2)}` : "";
+  return usd === undefined ? "—" : `$${usd.toFixed(2)}`;
 }
 
 /** The queue, kept current: it reloads when the host says it changed. */
@@ -120,8 +121,6 @@ function useQueue() {
   }, [running]);
   return { queue: data, error };
 }
-
-/** The task queue: prompts Claude does one after another, each with its report, as a table. */
 
 /** A switch with its label beside it (the base `Switch` only names itself for screen readers). */
 function LabeledSwitch({
@@ -141,9 +140,10 @@ function LabeledSwitch({
   );
 }
 
+/** The task queue: prompts Claude does one after another, each with its report, as a table. */
 export function TasksView({ ctx }: AddonComponentProps) {
   const { queue, error } = useQueue();
-  const [adding, setAdding] = useState<{ prompts?: string; from?: Task } | undefined>();
+  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>();
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
@@ -221,7 +221,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
             onChange={(on) => void call("setStopOnFailure", { on })}
             label="Stop when a task fails"
           />
-          <Button size="sm" icon={Plus} onClick={() => setAdding({})} data-testid="tasks-add">
+          <Button size="sm" icon={Plus} onClick={() => setAdding(true)} data-testid="tasks-add">
             Add tasks
           </Button>
           {queue.running ? (
@@ -267,7 +267,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
             continuing the one before, and reports how each went here. Claude can queue tasks too (ask it in a
             chat, e.g. "queue a task for each spec in docs/").
           </div>
-          <Button size="sm" icon={Plus} onClick={() => setAdding({})}>
+          <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
             Add tasks
           </Button>
         </Empty>
@@ -304,8 +304,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
       )}
       {adding && (
         <AddDialog
-          initial={adding.prompts}
-          onClose={() => setAdding(undefined)}
+          onClose={() => setAdding(false)}
           onSave={async (chats, permissionMode) => {
             for (const chat of chats)
               await call("add", {
@@ -313,9 +312,8 @@ export function TasksView({ ctx }: AddonComponentProps) {
                 projectId: chat.projectId,
                 newChat: true,
                 permissionMode,
-                from: adding.from?.id,
               });
-            setAdding(undefined);
+            setAdding(false);
           }}
         />
       )}
@@ -444,8 +442,11 @@ function ChatCard({
               {group.chatTitle ?? tasks[0]!.title}
             </button>
           ) : (
-            <span className="min-w-0 truncate font-medium text-muted">
-              Chat {number} · starts with its first task
+            <span
+              className="min-w-0 truncate font-medium text-fg"
+              title="Its chat starts when its first task runs"
+            >
+              {tasks[0]!.title}
             </span>
           )}
           <span className="shrink-0 text-xs text-hint">
@@ -606,7 +607,7 @@ function TaskDialog({
   const facts: Array<[string, string]> = (
     [
       ["Project", projectName],
-      ["Chat", task.newChat || index === 0 ? "its own" : "continues the task before"],
+      ["Chat", task.newChat || index === 0 ? "starts a new one" : "continues the one before"],
       ["Permissions", MODES.find((m) => m.value === (task.permissionMode ?? "acceptEdits"))?.label ?? ""],
       ["Started", when(task.sentAt)],
       ["Finished", when(task.finishedAt)],
@@ -747,11 +748,9 @@ function TaskDialog({
  * each item.
  */
 function AddDialog({
-  initial,
   onClose,
   onSave,
 }: {
-  initial?: string;
   onClose: () => void;
   onSave: (chats: Array<{ projectId: string; tasks: NewTask[] }>, mode: PermissionMode) => Promise<void>;
 }) {
@@ -759,9 +758,7 @@ function AddDialog({
   const active = useActiveProject();
   const projects = useProjectList();
   const firstProject = active?.id ?? projects[0]?.id ?? "";
-  const [chats, setChats] = useState<DraftChat[]>(() => [
-    draftChat(firstProject, initial ? [initial] : [""]),
-  ]);
+  const [chats, setChats] = useState<DraftChat[]>(() => [draftChat(firstProject)]);
   const [mode, setMode] = useState<PermissionMode>("acceptEdits");
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string>();
@@ -859,6 +856,7 @@ function AddDialog({
       open
       onClose={onClose}
       width="lg"
+      column
       testId="tasks-add-dialog"
       title="Add tasks"
       footer={
@@ -884,7 +882,7 @@ function AddDialog({
         </>
       }
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 text-xs text-muted">
             Claude does the tasks in order. Each chat's first task starts a new chat; the next ones continue
@@ -906,7 +904,7 @@ function AddDialog({
             </Select>
           </label>
         </div>
-        <div className="flex h-96 flex-col gap-3 overflow-y-auto" data-testid="tasks-add-chats">
+        <div className="flex min-h-96 flex-1 flex-col gap-3 overflow-y-auto" data-testid="tasks-add-chats">
           {chats.map((chat, ci) => (
             <div
               key={chat.id}

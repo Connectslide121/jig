@@ -275,4 +275,10 @@ describe("chatGroups and tally", () => {
       costUsd: 0.75,
     });
   });
+  it("has no cost until a task has one, and keeps a cost of zero", () => {
+    const q = queued(["a", "b"]);
+    expect(tally(q.tasks).costUsd).toBeUndefined();
+    q.tasks[0] = { ...q.tasks[0]!, status: "done", costUsd: 0 };
+    expect(tally(q.tasks).costUsd).toBe(0);
+  });
 });

@@ -338,15 +338,16 @@ export function tally(
   byStatus: Partial<Record<TaskStatus, number>>;
   finished: number;
   ms: number;
-  costUsd: number;
+  /** Undefined until a task has a cost (one that cost nothing has 0). */
+  costUsd?: number;
 } {
   const byStatus: Partial<Record<TaskStatus, number>> = {};
   let ms = 0;
-  let costUsd = 0;
+  let costUsd: number | undefined;
   for (const t of tasks) {
     byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
     ms += durationMs(t, now);
-    costUsd += t.costUsd ?? 0;
+    if (t.costUsd !== undefined) costUsd = (costUsd ?? 0) + t.costUsd;
   }
   return { byStatus, finished: tasks.filter(isFinished).length, ms, costUsd };
 }
