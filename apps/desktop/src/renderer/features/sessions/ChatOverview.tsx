@@ -73,42 +73,10 @@ function Row({
   );
 }
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col border-t border-line py-2">
-      <h3 className="flex h-6 items-center px-3 text-2xs font-semibold text-hint uppercase">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-/** The most-used few of a list, then "+N more" for the rest (all of them are in the details). */
-function Top<T>({
-  list,
-  limit = 5,
-  render,
-  empty,
-}: {
-  list: T[];
-  limit?: number;
-  render: (item: T) => ReactNode;
-  empty: string;
-}) {
-  if (!list.length) return <div className="flex h-6 items-center px-3 text-xs text-hint">{empty}</div>;
-  return (
-    <>
-      {list.slice(0, limit).map(render)}
-      {list.length > limit && (
-        <div className="flex h-6 items-center px-3 text-xs text-hint">+{list.length - limit} more</div>
-      )}
-    </>
-  );
-}
-
 /**
- * The chat overview (D-184): a panel on the chat's right, part of its window, with what happened so
- * far (turns, tool calls, files, skills, subagents, add-ons, MCP, tokens) and the most-used tools,
- * add-ons and skills; Show details opens everything in a modal.
+ * The chat overview (D-184): a small card at the top right of the chat, in its own column beside the
+ * transcript (it never covers it), with what happened so far: turns, tool calls, files, skills,
+ * subagents, add-ons, MCP, tokens. Show details opens everything in a modal.
  */
 export function ChatOverview({
   meta,
@@ -119,20 +87,16 @@ export function ChatOverview({
   items: ChatItem[];
   onDetails: () => void;
 }) {
-  const { addonOf, name } = useAddonNames();
+  const { addonOf } = useAddonNames();
   const stats = useMemo(() => chatStats(items, addonOf), [items, addonOf]);
   return (
-    <aside className="flex h-full flex-col border-l border-line bg-surface" data-testid="chat-overview">
-      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-line pr-1 pl-3">
+    <div
+      className="flex w-52 flex-col rounded-lg border border-line bg-raised py-1"
+      data-testid="chat-overview"
+    >
+      <div className="flex h-7 items-center gap-1.5 pr-1 pl-3">
         <ChartColumn className="size-3.5 shrink-0 text-muted" />
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">Overview</span>
-        <IconButton
-          icon={Maximize2}
-          size="sm"
-          label="Show details"
-          onClick={onDetails}
-          data-testid="chat-overview-expand"
-        />
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-fg">This chat</span>
         <IconButton
           icon={X}
           size="sm"
@@ -141,71 +105,41 @@ export function ChatOverview({
           data-testid="chat-overview-hide"
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col py-2">
-          <Row
-            icon={Clock}
-            label={`${stats.turns} turn${stats.turns === 1 ? "" : "s"}`}
-            value={stats.workingMs ? formatDuration(stats.workingMs) : "—"}
-          />
-          <Row icon={Wrench} label="Tool calls" value={num(stats.toolCalls)} testId="chat-overview-tools" />
-          <Row
-            icon={FilePen}
-            label={`Files changed${stats.files.length ? ` · ${stats.files.length}` : ""}`}
-            value={
-              stats.files.length ? (
-                <>
-                  <span className="text-success">+{stats.linesAdded}</span>{" "}
-                  <span className="text-danger">−{stats.linesRemoved}</span>
-                </>
-              ) : (
-                "—"
-              )
-            }
-          />
-          <Row icon={SquareTerminal} label="Commands" value={num(stats.bash)} />
-          <Row
-            icon={Sparkles}
-            label="Skills"
-            value={num(stats.skills.reduce((n, s) => n + s.count, 0))}
-            testId="chat-overview-skills"
-          />
-          <Row icon={Users} label="Subagents" value={num(stats.subagents.length)} />
-          <Row icon={Puzzle} label="Add-ons" value={num(stats.addons.length)} testId="chat-overview-addons" />
-          <Row icon={Plug} label="MCP calls" value={num(stats.mcp.reduce((n, s) => n + s.calls, 0))} />
-          <Row
-            icon={MessageSquare}
-            label="Tokens"
-            value={
-              meta.turns > 0
-                ? `${formatTokens(totalTokens(meta))}${meta.costUsd > 0 ? ` · $${meta.costUsd.toFixed(2)}` : ""}`
-                : "—"
-            }
-          />
-        </div>
-        <Group title="Most used tools">
-          <Top
-            list={stats.tools}
-            empty="None yet"
-            render={(t) => <Row key={t.name} icon={Wrench} label={toolLabel(t.name)} value={t.calls} />}
-          />
-        </Group>
-        <Group title="Add-ons">
-          <Top
-            list={stats.addons}
-            empty="None used"
-            render={(a) => <Row key={a.id} icon={Puzzle} label={name(a.id)} value={a.calls} />}
-          />
-        </Group>
-        <Group title="Skills">
-          <Top
-            list={stats.skills}
-            empty="None used"
-            render={(sk) => <Row key={sk.name} icon={Sparkles} label={sk.name} value={sk.count} />}
-          />
-        </Group>
-      </div>
-      <div className="shrink-0 border-t border-line p-2">
+      <Row
+        icon={Clock}
+        label={`${stats.turns} turn${stats.turns === 1 ? "" : "s"}`}
+        value={stats.workingMs ? formatDuration(stats.workingMs) : "—"}
+      />
+      <Row icon={Wrench} label="Tool calls" value={num(stats.toolCalls)} testId="chat-overview-tools" />
+      <Row
+        icon={FilePen}
+        label={`Files changed${stats.files.length ? ` · ${stats.files.length}` : ""}`}
+        value={
+          stats.files.length ? (
+            <>
+              <span className="text-success">+{stats.linesAdded}</span>{" "}
+              <span className="text-danger">−{stats.linesRemoved}</span>
+            </>
+          ) : (
+            "—"
+          )
+        }
+      />
+      <Row
+        icon={Sparkles}
+        label="Skills"
+        value={num(stats.skills.reduce((n, s) => n + s.count, 0))}
+        testId="chat-overview-skills"
+      />
+      <Row icon={Users} label="Subagents" value={num(stats.subagents.length)} />
+      <Row icon={Puzzle} label="Add-ons" value={num(stats.addons.length)} testId="chat-overview-addons" />
+      <Row icon={Plug} label="MCP calls" value={num(stats.mcp.reduce((n, s) => n + s.calls, 0))} />
+      <Row
+        icon={MessageSquare}
+        label="Tokens"
+        value={meta.turns > 0 ? formatTokens(totalTokens(meta)) : "—"}
+      />
+      <div className="px-1 pt-1">
         <Button
           size="sm"
           variant="ghost"
@@ -217,7 +151,7 @@ export function ChatOverview({
           Show details
         </Button>
       </div>
-    </aside>
+    </div>
   );
 }
 

@@ -350,7 +350,7 @@ test("screenshots for the About page", async () => {
   await page.getByTestId("plan-approve").click();
   await expect(results).toHaveCount(3, { timeout: 20000 });
 
-  // The chat overview: a panel on the chat's right, with the full detail in a modal.
+  // The chat overview: a small card at the chat's top right, with the full detail in a modal.
   await chatInput.fill("use a skill to explain the cart");
   await page.keyboard.press("Enter");
   await expect(results).toHaveCount(4, { timeout: 20000 });

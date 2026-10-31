@@ -1890,20 +1890,19 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Cost: `az pipelines runs list` once per Azure DevOps project every 5 minutes while Jig runs, even with
   the view closed; with no Azure DevOps remotes it only reads `git remote` of each checkout.
 
-## D-184: A chat overview panel, with the details in a modal
+## D-184: A chat overview card, with the details in a modal
 
 - Status: accepted. Decided by Jon ("an overview of the sessions, with how many tool calls, skills used
-  etc … and a show detail button to expand it to a modal with a full detail view"; then "I don't really
-  like that it's floating, I want it to be part of the window … and show how many add-ons were used").
-  How it fits is **Claude, on my own**:
-  - A panel docked on the chat's right, below its top bar and beside the transcript and composer,
-    resizable (`Pane` `jig.chat.overview`). It's part of the chat's layout, not a card over it, so it
-    covers nothing; toggling it is a deliberate change of layout, like a sidebar.
-  - It counts turns, tool calls, files, commands, skills, subagents, add-ons, MCP calls and tokens, and
-    lists the most-used tools, the add-ons and the skills. An add-on counts as used when Claude calls
-    one of its tools (`mcp__jig__addon_<id>_<tool>`, matched against the installed add-ons' tools) or
-    Jig's tools for its data (`jig_get_addon_data`…, by `addonId`).
+  etc … and a show detail button to expand it to a modal with a full detail view"; then "I want it to
+  be part of the window", "a small card, not a full height sidebar", and "show how many add-ons were
+  used"). How it fits is **Claude, on my own**:
+  - A small card at the top right of the chat, in its own narrow column beside the transcript: part of
+    the chat's layout, so it never covers what Claude says, and only as tall as its content. The
+    composer keeps the full width.
+  - It counts turns, tool calls, files, skills, subagents, add-ons, MCP calls and tokens. An add-on
+    counts as used when Claude calls one of its tools (`mcp__jig__addon_<id>_<tool>`, matched against
+    the installed add-ons' tools) or Jig's tools for its data (`jig_get_addon_data`…, by `addonId`).
   - The numbers come from the transcript Jig already has (`chatStats()` in `shared/chatStats.ts`, pure
     and unit-tested); nothing new is recorded or asked of Claude Code.
-  - On by default; the chart button in the chat's top bar, the panel's × and setting `chat.overview`
+  - On by default; the chart button in the chat's top bar, the card's × and setting `chat.overview`
     turn it off. ⋯ → Chat overview… opens the details modal directly.

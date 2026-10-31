@@ -396,5 +396,5 @@ true"). This step checks the whole picture again:
 - [x] Unit and e2e tests independent of the environment's git identity
 - [x] Commit messages on a quick model (Haiku), `engine.quickModel` (D-181)
 - [x] Pipelines load when Jig starts and refresh in the background when opened; watchers' `atStart` (D-183)
-- [x] Chat overview: a panel on the right of each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens) with the full breakdown in a modal; `chat.overview` (D-184)
+- [x] Chat overview: a small card at the top right of each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens) with the full breakdown in a modal; `chat.overview` (D-184)
 - [x] Task queue: prompts Claude does in order, each reporting back in a table with links to the chats; Claude can queue tasks; add-ons can run chats (`api.chats`) (D-182)

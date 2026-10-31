@@ -203,7 +203,7 @@ test("chat: opening a chat of another project makes that project the active one"
   await expect(switcher).toContainText("two");
 });
 
-test("chat: the overview panel counts tools, skills, subagents, add-ons and MCP; details in a modal", async ({
+test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; details in a modal", async ({
   page,
   jigHome,
 }) => {
@@ -215,12 +215,11 @@ test("chat: the overview panel counts tools, skills, subagents, add-ons and MCP;
   await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
   await page.keyboard.press("Enter");
   await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
-  // A panel on the chat's right, part of its window.
+  // A small card at the chat's top right, beside the transcript.
   const card = tab.getByTestId("chat-overview");
   await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
   await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
-  await expect(card).toContainText("Releases");
   await card.getByTestId("chat-overview-details").click();
   const details = page.getByTestId("chat-details-dialog");
   await expect(details.getByTestId("chat-details-tools")).toContainText("Skill");

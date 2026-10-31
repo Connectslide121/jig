@@ -35,11 +35,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - Commit messages (Git → Write) use the quick model, Haiku by default (D-181; Settings → Claude Code → Quick model).
 - Pipelines (D-180): each pipeline is one compact row; click it for the details dialog. They load when
   Jig starts (D-183) and opening the view shows them at once, refreshing in the background.
-- Chat overview (D-184): a panel on the right of each chat (resizable, part of the chat's window)
-  counts turns, tool calls, files changed, commands, skills, subagents, add-ons, MCP calls and tokens,
-  and lists the most-used tools, the add-ons and the skills. **Show details** opens a modal with every
-  tool, skill, subagent, add-on, MCP server and file. Toggle it with the chart button in the chat's top
-  bar; ⋯ → Chat overview… opens the details; setting `chat.overview`.
+- Chat overview (D-184): a small card at the top right of each chat, beside the transcript (it never
+  covers it), counts turns, tool calls, files changed, skills, subagents, add-ons, MCP calls and
+  tokens. **Show details** opens a modal with every tool, skill, subagent, add-on, MCP server and file.
+  Toggle it with the chart button in the chat's top bar; ⋯ → Chat overview… opens the details; setting
+  `chat.overview`.
 - Repos: a row's branch is a dropdown to switch branches (D-172). Needs testing on a real machine with a dirty tree and remote-only branches.
 - Layout (D-173, D-174): **View menu → Reset layout** puts every view back. Sidebars hold only daily
   views; Suggestions, Links, Releases and Workflows open as main tabs from the top bar menus. Drag
