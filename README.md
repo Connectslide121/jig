@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=13" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
+  <img src="apps/desktop/src/renderer/features/about/shots/chat.jpg?v=14" alt="A chat with Claude Code next to the Git view of a workspace with four repositories" width="900">
 </p>
 
 > In woodworking, a **jig** is a custom tool you make yourself so a repetitive job gets faster and
@@ -82,7 +82,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 <table>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=13" alt="A chat with Claude's todo list, an edit with its diff and a plan to approve">
+      <img src="apps/desktop/src/renderer/features/about/shots/chat-tools.jpg?v=14" alt="A chat with Claude's todo list, an edit with its diff and a plan to approve">
       <b>Claude Code, in a window.</b> Everything its terminal shows, as cards:
       <ul>
         <li>Claude's todo list as a checklist, and plans you approve or send back with feedback.</li>

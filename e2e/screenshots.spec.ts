@@ -424,7 +424,7 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await page.waitForTimeout(800);
   await shot("files");
 
-  await page.getByTestId("main-pane-right").getByTestId("tab-jig.preview").click({ button: "right" });
+  await page.getByTestId("main-pane-right").getByTestId("tab-jig.preview").last().click({ button: "right" });
   await page.getByRole("menuitem", { name: "One pane" }).click();
 
   // Releases: the webshop's unreleased work, drafted with Claude.
