@@ -169,6 +169,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 
 - The default branch is `develop`; branch from it and open pull requests against it.
 - Small, coherent commits with a clear message (what and why), including their tests and docs.
+- Commit as you go after each logical, validated change; do not leave completed work uncommitted.
 - Run `npm run check` before committing.
 - No AI attribution trailers in commit messages.
 
