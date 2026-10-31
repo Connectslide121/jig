@@ -603,7 +603,7 @@ export function Composer({
             }}
             className="max-h-80 min-h-7 w-full resize-none bg-transparent px-1.5 py-1 text-sm text-fg outline-none placeholder:text-hint"
           />
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1" data-testid="composer-toolbar">
             <IconButton
               icon={Plus}
               label="Commands, files, shell, memory and chat settings"
@@ -628,35 +628,36 @@ export function Composer({
               type="button"
               data-testid="model-menu"
               onClick={(e) => void openModelMenu(e.currentTarget, meta)}
-              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
+              className="flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
               title={
                 meta.activeModel
                   ? `Model and effort · Claude Code reports: ${meta.activeModel}`
-                  : "Model and effort"
+                  : `Model and effort · ${modelName}`
               }
             >
-              {modelName} <ChevronDown className="block size-3.5 shrink-0" />
+              <span className="truncate">{modelName}</span>{" "}
+              <ChevronDown className="block size-3.5 shrink-0" />
             </button>
             <button
               type="button"
               data-testid="permission-menu"
               onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
               className={cn(
-                "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
+                "flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
                 meta.permissionMode === "bypassPermissions"
                   ? "text-danger"
                   : meta.permissionMode === "default"
                     ? "text-muted hover:text-fg"
                     : "text-accent",
               )}
-              title="What Claude may do without asking (Shift+Tab to switch)"
+              title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What Claude may do without asking (Shift+Tab to switch)`}
             >
               {meta.permissionMode === "plan" ? (
                 <ListChecks className="block size-3.5 shrink-0" />
               ) : (
                 <Shield className="block size-3.5 shrink-0" />
               )}
-              {PERMISSION_MODE_LABELS[meta.permissionMode]}{" "}
+              <span className="truncate">{PERMISSION_MODE_LABELS[meta.permissionMode]}</span>{" "}
               <ChevronDown className="block size-3.5 shrink-0" />
             </button>
             {busy && (

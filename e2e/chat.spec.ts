@@ -226,13 +226,17 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
   await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
   // The input and messages share their edges, both below and above the max chat width.
-  for (const width of [1100, 1600]) {
+  for (const width of [800, 1100, 1600]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(async () => {
       const message = await tab.getByTestId("assistant-message").first().boundingBox();
       const composer = await tab.getByTestId("composer").boundingBox();
       expect(Math.abs(message!.x - composer!.x)).toBeLessThan(1);
       expect(Math.abs(message!.width - composer!.width)).toBeLessThan(1);
+      const overflow = await tab
+        .getByTestId("composer-toolbar")
+        .evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
     }).toPass();
   }
   const beforeHide = await tab.getByTestId("composer").boundingBox();

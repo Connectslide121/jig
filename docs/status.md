@@ -6,6 +6,9 @@ sideways movement as it appears or disappears. Work continues directly on `main`
 Validation: build and `npm run check` pass (592 tests, 8 skipped). Five fake-engine Electron checks
 pass, covering exact input/message alignment at narrow and wide widths, no movement when the overview
 is hidden or first appears, visible command pickers, queued messages, streaming and long-text overflow.
+Narrow-pane follow-up: model and permission labels truncate within their buttons so the Send button
+stays inside the composer; full labels remain available in tooltips. Alignment/overflow coverage also
+includes an 800-pixel window. The screenshot generator selects the last preview tab when several exist.
 
 Task entry (2026-10-31): Add tasks uses compact single-line prompt rows with inline filename chips.
 The attachment area reserves its width and scrolls horizontally; files never grow a row or move its
