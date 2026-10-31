@@ -1984,7 +1984,8 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   updated documentation describing menus and search rather than a separate Tools destination.
 - Implementation details are **Claude, on my own**: remove the wrench button and old Tools picker;
   Ctrl+K now opens the same Go to search as the magnifier and Ctrl+P. Existing registered action id
-  `jig.tools` remains compatible. Add-on picker anchors use the magnifier. Shared action grouping
+  `jig.tools` remains as a hidden compatibility shortcut, avoiding a duplicate menu/search result.
+  Add-on picker anchors use the search field. Shared action grouping
   stays in `workbench/actionGroups.ts`, independently of search UI.
 
 ## D-191: Pipeline cards use the existing side divider control

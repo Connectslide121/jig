@@ -115,6 +115,8 @@ export function registerCoreActions(): void {
     group: "Jig",
     icon: Search,
     shortcut: "Mod+K",
+    // Compatibility shortcut for the same search, without a duplicate menu/search result.
+    visible: () => false,
     run: openGoTo,
   });
   registerAction({
