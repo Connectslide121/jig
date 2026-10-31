@@ -43,12 +43,44 @@ export function registerSessionKind(kind: NonNullable<SessionMeta["kind"]>, hook
   kindHooks.set(kind, hooks);
 }
 
+/** Called when a chat's status changes (add-ons that run chats follow them this way). */
+const statusListeners = new Set<(meta: SessionMeta) => void>();
+export function onSessionStatus(listener: (meta: SessionMeta) => void): () => void {
+  statusListeners.add(listener);
+  return () => statusListeners.delete(listener);
+}
+
+/** A new chat with the project's defaults first, then Jig's (`cwd`: a folder inside it, or no project). */
+export async function createChat(input: {
+  projectId?: string;
+  cwd?: string;
+  title?: string;
+  permissionMode?: PermissionMode;
+}): Promise<SessionMeta> {
+  const project = input.projectId ? await projectStore().get(input.projectId) : undefined;
+  const folder = input.cwd || project?.path;
+  if (!folder) throw new JigError("invalid_args", "Choose a folder for a chat without a project");
+  const info = await stat(folder).catch(() => undefined);
+  if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
+  const { engine } = getConfig();
+  return sessionManager().create({
+    projectId: input.projectId,
+    cwd: folder,
+    title: input.title,
+    model: project?.model ?? engine.defaultModel,
+    permissionMode:
+      input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
+    effort: project?.effort,
+  });
+}
+
 export function sessionManager(): SessionManager {
   if (!manager) throw new Error("Sessions not started");
   return manager;
 }
 
 export function startSessions(): void {
+  const statusOf = new Map<string, SessionStatus>();
   // Names and instructions of the projects, for Jig's addition to the system prompt.
   const projects = new Map<string, { name: string; instructions?: string }>();
   const known = new Set<string>();
@@ -119,7 +151,14 @@ export function startSessions(): void {
     runShell: (cwd, command) => runShellCommand(cwd, command),
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
-      for (const u of updates) if (u.op === "meta") notifyStatus(u.meta);
+      for (const u of updates)
+        if (u.op === "meta") {
+          notifyStatus(u.meta);
+          if (statusOf.get(u.meta.id) !== u.meta.status) {
+            statusOf.set(u.meta.id, u.meta.status);
+            for (const listener of statusListeners) listener(u.meta);
+          }
+        }
       // Claude changed a routine from the chat: the Routines tab reloads.
       if (
         updates.some(
@@ -201,23 +240,7 @@ export function startSessions(): void {
 
   handle("sessions.list", () => m.list());
   handle("sessions.get", ({ id }) => m.snapshot(id));
-  handle("sessions.create", async ({ projectId, title, cwd }) => {
-    const project = projectId ? await projectStore().get(projectId) : undefined;
-    const folder = cwd || project?.path;
-    if (!folder) throw new JigError("invalid_args", "Choose a folder for a chat without a project");
-    const info = await stat(folder).catch(() => undefined);
-    if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
-    const { engine } = getConfig();
-    // The project's defaults first, then Jig's.
-    return m.create({
-      projectId,
-      cwd: folder,
-      title,
-      model: project?.model ?? engine.defaultModel,
-      permissionMode: (project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode,
-      effort: project?.effort,
-    });
-  });
+  handle("sessions.create", ({ projectId, title, cwd }) => createChat({ projectId, title, cwd }));
   handle("sessions.setProject", async ({ id, projectId }) => {
     if (projectId) await projectStore().get(projectId);
     await m.setProject(id, projectId);

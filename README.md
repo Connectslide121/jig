@@ -40,6 +40,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.
+- **A task queue.** Queue prompts (or ask Claude to make one task per spec); Claude does them in order,
+  each in a new chat or continuing the one before, and reports how each went — outcome, summary,
+  things to know, follow-ups — in one table with links to the chats.
 - **Projects you manage.** Group chats into projects the way you think about your work, each with a
   default folder and repo, model and permission defaults, and instructions for Claude. Drag chats
   between them; pin the ones you keep.
@@ -276,8 +279,8 @@ They can plug into 17 places:
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 
-Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Notes** and
-**Workflows** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
+Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Notes**,
+**Workflows** and **Tasks** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
 reference: [`docs/reference/slots.md`](docs/reference/slots.md),
 [`docs/reference/addon-api.md`](docs/reference/addon-api.md).
 

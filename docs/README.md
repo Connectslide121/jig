@@ -56,6 +56,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Releases](../addons/releases/README.md) | Release policy, versions, changelogs, notes and deploys per repository |
 | [Notes](../addons/notes/README.md) | Short notes for the chat you're in, written by you and by Claude |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
+| [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
 
 ## Guides (how-tos)
 

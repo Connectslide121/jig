@@ -1,0 +1,105 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "tasks",
+  "name": "Tasks",
+  "description": "A queue of prompts Claude does one after another, each in its own chat or continuing the one before. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Claude can queue tasks too.",
+  "version": "1.0.0",
+  "icon": "list-todo",
+  "permissions": ["chat"],
+  "storage": {
+    "scope": "global"
+  },
+  "contributes": {
+    "views": [
+      {
+        "id": "tasks",
+        "title": "Task queue",
+        "icon": "list-todo",
+        "region": "right",
+        "hidden": true,
+        "component": "TasksView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Task queue",
+        "group": "Chats",
+        "icon": "list-todo",
+        "run": "showTasks"
+      }
+    ],
+    "watchers": [
+      {
+        "id": "tick",
+        "every": "1m",
+        "run": "tick"
+      }
+    ],
+    "context": {
+      "run": "context"
+    },
+    "tools": [
+      {
+        "id": "report",
+        "description": "Reports how the task-queue task this chat is running went. Call it once when the task is done or can't go on (only in a chat that runs a queued task; the instructions say so). The user reads the reports as a table instead of reading the chat.",
+        "params": {
+          "outcome": {
+            "type": "string",
+            "enum": ["done", "partial", "failed", "blocked"],
+            "description": "done, partial (some of it), failed, or blocked (needs something from the user)"
+          },
+          "summary": {
+            "type": "string",
+            "description": "What you did and the result, in two or three sentences"
+          },
+          "notes": {
+            "type": "array",
+            "description": "Things the user should know: decisions you took, risks, anything surprising (short lines)",
+            "optional": true
+          },
+          "followUps": {
+            "type": "array",
+            "description": "Follow-up tasks you suggest, each a prompt that could be queued on its own",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolReport",
+        "alwaysLoad": true
+      },
+      {
+        "id": "add",
+        "description": "Adds tasks to the user's task queue, which Claude works through one after another, each reporting back. Use it when the user asks to queue work, e.g. one task per spec, document, issue or item of a list. Each prompt must stand alone (it usually runs in a new chat): say what to do and where the material is (file paths). It returns the queue.",
+        "params": {
+          "tasks": {
+            "type": "array",
+            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat } (newChat false continues the previous task's chat)"
+          },
+          "project": {
+            "type": "string",
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          },
+          "sameChat": {
+            "type": "boolean",
+            "description": "All tasks continue one chat instead of each starting a new one (default false)",
+            "optional": true
+          },
+          "start": {
+            "type": "boolean",
+            "description": "Start the queue right away; only when the user said so",
+            "optional": true
+          }
+        },
+        "run": "toolAdd"
+      },
+      {
+        "id": "list",
+        "description": "The user's task queue: each task's status and report summary.",
+        "readOnly": true,
+        "run": "toolList"
+      }
+    ]
+  }
+}

@@ -20,9 +20,10 @@ import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
-import { sessionManager } from "../sessions";
+import { createChat, onSessionStatus, sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { addonChats } from "./chats";
 import { addonContext, addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
 import { galleryRecords, readGallery, sourceFolder } from "./gallery";
@@ -138,6 +139,20 @@ export async function startAddons(): Promise<void> {
   if (tokens) setTokensFile(tokens);
   else log.warn("tokens.css not found; add-on CSS will be empty");
 
+  const chats = addonChats({
+    // Checked here too: the host process enforces it, but main doesn't trust it.
+    hasPermission: (id) =>
+      !!service
+        ?.list()
+        .find((a) => a.id === id)
+        ?.manifest?.permissions.includes("chat"),
+    create: (input) => createChat(input),
+    send: (sessionId, text) => sessionManager().send(sessionId, text),
+    snapshot: (sessionId) => sessionManager().snapshot(sessionId),
+    notify: (id, change) => addonService().call(id, "chatChanged", change),
+  });
+  onSessionStatus((meta) => chats.statusChanged(meta));
+
   service = new AddonService({
     builtinDir: builtinAddonsDir(),
     userDir: paths.addons(),
@@ -162,6 +177,12 @@ export async function startAddons(): Promise<void> {
         return (await projectStore().state()).projects;
       } else if (op === "workspaces") {
         return (await projectStore().state()).workspaces;
+      } else if (op === "chats.create") {
+        return chats.create(addonId, args as never);
+      } else if (op === "chats.send") {
+        return chats.send(addonId, args as never);
+      } else if (op === "chats.get") {
+        return chats.get(addonId, (args as { sessionId: string }).sessionId);
       } else if (op === "log") {
         const { message, detail } = args as { message: string; detail?: unknown };
         log.info(`[${addonId}] ${message}`, detail);

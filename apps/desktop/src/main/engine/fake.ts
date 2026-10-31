@@ -195,6 +195,42 @@ export class FakeEngine implements Engine {
               text: `**/${command.name}** (fake): ${command.description}.${effort ? ` Effort: ${effort}.` : ""}`,
             });
           else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
+        } else if (
+          options.toolHandlers?.addon_tasks_report &&
+          sent.includes("addon_tasks_report") &&
+          !/skip the report/.test(lower)
+        ) {
+          // A task from the Tasks add-on's queue (its context says so): do it and report back.
+          const toolId = `tool-${randomUUID()}`;
+          const failed = /fail this task/.test(lower);
+          const input = {
+            outcome: failed ? "failed" : "done",
+            summary: failed ? `Could not do it: ${text.trim()}` : `Did it: ${text.trim()}`,
+            notes: ["A fake note to know"],
+            followUps: /with follow-ups/.test(lower) ? [`Follow up on: ${text.trim()}`] : [],
+          };
+          await stream(`${msg}:text:0`, "Working on the task.", signal);
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });
+          const output = outputText(
+            await options.toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
+          );
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          await stream(`${msg}:text:1`, "Reported.", signal);
+        } else if (options.toolHandlers?.addon_tasks_add && /\bqueue tasks for\b/.test(lower)) {
+          // "queue tasks for the specs": Claude fills the Tasks add-on's queue.
+          const toolId = `tool-${randomUUID()}`;
+          const input = {
+            tasks: [
+              "Write the spec for Contoso",
+              { title: "Fabrikam spec", prompt: "Write the spec for Fabrikam" },
+            ],
+          };
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_add", input });
+          const output = outputText(
+            await options.toolHandlers.addon_tasks_add(input).catch((e: Error) => `Error: ${e.message}`),
+          );
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          await stream(`${msg}:text:0`, "Queued two tasks.", signal);
         } else if (isTestChat) {
           // Tools → Test something…: a short report that says which model and helpers ran it.
           const agents = Object.keys(options.agents ?? {}).join(", ") || "none";

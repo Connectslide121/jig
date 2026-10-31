@@ -1852,3 +1852,26 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   for it with `ctx.ai.ask(prompt, { quick: true })`; without `quick` they get `engine.helperModel`
   (Sonnet). The Git add-on's Write (commit message) uses quick; Check before committing and reviews
   keep the helper model, because they need more judgement.
+
+## D-182: The task queue (Tasks add-on) and add-ons that run chats
+
+- Status: accepted. Requested by Jon ("queue multiple tasks … structured way of showing it all … maybe
+  in a table … let me decide what task should start a new session", "links to the chats", "Claude
+  should be able to create a list as well"); the design is **Claude, on my own**.
+- A built-in add-on, **Tasks** (Chats → Task queue, opens as a main tab), not core code: you queue
+  prompts; the add-on's host runs them in order, each in a new chat or continuing the chat of the task
+  before it (chosen per task); Claude reports each with the `addon_tasks_report` tool (outcome done /
+  partial / failed / blocked, summary, things to know, follow-ups). The table links every task to its
+  chat; follow-ups go into the queue with one click. "Stop when a task fails" (on by default) pauses
+  the queue after a failed, blocked or broken task. Claude can fill the queue (`addon_tasks_add`, not
+  read-only, so you approve it, and it starts the queue only when you say so).
+- Instructions reach the task's chat through `contributes.context` each turn while the task runs, not
+  in the prompt, so the transcript shows only your prompt. The task is saved as running before its
+  message is sent so the first turn already gets them.
+- New host API `api.chats` (`create`, `send`, `get`; the `chat` permission, checked in the host and
+  again in main): add-ons can start and follow chats. Main tells the add-on that created, sent to or
+  asked about a chat when its status changes (host export `chatChanged`); this is in memory, so the
+  add-on catches up with `get` (Tasks: a watcher every minute). `bypassPermissions` can't be asked
+  for. `ctx.openChat({ sessionId })` opens an existing chat.
+- New permission modes default to "Accept file edits" in the add dialog, so an unattended queue doesn't
+  stop at every edit; commands still ask, and a task that needs you shows "Needs you" and notifies.

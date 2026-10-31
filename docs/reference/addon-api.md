@@ -89,7 +89,7 @@ are add-ons':
 | `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | the project's default Git repository (Git panel, status bar, Git actions); look for repositories again |
 | `useWorkspaceList()` (from `@jig/sdk/ui`) | the same, re-rendering when folders change |
 | `workspaces.list()` | `{ id, name, path, isGitRepo, exists, repos }[]`: every folder the user added, whatever the projects (for views covering all repositories, like Repos) |
-| `openChat({ projectId?, cwd?, draft? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent |
+| `openChat({ projectId?, cwd?, draft?, sessionId? })` | starts a new chat and opens it; `cwd` must be inside the project (e.g. one repository); `draft` is put in the message box, not sent. With `sessionId`, opens that existing chat |
 | `ai.ask(prompt, { cwd?, quick? })` → `string` | asks Claude a one-shot question through your Claude Code: no tools, one turn, so it can only answer (summaries, commit messages, explanations). `quick` uses the quick model (Haiku) for short, simple answers instead of the helper model. Uses your plan; needs `ai`; prompts up to 200 000 characters; 3-minute limit |
 | `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
 | `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
@@ -144,8 +144,17 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `notify({…})`, `emit(topic, payload)` | — | toast; event to the UI |
 | `projects()` | — | the user's projects |
 | `workspaces()` | — | every folder the user added, with its repositories |
+| `chats.create({ projectId?, cwd?, title?, permissionMode? })` → `{ sessionId }` | `chat` | an empty chat with the project's defaults (or in `cwd`); `permissionMode` is `default`, `acceptEdits` or `plan`, never bypass |
+| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId` |
+| `chats.get(sessionId)` → `{ id, title, status, projectId?, cwd, costUsd, queued, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and Claude's last answer |
 | `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
+
+**Following chats** (D-182): when a chat the add-on created, sent to or asked about (`chats.*`) changes
+status, main calls the host export `chatChanged({ sessionId, status })` if there is one (status:
+`idle`, `starting`, `working`, `needs_you`, `error`). Main remembers this in memory only, so after a
+restart the add-on asks again with `chats.get` (a watcher). The `chat` permission is checked in the
+host and again in main. The Tasks add-on (`addons/tasks`) is the example.
 
 Permissions are shown to you (Settings → Add-ons, and in the builder's preview) and enforced by this
 API. `ai` lets an add-on ask Claude (`ctx.ai.ask`); the host checks it again (`ai.ask` IPC), so an

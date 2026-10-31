@@ -598,6 +598,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Tabs show a dot when a chat works, needs you or finished while you were elsewhere",
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
+                "Task queue (Chats menu): prompts Claude does in order, each reporting outcome, summary, things to know and follow-ups in a table with links to the chats; Claude can queue tasks too",
               ]}
             />
           </Section>

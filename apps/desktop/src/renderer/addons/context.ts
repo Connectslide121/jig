@@ -122,6 +122,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         })),
     },
     openChat: async (options = {}) => {
+      if (options.sessionId) return void workbench.openTab("jig.chat", { sessionId: options.sessionId });
       await (await import("../features/sessions/actions")).newSession(
         options.projectId,
         options.cwd,

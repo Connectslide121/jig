@@ -395,3 +395,4 @@ true"). This step checks the whole picture again:
 - [x] Compact pipeline rows with a details dialog (D-180)
 - [x] Unit and e2e tests independent of the environment's git identity
 - [x] Commit messages on a quick model (Haiku), `engine.quickModel` (D-181)
+- [x] Task queue: prompts Claude does in order, each reporting back in a table with links to the chats; Claude can queue tasks; add-ons can run chats (`api.chats`) (D-182)

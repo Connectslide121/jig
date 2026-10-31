@@ -23,7 +23,17 @@ export type FromHost =
   | {
       t: "rpc";
       id: number;
-      op: "storage.get" | "storage.set" | "notify" | "emit" | "projects" | "workspaces" | "log";
+      op:
+        | "storage.get"
+        | "storage.set"
+        | "notify"
+        | "emit"
+        | "projects"
+        | "workspaces"
+        | "log"
+        | "chats.create"
+        | "chats.send"
+        | "chats.get";
       args: unknown;
     };
 
@@ -129,6 +139,20 @@ export function createHostRuntime(send: (message: FromHost) => void) {
       emit: (topic, payload) => void rpc("emit", { topic, payload }),
       projects: () => rpc("projects", {}) as Promise<never>,
       workspaces: () => rpc("workspaces", {}) as Promise<never>,
+      chats: {
+        create: async (input) => {
+          need("chat");
+          return rpc("chats.create", input) as Promise<never>;
+        },
+        send: async (input) => {
+          need("chat");
+          return rpc("chats.send", input) as Promise<never>;
+        },
+        get: async (sessionId) => {
+          need("chat");
+          return rpc("chats.get", { sessionId }) as Promise<never>;
+        },
+      },
       log: (message, detail) => void rpc("log", { message, detail }),
     };
   }

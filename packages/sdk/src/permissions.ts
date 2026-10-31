@@ -10,7 +10,7 @@ export const PERMISSIONS = {
   "fs:write": "Create and change files on your computer.",
   net: "Make network requests.",
   terminal: "Open terminals and run commands in them.",
-  chat: "Send messages to chat sessions.",
+  chat: "Start chats, send them messages and read their answers.",
   ai: "Ask Claude questions through your Claude Code (uses your plan; answers only, no tools).",
 } as const;
 
