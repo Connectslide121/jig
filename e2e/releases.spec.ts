@@ -23,8 +23,8 @@ async function shop(jigHome: string) {
 }
 
 async function openReleases(page: Page) {
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show releases");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show releases");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("releases-view")).toBeVisible({ timeout: 15000 });
 }

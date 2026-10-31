@@ -190,7 +190,7 @@ other modules register with `registerJigTools`:
 Every chat with these tools also gets one subagent (`StartOptions.agents`, the SDK's `agents`):
 **`jig-tester`** (`shared/tester.ts`, D-124) tests pages in Claude's browser on
 `engine.testerModel` (Haiku by default), with the browser tools and Read/Grep/Glob only, without
-CLAUDE.md; `jigContext` tells Claude to hand testing to it. Tools → Test something… (and the flask
+CLAUDE.md; `jigContext` tells Claude to hand testing to it. Search → Test something… (and the flask
 in the browser view) starts a chat on the tester model with the same protocol (`testChatMessage`).
 - **Learning** (`jig_note_evidence`, `jig_read_profile`, `jig_update_profile`): `docs/reference/learning.md`.
 - **Add-ons:** their own tools (`contributes.tools`, slot `claude.tool`, named `addon_<add-on>_<id>`;

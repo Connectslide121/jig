@@ -25,8 +25,8 @@ test("Build something… makes a new add-on, previews it, and Accept makes it li
   await page.getByTestId("view-tab-addon.hello-button.main").click();
   await expect(page.getByTestId("built-view")).toContainText("Built by the builder");
   // Its Tools-menu action works.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("hello from hello-button");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("hello from hello-button");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast").last()).toContainText("Hello from hello-button");
 });

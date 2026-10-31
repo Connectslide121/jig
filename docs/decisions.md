@@ -1975,3 +1975,14 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   the conversation. Its details still open in a modal.
 - Jon also directed work to stay on `main`, with no new branches. The existing compact-task branch
   was merged into `main`, and `AGENTS.md` now records this workflow alongside incremental commits.
+
+## D-190: One search, with every action in the grouped menus
+
+- Status: accepted. Decided by Jon ("this tools dropdown should go away … we have everything in the
+  menus already"). All visible core and add-on actions already feed the grouped top-bar menus;
+  add-on-specific groups get their own menu. `tools.action` remains the compatible slot name, with
+  updated documentation describing menus and search rather than a separate Tools destination.
+- Implementation details are **Claude, on my own**: remove the wrench button and old Tools picker;
+  Ctrl+K now opens the same Go to search as the magnifier and Ctrl+P. Existing registered action id
+  `jig.tools` remains compatible. Add-on picker anchors use the magnifier. Shared action grouping
+  stays in `workbench/actionGroups.ts`, independently of search UI.

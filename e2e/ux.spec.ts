@@ -46,7 +46,7 @@ test("Home: start a chat from the box; New chat in the top bar; tab dots; Ctrl+K
     "working",
   );
 
-  // Ctrl+K opens the Tools menu.
+  // Ctrl+K opens the shared search.
   await page.keyboard.press("Control+k");
-  await expect(page.getByTestId("tools-filter")).toBeVisible();
+  await expect(page.getByTestId("goto-input")).toBeVisible();
 });

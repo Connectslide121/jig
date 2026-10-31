@@ -13,7 +13,7 @@ add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced b
 | `topbar.item` | `topbar` | `id`, `component` | `{ ctx }` | right side of the top bar |
 | `statusbar.item` | `statusbar` | `id`, `side` (`left`/`right`, default `right`), `component` | `{ ctx }` | status bar |
 | `dashboard.widget` | `dashboard` | `id`, `component`, `order?` | `{ ctx, project }` | project dashboard |
-| `tools.action` | `actions` | `id`, `title`, `group?` (default: add-on name), `icon?`, `shortcut?`, `run` | `run(ctx)` | Tools menu (+ keyboard shortcut) |
+| `tools.action` | `actions` | `id`, `title`, `group?` (default: add-on name), `icon?`, `shortcut?`, `run` | `run(ctx)` | grouped menus (+ keyboard shortcut) |
 | `context.project` / `context.repo` / `context.file` / `context.message` | `menus` | `slot`, `id`, `title`, `icon?`, `run` | `run(ctx, target)` — see `MenuTarget` | right-click menus of projects, repos (Repos view), files (Git), chat messages (`⋯` on a reply) |
 | `chat.toolbar` | `chatToolbar` | `id`, `component` | `{ ctx, sessionId, projectId }` | row above the chat composer |
 | `chat.toolRenderer` | `toolRenderers` | `tool` (tool name, e.g. `mcp__server__tool`), `component` | `{ ctx, item }` | inside that tool's card in the chat |

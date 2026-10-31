@@ -8,7 +8,7 @@ edits its own source (D-074): when no slot fits, the builder writes a developmen
 
 | Where | What happens |
 |---|---|
-| Tools → **Build something…** (`Ctrl+Shift+B`), Builds view `+` | dialog: what should it do? optionally which add-on |
+| Search → **Build something…** (`Ctrl+Shift+B`), Builds view `+` | dialog: what should it do? optionally which add-on |
 | `⋯` of an add-on view, right-click an add-on tab, Settings → Add-ons ✦ → **Change this with AI…** | the dialog with that add-on pre-selected |
 | A crashing add-on → **Fix with AI** | starts at once with the error as the goal |
 | Any chat: "make me a button that…" → Claude calls `jig_request_build` | starts at once; a build card appears in that chat |

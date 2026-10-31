@@ -635,7 +635,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Turn this chat into a tool: the builder makes it a one-click tool",
                 "Write my standup: Done / Next / Blockers from commits and chats",
                 "Ask Claude about a failed script or any previewed file",
-                "Routines (Tools → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Claude to make one",
+                "Routines (Search → Routines): your Claude Code routines with their schedules, runs and logs; Run now, on/off, or ask Claude to make one",
                 "Artifacts: pages Claude publishes open in Jig's Preview, from a chat or from your claude.ai account",
               ]}
             />
@@ -647,7 +647,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "The split button in the message box, or Tools → Try a task several ways…",
+                "The split button in the message box, or Search → Try a task several ways…",
                 "Live progress and changed files per attempt, with diffs",
                 "Let Claude judge: a recommendation with strengths and weaknesses",
                 "Keep this one applies it uncommitted and removes the rest",
@@ -667,7 +667,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Ask a chat to “open the app and check the login form”",
                 "Settings → Claude Code: Opus plans and Sonnet executes by default; change chat, subagent fallback, helper and tester models there",
-                "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Tools → Test something… (or the flask in the browser view) starts a test chat on it",
+                "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Search → Test something… (or the flask in the browser view) starts a test chat on it",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",
                 "Desktop, tablet and phone sizes for responsive checks",
@@ -710,7 +710,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
                 "Markdown previews render safe embedded HTML, including centered headings and sized local images",
-                "Tools → Preview a file… for anything else",
+                "Search → Preview a file… for anything else",
               ]}
             />
           </Section>
@@ -863,7 +863,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="shortcuts"
             title="Keyboard shortcuts"
-            lead="Everything is also in the Tools menu. Click one to run it."
+            lead="Actions are in the top-bar menus and search. Click one to run it."
           >
             <Shortcuts />
           </Section>

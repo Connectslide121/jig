@@ -36,7 +36,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 ## How to work the plan
 
 Phase 19 also includes compact task entry with inline attachments (D-188) and aligned chat input with
-a stable overview column (D-189); its status remains in progress.
+a stable overview column (D-189), and one shared search with grouped action menus (D-190); its status remains in progress.
 
 1. Pick the first unchecked item of the earliest unfinished phase (phases can overlap when an item
    does not depend on the previous phase).

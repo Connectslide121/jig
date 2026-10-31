@@ -1,8 +1,8 @@
 import { expect, test } from "./fixtures";
 
 test("Check your setup… lists the tools Jig uses and checks for updates", async ({ page }) => {
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("check your setup");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("check your setup");
   await page.keyboard.press("Enter");
   const tab = page.getByTestId("setup-tab");
   await expect(tab).toBeVisible();
@@ -22,8 +22,8 @@ test("Check your setup… lists the tools Jig uses and checks for updates", asyn
 
 test("signing in runs in a private terminal; when it's done Jig says so and closes it", async ({ page }) => {
   // Fake engine: no Claude Code, the terminal just ends, as `claude auth login` does once you're in.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("sign in");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("sign in");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast").filter({ hasText: "Signed in to Claude Code" })).toContainText(
     "the sign-in terminal is closed",

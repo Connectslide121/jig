@@ -60,7 +60,7 @@ const MODE_LABEL: Record<StepMode, string> = {
 };
 
 function anchor() {
-  return document.querySelector<HTMLElement>("[data-testid=tools-button]") ?? document.body;
+  return document.querySelector<HTMLElement>("[data-testid=goto-button]") ?? document.body;
 }
 
 function openWorkflow(ctx: AddonUiContext, wf: Workflow, run = false) {

@@ -1,5 +1,9 @@
 # Status
 
+Menus (2026-10-31): the duplicate Tools dropdown is removed. Use the grouped top-bar menus or the
+magnifier's Go to search (Ctrl+P and Ctrl+K). `tools.action` add-ons remain available in those menus
+and search, including a dedicated menu for their own groups; no action is exclusive to the old picker.
+
 Chat alignment (2026-10-31): transcript and input now share a column and matching content edges.
 The overview card's column remains reserved when hidden and in empty/loading chats, preventing
 sideways movement as it appears or disappears. Work continues directly on `main` with logical commits.

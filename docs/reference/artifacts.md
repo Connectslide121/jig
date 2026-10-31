@@ -12,7 +12,7 @@ doesn't do. Instead it opens artifacts in its **Preview** tab, in one of two way
   published (`file_path`). Relative images and links work, because they sit next to the page. It also
   has **Open on claude.ai** (your browser) and shows the link. `artifactFromTool` finds the link in the
   tool's result.
-- **From your claude.ai account** (Tools → Artifacts → Load from claude.ai):
+- **From your claude.ai account** (Search → Artifacts → Load from claude.ai):
   - Listing them is one guarded call: `{ action: "list", scope: "all", limit: 100 }`, cached 5 minutes.
   - **Open in Jig** asks Claude Code to read the page: `{ action: "read", url }` (the link is checked
     against `ARTIFACT_URL` first).

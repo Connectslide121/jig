@@ -10,8 +10,8 @@ test("Workflows: make one with a check and a command, run it step by step, expor
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("workflows-view")).toBeVisible({ timeout: 15000 });
   await page.getByTestId("workflow-new").click();
@@ -58,8 +58,8 @@ test("Claude saves a process as a workflow from a chat, and runs it", async ({ p
   await expect(page.getByTestId("chat")).toContainText("Saved as the workflow Write release notes.", {
     timeout: 15000,
   });
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
   await page.keyboard.press("Enter");
   await page.getByTestId("workflows-view").getByText("Write release notes").click({ timeout: 15000 });
   await expect(page.getByTestId("workflow-steps")).toContainText("Write the notes in Swedish for customers");
@@ -81,8 +81,8 @@ test("A workflow runs by itself after you push", async ({ page, jigHome }) => {
   git(dir, "push", "-q", "-u", "origin", "main");
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
   await page.keyboard.press("Enter");
   await page.getByTestId("workflow-new").click();
   const editor = page.getByTestId("workflow-editor");
@@ -132,8 +132,8 @@ process.exit(1);`;
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
   await page.keyboard.press("Enter");
   await page.getByTestId("workflow-new").click();
   const editor = page.getByTestId("workflow-editor");

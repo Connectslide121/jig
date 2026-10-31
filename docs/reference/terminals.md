@@ -20,7 +20,7 @@ Code: `apps/desktop/src/main/terminals/` (ptys), `apps/desktop/src/main/scripts/
   can redraw (`terminals.buffer`).
 - Commands typed into interactive terminals are reported to the activity log (`terminal.command`),
   except in **private** terminals (the Claude Code sign-in).
-- **Sign in to Claude Code** (Tools menu, or the banner in a chat that isn't signed in) opens a private
+- **Sign in to Claude Code** (grouped menus, or the banner in a chat that isn't signed in) opens a private
   terminal running the official Claude Code binary (your `engine.claudePath`, else the one shipped with
   the Agent SDK), where you type `/login`. With `JIG_ENGINE=fake` it only prints a message.
 
@@ -41,7 +41,7 @@ folder (one terminal per script; running it again focuses it, a finished run is 
 kills it; **Restart** does both. **Groups** ("Start local" = front end + back end) are saved per project
 in `~/.jig/scripts.json` and start their scripts in order.
 
-UI: the Scripts add-on's view (run/stop, groups, D-146) and Tools-menu actions, and the status bar
+UI: the Scripts add-on's view (run/stop, groups, D-146) and menu actions, and the status bar
 item "N running" (click → show output / stop). The project dashboard no longer has a Scripts card
 (D-153).
 

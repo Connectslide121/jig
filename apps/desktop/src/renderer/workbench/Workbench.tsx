@@ -27,7 +27,6 @@ import { StartupBanner } from "./StartupBanner";
 import { StatusBar } from "./StatusBar";
 import { matchesShortcut } from "./shortcuts";
 import { setLayoutFromHost, useWorkbench } from "./store";
-import { ToolsMenuHost } from "./ToolsMenu";
 import { Topbar } from "./Topbar";
 import { notify, ToastHost } from "./toasts";
 
@@ -101,7 +100,6 @@ export function Workbench() {
       )}
       <StatusBar />
       <MenuHost />
-      <ToolsMenuHost />
       <GoToHost />
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />

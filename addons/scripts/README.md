@@ -22,7 +22,7 @@ scripts plugin (D-142):
 - **Hide** a script from its ⋯; the eye in the header shows hidden ones again (dimmed), to bring
   them back. Hidden scripts are kept per folder (`arrangement`).
 
-Tools menu: **Run a script…** (`Ctrl+Shift+R`), **Start a script group…** (your groups, then the
+grouped menus: **Run a script…** (`Ctrl+Shift+R`), **Start a script group…** (your groups, then the
 project's dashboard groups), **Stop a running script…**. The status bar's "N running" item is part of
 Jig itself (phase 5); this add-on uses the same discovery and terminals through `ctx.scripts`. This
 view is the one place scripts are listed: the project dashboard's Scripts card is gone (D-153).

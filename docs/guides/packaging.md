@@ -39,7 +39,7 @@ The installer isn't code-signed: Windows SmartScreen asks once ("More info → R
 
 ## First start
 
-An installed Jig opens **Get started** on its first start (also Tools → Check your setup…, Settings →
+An installed Jig opens **Get started** on its first start (also Search → Check your setup…, Settings →
 About → Get started…). It shows whether Claude Code, git, the GitHub CLI, the Azure CLI with the Azure
 DevOps extension and VS Code's `code` command are there, with install links. Jig only asks each tool for
 its version. Sign in to Claude Code with **Sign in to Claude Code…** (Claude Code's own `/login` in a
@@ -47,7 +47,7 @@ terminal); whether you are signed in shows when your first session starts.
 
 ## Updates
 
-Tools → **Check for updates…** (and the Updates card in Get started):
+Search → **Check for updates…** (and the Updates card in Get started):
 
 - **Running from a git clone** (`npm run dev` / `npm start`): Jig fetches, shows how many commits your
   branch is behind its upstream, and **Pull, build and restart** does `git pull --ff-only`, `npm

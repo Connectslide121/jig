@@ -283,7 +283,7 @@ them (D-173, D-174). The arrangement is plain data in `layout.json`
 ```
 
 **No native menu bar.** The window has no OS title bar and no Electron menu bar on Windows/Linux:
-the top bar is Jig's own, with Jig's own menus (Tools, project switcher, settings, and a few merged
+the top bar is Jig's own, with Jig's own menus (Jig, project switcher, settings, and a few merged
 action menus: Chats, Code, Build, View — D-174). macOS keeps a
 minimal application menu so Cmd+C/V/Q and window shortcuts keep working (D-023).
 
@@ -292,10 +292,10 @@ Moving, hiding or resizing a view is a layout change — which is also what the 
 "level 1" requests ("move pipelines to the right"). Every layout change is a pure function in
 `shared/layout.ts`, shared by the renderer and the host.
 
-**Renderer structure.** `renderer/workbench/` is the shell: a **registry** (views, tab types, Tools-menu
+**Renderer structure.** `renderer/workbench/` is the shell: a **registry** (views, tab types, menu
 actions, status-bar items — a store, so add-ons can register and unregister at runtime), the layout
-store, the top bar, regions, main-area tabs, status bar, the **Tools menu** (every action, grouped,
-with a filter box — a menu, not a command line), toasts and keyboard shortcuts (every shortcut is
+store, the top bar, regions, main-area tabs, status bar, the **grouped menus** (every action),
+shared **Go to** search (magnifier, Ctrl+P or Ctrl+K), toasts and keyboard shortcuts (every shortcut is
 also an action in a menu). `renderer/features/<feature>/` registers its views, tabs and actions
 (`features/index.ts`). Views, tabs and status items each render inside an error boundary. Tab bodies
 stay mounted once opened, so a chat or terminal keeps its state while you switch tabs.
@@ -344,7 +344,7 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 | Group | Slots |
 |---|---|
 | Places | `view` (sidebar or bottom panel view; the layout decides where), `workbench.tab`, `topbar.item`, `statusbar.item`, `dashboard.widget` |
-| Menus & actions | `tools.action` (Tools menu), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
+| Menus & actions | `tools.action` (grouped menus), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
 | Chat | `chat.toolRenderer` (custom card for a tool result), `prompt` (a reusable prompt shown as a button) |
 | Background | `watcher` (host-side job on an interval or schedule), notifications/badges (API) |
 | Other | `settings.page`, `theme` |
@@ -377,7 +377,7 @@ disable, and process isolation for host code — see `docs/decisions.md` (D-007)
 
 ## 9. The builder — "build something"
 
-Entry points (all menus, no commands): **Tools → Build something…**, `⋯ → Change this with AI` on any
+Entry points (all menus, no commands): **Search → Build something…**, `⋯ → Change this with AI` on any
 add-on contribution, **Fix with AI** on a crashed one, **Build it** on a suggestion, and the
 `jig_request_build` tool from any chat. Reference: `docs/reference/builder.md`; code: `main/builder/`.
 
@@ -418,7 +418,7 @@ the request be built as an add-on — which you can copy and implement in Jig's 
    Code query receives the mined patterns, the add-on catalog and the user's past answers, and returns at
    most 3 suggestions as JSON (validated): title, why (with evidence), level, whether to change an
    existing add-on or create one, estimated time saved.
-4. **Suggest.** Suggestions wait in the inbox (Tools → Suggestions, with a badge). **Build it** starts
+4. **Suggest.** Suggestions wait in the inbox (Search → Suggestions, with a badge). **Build it** starts
    the builder with the suggestion as the goal; **Not now** snoozes; **Never** blocks that pattern.
    Answers feed the next reflection.
 
@@ -434,7 +434,7 @@ extensions or embed VS Code (D-019, D-022).
 
 The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
 branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
-`addons/scripts` (scripts view and Tools-menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (per-chat notes you and Claude write; sent to Claude through `claude.context`, D-151), `addons/releases` (versions, changelogs and
+`addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (per-chat notes you and Claude write; sent to Claude through `claude.context`, D-151), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
 lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are

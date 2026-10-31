@@ -8,7 +8,7 @@ export const SLOTS = {
   "topbar.item": "A small item in the top bar (button, badge).",
   "statusbar.item": "A small item in the status bar, left or right.",
   "dashboard.widget": "A card on the project dashboard.",
-  "tools.action": "An action in the Tools menu (optionally with a keyboard shortcut).",
+  "tools.action": "An action in the grouped top-bar menus and search (optionally with a keyboard shortcut).",
   "context.file": "An entry in the right-click menu of a file (Git changes, commit files).",
   "context.project": "An entry in the right-click menu of a project.",
   "context.repo": "An entry in the right-click menu of a repository (Repos overview).",

@@ -19,8 +19,8 @@ test("a chat in its own worktree: Claude writes there, Apply brings it back, Rem
   git(repo, "commit", "-q", "-m", "init");
   await hostCall(page, "projects.add", { path: repo });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("New chat in a worktree");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("New chat in a worktree");
   await page.keyboard.press("Enter");
   await page.getByTestId("dialog-input").fill("Try a new readme");
   await page.getByTestId("dialog-confirm").click();

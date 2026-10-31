@@ -2,7 +2,7 @@
 
 Lists of steps you repeat, per project: a release, a deploy, a morning routine (D-112).
 
-- **View Workflows** (left sidebar, follows the active project; Tools → Show workflows): the project's
+- **View Workflows** (left sidebar, follows the active project; Search → Show workflows): the project's
   workflows with their schedule; ▶ runs one. **+** makes a new one.
 - **Workflow tab:** the steps with who does each one:
   - **You do it** (a check, or "wait for your OK"): Done / Skip;

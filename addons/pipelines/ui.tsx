@@ -1260,6 +1260,6 @@ export async function runPipelineAction(ctx: AddonUiContext) {
     repos.length === 1
       ? found.pipelines.map(item)
       : repos.map((r) => ({ label: r, submenu: found.pipelines.filter((p) => p.repoName === r).map(item) })),
-    document.querySelector<HTMLElement>("[data-testid=tools-button]") ?? document.body,
+    document.querySelector<HTMLElement>("[data-testid=goto-button]") ?? document.body,
   );
 }

@@ -107,7 +107,7 @@ a tip is allowed (at most one coaching tip a week). The reply is validated (`mai
 extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
 **No patterns and no notes → no AI call → no quota used.**
 
-Triggers: **Look for patterns now** (Suggestions view, Settings → Learning, Tools menu) and the weekly
+Triggers: **Look for patterns now** (Suggestions view, Settings → Learning, grouped menus) and the weekly
 run (`learning.schedule`, default Monday 10:00 local time). A scheduled run that was missed because Jig
 wasn't running happens at the next launch; the very first start doesn't run at once.
 

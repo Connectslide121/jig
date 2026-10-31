@@ -10,10 +10,11 @@ test("shows the shell with Jig's own top bar and the projects view", async ({ pa
   await expect(page.getByTestId("statusbar")).toContainText("fake engine");
 });
 
-test("the Tools menu lists actions, filters them and runs them", async ({ page }) => {
-  await page.getByTestId("tools-button").click();
-  await expect(page.getByTestId("tools-menu")).toBeVisible();
-  await page.getByTestId("tools-filter").fill("settings");
+test("search finds actions and runs them without a separate Tools dropdown", async ({ page }) => {
+  await expect(page.getByTestId("tools-button")).toHaveCount(0);
+  await page.getByTestId("goto-button").click();
+  await expect(page.getByTestId("goto")).toBeVisible();
+  await page.getByTestId("goto-input").fill("settings");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("settings")).toBeVisible();
   // Opening settings again reuses the same tab.

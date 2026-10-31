@@ -70,10 +70,14 @@ test("a user add-on loads into its slots, calls its host code and hot-reloads", 
   await page.getByRole("button", { name: "Open detail" }).click();
   await expect(page.getByTestId("hello-detail")).toHaveText("detail 1");
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("say hello");
+  // tools.action contributions are in their own menu as well as shared search.
+  await page.getByTestId("tools-group-Hello").click();
+  await page.getByRole("menuitem", { name: "Say hello", exact: true }).click();
+  await expect(page.getByTestId("toast").last()).toContainText("Hello from the action");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("say hello");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("toast")).toContainText("Hello from the action");
+  await expect(page.getByTestId("toast").last()).toContainText("Hello from the action");
 
   await writeFile(join(dir, "ui.tsx"), ui("Hello v2"));
   await expect(page.getByTestId("hello-label")).toHaveText("Hello v2", { timeout: 15000 });

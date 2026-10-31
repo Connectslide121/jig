@@ -320,8 +320,8 @@ test("screenshots for the About page", async () => {
   await shot("tour");
 
   // Try several ways, judged.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("Try a task several ways");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("Try a task several ways");
   await page.keyboard.press("Enter");
   await page.getByTestId("attempts-task").fill("Add a discount code to checkout and write notes.md about it");
   await page.getByTestId("attempts-start").click();
@@ -428,8 +428,8 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await page.getByRole("menuitem", { name: "One pane" }).click();
 
   // Releases: the webshop's unreleased work, drafted with Claude.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show releases");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show releases");
   await page.keyboard.press("Enter");
   await page.getByTestId("releases-repo-repos/webshop").click({ timeout: 15000 });
   await page.getByTestId("release-prepare").click();
@@ -482,8 +482,8 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
       },
     },
   });
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show workflows");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
   await page.keyboard.press("Enter");
   await page.getByTestId("workflows-view").getByText("Release webshop").click({ timeout: 15000 });
   await page.getByTestId("workflow-run").click();
@@ -492,8 +492,8 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await shot("workflows");
 
   // What Jig knows about me.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("What Jig knows about me");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("What Jig knows about me");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("knowledge-tab")).toBeVisible({ timeout: 15000 });
   await page.waitForTimeout(800);

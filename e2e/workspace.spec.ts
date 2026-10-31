@@ -190,8 +190,8 @@ test("Git fetches in the background and has a settings page", async ({ page, jig
     ((await hostCall(page, "addons.call", { id: "git", method: "settings", args: {} })) as { value: unknown })
       .value;
   expect(await settingsNow()).toEqual({ enabled: true, minutes: 5 });
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("settings");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("settings");
   await page.keyboard.press("Enter");
   await page.locator('[data-testid^="settings-nav-"]', { hasText: /^Git$/ }).click();
   const settings = page.getByTestId("git-settings");

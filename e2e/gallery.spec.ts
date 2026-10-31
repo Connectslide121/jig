@@ -18,8 +18,8 @@ test("installs an add-on from a gallery folder", async ({ page, jigHome }) => {
     }),
   );
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("Add-on gallery");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("Add-on gallery");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("addon-gallery")).toBeVisible();
 

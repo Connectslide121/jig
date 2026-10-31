@@ -31,7 +31,7 @@ detail in the main window**. Rebase, graph and blame are out of scope.
 - **Tabs in the main window**: History of a branch (filter by message or author, paged), Commit detail
   (message, author, date, parents, changed files with +/−), Diff (side-by-side or inline,
   syntax-highlighted with the active theme, unchanged regions collapsed), Compare (commits ahead/behind).
-- **Status bar**: current branch and ahead/behind. **Tools menu**: Show Git, History, Fetch, Pull,
+- **Status bar**: current branch and ahead/behind. **grouped menus**: Show Git, History, Fetch, Pull,
   Push, Switch branch…, Create branch….
 - Live refresh (`lib/watch.ts`, D-097):
   - The git folder (HEAD, the index, refs) is watched for every repository on view. On Windows and
@@ -69,7 +69,7 @@ tab. The two sides of a text diff can be resized by dragging the line between th
 in one panel — changed ones first and open, each with its branch (click to switch), ↑↓, change count,
 its own commit box and change groups; right-click or `⋯` for History, Fetch, Pull, Push, **New chat in
 this repository**, Focus, Copy path. Clicking a repository makes it the **focus repository**: the status
-bar shows `repo: branch`, and the Tools-menu Git actions (Fetch, Pull, Push, Switch/Create branch,
+bar shows `repo: branch`, and the menu Git actions (Fetch, Pull, Push, Switch/Create branch,
 History) use it. **Fetch all** and **Look for repositories again** are in the header.
 
 

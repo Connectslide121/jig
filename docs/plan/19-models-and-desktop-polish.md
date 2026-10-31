@@ -39,6 +39,7 @@
 - [x] Compact Add tasks into fixed-height rows with inline attachment chips and reserved control columns.
 - [x] Align the chat composer with its thread and reserve the overview column across visibility changes.
 - [x] Keep model/permission labels and Send inside the composer in narrow panes.
+- [x] Remove the duplicate Tools dropdown; use grouped menus and one shared search, including add-on actions.
 - [x] Scripts like the scripts plugin: running list, groups with Start/Stop, folder → repository → package tree (D-142)
 - [x] Notes as a built-in add-on: per-chat notes you and Claude write (D-147)
 - [x] Pipelines like the pipelines plugin: your repositories' pipelines, newest run and stages, a Run

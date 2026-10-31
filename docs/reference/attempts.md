@@ -3,7 +3,7 @@
 Claude works on the same task in 2–4 chats at once, each in its own git worktree and each from a
 different angle. You compare what they did, let Claude judge, and keep one.
 
-**Start:** the composer's split button (with what you typed), Tools → Try a task several ways…, or
+**Start:** the composer's split button (with what you typed), Search → Try a task several ways…, or
 `attempts.start`. The dialog asks for the task, the repository (in a workspace), how many attempts,
 and an angle per attempt. The defaults are "simplest change", "cleanest design", "thorough, with tests"
 and "unconventional"; you can edit them.

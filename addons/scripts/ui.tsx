@@ -872,7 +872,7 @@ export function ScriptsView({ ctx }: AddonComponentProps) {
 }
 
 function anchor() {
-  return document.querySelector<HTMLElement>("[data-testid=tools-button]") ?? document.body;
+  return document.querySelector<HTMLElement>("[data-testid=goto-button]") ?? document.body;
 }
 
 export async function runScriptMenu(ctx: AddonUiContext) {

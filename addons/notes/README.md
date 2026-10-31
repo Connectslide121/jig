@@ -2,7 +2,7 @@
 
 Short notes for the chat you're in, like the notes plugin (D-147): what it waits on, where its work
 is, steps left for later, decisions and facts, links. You write them in the **Notes** view (right
-sidebar; Tools → Show this chat's notes) and Claude writes them with its tools; Claude gets them
+sidebar; Search → Show this chat's notes) and Claude writes them with its tools; Claude gets them
 with every message and keeps them current.
 
 - **Kinds:** ⏳ Waiting on (shown in amber until cleared), 📍 Where (a repository from your

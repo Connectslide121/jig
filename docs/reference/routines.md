@@ -16,7 +16,7 @@ itself and never sees your login.
   - `jigContext` tells Claude about the tab.
   - When a chat's `RemoteTrigger` call creates, updates or runs a routine, the host emits
     `routines.changed`, and the Routines tab reloads the next time it shows.
-- **The Routines tab** (Tools → Routines):
+- **The Routines tab** (Search → Routines):
   - **The list:** every routine, its schedule in words (`describeSchedule`: "Weekdays at 08:37
     (Europe/Stockholm)"), its last run, and an on/off switch.
   - **The selected routine:** what it does, when it runs next, **Run now**, and its runs. Click a run

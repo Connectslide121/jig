@@ -11,8 +11,8 @@ test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page
   );
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("What Jig can do");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("What Jig can do");
   await page.keyboard.press("Enter");
   const about = page.getByTestId("about");
   await expect(about).toBeVisible();

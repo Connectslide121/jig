@@ -14,8 +14,8 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await hostCall(page, "projects.add", { path: dir });
 
   // Chats → Task queue (here through the Tools search, which lists the same actions).
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("task queue");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
   await page.keyboard.press("Enter");
   const view = page.getByTestId("tasks-view");
   await expect(view).toContainText("No tasks queued");
@@ -93,8 +93,8 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await view.getByTestId("task-files-t1").click();
   await page.getByRole("menuitem", { name: "cart.png" }).click();
   await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1 × 1 px");
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("task queue");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
   await page.keyboard.press("Enter");
 
   // Each task links to its chat.

@@ -11,18 +11,18 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Search,
   Settings,
-  Wrench,
   X,
 } from "lucide-react";
 import { cycleTab, findView } from "../../shared/layout";
+import { openGoTo } from "../features/goto";
 import { openNewProjectDialog } from "../features/projects/ProjectDialog";
 import { call, errorMessage } from "../lib/host";
 import { confirmDialog, promptDialog } from "../ui";
 import { useProjects } from "./projects";
 import { registerAction, useRegistry } from "./registry";
 import { updateLayout, useWorkbench, workbench } from "./store";
-import { openToolsMenu } from "./ToolsMenu";
 import { notify } from "./toasts";
 
 /** Puts every view back where it started (after asking); open tabs stay. */
@@ -111,11 +111,11 @@ export function registerCoreActions(): void {
   });
   registerAction({
     id: "jig.tools",
-    title: "Tools: every action",
+    title: "Search chats, files, views and actions…",
     group: "Jig",
-    icon: Wrench,
+    icon: Search,
     shortcut: "Mod+K",
-    run: () => openToolsMenu(),
+    run: openGoTo,
   });
   registerAction({
     id: "jig.settings",

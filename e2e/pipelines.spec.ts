@@ -86,8 +86,8 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   git(dir, "branch", "develop");
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show pipelines");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show pipelines");
   await page.keyboard.press("Enter");
   const view = page.getByTestId("pipelines-view");
   const card = view.getByTestId("pipeline-Shop CI");
@@ -138,8 +138,8 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await page.reload();
   const again = page.getByTestId("pipelines-view");
   if (!(await again.isVisible())) {
-    await page.getByTestId("tools-button").click();
-    await page.getByTestId("tools-filter").fill("show pipelines");
+    await page.getByTestId("goto-button").click();
+    await page.getByTestId("goto-input").fill("show pipelines");
     await page.keyboard.press("Enter");
   }
   const cardAgain = again.getByTestId("pipeline-Shop CI");

@@ -10,8 +10,8 @@ test("Notes: the chat's notes, written by you and by Claude, ticked off, per cha
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+N");
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("this chat's notes");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("this chat's notes");
   await page.keyboard.press("Enter");
   const view = page.getByTestId("notes-view");
   await expect(view).toContainText("No notes yet");

@@ -159,8 +159,8 @@ test("Try several ways: parallel attempts in worktrees, Claude judges, keep one"
   git("commit", "-q", "-m", "Add cart");
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("Try a task several ways");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("Try a task several ways");
   await page.keyboard.press("Enter");
   await page.getByTestId("attempts-task").fill("please write feature.txt");
   await page.getByTestId("attempts-start").click();
@@ -214,8 +214,8 @@ test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome
   await expect(tour.getByTestId("tour-hunk")).toContainText("+export const off = 0.1;");
 
   // Standup.
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("Write my standup");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("Write my standup");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("standup-text")).toContainText("scripted standup");
   await page.keyboard.press("Escape");

@@ -16,7 +16,6 @@ import {
   Search,
   Settings,
   Settings2,
-  Wrench,
 } from "lucide-react";
 import { LOWER_HALF } from "../../shared/layout";
 import { openAbout } from "../features/about";
@@ -24,18 +23,18 @@ import { ProjectSwatch } from "../features/projects/colors";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
+import { filterActions } from "./actionGroups";
 import { addProject, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "./actions";
 import { useActiveProject, useProjects } from "./projects";
 import { type ActionDef, runAction, useRegistry } from "./registry";
 import { formatShortcut } from "./shortcuts";
 import { useWorkbench, workbench } from "./store";
-import { filterActions, openToolsMenu } from "./ToolsMenu";
 
 const TOPBAR_MENU = "topbar";
 /**
  * Top bar menus merge related action groups (D-174), so the bar stays short; each group is a heading
  * inside its menu. Project actions are in the project switcher. Groups not listed (an add-on's own)
- * get a menu of their own. The Tools menu (Ctrl+K) still lists every group.
+ * get a menu of their own. Search (Ctrl+P or Ctrl+K) also finds registered actions.
  */
 const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
   { menu: "Chats", groups: ["Chats", "Claude", "Workflows"] },
@@ -264,16 +263,6 @@ export function Topbar() {
       >
         <Search className="size-4 text-muted" />
         <span className="sr-only">Go to</span>
-      </button>
-      <button
-        type="button"
-        data-testid="tools-button"
-        title={`Every action in Jig (${formatShortcut("Mod+K")})`}
-        className="no-drag flex h-7 items-center gap-1.5 rounded-md px-2 text-fg hover:bg-hover"
-        onClick={(e) => openToolsMenu(e.currentTarget)}
-      >
-        <Wrench className="size-4 text-muted" />
-        <span className="sr-only">All tools</span>
       </button>
       {project && (
         <button

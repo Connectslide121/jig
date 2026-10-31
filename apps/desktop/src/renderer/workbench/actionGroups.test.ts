@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { filterActions } from "./actionGroups";
 import type { ActionDef } from "./registry";
-import { filterActions } from "./ToolsMenu";
 
 const a = (id: string, title: string, group: string, extra: Partial<ActionDef> = {}): ActionDef => ({
   id,

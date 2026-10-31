@@ -97,7 +97,7 @@ test("Claude's browser: the network log shows requests, errors and their bodies"
     expect(detail).not.toContain("session=secret");
 
     await page.keyboard.press("Control+K");
-    await page.getByTestId("tools-filter").fill("browser");
+    await page.getByTestId("goto-input").fill("browser");
     await page.keyboard.press("Enter");
     const view = page.getByTestId("browser-view");
     await view.getByTestId("browser-network-toggle").click();

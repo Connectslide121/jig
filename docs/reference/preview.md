@@ -6,7 +6,7 @@ read. Open it from:
 - a chat tool card (the eye on Read/Write/Edit of a file);
 - an attachment chip;
 - a link inside a previewed Markdown file;
-- Tools → Preview a file…;
+- Search → Preview a file…;
 - add-ons: `ctx.openPreview(path)`.
 
 | Kind | Files | Shown as |

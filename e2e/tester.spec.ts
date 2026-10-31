@@ -10,8 +10,8 @@ test("Test something… starts a chat on the tester model, and chats get the jig
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
 
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("test something");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("test something");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText("What should be tested?");
   await page.getByTestId("dialog-input").fill("Open http://localhost:5173 and add an item to the cart");
@@ -27,8 +27,8 @@ test("Test something… starts a chat on the tester model, and chats get the jig
 
   // The model is a setting.
   await hostCall(page, "config.update", { engine: { testerModel: "sonnet" } });
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("test something");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("test something");
   await page.keyboard.press("Enter");
   await page.getByTestId("dialog-input").fill("Check the menu");
   await page.getByTestId("dialog-confirm").click();

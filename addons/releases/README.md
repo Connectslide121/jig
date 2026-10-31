@@ -3,7 +3,7 @@
 Versions, changelogs and release notes per repository, following its **release policy**
 (`.jig/release.json`, committed so the team shares it). D-110.
 
-- **View Releases** (right sidebar, Tools → Show releases): every repository with its release style,
+- **View Releases** (right sidebar, Search → Show releases): every repository with its release style,
   latest version and unreleased work; "Set up" for the ones without a policy. The status bar shows
   "N to release" for planned repositories with unreleased commits.
 - **Release tab** (click a repository):

@@ -99,8 +99,8 @@ test("Git: switch branch and compare", async ({ page, jigHome }) => {
 
 test("Repos overview lists repositories with their state", async ({ page, jigHome }) => {
   await setup(page, jigHome);
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show all repos");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show all repos");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("repo-sync-shop")).toContainText("2", { timeout: 15000 });
   await expect(page.getByTestId("repo-shop")).toContainText("main");
@@ -125,8 +125,8 @@ test("Repos overview lists repositories with their state", async ({ page, jigHom
 test("Repos: the branch is a dropdown that switches branches", async ({ page, jigHome }) => {
   const dir = await setup(page, jigHome);
   git(dir, "stash", "-u");
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show all repos");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show all repos");
   await page.keyboard.press("Enter");
   await page.getByTestId("repo-branch-shop").click();
   await page.getByRole("menuitem", { name: "feature/pay" }).click();
@@ -211,8 +211,8 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
 test("Pipelines: none found, a settings page, and more pipelines from your organisations", async ({
   page,
 }) => {
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill("show pipelines");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show pipelines");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("pipelines-view")).toContainText("No pipelines found", { timeout: 15000 });
   await page.getByRole("button", { name: "Pipelines settings", exact: true }).click();

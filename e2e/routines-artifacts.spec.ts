@@ -11,8 +11,8 @@ async function project(page: Page, jigHome: string) {
 }
 
 async function openTool(page: Page, title: string) {
-  await page.getByTestId("tools-button").click();
-  await page.getByTestId("tools-filter").fill(title);
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill(title);
   await page.keyboard.press("Enter");
 }
 

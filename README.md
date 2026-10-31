@@ -172,7 +172,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse
       and keyboard. Testing runs on a small model (Haiku): chats hand it to the jig-tester helper, or
-      use Tools → Test something…. Long-running commands Claude starts run in Jig terminals you can
+      use Search → Test something…. Long-running commands Claude starts run in Jig terminals you can
       see and stop.
     </td>
   </tr>
@@ -244,11 +244,11 @@ And more:
   - A scripts runner with groups, and Azure DevOps pipelines as compact rows (details in a dialog) —
     hide, reorder and group them.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
-  - A Tools menu with keyboard shortcuts.
+  - A grouped menus with keyboard shortcuts.
 
 ## Build your own tools
 
-Ask from the Tools menu, a chat, a suggestion or a slot on the "What Jig can do" page. The builder
+Ask from the grouped menus, a chat, a suggestion or a slot on the "What Jig can do" page. The builder
 (itself a Claude Code session) picks the lightest thing that works:
 
 | | What it makes | Example |
@@ -276,7 +276,7 @@ They can plug into 17 places:
 | `topbar.item` | the top bar | `context.repo` | right-click menu of a repository |
 | `statusbar.item` | the status bar | `context.message` | menu of a chat message |
 | `dashboard.widget` | the project dashboard | `chat.toolbar` | a button above the composer |
-| `tools.action` | the Tools menu, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
+| `tools.action` | the grouped menus, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
