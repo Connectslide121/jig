@@ -95,6 +95,11 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   // Grouped per repository; a retired pipeline isn't listed.
   await expect(view.getByTestId("pipelines-repo-shop")).toContainText("contoso/Shop");
   await expect(view).not.toContainText("(old) Shop");
+  await view.getByTestId("pipelines-arrange").click();
+  const repo = view.getByTestId("pipelines-repo-shop");
+  await expect(repo.getByTestId("arrange-add-divider")).toHaveCount(0);
+  await expect(repo.getByRole("button", { name: "Add a divider above" })).toBeVisible();
+  await view.getByTestId("pipelines-arrange").click();
   // A compact row: the name, how long ago, the state. The card keeps one height.
   await expect(card.getByTestId("pipeline-time")).toHaveText("12m");
   await expect(card.getByLabel("Succeeded")).toBeVisible();

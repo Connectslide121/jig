@@ -124,6 +124,9 @@ checkerboard, 100% toggle, pixel and file size), `useImageFile(path)` → `{ dat
 shows a message's files as in the chat: image thumbnails and document chips that open them. `@jig/sdk` also exports
 `isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.
 
+`ArrangeList` accepts `showFooter={false}` to omit its trailing Add divider/help row in nested
+lists while retaining each row's side button for inserting a divider above it (used in pipeline cards).
+
 ## Host (`host.ts`)
 
 Runs in its own process (an Electron `utilityProcess`, D-017): a hang or crash never freezes Jig; it

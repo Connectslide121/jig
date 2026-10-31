@@ -1,5 +1,8 @@
 # Status
 
+Pipeline arrangement (2026-10-31): nested cards no longer show the duplicate Add divider/help row.
+Use the small side divider icon; the outer list retains its footer.
+
 Menus (2026-10-31): the duplicate Tools dropdown is removed. Use the grouped top-bar menus or the
 magnifier's Go to search (Ctrl+P and Ctrl+K). `tools.action` add-ons remain available in those menus
 and search, including a dedicated menu for their own groups; no action is exclusive to the old picker.

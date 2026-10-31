@@ -1986,3 +1986,12 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   Ctrl+K now opens the same Go to search as the magnifier and Ctrl+P. Existing registered action id
   `jig.tools` remains compatible. Add-on picker anchors use the magnifier. Shared action grouping
   stays in `workbench/actionGroups.ts`, independently of search UI.
+
+## D-191: Pipeline cards use the existing side divider control
+
+- Status: accepted. Decided by Jon ("remove the one from inside the card, we already have the small
+  icon button on the side"). Pipeline cards and nested project lists suppress the duplicate trailing
+  Add divider/help row; their side buttons remain. The outer list keeps its footer.
+- Implementation is **Claude, on my own**: shared `ArrangeList.showFooter` defaults to true; nested
+  pipeline lists set it false, leaving other add-ons unchanged.
+

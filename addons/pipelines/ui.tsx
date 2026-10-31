@@ -851,6 +851,7 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
                   onChange={(next) => setArrangement(key, next)}
                   arranging={arranging}
                   testId={`pipelines-list-${first.repoName}`}
+                  showFooter={false}
                   renderItem={(p) => (
                     <PipelineCard
                       ctx={ctx}
@@ -980,6 +981,7 @@ function MorePipelines({
                     onChange={(next) => setArrangement(key, next)}
                     arranging={arranging}
                     testId={`pipelines-project-${p.project}`}
+                    showFooter={false}
                     renderItem={(pl) => {
                       const formKey = `${key}/${pl.id}`;
                       return (

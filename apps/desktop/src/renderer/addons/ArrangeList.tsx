@@ -28,6 +28,7 @@ export function ArrangeList<T>({
   renderItem,
   testId,
   dragType = DRAG,
+  showFooter = true,
 }: {
   items: T[];
   keyOf: (item: T) => string;
@@ -38,6 +39,8 @@ export function ArrangeList<T>({
   testId?: string;
   /** A list inside another list's items needs its own type, so a drag only moves within its own list. */
   dragType?: string;
+  /** Hide the trailing add-divider/help row in nested lists; per-row divider buttons remain. */
+  showFooter?: boolean;
 }) {
   const [over, setOver] = useState<string>();
   const entries = arrange(items, keyOf, arrangement, arranging);
@@ -155,7 +158,7 @@ export function ArrangeList<T>({
           </div>
         ),
       )}
-      {arranging && (
+      {arranging && showFooter && (
         <div
           className={cn("flex items-center gap-1 px-2 py-1", over === "" && "border-t-2 border-accent")}
           onDragOver={(e) => {

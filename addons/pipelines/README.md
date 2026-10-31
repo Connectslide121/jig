@@ -34,7 +34,9 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
   pipeline of the organisations your `az` login belongs to (or the ones listed in Settings →
   Pipelines), per organisation and project; Run opens the same form, described from Azure DevOps.
 - **Arrange** (header): hide pipelines, drag them into your order, group them with dividers; per
-  repository (`repo:<name>`), and per organisation/project in More pipelines. Kept globally in the
+  repository (`repo:<name>`), and per organisation/project in More pipelines. In a card, use the
+  small side icon to add a divider above a pipeline. Nested cards omit the duplicate Add divider/help
+  row; the outer list keeps its trailing divider control. Kept globally in the
   add-on's storage (`arrangement`).
 - **Settings → Pipelines:** Check Azure CLI; the organisations for More pipelines (every one you
   belong to by default, added by URL, narrowed to projects).
