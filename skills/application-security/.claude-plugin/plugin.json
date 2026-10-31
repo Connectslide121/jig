@@ -1,0 +1,8 @@
+{
+  "name": "jig-application-security",
+  "version": "1.0.0",
+  "description": "Assess security-sensitive changes involving identity, authorization, untrusted input, files, secrets or external requests.",
+  "author": {
+    "name": "Jig"
+  }
+}

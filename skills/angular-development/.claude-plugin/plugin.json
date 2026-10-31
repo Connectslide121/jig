@@ -1,0 +1,8 @@
+{
+  "name": "jig-angular-development",
+  "version": "1.0.0",
+  "description": "Version-aware Angular components, signals, forms, routing and accessibility.",
+  "author": {
+    "name": "angular"
+  }
+}

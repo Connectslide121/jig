@@ -210,6 +210,18 @@ export function runAge(run: PipelineRun | null | undefined, now = Date.now()): s
   return since(run.finished || run.queued, now);
 }
 
+/** Execution duration excludes queue time. Completed runs never keep accumulating time. */
+export function runDuration(run: PipelineRun | null | undefined, now = Date.now()): string {
+  if (!run?.started) return run?.status === "notStarted" ? "Not started" : "Not reported";
+  const end = run.status === "completed" ? run.finished : now;
+  if (!end || !Number.isFinite(end) || end < run.started) return "Not reported";
+  const seconds = Math.floor((end - run.started) / 1000);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  return hours ? `${hours}h ${minutes}m ${rest}s` : minutes ? `${minutes}m ${rest}s` : `${rest}s`;
+}
+
 /** The run chip: Queued or Running and for how long, else the outcome and how long ago it ended. */
 export function runLabel(run: PipelineRun | null | undefined, now = Date.now()): string {
   if (!run) return "never run";

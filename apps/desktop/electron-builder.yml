@@ -28,6 +28,10 @@ extraResources:
       - "**/*"
       - "!**/*.test.ts"
       - "!tsconfig.json"
+  - from: ../../skills
+    to: skills
+    filter:
+      - "**/*"
 npmRebuild: false
 # Updates are checked by Jig itself (Tools → Check for updates…), not electron-updater (D-067).
 publish: null

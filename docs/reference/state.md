@@ -109,3 +109,12 @@ empty regular chats without deleting files. Imported/forked/builder chats retain
 `{ id, kind: "wait" | "note" | "link", text, url?, done?, by: "you" | "claude", createdAt }`.
 Every chat in the project shares it; projectless chats do not read it. Host operations explicitly
 pass project scope. Legacy global `chat:<id>` entries are unused and are not migrated.
+
+### Bundled skill controls (D-205)
+
+`config.json`: `skills.overrides` defaults to `{}`. Each known skill id may hold
+`{ enabled: boolean = true, excludedProjects: string[] = [] }`. Missing entries include the skill
+in every project and projectless chat. Global off wins; project exclusions are retained for later
+re-enabling. New projects are included automatically. Selections affect the next message, using
+the chat's project even if another project is selected in the UI. Catalogue/instructions are
+read-only application resources, not user state. Personal/project Claude skills remain independent.

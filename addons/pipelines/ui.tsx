@@ -48,6 +48,7 @@ import {
   REASONS,
   type RunKind,
   runAge,
+  runDuration,
   runKind,
   runLabel,
   stageLine,
@@ -566,6 +567,12 @@ function PipelineDetails({
   onClose: () => void;
 }) {
   const org = orgUrl(pipeline.org);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!run?.started || !isActive(run)) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [run?.started, run?.status]);
   const kind = runKind(run);
   const at = (ms: number) => (ms ? new Date(ms).toLocaleString() : "");
   const rows: [string, string][] = run
@@ -576,9 +583,10 @@ function PipelineDetails({
         ["By", run.by],
         ["Parameters", changedParams(pipeline, run.params) || "The defaults"],
         ["Queued", at(run.queued)],
-        ["Started", at(run.started)],
-        ["Finished", at(run.finished)],
-      ].filter((row): row is [string, string] => Boolean(row[1]))
+        ["Started", at(run.started) || (run.status === "notStarted" ? "Not started" : "Not reported")],
+        ["Finished", at(run.finished) || (isActive(run) ? "Not finished" : "Not reported")],
+        ["Duration", runDuration(run, now)],
+      ].map(([label, value]) => [label, value || "Not reported"] as [string, string])
     : [];
   return (
     <Dialog
@@ -617,7 +625,11 @@ function PipelineDetails({
           <span className="min-w-0 flex-1 truncate">
             {pipeline.repoName} · {pipeline.org}/{pipeline.project}
           </span>
-          <span className="shrink-0" data-testid="pipeline-chip">
+          <span
+            className="shrink-0"
+            data-testid="pipeline-chip"
+            title={run?.status === "completed" ? "Time since this run finished" : "Time queued or running"}
+          >
             <Badge tone={KIND_TONE[kind]}>{runLabel(run)}</Badge>
           </span>
         </div>

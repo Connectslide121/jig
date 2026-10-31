@@ -1,5 +1,17 @@
 # Status
 
+Skills library and pipeline details (2026-11-01): Chats → Skills library lists nine bundled skills,
+all enabled by default, with per-skill global switches, searchable project selection and modal
+instructions/provenance. Changes apply before the next message, preserving a continuing chat.
+AI feature UX adds a short product-disclosure default and deeper guidance without claiming legal
+compliance (D-205). Pipeline CLI output is forced to UTF-8; run details show execution duration
+excluding queue time, distinct from the finish-age badge (D-206).
+Production build, 617 unit tests (8 skipped), Skills/Pipelines Electron regressions and isolated
+native discovery of all nine skills passed. Final minor polish was not re-tested, and the full
+screenshot scenario was not rerun, at Jon's explicit request to skip further tests and finish.
+The Skills image is from the successful UI regression. Live model outcome quality and actual
+Azure CLI metadata refresh still need everyday verification; no real account was used in tests.
+
 Whole-chat file summary (2026-11-01): the per-turn file cards are replaced by a reserved row
 above the composer: X files changed, +/− totals, Walk me through and Undo changes. Review is removed.
 The file count opens a modal snapshot with full paths, edit counts and per-file line totals (D-204).

@@ -413,3 +413,40 @@ describe("SessionManager", () => {
     expect((await m.mcpStatus(session.id)).map((s) => s.status)).toEqual(["connected", "needs-auth"]);
   });
 });
+
+it("reloads selected skills only between turns, preserves resume, and follows a moved chat's project", async () => {
+  const starts: Array<Parameters<FakeEngine["start"]>[0]> = [];
+  class Recording extends FakeEngine {
+    override start(...args: Parameters<FakeEngine["start"]>) {
+      starts.push(args[0]);
+      return super.start(...args);
+    }
+  }
+  let version = "enabled";
+  const m = new SessionManager({
+    ...(manager() as unknown as { options: ConstructorParameters<typeof SessionManager>[0] }).options,
+    engine: new Recording(1),
+    configurationKey: (meta) => `${meta.projectId}:${version}`,
+    plugins: (meta) =>
+      version === "enabled" && meta.projectId === "p1" ? [{ type: "local", path: "/skills/design" }] : [],
+    appendSystemPrompt: () => version,
+  });
+  const chat = await create(m);
+  await m.send(chat.id, "Hello");
+  await until(async () => (await metaOf(m, chat.id)).turns === 1);
+  const resume = (await metaOf(m, chat.id)).engineSessionId;
+  version = "disabled";
+  // Looking up controls must not restart a process or interrupt a running turn.
+  await m.commands(chat.id);
+  expect(starts).toHaveLength(1);
+  await m.send(chat.id, "Hello again");
+  await until(async () => (await metaOf(m, chat.id)).turns === 2);
+  expect(starts).toHaveLength(2);
+  expect(starts[1]).toMatchObject({ resume, plugins: [], appendSystemPrompt: "disabled" });
+  version = "enabled";
+  await m.setProject(chat.id, "p2");
+  await m.send(chat.id, "Hello in another project");
+  await until(async () => (await metaOf(m, chat.id)).turns === 3);
+  expect(starts[2]?.plugins).toEqual([]);
+  await m.shutdown();
+});

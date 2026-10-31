@@ -1,0 +1,8 @@
+{
+  "name": "jig-backend-architecture",
+  "version": "1.0.0",
+  "description": "Design or change API/service boundaries, data consistency and background workflows without unnecessary infrastructure.",
+  "author": {
+    "name": "Jig"
+  }
+}

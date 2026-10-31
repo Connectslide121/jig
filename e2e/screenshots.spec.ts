@@ -509,5 +509,10 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await expect(page.getByTestId("knowledge-tab")).toBeVisible({ timeout: 15000 });
   await page.waitForTimeout(800);
   await shot("knowledge");
+
+  await page.getByTestId("tools-group-Chats").click();
+  await page.getByRole("menuitem", { name: "Skills library", exact: true }).click();
+  await expect(page.getByTestId("skills-library").getByRole("switch")).toHaveCount(9);
+  await page.screenshot({ path: join(OUT, "skills.png") });
   await app.close();
 });

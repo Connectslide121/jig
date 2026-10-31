@@ -483,3 +483,13 @@ tabs on disk while retaining the live layout; the first send persists its existi
 The chat's whole-chat file summary (D-204) sits outside the transcript scroll area above the composer,
 with reserved space from the empty chat onward. It shares `chatStats` with the overview; its modal
 shows a snapshot of per-file edit/line totals, and Undo uses the first message's checkpoint.
+
+## Bundled skill library (D-205)
+
+The host loads the reviewed `skills/catalog.json` and selects independent local Claude Code skill
+plugins using each chat's project and config.skills.overrides. The native SDK loads their
+instructions on demand; existing Claude user/project/local configuration remains enabled. A
+changed selection resumes the process with updated plugins at the next turn boundary. The one
+Skills library tab provides global switches and project selection, with modal details/pickers.
+No project/personal setup is modified; packaged assets live in resources/skills. Full contract:
+`reference/skills.md`. AI feature disclosure defaults follow the AI UX skill's effective selection.

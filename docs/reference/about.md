@@ -51,3 +51,5 @@ Extension slots use one card per row with independent animated disclosures; open
 About screenshots reserve their 1440×900 aspect ratio before lazy loading, so navigation and slot headers do not move as screenshots arrive.
 
 The screenshot scenario returns About to one main pane and hides the bottom panel before capturing the overview and slot cards.
+
+The Skills section also shows the bundled library and its global/project controls (D-205), with `shots/skills.png` captured from the real app. Personal/project skill discovery remains separate.

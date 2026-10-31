@@ -1,0 +1,101 @@
+[
+  {
+    "id": "frontend-design",
+    "title": "Frontend design",
+    "category": "Design",
+    "description": "Distinctive visual design, typography and styling that respects an existing product.",
+    "skillName": "frontend-design",
+    "source": "https://github.com/anthropics/skills/tree/ca45fc496a3436251f191354091d557da31c15b5/skills/frontend-design",
+    "revision": "ca45fc496a3436251f191354091d557da31c15b5",
+    "license": "Apache-2.0",
+    "author": "anthropics"
+  },
+  {
+    "id": "react-performance",
+    "title": "React performance",
+    "category": "Frontend",
+    "description": "React and Next.js rendering, data fetching and bundle performance.",
+    "skillName": "vercel-react-best-practices",
+    "source": "https://github.com/vercel-labs/agent-skills/tree/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/skills/react-best-practices",
+    "revision": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "license": "MIT",
+    "author": "vercel-labs"
+  },
+  {
+    "id": "angular-development",
+    "title": "Angular development",
+    "category": "Frontend",
+    "description": "Version-aware Angular components, signals, forms, routing and accessibility.",
+    "skillName": "angular-developer",
+    "source": "https://github.com/angular/angular/tree/fdb4517612cf191da3c3e2df251f9f79f026448b/skills/dev-skills/angular-developer",
+    "revision": "fdb4517612cf191da3c3e2df251f9f79f026448b",
+    "license": "MIT",
+    "author": "angular"
+  },
+  {
+    "id": "aspnet-api",
+    "title": "ASP.NET Core APIs",
+    "category": "Backend",
+    "description": "HTTP APIs, validation, OpenAPI contracts and consistent error responses.",
+    "skillName": "dotnet-webapi",
+    "source": "https://github.com/dotnet/skills/tree/95e7d0cb7994d47b5789baa68e13f7a2f348b956/plugins/dotnet-aspnetcore/skills/dotnet-webapi",
+    "revision": "95e7d0cb7994d47b5789baa68e13f7a2f348b956",
+    "license": "MIT",
+    "author": "dotnet"
+  },
+  {
+    "id": "ui-ux-review",
+    "title": "UI and UX review",
+    "category": "Design",
+    "description": "Review usability, accessibility and visual consistency after creating or changing a user interface.",
+    "skillName": "ui-ux-review",
+    "source": "https://github.com/vercel-labs/web-interface-guidelines",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig"
+  },
+  {
+    "id": "backend-architecture",
+    "title": "Backend architecture",
+    "category": "Backend",
+    "description": "Design or change API/service boundaries, data consistency and background workflows without unnecessary infrastructure.",
+    "skillName": "backend-architecture",
+    "source": "https://learn.microsoft.com/en-us/azure/architecture/patterns/",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig"
+  },
+  {
+    "id": "application-security",
+    "title": "Application security",
+    "category": "Security",
+    "description": "Assess security-sensitive changes involving identity, authorization, untrusted input, files, secrets or external requests.",
+    "skillName": "application-security",
+    "source": "https://owasp.org/www-project-application-security-verification-standard/",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig"
+  },
+  {
+    "id": "browser-verification",
+    "title": "Browser verification",
+    "category": "Testing",
+    "description": "Verify changed UI flows in a browser with interaction, layout and accessibility checks and evidence.",
+    "skillName": "browser-verification",
+    "source": "https://playwright.dev/docs/best-practices",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig"
+  },
+  {
+    "id": "ai-feature-ux",
+    "title": "AI feature UX",
+    "category": "AI",
+    "description": "Design user-facing AI features with clear disclosure, user control, uncertainty and privacy appropriate to the feature.",
+    "skillName": "ai-feature-ux",
+    "source": "https://digital-strategy.ec.europa.eu/en/policies/guidelines-ai-transparency-obligations",
+    "revision": "1.0.0",
+    "license": "Jig-authored guidance",
+    "author": "Jig"
+  }
+]

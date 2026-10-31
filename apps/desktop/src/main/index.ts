@@ -26,6 +26,7 @@ import { registerRoutineHandlers } from "./routines";
 import { registerScriptHandlers } from "./scripts";
 import { sessionManager, startSessions } from "./sessions";
 import { registerSetupHandlers } from "./setup";
+import { startSkills } from "./skills";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
@@ -69,6 +70,7 @@ async function start() {
     async () => new Set((await sessionManager().list()).filter((m) => !m.draft).map((m) => m.id)),
   );
   startProjects();
+  await startSkills();
   startSessions();
   startAttempts();
   startWorktrees();

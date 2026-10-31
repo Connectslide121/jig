@@ -1,0 +1,8 @@
+{
+  "name": "jig-browser-verification",
+  "version": "1.0.0",
+  "description": "Verify changed UI flows in a browser with interaction, layout and accessibility checks and evidence.",
+  "author": {
+    "name": "Jig"
+  }
+}

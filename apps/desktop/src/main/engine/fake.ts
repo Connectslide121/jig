@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { basename, isAbsolute, join } from "node:path";
 import type {
   BackgroundTask,
   EffortLevel,
@@ -431,6 +431,13 @@ export class FakeEngine implements Engine {
             isError: false,
           });
           await stream(`${msg}:text:0`, "The watcher runs in the background.", signal);
+        } else if (lower.includes("list jig library skills")) {
+          const names = (options.plugins ?? []).map((plugin) => basename(plugin.path));
+          await stream(
+            `${msg}:text:0`,
+            `Available Jig library skills: ${names.join(", ") || "none"}.`,
+            signal,
+          );
         } else if (/\bedit\s+\S/.test(lower)) {
           // An edit with Claude Code's structured patch (the chat shows the diff).
           const name = /\bedit\s+(\S+)/i.exec(text)![1]!;

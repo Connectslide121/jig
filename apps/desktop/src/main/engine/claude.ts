@@ -107,6 +107,7 @@ export class ClaudeEngine implements Engine {
         allowDangerouslySkipPermissions: true,
         resume: options.resume,
         settingSources: ["user", "project", "local"],
+        plugins: options.plugins,
         systemPrompt: { type: "preset", preset: "claude_code", append: options.appendSystemPrompt },
         includePartialMessages: true,
         promptSuggestions: options.promptSuggestions,

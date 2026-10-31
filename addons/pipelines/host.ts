@@ -52,7 +52,8 @@ const PIPELINES_FOR = 10 * 60_000;
 async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> {
   const r = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
     timeoutMs,
-    env: { AZURE_CORE_NO_COLOR: "1" },
+    // az is Python: force UTF-8 on Windows pipes, too, so names and build numbers survive.
+    env: { AZURE_CORE_NO_COLOR: "1", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
   });
   if (r.code === 127) throw new Error("The Azure CLI (az) is not installed or not on PATH.");
   if (r.code !== 0) {

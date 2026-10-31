@@ -1,0 +1,8 @@
+{
+  "name": "jig-ai-feature-ux",
+  "version": "1.0.0",
+  "description": "Design user-facing AI features with clear disclosure, user control, uncertainty and privacy appropriate to the feature.",
+  "author": {
+    "name": "Jig"
+  }
+}

@@ -2143,3 +2143,33 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   checkpoint restoration changes local file contents only. A new commit can record the reversal,
   leaving earlier commits and pushed history intact. The confirmation makes this scope explicit,
   including the possibility of replacing later edits; it is not a selective Git revert.
+
+## D-205: Curated native skills with global and project controls
+
+- Status: accepted. Decided by Jon: ship useful design, UX, frontend, backend, performance,
+  security and AI feature skills; one topbar-accessible library with global switches, project
+  inclusion selection and modal details. All skills start enabled. AI features should include a
+  short disclosure/accuracy notice as a useful default, without claiming compliance.
+- Implementation is **Claude, on my own**: nine skill-only native plugins; four pinned upstream
+  snapshots with references/licences and five Jig-authored skills. Curate and update deliberately;
+  no background downloads, imported hooks or executable helpers. Existing personal/project skills
+  remain independent. Use a searchable checkbox modal for projects, with new projects included
+  by default; a global off switch preserves the exclusions. Details show provenance and instructions.
+- Selection uses the calling chat's project, and changes resume an existing conversation with new
+  plugins before its next message, without interrupting work. Builder chats use global defaults;
+  their tool/instruction boundary remains. Short no-tools helpers do not load the library.
+- A short AI product-disclosure rule is appended when AI feature UX is enabled, with deeper
+  guidance in that skill. It applies to products being built, not every chat response. Generic
+  warnings are not an EU AI Act compliance claim; feature-specific legal assessment uses current
+  official sources. Future skill work must respect project conventions and user instructions.
+
+## D-206: Correct pipeline Unicode and show execution duration
+
+- Status: accepted. Decided by Jon: fix replacement characters in the Run field and show run
+  duration. Implementation is **Claude, on my own**: force Python UTF-8 output for az subprocesses
+  at the pipeline add-on boundary, preserving the actual data instead of replacing broken glyphs.
+  Existing cached text is replaced by correctly decoded metadata on refresh.
+- Duration uses start-to-finish time for completed runs and elapsed execution time for active
+  runs, excluding queue time. Missing timestamps are reported honestly. Active values tick each
+  second; timestamp rows reserve their positions as a run finishes. The existing badge still
+  shows finish age (or queued/running age), with an explanatory tooltip.

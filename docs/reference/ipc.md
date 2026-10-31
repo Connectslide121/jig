@@ -199,3 +199,13 @@ settings, add-on permissions.
 | `learning.knowledgeChanged` | — | the profile or the notes changed |
 
 `engine.models` (no arguments) returns `ModelInfo[]` from a short-lived, prompt-free Claude Code SDK `supportedModels` control request. It creates no chat and sends no AI prompt. Settings uses it for model pickers.
+
+### Skills library (D-205)
+
+| Method | Arguments | Result |
+|---|---|---|
+| `skills.list` | — | `LibrarySkill[]`: id, title, category, description, native skill name, source, author, revision, licence |
+| `skills.details` | `{ id }` | `SkillDetails`: catalog metadata and entrypoint instructions; unknown ids rejected |
+
+Controls use `config.update` / `config.changed` with skills.overrides; no arbitrary paths or code
+can be installed through these methods. The details id is validated at the IPC boundary.

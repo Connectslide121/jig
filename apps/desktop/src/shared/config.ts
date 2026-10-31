@@ -51,6 +51,20 @@ export const ConfigSchema = z.object({
       claudeAiConnectors: z.boolean().default(false),
     })
     .prefault({}),
+  skills: z
+    .object({
+      /** Jig's bundled skills only. Missing entries are enabled for every project. */
+      overrides: z
+        .record(
+          z.string(),
+          z.object({
+            enabled: z.boolean().default(true),
+            excludedProjects: z.array(z.string()).default([]),
+          }),
+        )
+        .default({}),
+    })
+    .prefault({}),
   editor: z
     .object({
       /** Long lines wrap in the Preview editor instead of scrolling sideways. */

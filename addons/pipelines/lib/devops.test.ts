@@ -9,6 +9,7 @@ import {
   parseParameters,
   parseRemote,
   runAge,
+  runDuration,
   runKind,
   runLabel,
   runParameters,
@@ -221,4 +222,17 @@ describe("a pipeline's form read from any YAML", () => {
     });
     expect(mergeValues(params, { mode: "not a choice" }).mode).toBe("Build the branch");
   });
+});
+
+it("shows execution duration separately from finish age, handling active and incomplete runs", () => {
+  const run = { status: "completed", started: 1000, finished: 1000 + 23 * 60_000 + 4000 } as Parameters<
+    typeof runDuration
+  >[0];
+  expect(runDuration(run, 999_999_999)).toBe("23m 4s");
+  expect(runDuration({ ...run!, status: "inProgress", finished: 0 }, 6000)).toBe("5s");
+  expect(runDuration({ ...run!, status: "notStarted", started: 0, finished: 0 }, 6000)).toBe("Not started");
+  expect(runDuration({ ...run!, finished: 0 }, 6000)).toBe("Not reported");
+  expect(runDuration({ ...run!, finished: 500 }, 6000)).toBe("Not reported");
+  expect(runDuration({ ...run!, finished: 1000 + 3_723_000 })).toBe("1h 2m 3s");
+  expect(runDuration(undefined)).toBe("Not reported");
 });

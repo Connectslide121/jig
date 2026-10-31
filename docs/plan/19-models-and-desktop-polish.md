@@ -81,3 +81,5 @@
 - [x] Keep shared busy-button spinners readable without changing button size (D-203).
 
 - [x] Replace per-turn changed-file cards with a whole-chat summary above the input and modal breakdown (D-204).
+
+- [x] Fix pipeline CLI Unicode and show execution duration separately from finish age (D-206).

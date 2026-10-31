@@ -63,3 +63,25 @@ describe("prompt-free Claude Code control requests", () => {
     expect(q.close).toHaveBeenCalledOnce();
   });
 });
+
+it("passes only selected local skill plugins to the native SDK while retaining user/project settings", () => {
+  mocks.query.mockReturnValue(controlQuery());
+  const plugins = [{ type: "local" as const, path: "/bundled/skills/design" }];
+  new ClaudeEngine().start(
+    {
+      cwd: "/repo",
+      model: "",
+      permissionMode: "default",
+      appendSystemPrompt: "Jig",
+      env: {},
+      claudePath: "",
+      plugins,
+      askPermission: async () => ({ behavior: "deny" }),
+    },
+    () => {},
+  );
+  const options = mocks.query.mock.calls[0]![0].options;
+  expect(options.plugins).toEqual(plugins);
+  expect(options.settingSources).toEqual(["user", "project", "local"]);
+  expect(options.systemPrompt).toEqual({ type: "preset", preset: "claude_code", append: "Jig" });
+});

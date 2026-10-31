@@ -8,6 +8,7 @@ import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
 import { appWindows, focusJig } from "../appWindows";
@@ -20,6 +21,7 @@ import { persistCurrentLayout } from "../layout";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { routinesChanged } from "../routines";
+import { selectedSkillPlugins, skillLibrary } from "../skills";
 import { paths } from "../state/paths";
 import { usageService } from "../usage";
 import { APP_ICON } from "../window";
@@ -134,10 +136,22 @@ export function startSessions(): void {
         fileCheckpoints: engine.fileCheckpoints,
       };
     },
-    turnContext: (meta) => (kindHooks.has(meta.kind ?? "") ? Promise.resolve("") : turnContext(meta)),
+    plugins: (meta) => selectedSkillPlugins(meta.projectId),
+    configurationKey: (meta) => JSON.stringify([meta.projectId, selectedSkillPlugins(meta.projectId)]),
+    turnContext: async (meta) =>
+      [
+        skillLibrary().context(getConfig(), meta.projectId),
+        ...(kindHooks.has(meta.kind ?? "") ? [] : [await turnContext(meta)]),
+      ].join("\n\n"),
     appendSystemPrompt: (meta) =>
-      kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
-      jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
+      [
+        kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
+          jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
+        aiTransparencyGuidance(getConfig(), meta.projectId),
+        skillLibrary().context(getConfig(), meta.projectId),
+      ]
+        .filter(Boolean)
+        .join("\n"),
     mcpServers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
       if (hooks) return hooks.mcpServers(meta);

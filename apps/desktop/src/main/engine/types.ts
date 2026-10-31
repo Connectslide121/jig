@@ -54,6 +54,8 @@ export interface StartOptions {
   additionalDirectories?: string[];
   /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
   mcpServers?: Record<string, unknown>;
+  /** Reviewed, local skill-only plugins selected for this chat. */
+  plugins?: Array<{ type: "local"; path: string }>;
   /** Subagents Claude can hand work to (Agent SDK `AgentDefinition`s, e.g. `jig-tester`). */
   agents?: Record<string, unknown>;
   /** The same tools as plain functions, for the fake engine's scripted sessions. */

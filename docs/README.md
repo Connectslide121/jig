@@ -20,6 +20,7 @@ root [`README.md`](../README.md).
 |---|---|
 | [ipc.md](reference/ipc.md) | Every host method and event between the UI and the main process, and the IPC checks |
 | [state.md](reference/state.md) | Everything in `~/.jig` and every setting in `config.json` |
+| [skills.md](reference/skills.md) | Curated native skill plugins, global/project controls, provenance and AI feature defaults |
 | [engine.md](reference/engine.md) | Claude Code through the Agent SDK: engine, events, sessions, credentials, checkpoints, context, Jig's tools |
 | [chat.md](reference/chat.md) | The chat next to Claude Code's terminal: `/` `@` `!` `#`, history, modes, rewind, todos, plans, diffs, subagents, MCP, effort |
 | [ai-features.md](reference/ai-features.md) | AI features around the chats: tours, checks, commit messages, standup, failed scripts, notifications |

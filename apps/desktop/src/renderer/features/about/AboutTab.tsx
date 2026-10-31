@@ -51,6 +51,7 @@ import git from "./shots/git.jpg";
 import knowledgeShot from "./shots/knowledge.jpg";
 import releasesShot from "./shots/releases.jpg";
 import settings from "./shots/settings.jpg";
+import skillsShot from "./shots/skills.png";
 import suggestions from "./shots/suggestions.jpg";
 import usage from "./shots/usage.jpg";
 import workflowsShot from "./shots/workflows.jpg";
@@ -803,8 +804,14 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="skills"
             title="Skills & Claude Code"
+            shot={{ src: skillsShot, alt: "Skills library with global switches and project selection" }}
             lead="Jig runs the Claude Code you already have, so everything you set up for it works here too."
           >
+            <Bullets
+              items={[
+                "Built-in Skills library: design, UX, React, Angular, backend, security, browser verification and AI feature guidance, enabled globally with per-project choices from Chats → Skills library.",
+              ]}
+            />
             <Skills />
           </Section>
           <Section

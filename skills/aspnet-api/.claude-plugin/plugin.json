@@ -1,0 +1,8 @@
+{
+  "name": "jig-aspnet-api",
+  "version": "1.0.0",
+  "description": "HTTP APIs, validation, OpenAPI contracts and consistent error responses.",
+  "author": {
+    "name": "dotnet"
+  }
+}

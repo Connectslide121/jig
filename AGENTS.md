@@ -101,6 +101,15 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   Jig slash commands. The chat's `/` picker shows Claude Code's own commands; the few Claude Code
   names Jig answers itself (`/model`, `/mcp`…) map to existing menus and are also in the + menu (D-091).
 
+## Built-in skills
+
+- The curated catalog is in `skills/`; load it as native Claude Code plugins through the SDK,
+  without copying into personal/project Claude configuration. Keep source pins, licences and
+  reference files. Only reviewed instruction/reference text is bundled; no upstream hooks,
+  custom agents or executable helpers. Use `scripts/vendor-skills.py` only for deliberate updates.
+- Global switches and project exclusions control the bundled plugins. User/project conventions
+  take priority over generic skill advice. Do not turn the library into a second agent runtime.
+
 ## UI and design rules
 
 - **No layout shifts, ever (hard rule).** Nothing already on screen may move when something opens, loads

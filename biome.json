@@ -12,7 +12,8 @@
       "!**/node_modules",
       "!**/*.vsix",
       "!e2e/fixtures",
-      "!packages/*/src/fixtures"
+      "!packages/*/src/fixtures",
+      "!skills/**/skills"
     ]
   },
   "formatter": {

@@ -35,7 +35,10 @@ const has = (...words) => words.every((w) => args.includes(w));
 const say = (value) => {
   const file = args.includes("--out-file") ? args[args.indexOf("--out-file") + 1] : "";
   if (file) require("node:fs").writeFileSync(file, JSON.stringify(value));
-  else process.stdout.write(JSON.stringify(value));
+  else {
+    const output = JSON.stringify(value);
+    process.stdout.write(Buffer.from(output, process.env.PYTHONIOENCODING === "utf-8" ? "utf8" : "latin1"));
+  }
   process.exit(0);
 };
 const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
@@ -46,7 +49,7 @@ if (has("pipelines", "list") && !has("runs")) say([
 if (has("pipelines", "show")) say({ process: { yamlFilename: "/azure-pipelines.yml" }, repository: { defaultBranch: "refs/heads/main" } });
 if (has("pipelines", "runs", "list")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500);
 if (has("pipelines", "runs", "list")) say([{
-  id: 100, buildNumber: "20261029.1", status: "completed", result: "succeeded",
+  id: 100, buildNumber: "20261029.1 · main · a1b2c3d · build", status: "completed", result: "succeeded",
   sourceBranch: "refs/heads/main", reason: "manual", queueTime: ago(40), startTime: ago(35), finishTime: ago(12),
   requestedFor: { displayName: "Ann Demo" }, templateParameters: { deployTo: "staging", runTests: "True" },
   definition: { id: 12 },
@@ -110,6 +113,10 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   const details = page.getByTestId("pipeline-details-Shop CI");
   await expect(details.getByTestId("pipeline-chip")).toContainText("✓ 12m");
   const facts = details.getByTestId("pipeline-run-details");
+  await expect(facts).toContainText("20261029.1 · main · a1b2c3d · build");
+  await expect(facts).not.toContainText("\uFFFD");
+  await expect(facts).toContainText("Duration");
+  await expect(facts).toContainText("23m 0s");
   for (const text of ["main", "manual", "Ann Demo", "Deploy to: staging"])
     await expect(facts).toContainText(text);
   await expect(details.getByTestId("pipeline-stages")).toContainText("Build");

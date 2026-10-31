@@ -1,0 +1,8 @@
+{
+  "name": "jig-ui-ux-review",
+  "version": "1.0.0",
+  "description": "Review usability, accessibility and visual consistency after creating or changing a user interface.",
+  "author": {
+    "name": "Jig"
+  }
+}

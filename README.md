@@ -25,6 +25,10 @@
 > more precise. Jig does the same for your work with Claude Code. The logo is one: a corner jig, a
 > fence that holds the piece exactly where it should be.
 
+<p align="center">
+  <img src="apps/desktop/src/renderer/features/about/shots/skills.png?v=1" alt="Built-in Skills library with global switches and project selection" width="900">
+</p>
+
 ## Why Jig
 
 If you live in Claude Code, your day is spread over terminals, an editor for git and diffs, a browser
@@ -38,6 +42,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
   - Rewind and edit, effort levels, MCP status.
   - A small overview card in each chat (tool calls, skills, subagents, add-ons, MCP, files, tokens), with the full breakdown a click away.
+- **A curated Skills library.** Built-in design, UX, frontend, backend, security, browser testing and AI feature guidance. All enabled by default, with global switches and project selection in one page: Chats → Skills library.
 - **Models for the work.** Opus plans and Sonnet executes by default, with configurable subagent, helper and tester models. A few top-bar menus (Chats, Code, Build, View) hold every action.
 - **Many chats, many repositories.** Run several sessions at once across projects. Jig shows which one
   needs you, and a **chats board** puts every chat in columns: needs you, working, unread, errors.

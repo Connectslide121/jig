@@ -79,6 +79,10 @@ export interface SessionManagerOptions {
     fileCheckpoints?: boolean;
   };
   appendSystemPrompt: (meta: SessionMeta) => string;
+  /** Changes in selected skills restart an idle process before the next message, preserving resume. */
+  configurationKey?: (meta: SessionMeta) => string;
+  plugins?: (meta: SessionMeta) => Array<{ type: "local"; path: string }>;
+
   /** Text that goes with each message to Claude, not shown in the transcript (add-ons' context). */
   turnContext?: (meta: SessionMeta) => Promise<string>;
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
@@ -115,6 +119,7 @@ interface Live {
   loaded: boolean;
   /** Identifies the current Claude Code process: events from a stopped or replaced one are ignored. */
   engineToken?: object;
+  configurationKey?: string;
   /** Deleted: nothing is emitted or saved for it any more (a late event can't bring it back). */
   deleted?: boolean;
   lastSave?: number;
@@ -279,6 +284,7 @@ export class SessionManager {
     live.engineToken = token;
     const meta = live.state.meta;
     const settings = this.options.engineSettings();
+    live.configurationKey = this.options.configurationKey?.(meta);
     const session = this.options.engine.start(
       {
         cwd: meta.cwd,
@@ -296,6 +302,7 @@ export class SessionManager {
         fileCheckpoints: settings.fileCheckpoints,
         mcpServers: this.options.mcpServers?.(meta),
         agents: this.options.agents?.(meta),
+        plugins: this.options.plugins?.(meta),
         toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {
@@ -341,7 +348,7 @@ export class SessionManager {
       return;
     }
     if (event.type === "commands") {
-      this.commandCache.set(live.state.meta.cwd, event.commands);
+      this.commandCache.set(JSON.stringify([live.state.meta.cwd, live.configurationKey]), event.commands);
       return;
     }
     if (event.type === "exit") {
@@ -405,6 +412,13 @@ export class SessionManager {
   }
 
   private async beginTurn(live: Live, text: string, attachments: ChatAttachment[]) {
+    // Never interrupt in-flight work for a library change. At a turn boundary, resume the same
+    // conversation with the new plugins and prompt. Old process events are ignored by stop().
+    if (live.engine && live.configurationKey !== this.options.configurationKey?.(live.state.meta)) {
+      this.stop(live);
+      this.commandCache.clear();
+    }
+
     // Busy from now on, before any await: a second send right away is queued, not started twice.
     live.state.meta = { ...live.state.meta, status: "starting" };
     let data: EnginePart[] = [];
@@ -743,11 +757,15 @@ export class SessionManager {
   /** Claude Code's slash commands and skills for this chat (starts Claude Code if needed). */
   async commands(id: string): Promise<SlashCommandInfo[]> {
     const live = await this.live(id);
-    const cached = this.commandCache.get(live.state.meta.cwd);
+    const key = JSON.stringify([
+      live.state.meta.cwd,
+      live.engine ? live.configurationKey : this.options.configurationKey?.(live.state.meta),
+    ]);
+    const cached = this.commandCache.get(key);
     if (cached && !live.engine) return cached;
     try {
       const list = await withTimeout(this.startEngine(live).commands(), 20_000);
-      this.commandCache.set(live.state.meta.cwd, list);
+      this.commandCache.set(key, list);
       return list;
     } catch (error) {
       if (cached) return cached;

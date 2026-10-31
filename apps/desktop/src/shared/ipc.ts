@@ -45,6 +45,7 @@ import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
+import type { LibrarySkill, SkillDetails } from "./skills";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type {
   FileIconThemeData,
@@ -76,6 +77,10 @@ export interface AppInfo {
 
 /** Method name → argument and result types. */
 export interface HostMethods {
+  /** Jig's curated bundled skills. Controls are config.skills.overrides. */
+  "skills.list": { args: void; result: LibrarySkill[] };
+  "skills.details": { args: { id: string }; result: SkillDetails };
+
   "app.info": { args: void; result: AppInfo };
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };

@@ -17,6 +17,7 @@ import { registerRoutines } from "./routines";
 import { registerSessions } from "./sessions";
 import { registerSettings } from "./settings";
 import { registerSetup } from "./setup";
+import { registerSkills } from "./skills";
 import { registerTerminals } from "./terminals";
 import { registerTour } from "./tour";
 import { registerUsage } from "./usage";
@@ -46,5 +47,6 @@ export function registerFeatures(): void {
   registerWorktrees();
   registerGoTo();
   registerGallery();
+  registerSkills();
   registerAbout();
 }

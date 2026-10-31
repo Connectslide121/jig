@@ -49,6 +49,7 @@ const attachment = z.object({
 });
 
 export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
+  "skills.details": z.object({ id }),
   "files.image": z.object({ path }),
   "files.preview": z.object({ path }),
   "files.stat": z.object({ path }),

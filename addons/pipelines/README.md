@@ -44,3 +44,9 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
 Commands used: `git remote get-url`, `git for-each-ref`, `az pipelines list / show / run / runs list
 / runs show`, `az repos ref list`, `az devops invoke` (timeline, YAML), `az rest` (your organisations), `az devops project list`.
 Parsers in `lib/devops.ts`, `lib/runs.ts` and `lib/orgs.ts` (tested).
+
+Run details include **Duration** (start-to-finish or live elapsed execution time, excluding queue
+time). Timestamp rows keep their positions while a run finishes. The outcome badge remains time
+since completion. Missing timestamps show Not reported / Not started instead of a fabricated
+elapsed time. Azure CLI subprocesses explicitly use UTF-8 on Windows pipes; refresh replaces
+previously cached malformed run names with correctly decoded metadata (D-206).

@@ -1,0 +1,8 @@
+{
+  "name": "jig-react-performance",
+  "version": "1.0.0",
+  "description": "React and Next.js rendering, data fetching and bundle performance.",
+  "author": {
+    "name": "vercel-labs"
+  }
+}
