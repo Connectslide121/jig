@@ -95,10 +95,10 @@ test("speech: talk with Claude, it looks at the code, agree on a plan and it sta
   // Claude looks at the code while you plan; the window says what it is doing.
   await say("Please look at the code for the cart");
   await expect(dialog.getByTestId("voice-status")).toContainText(/Searching the code|Reading cart\.ts/);
-  await expect(dialog.getByTestId("voice-now")).toContainText("Shall the discount go there?");
+  await expect(dialog.getByTestId("voice-transcript")).toContainText("Shall the discount go there?");
 
-  // The conversation so far, yours and Claude's.
-  await dialog.getByRole("tab", { name: "Conversation" }).click();
+  // The conversation so far, yours and Claude's, always in view; no plan card until there is a plan.
+  await expect(dialog.getByTestId("voice-plan")).toHaveCount(0);
   const lines = dialog.getByTestId("voice-line");
   await expect(lines.first()).toHaveAttribute("data-who", "you");
   await expect(lines.first()).toContainText("look at the code");
@@ -107,6 +107,7 @@ test("speech: talk with Claude, it looks at the code, agree on a plan and it sta
   // The plan shows in the window as it comes.
   await say("Let's make a plan for discounts");
   await expect(dialog.getByTestId("voice-plan")).toContainText("discount");
+  await expect(dialog.getByTestId("voice-plan")).toHaveAttribute("data-kind", "plan");
   await expect(voice).toHaveAttribute("data-said", /Shall I start\?/);
 
   // The go-ahead: Claude starts, talking ends, and the work is followed with sounds until it's done.

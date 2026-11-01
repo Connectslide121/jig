@@ -58,6 +58,17 @@ going ahead and the transcript.
       when it needs you; `speech.workSound`.
 - [x] "Bye" ends only talking: Claude's work goes on (followed by the sound), and the chat returns to
       its own permission mode when idle.
+
+## A calmer talking window, and planning a task queue (D-218)
+
+- [x] Redesign: one wide window, no tabs: waves in the centre, the conversation under them fading
+      out upwards, controls along the bottom; the Now line is gone.
+- [x] The plan as a card in the right margin, only while Claude asks to start something.
+- [x] Claude proposes a task queue (`addon_tasks_add`) instead of one plan when the work clearly
+      needs several chats, or when the user asks; the go-ahead queues and starts it.
+- [x] Working sound louder (gain 0.09) and more frequent (every 1.4 s).
+- [ ] e2e for a spoken task queue (needs a fake-engine behaviour that calls `addon_tasks_add` in
+      plan mode).
 - [x] e2e: looking at the code, the transcript and plan tabs, go-ahead by voice and by button, mute,
       bye during work.
 - [ ] Check on a real machine: waves with a real microphone, word pulses with your system voice,

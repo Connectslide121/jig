@@ -8,7 +8,17 @@ import { cancelDictation, type DictationText, useDictation } from "./dictation";
 import { Capture, LiveText, prepareSpeech, speechSettings } from "./engine";
 import { amplitude, meters, sliceLevels } from "./meter";
 import { level, SAMPLE_RATE } from "./protocol";
-import { isEnd, isGoAhead, isNo, isYes, permissionPrompt, toolActivity } from "./replies";
+import {
+  isEnd,
+  isGoAhead,
+  isNo,
+  isQueueTool,
+  isYes,
+  permissionPrompt,
+  planOf,
+  toolActivity,
+  type VoicePlan,
+} from "./replies";
 import { speakableText, speakableUntil, voiceUtterance } from "./speak";
 
 /**
@@ -16,7 +26,8 @@ import { speakableText, speakableUntil, voiceUtterance } from "./speak";
  * reply is read aloud sentence by sentence as it is written; speaking over it stops it. Claude looks
  * at the code to help you plan (plan mode: it reads, never changes). When you give the go-ahead,
  * the plan is approved, talking ends and Claude works as in any chat, with a soft sound while it
- * works. "Bye" only ends talking, never the chat or Claude's work.
+ * works. For bigger work Claude may propose a task queue instead (D-218): approving it queues the
+ * tasks and starts the queue. "Bye" only ends talking, never the chat or Claude's work.
  */
 export type VoicePhase = "off" | "starting" | "listening" | "hearing" | "thinking" | "speaking";
 
@@ -39,8 +50,8 @@ export interface VoiceState {
   lines: VoiceLine[];
   /** What Claude is doing while it thinks ("Searching the code"). */
   activity?: string;
-  /** The plan Claude asks to start (ExitPlanMode), while it waits for your answer. */
-  plan?: string;
+  /** The plan Claude asks to start (ExitPlanMode, or a task queue), while it waits for your answer. */
+  plan?: VoicePlan;
   /** The microphone is muted (Jig doesn't hear you). */
   muted: boolean;
   /** You gave the go-ahead before the plan was written: it is approved as soon as it comes. */
@@ -155,6 +166,8 @@ function addLine(who: VoiceLine["who"], text: string): void {
 
 const BUSY = new Set(["working", "starting"]);
 
+const samePlan = (a: VoicePlan | undefined, b: VoicePlan) => JSON.stringify(a) === JSON.stringify(b);
+
 type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
 
 class Conversation {
@@ -187,6 +200,8 @@ class Conversation {
   /** The soft working sound while Claude thinks or looks at the code. */
   private readonly cue = new WorkCue();
   private fakeVoice?: ReturnType<typeof setInterval>;
+  /** The plan on screen (kept as the same object while it doesn't change). */
+  private shown?: VoicePlan;
 
   constructor(
     private readonly target: string,
@@ -408,7 +423,7 @@ class Conversation {
   async goAhead(spoken?: string): Promise<void> {
     if (this.stopped) return;
     const pending = this.pendingPermission();
-    if (pending?.request.toolName === "ExitPlanMode") {
+    if (pending && planOf(pending.request)) {
       await this.approvePlan(pending);
       return;
     }
@@ -426,6 +441,17 @@ class Conversation {
 
   private async approvePlan(item: PermissionItem): Promise<void> {
     const id = this.target;
+    const { toolName, input } = item.request;
+    if (isQueueTool(toolName)) {
+      // The tasks run in their own chats; this one stays as it was and only says it queued them.
+      await call("sessions.answerPermission", {
+        id,
+        requestId: item.request.requestId,
+        decision: { behavior: "allow", updatedInput: { ...input, start: true } },
+      });
+      this.handOff(true);
+      return;
+    }
     await call("sessions.setPermissionMode", { id, mode: this.workMode }).catch(() => undefined);
     await call("sessions.answerPermission", {
       id,
@@ -435,14 +461,18 @@ class Conversation {
     this.handOff();
   }
 
-  /** Claude starts working: talking ends, and a sound plays while it works. */
-  private handOff(): void {
+  /**
+   * Claude starts working: talking ends, and a sound plays while it works. `queued`: the work went
+   * to the task queue, so this chat goes back to how it was.
+   */
+  private handOff(queued = false): void {
     if (this.stopped) return;
-    addLine("claude", "Starting now.");
-    this.stop(true);
+    const line = queued ? "Queued. Starting the tasks now." : "Starting now.";
+    addLine("claude", line);
+    this.stop(!queued);
     playCue("start");
     const synth = window.speechSynthesis;
-    if (!this.fake && synth) synth.speak(voiceUtterance("Starting now."));
+    if (!this.fake && synth) synth.speak(voiceUtterance(line));
   }
 
   private pendingPermission(): PermissionItem | undefined {
@@ -459,14 +489,14 @@ class Conversation {
     const { requestId, toolName } = item.request;
     const respond = (decision: { behavior: "allow" } | { behavior: "deny"; message?: string }) =>
       call("sessions.answerPermission", { id, requestId, decision });
-    if (toolName === "ExitPlanMode") {
+    if (planOf(item.request)) {
       if (isYes(text) || isGoAhead(text)) await this.approvePlan(item);
       else
         await respond({
           behavior: "deny",
           message: isNo(text)
             ? "The user doesn't want to start yet; ask what to change."
-            : `The user wants changes to the plan: ${text}`,
+            : `The user wants changes to the ${isQueueTool(toolName) ? "tasks" : "plan"}: ${text}`,
         });
     } else if (toolName === "AskUserQuestion")
       await respond({ behavior: "deny", message: `The user answered by voice: ${text}` });
@@ -486,7 +516,7 @@ class Conversation {
       return;
     }
     let activity: string | undefined;
-    let plan: string | undefined;
+    let plan: VoicePlan | undefined;
     for (const item of transcripts[this.target]?.items ?? []) {
       if (this.before.has(item.id)) continue;
       if (item.kind === "assistant" && !item.parentId && !this.skipped.has(item.id)) {
@@ -499,10 +529,11 @@ class Conversation {
       } else if (item.kind === "tool") {
         activity = item.status === "running" ? toolActivity(item.name, item.input) : undefined;
       } else if (item.kind === "permission" && item.status === "pending") {
-        if (item.request.toolName === "ExitPlanMode") plan = String(item.request.input.plan ?? "");
+        const asked = planOf(item.request);
+        if (asked) plan = samePlan(this.shown, asked) ? this.shown : asked;
         if (this.prompted.has(item.id)) continue;
         this.prompted.add(item.id);
-        if (item.request.toolName === "ExitPlanMode" && this.approveNext) {
+        if (asked && this.approveNext) {
           this.approveNext = false;
           void this.approvePlan(item).catch((error: unknown) =>
             notify({ title: "Couldn't start the plan", message: errorMessage(error), tone: "danger" }),
@@ -514,6 +545,7 @@ class Conversation {
     }
     if (!BUSY.has(meta.status)) activity = undefined;
     const state = useVoice.getState();
+    this.shown = plan;
     if (state.activity !== activity || state.plan !== plan) useVoice.setState({ activity, plan });
     this.settle();
   }

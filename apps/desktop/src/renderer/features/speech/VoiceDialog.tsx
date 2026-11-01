@@ -1,7 +1,9 @@
-import { Mic, MicOff, PhoneOff, Play, VolumeX } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Button, cn, Dialog, IconButton, Markdown, Tabs } from "../../ui";
+import { ListTodo, Mic, MicOff, PhoneOff, Play, ScrollText, VolumeX, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { Button, cn, IconButton, Markdown, usePresence } from "../../ui";
 import { useSessions } from "../sessions/store";
+import type { VoicePlan } from "./replies";
 import { goAhead, hushVoice, setVoiceMuted, stopVoice, useVoice, type VoicePhase } from "./voice";
 import { Waves } from "./Waves";
 
@@ -14,76 +16,72 @@ const STATUS: Record<VoicePhase, string> = {
   speaking: "Claude is speaking",
 };
 
-type View = "now" | "transcript" | "plan";
-
 /**
- * The talking window (D-210): over the chat while you talk with Claude. Sound waves for both
- * voices, the sentence being said now, the conversation and the plan, and the controls: mute,
- * stop Claude's voice, end talking, and Go ahead (Claude starts working and talking ends).
- * Always the same size, whatever it shows (no layout shift).
+ * The talking window (D-210, redesigned in D-218): one calm, wide space over the chat while you talk
+ * with Claude. The sound waves are the centre; the conversation runs underneath and fades away
+ * upwards; the plan (one plan, or a task queue) shows as a card in the right margin only while
+ * Claude asks to start it, over space kept empty for it, so nothing moves. Controls along the
+ * bottom: mute, stop Claude's voice, end talking, and Go ahead. Always the same size.
  */
 export function VoiceDialogHost() {
   const phase = useVoice((s) => s.phase);
   const target = useVoice((s) => s.target);
   const title = useSessions((s) => (target ? s.metas[target]?.title : undefined));
-  const plan = useVoice((s) => s.plan);
-  const [view, setView] = useState<View>("now");
   const open = phase !== "off";
-  // A plan to approve is shown as it comes; a new conversation starts on Now.
+  const present = usePresence(open);
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (plan) setView("plan");
-  }, [plan]);
-  useEffect(() => {
-    if (phase === "starting") setView("now");
-  }, [phase]);
-  return (
-    <Dialog
-      open={open}
-      onClose={stopVoice}
-      width="md"
-      testId="voice-dialog"
-      title={
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="shrink-0">Talking with Claude</span>
-          {title && <span className="truncate text-sm font-normal text-muted">{title}</span>}
-        </span>
-      }
-      footer={<Controls />}
+    if (!present) return;
+    const previous = document.activeElement as HTMLElement | null;
+    panel.current?.focus();
+    return () => previous?.focus?.();
+  }, [present]);
+  if (!present) return null;
+  return createPortal(
+    <div
+      className="jig-modal-layer no-drag fixed inset-0 z-40 flex items-center justify-center bg-scrim p-8 backdrop-blur-xs"
+      data-closing={!open}
     >
-      <div className="flex h-96 flex-col" data-phase={phase}>
-        <div className="relative h-28 shrink-0 overflow-hidden rounded-lg bg-surface">
-          <Waves />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Talking with Claude"
+        tabIndex={-1}
+        data-testid="voice-dialog"
+        data-phase={phase}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            stopVoice();
+          }
+        }}
+        className="jig-modal-panel relative flex h-full max-h-240 w-full max-w-7xl flex-col overflow-hidden rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none"
+      >
+        <header className="flex h-14 shrink-0 items-center gap-3 px-6">
+          <span className="shrink-0 text-sm font-medium">Talking with Claude</span>
+          <span className="min-w-0 flex-1 truncate text-sm text-hint">{title}</span>
+          <span className="shrink-0 text-xs text-hint">AI · Claude can make mistakes</span>
+          <IconButton icon={X} label="End talking" size="sm" onClick={stopVoice} />
+        </header>
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+            <div className="h-56 w-full shrink-0">
+              <Waves />
+            </div>
+            <Status />
+          </div>
+          <Conversation />
+          <PlanCard />
         </div>
-        <Status />
-        <Tabs
-          className="mt-1 shrink-0 px-0"
-          value={view}
-          onChange={setView}
-          items={[
-            { id: "now", label: "Now" },
-            { id: "transcript", label: "Conversation" },
-            {
-              id: "plan",
-              label: (
-                <span className="flex items-center gap-1.5">
-                  Plan
-                  <span className={cn("size-1.5 rounded-full", plan ? "bg-accent" : "bg-transparent")} />
-                </span>
-              ),
-            },
-          ]}
-        />
-        <div className="relative min-h-0 flex-1 pt-2">
-          {view === "now" && <NowLine />}
-          {view === "transcript" && <Conversation />}
-          {view === "plan" && <PlanView />}
-        </div>
+        <Controls />
       </div>
-    </Dialog>
+    </div>,
+    document.body,
   );
 }
 
-/** What is going on, with what Claude is doing (one line, always there). */
+/** What is going on, with what Claude is doing (one line under the waves, always there). */
 function Status() {
   const phase = useVoice((s) => s.phase);
   const activity = useVoice((s) => s.activity);
@@ -97,10 +95,13 @@ function Status() {
         ? `${activity}…`
         : STATUS[phase];
   return (
-    <div className="flex h-8 shrink-0 items-center gap-2 text-sm" data-testid="voice-status">
+    <div
+      className="flex h-8 w-full max-w-xl shrink-0 items-center justify-center gap-2 px-6 text-sm"
+      data-testid="voice-status"
+    >
       <span
         className={cn(
-          "size-2 shrink-0 rounded-full",
+          "size-1.5 shrink-0 rounded-full",
           muted
             ? "bg-hint"
             : phase === "hearing"
@@ -111,39 +112,15 @@ function Status() {
           (phase === "thinking" || phase === "hearing") && !muted && "motion-safe:animate-pulse",
         )}
       />
-      <span className="min-w-0 flex-1 truncate text-muted">{label}</span>
+      <span className="truncate text-muted">{label}</span>
     </div>
   );
 }
 
-/** The sentence being said now: yours while you speak, else the last one said. */
-function NowLine() {
-  const hearing = useVoice((s) => s.hearing);
-  const last = useVoice((s) => s.lines.at(-1));
-  const phase = useVoice((s) => s.phase);
-  const line = phase === "hearing" || hearing ? { who: "you" as const, text: hearing || "…" } : last;
-  return (
-    <div
-      className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center"
-      data-testid="voice-now"
-    >
-      <div
-        className={cn(
-          "h-4 text-2xs font-medium uppercase tracking-wide",
-          line?.who === "you" ? "text-info" : "text-accent",
-        )}
-      >
-        {line ? (line.who === "you" ? "You" : "Claude") : ""}
-      </div>
-      <div className={cn("line-clamp-4 text-lg leading-snug", line ? "text-fg" : "text-hint")}>
-        {line?.text ??
-          "Say what you want to do. Claude can look at the code while you plan. Say “go ahead” when you agree, “bye” to stop talking."}
-      </div>
-    </div>
-  );
-}
-
-/** Everything said since talking started; follows the end unless you scrolled up. */
+/**
+ * Everything said since talking started, newest at the bottom, older lines fading out upwards.
+ * Follows the end unless you scrolled up.
+ */
 function Conversation() {
   const lines = useVoice((s) => s.lines);
   const hearing = useVoice((s) => s.hearing);
@@ -154,59 +131,97 @@ function Conversation() {
     const el = box.current;
     if (el && atEnd.current) el.scrollTop = el.scrollHeight;
   }, [lines, hearing]);
+  const empty = lines.length === 0 && !hearing;
   return (
     <div
       ref={box}
-      className="selectable h-full overflow-y-auto pr-1"
+      className="jig-voice-fade selectable mx-auto h-72 w-full max-w-xl shrink-0 overflow-y-auto px-6"
       data-testid="voice-transcript"
       onScroll={(e) => {
         const el = e.currentTarget;
         atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
       }}
     >
-      {lines.length === 0 && !hearing && (
-        <div className="py-6 text-center text-sm text-hint">Nothing said yet.</div>
-      )}
-      {lines.map((line) => (
-        <Row key={line.id} who={line.who} text={line.text} />
-      ))}
-      {hearing && <Row who="you" text={hearing} live />}
+      <div className="flex min-h-full flex-col justify-end pt-16 pb-4">
+        {empty && (
+          <p className="text-center text-base leading-relaxed text-hint">
+            Say what you want to do. Claude can look at the code while you plan.
+            <br />
+            Say “go ahead” when you agree, “bye” to stop talking.
+          </p>
+        )}
+        {lines.map((line) => (
+          <Line key={line.id} who={line.who} text={line.text} />
+        ))}
+        {hearing && <Line who="you" text={hearing} live />}
+      </div>
     </div>
   );
 }
 
-function Row({ who, text, live }: { who: "you" | "claude"; text: string; live?: boolean }) {
+function Line({ who, text, live }: { who: "you" | "claude"; text: string; live?: boolean }) {
   return (
-    <div className="flex gap-3 py-1 text-sm" data-testid="voice-line" data-who={who}>
-      <span className={cn("w-12 shrink-0 font-medium", who === "you" ? "text-info" : "text-accent")}>
-        {who === "you" ? "You" : "Claude"}
+    <div className="flex gap-3 py-1.5" data-testid="voice-line" data-who={who}>
+      <span className="flex h-6 w-2 shrink-0 items-center" title={who === "you" ? "You" : "Claude"}>
+        <span className={cn("size-1.5 rounded-full", who === "you" ? "bg-info" : "bg-accent")} />
       </span>
-      <span className={cn("min-w-0 flex-1", live ? "text-muted italic" : "text-fg")}>{text}</span>
+      <span className="sr-only">{who === "you" ? "You:" : "Claude:"}</span>
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-base leading-relaxed",
+          who === "you" ? "text-muted" : "text-fg",
+          live && "italic",
+        )}
+      >
+        {text}
+      </span>
     </div>
   );
 }
 
-function PlanView() {
+/** The plan Claude asks to start, in the right margin (kept empty for it); only while it asks. */
+function PlanCard() {
   const plan = useVoice((s) => s.plan);
-  if (!plan)
-    return (
-      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-hint">
-        Claude shows its plan here when you agree on what to do. Say “go ahead” or press Go ahead and it
-        starts.
-      </div>
-    );
+  if (!plan) return null;
+  const queue = plan.kind === "queue";
   return (
-    <div className="flex h-full flex-col">
-      <div
-        className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-line bg-surface px-3 py-2"
-        data-testid="voice-plan"
-      >
-        <Markdown text={plan} />
+    <aside
+      className="jig-voice-plan absolute top-2 right-6 bottom-6 flex w-80 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card"
+      data-testid="voice-plan"
+      data-kind={plan.kind}
+    >
+      <div className="flex h-11 shrink-0 items-center gap-2 px-4">
+        {queue ? (
+          <ListTodo className="size-4 shrink-0 text-accent" />
+        ) : (
+          <ScrollText className="size-4 shrink-0 text-accent" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{queue ? "Task queue" : "Plan"}</span>
+        <span className="shrink-0 text-xs text-hint tabular-nums">
+          {queue ? `${plan.tasks.length} ${plan.tasks.length === 1 ? "task" : "tasks"}` : "One chat"}
+        </span>
       </div>
-      <div className="flex h-7 shrink-0 items-end text-xs text-muted">
-        Say “go ahead” or press Go ahead to start, or say what to change.
+      <div className="selectable min-h-0 flex-1 overflow-y-auto px-4 pb-3 text-sm">
+        <PlanBody plan={plan} />
       </div>
-    </div>
+      <div className="flex h-10 shrink-0 items-center border-t border-line px-4 text-xs text-muted">
+        Say “go ahead”, or what to change
+      </div>
+    </aside>
+  );
+}
+
+function PlanBody({ plan }: { plan: VoicePlan }) {
+  if (plan.kind === "plan") return <Markdown text={plan.text} />;
+  return (
+    <ol className="flex flex-col">
+      {plan.tasks.map((task, i) => (
+        <li key={i} className="flex gap-3 py-1.5">
+          <span className="w-5 shrink-0 text-right text-hint tabular-nums">{i + 1}</span>
+          <span className="line-clamp-3 min-w-0 flex-1">{task}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -217,24 +232,23 @@ function Controls() {
   const plan = useVoice((s) => s.plan);
   const live = phase !== "off" && phase !== "starting";
   return (
-    <>
-      <div className="mr-auto flex items-center gap-1">
-        <IconButton
-          icon={muted ? MicOff : Mic}
-          label={muted ? "Unmute the microphone" : "Mute the microphone"}
-          active={muted}
-          disabled={!live}
-          data-testid="voice-mute"
-          onClick={() => setVoiceMuted(!muted)}
-        />
-        <IconButton
-          icon={VolumeX}
-          label="Stop Claude's voice (or just start talking)"
-          disabled={phase !== "speaking"}
-          data-testid="voice-hush"
-          onClick={hushVoice}
-        />
-      </div>
+    <footer className="flex h-20 shrink-0 items-center justify-center gap-3 px-6">
+      <IconButton
+        icon={muted ? MicOff : Mic}
+        label={muted ? "Unmute the microphone" : "Mute the microphone"}
+        active={muted}
+        disabled={!live}
+        data-testid="voice-mute"
+        onClick={() => setVoiceMuted(!muted)}
+      />
+      <IconButton
+        icon={VolumeX}
+        label="Stop Claude's voice (or just start talking)"
+        disabled={phase !== "speaking"}
+        data-testid="voice-hush"
+        onClick={hushVoice}
+      />
+      <span className="mx-2 h-5 w-px shrink-0 bg-line" />
       <Button variant="ghost" icon={PhoneOff} data-testid="voice-end" onClick={stopVoice}>
         End talking
       </Button>
@@ -244,15 +258,17 @@ function Controls() {
         busy={handing}
         disabled={!live || handing}
         title={
-          plan
-            ? "Approve the plan: Claude starts working and talking ends"
-            : "Claude writes up the plan and starts working; talking ends"
+          plan?.kind === "queue"
+            ? "Queue the tasks and start them; talking ends"
+            : plan
+              ? "Approve the plan: Claude starts working and talking ends"
+              : "Claude writes up the plan and starts working; talking ends"
         }
         data-testid="voice-go-ahead"
         onClick={goAhead}
       >
         Go ahead
       </Button>
-    </>
+    </footer>
   );
 }

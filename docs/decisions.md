@@ -2393,3 +2393,34 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Accepted, Jon: rename the visible "Claude's browser" feature to "Browser".
 - The view, open action, empty state, accessibility label, settings and feature descriptions use
   Browser. Keep the existing view/action ids, tool names and saved settings so layouts keep working.
+
+## D-218: A calmer, wider talking window, and Claude may plan a task queue
+
+- Status: accepted. Asked for by Jon: redesign the talking window "much more modern and
+  minimalistic", much bigger and wider "with empty paddings on the sides", no tabs ("all in one
+  place"), no Now line, the conversation always visible without cards, "scrolling up and fading
+  away", a sound wave as the main feature in the centre; the plan only when there is one. Claude
+  "should be able to use our queue tasks add-on to plan when it finds it appropriate, not always";
+  Claude decides, or the user when they say so. Also: the working sound "a bit louder and more
+  frequent". The layout and the queue mechanics are **Claude, on my own** (Jon: "you are the UX/UI
+  expert").
+- The window is its own portal panel (not `Dialog`, whose header and footer bars it doesn't want),
+  `max-w-7xl`, up to `max-h-240`, with the modal motion classes. Top: a quiet header (title, chat
+  name, AI notice, ×). Middle: full-width waves with the status line under them. Bottom: the
+  conversation in a centred `max-w-xl` column of fixed height, newest at the bottom, a mask fading
+  older lines out upwards (`.jig-voice-fade`), a dot per speaker in a fixed slot. Controls centred
+  along the bottom. Esc and × end talking; clicking outside doesn't (too easy to do by accident
+  mid-conversation).
+- The plan is a card in the right margin, over space the layout leaves empty, so it appears
+  without moving anything (no layout shift); on narrow windows it overlays the right edge. Shown
+  only while Claude asks to start something. Rejected: tabs (asked away); a plan above or below the
+  waves (would push or squeeze the conversation).
+- Queue or one chat: `VOICE_GUIDANCE` says most work is one chat (ExitPlanMode); only clearly bigger
+  work, several pieces that each deserve a chat, becomes a task queue: Claude calls
+  `addon_tasks_add` (one standalone prompt per task, `start: true`) while still in plan mode. That
+  call waits as a permission request; the talking window shows it as the plan (`planOf`: "Task
+  queue · N tasks"), "go ahead" (or the button) allows it with `start: true` and talking ends; the
+  chat itself goes back to its own mode once idle (the work runs in the queue's chats). Anything
+  else said is sent back as changes to the tasks. Rejected: a separate "queue" button (Claude, or
+  the user by saying so, decides).
+- Working sound: one note every 1.4 s (was 2.4 s), about twice as loud (gain 0.09, was 0.05).

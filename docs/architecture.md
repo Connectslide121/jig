@@ -524,15 +524,16 @@ the composer and `sessions.send`; Claude's streamed text is read aloud sentence 
 voice (`replies.ts`: yes → allow, else deny with what you said as feedback). The chat's `voice` flag
 (`sessions.setVoice`) makes the host add `VOICE_GUIDANCE` (`main/speech/voice.ts`) to each turn's
 context, so Claude answers in short spoken sentences, looks at the code (read-only, plan mode) and
-presents a plan with ExitPlanMode.
+presents a plan with ExitPlanMode, or, for bigger work, a task queue with `addon_tasks_add` (D-218).
 
-The talking window (`features/speech/VoiceDialog.tsx`, D-210) is mounted once in the workbench and
+The talking window (`features/speech/VoiceDialog.tsx`, D-210, D-218) is mounted once in the workbench and
 follows the `useVoice` store: sound waves on a canvas (`Waves.tsx`) driven by `meter.ts` (microphone
-levels; a pulse per word Claude says, since system voices give no audio), the sentence being said,
-the conversation lines, the plan from a pending ExitPlanMode, and Mute / Stop voice / End talking /
-Go ahead. The go-ahead (a phrase from `isGoAhead`, or the button) approves the pending plan, or
-sends "Go ahead" and approves the plan as it comes; then talking ends (the chat leaves voice mode)
-and `cues.ts` follows the chat: a soft Web Audio note every 2.4 s while it works, a chime when it
+levels; a pulse per word Claude says, since system voices give no audio) in the centre, the
+conversation fading upwards under them, a plan card in the right margin while a pending ExitPlanMode
+or task-queue `addon_tasks_add` waits (`planOf` in `replies.ts`), and Mute / Stop voice / End talking /
+Go ahead. The go-ahead (a phrase from `isGoAhead`, or the button) approves the pending plan (a queue
+is allowed with `start: true`), or sends "Go ahead" and approves the plan as it comes; then talking
+ends (the chat leaves voice mode) and `cues.ts` follows the chat: a soft Web Audio note every 1.4 s while it works, a chime when it
 finishes or needs you (`speech.workSound`). "Bye" only ends talking; a chat Jig put in plan mode goes
 back to its own mode once it is idle.
 

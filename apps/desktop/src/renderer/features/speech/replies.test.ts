@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEnd, isGoAhead, isNo, isYes, permissionPrompt, toolActivity } from "./replies";
+import { isEnd, isGoAhead, isNo, isYes, permissionPrompt, planOf, toolActivity } from "./replies";
 
 describe("spoken answers", () => {
   it("hears a plain yes", () => {
@@ -41,6 +41,10 @@ describe("permissionPrompt", () => {
     expect(permissionPrompt({ ...request, toolName: "ExitPlanMode" })).toContain("Shall I start?");
   });
 
+  it("asks to queue tasks", () => {
+    expect(permissionPrompt({ ...request, toolName: "mcp__jig__addon_tasks_add" })).toContain("queue them");
+  });
+
   it("reads a question with its options", () => {
     const input = {
       questions: [{ question: "Which database?", options: [{ label: "Postgres" }, { label: "SQLite" }] }],
@@ -64,5 +68,29 @@ describe("toolActivity", () => {
     expect(toolActivity("Read", { file_path: "C:\\repo\\cart.ts" })).toBe("Reading cart.ts");
     expect(toolActivity("Task", {})).toBe("Exploring the code");
     expect(toolActivity("mcp__github__list_issues", {})).toBe("Using list_issues");
+  });
+});
+
+describe("planOf", () => {
+  const request = { requestId: "r", canAlwaysAllow: false };
+  it("takes the plan Claude asks to start", () => {
+    expect(planOf({ ...request, toolName: "ExitPlanMode", input: { plan: "# Discounts" } })).toEqual({
+      kind: "plan",
+      text: "# Discounts",
+    });
+  });
+
+  it("lists a task queue by title, else prompt", () => {
+    const input = {
+      tasks: ["Fix the cart", { title: "Checkout", prompt: "Redo checkout" }, { prompt: "Docs" }, {}],
+    };
+    expect(planOf({ ...request, toolName: "mcp__jig__addon_tasks_add", input })).toEqual({
+      kind: "queue",
+      tasks: ["Fix the cart", "Checkout", "Docs"],
+    });
+  });
+
+  it("ignores other tools", () => {
+    expect(planOf({ ...request, toolName: "Bash", input: {} })).toBeUndefined();
   });
 });

@@ -49,9 +49,34 @@ export function isEnd(text: string): boolean {
   return END.test(clean(text));
 }
 
+/** The Tasks add-on's tool that queues work: while talking, Claude proposes a queue with it (D-218). */
+export function isQueueTool(toolName: string): boolean {
+  return /^mcp__jig__addon_tasks_add$/.test(toolName);
+}
+
+/** What Claude asks to start while talking: one plan for this chat, or a queue of tasks. */
+export type VoicePlan = { kind: "plan"; text: string } | { kind: "queue"; tasks: string[] };
+
+/** The plan in a request Claude is waiting on, if it is one (ExitPlanMode, or a task queue). */
+export function planOf(request: PermissionRequest): VoicePlan | undefined {
+  if (request.toolName === "ExitPlanMode") return { kind: "plan", text: String(request.input.plan ?? "") };
+  if (!isQueueTool(request.toolName)) return undefined;
+  const raw = Array.isArray(request.input.tasks) ? request.input.tasks : [];
+  const tasks = raw
+    .map((t) => {
+      if (typeof t === "string") return t;
+      const task = (t ?? {}) as { title?: unknown; prompt?: unknown };
+      return String(task.title || task.prompt || "");
+    })
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return { kind: "queue", tasks };
+}
+
 /** What Jig says when Claude needs an answer (it is shown on screen too). */
 export function permissionPrompt(request: PermissionRequest): string {
   if (request.toolName === "ExitPlanMode") return "The plan is on the screen. Shall I start?";
+  if (isQueueTool(request.toolName)) return "The tasks are on the screen. Shall I queue them and start?";
   if (request.toolName === "AskUserQuestion") {
     const questions = (request.input.questions ?? []) as Array<{
       question?: string;

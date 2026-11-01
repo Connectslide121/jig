@@ -30,7 +30,7 @@ const NOTES: Record<Exclude<Cue, "tick">, Array<[number, number]>> = {
 /** The working motif: one soft note per tick, walking up and down. */
 const TICKS = [659.25, 783.99, 987.77, 783.99];
 /** How often the working motif plays (ms). */
-export const TICK_MS = 2400;
+export const TICK_MS = 1400;
 
 let context: AudioContext | undefined;
 let tickIndex = 0;
@@ -71,7 +71,7 @@ export function playCue(cue: Cue): void {
   if (!ctx) return;
   const now = ctx.currentTime + 0.02;
   if (cue === "tick") {
-    note(ctx, TICKS[tickIndex++ % TICKS.length]!, now, 0.05, 0.35);
+    note(ctx, TICKS[tickIndex++ % TICKS.length]!, now, 0.09, 0.35);
     return;
   }
   for (const [freq, at] of NOTES[cue]) note(ctx, freq, now + at, 0.07, 0.45);

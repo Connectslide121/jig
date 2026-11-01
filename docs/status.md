@@ -146,13 +146,16 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
   Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
   instructions for talking and for adding system voices (Windows, macOS, Linux).
-- Talking window (D-210): talking opens a window over the chat with sound waves (blue: you, from
-  the microphone; accent: Claude, a pulse per spoken word), the sentence being said now, and tabs
-  for the whole Conversation (scroll back) and the Plan. Claude searches and reads the code while
-  you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every few
-  seconds while it thinks). Controls: Mute, Stop Claude's voice, End talking, Go ahead. "Go ahead"
+- Talking window (D-210, redesigned in D-218): talking opens a wide, calm window over the chat with
+  sound waves in the centre (blue: you, from the microphone; accent: Claude, a pulse per spoken
+  word) and the conversation under them, fading out upwards as it scrolls (no tabs). While Claude
+  asks to start something, its plan shows as a card in the right margin: one plan, or, for bigger
+  work that needs several chats, a task queue (Claude decides, or you say "make it a queue"); "go
+  ahead" then queues the tasks and starts them. Claude searches and reads the code while
+  you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every 1.4 s
+  while it thinks). Controls: Mute, Stop Claude's voice, End talking, Go ahead. "Go ahead"
   (said or pressed) approves the plan, or asks Claude for it and approves it as it comes; talking
-  ends and Claude works as in any chat, with a soft note every 2.4 s and a chime when it finishes
+  ends and Claude works as in any chat, with a soft note every 1.4 s and a chime when it finishes
   or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
   work goes on, and the chat returns to its own permission mode when idle.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
@@ -650,7 +653,9 @@ Things the cloud build environment couldn't verify:
   word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working
   note and chimes, and whether "go ahead" is heard reliably. Try: plan a small change by voice, ask
   Claude to look at something in the code, then press or say "go ahead" and listen for the sound
-  while it works and the chime at the end.
+  while it works and the chime at the end. D-218: plan something bigger ("one task per screen")
+  and check Claude proposes a task queue, that the card lists the tasks, and that "go ahead"
+  queues and starts them; check the louder, faster working note isn't too much.
 - **Checked on Windows 11 (Oct 29, first local run):**
   - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
   - A fresh clone used to fail `npm run check`: Git for Windows checks files out with CRLF

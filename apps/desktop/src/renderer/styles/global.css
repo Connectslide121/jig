@@ -327,7 +327,19 @@ html[data-platform="darwin"] .topbar-insets {
 .jig-modal-layer[data-closing="true"] .jig-modal-panel {
   animation: jig-surface-out 160ms ease-in both;
 }
+/* Talking window (D-218): the conversation fades out upwards; the plan card comes in softly. */
+.jig-voice-fade {
+  mask-image: linear-gradient(to bottom, transparent, black 45%);
+  scrollbar-width: none;
+}
+.jig-voice-fade::-webkit-scrollbar {
+  display: none;
+}
+.jig-voice-plan {
+  animation: jig-surface-in 160ms ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
+  .jig-voice-plan,
   .jig-collapse,
   .jig-modal-layer,
   .jig-modal-panel,
