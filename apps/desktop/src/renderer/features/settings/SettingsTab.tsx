@@ -5,6 +5,7 @@ import {
   FolderTree,
   Info,
   LayoutPanelLeft,
+  Mic,
   Palette,
   Puzzle,
   Sparkles,
@@ -17,6 +18,7 @@ import { cn } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import type { TabProps } from "../../workbench/registry";
 import { updateLayout } from "../../workbench/store";
+import { SpeechSettings } from "../speech/SpeechSettings";
 import { AddonsSettings } from "./AddonsSettings";
 import { AppearanceSettings } from "./Appearance";
 import {
@@ -67,6 +69,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       order: 3,
     },
     updates: { id: "updates", title: "Updates", icon: Download, component: UpdatesSettings, order: 90 },
+    speech: { id: "speech", title: "Speech", icon: Mic, component: SpeechSettings, order: 3.5 },
     learning: { id: "learning", title: "Learning", icon: Sparkles, component: LearningSettings, order: 4 },
     addons: { id: "addons", title: "Add-ons", icon: Puzzle, component: AddonsSettings, order: 5 },
     about: { id: "about", title: "About", icon: Info, component: AboutSettings, order: 100 },

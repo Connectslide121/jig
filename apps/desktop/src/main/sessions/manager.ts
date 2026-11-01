@@ -914,6 +914,11 @@ export class SessionManager {
     this.setMeta(live, { pinned: pinned || undefined });
   }
 
+  async setVoice(id: string, voice: boolean): Promise<void> {
+    const live = await this.live(id);
+    this.setMeta(live, { voice: voice || undefined });
+  }
+
   /** A project was removed: its chats move to "No project". */
   async leaveProject(projectId: string): Promise<void> {
     await this.load();

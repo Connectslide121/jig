@@ -58,3 +58,5 @@ mac:
     - target: dir
   icon: build/icon.png
   category: public.app-category.developer-tools
+  extendInfo:
+    NSMicrophoneUsageDescription: Jig uses the microphone only while you dictate a message.

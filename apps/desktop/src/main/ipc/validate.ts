@@ -3,6 +3,7 @@ import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { PROJECT_COLORS } from "../../shared/projects";
+import { SPEECH_MODEL_IDS } from "../../shared/speech";
 
 /**
  * Checks at the IPC boundary. The renderer (which add-on UI code shares) is not trusted with the host:
@@ -55,6 +56,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "files.stat": z.object({ path }),
   "files.write": z.object({ path, text: z.string().max(10_000_000), expectedMtimeMs: z.number().optional() }),
   "app.openExternal": z.object({ url: z.string().max(8192) }),
+  "speech.removeModel": z.object({ model: z.enum(SPEECH_MODEL_IDS) }),
   "app.openPath": z.object({ path }),
   "app.showItemInFolder": z.object({ path }),
   "app.pickFiles": z.object({ title: z.string().max(200).optional(), defaultPath: path.optional() }),

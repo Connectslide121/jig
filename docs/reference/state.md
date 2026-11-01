@@ -36,6 +36,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `suggestions.json` | JSON `{ suggestions, blocked, runs, lastRun }` | the suggestion inbox, your answers, blocked patterns, pattern runs |
 | `projects.json` | JSON, `ProjectsFileSchema` (`shared/projects.ts`) | `{ workspaces: [{ id, path, addedAt }], projects: [{ id, name, path, color, addedAt, focusRepo?, model?, effort?, permissionMode?, instructions?, starters?, links? }], activeId }` (D-101). `links`: `[{ id, title, links: [{ id, url, label?, type }] }]`, the project's link groups (`shared/links.ts`). Workspaces are the folders you added; a project is a group of chats with `path` = its default workspace, `focusRepo` = its default Git repository and defaults for its chats. A project's folder missing from `workspaces` is added on load |
 | `themes/*.json` / `*.jsonc` | Jig or VS Code theme | your own themes; watched — saving re-applies (see `docs/guides/themes.md`) |
+| `models/<org>/<model>/` | Hugging Face files | dictation's Whisper models (config, tokenizer, ONNX encoder/decoder: q8 for the processor, fp32 + q4 for the graphics card), downloaded on first use; Settings → Speech removes them (D-208) |
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only (file icon themes: also their icons and fonts) |
 
 Outside `~/.jig`:
@@ -78,6 +79,13 @@ A new state file is documented here in the same commit that adds it.
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
 | `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
+| `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
+| `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
+| `speech.voice` | `""` | the system voice for Read aloud and talking; empty = the system's default |
+| `speech.gpu` | `true` | run Whisper on the graphics card (WebGPU) when there is one (D-209) |
+| `speech.live` | `true` | show the words while you speak (Whisper reads again every ~250 ms) |
+| `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |
+| `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `browser.showWhenUsed` | `true` | open the Claude's browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |

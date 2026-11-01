@@ -186,6 +186,8 @@ export interface SessionMeta {
   resetPending?: boolean;
   /** Opened from a conversation Claude Code saved (its session id; D-150). */
   importedFrom?: string;
+  /** You are talking with Claude: its replies are read aloud, so it answers briefly (D-209). */
+  voice?: boolean;
 }
 
 /** What restoring files to before a message changes (Claude Code's file checkpoints). */

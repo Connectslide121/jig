@@ -12,6 +12,8 @@ import {
   SquareTerminal,
   TriangleAlert,
   Undo2,
+  Volume2,
+  VolumeOff,
 } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
@@ -20,6 +22,7 @@ import { useConfig } from "../../stores/config";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
 import { BuildCard } from "../builder/BuildCard";
+import { toggleReadAloud, useReading } from "../speech/speak";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
@@ -35,6 +38,22 @@ function messageMenu(sessionId: string, text: string, own: MenuEntry[] = []): Me
     ...own,
     ...(extra.length ? [{ separator: true } as const, ...extra] : []),
   ];
+}
+
+/** Reads Claude's message aloud with a system voice; again stops it. */
+function ReadAloudButton({ id, text }: { id: string; text: string }) {
+  const reading = useReading((s) => s.reading === id);
+  return (
+    <IconButton
+      icon={reading ? VolumeOff : Volume2}
+      size="sm"
+      label={reading ? "Stop reading aloud" : "Read aloud"}
+      active={reading}
+      aria-pressed={reading}
+      data-testid="assistant-read-aloud"
+      onClick={() => toggleReadAloud(id, text)}
+    />
+  );
 }
 
 /**
@@ -183,7 +202,7 @@ const Item = memo(function Item({
           <Markdown text={item.text} />
           {item.streaming && !item.text && <Spinner size="sm" />}
           {!item.streaming && item.text && (
-            <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-hover/message:flex">
+            <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-hover/message:flex has-aria-pressed:flex">
               <IconButton
                 icon={Copy}
                 size="sm"
@@ -191,6 +210,7 @@ const Item = memo(function Item({
                 data-testid="assistant-copy"
                 onClick={() => void navigator.clipboard.writeText(item.text)}
               />
+              <ReadAloudButton id={item.id} text={item.text} />
               <IconButton
                 icon={MoreHorizontal}
                 size="sm"

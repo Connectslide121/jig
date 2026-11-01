@@ -132,6 +132,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Speech (D-208): the mic button in the composer (or Ctrl/Cmd+Shift+Space) records; click again
+  and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks
+  to download the Whisper model (Settings → Speech: tiny ~45 MB, base ~80 MB (default), small
+  ~250 MB; language; remove). It runs locally, offline afterwards. Read aloud (speaker icon on
+  Claude's answers) uses the system's voices.
+- Real-time speech and talking with Claude (D-209): with a graphics card Whisper runs on it
+  (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
+  Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
+  talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
+  Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
+  instructions for talking and for adding system voices (Windows, macOS, Linux).
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
@@ -581,6 +592,19 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
+- **Speech (D-208):** Hugging Face was unreachable from the cloud environment, so the real model
+  download is untested (the serving path is unit-tested; real Whisper inference was checked in the
+  built app with whisper-tiny: about 5 s for loading + a short sentence). Try: the first download
+  and its progress, a real microphone (Windows: Settings → Privacy → Microphone → desktop apps;
+  macOS: the permission prompt, packaged app), accuracy and speed of `base` and `small` in your
+  language, Read aloud voices. No GPU: if `small` is too slow, use `base` or `tiny`. On Windows,
+  Win+H (system voice typing) also works in the composer.
+- **Real time and talking (D-209):** no GPU nor microphone in the cloud environment, so WebGPU
+  Whisper (the `encoder_model.onnx` + `decoder_model_merged_q4.onnx` download) and real voice
+  activity detection are untested; the conversation itself is covered by e2e with scripted speech.
+  Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
+  words, corrections); talk with Claude with headphones, then with speakers (the system voice may
+  be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
 - **Checked on Windows 11 (Oct 29, first local run):**
   - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
   - A fresh clone used to fail `npm run check`: Git for Windows checks files out with CRLF

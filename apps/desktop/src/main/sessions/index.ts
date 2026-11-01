@@ -23,6 +23,7 @@ import { logger } from "../log";
 import { projectStore } from "../projects";
 import { routinesChanged } from "../routines";
 import { selectedSkillPlugins, skillLibrary } from "../skills";
+import { VOICE_GUIDANCE } from "../speech/voice";
 import { paths } from "../state/paths";
 import { usageService } from "../usage";
 import { APP_ICON } from "../window";
@@ -143,7 +144,10 @@ export function startSessions(): void {
       [
         skillLibrary().context(getConfig(), meta.projectId),
         ...(kindHooks.has(meta.kind ?? "") ? [] : [await turnContext(meta)]),
-      ].join("\n\n"),
+        meta.voice ? VOICE_GUIDANCE : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     appendSystemPrompt: (meta) =>
       [
         kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
@@ -299,6 +303,7 @@ export function startSessions(): void {
     await m.setProject(id, projectId);
   });
   handle("sessions.setPinned", ({ id, pinned }) => m.setPinned(id, pinned));
+  handle("sessions.setVoice", ({ id, voice }) => m.setVoice(id, voice));
   handle("sessions.send", ({ id, text, attachments, now }) => m.send(id, text, attachments, now));
   handle("sessions.rewind", ({ id, itemId, files }) => m.rewind(id, itemId, files));
   handle("sessions.runShell", ({ id, command }) => m.runShell(id, command));
