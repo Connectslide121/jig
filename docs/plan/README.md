@@ -60,3 +60,5 @@ Phase 19 also includes more readable Repos branch names without wider sidebars (
 Phase 19 also includes shared project knowledge notes (D-202) and readable, stable busy buttons (D-203).
 
 Phase 19 also includes a stationary whole-chat file summary with a modal breakdown (D-204).
+
+Phase 14 also includes the Browser display-name simplification (D-216); its status remains done.

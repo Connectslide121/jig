@@ -34,7 +34,7 @@ same commit.
   calls the host through a single typed bridge (`window.jig`).
 - **Preload** exposes that bridge with `contextBridge`. The renderer runs with `contextIsolation: true`,
   `nodeIntegration: false`, `sandbox: true`.
-- **Helper windows.** Claude's browser is a hidden offscreen window owned by the main process.
+- **Helper windows.** Browser is a hidden offscreen window owned by the main process.
   `main/appWindows.ts` keeps such helpers out of everything that means "Jig's windows" (events,
   focus, notifications, quitting).
 - **Pure packages** hold logic with no Electron dependency so it can be unit-tested:
@@ -174,7 +174,7 @@ a menu or with Shift+Tab.
 - `jig_request_build`, so saying "make me a button that…" in any chat starts the builder;
 - the configuration tools (`docs/reference/configure.md`);
 - the terminal tools (`jig_terminal_*`);
-- Claude's browser (`jig_browser_*`).
+- Browser (`jig_browser_*`).
 
 Read-only tools run without a prompt.
 
@@ -202,7 +202,7 @@ extend above the input without clipping). The overview card has a permanently re
 including empty/loading chats and when hidden, so its visibility never moves the conversation (D-189).
 
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
-(`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in Claude's browser: one offscreen
+(`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in the browser: one offscreen
 Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools
 with real input events and shown live in a view the user can take over. Hidden helper windows are kept
 out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.

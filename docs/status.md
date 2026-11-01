@@ -1,5 +1,8 @@
 # Status
 
+Browser naming (2026-11-01, D-216): the built-in browser is called Browser in its view,
+Open Browser action, settings and What Jig can do. Search for Open Browser to open it.
+
 Models and searching (2026-11-01): new chats use Opus; `opusplan` used Opus only in Plan mode and
 Sonnet for everything else, so chats in other modes never reached Opus. Saved settings keep their
 value: change Settings → Claude Code → Default model (or Use recommended defaults). Every chat gets
@@ -116,7 +119,7 @@ Validation: production build and `npm run check` pass (592 tests, 8 skipped). Th
 queue regression verifies image paste, document drop, unchanged row/prompt geometry, retained files
 in results and attachments delivered to the chat. Screenshot: `test-results/tasks-add-compact.png`.
 
-_Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Claude's browser and the chat at Claude Code's level)._
+_Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the latest are routines and artifacts, Browser and the chat at Claude Code's level)._
 
 ## Continue here (next session)
 
@@ -326,7 +329,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     - **Friction** is recorded without AI: Stop while Claude works, rewinds, denied permissions,
       corrections ("no, I meant…"), repeated tool errors, scripts that fail, long chats that end
       without a commit, and hopping between projects. Pastes per kind and
-      "Claude's browser never used for UI work" are signals too.
+      "Browser never used for UI work" are signals too.
     - **More kinds of suggestions**, each with its action: workflows (Draft a workflow), Claude Code
       setup, CLAUDE.md additions, routines, tips (one prompting and one habit tip a week at most, with your own examples), and
       additions to your profile. **Did it help?** shows on built or adopted suggestions after a week.
@@ -360,7 +363,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       better one side by side, why yours fell short and what's better, then **Try this prompt** (a
       new chat with it filled in); a habit tip can **Show me**
       the Jig feature. One of each a week at most.
-    - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
+    - **Browser records the network:** Claude reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
       list — so API calls are debugged there instead of copied from your browser.
 - **Phase 10 (done, reworked): no self-editing.** When no slot can do a request, the build ends with a
@@ -535,17 +538,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Artifacts:** when Claude publishes a page in a chat, its card has **Open in Jig** (Preview) and
   **Open on claude.ai**. Tools → Artifacts lists those, and on request every artifact on your claude.ai
   account; Claude Code reads one back to open it in Jig.
-- **Claude's browser:** Claude opens your dev server (or any http/https/file page) in a real headless
+- **Browser:** Claude opens your dev server (or any http/https/file page) in a real headless
   browser inside Jig, reads it, clicks and types, takes screenshots that show in the chat (the whole
   page, or phone/tablet/desktop sizes in one go), and reads the console. The view opens by itself
-  (turn off Settings → Claude Code → Show Claude's browser when it's used to keep it closed); its size
-  never limits Claude. The **Claude's browser** view
-  (right sidebar, or Tools → Open Claude's browser) shows the
+  (turn off Settings → Claude Code → Show Browser when it's used to keep it closed); its size
+  never limits Claude. The **Browser** view
+  (right sidebar, or Tools → Open Browser) shows the
   page live with an address bar, back/forward/reload, desktop/tablet/phone sizes and the console; click
   and type on it to take over. Try it with the fake engine: `browse file:///path/to/page.html`.
 - **Testing on a small model** (D-124): chats hand page testing to the `jig-tester` subagent, which
-  uses Claude's browser on Haiku (Settings → Claude Code → Tester model) and reports PASS/FAIL per
-  check with screenshots. Tools → Test something… or the flask in Claude's browser view starts a
+  uses Browser on Haiku (Settings → Claude Code → Tester model) and reports PASS/FAIL per
+  check with screenshots. Tools → Test something… or the flask in the browser view starts a
   test chat on that model. Try it with the fake engine: Tools → Test something… → anything.
 - **Images from tools:** screenshots and charts that a tool returns (an MCP browser, a plotting tool)
   show as thumbnails in the chat instead of "[image]".
@@ -742,7 +745,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.
-  - Claude's browser network log on a real dev server (bodies of the first page's requests).
+  - Browser network log on a real dev server (bodies of the first page's requests).
 
 - **Real Claude Code sessions with your login** (phase 4): start a session, check streaming, tool
   cards, permission prompts, Always allow, interrupt, model switch, resume after restarting Jig, and that
@@ -780,7 +783,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 - **Git live refresh on Windows:** in a workspace with many repositories, edit a file in one of them
   outside Jig; it should show in the Git view within about a second. Task Manager should show no steady
   `git` processes while nothing changes. (Linux, where the tests run, uses the polling fallback.)
-- **Claude's browser with a real chat:** ask Claude to start your dev server and check a page. Check
+- **Browser with a real chat:** ask Claude to start your dev server and check a page. Check
   that the view follows, that clicks and typing on the picture reach the page (also on a HiDPI
   screen), that screenshots show in the chat, and that the browser window doesn't keep Jig running
   after you close it.

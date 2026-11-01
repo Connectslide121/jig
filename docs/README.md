@@ -27,7 +27,7 @@ root [`README.md`](../README.md).
 | [attempts.md](reference/attempts.md) | Try several ways: parallel attempts in git worktrees, judged by Claude |
 | [routines.md](reference/routines.md) | Claude Code routines: the Routines tab, chat cards, guarded tool calls |
 | [artifacts.md](reference/artifacts.md) | Opening Claude's artifacts in Jig, from chats and from claude.ai |
-| [browser.md](reference/browser.md) | Claude's browser: the offscreen page, its tools, the console and network log, and the live view |
+| [browser.md](reference/browser.md) | Browser: the offscreen page, its tools, the console and network log, and the live view |
 | [terminals.md](reference/terminals.md) | Terminals, scripts, groups, and Claude's terminals |
 | [preview.md](reference/preview.md) | File previews, editing in Preview, and the `jig-file:` protocol |
 | [configure.md](reference/configure.md) | Configuring Jig from a chat: the tools, protected settings, Undo |

@@ -347,11 +347,11 @@ export function EngineSettings() {
         />
       </SettingRow>
       <SettingRow
-        label="Show Claude's browser when it's used"
-        description="Opens the Claude's browser view by itself when Claude starts browsing, so you can watch. The view only shows a picture of the page: Claude resizes the page and takes screenshots at any size whatever the view's size, and no window ever pops up. Turn it off to keep the view closed; you can open it from Tools."
+        label="Show Browser when it's used"
+        description="Opens the browser view by itself when Claude starts browsing, so you can watch. The view only shows a picture of the page: Claude resizes the page and takes screenshots at any size whatever the view's size, and no window ever pops up. Turn it off to keep the view closed; you can open it from Tools."
       >
         <Switch
-          label="Show Claude's browser when it's used"
+          label="Show Browser when it's used"
           checked={config.browser.showWhenUsed}
           onChange={(showWhenUsed) => void updateConfig({ browser: { showWhenUsed } })}
         />

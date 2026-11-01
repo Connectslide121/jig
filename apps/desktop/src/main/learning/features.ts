@@ -59,14 +59,14 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
     where: "mic button, Ctrl+Shift+Space",
   },
   {
-    name: "Claude's browser",
+    name: "Browser",
     what: "Claude opens the app, clicks through it, takes screenshots and reads the console itself",
     where: "ask a chat to check the page",
     action: "jig.openBrowser",
   },
   {
     name: "Test something",
-    what: "a test chat on a small model that checks a flow in Claude's browser",
+    what: "a test chat on a small model that checks a flow in the browser",
     where: "Search → Test something…",
     action: "jig.testSomething",
   },

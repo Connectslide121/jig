@@ -2387,3 +2387,9 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - **The builder's check** now also fails when addon.json names a host function host.ts doesn't export.
 - Rejected: arbitrary event names or a general event bus (unstable contracts); letting add-ons badge
   other add-ons' or Jig's views; OS notifications while Jig is in front (the toast is enough).
+
+## D-216: Call the built-in browser Browser
+
+- Accepted, Jon: rename the visible "Claude's browser" feature to "Browser".
+- The view, open action, empty state, accessibility label, settings and feature descriptions use
+  Browser. Keep the existing view/action ids, tool names and saved settings so layouts keep working.

@@ -62,7 +62,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "workspaces", title: "Projects & workspaces", icon: FolderGit2 },
   { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
-  { id: "browser", title: "Claude's browser", icon: Globe },
+  { id: "browser", title: "Browser", icon: Globe },
   { id: "files", title: "Files & editing", icon: FileCode },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
@@ -676,8 +676,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           </Section>
           <Section
             id="browser"
-            title="Claude's browser"
-            lead="Claude checks its own web work in a real browser inside Jig: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; the Claude's browser view shows it live, and you can take over with your mouse and keyboard."
+            title="Browser"
+            lead="Claude checks its own web work in a real browser inside Jig: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; the browser view shows it live, and you can take over with your mouse and keyboard."
             shot={{
               src: browserShot,
               alt: "Claude checking a shop page in its browser, with a screenshot in the chat",

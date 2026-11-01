@@ -174,7 +174,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   <tr>
     <td colspan="2" valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=17" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
-      <b>Claude's browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
+      <b>Browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse
       and keyboard. Testing runs on a small model (Haiku): chats hand it to the jig-tester helper, or

@@ -186,10 +186,10 @@ The `jig` MCP server (`engine/jigTools.ts`) has `jig_list_addons`, `jig_request_
 other modules register with `registerJigTools`:
 - **Configuration** (settings, themes, layout, add-ons, projects): `docs/reference/configure.md`.
 - **Terminals** (`jig_terminal_run/read/list/stop`): `docs/reference/terminals.md`.
-- **Claude's browser** (`jig_browser_*`): `docs/reference/browser.md`.
+- **Browser** (`jig_browser_*`): `docs/reference/browser.md`.
 
 Every chat with these tools also gets one subagent (`StartOptions.agents`, the SDK's `agents`):
-**`jig-tester`** (`shared/tester.ts`, D-124) tests pages in Claude's browser on
+**`jig-tester`** (`shared/tester.ts`, D-124) tests pages in the browser on
 `engine.testerModel` (Haiku by default), with the browser tools and Read/Grep/Glob only, without
 CLAUDE.md; `jigContext` tells Claude to hand testing to it. Search → Test something… (and the flask
 in the browser view) starts a chat on the tester model with the same protocol (`testChatMessage`).

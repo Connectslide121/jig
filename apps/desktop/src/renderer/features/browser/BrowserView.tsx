@@ -48,7 +48,7 @@ function useBrowser() {
 }
 
 /**
- * Claude's browser: the live page Claude opens with its jig_browser_* tools. You watch it work and can
+ * Browser: the live page Claude opens with its jig_browser_* tools. You watch it work and can
  * take over at any time: clicks, scrolling and typing on the picture go to the page.
  */
 export function BrowserView(_props: ViewProps) {
@@ -223,7 +223,7 @@ export function BrowserView(_props: ViewProps) {
         {open && frame ? (
           <div
             role="application"
-            aria-label="Claude's browser page"
+            aria-label="Browser page"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the live page takes keyboard input like a browser
             tabIndex={0}
             className="absolute inset-0 outline-none focus:ring-1 focus:ring-focus"
@@ -249,7 +249,7 @@ export function BrowserView(_props: ViewProps) {
             />
           </div>
         ) : (
-          <Empty title="Claude's browser" icon={Globe}>
+          <Empty title="Browser" icon={Globe}>
             Claude opens pages here to check its work: it clicks, types, takes screenshots and reads the
             console, and you watch. Ask a chat to "open the app and check the login form", or type an address
             above.

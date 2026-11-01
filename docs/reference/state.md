@@ -40,7 +40,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `themes/openvsx/<namespace>.<name>/` | extension subset | themes installed from Open VSX: `package.json`, `package.nls.json` and JSON files only (file icon themes: also their icons and fonts) |
 
 Outside `~/.jig`:
-- **Claude's browser** keeps its cookies and storage in Electron's session `persist:jig-browser`, under
+- **Browser** keeps its cookies and storage in Electron's session `persist:jig-browser`, under
   Electron's user data folder (`docs/reference/browser.md`).
 - **Claude Code** keeps its own conversations and settings in `~/.claude`. Jig reads no credentials
   there. It only appends to `CLAUDE.md` when you choose Remember (`#`), and lists your skills.
@@ -66,7 +66,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.quickModel` | `"haiku"` | add-on questions asked with `quick` (commit messages): short, simple answers |
 | `engine.claudeAiConnectors` | `false` | load your claude.ai account's connectors (Asana, Notion, Linear…) into new chats; off sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, so none is flagged as needing sign-in; the MCP servers in your Claude Code settings are unaffected (D-160) |
 | `engine.defaultPermissionMode` | `plan` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
-| `engine.testerModel` | `"haiku"` | model for testing in Claude's browser: the `jig-tester` subagent every chat gets, and Search → Test something… (D-124) |
+| `engine.testerModel` | `"haiku"` | model for testing in the browser: the `jig-tester` subagent every chat gets, and Search → Test something… (D-124) |
 | `engine.searchModel` | `"haiku"` | model of the `jig-search` subagent every chat gets and is asked to hand code searches to; empty = no search subagent (D-207) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
@@ -87,7 +87,7 @@ A new state file is documented here in the same commit that adds it.
 | `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | soft sounds while Claude works after you hand it a task by voice, a chime when it finishes or needs you (D-210) |
-| `browser.showWhenUsed` | `true` | open the Claude's browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
+| `browser.showWhenUsed` | `true` | open the browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |
 | `learning.retentionDays` | `90` | delete activity older than this |

@@ -10,7 +10,7 @@ export const BROWSER_VIEW = "jig.browser";
 export function registerBrowser(): void {
   registerView({
     id: BROWSER_VIEW,
-    title: "Claude's browser",
+    title: "Browser",
     icon: Globe,
     defaultRegion: "right",
     component: BrowserView,
@@ -18,7 +18,7 @@ export function registerBrowser(): void {
   });
   registerAction({
     id: "jig.openBrowser",
-    title: "Open Claude's browser",
+    title: "Open Browser",
     group: "Claude",
     icon: Globe,
     keywords: ["browser", "web", "preview", "localhost"],
