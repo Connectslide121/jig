@@ -47,7 +47,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cn(
-        "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
+        "no-drag relative inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
         "disabled:pointer-events-none",
         !busy && "disabled:opacity-50",
         variants[variant],
@@ -56,16 +56,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       {...rest}
     >
-      {(Icon || busy !== undefined) && (
+      {Icon && (
         <span className="flex size-4 shrink-0 items-center justify-center">
-          {busy ? (
-            <Spinner size="sm" tone="inherit" />
-          ) : Icon ? (
-            <Icon className="block size-4 shrink-0" />
-          ) : null}
+          {busy ? <Spinner size="sm" tone="inherit" /> : <Icon className="block size-4 shrink-0" />}
         </span>
       )}
-      {children}
+      {/* Without an icon the spinner sits over the label, so nothing is reserved or moves. */}
+      {!Icon && busy ? (
+        <>
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Spinner size="sm" tone="inherit" />
+          </span>
+          <span className="invisible">{children}</span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 });
@@ -90,7 +96,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-label={label}
       title={label}
       className={cn(
-        "no-drag inline-flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
+        "no-drag relative inline-flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
         "hover:bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         active && "bg-active text-fg",
         size === "sm" ? "size-7" : "size-8",
