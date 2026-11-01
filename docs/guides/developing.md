@@ -29,6 +29,25 @@ Useful environment variables:
 
 PowerShell: `$env:JIG_HOME="C:\temp\jig"; npm run dev`.
 
+## Automatic cleanup in Claude Code
+
+The repository's `.claude/settings.json` registers a native `PostToolUse` command hook. Jig loads
+project settings through the Claude Agent SDK, so it also works in Jig chats opened in this repo.
+Start a fresh chat after adding/changing hooks so Claude Code loads the configuration.
+
+After Edit/Write, `scripts/format-after-tool.mjs` runs the installed Biome on that file. After
+Bash/PowerShell it checks all modified and untracked, non-ignored files in this checkout, covering
+Python and other script writes too. This sweep can also format pre-existing uncommitted edits.
+Deleted files and paths resolving outside the checkout are skipped; Biome's own exclusions apply.
+It applies formatting (including LF line endings), import organization and safe lint fixes, never
+`--unsafe`. Unsupported file types are skipped. Success is silent; remaining lint/parser failures
+are reported to Claude. The script uses no AI, network requests or package downloads.
+
+This setup covers Jig's source checkout, not arbitrary projects opened in Jig, external editors,
+background processes after their tool returns, or writes in a different worktree. Other projects
+need their own formatter/hook configuration. It doesn't replace `npm run check` or fix logic bugs.
+Run `npm run format` manually as needed; remove the hook entry to disable automatic cleanup.
+
 ## How the dev loop works
 
 `apps/desktop/scripts/dev.mjs` starts:

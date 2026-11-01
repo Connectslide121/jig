@@ -17,6 +17,7 @@
 - [x] Dependencies pinned to exact versions at least two weeks old (security patches excepted)
 - [x] TypeScript project references, Biome, Vitest, Playwright configured
 - [x] `npm run check` (typecheck + lint + test + token check)
+- [x] Native Claude Code hook applies Biome safe fixes after file edits and shell-script writes (D-220)
 
 ## Notes
 

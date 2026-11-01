@@ -52,6 +52,12 @@ JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts   # regenerate screenshots (after a build)
 ```
 
+Claude Code chats opened in this repository load `.claude/settings.json`: after Edit/Write and
+Bash/PowerShell tools, `scripts/format-after-tool.mjs` runs the installed Biome with safe fixes.
+Shell tools sweep modified/untracked files in this checkout. Keep script-written text LF on Windows
+(Python: `open(..., newline="\n")`); the hook is a fallback, not a replacement for `npm run check`.
+See `docs/guides/developing.md` for scope and activation.
+
 What the fake engine does for which message is listed in `docs/guides/testing.md` → The fake engine.
 
 ## Architecture rules

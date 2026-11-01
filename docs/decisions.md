@@ -2477,3 +2477,15 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   per speaker (two-minute window) with gaps in place, instead of fixed 96 px rows.
 - Pre-join: preview and camera/muted switches beside the device and language choices; the camera
   preview follows the switch. Connection: a status row, field hints, Connect saves first.
+
+## D-220: Automatic Biome cleanup through a project hook
+
+- Jon asked for automatic fixes for recurring Windows CRLF/formatting cleanup and approved using
+  a Claude Code hook. Project-only scope and implementation are **Claude, on my own**.
+- Use native `.claude/settings.json` PostToolUse hooks, already supported by Jig's project settings
+  loading, rather than changing the engine. Run the installed Biome with safe fixes and no downloads
+  or AI. Direct edits format that file; shell tools sweep modified/untracked, non-ignored files in
+  the source checkout because arbitrary scripts may write multiple files. This may also clean up
+  pre-existing uncommitted edits. Skip deletions and paths resolving outside the checkout.
+- Successful cleanup stays silent; unresolved lint/syntax errors reach Claude. Existing full checks
+  remain required. Other projects, other worktrees and external/background writes aren't covered.
