@@ -254,7 +254,7 @@ function RepoRow({
         </span>
         <span
           className={cn(
-            "flex w-1/3 min-w-0 shrink-0 items-center gap-1 text-xs",
+            "ml-1.5 flex w-1/3 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
