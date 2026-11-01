@@ -266,16 +266,29 @@ export async function startMeetings(): Promise<void> {
   handle("meetings.calendar", async () => {
     enabled();
     if (!fake()) return auth.calendar();
-    const date = new Date().toISOString();
+    // A happening-now meeting plus a few later ones, so the lobby's cards and week view have content.
+    const at = (days: number, hour: number, minutes = 30) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      d.setHours(hour, 0, 0, 0);
+      return { start: d.toISOString(), end: new Date(d.getTime() + minutes * 60_000).toISOString() };
+    };
+    const now = Date.now();
+    const link = "https://teams.microsoft.com/l/meetup-join/test";
     return [
       {
         id: "weekly",
         title: "Weekly products",
-        start: date,
-        end: date,
+        start: new Date(now - 5 * 60_000).toISOString(),
+        end: new Date(now + 25 * 60_000).toISOString(),
         organizer: "Meeting organiser",
-        joinUrl: "https://teams.microsoft.com/l/meetup-join/test",
+        joinUrl: link,
       },
+      { id: "shop-api", title: "Shop API review", ...at(1, 10, 45), organizer: "Alex", joinUrl: link },
+      { id: "portal", title: "Portal planning", ...at(1, 14), organizer: "Sam", joinUrl: link },
+      { id: "contoso", title: "Contoso status call", ...at(2, 9), organizer: "Contoso", joinUrl: link },
+      { id: "retro", title: "Sprint retrospective", ...at(4, 15, 60), organizer: "Alex", joinUrl: link },
+      { id: "fabrikam", title: "Fabrikam onboarding", ...at(8, 11, 60), organizer: "Fabrikam" },
     ] satisfies MeetingEvent[];
   });
   handle("meetings.join", async ({ url, title }, ctx) => {

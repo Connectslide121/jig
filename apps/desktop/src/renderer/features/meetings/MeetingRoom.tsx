@@ -334,6 +334,7 @@ function Room() {
           onRefresh={() => void refreshCalendar()}
           onConnect={() => setSettings(true)}
           onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
+          onJoinLink={() => setJoining({ title: "Teams meeting", url: "" })}
           onOpen={setOpened}
         />
       )}

@@ -53,3 +53,15 @@ export const SPEECH_LANGUAGES: Array<[string, string]> = [
   ["ja-jp", "Japanese"],
   ["zh-cn", "Chinese (Simplified)"],
 ];
+
+/** "Now", "in 12 min", "in 2 h 5 min", "Tomorrow 09:00", "Mon 3 Nov 09:00". */
+export function startsIn(startIso: string, endIso: string, now = Date.now()): string {
+  const start = new Date(startIso).getTime();
+  if (start <= now && now < new Date(endIso).getTime()) return "Now";
+  const minutes = Math.round((start - now) / 60000);
+  if (minutes < 1) return "Starting";
+  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 12 * 60)
+    return `in ${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`;
+  return `${dayLabel(startIso)} ${clock(startIso)}`;
+}

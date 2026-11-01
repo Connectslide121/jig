@@ -43,7 +43,10 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await room.getByRole("button", { name: "Refresh calendar" }).click();
     await expect(room.getByText("Weekly products", { exact: true })).toBeVisible();
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/agenda.png" });
-    await room.getByRole("button", { name: "Join", exact: true }).click();
+    await room.getByRole("button", { name: "Week", exact: true }).click();
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/week.png" });
+    await room.getByRole("button", { name: "Agenda", exact: true }).click();
+    await room.getByRole("button", { name: "Join Weekly products", exact: true }).click();
     const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
     await prejoin.getByRole("checkbox", { name: /I will inform/ }).check();
     await prejoin.getByLabel("Speech language").selectOption("sv-se");

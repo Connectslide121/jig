@@ -2510,3 +2510,9 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   panels).
 - The layout lives in meetings.json through `meetings.layout` (validated, room only), not in the
   workbench layout, which this window doesn't load. Saving is debounced while a handle is dragged.
+- Lobby, after Jon's feedback ("hard to see multiple meetings", no small Join buttons, "a card or
+  something that i can click the whole thing", "see my week as well … with a toggle"): Next up is
+  a large card with time, countdown and a Join cue; later meetings are cards by day (Agenda) or
+  Monday–Sunday columns (Week, this and next week); saved meetings are cards with caption count,
+  notes and open actions. Every card is the button. The test service returns a week of sample
+  meetings so the views can be tested.

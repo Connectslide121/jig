@@ -1,7 +1,7 @@
 # Status
 
-Meeting window screens (2026-11-02, D-221): the window now has a lobby (Upcoming and Saved meetings,
-Join from link, Connection), a live room and a saved meeting's review. In the live room the call is
+Meeting window screens (2026-11-02, D-221): the window now has a lobby (a large Next up card, the
+next 14 days as cards with an Agenda | Week toggle, saved meetings as cards; every card is clickable), a live room and a saved meeting's review. In the live room the call is
 the main area; Transcript and Notes go in the left, right or bottom slot from their ⋯ menus, share
 a slot with a resizable split, can be hidden or reset from Layout, and the layout is remembered.
 Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
