@@ -361,6 +361,21 @@ describe("Normalizer", () => {
     expect(result[1]).toMatchObject({ type: "result", ok: false });
   });
 
+  it("reports a turn the user stopped as stopped, not as an error, once", () => {
+    const n = new Normalizer();
+    const failed = {
+      type: "result",
+      subtype: "error_during_execution",
+      is_error: true,
+      errors: ["[ede_diagnostic] result_type=user stop_reason=tool_use"],
+      duration_ms: 10,
+    };
+    n.markInterrupted();
+    expect(n.handle(failed)[0]).toMatchObject({ type: "result", ok: false, stopped: true, error: undefined });
+    expect(n.handle(failed)[0]).toMatchObject({ type: "result", ok: false, error: failed.errors[0] });
+    expect(n.handle(failed)[0]).not.toHaveProperty("stopped");
+  });
+
   it("passes on plan rate-limit events (resets in seconds or milliseconds)", () => {
     const n = new Normalizer();
     expect(

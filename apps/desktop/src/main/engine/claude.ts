@@ -231,6 +231,7 @@ export class ClaudeEngine implements Engine {
       background: (toolUseId) => q.backgroundTasks(toolUseId),
       stopTask: (taskId) => q.stopTask(taskId),
       interrupt: async () => {
+        normalizer.markInterrupted();
         await q.interrupt();
       },
       setModel: (model) => q.setModel(model || undefined),

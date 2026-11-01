@@ -113,6 +113,12 @@ const TASK_STATUS: Record<string, "running" | "completed" | "failed" | "stopped"
 export class Normalizer {
   /** The last message of the main conversation (not a subagent's): where a rewind can resume. */
   private lastChainUuid: string | undefined;
+  private interrupted = false;
+
+  /** The user pressed Stop: the turn's failed result is a stop, not an error. */
+  markInterrupted(): void {
+    this.interrupted = true;
+  }
   /** message id → ordinal counters per block type, for streamed blocks. */
   private streamed = new Map<string, { text: number; thinking: number; byIndex: Map<number, string> }>();
   /** message id → ordinal counters for blocks from complete assistant messages. */
@@ -438,7 +444,9 @@ export class Normalizer {
 
   private result(m: Msg): EngineEvent[] {
     const ok = m.subtype === "success" && !m.is_error;
-    const error = ok ? undefined : m.errors?.join("\n") || m.result || m.subtype;
+    const stopped = !ok && this.interrupted;
+    this.interrupted = false;
+    const error = ok || stopped ? undefined : m.errors?.join("\n") || m.result || m.subtype;
     const events: EngineEvent[] = [];
     if (!ok && typeof error === "string" && LOGIN_TEXT.test(error))
       events.push({ type: "error", message: error, code: "not_signed_in" });
@@ -452,6 +460,7 @@ export class Normalizer {
       ...(modelUsage ? { modelUsage } : {}),
       numTurns: m.num_turns,
       error,
+      ...(stopped ? { stopped: true } : {}),
       ...(this.lastChainUuid ? { chainUuid: this.lastChainUuid } : {}),
     });
     return events;

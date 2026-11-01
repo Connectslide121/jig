@@ -9,6 +9,7 @@ import {
   Info,
   MoreHorizontal,
   Pencil,
+  Square,
   SquareTerminal,
   TriangleAlert,
   Undo2,
@@ -236,11 +237,14 @@ const Item = memo(function Item({
     case "result":
       return (
         <div
-          className={cn("flex items-center gap-2 text-2xs", item.ok ? "text-hint" : "text-danger")}
+          className={cn(
+            "flex items-center gap-2 text-2xs",
+            item.ok || item.stopped ? "text-hint" : "text-danger",
+          )}
           data-testid="turn-result"
         >
-          {!item.ok && <CircleAlert className="size-3" />}
-          <span>{item.ok ? "Done" : (item.error ?? "Failed")}</span>
+          {item.stopped ? <Square className="size-3" /> : !item.ok && <CircleAlert className="size-3" />}
+          <span>{item.ok ? "Done" : item.stopped ? "Stopped" : (item.error ?? "Failed")}</span>
           <span>· {formatDuration(item.durationMs)}</span>
           {item.usage && (
             <span>

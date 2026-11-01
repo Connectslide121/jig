@@ -296,6 +296,8 @@ export type ChatItem =
       usage?: Usage;
       error?: string;
       /** The last Claude Code message of this turn: rewinding to after this turn resumes here. */
+      /** The user stopped the turn (not an error). */
+      stopped?: boolean;
       chainUuid?: string;
     }
   | {
@@ -434,6 +436,8 @@ export type EngineEvent =
       modelUsage?: Record<string, ModelUsage>;
       numTurns?: number;
       error?: string;
+      /** The user stopped the turn (not an error). */
+      stopped?: boolean;
       chainUuid?: string;
     }
   | { type: "status"; status: "compacting" | "requesting" | null }

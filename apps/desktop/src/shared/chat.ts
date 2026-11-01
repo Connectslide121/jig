@@ -203,15 +203,16 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         costUsd: turnCost,
         usage: event.usage,
         error: event.error,
+        ...(event.stopped ? { stopped: true } : {}),
         ...(event.chainUuid ? { chainUuid: event.chainUuid } : {}),
       });
       const u = state.meta.usage;
       meta({
-        status: event.ok ? "idle" : "error",
+        status: event.ok || event.stopped ? "idle" : "error",
         costUsd: total,
         ...(event.modelUsage ? { modelUsage: event.modelUsage } : {}),
         turns: state.meta.turns + 1,
-        lastError: event.ok ? undefined : event.error,
+        lastError: event.ok || event.stopped ? undefined : event.error,
         usage: event.usage
           ? {
               inputTokens: u.inputTokens + event.usage.inputTokens,

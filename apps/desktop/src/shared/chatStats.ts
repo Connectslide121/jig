@@ -250,7 +250,7 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         break;
       case "result":
         stats.turns++;
-        if (!item.ok) stats.failedTurns++;
+        if (!item.ok && !item.stopped) stats.failedTurns++;
         stats.workingMs += item.durationMs || 0;
         break;
       case "shell":
