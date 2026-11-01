@@ -209,7 +209,58 @@ export class FakeEngine implements Engine {
         // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
         const isTestChat = lower.startsWith("test this in claude's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
-        if (options.toolHandlers?.catalog) {
+        if (options.toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
+          const match = /\(([a-f\d-]{36})\), captured through ([^\n]+)\.\n/.exec(text);
+          if (!match) throw new Error("Missing meeting snapshot");
+          const id = match[1]!;
+          const through = match[2]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({
+            type: "tool_use",
+            id: readId,
+            name: "mcp__jig__jig_meeting_read",
+            input: { id, through },
+          });
+          const output = outputText(await options.toolHandlers.jig_meeting_read({ id, through }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          if (text.includes("Write meeting notes:") && options.toolHandlers.jig_meeting_save_notes) {
+            const projects = JSON.parse(
+              /optional projectId from (\[.*?\])\./.exec(text)?.[1] ?? "[]",
+            ) as Array<{ id: string }>;
+            const input = {
+              id,
+              notes:
+                "## Summary\nThe team discussed the Shop API and Portal.\n\n## Decisions\nReview the API before release.\n\n## Actions\nUser: review the Shop API. Sam: update documentation.",
+              actions: [
+                {
+                  title: "Review the Shop API",
+                  prompt: "Review the Shop API before release and report findings.",
+                  owner: "User",
+                  mine: true,
+                  projectId: projects[0]?.id,
+                  evidence: "Alex: review the API before release",
+                },
+                {
+                  title: "Update documentation",
+                  prompt: "Update the Portal service documentation.",
+                  owner: "Sam",
+                  projectId: projects[1]?.id,
+                  evidence: "Sam: update service documentation",
+                },
+              ],
+            };
+            const saveId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: saveId, name: "mcp__jig__jig_meeting_save_notes", input });
+            const saved = outputText(await options.toolHandlers.jig_meeting_save_notes(input));
+            onEvent({ type: "tool_result", toolUseId: saveId, output: saved, isError: false });
+            await stream(`${msg}:text:0`, saved, signal);
+          } else
+            await stream(
+              `${msg}:text:0`,
+              `Meeting answer using this chat's project and the captured transcript.\n\n${output.slice(0, 1000)}`,
+              signal,
+            );
+        } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (/^\/\S/.test(text.trim())) {
           // A Claude Code command or skill: built-ins print something, skills answer like Claude.

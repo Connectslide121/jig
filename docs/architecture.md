@@ -537,3 +537,25 @@ ends (the chat leaves voice mode) and `cues.ts` follows the chat: a soft Web Aud
 finishes or needs you (`speech.workSound`). "Bye" only ends talking; a chat Jig put in plan mode goes
 back to its own mode once it is idle.
 
+
+## Global meeting room (D-217)
+
+The built-in Meetings add-on (global scope, addons/meetings) opens the host's dedicated media window
+through ctx.meetings.open(). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
+Graph calendar reads and keyless ACS credential exchange using AzureCliCredential. No token cache,
+client secret or resource key is persisted. Only the owned window can obtain a calling credential,
+write captions/status, select a screen, or send questions/actions. The first-party media renderer
+uses the pinned official Calling SDK; this narrow media exception follows the speech/device pattern.
+Its CSP allows SDK HTTPS/WebSocket connections and blob media/workers, while other Jig pages retain
+their existing connect/media policy. No remote scripts are permitted. Microphone/camera permission
+is limited to Jig's own origin/main frame; screen sharing requires an expiring one-use source selected
+in the meeting window. The window is an appWindows member, not a hidden browser helper.
+
+The window is independent of workbench mounts and project selection; CallClient, TeamsCallAgent and
+caption listeners live in its media owner. Closing/reloading/crashing and application quit have explicit
+lifecycle handling. Stored meeting records contain no projectId. Questions make immutable snapshots,
+then create normal project/meeting-only Plan-mode chats that read paginated text with jig_meeting_read.
+Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'
+shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
+See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.
+

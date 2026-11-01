@@ -93,6 +93,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
   };
   return {
     addon: { id, name: addon.name },
+    meetings: { open: () => call("meetings.open") },
     host: {
       call: <T>(method: string, args?: unknown) => call("addons.call", { id, method, args }) as Promise<T>,
     },

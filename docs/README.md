@@ -58,6 +58,7 @@ Each built-in add-on has a README next to its code (and is also an example of th
 | [Notes](../addons/notes/README.md) | Important project knowledge shared across chats, maintained by you and Claude |
 | [Workflows](../addons/workflows/README.md) | Steps you repeat, per project: by hand, with help, or on a schedule |
 | [Tasks](../addons/tasks/README.md) | A task queue: prompts Claude does in order, each reported in a table (outcome, summary, follow-ups) |
+| [Meetings](../addons/meetings/README.md) | Teams meeting room, screen sharing, live named captions, project-aware questions and reviewed actions |
 
 ## Guides (how-tos)
 

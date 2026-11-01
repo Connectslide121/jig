@@ -48,3 +48,8 @@ went, so you read the results as a table instead of scrolling one long chat.
   started changes status. A watcher (every minute) catches up after a restart; a task whose chat
   went idle without answering is marked "Interrupted".
 - Kept in the add-on's global storage as `queue` (`lib/tasks.ts` has the logic and its tests).
+
+
+- **Reviewed meeting actions** (D-217): the shared addReviewed host export accepts a title, standalone
+  prompt, destination project and stable source id. It deduplicates retries and pauses the queue;
+  it never starts a chat or runs an action automatically. Meetings' review modal is the user action.

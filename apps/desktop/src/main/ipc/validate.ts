@@ -28,6 +28,16 @@ const addonId = z
   .regex(/^[a-z0-9][a-z0-9.-]*$/)
   .max(100);
 const int = z.number().int();
+const meetingAction = z.object({
+  id,
+  title: z.string().min(1).max(500),
+  prompt: z.string().min(1).max(50_000),
+  owner: z.string().max(200),
+  mine: z.boolean().optional(),
+  projectId: id.optional(),
+  evidence: z.string().max(4000),
+  queued: z.boolean().optional(),
+});
 
 /** What a project's settings may hold (the store trims and checks the rest). */
 const projectPatch = z.object({
@@ -50,6 +60,47 @@ const attachment = z.object({
 });
 
 export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
+  "meetings.configure": z
+    .object({ tenantId: z.uuid(), clientId: z.uuid(), endpoint: z.url().max(1000) })
+    .strict(),
+  "meetings.revealChat": z.object({ sessionId: id }).strict(),
+  "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
+  "meetings.credential": z.object({ id: id.optional() }).strict(),
+  "meetings.caption": z
+    .object({
+      id,
+      caption: z
+        .object({
+          id,
+          speakerId: z.string().max(500),
+          speaker: z.string().max(200),
+          timestamp: z.iso.datetime(),
+          text: z.string().min(1).max(20_000),
+          final: z.boolean(),
+        })
+        .strict(),
+    })
+    .strict(),
+  "meetings.status": z
+    .object({
+      id,
+      status: z.enum(["joining", "connected", "ended", "interrupted"]),
+      capture: z.string().max(500),
+      gap: z.string().max(500).optional(),
+    })
+    .strict(),
+  "meetings.ask": z
+    .object({
+      id,
+      question: z.string().min(1).max(50_000),
+      projectId: id.optional(),
+      sessionId: id.optional(),
+    })
+    .strict(),
+  "meetings.notes": z.object({ id }).strict(),
+  "meetings.actions": z.object({ id, actions: z.array(meetingAction).max(200) }).strict(),
+  "meetings.queue": z.object({ id, actionIds: z.array(id).min(1).max(200) }).strict(),
+  "meetings.selectShare": z.object({ sourceId: id }).strict(),
   "skills.details": z.object({ id }),
   "files.image": z.object({ path }),
   "files.preview": z.object({ path }),

@@ -385,6 +385,11 @@ export class AddonService {
 
   async storageDelete(id: string, key: string): Promise<void> {
     const file = this.storageFile(id);
+    if (id === "meetings")
+      throw new JigError(
+        "protected",
+        "Meeting data is host-managed. Use Meetings Connection, notes and action review.",
+      );
     await this.inOrder(id, async () => {
       const data = await readJson(file, z.record(z.string(), z.unknown()));
       delete data[key];
@@ -394,6 +399,11 @@ export class AddonService {
 
   async storageSet(id: string, key: string, value: unknown): Promise<void> {
     const file = this.storageFile(id);
+    if (id === "meetings")
+      throw new JigError(
+        "protected",
+        "Meeting data is host-managed. Use Meetings Connection, notes and action review.",
+      );
     await this.inOrder(id, async () => {
       const data = await readJson(file, z.record(z.string(), z.unknown()));
       data[key] = value;

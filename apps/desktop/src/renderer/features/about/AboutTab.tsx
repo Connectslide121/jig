@@ -22,6 +22,7 @@ import {
   SquareTerminal,
   Tag,
   UserRound,
+  Video,
   Wand2,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -49,6 +50,7 @@ import dashboard from "./shots/dashboard.jpg";
 import filesShot from "./shots/files.jpg";
 import git from "./shots/git.jpg";
 import knowledgeShot from "./shots/knowledge.jpg";
+import meetingsShot from "./shots/meetings.png";
 import releasesShot from "./shots/releases.jpg";
 import settings from "./shots/settings.jpg";
 import skillsShot from "./shots/skills.png";
@@ -63,6 +65,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "claude-extras", title: "Claude around your work", icon: Sparkles },
   { id: "attempts", title: "Try several ways", icon: Split },
   { id: "browser", title: "Browser", icon: Globe },
+  { id: "meetings", title: "Teams meetings", icon: Video },
   { id: "files", title: "Files & editing", icon: FileCode },
   { id: "previews", title: "Previews", icon: Eye },
   { id: "git", title: "Git", icon: GitBranch },
@@ -692,6 +695,25 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Console errors are counted in the view, and Claude reads them too",
                 "Desktop, tablet and phone sizes for responsive checks",
                 "Its own cookies and storage, apart from Jig; downloads and camera/location requests are refused",
+              ]}
+            />
+          </Section>
+          <Section
+            id="meetings"
+            title="Teams meetings"
+            shot={{
+              src: meetingsShot,
+              alt: "Global Jig meeting transcript and notes, with screen-sharing and project-aware Claude controls",
+            }}
+            lead="Join Teams in a separate Jig meeting window, share a screen or application window, and save live captions with speaker names. Meetings stay global while you change projects. Ask Claude about the transcript so far with an explicit project's repository context; generate notes and review actions for different project task queues afterwards."
+          >
+            <Bullets
+              items={[
+                "Meetings → Meetings: a two-week calendar agenda, Join from link, and saved meetings",
+                "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
+                "Captions arrive live; no raw audio recording or full-meeting diarization job",
+                "Claude runs only when you ask; reviewed actions are queued in Plan mode and the queue stays paused",
+                "PowerPoint Live, Whiteboard and breakout rooms need the regular Teams client",
               ]}
             />
           </Section>

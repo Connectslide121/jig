@@ -33,6 +33,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 19 | [Model defaults and desktop polish](19-models-and-desktop-polish.md) | 🟡 | configurable native model defaults, pipeline project visibility, grouped menus, money formatting and Windows icon; installer verification remains |
 | 20 | [Skills library](20-skills-library.md) | ✅ | nine curated native plugins, one library with global/project controls and AI feature defaults |
 | 21 | [Speech](21-speech.md) | 🟡 | dictation with local Whisper (mic button, Ctrl+Shift+Space) with live text and WebGPU, Read aloud, talking with Claude (voice turns, spoken replies, approve the plan by voice) in a talking window with sound waves, Claude reading the code while you plan, go-ahead hand-off with a working sound, Settings → Speech; real download, GPU and microphones need checking on a real machine |
+| 22 | [Teams meetings](22-meetings.md) | 🟡 | global meeting room, calendar, screen sharing, live captions, transcript-aware Claude questions and reviewed multi-project tasks; real account/device acceptance remains |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

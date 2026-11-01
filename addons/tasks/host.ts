@@ -183,6 +183,35 @@ export async function list(_args: unknown, api: AddonHostApi): Promise<Queue> {
   });
 }
 
+/** Explicitly reviewed cross-add-on work: idempotent by source and always pauses the queue. */
+export async function addReviewed(
+  args: { title: string; prompt: string; projectId: string; source: string },
+  api: AddonHostApi,
+): Promise<void> {
+  if (
+    !args.title?.trim() ||
+    !args.prompt?.trim() ||
+    !args.projectId ||
+    !args.source ||
+    args.prompt.length > 100_000
+  )
+    throw new Error("Invalid reviewed task");
+  if (!(await api.projects()).some((p) => p.id === args.projectId))
+    throw new Error("Task project no longer exists");
+  await change(api, (q) => {
+    if (q.tasks.some((t) => t.from === args.source)) return [q, undefined];
+    return [
+      addTasks({ ...q, running: false }, [{ title: args.title, prompt: args.prompt }], {
+        projectId: args.projectId,
+        newChat: true,
+        permissionMode: "plan",
+        from: args.source,
+      }),
+      undefined,
+    ];
+  });
+}
+
 export async function add(
   args: {
     /** Prompts, or tasks that say whether they start a new chat (the Add tasks dialog's chats). */

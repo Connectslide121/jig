@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "icon": "list-todo",
   "permissions": ["chat"],
+  "exports": ["addReviewed"],
   "storage": {
     "scope": "global"
   },

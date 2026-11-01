@@ -76,6 +76,23 @@ beforeEach(async () => {
 });
 
 describe("AddonService", () => {
+  it("keeps host-managed meeting connections and records out of generic add-on writes", async () => {
+    await addon(join(root, "builtin", "meetings"), { "addon.json": { id: "meetings", name: "Meetings" } });
+    const s = service();
+    await s.start();
+    try {
+      await expect(s.storageSet("meetings", "settings", { endpoint: "https://example.com" })).rejects.toThrow(
+        "host-managed",
+      );
+      await expect(s.storageSet("meetings", "records", [])).rejects.toThrow("host-managed");
+      await expect(s.storageDelete("meetings", "settings")).rejects.toThrow("host-managed");
+      expect(await s.storageAll("meetings")).toEqual({});
+      await s.storageSet("hello", "count", 1);
+      expect(await s.storageGet("hello", "count")).toBe(1);
+    } finally {
+      s.stop();
+    }
+  });
   it("loads built-in add-ons: UI bundle, CSS, host calls", async () => {
     const s = service();
     await s.start();

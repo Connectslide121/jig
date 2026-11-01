@@ -1,5 +1,14 @@
 import { X } from "lucide-react";
-import { Children, cloneElement, isValidElement, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { Button, IconButton } from "./Button";
@@ -30,6 +39,7 @@ export function Dialog({
   column?: boolean;
   testId?: string;
 }) {
+  const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
   const [closing, setClosing] = useState(false);
   const present = usePresence(open, closing ? 0 : MOTION_MS);
@@ -74,6 +84,7 @@ export function Dialog({
         ref={ref}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
         data-testid={testId}
         onKeyDown={(e) => {
@@ -88,7 +99,9 @@ export function Dialog({
         )}
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
-          <div className="min-w-0 flex-1 truncate text-base font-semibold">{title}</div>
+          <div id={titleId} className="min-w-0 flex-1 truncate text-base font-semibold">
+            {title}
+          </div>
           <IconButton icon={X} label="Close" size="sm" onClick={close} />
         </div>
         <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm", column && "flex flex-col")}>

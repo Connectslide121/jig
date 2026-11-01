@@ -1,5 +1,24 @@
 # Status
 
+Teams meetings (2026-11-01, D-217): Meetings → Meetings opens a global meeting window with a two-week
+calendar, Join from link, pre-join devices/preview, audio/video and screen/window sharing. Named live
+captions are saved incrementally without raw audio or post-meeting processing. Ask Claude opens a normal
+Plan-mode chat with an immutable transcript snapshot and explicit project context; project switches do
+not interrupt the meeting. Generate notes saves a draft action plan for modal review and per-action
+project assignment. Adding selected actions is idempotent, pauses Task queue and never starts it.
+Azure resource and public desktop registration are provisioned in Sprinta Intern, with Europe data
+residency and user-specific calling consent. Calendar consent via CLI was refused; Refresh calendar
+tries normal delegated browser consent separately, and joining by link remains available. Source
+builds import ignored `.azure-local/meetings.json` on normal startup; custom-home/packaged builds use
+Connection. Reconnect Microsoft after a Jig restart (no disk token cache). Real Microsoft sign-in
+and keyless calling-credential issuance passed. Microsoft's calendar consent page confirms admin
+approval is required for Graph Calendars.ReadBasic on jig-meetings. Physical devices, caption attribution,
+screen sharing and long-call refresh still require target-machine acceptance. PowerPoint Live, Whiteboard
+and breakouts aren't supported. The normal local Jig profile has the Azure connection settings saved.
+Production build and npm run check pass (699 tests, 8 skipped). Meetings and existing Task queue
+Electron regressions pass, including project independence, caption revisions, notes and cross-project
+queued tasks. See `addons/meetings/README.md` and `docs/plan/22-meetings.md`.
+
 Browser naming (2026-11-01, D-216): the built-in browser is called Browser in its view,
 Open Browser action, settings and What Jig can do. Search for Open Browser to open it.
 

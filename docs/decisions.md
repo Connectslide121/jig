@@ -2397,6 +2397,35 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - The view, open action, empty state, accessibility label, settings and feature descriptions use
   Browser. Keep the existing view/action ids, tool names and saved settings so layouts keep working.
 
+## D-217: Global Teams meetings through Azure Communication Services
+
+- Accepted, Jon: join Teams through Jig's own meeting room, with live named captions instead of
+  recording/reprocessing or desktop-caption scraping. Azure calling charges accepted; provision in
+  Sprinta Intern. A meeting spans products and must never belong to the active Jig project.
+- **Claude, on my own:** a built-in Meetings add-on launches a dedicated first-party media window via
+  ctx.meetings.open(). Host owns authentication, Graph, storage, lifecycle and media permission checks;
+  the official Calling SDK owns media in the sandboxed renderer. Switching views/projects cannot
+  unmount it. Closing offers keep-running/leave; reload/crash/restart marks an interrupted transcript.
+- Public single-tenant desktop Entra registration, browser loopback sign-in, memory-only MSAL and
+  calling credentials; AzureCliCredential uses the user's own az login for keyless identity exchange.
+  Resource keys and client secrets are not retrieved. Only the owned media window receives calling
+  credentials. Calendar consent is independent so join-by-link still works when calendar is blocked.
+  Connection settings affect billing/authentication and are edited explicitly in Connection, not by AI.
+- Captions carry provider speaker ids/names, original words, timestamps and partial/final markers.
+  Serialized atomic global text writes, no raw audio/video, explicit capture status/gaps, no full-file
+  processing. Participant disclosure is required at pre-join. Activity publishes action ids only.
+- Ask Claude snapshots the transcript immutably and starts a normal Plan-mode Claude Code chat with
+  explicit per-question project context. A paginated read-only tool retrieves it; speech is evidence,
+  never instructions. Each Ask creates a fresh chat; continuing that chat retains its original project.
+- Generate notes starts a normal chat and offers a guarded save-notes tool. Actions carry owner,
+  evidence and optional project. The user edits/selects them in a modal and assigns each destination.
+  Tasks shares addReviewed: idempotent source ids, queue paused, Plan mode, no silent execution.
+- Shared dialogs now associate their visible title with the dialog through aria-labelledby.
+- Scope: ordinary Teams audio/video and screen/window sharing. PowerPoint Live, Whiteboard,
+  breakout-room participation and system-audio sharing are outside this implementation. The SDK's
+  announced Teams-interoperability transition needs future version validation. Real sign-in/devices,
+  caption attribution and long-call refresh need a real test meeting; fake tests never join one.
+
 ## D-218: A calmer, wider talking window, and Claude may plan a task queue
 
 - Status: accepted. Asked for by Jon: redesign the talking window "much more modern and

@@ -1,0 +1,15 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "meetings",
+  "name": "Meetings",
+  "description": "Join Teams meetings in a separate Jig window, capture named live captions, ask Claude with any project's context, and review actions for the task queue. Meetings are global.",
+  "version": "1.0.0",
+  "icon": "video",
+  "permissions": [],
+  "storage": { "scope": "global" },
+  "contributes": {
+    "actions": [
+      { "id": "open", "title": "Meetings", "group": "Meetings", "icon": "video", "run": "openMeetings" }
+    ]
+  }
+}

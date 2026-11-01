@@ -20,6 +20,7 @@ import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
 import { registerLinkHandlers } from "./links";
 import { logger } from "./log";
+import { startMeetings } from "./meetings";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { registerRoutineHandlers } from "./routines";
@@ -92,6 +93,7 @@ async function start() {
   startUsage();
   await startThemes(addonThemes);
   await startAddons();
+  await startMeetings();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
   startDevRequests();

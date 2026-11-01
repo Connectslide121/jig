@@ -224,3 +224,15 @@ data (work items, environments) that others build on. A turned-off add-on can't 
 `addons.jigEvent` (`docs/reference/ipc.md`).
 The UI bundle is served at `jig-addon://<id>/ui.js`, its CSS at `jig-addon://<id>/ui.css`, other files
 of the folder (images) at `jig-addon://<id>/<path>`.
+
+## Meetings window
+
+ctx.meetings.open(): Promise<void> opens/focuses the built-in Meetings media window (D-217).
+Meetings must be enabled. Its call and transcript are global, independent of the active project.
+The host retains the privileged media/authentication implementation; no credential is returned to an
+add-on. Tasks exports addReviewed for explicitly user-reviewed work: {title,prompt,projectId,source}.
+It pauses the queue, defaults to Plan mode, and deduplicates by source. It never starts a chat itself.
+
+The built-in meetings id has host-managed typed state. Generic storageSet/storageDelete (including
+Claude's add-on-data tools) reject writes, preventing bypass of its room-only connection and review
+handlers. Read access remains available; use the meeting transcript tool for paginated snapshots.

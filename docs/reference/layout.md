@@ -200,3 +200,12 @@ layout retains draft tabs until closed. Sending the first prompt rewrites the cu
 so the now-persistent chat tab restores normally. Startup prunes missing/legacy-empty tabs (D-199).
 Explicit workbench panel toggles animate for 160 ms, respecting reduced motion; loading and drag
 resizing do not trigger those animations (D-200).
+
+## Meeting window (D-217)
+
+Meetings → Meetings (addon.meetings.open) opens a separate first-party window, not a project view.
+Its agenda and notes use remembered Pane ids addon.meetings.agenda and addon.meetings.notes. Project
+changes do not unmount media or rewrite the meeting. Pre-join/settings/questions/action review/screen
+selection are modal; media, call controls and status have reserved slots. Dialog titles provide
+accessible names through aria-labelledby. The window can remain running while hidden and is reopened
+through the same menu action. It isn't a hidden browser helper.

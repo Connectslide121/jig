@@ -10,6 +10,14 @@
   Ask for a tool you're missing, and Jig makes it.
 </p>
 
+**Teams meetings in Jig:** a separate meeting room with screen sharing, named live captions,
+on-demand Claude questions using any project's context, and reviewed actions for multiple task queues.
+Uses Azure Communication Services (usage charges apply); [setup and limitations](addons/meetings/README.md).
+
+<p align="center">
+  <img src="apps/desktop/src/renderer/features/about/shots/meetings.png?v=1" alt="Jig's global meeting transcript, notes and screen-sharing controls" width="900">
+</p>
+
 <p align="center">
   <a href="#get-started">Get started</a> ·
   <a href="#build-your-own-tools">Build your own tools</a> ·

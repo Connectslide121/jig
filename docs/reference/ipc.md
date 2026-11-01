@@ -221,3 +221,29 @@ settings, add-on permissions.
 
 Controls use `config.update` / `config.changed` with skills.overrides; no arbitrary paths or code
 can be installed through these methods. The details id is validated at the IPC boundary.
+
+## Meetings (D-217)
+
+All methods are typed in shared/ipc.ts; argument-bearing methods have validate.ts schemas.
+
+| Method | Purpose |
+|---|---|
+| meetings.open | Open/focus the Meetings add-on's dedicated window |
+| meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
+| meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
+| meetings.signIn / meetings.signOut | External browser sign-in / clear memory cache; room only |
+| meetings.calendar | Next 14 days of default calendar; separate delegated consent |
+| meetings.join | Validate Teams link, create global record; room only, one active call |
+| meetings.credential | Memory-only renewable calling token; owned room sender only |
+| meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only |
+| meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant |
+| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat |
+| meetings.revealChat | Open the question/notes chat in the main workbench |
+| meetings.actions / meetings.queue | Room-only edited draft actions / explicitly selected ids to paused Task queue |
+
+Events: meetings.changed (refetch), meetings.leaveRequested (gracefully leave/close room),
+meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
+
+Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
+and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
+Credential methods never expose Graph/MSAL/resource credentials. Non-Jig frames cannot call any IPC.

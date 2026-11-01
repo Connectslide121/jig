@@ -56,15 +56,16 @@ export function mimeFor(path: string): string {
  * code. `'unsafe-eval'` is not allowed. In dev, Vite's client and React refresh need inline scripts and
  * a websocket.
  */
-export function contentSecurityPolicy(dev: boolean): string {
+export function contentSecurityPolicy(dev: boolean, meetingRoom = false): string {
   return [
     "default-src 'self'",
     `script-src 'self' jig-addon: 'wasm-unsafe-eval'${dev ? " 'unsafe-inline'" : ""}`,
     "style-src 'self' 'unsafe-inline' jig-addon:",
     "img-src 'self' data: blob: https: jig-addon: jig-icons: jig-file:",
-    "media-src jig-file:",
+    meetingRoom ? "media-src 'self' blob: jig-file:" : "media-src jig-file:",
+    "worker-src 'self' blob:",
     "font-src 'self' data: jig-icons:",
-    `connect-src 'self' jig-addon: jig-speech:${dev ? " ws://localhost:* http://localhost:*" : ""}`,
+    `connect-src 'self' jig-addon: jig-speech:${meetingRoom ? " https: wss:" : ""}${dev ? " ws://localhost:* http://localhost:*" : ""}`,
     "frame-src http://localhost:* http://127.0.0.1:* jig-file:",
     "object-src 'none'",
     "base-uri 'none'",
@@ -80,7 +81,13 @@ export function installAppProtocol(): void {
     try {
       const body = await readFile(file);
       return new Response(body, {
-        headers: { "content-type": mimeFor(file), "content-security-policy": contentSecurityPolicy(false) },
+        headers: {
+          "content-type": mimeFor(file),
+          "content-security-policy": contentSecurityPolicy(
+            false,
+            url.searchParams.get("meetingRoom") === "1",
+          ),
+        },
       });
     } catch {
       return new Response("Not found", { status: 404 });
@@ -95,7 +102,9 @@ export function installAppProtocol(): void {
         callback({
           responseHeaders: {
             ...details.responseHeaders,
-            "content-security-policy": [contentSecurityPolicy(true)],
+            "content-security-policy": [
+              contentSecurityPolicy(true, new URL(details.url).searchParams.get("meetingRoom") === "1"),
+            ],
           },
         });
       },

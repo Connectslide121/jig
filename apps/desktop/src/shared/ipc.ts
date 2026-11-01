@@ -79,6 +79,29 @@ export interface AppInfo {
 
 /** Method name → argument and result types. */
 export interface HostMethods {
+  "meetings.open": { args: void; result: void };
+  "meetings.revealChat": { args: { sessionId: string }; result: void };
+  "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
+  "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
+  "meetings.signIn": { args: void; result: string };
+  "meetings.signOut": { args: void; result: void };
+  "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
+  "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "meetings.credential": { args: { id?: string }; result: { token: string } };
+  "meetings.caption": { args: { id: string; caption: import("./meetings").MeetingCaption }; result: void };
+  "meetings.status": {
+    args: { id: string; status: import("./meetings").MeetingRecord["status"]; capture: string; gap?: string };
+    result: void;
+  };
+  "meetings.ask": {
+    args: { id: string; question: string; projectId?: string; sessionId?: string };
+    result: { sessionId: string };
+  };
+  "meetings.notes": { args: { id: string }; result: { sessionId: string } };
+  "meetings.actions": { args: { id: string; actions: import("./meetings").MeetingAction[] }; result: void };
+  "meetings.queue": { args: { id: string; actionIds: string[] }; result: void };
+  "meetings.shareSources": { args: void; result: Array<{ id: string; name: string; thumbnail: string }> };
+  "meetings.selectShare": { args: { sourceId: string }; result: void };
   /** Jig's curated bundled skills. Controls are config.skills.overrides. */
   "skills.list": { args: void; result: LibrarySkill[] };
   "skills.details": { args: { id: string }; result: SkillDetails };
@@ -479,6 +502,9 @@ export interface HostMethods {
 
 /** Event topic → payload type. */
 export interface HostEvents {
+  "meetings.changed": void;
+  "meetings.leaveRequested": void;
+  "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;
   /** The theme list or a theme file changed; refetch the list and the active theme. */
   "themes.changed": void;

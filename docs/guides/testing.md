@@ -127,3 +127,19 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 - A bug fix comes with a test that fails without it.
 
 Settings model discovery uses the fake engine’s canned model list (now including Sonnet), without creating a chat or using credentials.
+
+## Meetings
+
+Set both JIG_ENGINE=fake and JIG_MEETINGS=fake for the isolated meeting service; fake engine alone
+never authorises a real meeting. e2e/meetings.spec.ts creates temporary Shop/Portal projects, joins
+a fake calendar meeting, verifies capture across project switches, modal geometry, caption revision
+merging, credential sender restrictions, sharing controls, notes and paused cross-project queueing.
+No real Azure sign-in, microphones, cameras, speakers or billable call is used. Unit tests cover link
+validation, ordering/finals, snapshot isolation, atomic concurrent writes, restart interruption,
+media origin checks and idempotent reviewed task addition. The room screenshot is saved under
+.jig-test-home-meeting-screenshots/meetings.png (separate from other concurrent test results).
+
+| Fake-engine trigger | Behaviour |
+|---|---|
+| Question about meeting …, captured through … | Calls jig_meeting_read with the immutable cutoff and answers with the transcript |
+| Same trigger containing Write meeting notes: | Reads the snapshot, calls jig_meeting_save_notes with two owner/project actions; queues nothing |

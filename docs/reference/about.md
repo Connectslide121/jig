@@ -53,3 +53,7 @@ About screenshots reserve their 1440×900 aspect ratio before lazy loading, so n
 The screenshot scenario returns About to one main pane and hides the bottom panel before capturing the overview and slot cards.
 
 The Skills section also shows the bundled library and its global/project controls (D-205), with `shots/skills.png` captured from the real app. Personal/project skill discovery remains separate.
+
+The Teams meetings section (D-217) uses `shots/meetings.png`, captured by `e2e/meetings.spec.ts`
+under `.jig-test-home-meeting-screenshots/meetings.png`; copy it into shots after reviewing the image.
+It uses the real Electron UI and isolated fake media/Claude services, with neutral sample participants.

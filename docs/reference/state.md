@@ -128,3 +128,16 @@ in every project and projectless chat. Global off wins; project exclusions are r
 re-enabling. New projects are included automatically. Selections affect the next message, using
 the chat's project even if another project is selected in the UI. Catalogue/instructions are
 read-only application resources, not user state. Personal/project Claude skills remain independent.
+
+## Meetings (D-217)
+
+Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint} and records
+{id, title, joinUrl, startedAt, endedAt?, status, capture, captions, gaps, notes, actions}. A record
+has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final;
+actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically
+and are serialized across captions, notes and queue acknowledgements. Active records become interrupted
+with a gap on restart. Immutable question snapshots live in addon-data/meeting-snapshots/<sha256>.json.
+No audio/video or token file is created. MSAL/calling tokens are memory-only; az retains its own login.
+Source builds may import ignored .azure-local/meetings.json once when normal default-home settings are
+empty. The script's setup metadata contains no secret. Connection settings are edited in Meetings →
+Connection, and are not exposed as AI-editable ConfigSchema fields because they govern paid calling.
