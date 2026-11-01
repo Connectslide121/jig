@@ -47,9 +47,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cn(
-        "no-drag relative inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
+        "no-drag inline-flex shrink-0 items-center justify-center rounded-md font-medium leading-none whitespace-nowrap transition-colors",
         "disabled:pointer-events-none",
         !busy && "disabled:opacity-50",
+        // Only for the spinner laid over an icon-less label; never fights a caller's `absolute`.
+        !Icon && busy && "relative",
         variants[variant],
         sizes[size],
         className,
@@ -96,7 +98,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-label={label}
       title={label}
       className={cn(
-        "no-drag relative inline-flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
+        "no-drag inline-flex shrink-0 items-center justify-center rounded-md text-muted transition-colors",
         "hover:bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-50",
         active && "bg-active text-fg",
         size === "sm" ? "size-7" : "size-8",
