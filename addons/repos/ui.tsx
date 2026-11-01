@@ -195,7 +195,7 @@ function RepoRow({
       }}
       className={cn("group flex flex-col rounded-md px-2", expanded ? "bg-hover" : "hover:bg-hover")}
     >
-      <div className="relative flex h-7 items-center gap-1.5 text-sm">
+      <div className="relative flex h-7 items-center gap-1 text-sm">
         <span className="relative flex size-3 shrink-0 items-center justify-center">
           <span
             className={cn(
@@ -238,7 +238,7 @@ function RepoRow({
               </button>
             )}
           </span>
-          <span className="ml-1 flex w-12 justify-start">
+          <span className="ml-0.5 flex w-12 justify-start">
             {status.sync && (
               <button
                 type="button"
@@ -254,7 +254,7 @@ function RepoRow({
         </span>
         <span
           className={cn(
-            "ml-1.5 flex w-1/4 min-w-0 shrink-0 items-center gap-1 text-xs",
+            "flex w-1/3 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
