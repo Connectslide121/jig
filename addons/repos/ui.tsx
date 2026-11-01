@@ -238,7 +238,7 @@ function RepoRow({
               </button>
             )}
           </span>
-          <span className="ml-0.5 flex w-12 justify-start">
+          <span className="ml-0.5 flex w-12 justify-end">
             {status.sync && (
               <button
                 type="button"
