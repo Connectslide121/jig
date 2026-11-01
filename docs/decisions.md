@@ -2345,7 +2345,8 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - **The reflection knows what can be built** (`BUILDABLE` in `reflect.ts`, built from the SDK's
   `SLOTS` so it stays in sync): Jon asked whether Claude is told what add-ons it can build; only the
   builder was. Now a "Build it" idea is checked against it, uses the lowest level, and its goal says
-  where it appears and what it uses.
+  where it appears and what it uses. Jon: an add-on is "like building new full features or modules
+  of Jig", so it's told to think big (a whole area of work brought into Jig) and size it to the need.
 - Rejected: judging message quality with a second AI pass or per message (quota; the weekly query
   sees the chats); recording chat outcomes or more data (D-213); counting repeated permission approvals
   (not recorded; Jig's permission rules already offer "always allow").

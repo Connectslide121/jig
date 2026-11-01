@@ -134,7 +134,7 @@ use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, show
 catalog with the add-on's action ids), and what Jig's builder can build (`BUILDABLE`: level 1 changes,
 what an add-on can do and the slots from `@jig/sdk`, level 3 for the rest), so a tool to build is
 one the builder can really make, at the lowest level, with a goal naming where it appears and what it
-uses. All 18 slots are listed, and that an add-on can combine them into a full tool, not just a button. Learning 2 adds
+uses. All 18 slots are listed, and that an add-on is a whole new feature or module of Jig (a work-item board, a PR review queue…), sized to the need, not just a button. Learning 2 adds
 the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 tips are allowed (one prompting tip and one habit tip a week at most). A prompting tip carries
 `before` (your message(s) as sent), `example` (the same request rewritten the better way) and
