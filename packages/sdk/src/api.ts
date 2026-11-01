@@ -158,7 +158,11 @@ export interface AddonUiContext {
   };
   /** Sends text to a chat (a new session in the active project unless `sessionId`). Needs `chat`. */
   sendToChat(text: string, options?: { sessionId?: string; send?: boolean }): Promise<void>;
-  notify(input: { title: string; message?: string; tone?: NotifyTone }): void;
+  /**
+   * Shows a toast. `timeout` in ms (0 = stays until closed; danger toasts stay by default). Returns a
+   * function that closes it, e.g. a "Working…" toast replaced by the result.
+   */
+  notify(input: { title: string; message?: string; tone?: NotifyTone; timeout?: number }): () => void;
   /**
    * Per-add-on storage (JSON), shared with host code. With a declared scope (`"storage": { "scope":
    * "project" }` in addon.json) each project (or repository) has its own copy: the active one unless

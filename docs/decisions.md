@@ -2266,3 +2266,13 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - "Bye" (and End talking) never interrupts Claude: when it is working, Jig follows it with the
   sounds; the chat goes back to the permission mode it had before talking once it is idle (Jig put
   it in plan mode). "Stop"/"no" while Claude works still interrupts it (D-209).
+
+## D-211: Queueing a pipeline run doesn't hold the Run form open
+
+- Status: accepted. Asked for by Jon: "queue run loading state should be a toast, not lock me with
+  the modal". How is **Claude, on my own**.
+- **Queue run** closes the form at once and shows a "Queueing …" toast that stays until `az` answers;
+  it is then replaced by "… queued" (success) or "Couldn't run …" (danger). Rejected: a busy button
+  in the modal (the previous behaviour, which blocked the app for the seconds `az` takes).
+- For this, the add-on SDK's `ctx.notify` takes an optional `timeout` and returns a function that
+  closes the toast (backward compatible: it returned nothing before).

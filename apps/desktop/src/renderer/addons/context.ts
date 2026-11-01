@@ -20,7 +20,7 @@ import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } fro
 import { contributedEntries } from "../workbench/contextMenus";
 import { useProjects } from "../workbench/projects";
 import { useWorkbench, workbench } from "../workbench/store";
-import { notify } from "../workbench/toasts";
+import { dismiss, notify } from "../workbench/toasts";
 
 import { iconByName } from "./icons";
 
@@ -228,7 +228,15 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       }
       if (sessionId && options.send !== false) await call("sessions.send", { id: sessionId, text });
     },
-    notify: (input) => notify({ title: input.title, message: input.message, tone: input.tone }),
+    notify: (input) => {
+      const id = notify({
+        title: input.title,
+        message: input.message,
+        tone: input.tone,
+        timeout: input.timeout,
+      });
+      return () => dismiss(id);
+    },
     storage: {
       // With no active project for a scoped add-on: nothing to read, and writing says so.
       get: async <T>(key: string, options?: StorageOptions) => {

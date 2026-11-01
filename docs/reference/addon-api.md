@@ -101,7 +101,7 @@ are add-ons':
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
 | `attachments.add(files)`, `attachments.pick({ title?, defaultPath? })` → `AddonAttachment[]` | keeps pasted/dropped files (`clipboardData.files`, `dataTransfer.files`) or files the user picks, like the chat's message box: images ≤ 5 MB, PDFs, Word/Excel/PowerPoint and text files, in `~/.jig/attachments/addon-<id>/`. A file Claude can't take is reported in a toast and left out. Send them with `api.chats.send({ attachments })`; show them with `<Attachments files onRemove?>` from `@jig/sdk/ui` (thumbnails and chips that open the file) |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
-| `notify({ title, message?, tone? })` | toast |
+| `notify({ title, message?, tone?, timeout? })` | toast (`timeout` ms, 0 = until closed); returns a function that closes it |
 | `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
 | `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added |

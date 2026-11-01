@@ -291,7 +291,6 @@ function RunForm({
     Object.fromEntries(pipeline.params.map((p) => [p.name, p.defaultValue])),
   );
   const [reading, setReading] = useState(false);
-  const [busy, setBusy] = useState(false);
   // Like Azure DevOps' own form: the parameters are those of the YAML on the picked branch.
   useEffect(() => {
     let current = true;
@@ -311,8 +310,11 @@ function RunForm({
     };
   }, [ctx, pipeline.key, branch]);
   const changed = changedParams({ params }, values);
+  // The form closes at once; a toast says it's being queued, then one says how it went.
   const queueRun = async () => {
-    setBusy(true);
+    const name = pipeline.name;
+    onDone();
+    const close = ctx.notify({ title: `Queueing ${name}…`, message: `On ${branch}.`, timeout: 0 });
     try {
       const run = await ctx.host.call<{ number: string; url: string }>("queue", {
         key: pipeline.key,
@@ -320,19 +322,18 @@ function RunForm({
         values,
       });
       ctx.notify({
-        title: `${pipeline.name} queued`,
+        title: `${name} queued`,
         message: `Run ${run.number} on ${branch}. You'll be told when it finishes.`,
         tone: "success",
       });
-      onDone();
     } catch (error) {
       ctx.notify({
-        title: `Couldn't run ${pipeline.name}`,
+        title: `Couldn't run ${name}`,
         message: (error as Error).message,
         tone: "danger",
       });
     } finally {
-      setBusy(false);
+      close();
     }
   };
   const set = (name: string, value: string) => setValues((v) => ({ ...v, [name]: value }));
@@ -351,7 +352,6 @@ function RunForm({
             size="sm"
             variant="primary"
             icon={Play}
-            busy={busy}
             onClick={() => void queueRun()}
             data-testid="pipeline-queue"
           >

@@ -267,7 +267,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
     changed parameters) and its stages; **Run** opens a modal form with the branch, a picker per YAML
-    parameter and a checkbox per boolean, queued only on **Queue run**; notifications when your
+    parameter and a checkbox per boolean, queued only on **Queue run** (the form closes at once, toasts
+    say queueing, then queued; D-211); notifications when your
     runs finish. New pipelines join their repository on their own and the form reads the YAML in
     Azure DevOps on the picked branch (D-166). Every organisation's other pipelines (D-125) under
     "More pipelines", with the same form.
