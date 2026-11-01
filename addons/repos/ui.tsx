@@ -261,7 +261,7 @@ function RepoRow({
         >
           <button
             type="button"
-            className="flex min-w-0 flex-1 cursor-pointer items-center justify-end gap-1 rounded px-1 text-left hover:bg-hover hover:text-fg"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded px-1 text-left hover:bg-hover hover:text-fg"
             title={`${repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}\nSwitch branch`}
             onClick={(e) => !arranging && void switchBranchMenu(ctx, repo, name, e.currentTarget)}
             data-testid={`repo-branch-${name}`}
