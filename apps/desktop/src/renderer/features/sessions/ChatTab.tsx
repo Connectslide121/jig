@@ -2,6 +2,7 @@ import { ChartColumn, LogIn, MessageSquareX, MoreHorizontal, Search } from "luci
 import { useCallback, useEffect, useState } from "react";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
+import { MOTION_MS } from "../../ui/motion";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
@@ -51,6 +52,17 @@ export function ChatTab({ params, active, focused }: TabProps) {
   const [finding, setFinding] = useState(false);
   const [details, setDetails] = useState(false);
   const overview = useConfig((s) => s.config?.chat.overview ?? true);
+  const showOverview = overview && Boolean(transcript?.items.length);
+  // Keep the card mounted while its column slides shut, then drop it.
+  const [overviewMounted, setOverviewMounted] = useState(showOverview);
+  useEffect(() => {
+    if (showOverview) {
+      setOverviewMounted(true);
+      return;
+    }
+    const t = setTimeout(() => setOverviewMounted(false), MOTION_MS);
+    return () => clearTimeout(t);
+  }, [showOverview]);
   const [match, setMatch] = useState<string>();
   const onMatch = useCallback((m: string | undefined) => setMatch(m), []);
   useEffect(() => {
@@ -192,8 +204,13 @@ export function ChatTab({ params, active, focused }: TabProps) {
           <ChatChanges key={id} meta={meta} items={transcript?.items ?? []} />
           <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
         </div>
-        <div className="box-content w-52 shrink-0 pt-3 pr-3" data-testid="chat-overview-slot">
-          {overview && transcript && transcript.items.length > 0 && (
+        <div
+          className={cn("jig-side-slide box-content shrink-0 pt-3", showOverview ? "w-52 pr-3" : "w-0 pr-0")}
+          aria-hidden={!showOverview}
+          inert={!showOverview}
+          data-testid="chat-overview-slot"
+        >
+          {transcript && overviewMounted && (
             <ChatOverview meta={meta} items={transcript.items} onDetails={() => setDetails(true)} />
           )}
         </div>

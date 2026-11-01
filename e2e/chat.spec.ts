@@ -237,9 +237,12 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   const emptyChat = await conversation.boundingBox();
   await say(page, "use a skill to explain the code");
   await expect(tab.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
-  const populatedChat = await conversation.boundingBox();
-  expect(populatedChat!.x).toBe(emptyChat!.x);
-  expect(populatedChat!.width).toBe(emptyChat!.width);
+  // The overview column slides open beside the chat once there is something to count.
+  await expect(async () => {
+    const populatedChat = await conversation.boundingBox();
+    expect(populatedChat!.x).toBe(emptyChat!.x);
+    expect(populatedChat!.width).toBeLessThan(emptyChat!.width - 100);
+  }).toPass();
   await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
   await page.keyboard.press("Enter");
   await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
@@ -266,7 +269,6 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
     }).toPass();
   }
   const beforeHide = await tab.getByTestId("composer").boundingBox();
-  const messageBeforeHide = await tab.getByTestId("assistant-message").first().boundingBox();
   await page.screenshot({ path: "test-results/chat-aligned-overview.png" });
   await card.getByTestId("chat-overview-details").click();
   const details = page.getByTestId("chat-details-dialog");
@@ -287,8 +289,12 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await page.keyboard.press("Escape");
   await tab.getByTestId("chat-overview-toggle").click();
   await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
-  expect(await tab.getByTestId("composer").boundingBox()).toEqual(beforeHide);
-  expect(await tab.getByTestId("assistant-message").first().boundingBox()).toEqual(messageBeforeHide);
+  // The column slides shut, so the chat re-centres instead of keeping the card's space.
+  await expect(tab.getByTestId("chat-overview-slot")).toHaveJSProperty("offsetWidth", 0);
+  await expect(async () => {
+    const composer = await tab.getByTestId("composer").boundingBox();
+    expect(composer!.x + composer!.width / 2).toBeGreaterThan(beforeHide!.x + beforeHide!.width / 2 + 50);
+  }).toPass();
   const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
   expect(config.value.chat.overview).toBe(false);
   await tab.getByTestId("chat-view-compact").click();

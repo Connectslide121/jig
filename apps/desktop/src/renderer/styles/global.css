@@ -255,6 +255,18 @@ html[data-platform="darwin"] .topbar-insets {
   grid-template-rows: 1fr;
   opacity: 1;
 }
+/* A side column that slides open/shut (the chat overview): the content beside it re-centres. */
+.jig-side-slide {
+  overflow: hidden;
+  transition:
+    width 160ms ease-out,
+    padding-right 160ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jig-side-slide {
+    transition: none;
+  }
+}
 @keyframes jig-surface-in {
   from {
     opacity: 0;
