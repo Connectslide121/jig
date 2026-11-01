@@ -8,14 +8,21 @@ import {
 import { cn } from "./cn";
 
 const field =
-  "no-drag w-full rounded-md border border-line-strong bg-raised px-2 text-sm text-fg placeholder:text-hint " +
+  "no-drag rounded-md border border-line-strong bg-raised px-2 text-sm text-fg placeholder:text-hint " +
   "outline-none focus:border-focus disabled:opacity-50";
+
+/** Fields fill their space unless the caller gives a width (`cn` doesn't merge, so `w-full` would win). */
+function width(className: string | undefined): string | false {
+  return !/(^|\s)(w-|flex-1|grow)/.test(className ?? "") && "w-full";
+}
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
   ref,
 ) {
-  return <input ref={ref} className={cn(field, "h-7", className)} spellCheck={false} {...rest} />;
+  return (
+    <input ref={ref} className={cn(field, width(className), "h-7", className)} spellCheck={false} {...rest} />
+  );
 });
 
 /**
@@ -62,7 +69,13 @@ export const SearchInput = forwardRef<
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   function Textarea({ className, ...rest }, ref) {
-    return <textarea ref={ref} className={cn(field, "py-1.5 leading-normal", className)} {...rest} />;
+    return (
+      <textarea
+        ref={ref}
+        className={cn(field, width(className), "py-1.5 leading-normal", className)}
+        {...rest}
+      />
+    );
   },
 );
 
@@ -71,7 +84,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   ref,
 ) {
   return (
-    <select ref={ref} className={cn(field, "h-7 pr-6", className)} {...rest}>
+    <select ref={ref} className={cn(field, width(className), "h-7 pr-6", className)} {...rest}>
       {children}
     </select>
   );

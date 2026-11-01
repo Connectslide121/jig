@@ -160,16 +160,13 @@ function ModelSetting({
   if (value && !choices.has(value)) choices.set(value, `${value} (saved choice)`);
   return (
     <SettingRow label={label} description={description}>
-      {/* A fixed box (Select is w-full), so every model picker has the same width whatever its options. */}
-      <div className="w-40">
-        <Select aria-label={label} value={value} onChange={(ev) => onSave(ev.target.value)}>
-          {[...choices].map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <Select className="w-40" aria-label={label} value={value} onChange={(ev) => onSave(ev.target.value)}>
+        {[...choices].map(([id, name]) => (
+          <option key={id} value={id}>
+            {name}
+          </option>
+        ))}
+      </Select>
     </SettingRow>
   );
 }
