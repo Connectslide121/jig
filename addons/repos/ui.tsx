@@ -109,7 +109,6 @@ function RepoRow({
   expanded,
   onExpand,
   arranging,
-  slots,
 }: {
   repo: RepoState;
   name: string;
@@ -117,8 +116,6 @@ function RepoRow({
   expanded: boolean;
   onExpand: (open: boolean) => void;
   arranging: boolean;
-  /** Which pill columns the list reserves: only those some row uses, so rows still line up. */
-  slots: { changed: boolean; sync: boolean };
 }) {
   const ctx = useAddon();
   const [syncing, setSyncing] = useState(false);
@@ -228,7 +225,7 @@ function RepoRow({
         </button>
         {/* Fixed columns, so the pills and branches line up down the list (D-152). */}
         <span className="flex shrink-0 items-center" data-testid={`repo-sync-${name}`}>
-          <span className={cn("flex justify-end", slots.changed ? "w-9" : "hidden")}>
+          <span className="flex w-9 justify-end">
             {status.changed && (
               <button
                 type="button"
@@ -241,7 +238,7 @@ function RepoRow({
               </button>
             )}
           </span>
-          <span className={cn("flex justify-start", slots.sync ? "ml-1 w-12" : "hidden")}>
+          <span className="ml-1 flex w-12 justify-start">
             {status.sync && (
               <button
                 type="button"
@@ -257,7 +254,7 @@ function RepoRow({
         </span>
         <span
           className={cn(
-            "ml-1.5 flex w-1/3 min-w-0 shrink-0 items-center gap-1 text-xs",
+            "ml-1.5 flex w-1/4 min-w-0 shrink-0 items-center gap-1 text-xs",
             repo.upstream ? "text-muted" : "text-hint",
           )}
           title={repo.upstream ? `${repo.branch} → ${repo.upstream}` : `${repo.branch ?? ""} (no upstream)`}
@@ -354,8 +351,6 @@ export function ReposView({ ctx }: AddonComponentProps) {
     const folder = ctx.workspaces.list().find((w) => w.id === r.workspaceId)?.path;
     return active?.path === folder ? active : projects.find((p) => p.path === folder);
   };
-  const statuses = (repos ?? []).map(repoStatus);
-  const slots = { changed: statuses.some((s) => s.changed), sync: statuses.some((s) => s.sync) };
   if (!repos) return <Spinner center />;
   if (repos.length === 0)
     return (
@@ -431,7 +426,6 @@ export function ReposView({ ctx }: AddonComponentProps) {
               expanded={expanded === r.path}
               onExpand={(open) => setExpanded(open ? r.path : undefined)}
               arranging={arranging}
-              slots={slots}
             />
           )}
         />
