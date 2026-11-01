@@ -131,7 +131,10 @@ length of first messages, single-message chats, "one more piece" messages, first
 how to check it's done, chats with a plan), the 10 most recent chats message by message (masked,
 pastes collapsed, 10 messages each, 200 characters; `chatSample`), Jig's features with their action ids (`main/learning/features.ts`), and each add-on's
 use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, shown as `Used:` in the
-catalog with the add-on's action ids). Learning 2 adds
+catalog with the add-on's action ids), and what Jig's builder can build (`BUILDABLE`: level 1 changes,
+what an add-on can do and the slots from `@jig/sdk`, level 3 for the rest), so a tool to build is
+one the builder can really make, at the lowest level, with a goal naming where it appears and what it
+uses. All 18 slots are listed, and that an add-on can combine them into a full tool, not just a button. Learning 2 adds
 the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 tips are allowed (one prompting tip and one habit tip a week at most). A prompting tip carries
 `before` (your message(s) as sent), `example` (the same request rewritten the better way) and

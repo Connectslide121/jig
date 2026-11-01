@@ -149,6 +149,8 @@ describe("reflection", () => {
     expect(prompt).toContain("  1. fix it");
     expect(prompt).toContain("one prompting tip and one habit tip");
     expect(prompt).toContain("Used: 3 actions run");
+    expect(prompt).toContain("## What Jig's builder can build");
+    expect(prompt).toContain("- claude.tool: ");
   });
 
   it("keeps new kinds, at most one tool to build, and drops use-addon without an add-on", () => {

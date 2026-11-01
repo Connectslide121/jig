@@ -2342,6 +2342,10 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   they name a Jig action.
 - **One prompting tip and one habit tip a week** instead of one tip in total (still none without
   evidence from their own messages or activity).
+- **The reflection knows what can be built** (`BUILDABLE` in `reflect.ts`, built from the SDK's
+  `SLOTS` so it stays in sync): Jon asked whether Claude is told what add-ons it can build; only the
+  builder was. Now a "Build it" idea is checked against it, uses the lowest level, and its goal says
+  where it appears and what it uses.
 - Rejected: judging message quality with a second AI pass or per message (quota; the weekly query
   sees the chats); recording chat outcomes or more data (D-213); counting repeated permission approvals
   (not recorded; Jig's permission rules already offer "always allow").

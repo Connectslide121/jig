@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pattern } from "@jig/learning";
+import { SLOTS } from "@jig/sdk";
 import { z } from "zod";
 import { BUILD_KINDS, type EvidenceNote, type Suggestion, TIP_KINDS } from "../../shared/learning";
 import { profileIsEmpty } from "./knowledge";
@@ -27,13 +28,25 @@ Suggest AT MOST 3 things, only with real evidence, each of one kind, ideally of 
 - "automation": something to run on a schedule as a Claude Code routine. "goal": what it does and when.
 - "project-memory": something Claude keeps being told, for the project's CLAUDE.md. "goal": the text to add.
 - "claude-setup": an MCP server, skill or hook for Claude Code. "goal": what to set up and why.
-- a tool to build, AT MOST ONE per review and only if nothing existing does it: "layout" or "settings" (level 1), "change-addon" with its addonId or "new-addon" (level 2), or "app" (level 3: a new extension point). "goal" is what to ask Jig's builder.
+- a tool to build, AT MOST ONE per review and only if nothing existing does it: "layout" or "settings" (level 1), "change-addon" with its addonId or "new-addon" (level 2), or "app" (level 3: a new extension point). Check it against "What Jig's builder can build" and pick the lowest level that does it. "goal" is what to ask Jig's builder: what it shows or does, where it appears (which slot) and what it uses (which program or data).
 No tips at all when "Tips allowed: no".
 Level: 1 for using what exists, tips and practices; 2 for workflows, automations and setup; 3 only for "app".
 Be specific to THIS user (their projects, commands, words), never generic advice. Don't suggest what they said "never" to, nor repeat what they built, adopted or snoozed; learn from what helped and what didn't. Few good suggestions beat three weak ones.
 Also propose additions to the profile ("profileUpdates": short facts the evidence shows, not already in it; none if unsure).
 Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","actionId":"…","before":"…","example":"…","changes":["…"],"steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
 Return {"suggestions":[]} when nothing is worth it.`;
+
+/**
+ * What Jig's builder can make, so a "Build it" idea is one it can really build (built from the SDK's
+ * slots; the builder's full instructions are in builder/prompt.ts).
+ */
+export const BUILDABLE = [
+  "Level 1, no code: move, hide or show views; put one view under another; resize; theme, fonts, density; any setting.",
+  "Level 2, an add-on (a plugin; changing an installed one beats a new one). It can: run the user's programs without a shell (git, gh, az, npm…), read and write files, call web APIs, ask Claude a one-shot question (summaries, commit messages, classifying), keep data per project, repository or globally, open a chat with a drafted message, run commands in a terminal, notify. It plugs into:",
+  ...Object.entries(SLOTS).map(([id, what]) => `- ${id}: ${what}`),
+  "An add-on can combine several of these into a real tool, not just a button: e.g. a view that lists pipeline runs from az with a watcher that notifies on failures, a tool Claude calls to read them, a status-bar badge and a right-click action on a repository. Size it to the need: a button when a button does it, a full tool when that saves real time.",
+  "Level 3 (\"app\"): anything else needs a new extension point in Jig's own code (a request to Jig's developers), e.g. changing how the chat itself works, or reaching into other apps' windows.",
+].join("\n");
 
 export interface PastAnswer {
   title: string;
@@ -90,6 +103,7 @@ export function reflectionPrompt(
     `## How Claude worked for them (last 4 weeks)\n${context.usage || "(no chats recorded)"}`,
     `## Jig's features\n${context.features || "(not given)"}`,
     `## Add-ons (installed, with their use in the last 4 weeks)\n${catalog}`,
+    `## What Jig's builder can build (for a tool to build)\n${BUILDABLE}`,
     `## Past answers\n${past}`,
     `Tips allowed: ${context.tipsAllowed === false ? "no" : "yes (at most one prompting tip and one habit tip)"}`,
     "Reply with the JSON only.",
