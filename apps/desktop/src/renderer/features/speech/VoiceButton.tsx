@@ -1,10 +1,11 @@
 import { AudioLines } from "lucide-react";
 import { useEffect } from "react";
 import { cn, Spinner } from "../../ui";
+import { useCues } from "./cues";
 import { stopVoice, toggleVoice, useVoice, type VoiceHooks, type VoicePhase } from "./voice";
 
 const LABELS: Record<VoicePhase, string> = {
-  off: "Talk with Claude: speak, hear its answers, and say “yes, go ahead” to start its plan",
+  off: "Talk with Claude: plan out loud together, then say “go ahead” and it starts working",
   starting: "Getting ready to listen…",
   listening: "Listening. Click to stop talking",
   hearing: "Hearing you. Click to stop talking",
@@ -19,6 +20,8 @@ const LABELS: Record<VoicePhase, string> = {
 export function VoiceButton({ target, hooks }: { target: string; hooks: VoiceHooks }) {
   const phase = useVoice((s) => (s.target === target ? s.phase : "off"));
   const said = useVoice((s) => (s.target === target ? s.said : undefined));
+  const following = useCues((s) => s.following.includes(target));
+  const lastCue = useCues((s) => s.played.at(-1));
   const busyElsewhere = useVoice((s) => s.phase !== "off" && s.target !== target);
   // Closing the chat ends the conversation.
   useEffect(
@@ -37,6 +40,8 @@ export function VoiceButton({ target, hooks }: { target: string; hooks: VoiceHoo
       data-testid="composer-voice"
       data-phase={phase}
       data-said={said}
+      data-following={following || undefined}
+      data-last-cue={lastCue}
       disabled={busyElsewhere || phase === "starting"}
       onClick={() => toggleVoice(target, hooks)}
       className={cn(

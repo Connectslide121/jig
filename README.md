@@ -230,8 +230,9 @@ And more:
   - Paste screenshots, and drop PDF, Word, Excel and PowerPoint files.
   - Talk instead of typing: dictation with Whisper running on your machine (mic button or
     Ctrl+Shift+Space; on the GPU, words appear as you speak), and Read aloud on Claude's answers.
-  - Talk *with* Claude: a spoken conversation that works out the task, then "yes, go ahead"
-    approves the plan and Claude starts working.
+  - Talk *with* Claude: a talking window with sound waves and the sentence being said; Claude
+    looks at the code while you plan out loud, then "go ahead" approves the plan, talking ends and
+    a soft sound plays while Claude works.
   - Permission cards with Allow once / Always / Deny.
   - Queue messages while Claude works, or send one into the running turn with Ctrl+Enter.
   - Next-message suggestions.

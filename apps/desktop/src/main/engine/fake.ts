@@ -436,7 +436,28 @@ export class FakeEngine implements Engine {
             });
           }
           await stream(`${msg}:text:0`, "All three steps are done.", signal);
-        } else if (lower.includes("make a plan")) {
+        } else if (lower.includes("look at the code")) {
+          // Claude searches and reads the code to help plan (talking with Claude, D-210).
+          const calls = [
+            { name: "Grep", input: { pattern: "total", path: options.cwd }, output: "cart.ts:12: total()" },
+            {
+              name: "Read",
+              input: { file_path: join(options.cwd, "cart.ts") },
+              output: "export function total() {}",
+            },
+          ];
+          for (const call of calls) {
+            const toolId = `tool-${randomUUID()}`;
+            onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input });
+            await sleep(this.delayMs * 20, signal);
+            onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
+          }
+          await stream(
+            `${msg}:text:0`,
+            "The total is worked out in cart.ts. Shall the discount go there?",
+            signal,
+          );
+        } else if (lower.includes("make a plan") || lower.startsWith("go ahead")) {
           // Plan mode: Claude proposes a plan and asks to leave plan mode (ExitPlanMode).
           const toolId = `tool-${randomUUID()}`;
           const input = {

@@ -2238,3 +2238,31 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   turn's context (short spoken answers, one question at a time, plan via ExitPlanMode).
 - Reachable from a button in the composer and the + menu (no command: D-091). Tests: in fake mode
   the conversation hears `jig-fake-speech` window events instead of the microphone.
+
+## D-210: A talking window, and talking ends when Claude starts working
+
+- Status: accepted. Asked for by Jon: a dedicated interface over the chat with sound waves and the
+  sentence being said, Claude searching the code while planning, the go-ahead starting the work
+  and turning speech off, a sound while Claude works ("not only when it starts, but during the
+  work"), "bye" not stopping the chat or Claude's work, and controls (close, go ahead, see the
+  transcript). How is **Claude, on my own** (Jon: "you decide, I trust you").
+- A modal `Dialog` of a fixed size (no layout shift): waves, status, then tabs Now / Conversation /
+  Plan in one fixed box, and the controls in the footer. Closing it (Esc, ×, End talking) ends
+  talking only. Rejected: a strip over the composer (no room for the history and the plan); an
+  inline expanding transcript (layout shift).
+- Waves are drawn on a canvas from the token colours. Your wave follows the microphone (each
+  128 ms frame split in 8 levels, played back in 16 ms steps, log scale). The system's voices give
+  no audio to measure, so Claude's wave pulses on each spoken word (`onboundary`). Rejected: neural
+  voices to get real audio (later idea in phase 21).
+- Talking is for planning; work happens in the normal chat. The go-ahead approves the pending
+  ExitPlanMode (as the plan card does), or — when no plan is shown yet — sends "Go ahead" and
+  approves the ExitPlanMode that follows (`VOICE_GUIDANCE` tells Claude to present it right away).
+  Then talking ends (`voice` off) and Jig follows the chat with sounds. Only explicit phrases count
+  as the go-ahead (`isGoAhead`: "go ahead", "start working", "let's do it"…); a plain "yes" may just
+  answer Claude's question, so it approves only a plan already shown.
+- Sounds are synthesized with Web Audio (soft sine plucks, no files): a note every 2.4 s while the
+  chat works (and while Claude thinks during talking, after 1.5 s), a rising chime when it is done,
+  a falling one when it needs you. `speech.workSound` (default on) turns them off.
+- "Bye" (and End talking) never interrupts Claude: when it is working, Jig follows it with the
+  sounds; the chat goes back to the permission mode it had before talking once it is idle (Jig put
+  it in plan mode). "Stop"/"no" while Claude works still interrupts it (D-209).

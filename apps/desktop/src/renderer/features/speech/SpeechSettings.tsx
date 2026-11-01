@@ -136,6 +136,16 @@ export function SpeechSettings() {
           />
         </SettingRow>
         <SettingRow
+          label="Sound while Claude works"
+          description="After you hand Claude a task by voice: a soft note every few seconds while it works, and a chime when it finishes or needs you."
+        >
+          <Switch
+            label="Sound while Claude works"
+            checked={s.workSound}
+            onChange={(v) => void updateConfig({ speech: { workSound: v } })}
+          />
+        </SettingRow>
+        <SettingRow
           label="Language you speak"
           description="Recognising it works for most speech; choosing it helps with short messages."
         >
@@ -208,18 +218,21 @@ export function SpeechSettings() {
           <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">
             <li>
               In a chat, click the Talk button (sound waves, beside the microphone) or + → Talk with Claude.
+              The talking window opens over the chat.
             </li>
             <li>
-              Speak; your words appear in the message box. Stay quiet for the pause above and it is sent.
-            </li>
-            <li>Claude answers out loud. Start talking to interrupt it.</li>
-            <li>
-              The chat is in plan mode: Claude asks what it needs, then shows its plan. Say “yes, go ahead” to
-              start the work, or say what to change.
+              Speak; the waves follow your voice and the sentence shows as you say it. Stay quiet for the
+              pause above and it is sent.
             </li>
             <li>
-              Say “bye” or click the Talk button again to stop. While Claude works, “stop” interrupts it.
+              Claude answers out loud and can look at the code to help you plan. Start talking to interrupt
+              it; Conversation shows everything said so far.
             </li>
+            <li>
+              The chat is in plan mode: Claude asks what it needs, then shows its plan. Say “yes, go ahead” or
+              press Go ahead: Claude starts working, talking ends, and a soft sound plays while it works.
+            </li>
+            <li>Say “bye” or press End talking to stop talking; the chat and Claude's work go on.</li>
           </ol>
         </div>
       </SettingsSection>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEnd, isNo, isYes, permissionPrompt } from "./replies";
+import { isEnd, isGoAhead, isNo, isYes, permissionPrompt, toolActivity } from "./replies";
 
 describe("spoken answers", () => {
   it("hears a plain yes", () => {
@@ -23,6 +23,15 @@ describe("spoken answers", () => {
     expect(isEnd("Bye!")).toBe(true);
     expect(isEnd("Stop listening.")).toBe(true);
     expect(isEnd("Bye the way, fix the header")).toBe(false);
+    expect(isEnd("OK, bye Claude")).toBe(true);
+    expect(isEnd("See you later")).toBe(true);
+  });
+
+  it("hears the go-ahead, not a plain yes", () => {
+    for (const t of ["Yes, go ahead.", "Go for it!", "OK, let's do it", "Sounds good, start working"])
+      expect(isGoAhead(t)).toBe(true);
+    for (const t of ["Yes.", "Go ahead but rename it first", "No, don't go ahead", "Sure"])
+      expect(isGoAhead(t)).toBe(false);
   });
 });
 
@@ -45,5 +54,15 @@ describe("permissionPrompt", () => {
     expect(permissionPrompt({ ...request, toolName: "Bash", title: "Claude wants to run npm test" })).toBe(
       "Claude wants to run npm test. Allow it?",
     );
+  });
+});
+
+describe("toolActivity", () => {
+  it("says what Claude is doing in a few words", () => {
+    expect(toolActivity("Grep", { pattern: "total" })).toBe("Searching the code");
+    expect(toolActivity("Read", { file_path: "/repo/src/cart.ts" })).toBe("Reading cart.ts");
+    expect(toolActivity("Read", { file_path: "C:\\repo\\cart.ts" })).toBe("Reading cart.ts");
+    expect(toolActivity("Task", {})).toBe("Exploring the code");
+    expect(toolActivity("mcp__github__list_issues", {})).toBe("Using list_issues");
   });
 });
