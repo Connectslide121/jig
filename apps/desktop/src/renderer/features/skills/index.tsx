@@ -1,4 +1,4 @@
-import { BookOpen, ExternalLink, FolderCheck, Search } from "lucide-react";
+import { BookOpen, Check, ExternalLink, FolderCheck, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { LibrarySkill, SkillDetails } from "../../../shared/skills";
 import { call, errorMessage } from "../../lib/host";
@@ -57,7 +57,7 @@ function Details({ skill, close }: { skill: LibrarySkill; close: () => void }) {
       testId="skill-details"
       footer={<Button onClick={close}>Close</Button>}
     >
-      <div className="flex h-96 min-h-0 flex-col overflow-y-auto" data-testid="skill-details-content">
+      <div className="flex h-160 min-h-0 flex-col overflow-y-auto" data-testid="skill-details-content">
         {error ? (
           <Empty icon={BookOpen} title="Couldn't load skill">
             {error}
@@ -68,10 +68,15 @@ function Details({ skill, close }: { skill: LibrarySkill; close: () => void }) {
           <>
             <p className="text-sm text-fg">{details.description}</p>
             <div className="my-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted">
-              <span>Author: {details.author}</span>
-              <span>Licence: {details.license}</span>
+              <span>
+                <span className="font-medium text-accent">Author:</span> {details.author}
+              </span>
+              <span>
+                <span className="font-medium text-accent">Licence:</span> {details.license}
+              </span>
               <span title={details.revision}>
-                Version: {details.revision.length > 12 ? details.revision.slice(0, 12) : details.revision}
+                <span className="font-medium text-accent">Version:</span>{" "}
+                {details.revision.length > 12 ? details.revision.slice(0, 12) : details.revision}
               </span>
               <Button
                 size="sm"
@@ -137,6 +142,7 @@ function ProjectsPicker({
           <Button onClick={close}>Cancel</Button>
           <Button
             variant="primary"
+            icon={Check}
             busy={busy}
             onClick={() => void apply()}
             data-testid="skill-projects-apply"
