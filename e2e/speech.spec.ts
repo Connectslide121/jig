@@ -47,6 +47,9 @@ test("speech: settings choose the model and language; only Jig's models can be r
   await page.getByTestId("settings-nav-speech").click();
   await page.getByTestId("settings-speech-model").selectOption("small");
   await page.getByTestId("settings-speech-language").selectOption("sv");
+  await expect(page.getByTestId("settings-speech-how-to-talk")).toContainText("yes, go ahead");
+  await expect(page.getByTestId("settings-speech-more-voices")).toContainText("Restart Jig");
+  await page.getByTestId("settings-speech-try").click();
   await expect
     .poll(async () => ((await hostCall(page, "config.get")) as { value: { speech: unknown } }).value.speech)
     .toMatchObject({ model: "small", language: "sv" });

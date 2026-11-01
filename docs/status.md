@@ -141,7 +141,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
   Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
-  Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed.
+  Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
+  instructions for talking and for adding system voices (Windows, macOS, Linux).
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or

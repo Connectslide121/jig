@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   SPEECH_LANGUAGES,
@@ -14,7 +14,37 @@ import { notify } from "../../workbench/toasts";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { DICTATION_SHORTCUT } from "./DictationButton";
 import { hasGpu } from "./engine";
-import { speechVoices } from "./speak";
+import { speechVoices, voiceUtterance } from "./speak";
+
+/** How to add voices to the system, per platform: Jig can only use the voices the system has. */
+const MORE_VOICES: Record<string, string[]> = {
+  win32: [
+    "Open Windows Settings → Time & language → Speech.",
+    "Under Manage voices, click Add voices, pick a language and voice, and install it.",
+    "If the voice doesn't show up below, also add its language in Time & language → Language & region (with Speech checked).",
+    "Restart Jig, then choose the voice above and click Try it.",
+  ],
+  darwin: [
+    "Open System Settings → Accessibility → Spoken Content.",
+    "Click the ⓘ beside System voice, then Manage Voices… and download a voice (Premium and Enhanced voices sound best).",
+    "Restart Jig, then choose the voice above and click Try it.",
+  ],
+  linux: [
+    "Jig uses speech-dispatcher. Install it and a voice engine, e.g. speech-dispatcher with espeak-ng or RHVoice from your distribution.",
+    "Restart Jig, then choose the voice above and click Try it.",
+  ],
+};
+
+/** Says a short sentence in the chosen voice and speed. */
+function tryVoice(): void {
+  const synth = window.speechSynthesis;
+  if (!synth) {
+    notify({ title: "No voices", message: "This system has no speech voices." });
+    return;
+  }
+  synth.cancel();
+  synth.speak(voiceUtterance("Hi, I'm Claude. This is how I sound when we talk."));
+}
 
 const PAUSES = [600, 800, 1000, 1500, 2000, 3000];
 const RATES = [0.8, 1, 1.15, 1.3, 1.5];
@@ -41,6 +71,8 @@ export function SpeechSettings() {
   if (!config) return <Spinner center />;
   const s = config.speech;
   const variant = s.gpu && gpu ? "gpu" : "cpu";
+  const platform = useConfig.getState().info?.platform ?? "win32";
+  const steps = MORE_VOICES[platform] ?? MORE_VOICES.linux!;
   const languages = SPEECH_LANGUAGES.some((l) => l.code === s.language)
     ? SPEECH_LANGUAGES
     : [...SPEECH_LANGUAGES, { code: s.language, label: s.language }];
@@ -171,14 +203,33 @@ export function SpeechSettings() {
             ))}
           </Select>
         </SettingRow>
+        <div className="px-4 py-3" data-testid="settings-speech-how-to-talk">
+          <div className="text-sm text-fg">How to talk with Claude</div>
+          <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">
+            <li>
+              In a chat, click the Talk button (sound waves, beside the microphone) or + → Talk with Claude.
+            </li>
+            <li>
+              Speak; your words appear in the message box. Stay quiet for the pause above and it is sent.
+            </li>
+            <li>Claude answers out loud. Start talking to interrupt it.</li>
+            <li>
+              The chat is in plan mode: Claude asks what it needs, then shows its plan. Say “yes, go ahead” to
+              start the work, or say what to change.
+            </li>
+            <li>
+              Say “bye” or click the Talk button again to stop. While Claude works, “stop” interrupts it.
+            </li>
+          </ol>
+        </div>
       </SettingsSection>
       <SettingsSection
         title="Reading aloud"
-        description="Hover one of Claude's messages and click the speaker to hear it. It uses your system's voices; code blocks are skipped. Talking with Claude uses the same voice."
+        description="Claude writes text; Jig reads it aloud with your system's voices, on this computer. The same voice and speed are used for Read aloud (the speaker on Claude's messages) and when talking with Claude. Code blocks are skipped."
       >
         <SettingRow
           label="Voice"
-          description="Voices come from your system (Windows: Settings → Time & language → Speech)."
+          description="The voices installed on your system. To get more, see “Adding voices” below."
         >
           <Select
             value={s.voice}
@@ -212,6 +263,22 @@ export function SpeechSettings() {
             ))}
           </Select>
         </SettingRow>
+        <SettingRow label="Try the voice" description="Hear a sentence in the chosen voice and speed.">
+          <Button variant="ghost" icon={Volume2} data-testid="settings-speech-try" onClick={tryVoice}>
+            Try it
+          </Button>
+        </SettingRow>
+        <div className="px-4 py-3" data-testid="settings-speech-more-voices">
+          <div className="text-sm text-fg">Adding voices</div>
+          <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">
+            {steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <div className="mt-1.5 text-xs text-hint">
+            Some newer “natural” voices are only available to the system's own apps and may not appear here.
+          </div>
+        </div>
       </SettingsSection>
     </div>
   );
