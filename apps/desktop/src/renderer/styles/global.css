@@ -15,6 +15,17 @@
   html[data-appearance="light"] {
     color-scheme: light;
   }
+  /* Every clickable control shows the pointer; a `cursor-*` utility on an element still wins. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="switch"],
+  summary,
+  select:not(:disabled),
+  input:is([type="checkbox"], [type="radio"], [type="range"]):not(:disabled) {
+    cursor: pointer;
+  }
   html,
   body,
   #root {
