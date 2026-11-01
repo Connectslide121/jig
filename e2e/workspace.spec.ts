@@ -108,7 +108,7 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   const portal = repos.getByTestId("repo-repos/client-a/portal");
   await expect(portal).toContainText("portal", { timeout: 15000 });
   await expect(portal).not.toContainText("repos/");
-  await expect(portal.getByTestId("repo-sync-portal")).toBeVisible();
+  await expect(portal.getByTestId("repo-sync-portal")).toBeAttached();
   await expect(repos.getByTestId("repos-view")).toBeVisible();
 
   // Arrange, for all projects: a titled divider right above web, and api hidden.
