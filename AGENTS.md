@@ -181,7 +181,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 
 - Work directly on `main`. Do not create new branches; keep logical, validated commits on `main`.
 - Small, coherent commits with a clear message (what and why), including their tests and docs.
-- Commit as you go after each logical, validated change; do not leave completed work uncommitted.
+- **Always commit (Jon).** Commit after each logical, validated change without being asked; never
+  leave completed work uncommitted, and never ask whether to commit. Never push.
 - Run `npm run check` before committing.
 - No AI attribution trailers in commit messages.
 
