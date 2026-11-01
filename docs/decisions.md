@@ -2189,3 +2189,25 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Per-model use: messages and tool calls counted from the transcript, tokens and cost from the
   result's `modelUsage` (Claude Code's running totals, subagents included), merged by short model
   name. The opusplan picker description now says "Opus only in Plan mode, Sonnet otherwise".
+
+## D-208: Speech with local Whisper and the system's voices
+
+- Status: accepted. Asked for by Jon: "I would like to be able to talk to the AI". How is
+  **Claude, on my own**.
+- Dictation: Whisper runs on the user's machine (transformers.js on WebAssembly, in a renderer Web
+  Worker), so no audio leaves it and nothing new needs credentials. Rejected: Chromium's Web Speech
+  recognition (doesn't work in Electron: it needs Google's keys); Claude Code's `/voice` (uses
+  claude.ai, which Jig must not call); cloud speech APIs (keys, cost, audio leaves the machine);
+  native Whisper binaries (one per OS to build and sign).
+- The model (`speech.model`, default `base`, q8) is downloaded once, after asking, by the main
+  process into `~/.jig/models` and served to the worker over the privileged `jig-speech:` scheme
+  (only Jig's three models; a complete model never goes online again; missing optional files are
+  404). Not bundled: it would add 45–250 MB to every install for a feature not everyone uses.
+  Single-threaded WebAssembly (no cross-origin isolation); the ONNX runtime (~27 MB) is bundled.
+- Recording uses `MediaRecorder`; text goes in at the caret and is never sent by itself. Mic button
+  in the composer and Ctrl/Cmd+Shift+Space (a shortcut, not a command: D-091); Esc cancels.
+  macOS gets `NSMicrophoneUsageDescription`.
+- Reading aloud uses the system's voices (`speechSynthesis`) on demand per answer; code blocks are
+  skipped.
+- Tests: with `JIG_ENGINE=fake` Chromium's fake microphone and a fake transcriber.
+

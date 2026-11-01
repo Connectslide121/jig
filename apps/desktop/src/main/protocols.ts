@@ -27,6 +27,11 @@ export function registerSchemes(): void {
       scheme: "jig-icons",
       privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
     },
+    // Dictation's speech-to-text model, downloaded once into JIG_HOME/models (main/speech).
+    {
+      scheme: "jig-speech",
+      privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+    },
   ]);
 }
 
@@ -59,7 +64,7 @@ export function contentSecurityPolicy(dev: boolean): string {
     "img-src 'self' data: blob: https: jig-addon: jig-icons: jig-file:",
     "media-src jig-file:",
     "font-src 'self' data: jig-icons:",
-    `connect-src 'self' jig-addon:${dev ? " ws://localhost:* http://localhost:*" : ""}`,
+    `connect-src 'self' jig-addon: jig-speech:${dev ? " ws://localhost:* http://localhost:*" : ""}`,
     "frame-src http://localhost:* http://127.0.0.1:* jig-file:",
     "object-src 'none'",
     "base-uri 'none'",

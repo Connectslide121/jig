@@ -113,6 +113,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `attachments/addon-<id>/` | files an add-on keeps for messages it sends later (a task's files) |
 | `attempts/` | "Try several ways" runs and their git worktrees |
 | `themes/` | user themes (Jig or VS Code format) and imported themes |
+| `models/` | dictation's speech models, downloaded on first use (D-208) |
 | `addons/` | the user's add-ons — **a git repository** (§8) |
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
@@ -493,3 +494,16 @@ changed selection resumes the process with updated plugins at the next turn boun
 Skills library tab provides global switches and project selection, with modal details/pickers.
 No project/personal setup is modified; packaged assets live in resources/skills. Full contract:
 `reference/skills.md`. AI feature disclosure defaults follow the AI UX skill's effective selection.
+
+## Speech: dictation and reading aloud (D-208)
+
+Dictation runs Whisper on the user's machine: transformers.js on WebAssembly in a renderer Web
+Worker (`features/speech/speech.worker.ts`), with the ONNX runtime bundled. The main process owns
+the model files (`main/speech/`): the worker loads them from the privileged `jig-speech:` scheme
+(`jig-speech://hf/<org>/<model>/<file>`, only Jig's three models), which serves them from
+`~/.jig/models` or downloads them once from Hugging Face, reporting `speech.progress`. A complete
+model never goes online again. The composer records with `MediaRecorder`, decodes to 16 kHz mono
+and inserts the text at the caret; nothing is sent until you press Enter. Read aloud uses the
+system's voices (`speechSynthesis`). Chromium's Web Speech recognition doesn't work in Electron and
+Claude Code's own voice mode needs claude.ai, so neither is used.
+

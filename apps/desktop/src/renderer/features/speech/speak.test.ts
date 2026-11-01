@@ -1,0 +1,27 @@
+import { describe, expect, it } from "vitest";
+import { speakableText } from "./speak";
+
+describe("speakableText", () => {
+  it("drops Markdown marks and names code blocks", () => {
+    const md = [
+      "## Done",
+      "",
+      "I changed **two** files in `src/app.ts`:",
+      "- the [router](https://example.com/r)",
+      "1. a *test*",
+      "",
+      "```ts",
+      "const x = 1;",
+      "```",
+      "> Note it",
+    ].join("\n");
+    expect(speakableText(md)).toBe(
+      "Done\nI changed two files in src/app.ts:\nthe router\na test\n(code)\nNote it",
+    );
+  });
+
+  it("reads tables as rows and keeps snake_case words", () => {
+    expect(speakableText("| a | b |\n|---|---|\n| 1 | 2 |")).toContain("1");
+    expect(speakableText("use my_var_name")).toBe("use my_var_name");
+  });
+});

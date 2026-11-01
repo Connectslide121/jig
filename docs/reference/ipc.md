@@ -168,6 +168,9 @@ settings, add-on permissions.
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 | `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
 | `addons.galleryInstall` | `{ source, id, replace? }` | `{ id, name }` | installs an add-on from a source in Settings (no other), like `addons.importPackage` (schema) |
+| `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, bytes on disk (D-208) |
+| `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |
+| `speech.microphone` | — | `MicrophoneAccess` | `granted`, `denied` or `unknown`; asks macOS for access the first time, reads Windows' privacy switch |
 
 ## Events
 
@@ -193,6 +196,7 @@ settings, add-on permissions.
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
+| `speech.progress` | `{ model, loaded, total }` | the dictation model is downloading (bytes; at most every 150 ms) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
 | `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |

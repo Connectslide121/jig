@@ -20,6 +20,8 @@ export const paths = {
   addonsState: () => join(jigHome(), "addons-state.json"),
   work: () => join(jigHome(), "work"),
   cache: () => join(jigHome(), "cache"),
+  /** Speech-to-text models, downloaded on first use (D-208). */
+  models: () => join(jigHome(), "models"),
   activity: () => join(jigHome(), "activity"),
   suggestions: () => join(jigHome(), "suggestions.json"),
   /** Notes Claude saved from chats for suggestions (Learning 2). */

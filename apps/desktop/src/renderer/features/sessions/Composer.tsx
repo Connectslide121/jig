@@ -37,6 +37,9 @@ import { useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
+import { DictationButton, toggleDictation } from "../speech/DictationButton";
+import { cancelDictation, useDictation } from "../speech/dictation";
+import { insertDictation } from "../speech/protocol";
 import { newSession } from "./actions";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
 import { ComposerPicker, type PickerItem } from "./ComposerPicker";
@@ -145,6 +148,7 @@ export function Composer({
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
   const suggestion = busy ? undefined : meta.suggestion;
   const mode = inputMode(text);
+  const dictating = useDictation((s) => s.target === meta.id && s.phase === "recording");
 
   const setText = (value: string, at = value.length) => {
     setTextState(value);
@@ -208,6 +212,14 @@ export function Composer({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
   }, [text]);
+
+  /** What you said goes where the caret is (read from the field: it may have changed meanwhile). */
+  const dictated = (spoken: string) => {
+    const el = ref.current;
+    const next = insertDictation(el?.value ?? text, el?.selectionStart ?? caret, spoken);
+    setText(next.text, next.caret);
+    el?.focus();
+  };
 
   const pick = (item: PickerItem) => {
     if (!token) return;
@@ -545,6 +557,16 @@ export function Composer({
             }}
             onKeyDown={(e) => {
               const el = e.currentTarget;
+              if (e.code === "Space" && e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey) {
+                e.preventDefault();
+                if (!e.repeat) toggleDictation(meta.id, dictated);
+                return;
+              }
+              if (e.key === "Escape" && dictating) {
+                e.preventDefault();
+                cancelDictation();
+                return;
+              }
               if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
                 if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                   e.preventDefault();
@@ -615,6 +637,7 @@ export function Composer({
               label="Attach files (images, PDF, Word, Excel, PowerPoint, text)"
               onClick={() => void attach()}
             />
+            <DictationButton target={meta.id} onText={dictated} />
             {meta.kind !== "builder" && (
               <IconButton
                 icon={Split}

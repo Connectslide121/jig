@@ -90,6 +90,17 @@ export const ConfigSchema = z.object({
       overview: z.boolean().default(true),
     })
     .prefault({}),
+  /** Talking to Claude (D-208): dictation runs Whisper on this computer; reading aloud uses system voices. */
+  speech: z
+    .object({
+      /** Whisper model for dictation: `tiny` (fast), `base` (balanced) or `small` (most accurate). */
+      model: z.enum(["tiny", "base", "small"]).default("base"),
+      /** Language you speak, as a code (`en`, `es`…); empty = Whisper recognises it. */
+      language: z.string().max(10).default(""),
+      /** System voice for reading Claude's messages aloud (its name); empty = the system's default. */
+      voice: z.string().max(200).default(""),
+    })
+    .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */
   chatList: z
     .object({

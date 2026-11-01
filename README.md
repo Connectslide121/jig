@@ -228,6 +228,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 And more:
 - **In a chat:**
   - Paste screenshots, and drop PDF, Word, Excel and PowerPoint files.
+  - Talk instead of typing: dictation with Whisper running on your machine (mic button or
+    Ctrl+Shift+Space), and Read aloud on Claude's answers.
   - Permission cards with Allow once / Always / Deny.
   - Queue messages while Claude works, or send one into the running turn with Ctrl+Enter.
   - Next-message suggestions.

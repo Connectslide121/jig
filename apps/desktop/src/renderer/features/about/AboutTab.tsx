@@ -592,6 +592,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Paste screenshots, drop PDFs, Word, Excel and PowerPoint files",
+                "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine; Read aloud on Claude's answers",
                 "Permission cards: allow once, always, or deny",
                 "Queue messages while Claude works",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",

@@ -98,6 +98,9 @@ More behaviour:
 - **The builder:** its sessions run a scripted build (`fakeBuilder.ts`). A goal with "jig itself" or
   "source" ends in a development request (title, user story, acceptance criteria, a small mockup);
   feedback on it ("Change the request") gives version 2, with the feedback in the mockup (`#change`).
+- **Dictation (D-208):** with `JIG_ENGINE=fake` Chromium uses a fake microphone and Jig a fake
+  transcriber: the model "download" goes 0 → 50 → 100 % without network, and every recording
+  becomes "Hello Claude, this came from the microphone."
 - **Guarded tool calls (Routines and Artifacts tabs):** answered by a scripted "cloud"
   (`fakeCloud.ts`) with two routines, one past run and two artifacts.
 

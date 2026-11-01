@@ -27,6 +27,7 @@ import { registerScriptHandlers } from "./scripts";
 import { sessionManager, startSessions } from "./sessions";
 import { registerSetupHandlers } from "./setup";
 import { startSkills } from "./skills";
+import { configureSpeechSwitches, startSpeech } from "./speech";
 import { jigHome } from "./state/paths";
 import { startTerminals, stopTerminals } from "./terminals";
 import { startThemes, themeService } from "./themes";
@@ -38,6 +39,7 @@ import { startWorktrees } from "./worktrees";
 const log = logger("main");
 
 registerSchemes();
+configureSpeechSwitches();
 
 // Jig's own taskbar entry on Windows (with Jig's icon), not Electron's when it runs from a clone;
 // packaged builds match electron-builder; development has its own group and icon cache.
@@ -86,6 +88,7 @@ async function start() {
   registerTourHandlers();
   registerDigestHandlers();
   registerSetupHandlers();
+  startSpeech();
   startUsage();
   await startThemes(addonThemes);
   await startAddons();

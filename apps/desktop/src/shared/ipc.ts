@@ -46,6 +46,7 @@ import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
+import type { MicrophoneAccess, SpeechModel, SpeechModelStatus } from "./speech";
 import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
 import type {
   FileIconThemeData,
@@ -165,6 +166,11 @@ export interface HostMethods {
   "iconThemes.get": { args: { id: string }; result: FileIconThemeData };
   /** The theme chosen in Settings → Appearance → File icons; `null` = Jig's own icons. */
   "iconThemes.active": { args: void; result: FileIconThemeData | null };
+  /** Dictation's speech-to-text models: which are downloaded and their size on disk (D-208). */
+  "speech.models": { args: void; result: SpeechModelStatus[] };
+  "speech.removeModel": { args: { model: SpeechModel }; result: void };
+  /** Whether the system lets Jig use the microphone; on macOS asks the first time. */
+  "speech.microphone": { args: void; result: MicrophoneAccess };
   "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
   "window.minimize": { args: void; result: void };
   "window.toggleMaximize": { args: void; result: void };
@@ -486,6 +492,8 @@ export interface HostEvents {
   "addons.changed": AddonInfo[];
   "builds.changed": BuildJob[];
   "usage.changed": PlanUsage;
+  /** Dictation's model is downloading: bytes so far and in all (total grows as files start). */
+  "speech.progress": { model: SpeechModel; loaded: number; total: number };
   "learning.changed": LearningState;
   /** The profile or the notes from chats changed. */
   "learning.knowledgeChanged": void;

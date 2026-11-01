@@ -15,5 +15,7 @@ export default defineConfig({
     target: "chrome140",
     chunkSizeWarningLimit: 4000,
   },
+  // Dictation's Whisper worker imports transformers.js, which splits into chunks (D-208).
+  worker: { format: "es" },
   server: { port: 5199, strictPort: false },
 });
