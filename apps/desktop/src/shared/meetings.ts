@@ -49,4 +49,6 @@ export interface MeetingOverview {
   fake: boolean;
   activeId?: string;
   records: MeetingRecord[];
+  /** Where the live room's panels sit; the room uses the defaults until one is saved. */
+  layout?: import("./meetingLayout").MeetingLayout;
 }

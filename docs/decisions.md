@@ -2489,3 +2489,24 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   pre-existing uncommitted edits. Skip deletions and paths resolving outside the checkout.
 - Successful cleanup stays silent; unresolved lint/syntax errors reach Claude. Existing full checks
   remain required. Other projects, other worktrees and external/background writes aren't covered.
+
+## D-221: Meetings: a lobby before the call, slots during it
+
+- Status: accepted. Asked for by Jon: the meeting should be the main panel on an ultrawide screen,
+  everything resizable and movable. A free grid was proposed first; Jon then asked for something
+  simpler, "layout slots like in jig … 2 sidebars and a bottom bar, then the main panel", and said
+  upcoming and past meetings belong to "a previous step, before going in the meeting". The details
+  are **Claude, on my own**.
+- Three screens in the one window: the lobby (Upcoming by day with Join, Saved meetings, Join from
+  link, Connection), the live room, and a saved meeting's review (transcript | resizable notes, Ask
+  Claude, Open in Teams, back to the lobby). Leaving a call opens its review, so notes and actions
+  are one step away. The lobby isn't reachable during a call: one call at a time, and it isn't
+  needed there.
+- Live room: the call is always the main area. Transcript and Notes each sit in the left, right or
+  bottom slot (⋯ → Move to), two in one slot split it with a remembered divider, empty slots
+  aren't drawn. Layout in the header shows/hides panels and resets. Default: both on the right,
+  Transcript above Notes. Moving uses the panel menu, not dragging (simpler and reliable; dragging
+  can come later). Rejected: a free 12-column grid (more ways to break the layout than there are
+  panels).
+- The layout lives in meetings.json through `meetings.layout` (validated, room only), not in the
+  workbench layout, which this window doesn't load. Saving is debounced while a handle is dragged.

@@ -236,7 +236,12 @@ export async function startMeetings(): Promise<void> {
       fake: fake(),
       activeId,
       records: store.records(),
+      layout: store.layout(),
     };
+  });
+  handle("meetings.layout", async (layout, ctx) => {
+    own(ctx);
+    await store.setLayout(layout);
   });
   handle("meetings.configure", async (settings, ctx) => {
     own(ctx);

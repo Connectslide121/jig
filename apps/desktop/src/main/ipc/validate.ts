@@ -2,6 +2,7 @@ import { z } from "zod";
 import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
+import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PROJECT_COLORS } from "../../shared/projects";
 import { SPEECH_MODEL_IDS } from "../../shared/speech";
 
@@ -19,6 +20,7 @@ export function isAllowedOrigin(url: string | undefined, devUrl = process.env.JI
   return Boolean(devUrl) && url.startsWith(new URL(devUrl!).origin);
 }
 
+const meetingPanel = z.object({ slot: z.enum(MEETING_SLOTS), hidden: z.boolean().optional() }).strict();
 const MAX_TEXT = 1_000_000;
 const path = z.string().min(1).max(4096);
 const id = z.string().min(1).max(200);
@@ -62,6 +64,12 @@ const attachment = z.object({
 export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.configure": z
     .object({ tenantId: z.uuid(), clientId: z.uuid(), endpoint: z.url().max(1000) })
+    .strict(),
+  "meetings.layout": z
+    .object({
+      panels: z.object({ transcript: meetingPanel, notes: meetingPanel }).strict(),
+      sizes: z.partialRecord(z.enum(MEETING_SIZES), z.number().min(0).max(10_000)),
+    })
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),

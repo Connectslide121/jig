@@ -1,5 +1,12 @@
 # Status
 
+Meeting window screens (2026-11-02, D-221): the window now has a lobby (Upcoming and Saved meetings,
+Join from link, Connection), a live room and a saved meeting's review. In the live room the call is
+the main area; Transcript and Notes go in the left, right or bottom slot from their ⋯ menus, share
+a slot with a resizable split, can be hidden or reset from Layout, and the layout is remembered.
+Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
+now shows "Stopped" instead of Claude Code's red diagnostic, and Meetings sits in the Chats menu.
+
 Automatic source cleanup (2026-11-02, D-220): fresh Claude Code/Jig chats opened in this repository
 load a native hook that runs installed Biome safe fixes after Edit/Write and Bash/PowerShell.
 Shell tools sweep modified/untracked files, covering Windows Python CRLF writes. Success is silent;

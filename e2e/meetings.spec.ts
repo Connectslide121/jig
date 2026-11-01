@@ -49,14 +49,22 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await prejoin.getByLabel("Speech language").selectOption("sv-se");
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/prejoin.png" });
     await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
-    const transcript = room.getByTestId("meeting-transcript");
-    await expect(transcript).toContainText("We should review the Shop API");
-    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/live.png" });
     const overview = async (): Promise<MeetingOverview> => {
       const result = await hostCall(room, "meetings.overview");
       if (!result.ok) throw new Error("Missing meeting");
       return result.value as MeetingOverview;
     };
+    const transcript = room.getByTestId("meeting-transcript");
+    await expect(transcript).toContainText("We should review the Shop API");
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/live.png" });
+    // Panels move between slots from their menus, and the room remembers where they are.
+    await room.getByRole("button", { name: "Notes options", exact: true }).click();
+    await room.getByRole("menuitem", { name: "Left" }).click();
+    await expect.poll(async () => (await overview()).layout?.panels.notes.slot).toBe("left");
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/live-layout.png",
+    });
     const before = await overview();
     const id = before.activeId!;
     const geometry = await transcript.boundingBox();

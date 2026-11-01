@@ -231,6 +231,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.open | Open/focus the Meetings add-on's dedicated window |
 | meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
 | meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
+| meetings.layout | Save where the live room's Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; room only (D-221) |
 | meetings.signIn / meetings.signOut | External browser sign-in / clear memory cache; room only |
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |

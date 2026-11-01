@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
+import { type MeetingLayout, normalizeMeetingLayout } from "../../shared/meetingLayout";
 import type { MeetingCaption, MeetingRecord, MeetingSettings } from "../../shared/meetings";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
@@ -42,6 +43,7 @@ const schema = z.object({
     .object({ tenantId: z.string(), clientId: z.string(), endpoint: z.string() })
     .default({ tenantId: "", clientId: "", endpoint: "" }),
   records: z.array(record).default([]),
+  layout: z.unknown().optional(),
 });
 
 /** Global meeting data; one serialized owner prevents caption, note and queue updates racing. */
@@ -64,6 +66,14 @@ export class MeetingStore {
   }
   settings(): MeetingSettings {
     return { ...this.data.settings };
+  }
+  layout(): MeetingLayout | undefined {
+    return this.data.layout === undefined ? undefined : normalizeMeetingLayout(this.data.layout);
+  }
+  setLayout(layout: MeetingLayout): Promise<void> {
+    return this.change(() => {
+      this.data.layout = normalizeMeetingLayout(layout);
+    });
   }
   records(): MeetingRecord[] {
     return structuredClone(this.data.records);

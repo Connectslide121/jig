@@ -1,46 +1,62 @@
 import {
-  CalendarDays,
-  ExternalLink,
-  History,
+  ArrowLeft,
+  EyeOff,
+  LayoutPanelLeft,
   Link2,
   MessageSquare,
-  RefreshCw,
+  PanelBottom,
+  PanelLeft,
+  PanelRight,
+  RotateCcw,
   Settings,
+  SquareArrowOutUpRight,
   Video,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DEFAULT_MEETING_LAYOUT,
+  MEETING_PANELS,
+  MEETING_SLOTS,
+  type MeetingLayout,
+  type MeetingPanelId,
+  type MeetingSizeKey,
+  type MeetingSlot,
+  movePanel,
+  normalizeMeetingLayout,
+  PANEL_TITLES,
+  resizeSlot,
+  SLOT_TITLES,
+  setPanelHidden,
+} from "../../../shared/meetingLayout";
 import type { MeetingEvent, MeetingOverview, MeetingRecord } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useThemeController } from "../../lib/theme";
 import {
   Badge,
-  type BadgeTone,
   Button,
   cn,
-  Empty,
   ErrorBoundary,
   IconButton,
-  ListRow,
+  type MenuEntry,
   MenuHost,
+  openMenuAt,
   Spinner,
-  Tabs,
 } from "../../ui";
-import { Pane } from "../../workbench/Pane";
 import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
-import { clock, dayAndTime, dayLabel, duration } from "./format";
+import { clock, dayAndTime } from "./format";
+import { Lobby, STATUS } from "./Lobby";
 import { type MediaState, MeetingMedia } from "./media";
+import { NotesPanel, TranscriptPanel } from "./Panels";
+import { SizedBox, Slot } from "./Slots";
 import { Stage } from "./Stage";
-import { Transcript } from "./Transcript";
 
 const EMPTY_PROJECTS: ProjectsState = { projects: [], workspaces: [], activeId: undefined };
-
-const STATUS: Record<MeetingRecord["status"], { label: string; tone: BadgeTone }> = {
-  joining: { label: "Joining", tone: "warning" },
-  connected: { label: "Live", tone: "danger" },
-  ended: { label: "Ended", tone: "neutral" },
-  interrupted: { label: "Interrupted", tone: "warning" },
+const SLOT_ICONS: Record<MeetingSlot, typeof PanelLeft> = {
+  left: PanelLeft,
+  right: PanelRight,
+  bottom: PanelBottom,
 };
 
 export function MeetingRoom(): React.JSX.Element {
@@ -55,12 +71,16 @@ export function MeetingRoom(): React.JSX.Element {
 
 type Pending = "calendar" | "notes" | "join" | "ask" | "queue" | "connection" | "call";
 
+/**
+ * Three screens in one window (D-221): the lobby (upcoming and saved meetings), the live room (the
+ * call in the middle, Transcript and Notes in slots you arrange) and a saved meeting's review.
+ */
 function Room() {
   const [overview, setOverview] = useState<MeetingOverview>();
   const [projects, setProjects] = useState<ProjectsState>(EMPTY_PROJECTS);
   const [events, setEvents] = useState<MeetingEvent[]>();
-  const [tab, setTab] = useState<"upcoming" | "saved">("upcoming");
-  const [selected, setSelected] = useState<string>();
+  const [opened, setOpened] = useState<string>();
+  const [layout, setLayout] = useState<MeetingLayout>();
   const [error, setError] = useState("");
   const [pending, setPending] = useState<Pending>();
   const [settings, setSettings] = useState(false);
@@ -115,6 +135,19 @@ function Room() {
       window.close();
     });
   });
+  // The layout is read once and then owned here; saving is debounced while a handle is dragged.
+  useEffect(() => {
+    if (overview && !layout) setLayout(normalizeMeetingLayout(overview.layout));
+  }, [overview, layout]);
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const changeLayout = (next: MeetingLayout) => {
+    setLayout(next);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(
+      () => void call("meetings.layout", next).catch((e) => setError(errorMessage(e))),
+      300,
+    );
+  };
   const connected = Boolean(overview?.account || overview?.fake);
   const refreshCalendar = () =>
     run(async () => {
@@ -129,173 +162,181 @@ function Room() {
     void refreshCalendar();
   }, [connected]);
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
-  if (!overview)
+  if (!overview || !layout)
     return (
       <div className="h-screen bg-canvas text-fg">
         <Spinner center />
       </div>
     );
   const active = overview.records.find((r) => r.id === overview.activeId);
-  const record =
-    overview.records.find((r) => r.id === (selected ?? overview.activeId)) ?? overview.records[0];
-  const viewingOther = Boolean(active && record && record.id !== active.id);
+  const shown = overview.records.find((r) => r.id === opened);
+  const record = active ?? shown;
   const captionTrouble = active && /unavailable|stopped/i.test(active.capture);
+  const resize = (key: MeetingSizeKey, size: number) => changeLayout(resizeSlot(layout, key, size));
+  const panelMenu = (id: MeetingPanelId): MenuEntry[] => [
+    { heading: "Move to" },
+    ...MEETING_SLOTS.map((slot) => ({
+      label: SLOT_TITLES[slot],
+      icon: SLOT_ICONS[slot],
+      checked: layout.panels[id].slot === slot,
+      onSelect: () => changeLayout(movePanel(layout, id, slot)),
+    })),
+    { separator: true },
+    {
+      label: `Hide ${PANEL_TITLES[id]}`,
+      icon: EyeOff,
+      onSelect: () => changeLayout(setPanelHidden(layout, id, true)),
+    },
+  ];
+  const layoutMenu = (): MenuEntry[] => [
+    { heading: "Panels" },
+    ...MEETING_PANELS.map((id) => ({
+      label: PANEL_TITLES[id],
+      checked: !layout.panels[id].hidden,
+      onSelect: () => changeLayout(setPanelHidden(layout, id, !layout.panels[id].hidden)),
+    })),
+    { separator: true },
+    { label: "Reset layout", icon: RotateCcw, onSelect: () => changeLayout(DEFAULT_MEETING_LAYOUT) },
+  ];
+  const generateNotes = (id: string) =>
+    void run(async () => {
+      const chat = await call("meetings.notes", { id });
+      await openChat(chat.sessionId);
+    }, "notes");
+  const askButton = (
+    <Button size="sm" icon={MessageSquare} onClick={() => setAsk(true)}>
+      Ask Claude
+    </Button>
+  );
+  const notes = (r: MeetingRecord, menu?: MenuEntry[]) => (
+    <NotesPanel
+      record={r}
+      busy={pending === "notes"}
+      menu={menu}
+      onGenerateNotes={() => generateNotes(r.id)}
+      onReview={() => setReview(true)}
+    />
+  );
+  const account = (
+    <span className="flex max-w-64 items-center gap-2 text-xs text-muted">
+      <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "bg-hint")} />
+      <span className="truncate">
+        {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}
+      </span>
+    </span>
+  );
   return (
     <div data-testid="meeting-room" className="flex h-screen flex-col bg-canvas text-fg">
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-titlebar px-4">
-        <Video className="size-4 text-accent" />
-        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Meetings</h1>
-        <span className="flex w-64 items-center justify-end gap-2 text-xs text-muted">
-          <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "bg-hint")} />
-          <span className="truncate">
-            {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}
-          </span>
-        </span>
-        <Button icon={Settings} onClick={() => setSettings(true)} disabled={Boolean(active)}>
-          Connection
-        </Button>
-      </header>
-      <main className="flex min-h-0 flex-1">
-        <Pane
-          id="addon.meetings.agenda"
-          edge="right"
-          defaultSize={300}
-          min={240}
-          max={500}
-          className="flex flex-col border-r border-line bg-surface"
-        >
-          <div className="flex h-14 shrink-0 items-center px-3">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-titlebar px-4">
+        {active ? (
+          <>
+            <span className="size-2 shrink-0 rounded-full bg-danger" />
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{active.title}</h1>
+            <Button icon={LayoutPanelLeft} onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true)}>
+              Layout
+            </Button>
+            {account}
+          </>
+        ) : shown ? (
+          <>
+            <IconButton icon={ArrowLeft} label="Back to meetings" onClick={() => setOpened(undefined)} />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-semibold">{shown.title}</h1>
+              <div className="truncate text-xs text-muted">
+                {dayAndTime(shown.startedAt)}
+                {shown.endedAt ? ` – ${clock(shown.endedAt)}` : ""}
+              </div>
+            </div>
+            <Badge tone={STATUS[shown.status].tone}>{STATUS[shown.status].label}</Badge>
+            <Button icon={MessageSquare} onClick={() => setAsk(true)}>
+              Ask Claude
+            </Button>
+            <Button
+              icon={SquareArrowOutUpRight}
+              onClick={() => void run(() => call("app.openExternal", { url: shown.joinUrl }))}
+            >
+              Open in Teams
+            </Button>
+          </>
+        ) : (
+          <>
+            <Video className="size-4 shrink-0 text-accent" />
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Meetings</h1>
+            {account}
+            <Button icon={Settings} onClick={() => setSettings(true)}>
+              Connection
+            </Button>
             <Button
               variant="primary"
               icon={Link2}
-              className="w-full"
-              disabled={Boolean(active)}
               onClick={() => setJoining({ title: "Teams meeting", url: "" })}
             >
               Join from link…
             </Button>
-          </div>
-          <div className="flex shrink-0 items-center border-b border-line pr-2">
-            <Tabs
-              className="flex-1 border-b-0"
-              value={tab}
-              onChange={setTab}
-              items={[
-                { id: "upcoming", label: "Upcoming" },
-                { id: "saved", label: `Saved · ${overview.records.length}` },
-              ]}
-            />
-            <IconButton
-              icon={RefreshCw}
-              size="sm"
-              label="Refresh calendar"
-              className={cn(tab !== "upcoming" && "invisible")}
-              disabled={pending === "calendar" || !connected}
-              onClick={() => void refreshCalendar()}
-            />
-          </div>
-          <div className="relative min-h-0 flex-1 overflow-y-auto p-1.5">
-            {tab === "upcoming" ? (
-              <Upcoming
-                events={events}
-                loading={pending === "calendar"}
-                connected={connected}
-                busy={Boolean(active)}
-                onConnect={() => setSettings(true)}
-                onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
+          </>
+        )}
+      </header>
+      {active ? (
+        <main className="flex min-h-0 flex-1">
+          <Slot slot="left" layout={layout} onResize={resize} render={(id) => panel(id)} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1">
+              <Stage
+                active={active}
+                media={mediaState}
+                fake={overview.fake}
+                attachCanvas={attachCanvas}
+                onMute={() => void run(() => media.current!.mute())}
+                onCamera={() => void run(() => media.current!.camera())}
+                onShare={() =>
+                  void run(async () => {
+                    if (mediaState.sharing) await media.current!.share();
+                    else setSharing(await call("meetings.shareSources"));
+                  })
+                }
+                onDevices={() => setDevicePicker(true)}
+                onRetryCaptions={() => void run(() => media.current!.startCaptions())}
+                onLeave={() =>
+                  void run(async () => {
+                    setOpened(active.id);
+                    await media.current!.leave();
+                  })
+                }
               />
-            ) : !overview.records.length ? (
-              <Empty icon={History} title="No saved meetings" className="h-full">
-                Captions and notes from meetings you join are kept here.
-              </Empty>
-            ) : (
-              <div role="listbox" aria-label="Saved meetings" className="space-y-0.5">
-                {overview.records.map((r) => (
-                  <ListRow
-                    key={r.id}
-                    selected={r.id === record?.id}
-                    onClick={() => setSelected(r.id)}
-                    className="h-12"
-                    description={`${dayAndTime(r.startedAt)}${r.endedAt ? ` · ${duration(r.startedAt, r.endedAt)}` : ""}`}
-                    trailing={
-                      <span className="flex w-20 justify-end">
-                        <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge>
-                      </span>
-                    }
-                  >
-                    {r.title}
-                  </ListRow>
-                ))}
-              </div>
-            )}
-          </div>
-        </Pane>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Pane
-            id="addon.meetings.stage"
-            edge="bottom"
-            defaultSize={300}
-            min={180}
-            max={720}
-            className="border-b border-line"
-          >
-            <Stage
-              active={active}
-              media={mediaState}
-              fake={overview.fake}
-              attachCanvas={attachCanvas}
-              onMute={() => void run(() => media.current!.mute())}
-              onCamera={() => void run(() => media.current!.camera())}
-              onShare={() =>
-                void run(async () => {
-                  if (mediaState.sharing) await media.current!.share();
-                  else setSharing(await call("meetings.shareSources"));
-                })
-              }
-              onDevices={() => setDevicePicker(true)}
-              onRetryCaptions={() => void run(() => media.current!.startCaptions())}
-              onLeave={() => void run(() => media.current!.leave())}
-            />
-          </Pane>
-          <div className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">{record?.title ?? "No meeting selected"}</div>
-              <div className="truncate text-xs text-muted">
-                {record
-                  ? `${dayAndTime(record.startedAt)}${record.endedAt ? ` – ${clock(record.endedAt)}` : ""} · ${STATUS[record.status].label}`
-                  : "Join a meeting or pick a saved one"}
-              </div>
             </div>
-            {viewingOther && (
-              <Button onClick={() => setSelected(active!.id)}>
-                <span className="size-2 rounded-full bg-danger" />
-                Back to live meeting
-              </Button>
-            )}
-            <Button icon={MessageSquare} disabled={!record} onClick={() => setAsk(true)}>
-              Ask Claude
-            </Button>
-            <IconButton
-              icon={ExternalLink}
-              label="Open in Teams"
-              disabled={!record || Boolean(active)}
-              onClick={() => void run(() => call("app.openExternal", { url: record!.joinUrl }))}
-            />
+            <Slot slot="bottom" layout={layout} onResize={resize} render={(id) => panel(id)} />
           </div>
-          <Transcript
-            record={record}
-            live={Boolean(active && record?.id === active.id)}
-            busy={pending === "notes"}
-            onGenerateNotes={() =>
-              void run(async () => {
-                const chat = await call("meetings.notes", { id: record!.id });
-                await openChat(chat.sessionId);
-              }, "notes")
-            }
-            onReview={() => setReview(true)}
-          />
-        </div>
-      </main>
+          <Slot slot="right" layout={layout} onResize={resize} render={(id) => panel(id)} />
+        </main>
+      ) : shown ? (
+        <main className="flex min-h-0 flex-1">
+          <div className="flex min-w-0 flex-1">
+            <TranscriptPanel record={shown} live={false} />
+          </div>
+          <SizedBox
+            layout={layout}
+            sizeKey="review.notes"
+            edge="left"
+            min={280}
+            onResize={resize}
+            label="Resize notes"
+            className="border-l border-line bg-surface"
+          >
+            {notes(shown)}
+          </SizedBox>
+        </main>
+      ) : (
+        <Lobby
+          events={events}
+          records={overview.records}
+          loading={pending === "calendar"}
+          connected={connected}
+          onRefresh={() => void refreshCalendar()}
+          onConnect={() => setSettings(true)}
+          onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
+          onOpen={setOpened}
+        />
+      )}
       <footer
         role="status"
         className="flex h-7 shrink-0 items-center gap-2 border-t border-line bg-surface px-3 text-xs"
@@ -390,7 +431,6 @@ function Room() {
           onJoin={(meeting, options) =>
             run(async () => {
               const r = await call("meetings.join", meeting);
-              setSelected(r.id);
               setJoining(undefined);
               await media.current!.join(r, { ...options, fake: overview.fake });
             }, "join")
@@ -441,91 +481,13 @@ function Room() {
       )}
     </div>
   );
-}
 
-/** The next 14 days of Teams meetings, by day, times and Join buttons each in their own column. */
-function Upcoming({
-  events,
-  loading,
-  connected,
-  busy,
-  onConnect,
-  onJoin,
-}: {
-  events?: MeetingEvent[];
-  loading: boolean;
-  connected: boolean;
-  busy: boolean;
-  onConnect(): void;
-  onJoin(event: MeetingEvent): void;
-}) {
-  if (!connected)
-    return (
-      <Empty icon={CalendarDays} title="Calendar not connected" className="h-full">
-        <p>Connect Microsoft to see your Teams meetings for the next 14 days.</p>
-        <Button className="mt-3" onClick={onConnect}>
-          Connect…
-        </Button>
-      </Empty>
+  function panel(id: MeetingPanelId) {
+    const r = active!;
+    return id === "transcript" ? (
+      <TranscriptPanel record={r} live menu={panelMenu(id)} actions={askButton} />
+    ) : (
+      notes(r, panelMenu(id))
     );
-  if (!events) return loading ? <Spinner center /> : null;
-  if (!events.length)
-    return (
-      <Empty icon={CalendarDays} title="Nothing in the next 14 days" className="h-full">
-        Paste a Teams link to join any meeting.
-      </Empty>
-    );
-  const now = Date.now();
-  const days = new Map<string, MeetingEvent[]>();
-  for (const event of events) {
-    const label = dayLabel(event.start);
-    days.set(label, [...(days.get(label) ?? []), event]);
   }
-  return (
-    <div className={cn(loading && "opacity-60")}>
-      {[...days].map(([label, list]) => (
-        <section key={label}>
-          <h3 className="flex h-7 items-center px-2 text-2xs font-semibold tracking-wide text-hint uppercase">
-            {label}
-          </h3>
-          {list.map((event) => {
-            const ongoing = new Date(event.start).getTime() <= now && now < new Date(event.end).getTime();
-            return (
-              <div key={event.id} className="flex h-12 items-center gap-2 rounded-md px-2 hover:bg-hover">
-                <time
-                  className={cn(
-                    "w-10 shrink-0 text-right text-sm tabular-nums",
-                    ongoing ? "font-semibold text-accent" : "text-muted",
-                  )}
-                >
-                  {clock(event.start)}
-                </time>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm" title={event.title}>
-                    {event.title}
-                  </div>
-                  <div className="truncate text-xs text-muted">
-                    {ongoing ? "Now · " : ""}
-                    {event.organizer}
-                  </div>
-                </div>
-                <span className="flex w-12 shrink-0 justify-end">
-                  {event.joinUrl && (
-                    <Button
-                      size="sm"
-                      variant={ongoing ? "primary" : "secondary"}
-                      disabled={busy}
-                      onClick={() => onJoin(event)}
-                    >
-                      Join
-                    </Button>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </section>
-      ))}
-    </div>
-  );
 }

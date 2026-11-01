@@ -131,7 +131,8 @@ read-only application resources, not user state. Personal/project Claude skills 
 
 ## Meetings (D-217)
 
-Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint} and records
+Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint}, an optional room layout
+(`shared/meetingLayout.ts`: panels {transcript, notes} → {slot, hidden?} and sizes in px, D-221) and records
 {id, title, joinUrl, startedAt, endedAt?, status, capture, captions, gaps, notes, actions}. A record
 has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final;
 actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically
