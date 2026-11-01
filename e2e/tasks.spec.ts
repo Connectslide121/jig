@@ -51,9 +51,32 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await expect(add.getByTestId("chat-attachment")).toHaveCount(2);
   expect(await row.boundingBox()).toEqual(rowBefore);
   expect(await field.boundingBox()).toEqual(fieldBefore);
-  expect(rowBefore!.height).toBeLessThanOrEqual(36);
+  // A 3-row prompt; files sit in a fixed box beside it, one per line, never scrolled sideways.
+  expect(rowBefore!.height).toBeLessThanOrEqual(80);
+  expect(fieldBefore!.height).toBe(rowBefore!.height);
+  expect(fieldBefore!.height).toBeGreaterThanOrEqual(60);
+  const files = add.getByTestId("tasks-add-files-0-0");
+  expect(
+    await files.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight),
+  ).toBe(true);
   await expect(add.getByTitle("Open cart-notes.md", { exact: true })).toHaveCount(1);
-  await page.screenshot({ path: "test-results/tasks-add-compact.png" });
+  // More files than fit: the last line is "+N more", a menu with the rest; the row keeps its size.
+  await field.evaluate((el) => {
+    const data = new DataTransfer();
+    for (const name of ["totals.md", "taxes.md"])
+      data.items.add(new File(["notes"], name, { type: "text/markdown" }));
+    el.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(add.getByTestId("tasks-add-more-files")).toHaveText("2 more");
+  await expect(add.getByTestId("chat-attachment")).toHaveCount(2);
+  expect(await row.boundingBox()).toEqual(rowBefore);
+  await add.getByTestId("tasks-add-more-files").click();
+  await page.getByRole("menuitem", { name: "taxes.md" }).hover();
+  await page.getByRole("menuitem", { name: "Remove" }).click();
+  await expect(add.getByTestId("tasks-add-more-files")).toHaveCount(0);
+  await expect(add.getByTestId("chat-attachment")).toHaveCount(3);
+  await add.getByRole("button", { name: "Remove totals.md" }).click();
+  await expect(add.getByTestId("chat-attachment")).toHaveCount(2);
   await expect(field).toHaveValue("fix the cart with follow-ups");
   await add.getByTestId("tasks-add-chat").click();
   await add.getByTestId("tasks-add-text-1-0").fill("fail this task please");

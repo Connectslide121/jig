@@ -109,8 +109,8 @@ stays inside the composer; full labels remain available in tooltips. Alignment/o
 includes an 800-pixel window. The screenshot generator selects the last preview tab when several exist.
 The screenshot suite passes; chat, overview, details and related chat screenshots were refreshed.
 
-Task entry (2026-10-31): Add tasks uses compact single-line prompt rows with inline filename chips.
-The attachment area reserves its width and scrolls horizontally; files never grow a row or move its
+Task entry (2026-11-01, D-212): Add tasks prompts are 3 rows tall; files sit in a fixed box beside
+them, one per line, with "+N more" (a menu) past 3 and no scrolling; files never grow a row or move its
 controls. Click a filename to preview or × to remove; paste, drop and paperclip still work.
 Validation: production build and `npm run check` pass (592 tests, 8 skipped). The fake-engine task
 queue regression verifies image paste, document drop, unchanged row/prompt geometry, retained files

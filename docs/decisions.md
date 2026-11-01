@@ -2276,3 +2276,14 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   in the modal (the previous behaviour, which blocked the app for the seconds `az` takes).
 - For this, the add-on SDK's `ctx.notify` takes an optional `timeout` and returns a function that
   closes the toast (backward compatible: it returned nothing before).
+
+## D-212: Add tasks: taller prompts, files in a fixed box beside them
+
+- Status: accepted. Asked for by Jon: the attachment slot was tiny and scrolled sideways ("really bad
+  ux"), the prompt should be taller (2-3 rows) without each task taking a huge height, and files
+  should be compact but visible. The layout is **Claude, on my own**.
+- Each task row is a 3-row prompt; beside it a fixed box (the prompt's height) lists files one per
+  line, and past 3 shows 2 and a "+N more" line whose menu opens or removes the rest. Empty, the box
+  is a dashed drop zone that attaches on click. The paperclip and ⋯ stack at the right. Nothing
+  scrolls and attaching never changes the row's size (no layout shift). Rejected: chips wrapping
+  under the prompt (rows would grow and move what's below); a scrolling list (hides files).

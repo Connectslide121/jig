@@ -136,6 +136,104 @@ function takeFiles(ctx: AddonUiContext, list: FileList, then: (files: TaskFile[]
   return true;
 }
 
+/** File lines that fit beside the 3-row prompt; with more, the last line is "+N more" (a menu). */
+const FILE_LINES = 3;
+
+/**
+ * A task's files in the Add tasks form: a fixed box beside the prompt (so nothing moves), one file per
+ * line, never a scrollbar. Empty, it's a drop zone that also picks files on click.
+ */
+function TaskFiles({
+  files,
+  onPick,
+  onDrop,
+  onRemove,
+  testId,
+}: {
+  files: TaskFile[];
+  onPick: () => void;
+  onDrop: (list: FileList) => boolean;
+  onRemove: (file: TaskFile) => void;
+  testId: string;
+}) {
+  const ctx = useAddon();
+  const shown = files.length > FILE_LINES ? files.slice(0, FILE_LINES - 1) : files;
+  const hidden = files.slice(shown.length);
+  return (
+    <div
+      role="group"
+      aria-label="Task attachments"
+      className="flex h-20 w-56 shrink-0 flex-col gap-1"
+      onDragOver={(e) => {
+        if ([...e.dataTransfer.items].some((i) => i.kind === "file")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (onDrop(e.dataTransfer.files)) e.preventDefault();
+      }}
+      data-testid={testId}
+    >
+      {files.length === 0 ? (
+        <button
+          type="button"
+          className="flex h-full w-full items-center justify-center gap-2 rounded border border-dashed border-line px-3 text-xs text-hint hover:border-accent hover:text-accent"
+          onClick={onPick}
+        >
+          <Paperclip className="size-3.5 shrink-0" />
+          Paste, drop or attach files
+        </button>
+      ) : (
+        <>
+          {shown.map((file) => (
+            <div
+              key={file.path}
+              className="flex h-6 shrink-0 items-center rounded border border-line bg-raised"
+              data-testid="chat-attachment"
+            >
+              <button
+                type="button"
+                className="flex h-full min-w-0 flex-1 items-center gap-1 px-1.5 text-xs hover:text-accent"
+                title={`Open ${fileName(file)}`}
+                onClick={() => openFile(ctx, file)}
+              >
+                <FileIcon path={fileName(file)} className="size-3.5 shrink-0" />
+                <span className="truncate">{fileName(file)}</span>
+              </button>
+              <IconButton
+                size="sm"
+                icon={X}
+                label={`Remove ${fileName(file)}`}
+                onClick={() => onRemove(file)}
+              />
+            </div>
+          ))}
+          {hidden.length > 0 && (
+            <button
+              type="button"
+              className="flex h-6 shrink-0 items-center gap-1 rounded border border-line px-1.5 text-xs text-muted hover:text-accent"
+              onClick={(e) =>
+                ctx.menu(
+                  hidden.map((file) => ({
+                    label: fileName(file),
+                    icon: (file.kind ?? "image") === "image" ? "image" : "file-text",
+                    submenu: [
+                      { label: "Open", icon: "external-link", onSelect: () => openFile(ctx, file) },
+                      { label: "Remove", icon: "x", danger: true, onSelect: () => onRemove(file) },
+                    ],
+                  })),
+                  e.currentTarget,
+                )
+              }
+              data-testid="tasks-add-more-files"
+            >
+              <Plus className="size-3.5 shrink-0" />
+              {hidden.length} more
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 /** The queue, kept current: it reloads when the host says it changed. */
 function useQueue() {
   const { data, reload, error } = useHostCall<Queue>("list");
@@ -1017,8 +1115,8 @@ function AddDialog({
               <div className="flex flex-col gap-1 p-2">
                 {chat.steps.map((step, si) => (
                   <div key={step.id} data-testid={`tasks-add-row-${ci}-${si}`}>
-                    <div className="flex h-9 items-center gap-2">
-                      <span className="flex h-7 w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint">
+                    <div className="flex h-20 items-start gap-2">
+                      <span className="flex h-8 w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint">
                         {si === 0 ? (
                           <MessageSquare className="size-3.5" />
                         ) : (
@@ -1026,9 +1124,9 @@ function AddDialog({
                         )}
                       </span>
                       <Textarea
-                        rows={1}
+                        rows={3}
                         autoFocus={step.id === focus || (!focus && ci === 0 && si === 0)}
-                        className="h-9 min-w-0 flex-1 resize-none"
+                        className="h-20 min-w-0 flex-1 resize-none"
                         value={step.text}
                         placeholder={si === 0 ? "What should Claude do?" : "Then, in the same chat…"}
                         onChange={(e) => setChats(setStep(chats, ci, si, e.target.value))}
@@ -1055,50 +1153,29 @@ function AddDialog({
                         }}
                         data-testid={`tasks-add-text-${ci}-${si}`}
                       />
-                      <div
-                        role="group"
-                        className="flex h-9 w-40 shrink-0 items-center gap-1 overflow-x-scroll overflow-y-hidden"
-                        aria-label="Task attachments"
-                        data-testid={`tasks-add-files-${ci}-${si}`}
-                      >
-                        {step.files.map((file) => (
-                          <div
-                            key={file.path}
-                            className="flex h-7 w-36 shrink-0 items-center rounded border border-line bg-raised"
-                            data-testid="chat-attachment"
-                          >
-                            <button
-                              type="button"
-                              className="flex min-w-0 flex-1 items-center gap-1 px-1 text-xs hover:text-accent"
-                              title={`Open ${fileName(file)}`}
-                              onClick={() => openFile(ctx, file)}
-                            >
-                              <FileIcon path={fileName(file)} className="size-3.5 shrink-0" />
-                              <span className="truncate">{fileName(file)}</span>
-                            </button>
-                            <IconButton
-                              size="sm"
-                              icon={X}
-                              label={`Remove ${fileName(file)}`}
-                              onClick={() => setChats(removeFile(chats, ci, si, file.path))}
-                            />
-                          </div>
-                        ))}
+                      <TaskFiles
+                        files={step.files}
+                        onPick={() => void ctx.attachments.pick().then((f) => attach(ci, si, f))}
+                        onDrop={(list) => takeFiles(ctx, list, (f) => attach(ci, si, f))}
+                        onRemove={(file) => setChats(removeFile(chats, ci, si, file.path))}
+                        testId={`tasks-add-files-${ci}-${si}`}
+                      />
+                      <div className="flex h-20 shrink-0 flex-col gap-1">
+                        <IconButton
+                          size="sm"
+                          icon={Paperclip}
+                          label="Attach files"
+                          onClick={() => void ctx.attachments.pick().then((f) => attach(ci, si, f))}
+                          data-testid={`tasks-add-attach-${ci}-${si}`}
+                        />
+                        <IconButton
+                          size="sm"
+                          icon={MoreHorizontal}
+                          label="Task actions"
+                          onClick={(e) => taskMenu(ci, si, e.currentTarget)}
+                          data-testid={`tasks-add-task-menu-${ci}-${si}`}
+                        />
                       </div>
-                      <IconButton
-                        size="sm"
-                        icon={Paperclip}
-                        label="Attach files"
-                        onClick={() => void ctx.attachments.pick().then((f) => attach(ci, si, f))}
-                        data-testid={`tasks-add-attach-${ci}-${si}`}
-                      />
-                      <IconButton
-                        size="sm"
-                        icon={MoreHorizontal}
-                        label="Task actions"
-                        onClick={(e) => taskMenu(ci, si, e.currentTarget)}
-                        data-testid={`tasks-add-task-menu-${ci}-${si}`}
-                      />
                     </div>
                   </div>
                 ))}
