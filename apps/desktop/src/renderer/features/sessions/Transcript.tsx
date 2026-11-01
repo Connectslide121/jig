@@ -295,7 +295,7 @@ function StepsRow({
         ) : (
           <ChevronRight className="size-3.5 shrink-0" />
         )}
-        <span className="truncate">{summary.text}</span>
+        <span className={cn("truncate", summary.running && "jig-working-text")}>{summary.text}</span>
         {(summary.added > 0 || summary.removed > 0) && (
           <span className="shrink-0 font-mono text-2xs">
             {summary.added > 0 && <span className="text-success">+{summary.added}</span>}
