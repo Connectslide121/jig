@@ -19,6 +19,10 @@ export const SLOTS = {
   watcher: "Host code that runs on an interval (e.g. check pipeline runs).",
   "claude.tool": "A tool Claude can use in every chat (host code; read-only tools run without asking).",
   "claude.context": "What Claude should know in every turn of a chat (host code returning text).",
+  "jig.event":
+    "Host code that runs when something happens in Jig: a chat finished or needs you, a commit, a branch switch, another active project.",
+  "search.provider":
+    "Results in Jig's search (top bar, Ctrl+P), e.g. work items or pipelines by name or number.",
   "settings.page": "A page in Settings.",
   theme: "A colour theme (Jig or VS Code format JSON).",
 } as const;
@@ -42,6 +46,8 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   watcher: "watchers",
   "claude.tool": "tools",
   "claude.context": "context",
+  "jig.event": "events",
+  "search.provider": "search",
   "settings.page": "settings",
   theme: "themes",
 };

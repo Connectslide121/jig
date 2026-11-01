@@ -32,7 +32,8 @@ as a commit and keeps its stored data; deleting your copy of a built-in brings t
   "icon": "rocket",
   "permissions": ["exec:az", "net"],
   "storage": { "scope": "project" },   // where its data lives: global (default) | project | repo
-  "contributes": { "views": [ … ], "actions": [ … ], "watchers": [ … ] }   // docs/reference/slots.md
+  "contributes": { "views": [ … ], "actions": [ … ], "watchers": [ … ] },  // docs/reference/slots.md
+  "exports": ["cards"]                 // host.ts functions other add-ons may call (D-215)
 }
 ```
 
@@ -85,6 +86,9 @@ are add-ons':
 | `addon` | `{ id, name }` |
 | `host.call(method, args)` | calls an export of `host.ts` |
 | `on(topic, listener)` | events from `api.emit` in host code |
+| `onJigEvent(name, listener)` | what happens in Jig while the view is open (see Jig events below); returns unsubscribe. `useJigEvent(name, listener)` from `@jig/sdk/ui` is the hook |
+| `setBadge(viewId, value)` | a badge on one of this add-on's views (its icon in a sidebar and on its tab): a count (above 99 shows `99+`) or up to 4 characters such as `!`; `0` or `undefined` clears it |
+| `addons.list()` / `addons.call(addonId, method, args)` | other add-ons (`{ id, name, enabled, exports }`) and calling a host method one shares (its `exports`) |
 | `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }`: a project (a group of chats the user manages, D-101). `path` and the facts are about its default workspace; `repos` lists the repositories inside it (`[{ path, name }]`, empty for a single repository) |
 | `projects.setFocusRepo(id, repoPath)` / `projects.rescanRepos(id)` | the project's default Git repository (Git panel, status bar, Git actions); look for repositories again in a project or workspace by id (Repos uses workspace ids on manual Refresh) |
 | `useWorkspaceList()` (from `@jig/sdk/ui`) | the same, re-rendering when folders change |
@@ -101,7 +105,7 @@ are add-ons':
 | `runInTerminal(command, { cwd?, title?, projectId? })` | needs `terminal` |
 | `attachments.add(files)`, `attachments.pick({ title?, defaultPath? })` → `AddonAttachment[]` | keeps pasted/dropped files (`clipboardData.files`, `dataTransfer.files`) or files the user picks, like the chat's message box: images ≤ 5 MB, PDFs, Word/Excel/PowerPoint and text files, in `~/.jig/attachments/addon-<id>/`. A file Claude can't take is reported in a toast and left out. Send them with `api.chats.send({ attachments })`; show them with `<Attachments files onRemove?>` from `@jig/sdk/ui` (thumbnails and chips that open the file) |
 | `sendToChat(text, { sessionId?, send? })` | new session in the active project unless `sessionId`; needs `chat` |
-| `notify({ title, message?, tone?, timeout? })` | toast (`timeout` ms, 0 = until closed); returns a function that closes it |
+| `notify({ title, message?, tone?, timeout?, system?, actions? })` | toast (`timeout` ms, 0 = until closed); `actions: [{ label, run }]` adds up to 3 buttons; `system: true` also shows a system notification when Jig isn't in front (if notifications are on in Settings), and the toast then waits until closed. Returns a function that closes it |
 | `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
 | `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added |
@@ -111,7 +115,7 @@ are add-ons':
 `CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Collapse`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useActiveChat()` (the chat in front, or the last one: `{ sessionId, title, projectId }`), `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
-→ `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, plus `VirtualList` (long lists), `ArrangeList` (a list the user can arrange: hide items, drag them into an order, group them with dividers, each row offering a divider above it; keep its `Arrangement` in `ctx.storage`, with the pure helpers `arrange`, `moveKey`, `toggleHidden`, `addDivider`, `renameDivider`, `removeDivider` from `@jig/sdk`),
+→ `{ data, error, loading, reload }`, `useAddonEvent(topic, listener)`, `useJigEvent(name, listener)`, plus `VirtualList` (long lists), `ArrangeList` (a list the user can arrange: hide items, drag them into an order, group them with dividers, each row offering a divider above it; keep its `Arrangement` in `ctx.storage`, with the pure helpers `arrange`, `moveKey`, `toggleHidden`, `addDivider`, `renameDivider`, `removeDivider` from `@jig/sdk`),
 `useHighlightedLines(code, lang)` (theme-highlighted HTML per line, for diffs),
 `languageForPath(path)`, and for resizable layouts `Pane` (`<Pane id edge defaultSize min? max?>`: a flex
 child with a drag handle on `edge`; the size is remembered in `layout.json` under `id` — use
@@ -146,7 +150,12 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `fs.readFile(path, encoding?)` (`"base64"` for binary files), `fs.readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
 | `fetch(url, init)` | `net` | |
 | `storage.get/set` | — | same store as the UI |
-| `notify({…})`, `emit(topic, payload)` | — | toast; event to the UI |
+| `spawn(command, args, { cwd?, env?, onOutput?(text, stream) })` → `{ pid, write, end, kill, done }` | `exec` or `exec:<name>` | starts a long-running program (no shell) and streams its output while it runs: logs, a deploy, a dev server. `done` resolves to `{ code }` (127 = not found); send output on to the UI with `emit`. Killed when the add-on reloads |
+| `fs.watch(path, listener(changes), { recursive?, ignore?, debounceMs? })` → `stop()` | `fs:read` | calls `listener` with the changed paths, gathered over `debounceMs` (200); folders named in `ignore` (default `node_modules`, `.git`) are skipped. Stops when the add-on reloads |
+| `notify({ title, message?, tone?, timeout?, system?, actions? })` | — | toast; `actions: [{ label, view \| tab+params \| run+args \| url \| file }]` (up to 3) open one of the add-on's views or tabs, call one of its host exports, open a web page or preview a file. `system: true` also notifies outside Jig when it's in the background (click brings Jig forward) |
+| `setBadge(viewId, value)` | — | a badge on one of its views (as `ctx.setBadge`), e.g. from a watcher |
+| `addons.list()` / `addons.call(addonId, method, args)` | — | other add-ons and their shared methods (manifest `exports`); calling a method that isn't shared fails |
+| `emit(topic, payload)` | — | event to the UI |
 | `projects()` | — | the user's projects |
 | `workspaces()` | — | every folder the user added, with its repositories |
 | `chats.create({ projectId?, cwd?, title?, permissionMode? })` → `{ sessionId }` | `chat` | an empty chat with the project's defaults (or in `cwd`); `permissionMode` is `default`, `acceptEdits` or `plan`, never bypass |
@@ -166,6 +175,37 @@ Permissions are shown to you (Settings → Add-ons, and in the builder's preview
 API. `ai` lets an add-on ask Claude (`ctx.ai.ask`); the host checks it again (`ai.ask` IPC), so an
 add-on without it gets an error even if its UI calls the method directly. Host code is code you accepted, not a sandbox (D-007): it could import Node modules directly.
 
+## Jig events (D-215)
+
+Add-ons can follow what happens in Jig: host code with `contributes.events` (`[{ on, run }]`, runs even
+with no view open), a UI with `ctx.onJigEvent` / `useJigEvent`. The list is `JIG_EVENTS` in `@jig/sdk`:
+
+| Event | Payload | When |
+|---|---|---|
+| `chat.finished` | `{ sessionId, title, projectId?, cwd }` | a chat's turn ended (working → idle) |
+| `chat.needsYou` | same | a chat waits for a permission or an answer |
+| `chat.failed` | same + `error?` | a turn ended with an error |
+| `git.commit` | `{ repo, branch?, sha, message }` | a commit in one of the projects' repositories, made anywhere (Jig, a terminal, an editor) |
+| `git.branch` | `{ repo, from?, to? }` | a branch switch there |
+| `project.active` | `{ projectId?, name?, path? }` | another project became active |
+
+Builder chats don't send chat events. Git events come from watching each repository's `.git` folder
+(up to 50 repositories; worktrees follow their `gitdir`).
+
+## Search (D-215)
+
+`contributes.search` (`[{ id, title, icon?, run }]`) adds results to Jig's search (top bar, Ctrl+P):
+`run({ query, projectId?, cwd? }, api)` returns up to 8 `{ id, label, detail?, icon?, open }`, where `open`
+is the same target as a toast button (`{ view }`, `{ tab, params? }`, `{ run, args? }`, `{ url }`,
+`{ file }`). Results show after the files, one group per provider titled `title`; a provider gets
+1.5 s, then it's left out of that search. Queries are debounced as you type.
+
+## Add-ons working together (D-215)
+
+An add-on lists host functions others may call in its manifest's top-level `exports`; they call them
+with `api.addons.call(id, method, args)` / `ctx.addons.call(...)`. Use it when one add-on owns some
+data (work items, environments) that others build on. A turned-off add-on can't be called.
+
 ## Lifecycle
 
 - Discovery at start and on every file change (folders are watched; saving a file reloads that add-on
@@ -173,11 +213,14 @@ add-on without it gets an error even if its UI calls the method directly. Host c
 - Switching an add-on off (Settings → Add-ons, or "Turn off" after a crash) unloads it and is
   remembered in `~/.jig/addons-state.json`.
 - `jig_list_addons` (the chat tool) and the builder read the catalog: manifest, contributions,
-  permissions and README of every add-on.
+  permissions, a "Purpose" line (the README's first paragraph) and README of every add-on. The weekly
+  review gets the same catalog with each add-on's use, so it knows what each one is for (D-215).
 
 ## IPC
 
-`addons.list`, `addons.setEnabled`, `addons.call`, `addons.storageGet/Set`, `addons.reload`,
-`addons.history`, `addons.rollback`; events `addons.changed`, `addons.event` (`docs/reference/ipc.md`).
+`addons.list`, `addons.setEnabled`, `addons.call`, `addons.callShared`, `addons.badges`,
+`addons.setBadge`, `addons.systemNotify`, `addons.search`, `addons.storageGet/Set`, `addons.reload`,
+`addons.history`, `addons.rollback`; events `addons.changed`, `addons.event`, `addons.badges`,
+`addons.jigEvent` (`docs/reference/ipc.md`).
 The UI bundle is served at `jig-addon://<id>/ui.js`, its CSS at `jig-addon://<id>/ui.css`, other files
 of the folder (images) at `jig-addon://<id>/<path>`.

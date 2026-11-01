@@ -26,4 +26,26 @@ describe("Go to…", () => {
     expect(quickGroups(items, "zzz", 1).map((g) => g.kind)).toEqual(["file"]);
     expect(quickGroups(items, "", 1)[0]!.items).toHaveLength(1);
   });
+
+  it("adds add-on results after files, one group per provider, in the provider's order", () => {
+    const results = [
+      {
+        kind: "result" as const,
+        id: "a/1",
+        label: "Zebra card",
+        group: { key: "board/cards", title: "Work items" },
+      },
+      {
+        kind: "result" as const,
+        id: "a/2",
+        label: "Apple card",
+        group: { key: "board/cards", title: "Work items" },
+      },
+      { kind: "result" as const, id: "b/1", label: "Nightly", group: { key: "ci/runs", title: "Pipelines" } },
+    ];
+    const groups = quickGroups([...items, ...results], "zzz");
+    expect(groups.map((g) => g.title)).toEqual(["Files", "Work items", "Pipelines"]);
+    expect(groups[1]!.items.map((i) => i.id)).toEqual(["a/1", "a/2"]);
+    expect(quickGroups(results, "x", 1)[0]!.items).toHaveLength(1);
+  });
 });

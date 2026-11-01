@@ -274,7 +274,7 @@ it grows through add-ons and the extension points you choose to add.
 ## Extension slots
 
 Add-ons are folders in `~/.jig/addons` with an `addon.json`, React components and optional host code.
-They can plug into 17 places:
+They can plug into 20 places:
 
 <p align="center">
   <img src="apps/desktop/src/renderer/features/about/shots/slots.jpg?v=17" alt="The extension slots on the What Jig can do page" width="900">
@@ -291,9 +291,12 @@ They can plug into 17 places:
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
+| `jig.event` | host code when a chat finishes, a commit lands… | `search.provider` | results in Jig's search (Ctrl+P) |
 
 Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Project notes** (decisions, constraints and dependencies shared across chats),
-**Workflows** and **Tasks** are add-ons too, written against the same API. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
+**Workflows** and **Tasks** are add-ons too, written against the same API. Add-ons can also stream a
+program's output live, watch files, show toasts with buttons and system notifications, badge their
+views and call each other's shared functions. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·
 reference: [`docs/reference/slots.md`](docs/reference/slots.md),
 [`docs/reference/addon-api.md`](docs/reference/addon-api.md).
 

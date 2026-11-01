@@ -13,7 +13,13 @@ async function runtime(code: string, permissions: string[]) {
     sent.push(m);
     if (m.t === "rpc") {
       const value =
-        m.op === "storage.get" ? { stored: true } : m.op === "projects" ? [{ id: "p" }] : undefined;
+        m.op === "storage.get"
+          ? { stored: true }
+          : m.op === "projects"
+            ? [{ id: "p" }]
+            : m.op === "addons.call"
+              ? { called: m.args }
+              : undefined;
       queueMicrotask(() => void rt.handle({ t: "rpcResult", id: m.id, ok: true, value }));
     }
   });
@@ -82,6 +88,79 @@ describe("add-on host runtime", () => {
       "projects",
     ]);
     expect(await call("write", { path: join(dir, "out.txt") })).toMatchObject({ ok: true, value: true });
+  });
+
+  it("streams a program's output while it runs (spawn) and checks its permission", async () => {
+    const { call } = await runtime(
+      `export async function run(_, api) {
+         const parts = [];
+         const p = api.spawn("node", ["-e", "process.stdin.on('data', d => process.stdout.write('got ' + d)); process.stderr.write('warn')"], {
+           onOutput: (text, stream) => parts.push(stream + ":" + text),
+         });
+         p.write("hello");
+         p.end();
+         const { code } = await p.done;
+         return { code, out: parts.sort().join("|") };
+       }
+       export async function denied(_, api) { return api.spawn("git", ["status"]).done; }
+       export async function missing(_, api) { return api.spawn("definitely-not-a-program-jig", []).done; }`,
+      ["exec:node", "exec:definitely-not-a-program-jig"],
+    );
+    expect(await call("run")).toMatchObject({
+      ok: true,
+      value: { code: 0, out: "stderr:warn|stdout:got hello" },
+    });
+    expect(await call("denied")).toMatchObject({ ok: false, error: expect.stringContaining('"exec:git"') });
+    expect(await call("missing")).toMatchObject({ ok: true, value: { code: 127 } });
+  });
+
+  it("watches files with fs:read, gathering changes and skipping ignored folders", async () => {
+    const { call, dir } = await runtime(
+      `let changes = [];
+       let stop;
+       export async function start(args, api) { stop = api.fs.watch(args.dir, (c) => changes.push(...c), { debounceMs: 50 }); }
+       export async function seen() { const out = changes; changes = []; stop?.(); return out; }
+       export async function denied(args, api) { api.fs.watch(args.dir, () => {}); }`,
+      ["fs:read"],
+    );
+    expect(await call("start", { dir })).toMatchObject({ ok: true });
+    await writeFile(join(dir, "a.txt"), "1");
+    await new Promise((r) => setTimeout(r, 300));
+    const result = (await call("seen")) as { value: string[] };
+    expect(result.value).toContain(join(dir, "a.txt"));
+    const none = await runtime(
+      `export async function denied(args, api) { api.fs.watch(args.dir, () => {}); }`,
+      [],
+    );
+    expect(await none.call("denied", { dir })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('"fs:read"'),
+    });
+  });
+
+  it("forwards badges, toast buttons and calls to other add-ons to the main process", async () => {
+    const { call, sent } = await runtime(
+      `export async function go(_, api) {
+         api.setBadge("cards", 3);
+         api.notify({ title: "Build failed", system: true, actions: [{ label: "Open", view: "runs" }] });
+         return api.addons.call("board", "cards", { mine: true });
+       }`,
+      [],
+    );
+    expect(await call("go")).toMatchObject({
+      ok: true,
+      value: { called: { id: "board", method: "cards", args: { mine: true } } },
+    });
+    const rpc = sent.filter((m) => m.t === "rpc").map((m) => m as { op: string; args: unknown });
+    expect(rpc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ op: "setBadge", args: { view: "cards", value: 3 } }),
+        expect.objectContaining({
+          op: "notify",
+          args: expect.objectContaining({ system: true, actions: [{ label: "Open", view: "runs" }] }),
+        }),
+      ]),
+    );
   });
 
   it("reports a bundle that fails to load", async () => {

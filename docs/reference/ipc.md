@@ -136,6 +136,11 @@ settings, add-on permissions.
 | `addons.list` | — | `AddonInfo[]` | every add-on with manifest, errors, warnings, UI/CSS urls (`docs/reference/addon-api.md`) |
 | `addons.setEnabled` | `{ id, enabled }` | — | remembered in `addons-state.json` |
 | `addons.call` | `{ id, method, args? }` | `unknown` | calls a `host.ts` export; `disabled`, `no_host`, `addon_error` |
+| `addons.callShared` | `{ from, id, method, args? }` | `unknown` | add-on `from` calls another's shared host method (its manifest's `exports`; `not_shared` otherwise), D-215 |
+| `addons.badges` | — | `Record<string, string>` | the add-on views' badges by full view id (`addon.<id>.<view>`) |
+| `addons.setBadge` | `{ id, view, value? }` | — | a badge on one of the add-on's own views (count → `99+` above 99, text → 4 characters; 0/nothing clears); `invalid_args` for another add-on's view |
+| `addons.systemNotify` | `{ id, title, message? }` | `boolean` | a system notification for an add-on's toast, only when no Jig window is in front and desktop notifications are on; click brings Jig forward |
+| `addons.search` | `{ query, projectId?, cwd? }` | `AddonSearchGroup[]` | asks every search provider (`contributes.search`) at once: 1.5 s each, up to 8 checked results; `{ addonId, provider, title, icon?, results }` |
 | `addons.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment` | `ctx.attachments.add/pick`: keeps a file for a message the add-on's host sends later, in `attachments/addon-<id>/` (same types and limits as `sessions.addAttachment`); `api.chats.send({ attachments })` copies them into the chat |
 | `addons.storageGet` / `addons.storageSet` | `{ id, key }` / `{ id, key, value }` | `unknown` / — | per-add-on JSON |
 | `addons.reload` | `{ id? }` | — | rebuild one add-on, or all |
@@ -181,7 +186,7 @@ settings, add-on permissions.
 | `themes.changed` | — | a theme was installed/removed or a file in `~/.jig/themes` changed |
 | `layout.changed` | `Layout` | the host changed the layout (e.g. an accepted level-1 build) |
 | `projects.changed` | `ProjectsState` | after any project change |
-| `notify` | `{ title, message?, tone? }` | a host notification, shown as a toast |
+| `notify` | `{ title, message?, tone?, timeout?, addonId?, actions? }` | a host notification, shown as a toast; from an add-on's host code, `actions` (`{ label } & AddonTarget`) become buttons that open that add-on's view/tab, call its host, open a URL or preview a file |
 | `sessions.update` | `{ sessionId, updates: ChatUpdate[] }` | transcript/metadata/queue changes of a session |
 | `attempts.changed` | `AttemptRun` | a run started, was judged, kept or discarded |
 | `sessions.reveal` | `{ sessionId }` | show this chat (its desktop notification was clicked) |
@@ -196,6 +201,8 @@ settings, add-on permissions.
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
+| `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
+| `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project; D-215) |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
 | `speech.progress` | `{ model, loaded, total }` | the dictation model is downloading (bytes; at most every 150 ms) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |

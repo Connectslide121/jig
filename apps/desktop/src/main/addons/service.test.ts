@@ -94,6 +94,64 @@ describe("AddonService", () => {
     s.stop();
   });
 
+  it("runs event handlers, asks search providers, and lets add-ons call shared methods", async () => {
+    await addon(join(root, "builtin", "board"), {
+      "addon.json": {
+        id: "board",
+        name: "Board",
+        description: "Work items",
+        exports: ["cards"],
+        contributes: {
+          views: [{ id: "cards", title: "Cards", component: "Cards" }],
+          events: [{ on: "chat.finished", run: "chatFinished" }],
+          search: [
+            { id: "cards", title: "Work items", icon: "kanban", run: "find" },
+            { id: "slow", title: "Slow", run: "slow" },
+          ],
+        },
+      },
+      "README.md": "# Board\n\nShows your **work items** as cards ([docs](https://example.com)).\n\nMore.",
+      "ui.tsx": `export function Cards() { return <div className="p-2">Cards</div>; }\n`,
+      "host.ts": `export async function chatFinished(p: { title: string }, api: any) { api.emit("done", p.title); }
+export async function find(q: { query: string }) { return [{ id: "1", label: "Card " + q.query, open: { view: "cards" } }, { id: "bad" }]; }
+export async function slow() { await new Promise((r) => setTimeout(r, 500)); return [{ id: "2", label: "Late", open: { url: "https://x" } }]; }
+export async function cards() { return ["A"]; }
+export async function secret() { return "no"; }`,
+    });
+    const s = service();
+    await s.start();
+    s.dispatchEvent("chat.finished", { title: "Fix the cart" });
+    s.dispatchEvent("git.commit", { repo: "/r" });
+    await expect.poll(() => rpcs.filter((r) => r === "emit").length).toBe(1);
+
+    expect(await s.search({ query: "42" }, 200)).toEqual([
+      {
+        addonId: "board",
+        provider: "cards",
+        title: "Work items",
+        icon: "kanban",
+        results: [{ id: "1", label: "Card 42", open: { view: "cards" } }],
+      },
+    ]);
+
+    expect(await s.callShared("hello", "board", "cards", {})).toEqual(["A"]);
+    await expect(s.callShared("hello", "board", "secret", {})).rejects.toMatchObject({ code: "not_shared" });
+    expect(await s.callShared("board", "board", "secret", {})).toBe("no");
+    expect(s.shared().find((a) => a.id === "board")).toEqual({
+      id: "board",
+      name: "Board",
+      enabled: true,
+      exports: ["cards"],
+    });
+
+    const catalog = s.catalog();
+    expect(catalog).toContain("runs on chat.finished");
+    expect(catalog).toContain('search results "Work items"');
+    expect(catalog).toContain("shares cards with other add-ons");
+    expect(catalog).toContain("Purpose: Shows your work items as cards (docs).");
+    s.stop();
+  });
+
   it("runs an atStart watcher shortly after loading, not only after its interval", async () => {
     await addon(join(root, "builtin", "warm"), {
       "addon.json": {

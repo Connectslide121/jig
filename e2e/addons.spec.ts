@@ -12,7 +12,11 @@ const manifest = {
     views: [{ id: "main", title: "Hello", region: "right", component: "HelloView" }],
     tabs: [{ type: "detail", title: "Hello detail", component: "DetailTab" }],
     statusbar: [{ id: "status", side: "right", component: "Status" }],
-    actions: [{ id: "greet", title: "Say hello", run: "greet" }],
+    actions: [
+      { id: "greet", title: "Say hello", run: "greet" },
+      { id: "ping", title: "Ping the host", run: "ping" },
+    ],
+    search: [{ id: "cards", title: "Hello cards", icon: "kanban", run: "findCards" }],
     prompts: [{ id: "p", label: "Hello prompt", text: "Hello from the add-on" }],
   },
 };
@@ -44,9 +48,24 @@ export function Status() {
 export function greet(ctx: AddonUiContext) {
   ctx.notify({ title: "Hello from the action", tone: "success" });
 }
+export function ping(ctx: AddonUiContext) {
+  void ctx.host.call("ping");
+}
 `;
 
-const host = `export async function double(args: { n: number }) { return args.n * 2; }`;
+const host = `
+import type { AddonHostApi, AddonSearchQuery } from "@jig/sdk";
+export async function double(args: { n: number }) { return args.n * 2; }
+export async function ping(_args: unknown, api: AddonHostApi) {
+  api.setBadge("main", 3);
+  api.notify({ title: "Host found 3 cards", actions: [{ label: "Open card", tab: "detail", params: { which: 7 } }] });
+}
+export async function findCards(q: AddonSearchQuery) {
+  return q.query.includes("zebra")
+    ? [{ id: "z1", label: "Zebra card", detail: "column Doing", open: { tab: "detail", params: { which: 9 } } }]
+    : [];
+}
+`;
 
 async function install(jigHome: string, label = "Hello v1") {
   const dir = join(jigHome, "addons", "hello");
@@ -78,6 +97,20 @@ test("a user add-on loads into its slots, calls its host code and hot-reloads", 
   await page.getByTestId("goto-input").fill("say hello");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast").last()).toContainText("Hello from the action");
+
+  // Host code: a badge on the view's icon, a toast whose button opens a tab, results in Go to (D-215).
+  await page.getByTestId("tools-group-Hello").click();
+  await page.getByRole("menuitem", { name: "Ping the host", exact: true }).click();
+  await expect(page.getByTestId("view-badge-addon.hello.main")).toHaveText("3");
+  const toast = page.getByTestId("toast").filter({ hasText: "Host found 3 cards" });
+  await toast.getByRole("button", { name: "Open card" }).click();
+  await expect(page.getByTestId("hello-detail").filter({ hasText: "detail 7" })).toBeVisible();
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("zebra");
+  await expect(page.getByTestId("goto").getByText("Zebra card")).toBeVisible();
+  await expect(page.getByTestId("goto").getByText("Hello cards")).toBeVisible();
+  await page.getByTestId("goto").getByText("Zebra card").click();
+  await expect(page.getByTestId("hello-detail").filter({ hasText: "detail 9" })).toBeVisible();
 
   await writeFile(join(dir, "ui.tsx"), ui("Hello v2"));
   await expect(page.getByTestId("hello-label")).toHaveText("Hello v2", { timeout: 15000 });

@@ -12,7 +12,7 @@ export const BUILD_EXAMPLES: Array<{ level: string; what: string; goals: string[
   },
   {
     level: "An add-on",
-    what: "New views, tabs, buttons, menus and watchers. Claude writes it, Jig checks and loads it.",
+    what: "New views, tabs, buttons, menus, watchers, search results and reactions to what happens in Jig, with toasts, badges and live output. Claude writes it, Jig checks and loads it.",
     goals: [
       "A view that lists my Azure DevOps pipelines and their last run",
       "A status bar item with the current branch of the focus repo",
@@ -95,6 +95,14 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "“What changed since the last release?”, “Which pipelines failed today?”",
     snippet:
       '"tools": [{ "id": "changes", "description": "Commits since the last release", "params": { "repo": { "optional": true } }, "readOnly": true, "run": "changes" }]',
+  },
+  "jig.event": {
+    idea: "Move a card when its chat finishes, log commits, refresh when you switch project",
+    snippet: '"events": [{ "on": "chat.finished", "run": "chatFinished" }]',
+  },
+  "search.provider": {
+    idea: "Find work items, pipelines or runbooks from Go to (Ctrl+P)",
+    snippet: '"search": [{ "id": "cards", "title": "Work items", "icon": "kanban", "run": "searchCards" }]',
   },
   "claude.context": {
     idea: "Project decisions and dependencies shared across chats: with every message",

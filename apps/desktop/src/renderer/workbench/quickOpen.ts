@@ -2,7 +2,7 @@
  * Go to… (D-176): one list of chats, views, actions and files, filtered by what you type. Pure, so the
  * ranking is tested; `QuickOpen.tsx` gathers the items and shows them.
  */
-export type QuickKind = "chat" | "view" | "action" | "file";
+export type QuickKind = "chat" | "view" | "action" | "file" | "result";
 
 export interface QuickItem {
   kind: QuickKind;
@@ -12,6 +12,8 @@ export interface QuickItem {
   detail?: string;
   /** Newer first among equal matches (chats: last activity, ISO). */
   recency?: string;
+  /** Add-on search results (`result`, D-215): the provider's group (key and title), shown in its order. */
+  group?: { key: string; title: string };
 }
 
 export const QUICK_KINDS: Array<{ kind: QuickKind; title: string }> = [
@@ -40,14 +42,27 @@ export function quickScore(item: QuickItem, query: string): number {
 
 /**
  * The groups to show, in `QUICK_KINDS` order, best match first, at most `perKind` each. Files come
- * from a search on the host and are kept in its order.
+ * from a search on the host and are kept in its order; add-on results follow, one group per provider,
+ * in the provider's order.
  */
 export function quickGroups(
   items: QuickItem[],
   query: string,
   perKind = 8,
-): Array<{ kind: QuickKind; title: string; items: QuickItem[] }> {
-  return QUICK_KINDS.map(({ kind, title }) => {
+): Array<{ key: string; kind: QuickKind; title: string; items: QuickItem[] }> {
+  const results = new Map<string, { key: string; kind: QuickKind; title: string; items: QuickItem[] }>();
+  for (const item of items)
+    if (item.kind === "result" && item.group) {
+      const g = results.get(item.group.key) ?? {
+        key: `result:${item.group.key}`,
+        kind: "result" as const,
+        title: item.group.title,
+        items: [],
+      };
+      if (g.items.length < perKind) g.items.push(item);
+      results.set(item.group.key, g);
+    }
+  const fixed = QUICK_KINDS.map(({ kind, title }) => {
     const scored = items
       .filter((i) => i.kind === kind)
       .map((item, index) => ({ item, index, score: kind === "file" ? 1 : quickScore(item, query) }))
@@ -58,6 +73,7 @@ export function quickGroups(
           (b.item.recency ?? "").localeCompare(a.item.recency ?? "") ||
           a.index - b.index,
       );
-    return { kind, title, items: scored.slice(0, perKind).map((s) => s.item) };
+    return { key: kind, kind, title, items: scored.slice(0, perKind).map((s) => s.item) };
   }).filter((g) => g.items.length > 0);
+  return [...fixed, ...results.values()];
 }

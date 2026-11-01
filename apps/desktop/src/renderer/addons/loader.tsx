@@ -21,6 +21,7 @@ import {
 import { notify } from "../workbench/toasts";
 import { AddonBoundary } from "./AddonBoundary";
 import { AddonContext, dispatchAddonEvent, iconByName, makeContext } from "./context";
+import { dispatchJigEvent, setBadges, setKnownAddons } from "./runtime";
 import { installSharedModules } from "./shared";
 
 /** The add-ons the host reported, for Settings → Add-ons and the builder. */
@@ -226,6 +227,7 @@ async function mount(addon: AddonInfo): Promise<void> {
  */
 let syncing: Promise<void> = Promise.resolve();
 export function syncAddons(addons: AddonInfo[]): Promise<void> {
+  setKnownAddons(addons);
   syncing = syncing.then(() => doSync(addons)).catch(() => {});
   return syncing;
 }
@@ -264,7 +266,10 @@ export function useAddonsSync(): void {
   useEffect(() => {
     installSharedModules();
     void call("addons.list").then(syncAddons);
+    void call("addons.badges").then(setBadges);
   }, []);
+  useHostEvent("addons.badges", setBadges);
+  useHostEvent("addons.jigEvent", ({ name, payload }) => dispatchJigEvent(name, payload));
   useHostEvent("addons.changed", (addons) => void syncAddons(addons));
   useHostEvent("addons.event", ({ id, topic, payload }) => dispatchAddonEvent(id, topic, payload));
 }

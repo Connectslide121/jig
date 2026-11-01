@@ -151,6 +151,9 @@ describe("reflection", () => {
     expect(prompt).toContain("Used: 3 actions run");
     expect(prompt).toContain("## What Jig's builder can build");
     expect(prompt).toContain("- claude.tool: ");
+    expect(prompt).toContain("- jig.event: ");
+    expect(prompt).toContain("- search.provider: ");
+    expect(prompt).toContain("system notifications when Jig is in the background");
   });
 
   it("keeps new kinds, at most one tool to build, and drops use-addon without an add-on", () => {

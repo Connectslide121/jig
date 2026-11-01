@@ -2350,3 +2350,40 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Rejected: judging message quality with a second AI pass or per message (quota; the weekly query
   sees the chats); recording chat outcomes or more data (D-213); counting repeated permission approvals
   (not recorded; Jig's permission rules already offer "always allow").
+
+## D-215: Add-ons get toast buttons, notifications, badges, Jig events, live output, search and each other
+
+- Status: accepted. Asked for by Jon: add-ons should be able to show toasts, and "think of what other
+  things might be good to support for addons to use… Do all of them". The list and the details are
+  **Claude, on my own**.
+- **Toast buttons:** `notify({ actions })`. In the UI a button runs a function; from host code it is an
+  `AddonTarget` (`{ view }`, `{ tab, params }`, `{ run, args }`, `{ url }`, `{ file }`) because functions
+  can't cross processes. Up to 3. One shape is used for toasts and search results, opened by
+  `openAddonTarget` in the renderer.
+- **System notifications:** `notify({ system: true })` also shows an OS notification, only when no Jig
+  window is focused and desktop notifications are on (same rule as chats); the toast then stays until
+  closed, so it's still there when you come back.
+- **View badges:** `setBadge(viewId, value)` for the add-on's own views only, kept in main (so host
+  watchers can set them) and drawn over the view's icon in sidebars and tabs, so nothing moves. Numbers
+  above 99 show `99+`, text is cut to 4 characters. Cleared when the add-on is turned off.
+- **Jig events** (`jig.event` slot, `contributes.events`, `ctx.onJigEvent`/`useJigEvent`): chat
+  finished / needs you / failed (from the same status changes as chat notifications, chats only),
+  commits and branch switches (watching each project repository's `.git` folder, so commits made
+  outside Jig count; up to 50 repositories), and another active project. Host handlers run with no
+  view open. A small fixed list in `packages/sdk/src/events.ts` rather than everything, so each event
+  has a stable, documented payload.
+- **Live output and file watching:** `api.spawn` (streams stdout/stderr, stdin, kill; same `exec`
+  permission as `api.exec`) and `api.fs.watch` (`fs:read`, debounced, `node_modules`/`.git` ignored).
+  Both stop when the add-on reloads.
+- **Add-ons calling each other:** a manifest's top-level `exports` lists host methods others may call
+  (`api.addons.call` / `ctx.addons.call`); everything else stays private. Checked in main.
+- **Search providers** (`search.provider` slot, `contributes.search`): results in Go to (Ctrl+P),
+  after files, one group per provider; 1.5 s and 8 results each, results are checked so a bad one is
+  dropped. Debounced 200 ms.
+- **What Claude knows:** the builder prompt lists all of it; the weekly review's `BUILDABLE` says what
+  add-ons can do now (from the SDK's `SLOTS`, so new slots show up by themselves), and the add-on
+  catalog it and the builder read has each add-on's purpose (the README's first paragraph) plus its
+  events, search and shared methods, so suggestions know what each add-on is for.
+- **The builder's check** now also fails when addon.json names a host function host.ts doesn't export.
+- Rejected: arbitrary event names or a general event bus (unstable contracts); letting add-ons badge
+  other add-ons' or Jig's views; OS notifications while Jig is in front (the toast is enough).

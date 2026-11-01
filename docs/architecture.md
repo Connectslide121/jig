@@ -353,8 +353,15 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 | Places | `view` (sidebar or bottom panel view; the layout decides where), `workbench.tab`, `topbar.item`, `statusbar.item`, `dashboard.widget` |
 | Menus & actions | `tools.action` (grouped menus), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
 | Chat | `chat.toolRenderer` (custom card for a tool result), `prompt` (a reusable prompt shown as a button) |
-| Background | `watcher` (host-side job on an interval or schedule), notifications/badges (API) |
-| Other | `settings.page`, `theme` |
+| Background | `watcher` (host-side job on an interval or schedule), `jig.event` (host code when a chat finishes, a commit lands, the project changes; D-215) |
+| Claude | `claude.tool`, `claude.context` |
+| Other | `search.provider` (results in Go to), `settings.page`, `theme` |
+
+Besides slots, the API gives add-ons toasts with buttons, system notifications, badges on their
+views, live program output (`spawn`), file watching, and calling each other's shared host methods
+(`exports`) — `docs/reference/addon-api.md` (D-215). Jig's events come from `main/addons/jigEvents.ts`
+(chat status, the projects' `.git` folders, the active project) and are dispatched by
+`AddonService.dispatchEvent` and the `addons.jigEvent` event.
 
 ### 8.2 Runtime
 
@@ -366,8 +373,8 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
   contribution inside an error boundary. A crashing contribution shows an inline error with
   "Turn off" / "Fix with AI" — never a broken app.
 - **Host part.** `host.ts` is bundled to a Node module and runs in an Electron `utilityProcess` per
-  add-on, talking to the host over a message port. It receives a host API (`exec`, `git`, `fs`, `http`,
-  `storage`, `notify`, `emit`, `schedule`, `projects`) limited by the manifest's `permissions`.
+  add-on, talking to the host over a message port. It receives a host API (`exec`, `spawn`, `fs` with `watch`, `fetch`,
+  `storage`, `notify`, `setBadge`, `emit`, `addons`, `projects`, `chats`) limited by the manifest's `permissions`.
 - **Hot reload.** The host watches add-on folders, rebuilds on change and tells the renderer to reload
   that add-on only.
 - **Built-in vs yours.** Built-in add-ons ship in `addons/`; a folder in `~/.jig/addons` with the same

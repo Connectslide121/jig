@@ -19,6 +19,7 @@ import { cn, contextMenu, ErrorBoundary, FileIcon, OverlayScrollbar } from "../u
 import { confirmClose, useDirtyTabs } from "./dirty";
 import { useSplitRatio } from "./Pane";
 import { useActiveProject } from "./projects";
+import { ViewBadge } from "./Region";
 import { useRegistry } from "./registry";
 import { startViewDrag, updateLayout, useWorkbench, VIEW_DRAG, workbench } from "./store";
 
@@ -191,7 +192,14 @@ function TabButton({
       {active && (
         <span className={cn("absolute inset-x-0 top-0 h-0.5", focused ? "bg-accent" : "bg-line-strong")} />
       )}
-      {filePath ? <FileIcon path={filePath} className="size-3.5" /> : <Icon className="size-3.5 shrink-0" />}
+      {filePath ? (
+        <FileIcon path={filePath} className="size-3.5" />
+      ) : (
+        <span className="relative shrink-0">
+          <Icon className="size-3.5" />
+          {viewId && <ViewBadge viewId={viewId} />}
+        </span>
+      )}
       <TabStatusDot tab={tab} />
       {dirty && (
         <span

@@ -1,5 +1,7 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { type FSWatcher, watch } from "node:fs";
 import { access, readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type AddonHostApi, allowsExec, scopedKey } from "@jig/sdk";
 import { resolveCommand } from "./winCommand";
@@ -34,7 +36,10 @@ export type FromHost =
         | "chats.create"
         | "chats.send"
         | "chats.get"
-        | "attachments.remove";
+        | "attachments.remove"
+        | "setBadge"
+        | "addons.list"
+        | "addons.call";
       args: unknown;
     };
 
@@ -44,6 +49,8 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   let module: Record<string, unknown> = {};
   let api: AddonHostApi | undefined;
   let rpcId = 0;
+  /** Open file watchers (they end with the process, which stops when the add-on reloads). */
+  const watchers = new Set<FSWatcher>();
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 
   const rpc = (op: Extract<FromHost, { t: "rpc" }>["op"], args: unknown) =>
@@ -122,6 +129,60 @@ export function createHostRuntime(send: (message: FromHost) => void) {
             () => false,
           );
         },
+        watch: (path, listener, options = {}) => {
+          need("fs:read");
+          const ignore = options.ignore ?? ["node_modules", ".git"];
+          const changed = new Set<string>();
+          let timer: NodeJS.Timeout | undefined;
+          const watcher = watch(path, { recursive: options.recursive ?? false }, (_event, file) => {
+            const rel = file ? String(file) : "";
+            if (rel.split(/[\\/]/).some((part) => ignore.includes(part))) return;
+            changed.add(rel ? join(path, rel) : path);
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              const list = [...changed];
+              changed.clear();
+              listener(list);
+            }, options.debounceMs ?? 200);
+          });
+          watcher.on("error", () => {});
+          watchers.add(watcher);
+          return () => {
+            clearTimeout(timer);
+            watcher.close();
+            watchers.delete(watcher);
+          };
+        },
+      },
+      spawn(command, args, options = {}) {
+        if (!allowsExec(init.permissions, command))
+          throw new PermissionError(`This add-on needs "exec:${command}" (or "exec") in addon.json`);
+        const resolved = resolveCommand(command, args, process.platform, process.env);
+        const child = spawn(resolved.file, resolved.args, {
+          windowsVerbatimArguments: resolved.verbatim,
+          cwd: options.cwd,
+          windowsHide: true,
+          env: { ...process.env, ...options.env },
+        });
+        child.stdout?.setEncoding("utf8");
+        child.stderr?.setEncoding("utf8");
+        child.stdout?.on("data", (text: string) => options.onOutput?.(text, "stdout"));
+        child.stderr?.on("data", (text: string) => options.onOutput?.(text, "stderr"));
+        const done = new Promise<{ code: number }>((resolve) => {
+          child.on("error", (error: NodeJS.ErrnoException) => {
+            if (error.code === "ENOENT") options.onOutput?.(`${command} not found\n`, "stderr");
+            resolve({ code: error.code === "ENOENT" ? 127 : 1 });
+          });
+          child.on("close", (code) => resolve({ code: code ?? 1 }));
+        });
+        child.stdin?.on("error", () => {});
+        return {
+          pid: child.pid,
+          write: (text) => void child.stdin?.write(text),
+          end: () => void child.stdin?.end(),
+          kill: () => void child.kill(),
+          done,
+        };
       },
       fetch: async (url, init2) => {
         need("net");
@@ -137,6 +198,11 @@ export function createHostRuntime(send: (message: FromHost) => void) {
         },
       },
       notify: (input) => void rpc("notify", input),
+      setBadge: (viewId, value) => void rpc("setBadge", { view: viewId, value }),
+      addons: {
+        list: () => rpc("addons.list", {}) as Promise<never>,
+        call: (addonId, method, args) => rpc("addons.call", { id: addonId, method, args }) as Promise<never>,
+      },
       emit: (topic, payload) => void rpc("emit", { topic, payload }),
       projects: () => rpc("projects", {}) as Promise<never>,
       workspaces: () => rpc("workspaces", {}) as Promise<never>,

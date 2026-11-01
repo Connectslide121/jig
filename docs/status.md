@@ -235,9 +235,17 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 - **Phase 6 (done): add-on system.**
   - Add-ons are folders with `addon.json` (+ `ui.tsx`, `host.ts`, `README.md`) in `~/.jig/addons`
-    (a git repository) or Jig's built-in `addons/`. They load into 17 slots (views, tabs, top bar,
+    (a git repository) or Jig's built-in `addons/`. They load into 20 slots (views, tabs, top bar,
     status bar, dashboard, Tools actions, context menus, chat toolbar and tool cards, prompts,
-    watchers, settings pages, themes); see `docs/guides/writing-addons.md`.
+    watchers, Claude tools and context, Jig events, search results, settings pages, themes); see
+    `docs/guides/writing-addons.md`.
+  - More for add-ons (D-215): toasts with buttons, system notifications while Jig is in the
+    background, badges on their views (over the icon, nothing moves), host code that runs when a chat
+    finishes / needs you / fails, a commit lands, the branch or the active project changes, live
+    output from long-running programs (`api.spawn`), file watching (`api.fs.watch`), results in Go to
+    (Ctrl+P), and calling each other's shared functions (`exports`). The builder and the weekly
+    review know all of it. Try it: ask the builder for "a view that counts TODO comments in this
+    project, with a badge, that updates when files change and after each commit".
   - Saving a file reloads that add-on; a crash shows "Turn off" in its place, never a broken app.
   - Host code runs in its own process with permission-checked `exec`/`fs`/`fetch`.
   - Settings → Add-ons: on/off, problems and token warnings, permissions, open folder, reload,
@@ -724,6 +732,9 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   - Learning review (D-213): the quality of practice, add-on and feature suggestions with real Claude.
   - Coaching (D-214): whether real Claude's coaching and rewritten prompts are specific and useful, and
     whether the habit-hint thresholds fit real chats.
+  - Add-on extras (D-215): system notifications from add-ons on Windows (only while Jig isn't in
+    front), git events for commits made in another tool (watching `.git` on NTFS and network drives),
+    and `api.spawn` with `.cmd` programs (`npm`, `az`).
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

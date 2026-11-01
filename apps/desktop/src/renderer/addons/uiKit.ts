@@ -49,5 +49,5 @@ export {
   useRunningScripts,
   useWorkspaceList,
 } from "./context";
-export { useAddonEvent, useHostCall, useStorage } from "./hooks";
+export { useAddonEvent, useHostCall, useJigEvent, useStorage } from "./hooks";
 export { Icon, iconByName } from "./icons";

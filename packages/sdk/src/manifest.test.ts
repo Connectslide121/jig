@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { intervalMs, parseManifest, uiExports } from "./manifest";
+import { isJigEvent, JIG_EVENT_NAMES } from "./events";
+import { hostExports, intervalMs, parseManifest, uiExports } from "./manifest";
 import { allowsExec, describePermission, isPermission } from "./permissions";
 import { addonActionId, addonTabType, addonViewId, MANIFEST_KEY, SLOTS } from "./slots";
 
@@ -74,6 +75,40 @@ describe("parseManifest", () => {
         .errors[0],
     ).toMatch(/^contributes.watchers.0.every/);
     expect(parseManifest("nope").errors.length).toBe(1);
+  });
+
+  it("reads events, search providers and shared methods, and lists the host functions they name", () => {
+    const { manifest, errors } = parseManifest({
+      ...minimal,
+      exports: ["cards"],
+      contributes: {
+        watchers: [{ id: "w", every: "5m", run: "poll" }],
+        events: [
+          { on: "chat.finished", run: "onChat" },
+          { on: "git.commit", run: "poll" },
+        ],
+        search: [{ id: "cards", title: "Work items", run: "find" }],
+      },
+    });
+    expect(errors).toEqual([]);
+    expect(hostExports(manifest!)).toEqual(["poll", "onChat", "find", "cards"]);
+    expect(
+      parseManifest({ ...minimal, contributes: { events: [{ on: "chat.exploded", run: "x" }] } }).errors,
+    ).not.toEqual([]);
+    expect(
+      parseManifest({
+        ...minimal,
+        contributes: {
+          search: [
+            { id: "a", title: "A", run: "x" },
+            { id: "a", title: "B", run: "y" },
+          ],
+        },
+      }).errors.length,
+    ).toBeGreaterThan(0);
+    expect(JIG_EVENT_NAMES).toContain("project.active");
+    expect(isJigEvent("git.branch")).toBe(true);
+    expect(isJigEvent("nope")).toBe(false);
   });
 
   it("converts watcher intervals with a 10 s minimum", () => {

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAddonsSync } from "../addons/loader";
+import { openAddonTarget } from "../addons/runtime";
 import { AttemptsDialogHost } from "../features/attempts";
 import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
@@ -44,7 +45,18 @@ function useShellState() {
   useHostEvent("layout.changed", setLayoutFromHost);
   useHostEvent("projects.changed", (state) => useProjects.setState(state));
   useHostEvent("config.changed", (config) => useConfig.setState({ config }));
-  useHostEvent("notify", (n) => notify({ title: n.title, message: n.message, tone: n.tone }));
+  useHostEvent("notify", (n) => {
+    const { addonId } = n;
+    notify({
+      title: n.title,
+      message: n.message,
+      tone: n.tone,
+      timeout: n.timeout,
+      actions: addonId
+        ? n.actions?.map(({ label, ...target }) => ({ label, run: () => openAddonTarget(addonId, target) }))
+        : undefined,
+    });
+  });
 }
 
 /** Global keyboard shortcuts: every action with a `shortcut` (and always also in a menu). */

@@ -23,6 +23,7 @@ import { useWorkbench, workbench } from "../workbench/store";
 import { dismiss, notify } from "../workbench/toasts";
 
 import { iconByName } from "./icons";
+import { knownAddons, onJigEvent } from "./runtime";
 
 export { iconByName };
 
@@ -106,6 +107,25 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         set.delete(wrapped);
         if (set.size === 0 && eventListeners.get(id) === set) eventListeners.delete(id);
       };
+    },
+    onJigEvent: (name, listener) =>
+      onJigEvent((n, payload) => {
+        if (n === name) listener(payload as never);
+      }),
+    setBadge: (viewId, value) =>
+      void call("addons.setBadge", { id, view: viewId, value }).catch((e) =>
+        console.warn(`[${id}] setBadge: ${errorMessage(e)}`),
+      ),
+    addons: {
+      list: () =>
+        knownAddons().map((a) => ({
+          id: a.id,
+          name: a.name,
+          enabled: a.enabled && a.errors.length === 0,
+          exports: a.manifest?.exports ?? [],
+        })),
+      call: <T>(target: string, method: string, args?: unknown) =>
+        call("addons.callShared", { from: id, id: target, method, args }) as Promise<T>,
     },
     projects: {
       active() {
@@ -229,13 +249,20 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       if (sessionId && options.send !== false) await call("sessions.send", { id: sessionId, text });
     },
     notify: (input) => {
-      const id = notify({
+      // Also a system notification when Jig is in the background; then the toast waits for you.
+      const away = !!input.system && !document.hasFocus();
+      const toast = notify({
         title: input.title,
         message: input.message,
         tone: input.tone,
-        timeout: input.timeout,
+        timeout: away ? 0 : input.timeout,
+        actions: input.actions?.slice(0, 3),
       });
-      return () => dismiss(id);
+      if (away)
+        void call("addons.systemNotify", { id, title: input.title, message: input.message }).catch(
+          () => false,
+        );
+      return () => dismiss(toast);
     },
     storage: {
       // With no active project for a scoped add-on: nothing to read, and writing says so.

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { relative, sep } from "node:path";
-import { checkTokens, uiExports } from "@jig/sdk";
+import { checkTokens, hostExports, uiExports } from "@jig/sdk";
 import { build } from "esbuild";
 import { bundleHost, bundleUi, SHARED_UI_MODULES } from "../addons/bundle";
 import { readAddon } from "../addons/catalog";
@@ -59,10 +59,16 @@ export async function validateAddon(dir: string, nodePaths: string[]): Promise<V
     if (record.hostEntry) {
       const host = await bundleHost(record.hostEntry, nodePaths);
       problems.push(...host.errors.map((e) => `host.ts: ${e}`));
-    } else if (manifest.contributes.watchers.length)
-      problems.push("addon.json has watchers but there is no host.ts.");
-    else if (manifest.contributes.tools.length)
-      problems.push("addon.json has tools for Claude but there is no host.ts.");
+      if (host.errors.length === 0 && host.exports) {
+        const exported = new Set(host.exports);
+        for (const name of hostExports(manifest))
+          if (!exported.has(name))
+            problems.push(`addon.json refers to "${name}", but host.ts has no export with that name.`);
+      }
+    } else if (hostExports(manifest).length)
+      problems.push(
+        "addon.json refers to host functions (watchers, tools, context, events, search or exports) but there is no host.ts.",
+      );
   }
   return {
     ok: problems.length === 0,

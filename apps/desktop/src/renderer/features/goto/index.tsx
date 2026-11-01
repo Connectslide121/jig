@@ -1,7 +1,10 @@
+import type { AddonTarget } from "@jig/sdk";
 import { AppWindow, MessageSquare, Search, Wrench } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
+import { iconByName } from "../../addons/icons";
+import { openAddonTarget } from "../../addons/runtime";
 import { call } from "../../lib/host";
 import { cn, FileIcon, Kbd, SearchInput } from "../../ui";
 import { useActiveProject, useProjects } from "../../workbench/projects";
@@ -114,6 +117,49 @@ function useFileMatches(root: string | undefined, query: string): QuickItem[] {
   return files;
 }
 
+/** Results from the add-ons' search providers (debounced; none for an empty query). */
+function useAddonResults(
+  project: { id: string; path: string } | undefined,
+  query: string,
+): { items: QuickItem[]; targets: Map<string, { addonId: string; target: AddonTarget; icon?: string }> } {
+  const [state, setState] = useState<ReturnType<typeof useAddonResults>>({ items: [], targets: new Map() });
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setState({ items: [], targets: new Map() });
+      return;
+    }
+    let live = true;
+    const timer = setTimeout(() => {
+      call("addons.search", { query: q, projectId: project?.id, cwd: project?.path })
+        .then((groups) => {
+          if (!live) return;
+          const items: QuickItem[] = [];
+          const targets: ReturnType<typeof useAddonResults>["targets"] = new Map();
+          for (const g of groups)
+            for (const r of g.results) {
+              const id = `${g.addonId}/${g.provider}/${r.id}`;
+              items.push({
+                kind: "result",
+                id,
+                label: r.label,
+                detail: r.detail,
+                group: { key: `${g.addonId}/${g.provider}`, title: g.title },
+              });
+              targets.set(id, { addonId: g.addonId, target: r.open, icon: r.icon ?? g.icon });
+            }
+          setState({ items, targets });
+        })
+        .catch(() => live && setState({ items: [], targets: new Map() }));
+    }, 200);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [project?.id, project?.path, query]);
+  return state;
+}
+
 export function GoToHost() {
   const open = useGoTo((s) => s.open);
   if (!open) return null;
@@ -129,6 +175,7 @@ function GoTo() {
   const views = useRegistry((s) => s.views);
   const actions = useRegistry((s) => s.actions);
   const files = useFileMatches(project?.path, query);
+  const found = useAddonResults(project, query);
   const ref = useRef<HTMLDivElement>(null);
 
   const items = useMemo<QuickItem[]>(() => {
@@ -153,8 +200,9 @@ function GoTo() {
         .filter((a) => a.id !== "jig.goTo" && a.visible?.() !== false)
         .map((a) => ({ kind: "action" as const, id: a.id, label: a.title, detail: a.group })),
       ...files,
+      ...found.items,
     ];
-  }, [metas, views, actions, files, projects]);
+  }, [metas, views, actions, files, found, projects]);
 
   const groups = useMemo(() => quickGroups(items, query, query ? 8 : 5), [items, query]);
   const flat = groups.flatMap((g) => g.items);
@@ -177,7 +225,10 @@ function GoTo() {
     if (item.kind === "chat") workbench.openTab("jig.chat", { sessionId: item.id });
     else if (item.kind === "view") workbench.showView(item.id);
     else if (item.kind === "action") runAction(item.id);
-    else openPreview(item.id);
+    else if (item.kind === "result") {
+      const r = found.targets.get(item.id);
+      if (r) openAddonTarget(r.addonId, r.target);
+    } else openPreview(item.id);
   };
 
   useLayoutEffect(() => {
@@ -227,14 +278,19 @@ function GoTo() {
           <div className="px-3 py-4 text-center text-muted">Nothing matches “{query}”.</div>
         )}
         {groups.map((group) => (
-          <div key={group.kind}>
+          <div key={group.key}>
             <div className="px-2 pt-2 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">
               {group.title}
             </div>
             {group.items.map((item) => {
               n++;
               const i = n;
-              const Icon = item.kind === "file" ? undefined : ICON[item.kind];
+              const Icon =
+                item.kind === "file"
+                  ? undefined
+                  : item.kind === "result"
+                    ? (iconByName(found.targets.get(item.id)?.icon) ?? Search)
+                    : ICON[item.kind];
               const action = item.kind === "action" ? actions[item.id] : undefined;
               return (
                 <div
