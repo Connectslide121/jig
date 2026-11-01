@@ -305,17 +305,24 @@ function StepsRow({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex max-w-full min-w-0 items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-xs text-muted hover:bg-hover hover:text-fg"
+        className="-ml-1 flex h-6 max-w-full min-w-0 items-center gap-1.5 self-start rounded-md px-1 text-xs text-muted hover:bg-hover hover:text-fg"
         data-testid="steps-toggle"
       >
-        {summary.running ? (
-          <Spinner size="sm" />
-        ) : open ? (
-          <ChevronDown className="size-3.5 shrink-0" />
-        ) : (
-          <ChevronRight className="size-3.5 shrink-0" />
-        )}
-        <span className={cn("truncate", summary.running && "jig-working-text")}>{summary.text}</span>
+        {/* One slot for the spinner and the chevron, so the text never moves. */}
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          {summary.running ? (
+            <Spinner size="sm" />
+          ) : open ? (
+            <ChevronDown className="block size-3.5" />
+          ) : (
+            <ChevronRight className="block size-3.5" />
+          )}
+        </span>
+        {/* While a step runs the whole line glows, the running tool's name included. */}
+        <span className={cn("flex min-w-0 items-center gap-1.5", summary.running && "jig-working-text")}>
+          <span className="truncate">{summary.text}</span>
+          {summary.running && <span className="shrink-0">· {summary.running}</span>}
+        </span>
         {(summary.added > 0 || summary.removed > 0) && (
           <span className="shrink-0 font-mono text-2xs">
             {summary.added > 0 && <span className="text-success">+{summary.added}</span>}
@@ -326,7 +333,6 @@ function StepsRow({
           <span className="min-w-0 truncate text-hint">· {summary.detail}</span>
         )}
         {summary.failed > 0 && <span className="shrink-0 text-danger">· {summary.failed} failed</span>}
-        {summary.running && <span className="min-w-0 truncate text-hint">· {summary.running}</span>}
       </button>
       {open && (
         <div className="mt-2 ml-2 flex flex-col gap-3 border-l border-line pl-3">

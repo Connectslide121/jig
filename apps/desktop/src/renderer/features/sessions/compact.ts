@@ -1,5 +1,5 @@
 import type { ChatItem } from "../../../shared/engine";
-import { diffCounts, toolLabel, toolSummary } from "./ToolCard";
+import { diffCounts, toolLabel } from "./ToolCard";
 
 /**
  * The compact chat view (D-159): what you and Claude say stays, and each run of steps between
@@ -52,7 +52,7 @@ export interface StepsSummary {
   added: number;
   removed: number;
   failed: number;
-  /** The step running now ("npm test"), if one is. */
+  /** The tool running now ("Bash", "Read"), if one is: the tool, not its command. */
   running?: string;
 }
 
@@ -119,8 +119,6 @@ export function stepsSummary(entries: Entry[]): StepsSummary {
     added,
     removed,
     failed: tools.filter((t) => t.status === "error").length,
-    ...(current
-      ? { running: toolSummary(current.name, current.input).split("\n")[0] || toolLabel(current.name) }
-      : {}),
+    ...(current ? { running: toolLabel(current.name) } : {}),
   };
 }

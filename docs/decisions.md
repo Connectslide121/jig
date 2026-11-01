@@ -1590,6 +1590,9 @@ cards. I want a toggle, compact by default… in the chat topbar") and Claude, o
   In a chat opened from Claude Code, a subagent's hand-back ("Another Claude session sent a
   message", `<agent-message>`, `<task-notification>`) becomes such a step ("Message from
   subagent"), not a message of yours.
+- While a step runs, the line names the running tool ("· Bash", "· Read"), not its command, and the
+  whole line glows (Jon, 2026-11-01: "the command is not so relevant"); the spinner and the chevron
+  share one fixed slot, so the text never moves.
 - One setting for all chats (`chat.view`, default `compact`), switched from every chat's top bar
   (where the usage ring was). E2E tests start in Detailed (the fixture writes it), one test covers
   Compact.

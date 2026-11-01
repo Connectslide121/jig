@@ -50,7 +50,7 @@ describe("the compact chat view", () => {
       added: 3,
       removed: 0,
       failed: 1,
-      running: "Build the app",
+      running: "Bash",
     });
     expect(stepsSummary([entry({ kind: "thinking", id: "t", text: "", at } as ChatItem)]).text).toBe(
       "Thought",
