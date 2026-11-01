@@ -1,4 +1,11 @@
-import type { AuthSource, ContextUsage, EngineEvent, SlashCommandInfo, Usage } from "../../shared/engine";
+import type {
+  AuthSource,
+  ContextUsage,
+  EngineEvent,
+  ModelUsage,
+  SlashCommandInfo,
+  Usage,
+} from "../../shared/engine";
 
 /**
  * Claude Code SDK messages → Jig engine events. Pure and stateful per session (it tracks streamed
@@ -27,6 +34,26 @@ function usageFrom(u: Msg): Usage | undefined {
   };
 }
 
+const count = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/** The result's `modelUsage` (running totals per model, subagents included); undefined when empty. */
+export function modelUsageFrom(raw: Msg): Record<string, ModelUsage> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const entries = Object.entries(raw as Record<string, Msg>)
+    .filter(([, u]) => u && typeof u === "object")
+    .map(([model, u]) => [
+      model,
+      {
+        inputTokens: count(u.inputTokens),
+        outputTokens: count(u.outputTokens),
+        cacheReadTokens: count(u.cacheReadInputTokens),
+        cacheWriteTokens: count(u.cacheCreationInputTokens),
+        costUsd: count(u.costUSD),
+      },
+    ]);
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
 /** Tool results come as a string or as content blocks; keep the text, summarise anything else. */
 export function toolOutputText(content: unknown): string {
   if (typeof content === "string") return content;
@@ -43,7 +70,12 @@ export function toolOutputImages(content: unknown): Array<{ mime: string; data: 
   if (!Array.isArray(content)) return [];
   return content.flatMap((block: Msg) =>
     block?.type === "image" && block.source?.type === "base64" && typeof block.source.data === "string"
-      ? [{ mime: String(block.source.media_type ?? "image/png"), data: block.source.data }]
+      ? [
+          {
+            mime: String(block.source.media_type ?? "image/png"),
+            data: block.source.data,
+          },
+        ]
       : [],
   );
 }
@@ -139,7 +171,10 @@ export class Normalizer {
             ? {
                 mcpServers: m.mcp_servers
                   .filter((x: Msg) => typeof x?.name === "string")
-                  .map((x: Msg) => ({ name: x.name, status: String(x.status ?? "") })),
+                  .map((x: Msg) => ({
+                    name: x.name,
+                    status: String(x.status ?? ""),
+                  })),
               }
             : {}),
         },
@@ -159,7 +194,13 @@ export class Normalizer {
     switch (m.subtype) {
       case "local_command_output":
         return typeof m.content === "string" && m.content.trim()
-          ? [{ type: "command_output", id: `command-${m.uuid}`, text: m.content }]
+          ? [
+              {
+                type: "command_output",
+                id: `command-${m.uuid}`,
+                text: m.content,
+              },
+            ]
           : [];
       case "task_started":
         return [
@@ -214,7 +255,16 @@ export class Normalizer {
       case "task_updated": {
         const status = m.patch?.status ? TASK_STATUS[m.patch.status] : undefined;
         return status
-          ? [{ type: "task", task: { id: m.task_id, status, description: m.patch?.description ?? "" } }]
+          ? [
+              {
+                type: "task",
+                task: {
+                  id: m.task_id,
+                  status,
+                  description: m.patch?.description ?? "",
+                },
+              },
+            ]
           : [];
       }
       case "background_tasks_changed":
@@ -256,7 +306,14 @@ export class Normalizer {
         return typeof m.text === "string" &&
           m.text.trim() &&
           (m.priority === "high" || m.priority === "immediate")
-          ? [{ type: "notice", tone: "info", text: m.text, key: `notification-${m.key}` }]
+          ? [
+              {
+                type: "notice",
+                tone: "info",
+                text: m.text,
+                key: `notification-${m.key}`,
+              },
+            ]
           : [];
       case "permission_denied":
         return [
@@ -385,12 +442,14 @@ export class Normalizer {
     const events: EngineEvent[] = [];
     if (!ok && typeof error === "string" && LOGIN_TEXT.test(error))
       events.push({ type: "error", message: error, code: "not_signed_in" });
+    const modelUsage = modelUsageFrom(m.modelUsage);
     events.push({
       type: "result",
       ok,
       durationMs: m.duration_ms ?? 0,
       totalCostUsd: typeof m.total_cost_usd === "number" ? m.total_cost_usd : undefined,
       usage: usageFrom(m.usage),
+      ...(modelUsage ? { modelUsage } : {}),
       numTurns: m.num_turns,
       error,
       ...(this.lastChainUuid ? { chainUuid: this.lastChainUuid } : {}),
@@ -426,5 +485,11 @@ export function contextFrom(r: Msg, at = new Date().toISOString()): ContextUsage
     .sort((a: { kind: string; tokens: number }, b: { kind: string; tokens: number }) =>
       a.kind === b.kind ? b.tokens - a.tokens : a.kind === "used" ? -1 : b.kind === "used" ? 1 : 0,
     );
-  return { usedTokens, maxTokens, percent: Math.max(0, Math.min(100, Math.round(percent))), categories, at };
+  return {
+    usedTokens,
+    maxTokens,
+    percent: Math.max(0, Math.min(100, Math.round(percent))),
+    categories,
+    at,
+  };
 }

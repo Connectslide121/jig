@@ -205,7 +205,9 @@ Claude when to use the terminal and browser tools.
 
 ## Model routing defaults (D-129)
 
-New chats use Claude Code's native `opusplan` in Plan mode: Opus plans, then Sonnet executes after plan approval. Project/chat model choices win over the global default. Explicit saved settings are preserved; Settings → Claude Code → Use recommended defaults applies the preset to an existing installation.
+New chats use Opus (D-207; before, Claude Code's native `opusplan`, which uses Opus only in Plan mode and Sonnet for all other work, tool calls included). Project/chat model choices win over the global default. Explicit saved settings are preserved; Settings → Claude Code → Use recommended defaults applies the preset to an existing installation.
+
+Every regular chat gets the `jig-search` subagent (`shared/searcher.ts`): Read, Grep and Glob only, no CLAUDE.md, on `engine.searchModel` (Haiku; empty leaves it out), and a system-prompt line asking the chat to hand code searches to it instead of searching itself or using Explore. Claude Code's built-in Explore inherits the chat's model (capped at Opus), so it saves nothing in an Opus chat. Delegating stays Claude's choice.
 
 `engine.subagentModel` supplies `CLAUDE_CODE_SUBAGENT_MODEL` to newly started chat processes (default Sonnet). In the bundled Claude Code, the invocation's model wins, then agent definition (including inherit), then this fallback, then the main model. Explore and Plan follow Claude Code's built-in rules; external `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` can override precedence. Jig does not force every agent onto a smaller model. Settings explain this; Agent/Task cards include explicitly requested models, not an inferred actual model. Organization restrictions and Claude settings may substitute models.
 
@@ -215,7 +217,7 @@ Sources: [model configuration](https://code.claude.com/docs/en/model-config#opus
 
 Settings discovers available model choices through `engine.models`, using a prompt-free, tools-free, non-persistent SDK control process, shared with the usage control-request lifecycle. No model list is hard-coded; opusplan is offered separately as the native planning/execution policy, and existing saved custom IDs remain selectable.
 
-Reported model attribution (D-197): `EngineEvent.block_end` and `tool_use` have optional `model`,
+Reported model attribution (D-197): `EngineEvent.result` carries optional `modelUsage` (tokens and cost per model id, Claude Code's running totals including subagents and compaction), kept as `SessionMeta.modelUsage` and shown per model in the chat details (D-207). `EngineEvent.block_end` and `tool_use` have optional `model`,
 read from the SDK assistant message's own `message.model`, never inferred from a current setting or
 agent request. Parent ids keep subagent messages scoped correctly. Imported Claude Code transcripts
 use the same normalizer; absent model data remains unknown. The fake skill/subagent examples report

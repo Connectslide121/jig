@@ -2173,3 +2173,19 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   runs, excluding queue time. Missing timestamps are reported honestly. Active values tick each
   second; timestamp rows reserve their positions as a run finishes. The existing badge still
   shows finish age (or queued/running age), with an explanatory tooltip.
+
+## D-207: Opus by default, code searches on a small model, usage per model
+
+- Status: accepted. Decided by Jon: new chats use Opus (not `opusplan`, which uses Opus only in
+  Plan mode and Sonnet for all other work, including every tool call); helpers and tests stay on
+  smaller models; simple searches should go to a cheaper model automatically; the chat details
+  show how much each model was used. Replaces the `opusplan` default of D-195.
+- Implementation is **Claude, on my own**: a `jig-search` subagent (Read/Grep/Glob only, no
+  CLAUDE.md) on `engine.searchModel` (Haiku; empty turns it off), registered like `jig-tester`
+  through the SDK's `agents`, with a system-prompt line asking the chat to delegate searches to it
+  instead of searching itself or using Explore. Claude Code's built-in Explore inherits the chat's
+  model (capped at Opus), so it doesn't save anything on an Opus chat. Delegation is Claude's
+  choice, not enforced: overriding Explore's model with a hook was rejected as hidden rerouting.
+- Per-model use: messages and tool calls counted from the transcript, tokens and cost from the
+  result's `modelUsage` (Claude Code's running totals, subagents included), merged by short model
+  name. The opusplan picker description now says "Opus only in Plan mode, Sonnet otherwise".

@@ -1,5 +1,13 @@
 # Status
 
+Models and searching (2026-11-01): new chats use Opus; `opusplan` used Opus only in Plan mode and
+Sonnet for everything else, so chats in other modes never reached Opus. Saved settings keep their
+value: change Settings → Claude Code → Default model (or Use recommended defaults). Every chat gets
+the `jig-search` subagent on the new Search model (Haiku; Off removes it) and is asked to hand code
+searches to it. The chat details list each model's replies, tool calls, tokens and cost (Claude
+Code's totals, subagents included, after a turn ends) (D-207). `npm run check` passes (620 tests,
+8 skipped). How often a real Opus chat actually delegates, and Haiku's search quality, need everyday use.
+
 Skills library and pipeline details (2026-11-01): Chats → Skills library lists nine bundled skills,
 all enabled by default, with per-skill global switches, searchable project selection and modal
 instructions/provenance. Changes apply before the next message, preserving a continuing chat.

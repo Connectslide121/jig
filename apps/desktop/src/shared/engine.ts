@@ -77,6 +77,11 @@ export interface Usage {
   cacheWriteTokens: number;
 }
 
+/** One model's share of a chat, as Claude Code totals it (main chat, subagents, compaction). */
+export interface ModelUsage extends Usage {
+  costUsd: number;
+}
+
 /** How full a session's context window is, as Claude Code's `/context` reports it. */
 export interface ContextUsage {
   usedTokens: number;
@@ -84,7 +89,11 @@ export interface ContextUsage {
   /** 0–100. */
   percent: number;
   /** What fills it (system prompt, tools, messages, …), largest first; `free`/`buffer` are the rest. */
-  categories: Array<{ name: string; tokens: number; kind: "used" | "free" | "buffer" }>;
+  categories: Array<{
+    name: string;
+    tokens: number;
+    kind: "used" | "free" | "buffer";
+  }>;
   /** When it was measured (after the last turn). */
   at: string;
 }
@@ -147,6 +156,8 @@ export interface SessionMeta {
   /** Cumulative cost estimate reported by Claude Code (USD). */
   costUsd: number;
   usage: Usage;
+  /** Tokens and cost per model id, from Claude Code's latest result (its running totals). */
+  modelUsage?: Record<string, ModelUsage>;
   turns: number;
   lastError?: string;
   /** Set when Claude Code isn't signed in; the UI shows the sign-in guidance. */
@@ -198,7 +209,11 @@ export interface PermissionRequest {
 }
 
 export type PermissionDecision =
-  | { behavior: "allow"; always?: boolean; updatedInput?: Record<string, unknown> }
+  | {
+      behavior: "allow";
+      always?: boolean;
+      updatedInput?: Record<string, unknown>;
+    }
   | { behavior: "deny"; message?: string };
 
 export type ChatItem =
@@ -281,7 +296,13 @@ export type ChatItem =
       /** The last Claude Code message of this turn: rewinding to after this turn resumes here. */
       chainUuid?: string;
     }
-  | { kind: "notice"; id: string; at: string; text: string; tone: "info" | "warning" | "danger" }
+  | {
+      kind: "notice";
+      id: string;
+      at: string;
+      text: string;
+      tone: "info" | "warning" | "danger";
+    }
   /** A build this chat asked for (jig_request_build); the card follows the build's status. */
   | { kind: "build"; id: string; at: string; buildId: string }
   | {
@@ -310,7 +331,13 @@ export type ConfigUndo =
   /** The profile before Claude changed it. */
   | { type: "profile"; text: string }
   /** One key of an add-on's stored data before Claude changed it (`existed: false`: delete it). */
-  | { type: "addonData"; id: string; key: string; value?: unknown; existed: boolean };
+  | {
+      type: "addonData";
+      id: string;
+      key: string;
+      value?: unknown;
+      existed: boolean;
+    };
 
 /** Incremental transcript changes sent to the renderer (`sessions.update`). */
 export type ChatUpdate =
@@ -356,7 +383,12 @@ export type EngineEvent =
       slashCommands: string[];
       mcpServers?: Array<{ name: string; status: string }>;
     }
-  | { type: "block_start"; id: string; block: "text" | "thinking"; parentId?: string }
+  | {
+      type: "block_start";
+      id: string;
+      block: "text" | "thinking";
+      parentId?: string;
+    }
   | { type: "block_delta"; id: string; text: string }
   | {
       type: "block_end";
@@ -386,20 +418,30 @@ export type EngineEvent =
       diff?: string;
     }
   | { type: "permission"; request: PermissionRequest }
-  | { type: "permission_resolved"; requestId: string; status: "allowed" | "always" | "denied" | "cancelled" }
+  | {
+      type: "permission_resolved";
+      requestId: string;
+      status: "allowed" | "always" | "denied" | "cancelled";
+    }
   | {
       type: "result";
       ok: boolean;
       durationMs: number;
       totalCostUsd?: number;
       usage?: Usage;
+      modelUsage?: Record<string, ModelUsage>;
       numTurns?: number;
       error?: string;
       chainUuid?: string;
     }
   | { type: "status"; status: "compacting" | "requesting" | null }
   /** `key`: a later notice with the same key replaces the earlier one. */
-  | { type: "notice"; text: string; tone: "info" | "warning" | "danger"; key?: string }
+  | {
+      type: "notice";
+      text: string;
+      tone: "info" | "warning" | "danger";
+      key?: string;
+    }
   /** What a Claude Code command printed (`/cost`, `/mcp`, a custom command's output…). */
   | { type: "command_output"; id: string; text: string }
   /** A subagent or background command started, progressed or finished. */
@@ -410,8 +452,17 @@ export type EngineEvent =
   /** Claude Code suggests the user's next message (prompt suggestions). */
   | { type: "suggestion"; text: string }
   /** Claude Code compacted the conversation (`/compact`, or automatically when the window was full). */
-  | { type: "compacted"; trigger: "manual" | "auto"; preTokens: number; postTokens?: number }
-  | { type: "error"; message: string; code?: "not_signed_in" | "process" | "billing" | "rate_limit" }
+  | {
+      type: "compacted";
+      trigger: "manual" | "auto";
+      preTokens: number;
+      postTokens?: number;
+    }
+  | {
+      type: "error";
+      message: string;
+      code?: "not_signed_in" | "process" | "billing" | "rate_limit";
+    }
   | {
       /** Claude Code reported plan rate-limit state (a warning, or a window used up). */
       type: "rate_limit";

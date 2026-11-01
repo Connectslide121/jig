@@ -584,7 +584,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="chats"
             title="Chats"
             lead="Each chat is a real Claude Code session in a project, with your CLAUDE.md, skills, MCP servers and subscription. Run several at once; Jig shows which one needs you."
-            shot={{ src: chat, alt: "A chat with a tool call and the composer" }}
+            shot={{
+              src: chat,
+              alt: "A chat with a tool call and the composer",
+            }}
           >
             <Bullets
               items={[
@@ -619,7 +622,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="workspaces"
             title="Projects & workspaces"
             lead="Projects are yours: groups of chats with a default folder, a default Git repository, model and permission defaults, instructions for Claude and starter prompts. Workspaces are the folders Jig knows — a single repository or a whole folder of them."
-            shot={{ src: dashboard, alt: "The dashboard of a workspace with four repositories" }}
+            shot={{
+              src: dashboard,
+              alt: "The dashboard of a workspace with four repositories",
+            }}
           >
             <Bullets
               items={[
@@ -678,7 +684,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Ask a chat to “open the app and check the login form”",
-                "Settings → Claude Code: Opus plans and Sonnet executes by default; change chat, subagent fallback, helper and tester models there",
+                "Settings → Claude Code: chats use Opus by default and hand code searches to the jig-search helper (Haiku); change chat, subagent fallback, helper, tester and search models there",
                 "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Search → Test something… (or the flask in the browser view) starts a test chat on it",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",
@@ -730,7 +736,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="git"
             title="Git"
             lead="The repository you work in, plus any you show next to it (or all of them), with Repos in the lower half of the sidebar for every repository at a glance: stage, commit, push, pull, branches, history and diffs — side by side or inline, with image diffs. It updates live as files change and fetches in the background, so ahead/behind stays current. Write asks Claude for the commit message; right-click a file or repository to have Claude explain or review the changes. Click a line number in a diff to leave a review comment, then send them all to a chat."
-            shot={{ src: git, alt: "The Git view with changes in several repositories" }}
+            shot={{
+              src: git,
+              alt: "The Git view with changes in several repositories",
+            }}
           />
           <Section
             id="releases"
@@ -760,7 +769,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="configure"
             title="Claude configures Jig"
             lead="Ask in any chat: change the theme, fonts, layout, turn add-ons on or off. Claude does it right away and you get an Undo button."
-            shot={{ src: configure, alt: "Claude switching the theme, with an Undo card" }}
+            shot={{
+              src: configure,
+              alt: "Claude switching the theme, with an Undo card",
+            }}
           >
             <ConfigureExamples />
           </Section>
@@ -804,7 +816,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="skills"
             title="Skills & Claude Code"
-            shot={{ src: skillsShot, alt: "Skills library with global switches and project selection" }}
+            shot={{
+              src: skillsShot,
+              alt: "Skills library with global switches and project selection",
+            }}
             lead="Jig runs the Claude Code you already have, so everything you set up for it works here too."
           >
             <Bullets
@@ -871,7 +886,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="knowledge"
             title="What Jig knows about me"
             lead="Everything Jig uses to suggest things, in one page you control: your profile (how you work), the notes Claude saved from your chats, your activity by kind, and how you worked this week — lines by Claude vs by hand. It stays on your computer; edit or delete anything."
-            shot={{ src: knowledgeShot, alt: "The profile, notes from chats and activity" }}
+            shot={{
+              src: knowledgeShot,
+              alt: "The profile, notes from chats and activity",
+            }}
           />
           <Section
             id="usage"

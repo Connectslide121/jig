@@ -47,7 +47,12 @@ const FAKE_COMMANDS: SlashCommandInfo[] = [
     argumentHint: "",
     builtin: true,
   },
-  { name: "review", description: "Review a pull request", argumentHint: "<pr>", builtin: true },
+  {
+    name: "review",
+    description: "Review a pull request",
+    argumentHint: "<pr>",
+    builtin: true,
+  },
   {
     name: "explain-code",
     description: "Explain code with diagrams and analogies (skill)",
@@ -68,7 +73,11 @@ const FAKE_MODELS = [
     description: "Most capable",
     efforts: ["low", "medium", "high", "xhigh", "max"] as EffortLevel[],
   },
-  { value: "sonnet", displayName: "Sonnet", description: "Coding and execution" },
+  {
+    value: "sonnet",
+    displayName: "Sonnet",
+    description: "Coding and execution",
+  },
   { value: "haiku", displayName: "Haiku", description: "Fastest" },
   // No opusplan, as in Claude Code's own list: Jig adds it (menus.ts ALIASES).
 ];
@@ -95,7 +104,11 @@ export class FakeEngine implements Engine {
     const queue: Array<{ text: string; uuid: string }> = [];
     // File checkpoints: the messages in order, and each file's content before a message changed it.
     const messageOrder: string[] = [];
-    const checkpoints: Array<{ uuid: string; path: string; before: string | null }> = [];
+    const checkpoints: Array<{
+      uuid: string;
+      path: string;
+      before: string | null;
+    }> = [];
     let closed = false;
     // Scripted context window: grows each turn ("read the big file" adds a lot), /compact shrinks it.
     const CONTEXT_MAX = 200_000;
@@ -149,8 +162,17 @@ export class FakeEngine implements Engine {
         if (!initialised) {
           initialised = true;
           if (lower.includes("login")) {
-            onEvent({ type: "error", code: "not_signed_in", message: "Not logged in · Please run /login" });
-            onEvent({ type: "result", ok: false, durationMs: 1, error: "Not logged in" });
+            onEvent({
+              type: "error",
+              code: "not_signed_in",
+              message: "Not logged in · Please run /login",
+            });
+            onEvent({
+              type: "result",
+              ok: false,
+              durationMs: 1,
+              error: "Not logged in",
+            });
             initialised = false;
             return;
           }
@@ -169,8 +191,18 @@ export class FakeEngine implements Engine {
           const preTokens = contextTokens;
           contextTokens = 21_000;
           onEvent({ type: "status", status: null });
-          onEvent({ type: "compacted", trigger: "manual", preTokens, postTokens: contextTokens });
-          onEvent({ type: "result", ok: true, durationMs: Date.now() - started, numTurns: 0 });
+          onEvent({
+            type: "compacted",
+            trigger: "manual",
+            preTokens,
+            postTokens: contextTokens,
+          });
+          onEvent({
+            type: "result",
+            ok: true,
+            durationMs: Date.now() - started,
+            numTurns: 0,
+          });
           return;
         }
         contextTokens = Math.min(CONTEXT_MAX, contextTokens + (lower.includes("big file") ? 130_000 : 9_000));
@@ -212,11 +244,21 @@ export class FakeEngine implements Engine {
             followUps: /with follow-ups/.test(lower) ? [`Follow up on: ${task}`] : [],
           };
           await stream(`${msg}:text:0`, "Working on the task.", signal);
-          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "mcp__jig__addon_tasks_report",
+            input,
+          });
           const output = outputText(
             await options.toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
           );
-          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output,
+            isError: output.startsWith("Error"),
+          });
           await stream(`${msg}:text:1`, "Reported.", signal);
         } else if (options.toolHandlers?.addon_tasks_add && /\bqueue tasks for\b/.test(lower)) {
           // "queue tasks for the specs": Claude fills the Tasks add-on's queue.
@@ -227,11 +269,21 @@ export class FakeEngine implements Engine {
               { title: "Fabrikam spec", prompt: "Write the spec for Fabrikam" },
             ],
           };
-          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_add", input });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "mcp__jig__addon_tasks_add",
+            input,
+          });
           const output = outputText(
             await options.toolHandlers.addon_tasks_add(input).catch((e: Error) => `Error: ${e.message}`),
           );
-          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output,
+            isError: output.startsWith("Error"),
+          });
           await stream(`${msg}:text:0`, "Queued two tasks.", signal);
         } else if (isTestChat) {
           // Tools → Test something…: a short report that says which model and helpers ran it.
@@ -254,21 +306,41 @@ export class FakeEngine implements Engine {
               prompt: "Write my standup notes",
             },
           };
-          onEvent({ type: "tool_use", id: toolId, name: "RemoteTrigger", input });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "RemoteTrigger",
+            input,
+          });
           const decision = await options.askPermission(
-            { requestId: toolId, toolName: "RemoteTrigger", input, canAlwaysAllow: false },
+            {
+              requestId: toolId,
+              toolName: "RemoteTrigger",
+              input,
+              canAlwaysAllow: false,
+            },
             signal,
           );
           if (decision.behavior === "allow") {
             const result = this.cloud.call({ tool: "RemoteTrigger", input });
-            onEvent({ type: "tool_result", toolUseId: toolId, output: result.text, isError: !result.ok });
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: result.text,
+              isError: !result.ok,
+            });
             await stream(
               `${msg}:text:0`,
               "I created the routine **Daily standup notes** (weekdays at 08:45).",
               signal,
             );
           } else {
-            onEvent({ type: "tool_result", toolUseId: toolId, output: "Denied", isError: true });
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: "Denied",
+              isError: true,
+            });
             await stream(`${msg}:text:0`, "OK, no routine.", signal);
           }
         } else if (lower.includes("publish an artifact")) {
@@ -295,17 +367,48 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, "I published the release notes as an artifact.", signal);
         } else if (lower.includes("use a skill")) {
           // A skill (the Skill tool), a file read and an MCP tool: for the chat overview.
-          const calls: Array<{ name: string; input: Record<string, unknown>; output: string }> = [
-            { name: "Skill", input: { skill: "explain-code" }, output: "Launching skill: explain-code" },
-            { name: "Read", input: { file_path: join(options.cwd, "README.md") }, output: "# Shop" },
-            { name: "mcp__github__list_issues", input: { repo: "contoso/shop" }, output: "[]" },
-            { name: "mcp__jig__addon_releases_overview", input: {}, output: "shop: 1.2.0, 3 unreleased" },
+          const calls: Array<{
+            name: string;
+            input: Record<string, unknown>;
+            output: string;
+          }> = [
+            {
+              name: "Skill",
+              input: { skill: "explain-code" },
+              output: "Launching skill: explain-code",
+            },
+            {
+              name: "Read",
+              input: { file_path: join(options.cwd, "README.md") },
+              output: "# Shop",
+            },
+            {
+              name: "mcp__github__list_issues",
+              input: { repo: "contoso/shop" },
+              output: "[]",
+            },
+            {
+              name: "mcp__jig__addon_releases_overview",
+              input: {},
+              output: "shop: 1.2.0, 3 unreleased",
+            },
           ];
           for (const call of calls) {
             const toolId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input, model: "opus" });
+            onEvent({
+              type: "tool_use",
+              id: toolId,
+              name: call.name,
+              input: call.input,
+              model: "opus",
+            });
             await sleep(this.delayMs, signal);
-            onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: call.output,
+              isError: false,
+            });
           }
           await stream(`${msg}:text:0`, "I explained the code with the explain-code skill.", signal);
         } else if (lower.includes("todo list")) {
@@ -318,9 +421,19 @@ export class FakeEngine implements Engine {
             }));
           for (const done of [0, 1, 3]) {
             const toolId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: toolId, name: "TodoWrite", input: { todos: todos(done) } });
+            onEvent({
+              type: "tool_use",
+              id: toolId,
+              name: "TodoWrite",
+              input: { todos: todos(done) },
+            });
             await sleep(this.delayMs * 2, signal);
-            onEvent({ type: "tool_result", toolUseId: toolId, output: "Todos updated", isError: false });
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: "Todos updated",
+              isError: false,
+            });
           }
           await stream(`${msg}:text:0`, "All three steps are done.", signal);
         } else if (lower.includes("make a plan")) {
@@ -329,9 +442,19 @@ export class FakeEngine implements Engine {
           const input = {
             plan: "## Plan\n\n1. Add a `discount` field to the cart\n2. Apply it in `total()`\n3. Test it",
           };
-          onEvent({ type: "tool_use", id: toolId, name: "ExitPlanMode", input });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "ExitPlanMode",
+            input,
+          });
           const decision = await options.askPermission(
-            { requestId: toolId, toolName: "ExitPlanMode", input, canAlwaysAllow: false },
+            {
+              requestId: toolId,
+              toolName: "ExitPlanMode",
+              input,
+              canAlwaysAllow: false,
+            },
             signal,
           );
           const approved = decision.behavior === "allow";
@@ -367,7 +490,11 @@ export class FakeEngine implements Engine {
           onEvent({
             type: "task",
             toolUseId: toolId,
-            task: { id: taskId, status: "running", description: "Explore the cart code" },
+            task: {
+              id: taskId,
+              status: "running",
+              description: "Explore the cart code",
+            },
           });
           const inner = `tool-${randomUUID()}`;
           onEvent({
@@ -379,7 +506,12 @@ export class FakeEngine implements Engine {
             model: "sonnet",
           });
           await sleep(this.delayMs * 2, signal);
-          onEvent({ type: "tool_result", toolUseId: inner, output: "src/cart.ts", isError: false });
+          onEvent({
+            type: "tool_result",
+            toolUseId: inner,
+            output: "src/cart.ts",
+            isError: false,
+          });
           onEvent({
             type: "task",
             toolUseId: toolId,
@@ -420,10 +552,21 @@ export class FakeEngine implements Engine {
             type: "tool_use",
             id: toolId,
             name: "Bash",
-            input: { command: "npm run watch", description: "Watch and rebuild", run_in_background: true },
+            input: {
+              command: "npm run watch",
+              description: "Watch and rebuild",
+              run_in_background: true,
+            },
           });
-          backgroundTasks.set(taskId, { id: taskId, description: "Watch and rebuild", type: "local_bash" });
-          onEvent({ type: "background_tasks", tasks: [...backgroundTasks.values()] });
+          backgroundTasks.set(taskId, {
+            id: taskId,
+            description: "Watch and rebuild",
+            type: "local_bash",
+          });
+          onEvent({
+            type: "background_tasks",
+            tasks: [...backgroundTasks.values()],
+          });
           onEvent({
             type: "tool_result",
             toolUseId: toolId,
@@ -482,11 +625,21 @@ export class FakeEngine implements Engine {
           // "switch to the light theme" / "move the terminals to the right": Claude configures Jig.
           const call = async (name: string, input: Record<string, unknown>) => {
             const toolId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${name}`, input });
+            onEvent({
+              type: "tool_use",
+              id: toolId,
+              name: `mcp__jig__${name}`,
+              input,
+            });
             const output = outputText(
               await options.toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`),
             );
-            onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output,
+              isError: output.startsWith("Error"),
+            });
           };
           if (/as a workflow/.test(lower)) {
             await call("addon_workflows_save", {
@@ -494,8 +647,14 @@ export class FakeEngine implements Engine {
               goal: "Notes for customers from the changes since the last release",
               steps: [
                 "git fetch --tags",
-                { title: "Read the changes since the last release", kind: "claude" },
-                { title: "Write the notes in Swedish for customers", kind: "claude" },
+                {
+                  title: "Read the changes since the last release",
+                  kind: "claude",
+                },
+                {
+                  title: "Write the notes in Swedish for customers",
+                  kind: "claude",
+                },
                 "Send the notes to the customer",
               ],
             });
@@ -541,7 +700,9 @@ export class FakeEngine implements Engine {
               group: "Stage",
               links: [
                 { url: "https://stage.shop.se" },
-                { url: "https://portal.azure.com/#@/resource/subscriptions/abc/resourceGroups/shop-stage" },
+                {
+                  url: "https://portal.azure.com/#@/resource/subscriptions/abc/resourceGroups/shop-stage",
+                },
               ],
             });
             await stream(
@@ -568,7 +729,13 @@ export class FakeEngine implements Engine {
           } else if (/pipelines (?:below|under) git/.test(lower)) {
             await call("jig_get_layout", {});
             await call("jig_change_layout", {
-              ops: [{ op: "below", view: "addon.pipelines.pipelines", host: "addon.git.git" }],
+              ops: [
+                {
+                  op: "below",
+                  view: "addon.pipelines.pipelines",
+                  host: "addon.git.git",
+                },
+              ],
             });
             await stream(
               `${msg}:text:0`,
@@ -584,7 +751,9 @@ export class FakeEngine implements Engine {
           } else {
             await call("jig_list_themes", {});
             const themeId = lower.includes("dark") ? "jig-dark" : "jig-light";
-            await call("jig_update_settings", { patch: { appearance: { themeId, density: "compact" } } });
+            await call("jig_update_settings", {
+              patch: { appearance: { themeId, density: "compact" } },
+            });
             await stream(
               `${msg}:text:0`,
               `I switched Jig to ${themeId === "jig-dark" ? "Jig Dark" : "Jig Light"} with compact density.`,
@@ -596,7 +765,12 @@ export class FakeEngine implements Engine {
           const url = /^browse\s+(\S+)/i.exec(text.trim())![1]!;
           const call = async (name: string, input: Record<string, unknown>) => {
             const toolId = `tool-${randomUUID()}`;
-            onEvent({ type: "tool_use", id: toolId, name: `mcp__jig__${name}`, input });
+            onEvent({
+              type: "tool_use",
+              id: toolId,
+              name: `mcp__jig__${name}`,
+              input,
+            });
             const result = await options.toolHandlers![name]!(input).catch(
               (e: Error) => `Error: ${e.message}`,
             );
@@ -615,7 +789,10 @@ export class FakeEngine implements Engine {
           if (/\[1\]/.test(page)) await call("jig_browser_click", { ref: 1 });
           await call("jig_browser_screenshot", {});
           // "browse … at phone and desktop": one screenshot per size, the size is put back after.
-          if (/\bphone\b/i.test(text)) await call("jig_browser_screenshot", { sizes: ["phone", "desktop"] });
+          if (/\bphone\b/i.test(text))
+            await call("jig_browser_screenshot", {
+              sizes: ["phone", "desktop"],
+            });
           // "browse … and check the requests": the network log, failed ones first.
           if (/\brequests?\b|\bnetwork\b/i.test(text)) {
             await call("jig_browser_network", {});
@@ -626,9 +803,19 @@ export class FakeEngine implements Engine {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).
           const file = /(\S+\.(?:png|jpe?g|gif|webp|svg))\b/i.exec(text)![1]!;
           const toolId = `tool-${randomUUID()}`;
-          onEvent({ type: "tool_use", id: toolId, name: "Read", input: { file_path: file } });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Read",
+            input: { file_path: file },
+          });
           await sleep(this.delayMs, signal);
-          onEvent({ type: "tool_result", toolUseId: toolId, output: "[image]", isError: false });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: "[image]",
+            isError: false,
+          });
           await stream(`${msg}:text:0`, "I looked at the image.", signal);
         } else if (lower.includes("run") || lower.includes("permission")) {
           const toolId = `tool-${randomUUID()}`;
@@ -685,8 +872,14 @@ export class FakeEngine implements Engine {
                     header: "First step",
                     multiSelect: false,
                     options: [
-                      { label: "Capture Jenkins (Recommended)", description: "Export the job configs" },
-                      { label: "Update docs", description: "Bring the inventory up to date" },
+                      {
+                        label: "Capture Jenkins (Recommended)",
+                        description: "Export the job configs",
+                      },
+                      {
+                        label: "Update docs",
+                        description: "Bring the inventory up to date",
+                      },
                     ],
                   },
                   {
@@ -704,9 +897,19 @@ export class FakeEngine implements Engine {
                 ]
               : [colour],
           };
-          onEvent({ type: "tool_use", id: toolId, name: "AskUserQuestion", input });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "AskUserQuestion",
+            input,
+          });
           const decision = await options.askPermission(
-            { requestId: toolId, toolName: "AskUserQuestion", input, canAlwaysAllow: false },
+            {
+              requestId: toolId,
+              toolName: "AskUserQuestion",
+              input,
+              canAlwaysAllow: false,
+            },
             signal,
           );
           const answers = (decision.behavior === "allow" ? decision.updatedInput?.answers : undefined) as
@@ -727,18 +930,38 @@ export class FakeEngine implements Engine {
           if (options.fileCheckpoints) checkpoints.push({ uuid, path, before });
           const toolId = `tool-${randomUUID()}`;
           const content = `Written by the fake engine.\n${before ?? ""}`;
-          onEvent({ type: "tool_use", id: toolId, name: "Write", input: { file_path: path, content } });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "Write",
+            input: { file_path: path, content },
+          });
           await writeFile(path, content);
-          onEvent({ type: "tool_result", toolUseId: toolId, output: `Wrote ${path}`, isError: false });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: `Wrote ${path}`,
+            isError: false,
+          });
           await stream(`${msg}:text:0`, `I wrote ${name}.`, signal);
         } else if (lower.includes("build")) {
           const toolId = `tool-${randomUUID()}`;
           const goal = text.replace(/^(please\s+)?build( me)?\s*/i, "") || text;
-          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__jig_request_build", input: { goal } });
+          onEvent({
+            type: "tool_use",
+            id: toolId,
+            name: "mcp__jig__jig_request_build",
+            input: { goal },
+          });
           const output = options.toolHandlers?.jig_request_build
             ? outputText(await options.toolHandlers.jig_request_build({ goal }))
             : "Build requested.";
-          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: false });
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output,
+            isError: false,
+          });
           await stream(`${msg}:text:0`, "I've asked Jig's builder to make that.", signal);
         } else if (lower.includes("slow")) {
           await stream(`${msg}:text:0`, `${"This is a long answer that keeps going. ".repeat(200)}`, signal);
@@ -777,12 +1000,31 @@ export class FakeEngine implements Engine {
           ok: true,
           durationMs: Date.now() - started,
           totalCostUsd: undefined,
-          usage: { inputTokens: 100, outputTokens: 20, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          usage: {
+            inputTokens: 100,
+            outputTokens: 20,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+          },
+          modelUsage: {
+            [model === "opusplan" ? "opus" : model]: {
+              inputTokens: 100 * turnsDone,
+              outputTokens: 20 * turnsDone,
+              cacheReadTokens: 0,
+              cacheWriteTokens: 0,
+              costUsd: 0.01 * turnsDone,
+            },
+          },
           numTurns: 1,
           chainUuid: `chain-${uuid}`,
         });
       } catch {
-        onEvent({ type: "result", ok: false, durationMs: Date.now() - started, error: "Interrupted" });
+        onEvent({
+          type: "result",
+          ok: false,
+          durationMs: Date.now() - started,
+          error: "Interrupted",
+        });
       } finally {
         turn = undefined;
       }
@@ -811,7 +1053,10 @@ export class FakeEngine implements Engine {
           steers.push(text);
           return uuid;
         }
-        queue.push({ text: tags.length ? `${tags.join(" ")} ${text}` : text, uuid });
+        queue.push({
+          text: tags.length ? `${tags.join(" ")} ${text}` : text,
+          uuid,
+        });
         void pump();
         return uuid;
       },
@@ -840,7 +1085,10 @@ export class FakeEngine implements Engine {
       },
       async stopTask(taskId) {
         if (!backgroundTasks.delete(taskId)) return;
-        onEvent({ type: "background_tasks", tasks: [...backgroundTasks.values()] });
+        onEvent({
+          type: "background_tasks",
+          tasks: [...backgroundTasks.values()],
+        });
       },
       async rewindFiles(messageId, dryRun) {
         const from = messageOrder.indexOf(messageId);
@@ -881,7 +1129,11 @@ export class FakeEngine implements Engine {
             { name: "System prompt", tokens: 3_000, kind: "used" },
             { name: "System tools", tokens: 12_000, kind: "used" },
             { name: "Messages", tokens: messages, kind: "used" },
-            { name: "Free space", tokens: CONTEXT_MAX - contextTokens, kind: "free" },
+            {
+              name: "Free space",
+              tokens: CONTEXT_MAX - contextTokens,
+              kind: "free",
+            },
           ],
         });
       },
@@ -933,7 +1185,11 @@ export class FakeEngine implements Engine {
         : (
             (
               m.message as {
-                content?: Array<{ type?: string; name?: string; input?: Record<string, unknown> }>;
+                content?: Array<{
+                  type?: string;
+                  name?: string;
+                  input?: Record<string, unknown>;
+                }>;
               }
             ).content ?? []
           )
@@ -968,7 +1224,12 @@ export class FakeEngine implements Engine {
       msg("user", "u2", [{ type: "text", text: "The cart total is off by one, fix it" }]),
       msg("assistant", "a1", [
         { type: "text", text: "I'll fix the total in cart.ts." },
-        { type: "tool_use", id: "t1", name: "Edit", input: { file_path: "cart.ts" } },
+        {
+          type: "tool_use",
+          id: "t1",
+          name: "Edit",
+          input: { file_path: "cart.ts" },
+        },
       ]),
       msg("assistant", "s1", [{ type: "text", text: "A subagent's note" }], "t1"),
       msg("user", "u3", [{ type: "tool_result", tool_use_id: "t1", content: "Edited cart.ts" }]),
@@ -979,7 +1240,11 @@ export class FakeEngine implements Engine {
   async planUsage(): Promise<RawUsage> {
     const scripted = process.env.JIG_FAKE_USAGE;
     if (scripted === "unavailable")
-      return { subscription_type: null, rate_limits_available: false, rate_limits: null };
+      return {
+        subscription_type: null,
+        rate_limits_available: false,
+        rate_limits: null,
+      };
     if (scripted) return JSON.parse(scripted) as RawUsage;
     const at = (ms: number) => new Date(Date.now() + ms).toISOString();
     return {
@@ -987,10 +1252,17 @@ export class FakeEngine implements Engine {
       rate_limits_available: true,
       rate_limits: {
         five_hour: { utilization: 42, resets_at: at((2 * 60 + 13) * 60_000) },
-        seven_day: { utilization: 18, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+        seven_day: {
+          utilization: 18,
+          resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000),
+        },
         // Per-model weekly limits come named by the server (today's plans: Fable).
         model_scoped: [
-          { display_name: "Fable", utilization: 31, resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000) },
+          {
+            display_name: "Fable",
+            utilization: 31,
+            resets_at: at(4 * 24 * 3_600_000 + 3 * 3_600_000),
+          },
         ],
       },
     };
@@ -1011,7 +1283,14 @@ export class FakeEngine implements Engine {
       const debug = /^\+.*console\.log/m.test(prompt);
       return JSON.stringify({
         findings: debug
-          ? [{ severity: "medium", file: "cart.ts", line: 1, message: "A console.log is left in." }]
+          ? [
+              {
+                severity: "medium",
+                file: "cart.ts",
+                line: 1,
+                message: "A console.log is left in.",
+              },
+            ]
           : [],
       });
     }
@@ -1022,7 +1301,11 @@ export class FakeEngine implements Engine {
         reason: "A new feature and a fix since the last release (scripted).",
         changelog: `## [${version}] - 2026-10-29\n\n### Added\n- Discount codes at checkout\n\n### Fixed\n- Rounding in totals`,
         notes: [
-          { audience: "customers", language: "English", text: "You can now use discount codes at checkout." },
+          {
+            audience: "customers",
+            language: "English",
+            text: "You can now use discount codes at checkout.",
+          },
         ],
       });
     }

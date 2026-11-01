@@ -26,27 +26,30 @@ test("chat: send, stream a markdown reply with highlighted code, show usage", as
   await expect(page.getByTestId("chat-status")).toHaveText("Idle");
 });
 
-test("chat: new chats inherit opusplan, while explicit project overrides remain optional", async ({
+test("chat: new chats inherit Opus, while explicit project overrides remain optional", async ({
   page,
   jigHome,
 }) => {
   await withProject(page, jigHome);
-  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const projects = (await hostCall(page, "projects.list")) as {
+    value: { projects: Array<{ id: string }> };
+  };
   const projectId = projects.value.projects[0]!.id;
   await page.keyboard.press("Control+N");
-  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
+  await expect(page.getByTestId("model-menu")).toContainText("Opus");
+  await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
   await say(page, "Hello");
   await expect(page.getByTestId("turn-result")).toHaveCount(1);
-  const list = (await hostCall(page, "sessions.list")) as { value: Array<{ model: string }> };
-  expect(list.value[0]!.model).toBe("opusplan");
+  const list = (await hostCall(page, "sessions.list")) as {
+    value: Array<{ model: string }>;
+  };
+  expect(list.value[0]!.model).toBe("opus");
   await hostCall(page, "projects.update", { id: projectId, model: "sonnet" });
   await page.keyboard.press("Control+N");
   await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("model-menu")).toContainText("Sonnet");
   await hostCall(page, "projects.update", { id: projectId, model: "" });
   await page.keyboard.press("Control+N");
-  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("model-menu")).toContainText(
-    "Opus Plan Mode",
-  );
+  await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("model-menu")).toContainText("Opus");
 });
 
 test("chat: permission prompts can be allowed or denied", async ({ page, jigHome }) => {
@@ -119,22 +122,23 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
 test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
-  // The default model (opusplan) reads as the picker names it, before the picker was opened.
-  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
+  // The default model (Opus) reads as the picker names it, before the picker was opened.
+  await expect(page.getByTestId("model-menu")).toContainText("Opus");
+  await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
   await page.getByTestId("permission-menu").click();
   await page.getByTestId("mode-plan").click();
   await expect(page.getByTestId("permission-menu")).toContainText("Plan only");
   await page.getByTestId("model-menu").click();
-  // Claude Code's own list has no opusplan: the picker still names it, and marks it as the current one.
+  // Claude Code's own list has no opusplan: the picker still names it.
   await expect(page.getByTestId("model-opusplan")).toContainText("Opus Plan Mode");
   await expect(page.getByRole("menu")).not.toContainText("opusplan");
+  await page.getByTestId("model-opusplan").click();
+  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
+  // And Opus can be chosen again.
+  await page.getByTestId("model-menu").click();
   await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
   await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
-  // And it can be chosen again.
-  await page.getByTestId("model-menu").click();
-  await page.getByTestId("model-opusplan").click();
-  await expect(page.getByTestId("model-menu")).toContainText("Opus Plan Mode");
 });
 
 test("chat: sessions list across projects and survive a restart", async ({ app, page, jigHome }) => {
@@ -169,7 +173,9 @@ test("chat: compact view folds Claude's steps into one line; Detailed shows ever
   await page.keyboard.press("Control+N");
   await page.getByTestId("chat-view-compact").click();
   await say(page, "make a todo list for the release");
-  await expect(page.getByTestId("turn-result")).toContainText("Done", { timeout: 15000 });
+  await expect(page.getByTestId("turn-result")).toContainText("Done", {
+    timeout: 15000,
+  });
   const chat = page.locator("[data-testid=transcript]:visible");
   // The three to-do updates are one line; their cards stay folded.
   const steps = chat.getByTestId("steps-row");
@@ -185,7 +191,9 @@ test("chat: compact view folds Claude's steps into one line; Detailed shows ever
   await page.getByTestId("chat-view-detailed").click();
   await expect(chat.getByTestId("steps-row")).toHaveCount(0);
   await expect(chat.getByTestId("tool-card")).toHaveCount(3);
-  const config = (await hostCall(page, "config.get")) as { value: { chat: { view: string } } };
+  const config = (await hostCall(page, "config.get")) as {
+    value: { chat: { view: string } };
+  };
   expect(config.value.chat.view).toBe("detailed");
 });
 
@@ -194,7 +202,9 @@ test("chat: long unbroken text never makes the transcript scroll sideways", asyn
   await page.keyboard.press("Control+N");
   const long = `${"x".repeat(240)}/${"y".repeat(240)}`;
   await say(page, `Check ${long} and \`${long}\``);
-  await expect(page.getByTestId("turn-result")).toContainText("Done", { timeout: 15000 });
+  await expect(page.getByTestId("turn-result")).toContainText("Done", {
+    timeout: 15000,
+  });
   const sizes = await page
     .locator("[data-testid=transcript]:visible")
     .evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
@@ -236,7 +246,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   const conversation = tab.getByTestId("chat-conversation");
   const emptyChat = await conversation.boundingBox();
   await say(page, "use a skill to explain the code");
-  await expect(tab.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
+  await expect(tab.getByTestId("turn-result")).toHaveCount(1, {
+    timeout: 15000,
+  });
   // The overview column slides open beside the chat once there is something to count.
   await expect(async () => {
     const populatedChat = await conversation.boundingBox();
@@ -245,7 +257,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   }).toPass();
   await tab.locator("[data-testid=composer-input]").fill("ask a subagent");
   await page.keyboard.press("Enter");
-  await expect(tab.getByTestId("turn-result")).toHaveCount(2, { timeout: 15000 });
+  await expect(tab.getByTestId("turn-result")).toHaveCount(2, {
+    timeout: 15000,
+  });
   // A small card at the chat's top right, beside the transcript.
   const card = tab.getByTestId("chat-overview");
   await expect(card.getByTestId("chat-overview-tools")).toContainText("6");
@@ -279,6 +293,8 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(details.getByTestId("chat-details-addons")).toContainText("Releases");
   await expect(details.getByTestId("chat-details-models")).toContainText("Opus");
   await expect(details.getByTestId("chat-details-models")).toContainText("Sonnet");
+  // Claude Code's totals per model: the fake engine reports a cent per turn.
+  await expect(details.getByTestId("chat-details-models")).toContainText("$0.0");
   await expect(details.getByTestId("chat-details-subagents")).toContainText("requested Sonnet");
   await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);
@@ -295,7 +311,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
     const composer = await tab.getByTestId("composer").boundingBox();
     expect(composer!.x + composer!.width / 2).toBeGreaterThan(beforeHide!.x + beforeHide!.width / 2 + 50);
   }).toPass();
-  const config = (await hostCall(page, "config.get")) as { value: { chat: { overview: boolean } } };
+  const config = (await hostCall(page, "config.get")) as {
+    value: { chat: { overview: boolean } };
+  };
   expect(config.value.chat.overview).toBe(false);
   await tab.getByTestId("chat-view-compact").click();
   await expect(tab.getByTestId("tool-caller-model")).toHaveCount(0);
@@ -313,7 +331,9 @@ test("chat: unsent drafts are not saved or restored, sent prompts are", async ({
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
   await page.getByTestId("composer-input").fill("Unsent draft");
-  const drafts = (await hostCall(page, "sessions.list")) as { value: Array<{ id: string; draft?: boolean }> };
+  const drafts = (await hostCall(page, "sessions.list")) as {
+    value: Array<{ id: string; draft?: boolean }>;
+  };
   const draft = drafts.value.find((m) => m.draft)!;
   expect(draft).toBeTruthy();
   await expect(page.getByTestId("session-New chat")).toHaveCount(0);

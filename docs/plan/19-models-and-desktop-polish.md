@@ -83,3 +83,4 @@
 - [x] Replace per-turn changed-file cards with a whole-chat summary above the input and modal breakdown (D-204).
 
 - [x] Fix pipeline CLI Unicode and show execution duration separately from finish age (D-206).
+- [x] Opus by default, a jig-search subagent on the search model, and per-model replies, tool calls, tokens and cost in chat details (D-207).

@@ -22,6 +22,7 @@ import {
   type ChatStats,
   chatStats,
   formatDuration,
+  modelRows,
   relativeTo,
   toolLabel,
   totalTokens,
@@ -51,7 +52,10 @@ export function useAddonNames(): {
       for (const t of a.manifest?.contributes?.tools ?? [])
         byTool.set(`mcp__jig__${addonToolName(a.id, t.id)}`, a.id);
     }
-    return { addonOf: (tool) => byTool.get(tool), name: (id) => names.get(id) ?? id };
+    return {
+      addonOf: (tool) => byTool.get(tool),
+      name: (id) => names.get(id) ?? id,
+    };
   }, [addons]);
 }
 
@@ -91,6 +95,10 @@ export function ChatOverview({
 }) {
   const { addonOf } = useAddonNames();
   const stats = useMemo(() => chatStats(items, addonOf), [items, addonOf]);
+  const modelCount = useMemo(
+    () => modelRows(stats.models, meta.modelUsage).length,
+    [stats.models, meta.modelUsage],
+  );
   return (
     <div
       className="flex w-52 flex-col rounded-lg border border-line bg-raised py-1"
@@ -113,12 +121,7 @@ export function ChatOverview({
         value={stats.workingMs ? formatDuration(stats.workingMs) : "—"}
       />
       <Row icon={Wrench} label="Tool calls" value={num(stats.toolCalls)} testId="chat-overview-tools" />
-      <Row
-        icon={Brain}
-        label="Models"
-        value={stats.models.length || "Not reported"}
-        testId="chat-overview-models"
-      />
+      <Row icon={Brain} label="Models" value={modelCount || "Not reported"} testId="chat-overview-models" />
       <Row
         icon={FilePen}
         label={`Files changed${stats.files.length ? ` · ${stats.files.length}` : ""}`}
@@ -264,6 +267,7 @@ function Details({
 }) {
   const u = meta.usage;
   const skillUses = stats.skills.reduce((n, s) => n + s.count, 0);
+  const models = modelRows(stats.models, meta.modelUsage);
   return (
     <div className="flex flex-col gap-4" data-testid="chat-details">
       <div className="grid grid-cols-5 gap-2">
@@ -345,24 +349,29 @@ function Details({
         />
       </div>
 
-      <Section title="Models reported" count={stats.models.length} testId="chat-details-models">
-        <Head cells={["Tool calls"]} />
+      <Section title="Models" count={models.length} testId="chat-details-models">
+        <Head cells={["Replies", "Tool calls", "Tokens", "Cost"]} />
         <div className="h-32 overflow-y-auto">
-          {stats.models.map((m) => (
+          {models.map((m) => (
             <Line
               key={m.name}
-              name={<span title={m.name}>{reportedModelName(m.name)}</span>}
-              cells={[m.count]}
+              name={<span title={m.ids.join(", ")}>{m.name}</span>}
+              cells={[
+                num(m.replies),
+                num(m.toolCalls),
+                m.tokens ? formatTokens(m.tokens) : "—",
+                m.costUsd ? `$${m.costUsd.toFixed(2)}` : "—",
+              ]}
             />
           ))}
-          {(stats.unreportedToolCalls > 0 || stats.models.length === 0) && (
-            <Line name="Not reported" cells={[stats.unreportedToolCalls || "—"]} />
+          {(stats.unreportedToolCalls > 0 || models.length === 0) && (
+            <Line name="Not reported" cells={["—", stats.unreportedToolCalls || "—", "—", "—"]} />
           )}
         </div>
       </Section>
       <p className="text-2xs text-hint">
-        Tool models identify the assistant calling a program, not an AI inside that program. Missing or older
-        data stays Not reported; requested agent models are separate.
+        Replies and tool calls are counted from the chat; tokens and cost are Claude Code's totals (main chat,
+        subagents and compaction) and appear after a turn ends. Cost is an estimate, not a bill.
       </p>
 
       <Section title="Tools" count={stats.tools.length} testId="chat-details-tools">

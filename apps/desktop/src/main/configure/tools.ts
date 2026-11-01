@@ -70,7 +70,7 @@ export interface ConfigureDeps {
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
 export const SETTINGS_GUIDE = `appearance.themeId: colour theme id (see jig_list_themes); followSystem: switch between lightThemeId and darkThemeId with the OS; density: compact|comfortable; radius: sharp|soft|round; uiFont / monoFont: font family names; fontSize: 11–18; fileIconTheme: "vscode" (same as VS Code) | "jig" | an icon theme id from jig_list_themes.
-engine.helperModel: model for add-on questions that need thought, such as reviews (default "sonnet"); engine.quickModel: model for short, simple add-on answers such as commit messages (default "haiku"); engine.subagentModel: optional fallback model for subagents without explicit choices (empty respects Claude Code); engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message; engine.testerModel: model alias or id for testing in Claude's browser (the jig-tester subagent and Test something…; default "haiku"); engine.claudeAiConnectors: true|false, load the connectors of the user's claude.ai account (Asana, Notion, Linear…) into new chats (default false: none are loaded, so none is flagged as needing sign-in).
+engine.helperModel: model for add-on questions that need thought, such as reviews (default "sonnet"); engine.quickModel: model for short, simple add-on answers such as commit messages (default "haiku"); engine.subagentModel: optional fallback model for subagents without explicit choices (empty respects Claude Code); engine.defaultModel: model alias or id for new chats ("" = Claude Code's default; e.g. "opus", "sonnet"); engine.defaultPermissionMode: default|acceptEdits|plan|bypassPermissions; engine.promptSuggestions: true|false, Claude Code suggests the next message; engine.fileCheckpoints: true|false, keep file copies so a chat can restore files to before a message; engine.testerModel: model alias or id for testing in Claude's browser (the jig-tester subagent and Test something…; default "haiku"); engine.searchModel: model alias or id for the jig-search subagent the chat hands code searches to (default "haiku"; "" = no search subagent); engine.claudeAiConnectors: true|false, load the connectors of the user's claude.ai account (Asana, Notion, Linear…) into new chats (default false: none are loaded, so none is flagged as needing sign-in).
 skills.overrides: per bundled skill id, { enabled: boolean, excludedProjects: string[] }; missing entries default to enabled everywhere. Global off wins; project ids in excludedProjects are excluded. New projects are included by default. Changes apply before the next message, without interrupting work. These controls affect only Jig's bundled library; personal/project Claude skills stay independent.
 chat.overview: true|false, the small overview card at the top right of each chat (turns, tool calls, files, skills, subagents, add-ons, MCP, tokens; Show details opens the full breakdown), default on; chat.view: "compact" (each run of steps folds into one line, the default) or "detailed" (every step as its card), how chats show Claude's work; chatList.view: "project" (default) | "status" (pinned, needs you, working, error, idle) | "recent" (pinned, today, yesterday, last 7 days, older) | "all" (one list), how the Chats list groups chats (chatList.pinnedOrder is set by dragging pinned chats, don't edit it); editor.wordWrap: true|false, long lines wrap in the file editor (Preview); editor.showWhitespace: true|false, show spaces and tabs; editor.closeBrackets: true|false, typing a bracket or quote adds the closing one; editor.tabSize: 1–8, indentation for files that don't show their own (the editor follows each file's own indentation).
 notifications.desktop: true|false, a system notification when a chat needs the user or finishes while Jig is in the background.
@@ -126,6 +126,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             promptSuggestions: engine.promptSuggestions,
             fileCheckpoints: engine.fileCheckpoints,
             testerModel: engine.testerModel,
+            searchModel: engine.searchModel,
             claudeAiConnectors: engine.claudeAiConnectors,
           },
         };
@@ -296,7 +297,10 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         );
         await deps.addCard(
           meta.id,
-          card("Changed Jig's layout", details, { type: "layout", layout: before }),
+          card("Changed Jig's layout", details, {
+            type: "layout",
+            layout: before,
+          }),
         );
         return `Done:\n${details.join("\n")}`;
       },
@@ -381,7 +385,10 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const details = describeProjectPatch(args as Record<string, unknown>);
         await deps.addCard(
           meta.id,
-          card(`Created project ${project.name}`, details, { type: "projectCreated", id: project.id }),
+          card(`Created project ${project.name}`, details, {
+            type: "projectCreated",
+            id: project.id,
+          }),
         );
         return `Created ${project.name} [${project.id}]:\n${details.join("\n")}`;
       },
@@ -420,7 +427,11 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         });
         await deps.addCard(
           meta.id,
-          card(`Changed project ${project.name}`, details, { type: "project", id, patch: before }),
+          card(`Changed project ${project.name}`, details, {
+            type: "project",
+            id,
+            patch: before,
+          }),
         );
         return `Done:\n${details.join("\n")}`;
       },
@@ -436,7 +447,11 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
       handler: async (args, meta: SessionMeta) => {
         const project = await projectFor(args.projectId as string | undefined, meta);
         const before = project.links ?? [];
-        const input = args.links as Array<{ url: string; label?: string; type?: LinkType }>;
+        const input = args.links as Array<{
+          url: string;
+          label?: string;
+          type?: LinkType;
+        }>;
         const links = addLinkGroups(before, String(args.group), input);
         await deps.updateProject(project.id, { links });
         const details = input.map(

@@ -185,7 +185,11 @@ test("views go anywhere: sidebars, the bottom panel and the main area, by draggi
   await expect(page.getByTestId("tab-jig.view")).toHaveCount(0);
   const layout = async () =>
     (await hostCall(page, "layout.get")) as {
-      value: { left: { views: string[] }; right: { views: string[] }; hidden: string[] };
+      value: {
+        left: { views: string[] };
+        right: { views: string[] };
+        hidden: string[];
+      };
     };
   await expect
     .poll(async () => {
@@ -265,8 +269,9 @@ test("action groups are merged into a few top bar menus and model defaults remai
   await page.keyboard.press("Escape");
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-engine").click();
-  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opusplan");
+  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opus");
   await expect(page.getByRole("combobox", { name: "Subagent fallback model" })).toHaveValue("sonnet");
+  await expect(page.getByRole("combobox", { name: "Search model" })).toHaveValue("haiku");
   await expect(
     page.getByRole("combobox", { name: "Helper model", exact: true }).locator('option[value="sonnet"]'),
   ).toHaveText("Sonnet");
@@ -274,10 +279,10 @@ test("action groups are merged into a few top bar menus and model defaults remai
     page.getByRole("combobox", { name: "Default model", exact: true }).locator('option[value="opus"]'),
   ).toHaveText("Opus");
   await expect(page.getByLabel("Default permission mode", { exact: true })).toHaveValue("plan");
-  await page.getByRole("combobox", { name: "Default model", exact: true }).selectOption("opus");
+  await page.getByRole("combobox", { name: "Default model", exact: true }).selectOption("sonnet");
   await page.getByRole("combobox", { name: "Default model", exact: true }).press("Tab");
   await page.getByRole("button", { name: "Use recommended defaults" }).click();
-  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opusplan");
+  await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opus");
 });
 
 test("the top menu bar switches groups on hover only while a menu is open", async ({ page }) => {

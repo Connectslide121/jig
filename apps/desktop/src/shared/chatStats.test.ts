@@ -3,6 +3,7 @@ import {
   chatStats,
   diffLines,
   formatDuration,
+  modelRows,
   relativeTo,
   toolAddon,
   toolLabel,
@@ -16,8 +17,22 @@ const at = "2026-10-31T10:00:00.000Z";
 const items: ChatItem[] = [
   { kind: "user", id: "u1", text: "Fix the cart total", at },
   { kind: "thinking", id: "th", text: "hmm", at },
-  { kind: "tool", id: "r1", name: "Read", input: { file_path: "/w/shop/cart.ts" }, status: "done", at },
-  { kind: "tool", id: "r2", name: "Read", input: { file_path: "/w/shop/cart.ts" }, status: "done", at },
+  {
+    kind: "tool",
+    id: "r1",
+    name: "Read",
+    input: { file_path: "/w/shop/cart.ts" },
+    status: "done",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "r2",
+    name: "Read",
+    input: { file_path: "/w/shop/cart.ts" },
+    status: "done",
+    at,
+  },
   {
     kind: "tool",
     id: "e1",
@@ -27,22 +42,78 @@ const items: ChatItem[] = [
     diff: "--- a\n+++ b\n@@ -1,2 +1,3 @@\n-old\n+new\n+more\n same",
     at,
   },
-  { kind: "tool", id: "e2", name: "Write", input: { file_path: "/w/shop/a.ts" }, status: "error", at },
-  { kind: "tool", id: "b1", name: "Bash", input: { command: "npm test" }, status: "error", at },
-  { kind: "tool", id: "s1", name: "Skill", input: { skill: "explain-code" }, status: "done", at },
-  { kind: "tool", id: "m1", name: "mcp__jig__jig_open_url", input: {}, status: "done", at },
-  { kind: "tool", id: "m2", name: "mcp__jig__jig_screenshot", input: {}, status: "done", at },
-  { kind: "tool", id: "w1", name: "WebSearch", input: { query: "x" }, status: "done", at },
+  {
+    kind: "tool",
+    id: "e2",
+    name: "Write",
+    input: { file_path: "/w/shop/a.ts" },
+    status: "error",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "b1",
+    name: "Bash",
+    input: { command: "npm test" },
+    status: "error",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "s1",
+    name: "Skill",
+    input: { skill: "explain-code" },
+    status: "done",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "m1",
+    name: "mcp__jig__jig_open_url",
+    input: {},
+    status: "done",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "m2",
+    name: "mcp__jig__jig_screenshot",
+    input: {},
+    status: "done",
+    at,
+  },
+  {
+    kind: "tool",
+    id: "w1",
+    name: "WebSearch",
+    input: { query: "x" },
+    status: "done",
+    at,
+  },
   {
     kind: "tool",
     id: "t1",
     name: "Task",
     input: { subagent_type: "Explore", description: "Find the cart code" },
     status: "done",
-    task: { id: "t1", status: "completed", description: "Find the cart code", toolUses: 2, tokens: 900 },
+    task: {
+      id: "t1",
+      status: "completed",
+      description: "Find the cart code",
+      toolUses: 2,
+      tokens: 900,
+    },
     at,
   },
-  { kind: "tool", id: "t1a", name: "Grep", input: {}, status: "done", at, parentId: "t1" },
+  {
+    kind: "tool",
+    id: "t1a",
+    name: "Grep",
+    input: {},
+    status: "done",
+    at,
+    parentId: "t1",
+  },
   {
     kind: "tool",
     id: "t1b",
@@ -58,19 +129,38 @@ const items: ChatItem[] = [
     id: "p1",
     status: "allowed",
     at,
-    request: { id: "p1", toolName: "Bash", input: {}, title: "", canAlwaysAllow: true } as never,
+    request: {
+      id: "p1",
+      toolName: "Bash",
+      input: {},
+      title: "",
+      canAlwaysAllow: true,
+    } as never,
   },
   {
     kind: "permission",
     id: "p2",
     status: "denied",
     at,
-    request: { id: "p2", toolName: "Bash", input: {}, title: "", canAlwaysAllow: true } as never,
+    request: {
+      id: "p2",
+      toolName: "Bash",
+      input: {},
+      title: "",
+      canAlwaysAllow: true,
+    } as never,
   },
   { kind: "assistant", id: "a1", text: "Done.", at },
   { kind: "result", id: "res1", ok: true, durationMs: 30_000, at },
   { kind: "user", id: "u2", text: "/review the cart", at },
-  { kind: "shell", id: "sh", command: "git status", output: "", status: "done", at },
+  {
+    kind: "shell",
+    id: "sh",
+    command: "git status",
+    output: "",
+    status: "done",
+    at,
+  },
   { kind: "result", id: "res2", ok: false, durationMs: 5_000, at },
 ];
 
@@ -86,7 +176,14 @@ describe("chatStats", () => {
         status: "done",
         model: "opus",
       },
-      { kind: "assistant", id: "text", at, text: "Done", parentId: "agent", model: "sonnet" },
+      {
+        kind: "assistant",
+        id: "text",
+        at,
+        text: "Done",
+        parentId: "agent",
+        model: "sonnet",
+      },
       {
         kind: "tool",
         id: "read",
@@ -98,15 +195,26 @@ describe("chatStats", () => {
         model: "sonnet",
       },
       { kind: "tool", id: "old", at, name: "Read", input: {}, status: "done" },
-      { kind: "tool", id: "new", at, name: "Read", input: {}, status: "done", model: "haiku" },
+      {
+        kind: "tool",
+        id: "new",
+        at,
+        name: "Read",
+        input: {},
+        status: "done",
+        model: "haiku",
+      },
     ]);
     expect(s.models).toEqual([
-      { name: "haiku", count: 1 },
-      { name: "opus", count: 1 },
-      { name: "sonnet", count: 1 },
+      { name: "sonnet", replies: 1, toolCalls: 1 },
+      { name: "haiku", replies: 0, toolCalls: 1 },
+      { name: "opus", replies: 0, toolCalls: 1 },
     ]);
     expect(s.unreportedToolCalls).toBe(1);
-    expect(s.subagents[0]).toMatchObject({ models: ["sonnet"], requestedModel: "haiku" });
+    expect(s.subagents[0]).toMatchObject({
+      models: ["sonnet"],
+      requestedModel: "haiku",
+    });
     expect(s.tools.find((t) => t.name === "Read")?.models).toEqual(["sonnet", "haiku"]);
   });
   it("counts tools, skills, subagents, MCP, files, turns and permissions", () => {
@@ -129,8 +237,18 @@ describe("chatStats", () => {
       web: 1,
       permissions: { asked: 2, allowed: 1, denied: 1 },
     });
-    expect(s.tools[0]).toEqual({ name: "Read", calls: 3, errors: 0, models: [] });
-    expect(s.tools.find((t) => t.name === "Bash")).toEqual({ name: "Bash", calls: 1, errors: 1, models: [] });
+    expect(s.tools[0]).toEqual({
+      name: "Read",
+      calls: 3,
+      errors: 0,
+      models: [],
+    });
+    expect(s.tools.find((t) => t.name === "Bash")).toEqual({
+      name: "Bash",
+      calls: 1,
+      errors: 1,
+      models: [],
+    });
     expect(s.skills).toEqual([{ name: "explain-code", count: 1 }]);
     expect(s.commands).toEqual([{ name: "review", count: 1 }]);
     expect(s.mcp).toEqual([{ server: "jig", calls: 2, tools: 2 }]);
@@ -151,16 +269,47 @@ describe("chatStats", () => {
   });
 
   it("an empty chat counts nothing", () => {
-    expect(chatStats([])).toMatchObject({ toolCalls: 0, tools: [], files: [], turns: 0 });
+    expect(chatStats([])).toMatchObject({
+      toolCalls: 0,
+      tools: [],
+      files: [],
+      turns: 0,
+    });
   });
 
   it("a subagent without progress info counts its calls; a skill named by command", () => {
     const s = chatStats([
-      { kind: "tool", id: "t", name: "Agent", input: {}, status: "running", at },
-      { kind: "tool", id: "x", name: "Glob", input: {}, status: "done", at, parentId: "t" },
-      { kind: "tool", id: "k", name: "Skill", input: { command: "/pdf" }, status: "done", at },
+      {
+        kind: "tool",
+        id: "t",
+        name: "Agent",
+        input: {},
+        status: "running",
+        at,
+      },
+      {
+        kind: "tool",
+        id: "x",
+        name: "Glob",
+        input: {},
+        status: "done",
+        at,
+        parentId: "t",
+      },
+      {
+        kind: "tool",
+        id: "k",
+        name: "Skill",
+        input: { command: "/pdf" },
+        status: "done",
+        at,
+      },
     ]);
-    expect(s.subagents[0]).toMatchObject({ type: "general-purpose", status: "running", toolUses: 1 });
+    expect(s.subagents[0]).toMatchObject({
+      type: "general-purpose",
+      status: "running",
+      toolUses: 1,
+    });
     expect(s.skills).toEqual([{ name: "pdf", count: 1 }]);
   });
 });
@@ -193,11 +342,26 @@ describe("add-ons", () => {
     ]);
   });
   it("toolUse", () => {
-    expect(toolUse("Skill", { skill: "/pdf" })).toEqual({ use: "skill", name: "pdf" });
-    expect(toolUse("Task", { subagent_type: "explore" })).toEqual({ use: "subagent", name: "explore" });
-    expect(toolUse("Agent", {})).toEqual({ use: "subagent", name: "general-purpose" });
-    expect(toolUse("mcp__jig__addon_notes_add", {}, () => "notes")).toEqual({ use: "addon", name: "notes" });
-    expect(toolUse("mcp__github__list_issues", {})).toEqual({ use: "mcp", name: "github" });
+    expect(toolUse("Skill", { skill: "/pdf" })).toEqual({
+      use: "skill",
+      name: "pdf",
+    });
+    expect(toolUse("Task", { subagent_type: "explore" })).toEqual({
+      use: "subagent",
+      name: "explore",
+    });
+    expect(toolUse("Agent", {})).toEqual({
+      use: "subagent",
+      name: "general-purpose",
+    });
+    expect(toolUse("mcp__jig__addon_notes_add", {}, () => "notes")).toEqual({
+      use: "addon",
+      name: "notes",
+    });
+    expect(toolUse("mcp__github__list_issues", {})).toEqual({
+      use: "mcp",
+      name: "github",
+    });
     expect(toolUse("Read", {})).toBeUndefined();
     expect(toolUse("Skill", {})).toBeUndefined();
   });
@@ -212,7 +376,10 @@ describe("add-ons", () => {
 
 describe("helpers", () => {
   it("diffLines skips file headers", () => {
-    expect(diffLines("--- a\n+++ b\n+x\n-y\n-z\n ctx")).toEqual({ added: 1, removed: 2 });
+    expect(diffLines("--- a\n+++ b\n+x\n-y\n-z\n ctx")).toEqual({
+      added: 1,
+      removed: 2,
+    });
     expect(diffLines(undefined)).toEqual({ added: 0, removed: 0 });
   });
   it("toolLabel names MCP tools by server", () => {
@@ -231,7 +398,43 @@ describe("helpers", () => {
   });
   it("totalTokens", () => {
     expect(
-      totalTokens({ usage: { inputTokens: 1, outputTokens: 2, cacheReadTokens: 3, cacheWriteTokens: 4 } }),
+      totalTokens({
+        usage: {
+          inputTokens: 1,
+          outputTokens: 2,
+          cacheReadTokens: 3,
+          cacheWriteTokens: 4,
+        },
+      }),
     ).toBe(10);
+  });
+  it("modelRows merges counted models with Claude Code's per-model totals", () => {
+    const usage = (costUsd: number) => ({
+      inputTokens: 100,
+      outputTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      costUsd,
+    });
+    const rows = modelRows(
+      [
+        { name: "claude-sonnet-5-5", replies: 2, toolCalls: 5 },
+        { name: "claude-opus-5-5", replies: 1, toolCalls: 1 },
+      ],
+      {
+        "claude-opus-5-5[1m]": usage(2),
+        "claude-sonnet-5-5": usage(0.5),
+        "claude-haiku-5-5-20261001": usage(0.01),
+      },
+    );
+    expect(rows.map((r) => [r.name, r.replies, r.toolCalls, r.tokens, r.costUsd])).toEqual([
+      ["opus-5-5", 1, 1, 110, 2],
+      ["sonnet-5-5", 2, 5, 110, 0.5],
+      ["haiku-5-5", 0, 0, 110, 0.01],
+    ]);
+    expect(rows[0]!.ids).toEqual(["claude-opus-5-5", "claude-opus-5-5[1m]"]);
+    expect(modelRows([{ name: "opus", replies: 1, toolCalls: 0 }], undefined)[0]).not.toHaveProperty(
+      "tokens",
+    );
   });
 });

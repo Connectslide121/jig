@@ -28,8 +28,8 @@ export const ConfigSchema = z.object({
       claudePath: z.string().default(""),
       /** Keep ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in session environments (pay-as-you-go). */
       allowApiKey: z.boolean().default(false),
-      /** Model alias or id for new sessions; opusplan = Opus planning, Sonnet execution. */
-      defaultModel: z.string().default("opusplan"),
+      /** Model alias or id for new sessions; opusplan = Opus only in Plan mode, Sonnet otherwise. */
+      defaultModel: z.string().default("opus"),
       /** Fallback for subagents without an explicit model; empty respects Claude Code settings. */
       subagentModel: z.string().default("sonnet"),
       /** No-tools questions from add-ons (commit messages, reviews and other helpers). */
@@ -43,6 +43,8 @@ export const ConfigSchema = z.object({
       fileCheckpoints: z.boolean().default(true),
       /** Model for testing in Claude's browser (the jig-tester subagent and Test something…, D-124). */
       testerModel: z.string().default("haiku"),
+      /** Model for code searches the chat hands to the jig-search subagent; empty = no such subagent. */
+      searchModel: z.string().default("haiku"),
       /**
        * Claude Code loads the connectors of your claude.ai account (Asana, Notion, Linear…) into every
        * chat, and Jig warned about each one that wasn't signed in. Off (default): none are loaded

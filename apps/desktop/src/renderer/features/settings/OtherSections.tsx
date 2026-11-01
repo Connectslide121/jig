@@ -92,7 +92,11 @@ function WorkspaceDepthRow() {
         value={String(depth)}
         aria-label="Workspace search depth"
         data-testid="workspace-depth"
-        onChange={(e) => void updateConfig({ projects: { repoScanDepth: Number(e.target.value) } })}
+        onChange={(e) =>
+          void updateConfig({
+            projects: { repoScanDepth: Number(e.target.value) },
+          })
+        }
       >
         {[1, 2, 3, 4, 5].map((n) => (
           <option key={n} value={n}>
@@ -141,6 +145,7 @@ function ModelSetting({
   models,
   onSave,
   hybrid = false,
+  emptyLabel = "Follow Claude Code",
 }: {
   label: string;
   description: string;
@@ -148,9 +153,10 @@ function ModelSetting({
   models: ModelInfo[];
   onSave: (value: string) => void;
   hybrid?: boolean;
+  emptyLabel?: string;
 }) {
   const choices = new Map(modelOptions(models, hybrid).map((m) => [m.id, m.label]));
-  choices.set("", "Follow Claude Code");
+  choices.set("", emptyLabel);
   if (value && !choices.has(value)) choices.set(value, `${value} (saved choice)`);
   return (
     <SettingRow label={label} description={description}>
@@ -217,7 +223,7 @@ export function EngineSettings() {
       </SettingRow>
       <SettingRow
         label="Recommended setup"
-        description="Opus plans, Sonnet executes, Haiku tests. Applies to new chats."
+        description="Opus works, Sonnet helps, Haiku searches and tests. Applies to new chats."
       >
         <Button
           variant="primary"
@@ -225,12 +231,13 @@ export function EngineSettings() {
           onClick={() =>
             void updateConfig({
               engine: {
-                defaultModel: "opusplan",
+                defaultModel: "opus",
                 defaultPermissionMode: "plan",
                 subagentModel: "sonnet",
                 helperModel: "sonnet",
                 quickModel: "haiku",
                 testerModel: "haiku",
+                searchModel: "haiku",
               },
             })
           }
@@ -279,6 +286,14 @@ export function EngineSettings() {
         models={models}
         onSave={(testerModel) => void updateConfig({ engine: { testerModel } })}
       />
+      <ModelSetting
+        label="Search model"
+        description="For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself."
+        value={e.searchModel}
+        models={models}
+        emptyLabel="Off (the chat searches itself)"
+        onSave={(searchModel) => void updateConfig({ engine: { searchModel } })}
+      />
       <div className="px-4 py-3 text-xs text-muted">
         <p>Defaults affect new chats. Smaller models save usage but cannot guarantee equal quality.</p>
         <details className="mt-2">
@@ -299,7 +314,9 @@ export function EngineSettings() {
           aria-label="Default permission mode"
           onChange={(ev) =>
             void updateConfig({
-              engine: { defaultPermissionMode: ev.target.value as typeof e.defaultPermissionMode },
+              engine: {
+                defaultPermissionMode: ev.target.value as typeof e.defaultPermissionMode,
+              },
             })
           }
         >
@@ -402,7 +419,11 @@ export function EditorSettings() {
         <Select
           value={String(e.tabSize)}
           aria-label="Indentation for new files"
-          onChange={(event) => void updateConfig({ editor: { tabSize: Number(event.target.value) } })}
+          onChange={(event) =>
+            void updateConfig({
+              editor: { tabSize: Number(event.target.value) },
+            })
+          }
           data-testid="settings-tab-size"
         >
           {[2, 4, 8].map((n) => (
@@ -454,9 +475,9 @@ export function UpdatesSettings() {
             size="sm"
             icon={FolderOpen}
             onClick={() =>
-              void call("app.pickFolder", { title: "Jig's source repository" }).then(
-                (sourcePath) => sourcePath && void updateConfig({ updates: { sourcePath } }),
-              )
+              void call("app.pickFolder", {
+                title: "Jig's source repository",
+              }).then((sourcePath) => sourcePath && void updateConfig({ updates: { sourcePath } }))
             }
           >
             Choose…
@@ -527,7 +548,11 @@ export function LearningSettings() {
           value={l.schedule.day}
           aria-label="Day"
           disabled={!l.schedule.enabled}
-          onChange={(e) => void updateConfig({ learning: { schedule: { day: Number(e.target.value) } } })}
+          onChange={(e) =>
+            void updateConfig({
+              learning: { schedule: { day: Number(e.target.value) } },
+            })
+          }
         >
           {DAYS.map((d, i) => (
             <option key={d} value={i}>
@@ -552,7 +577,11 @@ export function LearningSettings() {
         <Select
           value={l.retentionDays}
           aria-label="Retention"
-          onChange={(e) => void updateConfig({ learning: { retentionDays: Number(e.target.value) } })}
+          onChange={(e) =>
+            void updateConfig({
+              learning: { retentionDays: Number(e.target.value) },
+            })
+          }
         >
           {[30, 90, 180, 365].map((d) => (
             <option key={d} value={d}>
@@ -634,7 +663,11 @@ function LearningActions() {
           className="w-40"
           value={config?.learning.checkIn ?? "off"}
           onChange={(e) =>
-            void updateConfig({ learning: { checkIn: e.target.value as "off" | "weekly" | "biweekly" } })
+            void updateConfig({
+              learning: {
+                checkIn: e.target.value as "off" | "weekly" | "biweekly",
+              },
+            })
           }
           data-testid="settings-checkin"
         >
@@ -763,7 +796,11 @@ export function WorkspacesSettings() {
                 data-testid={`workspace-remove-${w.name}`}
                 onClick={() =>
                   void call("workspaces.remove", { id: w.id }).catch((e) =>
-                    notify({ title: "Not removed", message: errorMessage(e), tone: "warning" }),
+                    notify({
+                      title: "Not removed",
+                      message: errorMessage(e),
+                      tone: "warning",
+                    }),
                   )
                 }
               >

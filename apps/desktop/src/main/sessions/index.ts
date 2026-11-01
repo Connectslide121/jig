@@ -8,6 +8,7 @@ import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
 import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import { SEARCH_AGENT, SEARCH_GUIDANCE, searchAgent } from "../../shared/searcher";
 import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
@@ -147,6 +148,7 @@ export function startSessions(): void {
       [
         kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
           jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
+        kindHooks.has(meta.kind ?? "") || !getConfig().engine.searchModel ? "" : SEARCH_GUIDANCE,
         aiTransparencyGuidance(getConfig(), meta.projectId),
         skillLibrary().context(getConfig(), meta.projectId),
       ]
@@ -157,11 +159,15 @@ export function startSessions(): void {
       if (hooks) return hooks.mcpServers(meta);
       return getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
     },
-    // Chats with Jig's tools get the tester, which tests UI in Claude's browser on a small model.
-    agents: (meta) =>
-      kindHooks.has(meta.kind ?? "")
-        ? undefined
-        : { [TESTER_AGENT]: testerAgent(getConfig().engine.testerModel) },
+    // Chats with Jig's tools get the tester and the searcher, which run on small models.
+    agents: (meta) => {
+      if (kindHooks.has(meta.kind ?? "")) return undefined;
+      const { testerModel, searchModel } = getConfig().engine;
+      return {
+        [TESTER_AGENT]: testerAgent(testerModel),
+        ...(searchModel ? { [SEARCH_AGENT]: searchAgent(searchModel) } : {}),
+      };
+    },
     toolHandlers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
       return hooks ? hooks.toolHandlers(meta) : jigToolHandlers(meta);
@@ -216,7 +222,12 @@ export function startSessions(): void {
         return;
       }
       if (event.kind === "prompt") {
-        publishActivity({ kind: "prompt", text: event.text, projectId, detail: { chat: event.session.id } });
+        publishActivity({
+          kind: "prompt",
+          text: event.text,
+          projectId,
+          detail: { chat: event.session.id },
+        });
         if (correctionSignal(event.text))
           publishActivity({
             kind: "friction",
@@ -241,7 +252,12 @@ export function startSessions(): void {
       if (event.tool && event.input && typeof file === "string") {
         const lines = aiLineHashes(event.tool, event.input);
         if (lines.length)
-          publishActivity({ kind: "ai.lines", text: file, projectId, detail: { lines: lines.join(",") } });
+          publishActivity({
+            kind: "ai.lines",
+            text: file,
+            projectId,
+            detail: { lines: lines.join(",") },
+          });
       }
     },
   });
@@ -259,7 +275,11 @@ export function startSessions(): void {
     if (windows.some((w) => w.isFocused())) return;
     if (meta.status === "needs_you") for (const w of windows) w.flashFrame(true);
     if (!Notification.isSupported()) return;
-    const n = new Notification({ title: note.title, body: note.body, icon: APP_ICON });
+    const n = new Notification({
+      title: note.title,
+      body: note.body,
+      icon: APP_ICON,
+    });
     // Electron only delivers a click to a notification that is still referenced.
     shown.add(n);
     n.on("click", () => {
@@ -301,7 +321,10 @@ export function startSessions(): void {
     const { meta, items } = await m.snapshot(id);
     const window = BrowserWindow.fromWebContents(ctx.sender);
     const name = `${meta.title.replace(/[\\/:*?"<>|]+/g, " ").trim() || "chat"}.md`;
-    const options = { title: "Save the chat as Markdown", defaultPath: join(app.getPath("documents"), name) };
+    const options = {
+      title: "Save the chat as Markdown",
+      defaultPath: join(app.getPath("documents"), name),
+    };
     const picked = window
       ? await dialog.showSaveDialog(window, options)
       : await dialog.showSaveDialog(options);

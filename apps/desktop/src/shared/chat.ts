@@ -94,7 +94,11 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
       break;
     case "block_delta": {
       if (get(event.id)) {
-        applyUpdate(state.items, { op: "append", id: event.id, text: event.text });
+        applyUpdate(state.items, {
+          op: "append",
+          id: event.id,
+          text: event.text,
+        });
         updates.push({ op: "append", id: event.id, text: event.text });
       }
       break;
@@ -149,7 +153,9 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         });
       // Claude Code doesn't always send a new list when a background task ends: a finished one goes.
       if (event.task.status !== "running" && state.meta.backgroundTasks?.some((t) => t.id === event.task.id))
-        meta({ backgroundTasks: state.meta.backgroundTasks.filter((t) => t.id !== event.task.id) });
+        meta({
+          backgroundTasks: state.meta.backgroundTasks.filter((t) => t.id !== event.task.id),
+        });
       break;
     }
     case "background_tasks":
@@ -203,6 +209,7 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
       meta({
         status: event.ok ? "idle" : "error",
         costUsd: total,
+        ...(event.modelUsage ? { modelUsage: event.modelUsage } : {}),
         turns: state.meta.turns + 1,
         lastError: event.ok ? undefined : event.error,
         usage: event.usage

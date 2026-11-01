@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { authSourceFrom, contextFrom, Normalizer, patchText, toolOutputText } from "./normalize";
+import {
+  authSourceFrom,
+  contextFrom,
+  modelUsageFrom,
+  Normalizer,
+  patchText,
+  toolOutputText,
+} from "./normalize";
 
 const stream = (event: unknown, parent: string | null = null) => ({
   type: "stream_event",
@@ -17,7 +24,14 @@ describe("Normalizer", () => {
       message: {
         id: "m",
         model: "opus",
-        content: [{ type: "tool_use", id: "t", name: "Agent", input: { model: "haiku" } }],
+        content: [
+          {
+            type: "tool_use",
+            id: "t",
+            name: "Agent",
+            input: { model: "haiku" },
+          },
+        ],
       },
     });
     expect(events[0]).toMatchObject({ type: "tool_use", model: "opus" });
@@ -35,13 +49,24 @@ describe("Normalizer", () => {
     });
     expect(child).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "block_end", parentId: "t", model: "sonnet" }),
-        expect.objectContaining({ type: "tool_use", parentId: "t", model: "sonnet" }),
+        expect.objectContaining({
+          type: "block_end",
+          parentId: "t",
+          model: "sonnet",
+        }),
+        expect.objectContaining({
+          type: "tool_use",
+          parentId: "t",
+          model: "sonnet",
+        }),
       ]),
     );
     const missing = n.handle({
       type: "assistant",
-      message: { id: "old", content: [{ type: "tool_use", id: "old-tool", name: "Read" }] },
+      message: {
+        id: "old",
+        content: [{ type: "tool_use", id: "old-tool", name: "Read" }],
+      },
     });
     expect(missing[0]).not.toHaveProperty("model");
   });
@@ -76,18 +101,56 @@ describe("Normalizer", () => {
     const n = new Normalizer();
     const out = [
       stream({ type: "message_start", message: { id: "m1" } }),
-      stream({ type: "content_block_start", index: 0, content_block: { type: "thinking" } }),
-      stream({ type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "hmm" } }),
-      stream({ type: "content_block_start", index: 1, content_block: { type: "text" } }),
-      stream({ type: "content_block_delta", index: 1, delta: { type: "text_delta", text: "Hel" } }),
-      stream({ type: "content_block_delta", index: 1, delta: { type: "text_delta", text: "lo" } }),
-      stream({ type: "content_block_delta", index: 1, delta: { type: "signature_delta", signature: "x" } }),
-      stream({ type: "content_block_start", index: 2, content_block: { type: "tool_use", id: "t1" } }),
+      stream({
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "thinking" },
+      }),
+      stream({
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "thinking_delta", thinking: "hmm" },
+      }),
+      stream({
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "text" },
+      }),
+      stream({
+        type: "content_block_delta",
+        index: 1,
+        delta: { type: "text_delta", text: "Hel" },
+      }),
+      stream({
+        type: "content_block_delta",
+        index: 1,
+        delta: { type: "text_delta", text: "lo" },
+      }),
+      stream({
+        type: "content_block_delta",
+        index: 1,
+        delta: { type: "signature_delta", signature: "x" },
+      }),
+      stream({
+        type: "content_block_start",
+        index: 2,
+        content_block: { type: "tool_use", id: "t1" },
+      }),
     ].flatMap((m) => n.handle(m));
     expect(out).toEqual([
-      { type: "block_start", id: "m1:thinking:0", block: "thinking", parentId: undefined },
+      {
+        type: "block_start",
+        id: "m1:thinking:0",
+        block: "thinking",
+        parentId: undefined,
+      },
       { type: "block_delta", id: "m1:thinking:0", text: "hmm" },
-      { type: "block_start", id: "m1:text:0", block: "text", parentId: undefined },
+      {
+        type: "block_start",
+        id: "m1:text:0",
+        block: "text",
+        parentId: undefined,
+      },
       { type: "block_delta", id: "m1:text:0", text: "Hel" },
       { type: "block_delta", id: "m1:text:0", text: "lo" },
     ]);
@@ -95,7 +158,10 @@ describe("Normalizer", () => {
     const done = [
       {
         type: "assistant",
-        message: { id: "m1", content: [{ type: "thinking", thinking: "hmm." }] },
+        message: {
+          id: "m1",
+          content: [{ type: "thinking", thinking: "hmm." }],
+        },
         parent_tool_use_id: null,
       },
       {
@@ -107,15 +173,40 @@ describe("Normalizer", () => {
         type: "assistant",
         message: {
           id: "m1",
-          content: [{ type: "tool_use", id: "t1", name: "Bash", input: { command: "ls" } }],
+          content: [
+            {
+              type: "tool_use",
+              id: "t1",
+              name: "Bash",
+              input: { command: "ls" },
+            },
+          ],
         },
         parent_tool_use_id: null,
       },
     ].flatMap((m) => n.handle(m));
     expect(done).toEqual([
-      { type: "block_end", id: "m1:thinking:0", block: "thinking", text: "hmm.", parentId: undefined },
-      { type: "block_end", id: "m1:text:0", block: "text", text: "Hello", parentId: undefined },
-      { type: "tool_use", id: "t1", name: "Bash", input: { command: "ls" }, parentId: undefined },
+      {
+        type: "block_end",
+        id: "m1:thinking:0",
+        block: "thinking",
+        text: "hmm.",
+        parentId: undefined,
+      },
+      {
+        type: "block_end",
+        id: "m1:text:0",
+        block: "text",
+        text: "Hello",
+        parentId: undefined,
+      },
+      {
+        type: "tool_use",
+        id: "t1",
+        name: "Bash",
+        input: { command: "ls" },
+        parentId: undefined,
+      },
     ]);
   });
 
@@ -134,8 +225,20 @@ describe("Normalizer", () => {
         parent_tool_use_id: "task1",
       }),
     ).toEqual([
-      { type: "block_end", id: "m2:text:0", block: "text", text: "Hi", parentId: "task1" },
-      { type: "block_end", id: "m2:text:1", block: "text", text: "again", parentId: "task1" },
+      {
+        type: "block_end",
+        id: "m2:text:0",
+        block: "text",
+        text: "Hi",
+        parentId: "task1",
+      },
+      {
+        type: "block_end",
+        id: "m2:text:1",
+        block: "text",
+        text: "again",
+        parentId: "task1",
+      },
     ]);
   });
 
@@ -187,9 +290,47 @@ describe("Normalizer", () => {
         totalCostUsd: 0.012,
         numTurns: 1,
         error: undefined,
-        usage: { inputTokens: 10, outputTokens: 5, cacheReadTokens: 100, cacheWriteTokens: 0 },
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 100,
+          cacheWriteTokens: 0,
+        },
       },
     ]);
+  });
+
+  it("reports Claude Code's per-model usage when the result has it", () => {
+    const [event] = new Normalizer().handle({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      duration_ms: 1,
+      modelUsage: {
+        "claude-opus-5-5": {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadInputTokens: 100,
+          cacheCreationInputTokens: 20,
+          costUSD: 0.5,
+          webSearchRequests: 0,
+        },
+        broken: null,
+      },
+    });
+    expect(event).toMatchObject({
+      modelUsage: {
+        "claude-opus-5-5": {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 100,
+          cacheWriteTokens: 20,
+          costUsd: 0.5,
+        },
+      },
+    });
+    expect(Object.keys((event as { modelUsage: object }).modelUsage)).toEqual(["claude-opus-5-5"]);
+    expect(modelUsageFrom({})).toBeUndefined();
   });
 
   it("detects a missing login from errors", () => {
@@ -198,9 +339,17 @@ describe("Normalizer", () => {
       n.handle({
         type: "assistant",
         error: "authentication_failed",
-        message: { content: [{ type: "text", text: "Not logged in · Please run /login" }] },
+        message: {
+          content: [{ type: "text", text: "Not logged in · Please run /login" }],
+        },
       }),
-    ).toEqual([{ type: "error", message: "Not logged in · Please run /login", code: "not_signed_in" }]);
+    ).toEqual([
+      {
+        type: "error",
+        message: "Not logged in · Please run /login",
+        code: "not_signed_in",
+      },
+    ]);
     const result = n.handle({
       type: "result",
       subtype: "error_during_execution",
@@ -217,7 +366,11 @@ describe("Normalizer", () => {
     expect(
       n.handle({
         type: "rate_limit_event",
-        rate_limit_info: { status: "allowed_warning", rateLimitType: "five_hour", resetsAt: 1793178000 },
+        rate_limit_info: {
+          status: "allowed_warning",
+          rateLimitType: "five_hour",
+          resetsAt: 1793178000,
+        },
       }),
     ).toEqual([
       {
@@ -242,7 +395,13 @@ describe("Normalizer", () => {
     expect(n.handle({ type: "something_new" })).toEqual([]);
     expect(n.handle(null)).toEqual([]);
     expect(
-      n.handle(stream({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "x" } })),
+      n.handle(
+        stream({
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text: "x" },
+        }),
+      ),
     ).toEqual([]);
   });
 
@@ -258,9 +417,20 @@ describe("Normalizer", () => {
       n.handle({
         type: "system",
         subtype: "compact_boundary",
-        compact_metadata: { trigger: "auto", pre_tokens: 150_000, post_tokens: 20_000 },
+        compact_metadata: {
+          trigger: "auto",
+          pre_tokens: 150_000,
+          post_tokens: 20_000,
+        },
       }),
-    ).toEqual([{ type: "compacted", trigger: "auto", preTokens: 150_000, postTokens: 20_000 }]);
+    ).toEqual([
+      {
+        type: "compacted",
+        trigger: "auto",
+        preTokens: 150_000,
+        postTokens: 20_000,
+      },
+    ]);
   });
 
   it("reads Claude Code's context breakdown", () => {
@@ -298,7 +468,12 @@ describe("Normalizer", () => {
   it("passes Claude Code's prompt suggestions on", () => {
     const n = new Normalizer();
     expect(
-      n.handle({ type: "prompt_suggestion", suggestion: " Run the tests ", uuid: "u", session_id: "s" }),
+      n.handle({
+        type: "prompt_suggestion",
+        suggestion: " Run the tests ",
+        uuid: "u",
+        session_id: "s",
+      }),
     ).toEqual([{ type: "suggestion", text: "Run the tests" }]);
     expect(n.handle({ type: "prompt_suggestion", suggestion: "  " })).toEqual([]);
   });
@@ -314,7 +489,14 @@ describe("Normalizer", () => {
             tool_use_id: "t1",
             content: [
               { type: "text", text: "Screenshot of the shop" },
-              { type: "image", source: { type: "base64", media_type: "image/png", data: "iVBOR" } },
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: "iVBOR",
+                },
+              },
             ],
           },
         ],
@@ -336,7 +518,12 @@ describe("more Claude Code messages", () => {
   it("turns command output, tasks, retries and denials into events", () => {
     const n = new Normalizer();
     expect(
-      n.handle({ type: "system", subtype: "local_command_output", content: "Cost: $0.12", uuid: "u1" }),
+      n.handle({
+        type: "system",
+        subtype: "local_command_output",
+        content: "Cost: $0.12",
+        uuid: "u1",
+      }),
     ).toEqual([{ type: "command_output", id: "command-u1", text: "Cost: $0.12" }]);
     expect(
       n.handle({
@@ -350,7 +537,12 @@ describe("more Claude Code messages", () => {
       {
         type: "task",
         toolUseId: "tool1",
-        task: { id: "t1", status: "running", description: "Explore", background: false },
+        task: {
+          id: "t1",
+          status: "running",
+          description: "Explore",
+          background: false,
+        },
       },
     ]);
     const [progress] = n.handle({
@@ -362,7 +554,9 @@ describe("more Claude Code messages", () => {
       usage: { total_tokens: 900, tool_uses: 3, duration_ms: 1200 },
       last_tool_name: "Grep",
     });
-    expect(progress).toMatchObject({ task: { tokens: 900, toolUses: 3, lastTool: "Grep" } });
+    expect(progress).toMatchObject({
+      task: { tokens: 900, toolUses: 3, lastTool: "Grep" },
+    });
     expect(
       n.handle({
         type: "system",
@@ -383,7 +577,12 @@ describe("more Claude Code messages", () => {
       }),
     ).toMatchObject([{ type: "notice", key: "api-retry", tone: "warning" }]);
     expect(
-      n.handle({ type: "system", subtype: "permission_denied", tool_name: "Bash", message: "rm is denied" }),
+      n.handle({
+        type: "system",
+        subtype: "permission_denied",
+        tool_name: "Bash",
+        message: "rm is denied",
+      }),
     ).toMatchObject([{ type: "notice", text: expect.stringContaining("rm is denied") }]);
     expect(
       n.handle({
@@ -395,38 +594,79 @@ describe("more Claude Code messages", () => {
         ],
       }),
     ).toEqual([
-      { type: "background_tasks", tasks: [{ id: "b1", description: "watch", type: "local_bash" }] },
+      {
+        type: "background_tasks",
+        tasks: [{ id: "b1", description: "watch", type: "local_bash" }],
+      },
     ]);
     expect(
       n.handle({
         type: "system",
         subtype: "commands_changed",
-        commands: [{ name: "review", description: "Review", argumentHint: "", builtin: true }],
+        commands: [
+          {
+            name: "review",
+            description: "Review",
+            argumentHint: "",
+            builtin: true,
+          },
+        ],
       }),
     ).toEqual([
       {
         type: "commands",
-        commands: [{ name: "review", description: "Review", argumentHint: "", builtin: true }],
+        commands: [
+          {
+            name: "review",
+            description: "Review",
+            argumentHint: "",
+            builtin: true,
+          },
+        ],
       },
     ]);
     expect(
-      n.handle({ type: "system", subtype: "notification", text: "low", priority: "low", key: "k" }),
+      n.handle({
+        type: "system",
+        subtype: "notification",
+        text: "low",
+        priority: "low",
+        key: "k",
+      }),
     ).toEqual([]);
   });
 
   it("keeps an edit's structured patch as a diff, and where the turn ended", () => {
     const n = new Normalizer();
-    n.handle({ type: "assistant", uuid: "a1", parent_tool_use_id: null, message: { id: "m1", content: [] } });
+    n.handle({
+      type: "assistant",
+      uuid: "a1",
+      parent_tool_use_id: null,
+      message: { id: "m1", content: [] },
+    });
     const [result] = n.handle({
       type: "user",
       uuid: "u2",
       parent_tool_use_id: null,
-      message: { content: [{ type: "tool_result", tool_use_id: "e1", content: "ok" }] },
+      message: {
+        content: [{ type: "tool_result", tool_use_id: "e1", content: "ok" }],
+      },
       tool_use_result: {
-        structuredPatch: [{ oldStart: 3, oldLines: 1, newStart: 3, newLines: 1, lines: ["-a", "+b"] }],
+        structuredPatch: [
+          {
+            oldStart: 3,
+            oldLines: 1,
+            newStart: 3,
+            newLines: 1,
+            lines: ["-a", "+b"],
+          },
+        ],
       },
     });
-    expect(result).toMatchObject({ type: "tool_result", diff: "@@ -3,1 +3,1 @@\n-a\n+b" });
+    expect(result).toMatchObject({
+      type: "tool_result",
+      diff: "@@ -3,1 +3,1 @@\n-a\n+b",
+    });
     // A subagent's message isn't part of the main conversation.
     n.handle({
       type: "assistant",

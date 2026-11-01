@@ -21,19 +21,23 @@ test("Test something… starts a chat on the tester model, and chats get the jig
   await expect(transcript).toContainText("Test this in Claude's browser:");
   await expect(transcript).toContainText("add an item to the cart");
   // The fake engine says which model ran the chat and which subagents it had.
-  await expect(transcript).toContainText("Test report (model haiku; subagents: jig-tester)", {
+  await expect(transcript).toContainText("Test report (model haiku; subagents: jig-tester, jig-search)", {
     timeout: 15000,
   });
 
-  // The model is a setting.
-  await hostCall(page, "config.update", { engine: { testerModel: "sonnet" } });
+  // The model is a setting; an empty search model leaves out the search helper.
+  await hostCall(page, "config.update", {
+    engine: { testerModel: "sonnet", searchModel: "" },
+  });
   await page.getByTestId("goto-button").click();
   await page.getByTestId("goto-input").fill("test something");
   await page.keyboard.press("Enter");
   await page.getByTestId("dialog-input").fill("Check the menu");
   await page.getByTestId("dialog-confirm").click();
   await expect(page.getByTestId("transcript").filter({ hasText: "Check the menu" })).toContainText(
-    "Test report (model sonnet",
-    { timeout: 15000 },
+    "Test report (model sonnet; subagents: jig-tester)",
+    {
+      timeout: 15000,
+    },
   );
 });

@@ -31,7 +31,7 @@ export function modelOptions(
     ...aliases.map((alias) => ({
       ...list.find((m) => m.id === alias.id),
       ...alias,
-      ...(alias.id === "opusplan" ? { description: "Opus plans, Sonnet executes" } : {}),
+      ...(alias.id === "opusplan" ? { description: "Opus only in Plan mode, Sonnet otherwise" } : {}),
     })),
     ...list.filter((m) => !MODEL_ALIASES.some((a) => a.id === m.id)),
   ];

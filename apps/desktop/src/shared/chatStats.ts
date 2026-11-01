@@ -1,5 +1,5 @@
-import type { ChatItem, SessionMeta } from "./engine";
-import { agentModels } from "./toolModels";
+import type { ChatItem, ModelUsage, SessionMeta } from "./engine";
+import { agentModels, reportedModelName } from "./toolModels";
 
 /** Tools that change a file, and the input field naming it. */
 const EDIT_TOOLS: Record<string, string> = {
@@ -14,6 +14,13 @@ const AGENT_TOOLS = new Set(["Task", "Agent"]);
 export interface Counted {
   name: string;
   count: number;
+}
+
+export interface ModelStat {
+  name: string;
+  /** Claude's messages (subagents' included) and tool calls the model made. */
+  replies: number;
+  toolCalls: number;
 }
 
 export interface ToolStat {
@@ -71,8 +78,8 @@ export interface ChatStats {
   toolErrors: number;
   /** Calls made by subagents (part of `toolCalls`). */
   subagentToolCalls: number;
-  /** Reported model ids, counted by calls they made (not API requests or token billing). */
-  models: Counted[];
+  /** Reported model ids, with the messages and calls they made (not API requests or token billing). */
+  models: ModelStat[];
   unreportedToolCalls: number;
   tools: ToolStat[];
   /** Skills Claude used (the Skill tool). */
@@ -106,7 +113,10 @@ const byCount = (map: Map<string, number>): Counted[] =>
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
 /** Lines added and removed in a unified diff. */
-export function diffLines(diff: string | undefined): { added: number; removed: number } {
+export function diffLines(diff: string | undefined): {
+  added: number;
+  removed: number;
+} {
   let added = 0;
   let removed = 0;
   for (const line of (diff ?? "").split("\n")) {
@@ -163,7 +173,11 @@ export function toolUse(
     const skill = (str(input?.skill) || str(input?.command) || str(input?.name)).replace(/^\//, "");
     return skill ? { use: "skill", name: skill } : undefined;
   }
-  if (AGENT_TOOLS.has(name)) return { use: "subagent", name: str(input?.subagent_type) || "general-purpose" };
+  if (AGENT_TOOLS.has(name))
+    return {
+      use: "subagent",
+      name: str(input?.subagent_type) || "general-purpose",
+    };
   return undefined;
 }
 
@@ -197,7 +211,12 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
     permissions: { asked: 0, allowed: 0, denied: 0 },
   };
   const tools = new Map<string, ToolStat>();
-  const models = new Map<string, number>();
+  const models = new Map<string, ModelStat>();
+  const model = (name: string) => {
+    const m = models.get(name) ?? { name, replies: 0, toolCalls: 0 };
+    models.set(name, m);
+    return m;
+  };
   const agentChildren = new Map<string, ChatItem[]>();
   for (const item of items) {
     if ("parentId" in item && item.parentId) {
@@ -224,7 +243,7 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
       }
       case "assistant":
         if (!item.parentId) stats.replies++;
-        if (item.model && !models.has(item.model)) models.set(item.model, 0);
+        if (item.model) model(item.model).replies++;
         break;
       case "thinking":
         stats.thinking++;
@@ -247,9 +266,14 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         if (item.parentId) stats.subagentToolCalls++;
         const failed = item.status === "error";
         if (failed) stats.toolErrors++;
-        const tool = tools.get(item.name) ?? { name: item.name, calls: 0, errors: 0, models: [] };
+        const tool = tools.get(item.name) ?? {
+          name: item.name,
+          calls: 0,
+          errors: 0,
+          models: [],
+        };
         if (item.model) {
-          bump(models, item.model);
+          model(item.model).toolCalls++;
           if (!tool.models.includes(item.model)) tool.models.push(item.model);
         } else stats.unreportedToolCalls++;
         tool.calls++;
@@ -265,7 +289,10 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         }
         const server = /^mcp__(.+?)__(.+)$/.exec(item.name);
         if (server) {
-          const s = mcp.get(server[1]!) ?? { calls: 0, tools: new Set<string>() };
+          const s = mcp.get(server[1]!) ?? {
+            calls: 0,
+            tools: new Set<string>(),
+          };
           s.calls++;
           s.tools.add(server[2]!);
           mcp.set(server[1]!, s);
@@ -296,7 +323,12 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
         } else if (EDIT_TOOLS[item.name] && item.status === "done") {
           const path = str(input[EDIT_TOOLS[item.name]!]);
           if (path) {
-            const file = files.get(path) ?? { path, edits: 0, added: 0, removed: 0 };
+            const file = files.get(path) ?? {
+              path,
+              edits: 0,
+              added: 0,
+              removed: 0,
+            };
             const lines = diffLines(item.diff);
             file.edits++;
             file.added += lines.added;
@@ -311,7 +343,9 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
     }
   }
   stats.tools = [...tools.values()].sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name));
-  stats.models = byCount(models);
+  stats.models = [...models.values()].sort(
+    (a, b) => b.toolCalls + b.replies - (a.toolCalls + a.replies) || a.name.localeCompare(b.name),
+  );
   stats.skills = byCount(skills);
   stats.commands = byCount(commands);
   stats.mcp = [...mcp]
@@ -329,6 +363,48 @@ export function chatStats(items: ChatItem[], addonOf?: (tool: string) => string 
 export function totalTokens(meta: Pick<SessionMeta, "usage">): number {
   const u = meta.usage;
   return u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheWriteTokens;
+}
+
+export interface ModelRow {
+  /** The short name (`opus-5-5`); `ids` are the reported ids it covers. */
+  name: string;
+  ids: string[];
+  replies: number;
+  toolCalls: number;
+  tokens?: number;
+  costUsd?: number;
+}
+
+/**
+ * Each model's use of a chat: messages and tool calls counted from the transcript, tokens and cost from
+ * Claude Code's totals. Ids that differ only by prefix, date or context suffix (`[1m]`) are one row.
+ */
+export function modelRows(models: ModelStat[], usage: Record<string, ModelUsage> | undefined): ModelRow[] {
+  const rows = new Map<string, ModelRow>();
+  const row = (id: string) => {
+    const name = reportedModelName(id.replace(/\[\w+\]$/, ""));
+    const r = rows.get(name) ?? { name, ids: [], replies: 0, toolCalls: 0 };
+    if (!r.ids.includes(id)) r.ids.push(id);
+    rows.set(name, r);
+    return r;
+  };
+  for (const m of models) {
+    const r = row(m.name);
+    r.replies += m.replies;
+    r.toolCalls += m.toolCalls;
+  }
+  for (const [id, u] of Object.entries(usage ?? {})) {
+    const r = row(id);
+    r.tokens = (r.tokens ?? 0) + totalTokens({ usage: u });
+    r.costUsd = (r.costUsd ?? 0) + u.costUsd;
+  }
+  return [...rows.values()].sort(
+    (a, b) =>
+      (b.costUsd ?? 0) - (a.costUsd ?? 0) ||
+      (b.tokens ?? 0) - (a.tokens ?? 0) ||
+      b.toolCalls + b.replies - (a.toolCalls + a.replies) ||
+      a.name.localeCompare(b.name),
+  );
 }
 
 /** A duration for people: `45s`, `3m 20s`, `1h 05m`. */
