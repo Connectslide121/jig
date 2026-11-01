@@ -50,10 +50,13 @@ function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>) {
       const actions = byGroup.get(name);
       return actions?.length ? [{ name, actions }] : [];
     });
+    // View → Layouts: saved layouts to switch to sit with the layout actions.
+    const items = (name: string, actions: ActionDef[]): MenuEntry[] =>
+      name === "Layout" ? [...actionMenu(actions), layoutsEntry()] : actionMenu(actions);
     const entries: MenuEntry[] =
       parts.length === 1
-        ? actionMenu(parts[0]!.actions)
-        : parts.flatMap(({ name, actions }) => [{ heading: name } as const, ...actionMenu(actions)]);
+        ? items(parts[0]!.name, parts[0]!.actions)
+        : parts.flatMap(({ name, actions }) => [{ heading: name } as const, ...items(name, actions)]);
     return { menu, entries };
   }).filter((m) => m.entries.length > 0);
   const taken = new Set([...OWN_MENU, ...TOPBAR_MENUS.flatMap((m) => m.groups)]);
@@ -105,6 +108,24 @@ function projectMenu(): MenuEntry[] {
   ];
 }
 
+/** Layouts: the saved ones to switch to, then save and manage. In View and the layout button's menu. */
+function layoutsEntry(): MenuEntry {
+  const saved = useWorkbench.getState().layout?.saved ?? [];
+  return {
+    label: "Layouts",
+    icon: LayoutTemplate,
+    testId: "layouts-menu",
+    submenu: [
+      ...saved.map((s) => ({ label: s.name, onSelect: () => workbench.switchLayout(s.name) })),
+      ...(saved.length ? [{ separator: true as const }] : []),
+      { label: "Save layout as…", icon: Save, testId: "save-layout", onSelect: () => void saveLayoutAs() },
+      ...(saved.length
+        ? [{ label: "Manage layouts…", icon: Settings2, onSelect: () => openSettings("layout") }]
+        : []),
+    ],
+  };
+}
+
 function layoutMenu(): MenuEntry[] {
   const layout = useWorkbench.getState().layout;
   const views = useRegistry.getState().views;
@@ -135,22 +156,7 @@ function layoutMenu(): MenuEntry[] {
           onSelect: () => workbench.showView(v.id),
         })),
     },
-    {
-      label: "Layouts",
-      icon: LayoutTemplate,
-      testId: "layouts-menu",
-      submenu: [
-        ...(layout?.saved ?? []).map((saved) => ({
-          label: saved.name,
-          onSelect: () => workbench.switchLayout(saved.name),
-        })),
-        ...(layout?.saved.length ? [{ separator: true as const }] : []),
-        { label: "Save layout as…", icon: Save, testId: "save-layout", onSelect: () => void saveLayoutAs() },
-        ...(layout?.saved.length
-          ? [{ label: "Manage layouts…", icon: Settings2, onSelect: () => openSettings("layout") }]
-          : []),
-      ],
-    },
+    layoutsEntry(),
     { separator: true },
     {
       label: "Reset layout",
