@@ -50,6 +50,8 @@ export interface BundleResult {
   errors: string[];
   /** Every source file that went into the bundle (for the token check and Tailwind). */
   inputs: string[];
+  /** The bundle's export names (host.ts: the functions addon.json may name). */
+  exports?: string[];
 }
 
 export async function bundleUi(entry: string): Promise<BundleResult> {
@@ -108,6 +110,7 @@ export async function bundleHost(entry: string, nodePaths: string[]): Promise<Bu
       hash: createHash("sha256").update(code).digest("hex").slice(0, 16),
       errors: [],
       inputs: Object.keys(result.metafile.inputs).map((f) => resolve(dirname(entry), f)),
+      exports: Object.values(result.metafile.outputs).flatMap((o) => o.exports ?? []),
     };
   } catch (error) {
     const errors = (error as { errors?: Message[] }).errors;

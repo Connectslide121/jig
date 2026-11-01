@@ -2,7 +2,8 @@
 
 Source of truth: `packages/sdk/src/slots.ts` (`SLOTS`, `MANIFEST_KEY`). A contribution names a slot by
 its manifest key in `addon.json` → `contributes`. Components and handlers are named exports of the
-add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced by Jig
+add-on's `ui.tsx`; watchers, tools, context, events and search providers are named exports of
+`host.ts` (the builder's check fails when one is missing). Ids are namespaced by Jig
 (`addon.<addon-id>.<id>`), so they never collide. Claude tools are named `addon_<addon-id>_<id>` with
 `-` turned into `_`; if two add-ons end up with the same name, the first one loaded keeps it.
 
@@ -21,6 +22,8 @@ add-on's `ui.tsx`; watchers are named exports of `host.ts`. Ids are namespaced b
 | `watcher` | `watchers` | `id`, `every` (`30s`, `5m`, `1h`; min 10 s), `run`, `atStart?` (also once a few seconds after Jig starts or the add-on loads, e.g. to warm a cache; D-183) | host: `run({}, api)` | background, in the add-on's host process |
 | `claude.context` | `context` | `run` | host: `run({ chat: { cwd, projectId, sessionId } }, api)` before each message of a chat, returns text ('' for nothing; up to 4000 characters; 3 s at most) | goes with the message inside `<jig-context>`, under the add-on's name, not shown in the transcript; chats only, not the builder's (D-151) |
 | `claude.tool` | `tools` | `id` (`a-z0-9_`), `description` (when to use it), `params?` (`{ name: { type?, description?, optional?, enum? } }`), `readOnly?`, `alwaysLoad?` (always in Claude's prompt, never deferred behind Claude Code's tool search; D-158), `run` | host: `run({ ...args, chat: { cwd, projectId, sessionId } }, api)` (`sessionId`: the chat that called), returns text or JSON | a tool Claude can use in every new chat, `mcp__jig__addon_<add-on>_<id>`; read-only tools run without asking (D-115) |
+| `jig.event` | `events` | `on` (`chat.finished`, `chat.needsYou`, `chat.failed`, `git.commit`, `git.branch`, `project.active`), `run` | host: `run(payload, api)` (`docs/reference/addon-api.md` → Jig events) | background, in the add-on's host process, whenever it happens (D-215) |
+| `search.provider` | `search` | `id`, `title`, `icon?`, `run` | host: `run({ query, projectId?, cwd? }, api)` → up to 8 `{ id, label, detail?, icon?, open }` within 1.5 s | Jig's search (top bar, Ctrl+P), a group after the files (D-215) |
 | `settings.page` | `settings` | `title`, `component` | `{ ctx }` | Settings, as its own page |
 | `theme` | `themes` | `path`, `label?` | — | Settings → Appearance (Jig or VS Code theme JSON) |
 

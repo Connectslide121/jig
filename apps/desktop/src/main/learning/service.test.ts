@@ -136,6 +136,48 @@ describe("reflection", () => {
     expect(prompt).toContain("- Old idea: never");
   });
 
+  it("gives Claude features, activity, how they prompt, recent chats and add-on use", () => {
+    const prompt = reflectionPrompt([pattern], "- git — Git\n  Used: 3 actions run", [], {
+      features: "- Search: find anything (Ctrl+P) [actionId: jig.tools]",
+      overview: "40 events on 4 of the last 28 days",
+      prompting: "2 chats, 5 messages",
+      chats: ["chat on 2026-10-20T09:00, 1 message(s), 0 edit(s):\n  1. fix it"],
+    });
+    expect(prompt).toContain("[actionId: jig.tools]");
+    expect(prompt).toContain("40 events on 4 of the last 28 days");
+    expect(prompt).toContain("## How they prompt (last 4 weeks)\n2 chats, 5 messages");
+    expect(prompt).toContain("  1. fix it");
+    expect(prompt).toContain("one prompting tip and one habit tip");
+    expect(prompt).toContain("Used: 3 actions run");
+    expect(prompt).toContain("## What Jig's builder can build");
+    expect(prompt).toContain("- claude.tool: ");
+    expect(prompt).toContain("- jig.event: ");
+    expect(prompt).toContain("- search.provider: ");
+    expect(prompt).toContain("system notifications when Jig is in the background");
+  });
+
+  it("keeps new kinds, at most one tool to build, and drops use-addon without an add-on", () => {
+    const s = (kind: string, extra: object = {}) => ({
+      title: kind,
+      why: "why",
+      goal: "goal",
+      level: 1,
+      kind,
+      ...extra,
+    });
+    const text = JSON.stringify({
+      suggestions: [s("new-addon"), s("layout"), s("use-feature", { actionId: " jig.tools " })],
+    });
+    const parsed = parseReflection(text, [pattern]);
+    expect(parsed.map((x) => x.kind)).toEqual(["new-addon", "use-feature"]);
+    expect(parsed[1]?.actionId).toBe("jig.tools");
+    const addons = parseReflection(
+      JSON.stringify({ suggestions: [s("use-addon"), s("use-addon", { addonId: "git" }), s("practice")] }),
+      [pattern],
+    );
+    expect(addons.map((x) => `${x.kind}:${x.addonId ?? ""}`)).toEqual(["use-addon:git", "practice:"]);
+  });
+
   it("parses at most 3 valid suggestions and keeps only known pattern keys", () => {
     const text = `Here you go:\n{"suggestions":[{"title":"Morning start","why":"5 days in a row","goal":"A button that pulls and starts dev","level":2,"kind":"new-addon","minutesPerWeek":10,"patternKeys":["c-1","nope"]}]}`;
     const [s] = parseReflection(text, [pattern]);
@@ -159,9 +201,26 @@ describe("LearningService", () => {
       ok: true,
       patterns: 0,
       suggestions: 0,
-      note: "Nothing repeats often enough yet.",
+      note: "Not enough activity to review yet.",
     });
     expect(prompts).toEqual([]);
+  });
+
+  it("reviews enough activity even when nothing repeats, with features and add-on use", async () => {
+    const { activity, service } = setup();
+    for (const d of [19, 20, 21])
+      for (let i = 0; i < 10; i++)
+        await activity.record(
+          { kind: "prompt", text: `topic${d * 100 + i}`, detail: { chat: `c${d}` } },
+          day(d, 9 + (i % 8)),
+        );
+    reply = '{"suggestions":[]}';
+    const run = await service.run("manual", day(22));
+    expect(run).toMatchObject({ ok: true, patterns: 0, suggestions: 0 });
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain("30 events on 3 of the last 28 days");
+    expect(prompts[0]).toContain("## Recent chats, message by message");
+    expect(prompts[0]).toContain("topic21");
   });
 
   it("mines, reflects, and fills the inbox; answers are remembered", async () => {

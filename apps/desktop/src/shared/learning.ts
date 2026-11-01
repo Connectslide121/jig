@@ -14,6 +14,14 @@ export interface Suggestion {
   level: 1 | 2 | 3;
   kind: SuggestionKind;
   addonId?: string;
+  /** `use-feature` / `use-addon`: the Jig or add-on action "Show me" runs (D-213). */
+  actionId?: string;
+  /** `prompting-tip`: one of your requests rewritten the better way ("Try this prompt", D-214). */
+  example?: string;
+  /** `prompting-tip`: your original message(s) as sent, shown beside `example` (D-214). */
+  before?: string;
+  /** `prompting-tip`: what changed in `example` and why each change is better. */
+  changes?: string[];
   /** Workflow suggestions: the steps of the draft workflow. */
   steps?: string[];
   /** Notes from chats this is based on (`EvidenceNote` ids), shown with it. */
@@ -34,8 +42,8 @@ export interface Suggestion {
 /**
  * What a suggestion is (each has its own action): tools (layout, settings, change-addon, new-addon,
  * app → the builder), a workflow, Claude Code setup (MCP server, skill, hook), project memory
- * (CLAUDE.md), tips (prompting, habits; at most one a week), an automation (a routine), and additions
- * to your profile.
+ * (CLAUDE.md), tips (prompting, habits; one of each a week at most), an automation (a routine), additions
+ * to your profile, and (D-213) an add-on you already have, a Jig feature, or a safer practice.
  */
 export type SuggestionKind =
   | "layout"
@@ -49,7 +57,10 @@ export type SuggestionKind =
   | "prompting-tip"
   | "habit-tip"
   | "automation"
-  | "profile";
+  | "profile"
+  | "use-addon"
+  | "use-feature"
+  | "practice";
 
 /** Kinds the builder makes (Build it). */
 export const BUILD_KINDS: SuggestionKind[] = ["layout", "settings", "change-addon", "new-addon", "app"];

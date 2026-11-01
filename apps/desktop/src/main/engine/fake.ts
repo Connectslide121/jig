@@ -1354,8 +1354,48 @@ export class FakeEngine implements Engine {
           { attempt: 2, strengths: "Short and clear", weaknesses: "No tests" },
         ],
       });
-    if (/commit message/i.test(prompt))
+    // The learning reflection starts with "## Patterns" and mentions commit messages in Jig's features.
+    if (/commit message/i.test(prompt) && !prompt.startsWith("## Patterns"))
       return "Apply the discount in the cart total\n\nSum the items with reduce and take the discount off the total.";
+    // A risky practice (D-213): a "practice" suggestion that opens a chat to fix it.
+    const practice = /key: (\S+) \| practice \| "([^"]*)"/.exec(prompt);
+    if (practice)
+      return JSON.stringify({
+        suggestions: [
+          {
+            title: "Keep keys out of your messages to Claude",
+            why: `${practice[2]}.`,
+            goal: "Move the key into an environment variable, rotate it, and refer to it by name in chats",
+            level: 1,
+            kind: "practice",
+            patternKeys: [practice[1]],
+          },
+        ],
+      });
+    // A prompting habit (D-214): a "prompting-tip" with the request rewritten as one complete prompt.
+    const habit = /key: (\S+) \| habit \| "([^"]*)"/.exec(prompt);
+    if (habit)
+      return JSON.stringify({
+        suggestions: [
+          {
+            title: "Ask for the whole feature in one go",
+            why: `${habit[2]}.`,
+            goal: "Describe the whole feature once, with how to check it's done, and let Claude plan and build it",
+            level: 1,
+            kind: "prompting-tip",
+            before:
+              "write a function that validates orders\nnow write an endpoint for it\nok now add a service that calls it",
+            changes: [
+              "One request for the whole feature: Claude plans all the layers together instead of waiting for the next piece",
+              "Points to the existing products code: Claude follows your patterns instead of guessing",
+              "Says when it's done (the tests pass): Claude checks its own work",
+            ],
+            example:
+              "Add order validation to the Shop API end to end: a validator, a POST /orders endpoint that uses it, and the service between them, following the existing products code. Done when the tests for all three pass. Plan it first.",
+            patternKeys: [habit[1]],
+          },
+        ],
+      });
     const first = /key: (\S+) \| ([\w-]+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
     // A note from a chat (jig_note_evidence) about manual work: a workflow, and a profile addition.
     const note = /- id: (\S+) \| [\d-]+ \| manual-work \| (.+)/.exec(prompt);

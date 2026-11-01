@@ -34,6 +34,17 @@ declares, reloads on save, can be switched off, and a crash in it never breaks t
 ### Docs
 - [x] `docs/reference/slots.md`, `docs/reference/addon-api.md`, `docs/guides/writing-addons.md`
 
+### More for add-ons (D-215)
+- [x] Toast buttons (`notify({ actions })`, host buttons as `AddonTarget`s)
+- [x] System notifications when Jig is in the background (`notify({ system: true })`)
+- [x] Badges on add-on views (`setBadge`)
+- [x] Jig events: `jig.event` slot (`contributes.events`), `ctx.onJigEvent` / `useJigEvent`
+- [x] File watching (`api.fs.watch`) and live program output (`api.spawn`)
+- [x] Add-ons calling each other (`exports`, `addons.call`)
+- [x] Search providers: `search.provider` slot, results in Go to
+- [x] The builder and the weekly review know all of it; the catalog has each add-on's purpose
+- [x] Builder check: host functions named in addon.json exist
+
 ## Notes
 
 - Add-on Tailwind CSS is generated at runtime from the add-on's source with Jig's token theme (D-042).

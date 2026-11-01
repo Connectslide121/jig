@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { JIG_EVENT_NAMES, type JigEventName } from "./events";
 import { isPermission } from "./permissions";
 import { CONTEXT_SLOTS } from "./slots";
 
@@ -27,6 +28,11 @@ export const ManifestSchema = z.object({
    * (one per repository). `ctx.storage` / `useStorage` use it with the active project or repository.
    */
   storage: z.object({ scope: z.enum(["global", "project", "repo"]).default("global") }).prefault({}),
+  /**
+   * Host methods other add-ons may call (`api.addons.call` / `ctx.addons.call`, D-215), e.g. a board
+   * add-on asking the Git add-on to create a branch. Nothing else is callable from outside.
+   */
+  exports: z.array(ExportName).default([]),
   contributes: z
     .object({
       views: z
@@ -126,6 +132,21 @@ export const ManifestSchema = z.object({
        * 4000 characters, '' for nothing) goes with the message, not shown in the transcript.
        */
       context: z.object({ run: ExportName }).optional(),
+      /**
+       * Host code that runs when something happens in Jig (slot `jig.event`, D-215): a named export of
+       * `host.ts` called with the event's payload (`JigEventPayloads`), even when no view is open.
+       */
+      events: z
+        .array(
+          z.object({ on: z.enum(JIG_EVENT_NAMES as [JigEventName, ...JigEventName[]]), run: ExportName }),
+        )
+        .default([]),
+      /**
+       * Results in Jig's search (slot `search.provider`, D-215): a named export of `host.ts` called with
+       * `{ query, projectId, cwd }` as you type, returning up to 8 `AddonSearchResult`s quickly (it is
+       * given 1.5 s). `title` heads its group of results.
+       */
+      search: z.array(z.object({ id: Id, title: z.string(), icon: Icon, run: ExportName })).default([]),
       settings: z.object({ title: z.string(), component: ExportName }).optional(),
       themes: z.array(z.object({ label: z.string().optional(), path: z.string() })).default([]),
     })
@@ -176,6 +197,10 @@ function duplicateIds(m: AddonManifest): string[] {
     "tools",
     c.tools.map((t) => t.id),
   );
+  check(
+    "search",
+    c.search.map((t) => t.id),
+  );
   return errors;
 }
 
@@ -201,5 +226,20 @@ export function uiExports(m: AddonManifest): string[] {
     ...c.chatToolbar.map((t) => t.component),
     ...c.toolRenderers.map((t) => t.component),
     ...(c.settings ? [c.settings.component] : []),
+  ];
+}
+
+/** host.ts export names the manifest refers to (watchers, tools, context, events, search, exports). */
+export function hostExports(m: AddonManifest): string[] {
+  const c = m.contributes;
+  return [
+    ...new Set([
+      ...c.watchers.map((w) => w.run),
+      ...c.tools.map((t) => t.run),
+      ...(c.context ? [c.context.run] : []),
+      ...c.events.map((e) => e.run),
+      ...c.search.map((x) => x.run),
+      ...m.exports,
+    ]),
   ];
 }

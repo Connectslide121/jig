@@ -844,13 +844,16 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="learning"
             title="Suggestions"
-            lead="Jig notices what you do often (the same prompt, the same commands), what slows you down, and what you mention in chats, and suggests what would help — a tool, a workflow, a CLAUDE.md line, a routine, or a tip. Everything stays on your computer."
+            lead="Jig notices how you ask Claude for things, what you do often (the same prompt, the same commands), what slows you down, risky practices, and what you mention in chats, and suggests what would help — a better prompt, an add-on or Jig feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine, or a new tool. Everything stays on your computer."
             shot={{ src: suggestions, alt: "The suggestions view" }}
           >
             <Bullets
               items={[
                 "Claude notes manual work you mention in a chat (a card you can remove)",
                 "Friction counts too: stops, rewinds, denied permissions, corrections, failing scripts",
+                "A coach for working with Claude: it reads your recent chats and suggests the change that would help most, with Compare prompts: your prompt and a better one side by side, and why it's better",
+                "Safety first: secrets in messages or commands, risky commands, force pushes and commits without tests become a “better practice” suggestion with Fix it with Claude",
+                "What you already have comes before new tools: an add-on (Switch it on / Show me) or a Jig feature (Show me)",
                 "Each suggestion has its own action: Build it, Draft a workflow, Add to CLAUDE.md, Make a routine…",
                 "“Did it help?” a week after you act on one",
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",

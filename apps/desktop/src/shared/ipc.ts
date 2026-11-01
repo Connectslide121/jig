@@ -8,6 +8,7 @@
  * docs/reference/ipc.md.
  */
 
+import type { AddonSearchQuery, AddonSearchResult, AddonTarget, JigEventName } from "@jig/sdk";
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
@@ -358,6 +359,19 @@ export interface HostMethods {
   "addons.setEnabled": { args: { id: string; enabled: boolean }; result: void };
   /** Calls a named export of the add-on's host.ts. */
   "addons.call": { args: { id: string; method: string; args?: unknown }; result: unknown };
+  /** Another add-on's shared host method (its manifest's `exports`), for add-on `from`'s UI (D-215). */
+  "addons.callShared": {
+    args: { from: string; id: string; method: string; args?: unknown };
+    result: unknown;
+  };
+  /** The add-on views' badges, by full view id (`addon.<id>.<view>`). */
+  "addons.badges": { args: void; result: Record<string, string> };
+  /** Sets a badge on one of the add-on's own views (a count, a short text; 0 or nothing clears it). */
+  "addons.setBadge": { args: { id: string; view: string; value?: number | string }; result: void };
+  /** A system notification for an add-on's toast when no Jig window is in front; true if shown. */
+  "addons.systemNotify": { args: { id: string; title: string; message?: string }; result: boolean };
+  /** Results from the add-ons' search providers (`contributes.search`), grouped by provider. */
+  "addons.search": { args: AddonSearchQuery; result: AddonSearchGroup[] };
   /**
    * Keeps a file for a message the add-on sends later (`api.chats.send({ attachments })`), before its
    * chat exists: like `sessions.addAttachment`, in `attachments/addon-<id>/`.
@@ -501,6 +515,10 @@ export interface HostEvents {
   "learning.knowledgeChanged": void;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
+  /** The add-on views' badges changed (all of them, by full view id). */
+  "addons.badges": Record<string, string>;
+  /** Something happened in Jig that add-ons can follow (`JIG_EVENTS`, D-215). */
+  "addons.jigEvent": { name: JigEventName; payload: unknown };
   /** A notification from the host, shown as a toast. */
   notify: HostNotification;
 }
@@ -509,6 +527,20 @@ export interface HostNotification {
   title: string;
   message?: string;
   tone?: "info" | "success" | "warning" | "danger";
+  /** ms; 0 = stays until closed. */
+  timeout?: number;
+  /** From an add-on's host code: its buttons lead to `AddonTarget`s of that add-on. */
+  addonId?: string;
+  actions?: Array<{ label: string } & AddonTarget>;
+}
+
+/** One search provider's results (`addons.search`). */
+export interface AddonSearchGroup {
+  addonId: string;
+  provider: string;
+  title: string;
+  icon?: string;
+  results: AddonSearchResult[];
 }
 
 export type MethodName = keyof HostMethods;

@@ -4,10 +4,11 @@ import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { addonToolName } from "@jig/sdk";
 import { slugify } from "@jig/themes";
-import { app, dialog, protocol, utilityProcess } from "electron";
+import { app, dialog, Notification, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
+import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import { appWindows } from "../appWindows";
+import { appWindows, focusJig } from "../appWindows";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -23,14 +24,18 @@ import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
 import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
+import { notificationsAllowed } from "../sessions/notify";
 import { paths } from "../state/paths";
 import { fileEntry, type ThemeEntry } from "../themes/sources";
+import { APP_ICON } from "../window";
+import { Badges, ownViewId } from "./badges";
 import { addonChats } from "./chats";
 import { addonContext, addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
 import { galleryRecords, readGallery, sourceFolder } from "./gallery";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
+import { chatEventFor, type Dispatch, GitEvents } from "./jigEvents";
 import { commitAll } from "./repo";
 import { AddonService } from "./service";
 import { inspectPackage, installPackage, packAddon, readPackage } from "./share";
@@ -157,6 +162,31 @@ export async function startAddons(): Promise<void> {
   });
   onSessionStatus((meta) => chats.statusChanged(meta));
 
+  const badges = new Badges((all) => emit("addons.badges", all));
+  const badge = (addonId: string, view: string, value: unknown) => {
+    const views =
+      service
+        ?.list()
+        .find((a) => a.id === addonId)
+        ?.manifest?.contributes.views.map((v) => v.id) ?? [];
+    const full = ownViewId(addonId, String(view), views);
+    if (!full) throw new JigError("invalid_args", `"${view}" isn't one of this add-on's views`);
+    badges.set(full, value);
+  };
+  // A system notification for an add-on, only while Jig is in the background (D-215).
+  const shown = new Set<Notification>();
+  const systemNotify = (title: string, message?: string): boolean => {
+    if (!notificationsAllowed(getConfig().notifications.desktop, process.env)) return false;
+    if (appWindows().some((w) => w.isFocused()) || !Notification.isSupported()) return false;
+    const n = new Notification({ title, body: message ?? "", icon: APP_ICON });
+    shown.add(n);
+    n.on("click", () => focusJig());
+    n.on("close", () => shown.delete(n));
+    n.on("failed", () => shown.delete(n));
+    n.show();
+    return true;
+  };
+
   service = new AddonService({
     builtinDir: builtinAddonsDir(),
     userDir: paths.addons(),
@@ -172,8 +202,29 @@ export async function startAddons(): Promise<void> {
           title: string;
           message?: string;
           tone?: "info" | "success" | "warning" | "danger";
+          timeout?: number;
+          system?: boolean;
+          actions?: Array<{ label: string } & Record<string, unknown>>;
         };
-        emit("notify", { title: n.title, message: n.message, tone: n.tone });
+        const system = n.system ? systemNotify(String(n.title), n.message) : false;
+        emit("notify", {
+          title: String(n.title),
+          message: n.message,
+          tone: n.tone,
+          timeout: system ? 0 : n.timeout,
+          addonId,
+          actions: Array.isArray(n.actions)
+            ? (n.actions.filter((a) => a && typeof a.label === "string").slice(0, 3) as never)
+            : undefined,
+        });
+      } else if (op === "setBadge") {
+        const { view, value } = args as { view: string; value?: unknown };
+        badge(addonId, view, value);
+      } else if (op === "addons.list") {
+        return service?.shared() ?? [];
+      } else if (op === "addons.call") {
+        const { id, method, args: input } = args as { id: string; method: string; args?: unknown };
+        return service?.callShared(addonId, id, method, input);
       } else if (op === "emit") {
         const { topic, payload } = args as { topic: string; payload: unknown };
         emit("addons.event", { id: addonId, topic, payload });
@@ -202,6 +253,7 @@ export async function startAddons(): Promise<void> {
     },
     onChange: (addons) => {
       latest = addons;
+      for (const a of addons) if (!a.enabled || a.errors.length) badges.clear(a.id);
       emit("addons.changed", addons);
       // Add-ons' tools for Claude follow the add-ons (new chats get the current set).
       setAddonTools(addonTools(addons, (id, method, args) => addonService().call(id, method, args)));
@@ -247,6 +299,50 @@ export async function startAddons(): Promise<void> {
   handle("addons.list", () => s.list());
   handle("addons.setEnabled", ({ id, enabled }) => s.setEnabled(id, enabled));
   handle("addons.call", ({ id, method, args }) => s.call(id, method, args));
+  handle("addons.callShared", ({ from, id, method, args }) => s.callShared(from, id, method, args));
+  handle("addons.badges", () => badges.all());
+  handle("addons.setBadge", ({ id, view, value }) => badge(id, view, value));
+  handle("addons.systemNotify", ({ title, message }) => systemNotify(title, message));
+  handle("addons.search", (query) => s.search(query));
+
+  // What happens in Jig, for add-ons' events (D-215).
+  const dispatch: Dispatch = (name, payload) => {
+    s.dispatchEvent(name, payload);
+    emit("addons.jigEvent", { name, payload });
+  };
+  const lastStatus = new Map<string, SessionStatus>();
+  onSessionStatus((meta) => {
+    const event = chatEventFor(lastStatus.get(meta.id), meta);
+    lastStatus.set(meta.id, meta.status);
+    if (event) dispatch(event.name, event.payload);
+  });
+  const git = new GitEvents(dispatch);
+  let activeId: string | undefined;
+  const followProjects = (state: Awaited<ReturnType<ReturnType<typeof projectStore>["state"]>>) => {
+    const repos = new Set<string>();
+    for (const w of state.workspaces) {
+      if (w.isGitRepo) repos.add(w.path);
+      for (const r of w.repos) repos.add(r.path);
+    }
+    for (const p of state.projects) {
+      if (p.isGitRepo) repos.add(p.path);
+      for (const r of p.repos) repos.add(r.path);
+      if (p.focusRepo) repos.add(p.focusRepo);
+    }
+    void git.setRepos([...repos]);
+    if (state.activeId !== activeId) {
+      const first = activeId === undefined;
+      activeId = state.activeId;
+      const p = state.projects.find((x) => x.id === activeId);
+      if (!first) dispatch("project.active", { projectId: p?.id, name: p?.name, path: p?.path });
+    }
+  };
+  void projectStore()
+    .state()
+    .then(followProjects)
+    .catch(() => undefined);
+  projectStore().onChange(followProjects);
+  app.on("will-quit", () => git.stop());
   handle("addons.addAttachment", ({ id, ...input }) => addAddonAttachment(paths.attachments(), id, input));
   handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
   handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));

@@ -27,7 +27,8 @@ Versions, changelogs and release notes per repository, following its **release p
 - **In the Git panel:** "N unreleased" next to a repository with planned releases (the Git add-on's
   `releaseInfo` reads the same policy); click opens Releases.
 - **Watchers:** `checkDeploys` (5 min) looks at production pipelines in the policy through `az`;
-  `remind` (6 h) sends the weekly reminder when the policy's cadence is `weekly`.
+  `remind` (6 h) sends the weekly reminder when the policy's cadence is `weekly`. Reminders and "deploy without a
+  release" warnings have an **Open Releases** button (D-215).
 
 - **Tools for Claude** (slot `claude.tool`), in every chat: `addon_releases_overview`,
   `addon_releases_changes` (what changed since the last release: commits, pull requests, the suggested

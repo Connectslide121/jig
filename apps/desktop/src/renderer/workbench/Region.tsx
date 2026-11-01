@@ -2,6 +2,7 @@ import { EyeOff, MoreHorizontal, PanelBottom, PanelLeft, PanelRight, PanelTop, S
 import { type DragEvent, useLayoutEffect, useRef, useState } from "react";
 import { LOWER_HALF, type SideRegion } from "../../shared/layout";
 import { requestBuild } from "../addons/buildRequests";
+import { useBadges } from "../addons/runtime";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
 import { MOTION_MS, reducedMotion, usePresence } from "../ui/motion";
 import { useRegistry } from "./registry";
@@ -269,7 +270,10 @@ function Stack({ region }: { region: SideRegion }) {
                   over === view.id && "border-l-2 border-accent",
                 )}
               >
-                <Icon className="size-4 shrink-0" />
+                <span className="relative shrink-0">
+                  <Icon className="size-4" />
+                  <ViewBadge viewId={view.id} />
+                </span>
                 {(isActive || visible.length <= 3) && <span className="truncate">{view.title}</span>}
               </button>
             );
@@ -290,6 +294,20 @@ function Stack({ region }: { region: SideRegion }) {
         </ErrorBoundary>
       </div>
     </div>
+  );
+}
+
+/** An add-on's badge on a view's icon (`ctx.setBadge`), laid over it so nothing moves. */
+export function ViewBadge({ viewId }: { viewId: string }) {
+  const text = useBadges((s) => s.badges[viewId]);
+  if (!text) return null;
+  return (
+    <span
+      data-testid={`view-badge-${viewId}`}
+      className="pointer-events-none absolute -top-1.5 -right-2 inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-2xs leading-none font-semibold text-on-accent"
+    >
+      {text}
+    </span>
   );
 }
 

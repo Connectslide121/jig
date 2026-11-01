@@ -1,4 +1,6 @@
+import { habitPatterns } from "./habits";
 import { jaccard, normalizeCommand, promptTokens } from "./normalize";
+import { practicePatterns } from "./review";
 import { frictionPatterns, pastePatterns, unusedToolPatterns, viewHabitPatterns } from "./signals";
 
 export type ActivityKind =
@@ -38,7 +40,18 @@ export interface Evidence {
 export interface Pattern {
   /** Stable key: the same repetition gets the same key next week (used to block "Never" patterns). */
   key: string;
-  kind: "command" | "sequence" | "prompt" | "friction" | "paste" | "unused-tool" | "view-habit";
+  kind:
+    | "command"
+    | "sequence"
+    | "prompt"
+    | "friction"
+    | "paste"
+    | "unused-tool"
+    | "view-habit"
+    /** A risky or careless practice (security first), D-213. */
+    | "practice"
+    /** A habit in how you prompt or run chats (D-214). */
+    | "habit";
   /** The template, sequence ("a → b") or a representative prompt. */
   summary: string;
   count: number;
@@ -223,6 +236,8 @@ export function mine(events: ActivityEvent[], options: MineOptions = {}): Patter
     ...pastePatterns(events),
     ...unusedToolPatterns(events),
     ...viewHabitPatterns(events),
+    ...practicePatterns(events),
+    ...habitPatterns(events),
   ]
     .filter((p) => !blocked.has(p.key))
     .sort((a, b) => b.score - a.score)

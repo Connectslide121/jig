@@ -1,4 +1,4 @@
-import type { StorageOptions } from "@jig/sdk";
+import type { JigEventName, JigEventPayloads, StorageOptions } from "@jig/sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjects } from "../workbench/projects";
 import { useAddon } from "./context";
@@ -50,6 +50,17 @@ export function useAddonEvent(topic: string, listener: (payload: unknown) => voi
   const ref = useRef(listener);
   ref.current = listener;
   useEffect(() => ctx.on(topic, (p) => ref.current(p)), [ctx, topic]);
+}
+
+/** Runs `listener` when something happens in Jig (`JIG_EVENTS`: a chat finished, a commit…) while mounted. */
+export function useJigEvent<N extends JigEventName>(
+  name: N,
+  listener: (payload: JigEventPayloads[N]) => void,
+): void {
+  const ctx = useAddon();
+  const ref = useRef(listener);
+  ref.current = listener;
+  useEffect(() => ctx.onJigEvent(name, (p) => ref.current(p)), [ctx, name]);
 }
 
 /**

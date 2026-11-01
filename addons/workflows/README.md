@@ -14,7 +14,8 @@ Lists of steps you repeat, per project: a release, a deploy, a morning routine (
   goal, steps (kind, who does it, order) and when it runs.
 - **Schedules** (every day, weekdays, once a week, at a time) fire **while Jig is open** (watcher
   `schedules`, every minute). A workflow whose steps are all automatic commands or pipelines runs by
-  itself and notifies you; otherwise you get a notification to start it.
+  itself and notifies you; otherwise you get a notification to start it. Both have **Open Workflows**;
+  a failed run and "time for…" are also system notifications when Jig isn't in front (D-215).
 - **Events** (D-177): **After you push** (any branch or one) — seen in the upstream's reflog — and
   **When a pipeline finishes** (any result, succeeded or failed; through your `az`), checked by the
   same watcher. The first check only remembers the latest push or run, so old events never fire.

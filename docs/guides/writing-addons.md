@@ -63,6 +63,37 @@ export async function countFiles(args: { path?: string }, api: AddonHostApi) {
 Save: the view appears in the right sidebar, "Say hello" is in the grouped menus. Edit and save again —
 Jig reloads just this add-on.
 
+## Going further (D-215)
+
+An add-on can be a whole module, not just a view. A few building blocks
+(`docs/reference/addon-api.md`):
+
+```jsonc
+// addon.json
+"exports": ["openCards"],                                       // others may call this
+"contributes": {
+  "events": [{ "on": "chat.finished", "run": "chatFinished" }], // runs with no view open
+  "search": [{ "id": "cards", "title": "Work items", "icon": "kanban", "run": "findCards" }]
+}
+```
+
+```ts
+// host.ts
+export async function chatFinished(chat: { title: string }, api: AddonHostApi) {
+  api.setBadge("main", 1);
+  api.notify({ title: `Done: ${chat.title}`, system: true, actions: [{ label: "Open", view: "main" }] });
+}
+export async function findCards(q: { query: string }) {
+  return [{ id: "42", label: `Card 42 ${q.query}`, open: { tab: "card", params: { id: 42 } } }];
+}
+export async function tail(args: { file: string }, api: AddonHostApi) {
+  const p = api.spawn("tail", ["-f", args.file], { onOutput: (text) => api.emit("log", text) });
+  return p.pid;
+}
+```
+
+In `ui.tsx`, `useJigEvent("git.commit", reload)` refreshes a view after each commit.
+
 ## Rules
 
 - **Tokens only**: colours, spacing, radius and type through the token utilities. No `#hex`, `rgb()`,

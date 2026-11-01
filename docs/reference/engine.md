@@ -100,7 +100,8 @@ interface EngineSession {
 Attached to every real session. Tools: `jig_list_addons` (the add-on catalog) and
 `jig_request_build { goal, addonId? }` (starts the builder). Handlers are set with
 `setJigToolHandlers()` by the add-on host (phase 6) and the builder (phase 8). The appended system
-prompt tells Claude to use `jig_request_build` instead of editing Jig's files itself.
+prompt tells Claude to use `jig_request_build` instead of editing Jig's files itself. It also tells Claude what an add-on can be (a whole module, with the D-215 abilities), so the goal it
+passes on isn't shrunk to "a button"; the builder's own prompt has the details.
 
 ## IPC
 

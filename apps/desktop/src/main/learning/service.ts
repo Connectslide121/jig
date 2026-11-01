@@ -1,4 +1,16 @@
-import { type ActivityEvent, isRunDue, mine, nextOccurrence, type WeeklySchedule } from "@jig/learning";
+import {
+  type ActivityEvent,
+  activityOverview,
+  addonUsage,
+  addonUseText,
+  chatSample,
+  enoughToReview,
+  isRunDue,
+  mine,
+  nextOccurrence,
+  promptStats,
+  type WeeklySchedule,
+} from "@jig/learning";
 import { z } from "zod";
 import { JigError } from "../../shared/ipc";
 import {
@@ -22,7 +34,7 @@ const FileSchema = z.object({
   blocked: z.array(z.string()).default([]),
   runs: z.array(z.custom<PatternRun>()).default([]),
   lastRun: z.string().optional(),
-  /** The last coaching tip (at most one a week). */
+  /** The last coaching tips (one prompting and one habit tip a week at most). */
   lastTipAt: z.string().optional(),
   checkIn: z.object({ offered: z.boolean().default(false), last: z.string().optional() }).prefault({}),
 });
@@ -33,7 +45,10 @@ export interface LearningServiceOptions {
   activity: ActivityLog;
   schedule: () => WeeklySchedule;
   recording: () => boolean;
-  catalog: () => string;
+  /** The installed add-ons as text; `usage` gives each one's use in the window (D-213). */
+  catalog: (usage?: (id: string) => string) => string;
+  /** Jig's own features as text (D-213). */
+  features?: () => string;
   /** One Claude Code query without tools; returns the text. */
   reflect: (prompt: string) => Promise<string>;
   build: (s: Suggestion) => Promise<string | undefined>;
@@ -150,7 +165,10 @@ export class LearningService {
     return (await this.state()).suggestions.filter((s) => s.status === "new").length;
   }
 
-  /** Looks for patterns now. No AI call is made when nothing repeats enough (no quota used). */
+  /**
+   * Looks for patterns and reviews the activity now. No AI call is made when nothing repeats, there are
+   * no notes and there is too little activity to review (no quota used).
+   */
   async run(trigger: PatternRun["trigger"], now = new Date()): Promise<PatternRun> {
     if (this.running) throw new JigError("busy", "Already looking for patterns");
     this.running = true;
@@ -167,8 +185,9 @@ export class LearningService {
       const knowledge = this.options.knowledge;
       const notes = knowledge ? await knowledge.recent(this.options.windowDays ?? 28, now) : [];
       run.patterns = patterns.length;
-      if (patterns.length === 0 && notes.length === 0)
-        run.note = events.length === 0 ? "No activity recorded yet." : "Nothing repeats often enough yet.";
+      // A review also runs when nothing repeats, once there is enough activity to look at (D-213).
+      if (patterns.length === 0 && notes.length === 0 && !enoughToReview(events))
+        run.note = events.length === 0 ? "No activity recorded yet." : "Not enough activity to review yet.";
       else {
         const answers: PastAnswer[] = data.suggestions.map((s) => ({
           title: s.title,
@@ -177,14 +196,25 @@ export class LearningService {
         }));
         const tipsAllowed = !data.lastTipAt || now.getTime() - new Date(data.lastTipAt).getTime() >= 7 * DAY;
         const profile = knowledge ? await knowledge.profile() : undefined;
+        const days = this.options.windowDays ?? 28;
+        const addons = addonUsage(events);
         const reply = await this.options.reflect(
-          reflectionPrompt(patterns, this.options.catalog(), answers, {
-            notes,
-            profile: profile?.exists ? profile.text : undefined,
-            worked: await this.options.worked?.().catch(() => undefined),
-            usage: await this.options.usage?.().catch(() => undefined),
-            tipsAllowed,
-          }),
+          reflectionPrompt(
+            patterns,
+            this.options.catalog((id) => addonUseText(addons[id], days)),
+            answers,
+            {
+              notes,
+              profile: profile?.exists ? profile.text : undefined,
+              worked: await this.options.worked?.().catch(() => undefined),
+              usage: await this.options.usage?.().catch(() => undefined),
+              tipsAllowed,
+              features: this.options.features?.(),
+              overview: activityOverview(events, days),
+              prompting: promptStats(events),
+              chats: chatSample(events),
+            },
+          ),
         );
         const suggestions = parseReflection(reply, patterns, now, { notes, tipsAllowed }).filter(
           (s) => !s.patternKeys.some((k) => taken.has(k)),

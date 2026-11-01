@@ -160,14 +160,18 @@ async function fire(
       message:
         run.status === "done"
           ? `${project.name}: ${why}; every step done.`
-          : `${project.name}: ${why}; a step failed. Open Workflows for the output.`,
+          : `${project.name}: ${why}; a step failed.`,
       tone: run.status === "done" ? "success" : "danger",
+      system: run.status !== "done",
+      actions: [{ label: "Open Workflows", view: "workflows" }],
     });
   } else
     api.notify({
       title: `Time for ${wf.name}`,
-      message: `${project.name}: ${why}. Open Workflows to run it (some steps need you).`,
+      message: `${project.name}: ${why}. Some steps need you.`,
       tone: "info",
+      system: true,
+      actions: [{ label: "Open Workflows", view: "workflows" }],
     });
 }
 

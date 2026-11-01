@@ -42,6 +42,14 @@
         }
       }
     },
+    "exports": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_$][\\w$]*$"
+      }
+    },
     "contributes": {
       "default": {},
       "type": "object",
@@ -382,6 +390,55 @@
             }
           },
           "required": ["run"]
+        },
+        "events": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "on": {
+                "type": "string",
+                "enum": [
+                  "chat.finished",
+                  "chat.needsYou",
+                  "chat.failed",
+                  "git.commit",
+                  "git.branch",
+                  "project.active"
+                ]
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["on", "run"]
+          }
+        },
+        "search": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string"
+              },
+              "run": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["id", "title", "run"]
+          }
         },
         "settings": {
           "type": "object",

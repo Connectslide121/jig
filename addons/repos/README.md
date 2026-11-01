@@ -35,6 +35,8 @@ your projects (the add-on's global storage, `arrangement`); new repositories com
   removed from disk disappear without restarting Jig, and newly added repositories appear. A status
   refresh already running is allowed to finish before the fresh inventory is read. Errors for
   repositories still present remain visible; refresh does not discard their saved arrangements.
+- **Live:** besides focus and a minute's poll, a commit or branch switch in any project's repository
+  (from a chat, a terminal or another app) refreshes the overview at once (Jig events, D-215).
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
 Uses your own `git` and `code`.

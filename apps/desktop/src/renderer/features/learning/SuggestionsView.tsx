@@ -4,11 +4,16 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Columns2,
   Hammer,
   Lightbulb,
   ListChecks,
   MessageSquare,
+  MousePointerClick,
+  Power,
   Search,
+  Send,
+  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -23,7 +28,8 @@ import {
 } from "../../../shared/learning";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { Badge, Button, Card, Empty, Spinner } from "../../ui";
+import { Badge, Button, Card, Dialog, Empty, Spinner } from "../../ui";
+import { runAction, useRegistry } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { newSession } from "../sessions/actions";
@@ -42,6 +48,9 @@ const KIND_LABEL: Record<Suggestion["kind"], string> = {
   "habit-tip": "habit tip",
   automation: "automation",
   profile: "your profile",
+  "use-addon": "an add-on you have",
+  "use-feature": "a Jig feature",
+  practice: "better practice",
 };
 
 async function answer(s: Suggestion, a: SuggestionAnswer) {
@@ -63,8 +72,17 @@ function useNotes(): EvidenceNote[] {
 }
 
 /** Each kind's own action (the builder, a chat with a draft, a workflow draft, the profile). */
-function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: () => Promise<void> } {
+function useAction(
+  s: Suggestion,
+  compare?: () => void,
+): { label: string; icon: typeof Hammer; run: () => Promise<void> } {
   const workflows = useAddons((a) => a.addons.some((x) => x.id === "workflows" && x.enabled));
+  const addon = useAddons((a) => a.addons.find((x) => x.id === s.addonId));
+  const hasAction = useRegistry((r) => Boolean(s.actionId && r.actions[s.actionId]));
+  const showMe = async () => {
+    runAction(s.actionId!);
+    await answer(s, "act");
+  };
   const chat = (draft: string) => async () => {
     await newSession(undefined, undefined, draft);
     await answer(s, "act");
@@ -110,6 +128,33 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
       };
     case "profile":
       return { label: "Add to my profile", icon: UserRound, run: () => answer(s, "act") };
+    case "practice":
+      return {
+        label: "Fix it with Claude",
+        icon: ShieldCheck,
+        run: chat(
+          `Help me change this practice (explain the risk briefly, then help me fix it here; never print secrets): ${s.goal}`,
+        ),
+      };
+    case "use-addon":
+      if (addon && !addon.enabled)
+        return {
+          label: "Switch it on",
+          icon: Power,
+          run: async () => {
+            await call("addons.setEnabled", { id: addon.id, enabled: true });
+            await answer(s, "act");
+          },
+        };
+      if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
+    case "prompting-tip":
+      if (s.example) return { label: "Compare prompts", icon: Columns2, run: async () => compare?.() };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
+    case "habit-tip":
+    case "use-feature":
+      if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
     default:
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
   }
@@ -117,14 +162,19 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
 
 function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) {
   const [open, setOpen] = useState(false);
-  const action = useAction(s);
+  const [comparing, setComparing] = useState(false);
+  const action = useAction(s, () => setComparing(true));
   const quoted = notes.filter((n) => s.noteIds?.includes(n.id));
   const tip = TIP_KINDS.includes(s.kind);
   const done = s.status === "built" || s.status === "adopted";
   return (
     <Card className="flex flex-col gap-2 p-3" data-testid="suggestion">
       <div className="flex items-start gap-2">
-        <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" />
+        {s.kind === "practice" ? (
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-warning" />
+        ) : (
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" />
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">{s.title}</div>
           <div className="mt-0.5 text-xs text-muted">{s.why}</div>
@@ -225,7 +275,76 @@ function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) 
           </Button>
         </div>
       )}
+      {comparing && <PromptCompare s={s} onClose={() => setComparing(false)} />}
     </Card>
+  );
+}
+
+/** A prompting tip: your prompt and the better one side by side, why yours fell short and what changed. */
+function PromptCompare({ s, onClose }: { s: Suggestion; onClose: () => void }) {
+  const tryIt = async () => {
+    onClose();
+    await newSession(undefined, undefined, s.example);
+    await answer(s, "act");
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={s.title}
+      width="xl"
+      testId="prompt-compare"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+          <Button variant="primary" icon={Send} onClick={() => void tryIt()} data-testid="prompt-try">
+            Try this prompt
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Your prompt</span>
+            <div
+              className="whitespace-pre-wrap rounded-md border border-border bg-surface p-2 text-xs text-fg"
+              data-testid="prompt-before"
+            >
+              {s.before ?? "(not quoted)"}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Better prompt</span>
+            <div
+              className="whitespace-pre-wrap rounded-md border border-accent bg-surface p-2 text-xs text-fg"
+              data-testid="prompt-after"
+            >
+              {s.example}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Why yours fell short</span>
+          <p className="text-xs text-fg">{s.why}</p>
+        </div>
+        {s.changes?.length ? (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted">What's better</span>
+            <ul className="flex flex-col gap-1 text-xs text-fg" data-testid="prompt-changes">
+              {s.changes.map((c) => (
+                <li key={c} className="flex gap-2">
+                  <Check className="mt-0.5 size-3 shrink-0 text-success" />
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </Dialog>
   );
 }
 
@@ -367,9 +486,10 @@ export function SuggestionsView() {
         <CheckInCard />
         {fresh.length === 0 && (
           <Empty icon={Lightbulb} title="No suggestions">
-            Jig notices what you repeat, what slows you down and what you mention in chats (locally) and
-            suggests tools, workflows and tips here. Patterns are checked when you press the button and every
-            week.
+            Jig looks at how you ask Claude for things, what you repeat, what slows you down, risky practices
+            and what you mention in chats (locally), and suggests better prompts, add-ons and features you
+            already have, safer practices, workflows or new tools here. It looks when you press the button and
+            every week.
           </Empty>
         )}
         {fresh.map((s) => (

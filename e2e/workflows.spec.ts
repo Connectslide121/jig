@@ -158,4 +158,11 @@ process.exit(1);`;
   const toasts = page.getByTestId("toast").filter({ hasText: "Time for Look at the failure" });
   await expect(toasts).toHaveCount(1);
   await expect(toasts).toContainText("pipeline 12 finished (failed)");
+  // Its button leads to Workflows, wherever you are (D-215).
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("workflows-view")).toBeHidden();
+  await toasts.getByRole("button", { name: "Open Workflows" }).click();
+  await expect(page.getByTestId("workflows-view")).toBeVisible();
 });

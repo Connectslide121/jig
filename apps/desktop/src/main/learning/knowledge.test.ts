@@ -74,7 +74,7 @@ describe("reflection 2", () => {
     expect(prompt).toContain("Tips allowed: no");
   });
 
-  it("reads new kinds, keeps one tip at most, and turns profile updates into a suggestion", () => {
+  it("reads new kinds, keeps one tip of each kind, and turns profile updates into a suggestion", () => {
     const reply = JSON.stringify({
       suggestions: [
         {
@@ -86,16 +86,52 @@ describe("reflection 2", () => {
           steps: ["a", "b"],
           noteIds: ["n1", "zz"],
         },
-        { title: "Tip one", why: "x x", goal: "g g", level: 1, kind: "prompting-tip" },
-        { title: "Tip two", why: "x x", goal: "g g", level: 1, kind: "habit-tip" },
+        {
+          title: "Tip one",
+          why: "x x",
+          goal: "g g",
+          level: 1,
+          kind: "prompting-tip",
+          example: " Build it all ",
+          before: " do a ",
+          changes: [" plan ", " "],
+        },
+        { title: "Tip three", why: "x x", goal: "g g", level: 1, kind: "prompting-tip" },
       ],
       profileUpdates: ["Deploys by hand"],
     });
     const notes = [{ id: "n1", at: "", category: "manual-work" as const, text: "t" }];
     const out = parseReflection(reply, [], new Date(), { notes });
-    expect(out.map((s) => s.kind)).toEqual(["workflow", "prompting-tip", "profile"]);
+    expect(out.map((s) => s.title)).toEqual([
+      "Release workflow",
+      "Tip one",
+      "Add to what Jig knows about you",
+    ]);
     expect(out[0]).toMatchObject({ steps: ["a", "b"], noteIds: ["n1"] });
+    expect(out[1]).toMatchObject({ example: "Build it all", before: "do a", changes: ["plan"] });
     expect(out[2]!.goal).toBe("Deploys by hand");
+    const tip = (title: string, kind: string) => ({
+      title,
+      why: "x x",
+      goal: "g g",
+      level: 1,
+      kind,
+      example: "e e",
+    });
+    const both = parseReflection(
+      JSON.stringify({
+        suggestions: [
+          tip("Prompt one", "prompting-tip"),
+          tip("Habit one", "habit-tip"),
+          tip("Habit two", "habit-tip"),
+        ],
+      }),
+      [],
+    );
+    expect(both.map((s) => [s.title, s.example])).toEqual([
+      ["Prompt one", "e e"],
+      ["Habit one", undefined],
+    ]);
     expect(parseReflection(reply, [], new Date(), { tipsAllowed: false }).map((s) => s.kind)).toEqual([
       "workflow",
       "profile",

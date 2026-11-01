@@ -46,6 +46,78 @@ test("Look for patterns now turns repeated activity into a suggestion; Build it 
   await expect(page.getByTestId("build-tab")).toContainText("Ready to review", { timeout: 20000 });
 });
 
+test("a risky practice becomes a suggestion that opens a chat to fix it", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await mkdir(join(jigHome, "activity"), { recursive: true });
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const name = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.jsonl`;
+  const line = {
+    at: d.toISOString(),
+    kind: "prompt",
+    text: "call the API with key «secret»",
+    projectId: "p",
+  };
+  await writeFile(join(jigHome, "activity", name), `${JSON.stringify(line)}\n`);
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("look-for-patterns").click();
+  const card = page.getByTestId("suggestion").filter({ hasText: "Keep keys out of your messages" });
+  await expect(card).toContainText("better practice", { timeout: 15000 });
+  await expect(card.getByTestId("suggestion-build")).toHaveText("Fix it with Claude");
+  await card.getByTestId("suggestion-build").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(/Help me change this practice/, {
+    timeout: 15000,
+  });
+});
+
+test("asking piece by piece becomes a prompting tip comparing your prompt with a better one", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await mkdir(join(jigHome, "activity"), { recursive: true });
+  const asks = [
+    "write a function that validates orders",
+    "now write an endpoint for it",
+    "ok now add a service that calls it",
+    "then create the tests",
+  ];
+  for (const back of [1, 2]) {
+    const d = new Date();
+    d.setDate(d.getDate() - back);
+    const name = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.jsonl`;
+    const lines = asks.map((text, i) =>
+      JSON.stringify({
+        at: new Date(d.getTime() + i * 60_000).toISOString(),
+        kind: "prompt",
+        text,
+        projectId: "p",
+        detail: { chat: `chat${back}` },
+      }),
+    );
+    await writeFile(join(jigHome, "activity", name), `${lines.join("\n")}\n`);
+  }
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("look-for-patterns").click();
+  const card = page.getByTestId("suggestion").filter({ hasText: "Ask for the whole feature in one go" });
+  await expect(card).toContainText("prompting tip", { timeout: 15000 });
+  await expect(card.getByTestId("suggestion-build")).toHaveText("Compare prompts");
+  await card.getByTestId("suggestion-build").click();
+  const compare = page.getByTestId("prompt-compare");
+  await expect(compare.getByTestId("prompt-before")).toContainText("now write an endpoint for it");
+  await expect(compare.getByTestId("prompt-after")).toContainText("Add order validation to the Shop API");
+  await expect(compare).toContainText("Why yours fell short");
+  await expect(compare.getByTestId("prompt-changes")).toContainText("Claude checks its own work");
+  await compare.getByTestId("prompt-try").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(/Add order validation to the Shop API/, {
+    timeout: 15000,
+  });
+});
+
 test("Not now hides a suggestion, and the same pattern isn't suggested again", async ({ page, jigHome }) => {
   await seed(jigHome);
   await page.getByTestId("suggestions-badge").click();

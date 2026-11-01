@@ -1,7 +1,19 @@
 import { type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { addonToolName, addonViewId, checkTokens, intervalMs, scopeLabel, uiExports } from "@jig/sdk";
+import {
+  type AddonSearchQuery,
+  type AddonSearchResult,
+  addonActionId,
+  addonToolName,
+  addonViewId,
+  checkTokens,
+  hostExports,
+  intervalMs,
+  type JigEventName,
+  scopeLabel,
+  uiExports,
+} from "@jig/sdk";
 import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
@@ -230,10 +242,10 @@ export class AddonService {
           if (watcher.atStart) loaded.timers.push(setTimeout(tick, AT_START_DELAY));
         }
       }
-    } else if (manifest.contributes.watchers.length > 0) {
-      errors.push("addon.json has watchers but there is no host.ts");
-    } else if (manifest.contributes.tools.length > 0) {
-      errors.push("addon.json has tools for Claude but there is no host.ts");
+    } else if (hostExports(manifest).length > 0) {
+      errors.push(
+        "addon.json refers to host code (watchers, tools, events, search or exports) but there is no host.ts",
+      );
     }
     if (warnings.length) info.warnings = warnings.slice(0, 50);
     if (errors.length) {
@@ -267,6 +279,71 @@ export class AddonService {
     } catch (error) {
       throw new JigError("addon_error", (error as Error).message);
     }
+  }
+
+  /** Runs the host code of every add-on that listens to this event (`contributes.events`, D-215). */
+  dispatchEvent(name: JigEventName, payload: unknown): void {
+    for (const l of this.loaded.values()) {
+      if (!l.info.enabled || !l.host || l.info.errors.length) continue;
+      for (const e of l.record.manifest?.contributes.events ?? [])
+        if (e.on === name)
+          void l.host
+            .call(e.run, payload)
+            .catch((error: Error) => log.warn(`Event ${name} in ${l.info.id} failed: ${error.message}`));
+    }
+  }
+
+  /**
+   * Asks every search provider (`contributes.search`) at once; one that takes longer than `timeoutMs`
+   * or fails is left out. Up to 8 results each, checked so a bad one can't break the search.
+   */
+  async search(
+    query: AddonSearchQuery,
+    timeoutMs = 1_500,
+  ): Promise<
+    Array<{ addonId: string; provider: string; title: string; icon?: string; results: AddonSearchResult[] }>
+  > {
+    const jobs = [...this.loaded.values()].flatMap((l) =>
+      l.info.enabled && l.host && !l.info.errors.length
+        ? (l.record.manifest?.contributes.search ?? []).map(async (p) => {
+            let timer: NodeJS.Timeout | undefined;
+            const late = new Promise<undefined>((resolve) => {
+              timer = setTimeout(() => resolve(undefined), timeoutMs);
+            });
+            const value = await Promise.race([
+              l.host!.call(p.run, query, timeoutMs).catch(() => undefined),
+              late,
+            ]);
+            clearTimeout(timer);
+            const results = (Array.isArray(value) ? value : []).filter(validResult).slice(0, 8);
+            return results.length
+              ? { addonId: l.info.id, provider: p.id, title: p.title, icon: p.icon, results }
+              : undefined;
+          })
+        : [],
+    );
+    return (await Promise.all(jobs)).filter((g) => g !== undefined);
+  }
+
+  /** Calls another add-on's shared host method (its manifest's `exports`) for `from` (D-215). */
+  async callShared(from: string, id: string, method: string, args: unknown): Promise<unknown> {
+    const target = this.get(id);
+    if (from !== id && !(target.record.manifest?.exports ?? []).includes(method))
+      throw new JigError(
+        "not_shared",
+        `${target.info.name} doesn't share "${method}" (its addon.json "exports")`,
+      );
+    return this.call(id, method, args);
+  }
+
+  /** The add-ons as other add-ons see them. */
+  shared(): Array<{ id: string; name: string; enabled: boolean; exports: string[] }> {
+    return this.list().map((a) => ({
+      id: a.id,
+      name: a.name,
+      enabled: a.enabled && a.errors.length === 0,
+      exports: a.manifest?.exports ?? [],
+    }));
   }
 
   async setEnabled(id: string, enabled: boolean): Promise<void> {
@@ -405,7 +482,8 @@ export class AddonService {
   }
 
   /** A text catalog of the add-ons for Claude (jig_list_addons) and the builder. */
-  catalog(): string {
+  /** The add-ons as text for Claude (the builder, `jig_list_addons`); `usage` adds a line each (Learning, D-213). */
+  catalog(usage?: (id: string) => string): string {
     const lines: string[] = [];
     for (const { info } of this.loaded.values()) {
       const c = info.manifest?.contributes;
@@ -413,24 +491,32 @@ export class AddonService {
         ? [
             ...c.views.map((v) => `view "${v.title}" (${addonViewId(info.id, v.id)})`),
             ...c.tabs.map((t) => `tab "${t.title}"`),
-            ...c.actions.map((a) => `Tools action "${a.title}"`),
+            ...c.actions.map((a) => `Tools action "${a.title}" (${addonActionId(info.id, a.id)})`),
             ...c.menus.map((m) => `${m.slot} menu "${m.title}"`),
             ...c.statusbar.map(() => "status bar item"),
             ...c.dashboard.map(() => "dashboard widget"),
             ...c.watchers.map((w) => `watcher every ${w.every}`),
             ...c.tools.map((t) => `Claude tool ${addonToolName(info.id, t.id)}`),
+            ...c.events.map((e) => `runs on ${e.on}`),
+            ...c.search.map((x) => `search results "${x.title}"`),
+            ...(info.manifest?.exports.length
+              ? [`shares ${info.manifest.exports.join(", ")} with other add-ons`]
+              : []),
             ...(c.settings ? ["settings page"] : []),
           ]
         : [];
+      const purpose = readmePurpose(info.readme);
       lines.push(
         `- ${info.id} — ${info.name} (${info.source}${info.enabled ? "" : ", switched off"}): ${info.description}` +
           (parts.length ? `\n  Contributes: ${parts.join(", ")}` : "") +
+          (purpose ? `\n  Purpose: ${purpose}` : "") +
           (info.manifest?.permissions.length
             ? `\n  Permissions: ${info.manifest.permissions.join(", ")}`
             : "") +
           (info.manifest?.storage?.scope && info.manifest.storage.scope !== "global"
             ? `\n  Data: ${scopeLabel(info.manifest.storage.scope)}`
-            : ""),
+            : "") +
+          (usage ? `\n  Used: ${usage(info.id)}` : ""),
       );
     }
     return lines.length ? lines.join("\n") : "No add-ons are installed.";
@@ -442,4 +528,40 @@ export class AddonService {
     this.reloadTimers.clear();
     for (const l of this.loaded.values()) this.unload(l);
   }
+}
+
+function validResult(r: unknown): r is AddonSearchResult {
+  const x = r as AddonSearchResult;
+  return (
+    !!x &&
+    typeof x.id === "string" &&
+    typeof x.label === "string" &&
+    !!x.open &&
+    typeof x.open === "object" &&
+    ["run", "view", "tab", "url", "file"].some(
+      (k) => typeof (x.open as Record<string, unknown>)[k] === "string",
+    )
+  );
+}
+
+/**
+ * What an add-on is for, from its README (the first paragraph after the title, without Markdown),
+ * so the weekly review knows when to suggest it (D-215). At most 300 characters.
+ */
+export function readmePurpose(readme: string | undefined): string {
+  if (!readme) return "";
+  const paragraph =
+    readme
+      .replace(/\r/g, "")
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .find(
+        (p) => p && !p.startsWith("#") && !p.startsWith("```") && !p.startsWith("|") && !p.startsWith("!"),
+      ) ?? "";
+  const text = paragraph
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > 300 ? `${text.slice(0, 299)}…` : text;
 }

@@ -2287,3 +2287,103 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   is a dashed drop zone that attaches on click. The paperclip and ⋯ stack at the right. Nothing
   scrolls and attaching never changes the row's size (no layout shift). Rejected: chips wrapping
   under the prompt (rows would grow and move what's below); a scrolling list (hides files).
+
+## D-213: Suggestions review how you work, and prefer what you already have
+
+- Status: accepted. Asked for by Jon: suggestions focused on repetition and almost always on building a
+  new tool; they should also look at bad practices and security, suggest add-ons he already has, tips
+  on prompting and ways to use Jig that save time. "Go and enhance it even further." The details are
+  **Claude, on my own**.
+- **Practice patterns** (`packages/learning/src/review.ts`, no AI): secrets in messages or commands
+  (the masked `«secret»`), downloads piped into a shell, certificate checks off, `chmod 777`, skipped
+  permission checks, `sudo` package installs (security), force pushes without `--force-with-lease`,
+  `--no-verify`, pushes straight to main, and 5+ commits on 2+ days with no tests run by anyone. They
+  are patterns of kind `practice` (security ones score highest), so "Never" blocks them as usual.
+- **The reflection gets more to judge by:** an overview of the activity per kind, a sample of recent
+  messages (masked, pastes collapsed, at most 20, 6 per day, 240 characters), Jig's own features with
+  action ids (`main/learning/features.ts`), and per add-on how much it was used in 4 weeks (actions,
+  tabs, Claude's calls; `addonUsage`) with its action ids in the catalog.
+- **A review also runs when nothing repeats**, once there are 30+ events on 3+ days
+  (`enoughToReview`). Below that, still no AI call. This uses the same one small query a week.
+- **Instructions, in order:** safety and good practice, then what they already have, then how they
+  work with Claude, then repeated work, and a new tool last. At most one tool to build per review
+  (also enforced when parsing).
+- **New kinds**, each with its action: `practice` (Fix it with Claude → a chat), `use-addon` (Switch
+  it on when off, else Show me → runs the add-on action, `addonId` required) and `use-feature` (Show
+  me → runs the Jig action). "Show me" falls back to Got it when the action doesn't exist.
+- Rejected: recording more kinds of activity (Jon: more data wouldn't make suggestions more
+  meaningful; how it is processed matters); a second AI pass (quota); hard-coding the "What Jig can do"
+  page's JSX into the prompt (renderer-only; a short curated list in main is kept beside it instead).
+
+## D-214: Suggestions coach how you work with Claude
+
+- Status: accepted. Asked for by Jon: D-213 leaned on security; it should look more broadly at ways
+  of working and help people prompt better. His example (colleagues asking for a function, then an
+  endpoint, then a service, one message at a time) is one case, not the target: "should be a coach,
+  not only looking for that specific improvement". The details are **Claude, on my own**.
+- **The coaching is Claude's**, from reading the chats; it names the one change that would help most,
+  whatever it is, with the user's messages as evidence. The instructions list examples of what to look
+  at (clarity, context, how much work is handed over, how to check it's done, planning, reacting when
+  Claude goes wrong, reusing explanations, parallel work, small commits), not rules.
+- **Habit hints** (`packages/learning/src/habits.ts`, no AI, nothing new recorded): from messages
+  and Claude's tools grouped by chat, asking for a feature piece by piece, mostly one-off short asks,
+  and big changes (15+ edits) without a plan. Kind `habit`; only starting points for the coach. Friction already covered corrections,
+  interrupts, long chats and project hopping, so those weren't duplicated.
+- **The reflection sees how you prompt:** numbers (`promptStats`) and the 10 most recent chats message
+  by message (`chatSample`, replacing the flat message sample of D-213), so it can see a whole
+  sequence and rewrite it.
+- **Instructions:** how they work with Claude comes first; security is first only for a real problem
+  with evidence; suggestions are spread over different angles.
+- **Prompting tips carry `before`, `example` and `changes`**: their own message(s) as sent, the same
+  request rewritten the better way, and each difference with why it's better. **Compare prompts**
+  opens a dialog with both side by side, why theirs fell short and what's better (Jon: "show both
+  side by side and explain the differences"); **Try this prompt** there opens a new chat with it as
+  the draft. Habit tips get **Show me** when
+  they name a Jig action.
+- **One prompting tip and one habit tip a week** instead of one tip in total (still none without
+  evidence from their own messages or activity).
+- **The reflection knows what can be built** (`BUILDABLE` in `reflect.ts`, built from the SDK's
+  `SLOTS` so it stays in sync): Jon asked whether Claude is told what add-ons it can build; only the
+  builder was. Now a "Build it" idea is checked against it, uses the lowest level, and its goal says
+  where it appears and what it uses. Jon: an add-on is "like building new full features or modules
+  of Jig", so it's told to think big (a whole area of work brought into Jig) and size it to the need.
+- Rejected: judging message quality with a second AI pass or per message (quota; the weekly query
+  sees the chats); recording chat outcomes or more data (D-213); counting repeated permission approvals
+  (not recorded; Jig's permission rules already offer "always allow").
+
+## D-215: Add-ons get toast buttons, notifications, badges, Jig events, live output, search and each other
+
+- Status: accepted. Asked for by Jon: add-ons should be able to show toasts, and "think of what other
+  things might be good to support for addons to use… Do all of them". The list and the details are
+  **Claude, on my own**.
+- **Toast buttons:** `notify({ actions })`. In the UI a button runs a function; from host code it is an
+  `AddonTarget` (`{ view }`, `{ tab, params }`, `{ run, args }`, `{ url }`, `{ file }`) because functions
+  can't cross processes. Up to 3. One shape is used for toasts and search results, opened by
+  `openAddonTarget` in the renderer.
+- **System notifications:** `notify({ system: true })` also shows an OS notification, only when no Jig
+  window is focused and desktop notifications are on (same rule as chats); the toast then stays until
+  closed, so it's still there when you come back.
+- **View badges:** `setBadge(viewId, value)` for the add-on's own views only, kept in main (so host
+  watchers can set them) and drawn over the view's icon in sidebars and tabs, so nothing moves. Numbers
+  above 99 show `99+`, text is cut to 4 characters. Cleared when the add-on is turned off.
+- **Jig events** (`jig.event` slot, `contributes.events`, `ctx.onJigEvent`/`useJigEvent`): chat
+  finished / needs you / failed (from the same status changes as chat notifications, chats only),
+  commits and branch switches (watching each project repository's `.git` folder, so commits made
+  outside Jig count; up to 50 repositories), and another active project. Host handlers run with no
+  view open. A small fixed list in `packages/sdk/src/events.ts` rather than everything, so each event
+  has a stable, documented payload.
+- **Live output and file watching:** `api.spawn` (streams stdout/stderr, stdin, kill; same `exec`
+  permission as `api.exec`) and `api.fs.watch` (`fs:read`, debounced, `node_modules`/`.git` ignored).
+  Both stop when the add-on reloads.
+- **Add-ons calling each other:** a manifest's top-level `exports` lists host methods others may call
+  (`api.addons.call` / `ctx.addons.call`); everything else stays private. Checked in main.
+- **Search providers** (`search.provider` slot, `contributes.search`): results in Go to (Ctrl+P),
+  after files, one group per provider; 1.5 s and 8 results each, results are checked so a bad one is
+  dropped. Debounced 200 ms.
+- **What Claude knows:** the builder prompt lists all of it; the weekly review's `BUILDABLE` says what
+  add-ons can do now (from the SDK's `SLOTS`, so new slots show up by themselves), and the add-on
+  catalog it and the builder read has each add-on's purpose (the README's first paragraph) plus its
+  events, search and shared methods, so suggestions know what each add-on is for.
+- **The builder's check** now also fails when addon.json names a host function host.ts doesn't export.
+- Rejected: arbitrary event names or a general event bus (unstable contracts); letting add-ons badge
+  other add-ons' or Jig's views; OS notifications while Jig is in front (the toast is enough).
