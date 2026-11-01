@@ -202,6 +202,8 @@ export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
   const actions = useRegistry((s) => s.actions);
+  // View → Layouts lists the saved layouts, so rebuild the menus when one is saved or removed.
+  useWorkbench((s) => s.layout?.saved);
   const menus = topbarMenus(filterActions(Object.values(actions), ""));
   return (
     <header
