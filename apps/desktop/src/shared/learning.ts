@@ -16,8 +16,12 @@ export interface Suggestion {
   addonId?: string;
   /** `use-feature` / `use-addon`: the Jig or add-on action "Show me" runs (D-213). */
   actionId?: string;
-  /** `prompting-tip`: one of your requests rewritten as a complete prompt ("Try this prompt", D-214). */
+  /** `prompting-tip`: one of your requests rewritten the better way ("Try this prompt", D-214). */
   example?: string;
+  /** `prompting-tip`: your original message(s) as sent, shown beside `example` (D-214). */
+  before?: string;
+  /** `prompting-tip`: what changed in `example` and why each change is better. */
+  changes?: string[];
   /** Workflow suggestions: the steps of the draft workflow. */
   steps?: string[];
   /** Notes from chats this is based on (`EvidenceNote` ids), shown with it. */

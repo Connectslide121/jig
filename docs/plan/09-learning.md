@@ -43,7 +43,8 @@ inbox, the Monday 10:00 run happens (or catches up at next launch), and Build it
 - [x] Claude coaches from your recent chats, message by message, for whatever helps most
 - [x] Habit hints (piece by piece, one-off asks, big changes without a plan) and prompting numbers
 - [x] Instructions put ways of working first
-- [x] Prompting tips with a rewritten prompt and Try this prompt; one prompting and one habit tip a week
+- [x] Prompting tips: Compare prompts (yours and a better one side by side, why and what changed), Try this prompt
+- [x] One prompting and one habit tip a week
 
 ## Notes
 

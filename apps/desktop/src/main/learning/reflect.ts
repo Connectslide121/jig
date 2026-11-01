@@ -18,7 +18,7 @@ Look at their work from these angles, and pick what would make the biggest diffe
 - Repeated work: a workflow, a routine, a line for CLAUDE.md.
 - Only then a new tool or add-on to build, when nothing existing fits.
 Suggest AT MOST 3 things, only with real evidence, each of one kind, ideally of different kinds:
-- "prompting-tip": how to ask Claude better, ONLY from their own messages (quote them). "example": one of their real requests rewritten the better way, as a prompt they could send next time, in their language and about their real project. At most one.
+- "prompting-tip": how to ask Claude better, ONLY from their own messages. "before": their real message(s) exactly as in the chats (several in order, one per line). "example": the same request rewritten the better way, as a prompt they could send next time, in their language and about their real project. "why": what made theirs weak and what it cost them. "changes": each difference between the two, as "what changed: why it's better". At most one.
 - "habit-tip": a better way of working with Claude or Jig, from their activity; "actionId" when a Jig feature helps. At most one.
 - "practice": a safer or better practice. "goal": what to change and how, concretely (a chat helps them fix it). Name the risk plainly; never quote a secret.
 - "use-addon": an installed add-on that fits. "addonId" required; "actionId" one of its actions (addon.<id>.<action>) when you know it. "goal": what to use it for, and how.
@@ -32,7 +32,7 @@ No tips at all when "Tips allowed: no".
 Level: 1 for using what exists, tips and practices; 2 for workflows, automations and setup; 3 only for "app".
 Be specific to THIS user (their projects, commands, words), never generic advice. Don't suggest what they said "never" to, nor repeat what they built, adopted or snoozed; learn from what helped and what didn't. Few good suggestions beat three weak ones.
 Also propose additions to the profile ("profileUpdates": short facts the evidence shows, not already in it; none if unsure).
-Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","actionId":"…","example":"…","steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
+Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","actionId":"…","before":"…","example":"…","changes":["…"],"steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
 Return {"suggestions":[]} when nothing is worth it.`;
 
 export interface PastAnswer {
@@ -120,11 +120,23 @@ const SuggestionSchema = z.object({
   addonId: z.string().optional(),
   actionId: z.string().max(200).optional(),
   example: z.string().max(4000).optional(),
+  before: z.string().max(4000).optional(),
+  changes: z.array(z.string().max(400)).max(8).optional(),
   steps: z.array(z.string()).optional(),
   noteIds: z.array(z.string()).optional(),
   minutesPerWeek: z.number().nonnegative().optional(),
   patternKeys: z.array(z.string()).default([]),
 });
+
+/** A prompting tip's rewritten prompt, with the original and the changes only beside it. */
+function promptingFields(
+  s: z.infer<typeof SuggestionSchema>,
+): Pick<Suggestion, "example" | "before" | "changes"> {
+  const example = s.kind === "prompting-tip" ? s.example?.trim() : undefined;
+  if (!example) return {};
+  const changes = (s.changes ?? []).map((c) => c.trim()).filter(Boolean);
+  return { example, before: s.before?.trim() || undefined, changes: changes.length ? changes : undefined };
+}
 
 const ReplySchema = z.object({
   suggestions: z.array(SuggestionSchema).max(3),
@@ -180,7 +192,7 @@ export function parseReflection(
       kind: s.kind,
       addonId: s.addonId || undefined,
       actionId: s.actionId?.trim() || undefined,
-      example: s.kind === "prompting-tip" && s.example?.trim() ? s.example.trim() : undefined,
+      ...promptingFields(s),
       steps: s.kind === "workflow" && s.steps?.length ? s.steps : undefined,
       noteIds: notes.length ? notes : undefined,
       minutesPerWeek: s.minutesPerWeek,

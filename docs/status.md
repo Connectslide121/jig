@@ -344,8 +344,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       by message, like a coach, and names the change that would help you most (how you ask, what
       context you give, how much you hand over, planning, checking the result…), with your messages
       as evidence. A few habits Jig spots itself (asking piece by piece, one-off asks, big changes
-      without a plan) are hints for it. A **prompting tip** shows one of your requests rewritten the
-      better way, with **Try this prompt** (a new chat with it filled in); a habit tip can **Show me**
+      without a plan) are hints for it. A **prompting tip** has **Compare prompts**: your prompt and a
+      better one side by side, why yours fell short and what's better, then **Try this prompt** (a
+      new chat with it filled in); a habit tip can **Show me**
       the Jig feature. One of each a week at most.
     - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network

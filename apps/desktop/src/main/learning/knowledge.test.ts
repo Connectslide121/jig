@@ -93,6 +93,8 @@ describe("reflection 2", () => {
           level: 1,
           kind: "prompting-tip",
           example: " Build it all ",
+          before: " do a ",
+          changes: [" plan ", " "],
         },
         { title: "Tip three", why: "x x", goal: "g g", level: 1, kind: "prompting-tip" },
       ],
@@ -106,7 +108,7 @@ describe("reflection 2", () => {
       "Add to what Jig knows about you",
     ]);
     expect(out[0]).toMatchObject({ steps: ["a", "b"], noteIds: ["n1"] });
-    expect(out[1]!.example).toBe("Build it all");
+    expect(out[1]).toMatchObject({ example: "Build it all", before: "do a", changes: ["plan"] });
     expect(out[2]!.goal).toBe("Deploys by hand");
     const tip = (title: string, kind: string) => ({
       title,

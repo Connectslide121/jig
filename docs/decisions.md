@@ -2334,8 +2334,11 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   sequence and rewrite it.
 - **Instructions:** how they work with Claude comes first; security is first only for a real problem
   with evidence; suggestions are spread over different angles.
-- **Prompting tips carry an `example`**: one of their own requests rewritten the better way, shown on
-  the card with **Try this prompt** (a new chat with it as the draft). Habit tips get **Show me** when
+- **Prompting tips carry `before`, `example` and `changes`**: their own message(s) as sent, the same
+  request rewritten the better way, and each difference with why it's better. **Compare prompts**
+  opens a dialog with both side by side, why theirs fell short and what's better (Jon: "show both
+  side by side and explain the differences"); **Try this prompt** there opens a new chat with it as
+  the draft. Habit tips get **Show me** when
   they name a Jig action.
 - **One prompting tip and one habit tip a week** instead of one tip in total (still none without
   evidence from their own messages or activity).

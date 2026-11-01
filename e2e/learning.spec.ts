@@ -72,7 +72,7 @@ test("a risky practice becomes a suggestion that opens a chat to fix it", async 
   });
 });
 
-test("asking piece by piece becomes a prompting tip with a whole prompt to try", async ({
+test("asking piece by piece becomes a prompting tip comparing your prompt with a better one", async ({
   page,
   jigHome,
 }) => {
@@ -105,9 +105,14 @@ test("asking piece by piece becomes a prompting tip with a whole prompt to try",
   await page.getByTestId("look-for-patterns").click();
   const card = page.getByTestId("suggestion").filter({ hasText: "Ask for the whole feature in one go" });
   await expect(card).toContainText("prompting tip", { timeout: 15000 });
-  await expect(card.getByTestId("suggestion-example")).toContainText("end to end");
-  await expect(card.getByTestId("suggestion-build")).toHaveText("Try this prompt");
+  await expect(card.getByTestId("suggestion-build")).toHaveText("Compare prompts");
   await card.getByTestId("suggestion-build").click();
+  const compare = page.getByTestId("prompt-compare");
+  await expect(compare.getByTestId("prompt-before")).toContainText("now write an endpoint for it");
+  await expect(compare.getByTestId("prompt-after")).toContainText("Add order validation to the Shop API");
+  await expect(compare).toContainText("Why yours fell short");
+  await expect(compare.getByTestId("prompt-changes")).toContainText("Claude checks its own work");
+  await compare.getByTestId("prompt-try").click();
   await expect(page.getByTestId("composer-input")).toHaveValue(/Add order validation to the Shop API/, {
     timeout: 15000,
   });

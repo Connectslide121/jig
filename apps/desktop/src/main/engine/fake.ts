@@ -1383,6 +1383,13 @@ export class FakeEngine implements Engine {
             goal: "Describe the whole feature once, with how to check it's done, and let Claude plan and build it",
             level: 1,
             kind: "prompting-tip",
+            before:
+              "write a function that validates orders\nnow write an endpoint for it\nok now add a service that calls it",
+            changes: [
+              "One request for the whole feature: Claude plans all the layers together instead of waiting for the next piece",
+              "Points to the existing products code: Claude follows your patterns instead of guessing",
+              "Says when it's done (the tests pass): Claude checks its own work",
+            ],
             example:
               "Add order validation to the Shop API end to end: a validator, a POST /orders endpoint that uses it, and the service between them, following the existing products code. Done when the tests for all three pass. Plan it first.",
             patternKeys: [habit[1]],

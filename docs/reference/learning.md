@@ -134,7 +134,8 @@ use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, show
 catalog with the add-on's action ids). Learning 2 adds
 the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 tips are allowed (one prompting tip and one habit tip a week at most). A prompting tip carries
-`example`: one of your own requests rewritten the better way. The reply is validated
+`before` (your message(s) as sent), `example` (the same request rewritten the better way) and
+`changes` (each difference and why it's better). The reply is validated
 (`main/learning/reflect.ts`): extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
 **No patterns, no notes and too little activity → no AI call → no quota used.**
 
@@ -156,7 +157,7 @@ Each kind has its own action:
 | `claude-setup` | **Set it up with Claude** → a chat with the goal |
 | `project-memory` | **Add to CLAUDE.md** → a chat that adds the text |
 | `automation` | **Make a routine** → a chat that makes a Claude Code routine |
-| `prompting-tip` | Shows the rewritten prompt; **Try this prompt** → a new chat with it filled in (D-214), else **Got it**; **Remind me** / **Dismiss** |
+| `prompting-tip` | **Compare prompts** → a dialog with your prompt (`before`) and the better one (`example`) side by side, why yours fell short (`why`) and what's better (`changes`); **Try this prompt** there → a new chat with it filled in (D-214). Without an example **Got it**; **Remind me** / **Dismiss** |
 | `habit-tip` | **Show me** when it names a Jig action, else **Got it**; **Remind me** / **Dismiss** (tips always quote your own activity; one of each a week at most) |
 | `profile` | **Add to my profile** (written at once) |
 | `practice` | **Fix it with Claude** → a chat that explains the risk and fixes it (D-213) |

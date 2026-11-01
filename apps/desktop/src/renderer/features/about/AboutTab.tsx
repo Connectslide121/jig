@@ -851,7 +851,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Claude notes manual work you mention in a chat (a card you can remove)",
                 "Friction counts too: stops, rewinds, denied permissions, corrections, failing scripts",
-                "A coach for working with Claude: it reads your recent chats and suggests the change that would help most, with one of your requests rewritten the better way — Try this prompt opens a chat with it",
+                "A coach for working with Claude: it reads your recent chats and suggests the change that would help most, with Compare prompts: your prompt and a better one side by side, and why it's better",
                 "Safety first: secrets in messages or commands, risky commands, force pushes and commits without tests become a “better practice” suggestion with Fix it with Claude",
                 "What you already have comes before new tools: an add-on (Switch it on / Show me) or a Jig feature (Show me)",
                 "Each suggestion has its own action: Build it, Draft a workflow, Add to CLAUDE.md, Make a routine…",

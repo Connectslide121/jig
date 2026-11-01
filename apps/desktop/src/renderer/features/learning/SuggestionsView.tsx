@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Columns2,
   Hammer,
   Lightbulb,
   ListChecks,
@@ -27,7 +28,7 @@ import {
 } from "../../../shared/learning";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { Badge, Button, Card, Empty, Spinner } from "../../ui";
+import { Badge, Button, Card, Dialog, Empty, Spinner } from "../../ui";
 import { runAction, useRegistry } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -71,7 +72,10 @@ function useNotes(): EvidenceNote[] {
 }
 
 /** Each kind's own action (the builder, a chat with a draft, a workflow draft, the profile). */
-function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: () => Promise<void> } {
+function useAction(
+  s: Suggestion,
+  compare?: () => void,
+): { label: string; icon: typeof Hammer; run: () => Promise<void> } {
   const workflows = useAddons((a) => a.addons.some((x) => x.id === "workflows" && x.enabled));
   const addon = useAddons((a) => a.addons.find((x) => x.id === s.addonId));
   const hasAction = useRegistry((r) => Boolean(s.actionId && r.actions[s.actionId]));
@@ -145,7 +149,7 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
       if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
     case "prompting-tip":
-      if (s.example) return { label: "Try this prompt", icon: Send, run: chat(s.example) };
+      if (s.example) return { label: "Compare prompts", icon: Columns2, run: async () => compare?.() };
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
     case "habit-tip":
     case "use-feature":
@@ -158,7 +162,8 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
 
 function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) {
   const [open, setOpen] = useState(false);
-  const action = useAction(s);
+  const [comparing, setComparing] = useState(false);
+  const action = useAction(s, () => setComparing(true));
   const quoted = notes.filter((n) => s.noteIds?.includes(n.id));
   const tip = TIP_KINDS.includes(s.kind);
   const done = s.status === "built" || s.status === "adopted";
@@ -181,13 +186,6 @@ function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) 
             <li key={l}>{l}</li>
           ))}
         </ul>
-      ) : s.example ? (
-        <div
-          className="ml-6 whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-fg"
-          data-testid="suggestion-example"
-        >
-          {s.example}
-        </div>
       ) : s.steps?.length ? (
         <ol className="ml-6 list-decimal text-xs text-fg">
           {s.steps.map((x) => (
@@ -277,7 +275,76 @@ function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) 
           </Button>
         </div>
       )}
+      {comparing && <PromptCompare s={s} onClose={() => setComparing(false)} />}
     </Card>
+  );
+}
+
+/** A prompting tip: your prompt and the better one side by side, why yours fell short and what changed. */
+function PromptCompare({ s, onClose }: { s: Suggestion; onClose: () => void }) {
+  const tryIt = async () => {
+    onClose();
+    await newSession(undefined, undefined, s.example);
+    await answer(s, "act");
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={s.title}
+      width="xl"
+      testId="prompt-compare"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+          <Button variant="primary" icon={Send} onClick={() => void tryIt()} data-testid="prompt-try">
+            Try this prompt
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Your prompt</span>
+            <div
+              className="whitespace-pre-wrap rounded-md border border-border bg-surface p-2 text-xs text-fg"
+              data-testid="prompt-before"
+            >
+              {s.before ?? "(not quoted)"}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Better prompt</span>
+            <div
+              className="whitespace-pre-wrap rounded-md border border-accent bg-surface p-2 text-xs text-fg"
+              data-testid="prompt-after"
+            >
+              {s.example}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Why yours fell short</span>
+          <p className="text-xs text-fg">{s.why}</p>
+        </div>
+        {s.changes?.length ? (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted">What's better</span>
+            <ul className="flex flex-col gap-1 text-xs text-fg" data-testid="prompt-changes">
+              {s.changes.map((c) => (
+                <li key={c} className="flex gap-2">
+                  <Check className="mt-0.5 size-3 shrink-0 text-success" />
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </Dialog>
   );
 }
 
