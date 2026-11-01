@@ -1,5 +1,10 @@
 # Status
 
+Meeting room redesign (2026-11-02, D-219): one stable layout — resizable stage with floating call
+controls, meeting bar, Transcript | Notes, status line for call state and errors. Sidebar: Join from
+link, Upcoming (auto-loaded, grouped by day) | Saved tabs. Speaker-grouped captions, tidier pre-join,
+connection, share, Ask and review dialogs. Meetings e2e and npm run check pass.
+
 Teams meetings (2026-11-01, D-217): Meetings → Meetings opens a global meeting window with a two-week
 calendar, Join from link, pre-join devices/preview, audio/video and screen/window sharing. Named live
 captions are saved incrementally without raw audio or post-meeting processing. Ask Claude opens a normal

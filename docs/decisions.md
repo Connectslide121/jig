@@ -2456,3 +2456,24 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   else said is sent back as changes to the tasks. Rejected: a separate "queue" button (Claude, or
   the user by saying so, decides).
 - Working sound: one note every 1.4 s (was 2.4 s), about twice as loud (gain 0.09, was 0.05).
+
+## D-219: The meeting room's layout
+
+- Status: accepted. Asked for by Jon: "do a sweep to redesign" the Meetings window, which "was done
+  by another agent that is not so good at UI and UX". The layout itself is **Claude, on my own**.
+- One shape whatever the call does, so nothing moves when you join or leave (no layout shift):
+  a resizable stage on top (`addon.meetings.stage`), a meeting bar, then Transcript | Notes, and a
+  status line at the bottom that holds the call state or an error (dismissable), never a banner.
+- The stage explains itself when idle; live, participants show as initials (or video/shared
+  content fills it) and the call controls float in a dock over its bottom edge: mute, camera, share,
+  ⋯ (devices, restart captions), Leave. Rejected: a permanent toolbar of disabled buttons.
+- The sidebar has Join from link on top and Upcoming | Saved tabs, so a loading calendar can't push
+  the saved meetings down. The calendar loads by itself once connected; events are grouped by day
+  with times, titles and Join buttons in fixed columns; saved meetings carry a status badge at the
+  far right. "Current" became "Back to live meeting" in the meeting bar, shown only while viewing
+  another meeting during a call.
+- Generate notes sits on the Notes column, Review actions (with an open-actions count) at its foot
+  beside the AI notice; Ask Claude and Open in Teams in the meeting bar. Captions read as blocks
+  per speaker (two-minute window) with gaps in place, instead of fixed 96 px rows.
+- Pre-join: preview and camera/muted switches beside the device and language choices; the camera
+  preview follows the switch. Connection: a status row, field hints, Connect saves first.

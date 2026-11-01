@@ -400,8 +400,8 @@ export async function startMeetings(): Promise<void> {
     own(ctx);
     if (fake())
       return [
-        { id: "fake-screen", name: "Screen 1", thumbnail: "" },
-        { id: "fake-window", name: "Shop — Editor", thumbnail: "" },
+        { id: "screen:fake", name: "Screen 1", thumbnail: "" },
+        { id: "window:fake", name: "Shop — Editor", thumbnail: "" },
       ];
     return (
       await desktopCapturer.getSources({

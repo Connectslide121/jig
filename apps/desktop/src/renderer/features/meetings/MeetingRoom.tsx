@@ -1,43 +1,47 @@
 import {
   CalendarDays,
-  FileText,
+  ExternalLink,
+  History,
+  Link2,
   MessageSquare,
-  Mic,
-  MonitorUp,
-  PhoneOff,
   RefreshCw,
   Settings,
   Video,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  MeetingAction,
-  MeetingEvent,
-  MeetingOverview,
-  MeetingRecord,
-  MeetingSettings,
-} from "../../../shared/meetings";
+import type { MeetingEvent, MeetingOverview, MeetingRecord } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useThemeController } from "../../lib/theme";
 import {
+  Badge,
+  type BadgeTone,
   Button,
-  Dialog,
+  cn,
+  Empty,
   ErrorBoundary,
-  Input,
-  Markdown,
+  IconButton,
+  ListRow,
   MenuHost,
-  Select,
   Spinner,
-  Textarea,
+  Tabs,
 } from "../../ui";
 import { Pane } from "../../workbench/Pane";
-import { ProjectSwatch } from "../projects/colors";
+import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
+import { clock, dayAndTime, dayLabel, duration } from "./format";
 import { type MediaState, MeetingMedia } from "./media";
+import { Stage } from "./Stage";
+import { Transcript } from "./Transcript";
 
 const EMPTY_PROJECTS: ProjectsState = { projects: [], workspaces: [], activeId: undefined };
-const time = (value: string) =>
-  new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+const STATUS: Record<MeetingRecord["status"], { label: string; tone: BadgeTone }> = {
+  joining: { label: "Joining", tone: "warning" },
+  connected: { label: "Live", tone: "danger" },
+  ended: { label: "Ended", tone: "neutral" },
+  interrupted: { label: "Interrupted", tone: "warning" },
+};
 
 export function MeetingRoom(): React.JSX.Element {
   useThemeController();
@@ -49,13 +53,16 @@ export function MeetingRoom(): React.JSX.Element {
   );
 }
 
+type Pending = "calendar" | "notes" | "join" | "ask" | "queue" | "connection" | "call";
+
 function Room() {
   const [overview, setOverview] = useState<MeetingOverview>();
   const [projects, setProjects] = useState<ProjectsState>(EMPTY_PROJECTS);
-  const [events, setEvents] = useState<MeetingEvent[]>([]);
+  const [events, setEvents] = useState<MeetingEvent[]>();
+  const [tab, setTab] = useState<"upcoming" | "saved">("upcoming");
   const [selected, setSelected] = useState<string>();
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<Pending>();
   const [settings, setSettings] = useState(false);
   const [devicePicker, setDevicePicker] = useState(false);
   const [joining, setJoining] = useState<{ url: string; title: string }>();
@@ -74,16 +81,13 @@ function Room() {
   media.current ??= new MeetingMedia((e) => setError(errorMessage(e)));
   const attachCanvas = useCallback((element: HTMLDivElement | null) => media.current!.setCanvas(element), []);
   const refreshed = useRef(0);
-  const transcriptContainer = useRef<HTMLDivElement>(null);
-  const followingTranscript = useRef(true);
-  const previousTranscript = useRef<string | undefined>(undefined);
   const reload = useCallback(async () => {
     const version = ++refreshed.current;
     const data = await call("meetings.overview");
     if (version === refreshed.current) setOverview(data);
   }, []);
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
+  const run = async (fn: () => Promise<unknown>, key: Pending = "call") => {
+    setPending(key);
     setError("");
     try {
       await fn();
@@ -91,7 +95,7 @@ function Room() {
     } catch (e) {
       setError(errorMessage(e));
     } finally {
-      setBusy(false);
+      setPending(undefined);
     }
   };
   useEffect(() => {
@@ -111,53 +115,46 @@ function Room() {
       window.close();
     });
   });
-  const active = overview?.records.find((r) => r.id === overview.activeId);
-  const record =
-    overview?.records.find((r) => r.id === (selected ?? overview.activeId)) ?? overview?.records[0];
-  const lastCaption = record?.captions.at(-1);
-  useEffect(() => {
-    if (!lastCaption?.id || !lastCaption.text) return;
-    if (previousTranscript.current !== record?.id) followingTranscript.current = true;
-    previousTranscript.current = record?.id;
-    const container = transcriptContainer.current;
-    if (container && followingTranscript.current) container.scrollTop = container.scrollHeight;
-  }, [record?.id, lastCaption?.id, lastCaption?.text]);
+  const connected = Boolean(overview?.account || overview?.fake);
   const refreshCalendar = () =>
     run(async () => {
       setEvents(await call("meetings.calendar"));
-    });
-  const openChat = async (sessionId: string) => {
-    await call("meetings.revealChat", { sessionId });
-  };
+    }, "calendar");
+  // Load the calendar once as soon as there is an account to read it with.
+  const loadedCalendar = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once per connection.
+  useEffect(() => {
+    if (!connected || loadedCalendar.current) return;
+    loadedCalendar.current = true;
+    void refreshCalendar();
+  }, [connected]);
+  const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
   if (!overview)
     return (
-      <div className="h-screen bg-base text-fg">
+      <div className="h-screen bg-canvas text-fg">
         <Spinner center />
       </div>
     );
+  const active = overview.records.find((r) => r.id === overview.activeId);
+  const record =
+    overview.records.find((r) => r.id === (selected ?? overview.activeId)) ?? overview.records[0];
+  const viewingOther = Boolean(active && record && record.id !== active.id);
+  const captionTrouble = active && /unavailable|stopped/i.test(active.capture);
   return (
-    <div data-testid="meeting-room" className="flex h-screen flex-col bg-base text-fg">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4">
-        <Video className="size-5 text-accent" />
-        <h1 className="min-w-0 flex-1 truncate text-base font-semibold">
-          {active ? active.title : "Meetings"}
-        </h1>
-        <span className="w-56 truncate text-right text-sm text-muted">
-          {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}
+    <div data-testid="meeting-room" className="flex h-screen flex-col bg-canvas text-fg">
+      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-titlebar px-4">
+        <Video className="size-4 text-accent" />
+        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Meetings</h1>
+        <span className="flex w-64 items-center justify-end gap-2 text-xs text-muted">
+          <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "bg-hint")} />
+          <span className="truncate">
+            {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}
+          </span>
         </span>
         <Button icon={Settings} onClick={() => setSettings(true)} disabled={Boolean(active)}>
           Connection
         </Button>
       </header>
-      <div
-        role="status"
-        className="flex h-12 shrink-0 items-center overflow-auto border-b border-line px-4 text-sm text-warning"
-      >
-        {error ||
-          (active
-            ? `${mediaState.state} · ${active.capture}${mediaState.sharing ? " · Sharing your screen" : ""}`
-            : "Meetings are global. You can change projects without interrupting a call.")}
-      </div>
       <main className="flex min-h-0 flex-1">
         <Pane
           id="addon.meetings.agenda"
@@ -165,251 +162,214 @@ function Room() {
           defaultSize={300}
           min={240}
           max={500}
-          className="flex flex-col border-r border-line"
+          className="flex flex-col border-r border-line bg-surface"
         >
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
-            <CalendarDays className="size-4" />
-            <span className="flex-1 text-sm font-semibold">Upcoming · 14 days</span>
-            <Button
-              icon={RefreshCw}
-              busy={busy}
-              onClick={() => void refreshCalendar()}
-              aria-label="Refresh calendar"
-            />
-          </div>
-          <div className="flex h-12 shrink-0 items-center gap-2 px-3">
+          <div className="flex h-14 shrink-0 items-center px-3">
             <Button
               variant="primary"
+              icon={Link2}
+              className="w-full"
               disabled={Boolean(active)}
               onClick={() => setJoining({ title: "Teams meeting", url: "" })}
             >
               Join from link…
             </Button>
-            <Button
-              disabled={!active}
-              onClick={() => {
-                setSelected(active?.id);
-              }}
-            >
-              Current
-            </Button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {!events.length && (
-              <p className="p-3 text-sm text-muted">
-                Refresh your calendar after connecting Microsoft, or join from a meeting link.
-              </p>
-            )}
-            {events.map((event) => (
-              <div key={event.id} className="flex h-20 items-center gap-2 border-b border-line px-3">
-                <div className="w-12 shrink-0 text-right text-sm tabular-nums">{time(event.start)}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm" title={event.title}>
-                    {event.title}
-                  </div>
-                  <div className="truncate text-xs text-muted">
-                    {new Date(event.start).toLocaleDateString()} · {event.organizer}
-                  </div>
-                </div>
-                <div className="w-12 shrink-0">
-                  {event.joinUrl && (
-                    <Button
-                      size="sm"
-                      disabled={Boolean(active)}
-                      onClick={() => setJoining({ title: event.title, url: event.joinUrl! })}
-                    >
-                      Join
-                    </Button>
-                  )}
-                </div>
+          <div className="flex shrink-0 items-center border-b border-line pr-2">
+            <Tabs
+              className="flex-1 border-b-0"
+              value={tab}
+              onChange={setTab}
+              items={[
+                { id: "upcoming", label: "Upcoming" },
+                { id: "saved", label: `Saved · ${overview.records.length}` },
+              ]}
+            />
+            <IconButton
+              icon={RefreshCw}
+              size="sm"
+              label="Refresh calendar"
+              className={cn(tab !== "upcoming" && "invisible")}
+              disabled={pending === "calendar" || !connected}
+              onClick={() => void refreshCalendar()}
+            />
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-y-auto p-1.5">
+            {tab === "upcoming" ? (
+              <Upcoming
+                events={events}
+                loading={pending === "calendar"}
+                connected={connected}
+                busy={Boolean(active)}
+                onConnect={() => setSettings(true)}
+                onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
+              />
+            ) : !overview.records.length ? (
+              <Empty icon={History} title="No saved meetings" className="h-full">
+                Captions and notes from meetings you join are kept here.
+              </Empty>
+            ) : (
+              <div role="listbox" aria-label="Saved meetings" className="space-y-0.5">
+                {overview.records.map((r) => (
+                  <ListRow
+                    key={r.id}
+                    selected={r.id === record?.id}
+                    onClick={() => setSelected(r.id)}
+                    className="h-12"
+                    description={`${dayAndTime(r.startedAt)}${r.endedAt ? ` · ${duration(r.startedAt, r.endedAt)}` : ""}`}
+                    trailing={
+                      <span className="flex w-20 justify-end">
+                        <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge>
+                      </span>
+                    }
+                  >
+                    {r.title}
+                  </ListRow>
+                ))}
               </div>
-            ))}
-            <div className="flex h-12 items-center border-b border-line px-3 text-sm font-semibold">
-              Saved meetings
-            </div>
-            {overview.records.map((r) => (
-              <button
-                type="button"
-                key={r.id}
-                onClick={() => setSelected(r.id)}
-                className="flex h-16 w-full items-center gap-2 border-b border-line px-3 text-left hover:bg-hover"
-              >
-                <FileText className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{r.title}</span>
-                  <span className="block truncate text-xs text-muted">
-                    {new Date(r.startedAt).toLocaleString()}
-                  </span>
-                </span>
-                <span className="w-20 shrink-0 text-right text-xs text-muted">{r.status}</span>
-              </button>
-            ))}
+            )}
           </div>
         </Pane>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="relative flex h-64 shrink-0 flex-col border-b border-line p-3">
-            <div ref={attachCanvas} className="flex min-h-0 flex-1 gap-2 overflow-hidden" />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted">
-              {!active
-                ? "Join a Teams meeting to see video and shared content here."
-                : mediaState.hasVideo
-                  ? ""
-                  : !mediaState.participants.length
-                    ? "Waiting for participants"
-                    : mediaState.participants.join(" · ")}
+          <Pane
+            id="addon.meetings.stage"
+            edge="bottom"
+            defaultSize={300}
+            min={180}
+            max={720}
+            className="border-b border-line"
+          >
+            <Stage
+              active={active}
+              media={mediaState}
+              fake={overview.fake}
+              attachCanvas={attachCanvas}
+              onMute={() => void run(() => media.current!.mute())}
+              onCamera={() => void run(() => media.current!.camera())}
+              onShare={() =>
+                void run(async () => {
+                  if (mediaState.sharing) await media.current!.share();
+                  else setSharing(await call("meetings.shareSources"));
+                })
+              }
+              onDevices={() => setDevicePicker(true)}
+              onRetryCaptions={() => void run(() => media.current!.startCaptions())}
+              onLeave={() => void run(() => media.current!.leave())}
+            />
+          </Pane>
+          <div className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-4">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{record?.title ?? "No meeting selected"}</div>
+              <div className="truncate text-xs text-muted">
+                {record
+                  ? `${dayAndTime(record.startedAt)}${record.endedAt ? ` – ${clock(record.endedAt)}` : ""} · ${STATUS[record.status].label}`
+                  : "Join a meeting or pick a saved one"}
+              </div>
             </div>
-          </div>
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
-            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-              <Button icon={Mic} disabled={!active} onClick={() => void run(() => media.current!.mute())}>
-                {mediaState.muted ? "Unmute" : "Mute"}
+            {viewingOther && (
+              <Button onClick={() => setSelected(active!.id)}>
+                <span className="size-2 rounded-full bg-danger" />
+                Back to live meeting
               </Button>
-              <Button
-                icon={Settings}
-                disabled={!active || overview.fake}
-                onClick={() => setDevicePicker(true)}
-              >
-                Devices
-              </Button>
-              <Button
-                icon={Video}
-                disabled={!active || overview.fake}
-                onClick={() => void run(() => media.current!.camera())}
-              >
-                {mediaState.camera ? "Camera off" : "Camera on"}
-              </Button>
-              <Button
-                icon={MonitorUp}
-                disabled={!active}
-                variant={mediaState.sharing ? "primary" : "secondary"}
-                onClick={() =>
-                  void run(async () => {
-                    if (mediaState.sharing) await media.current!.share();
-                    else setSharing(await call("meetings.shareSources"));
-                  })
-                }
-              >
-                {mediaState.sharing ? "Stop sharing" : "Share screen"}
-              </Button>
-              <Button
-                disabled={!active || overview.fake}
-                onClick={() => void run(() => media.current!.startCaptions())}
-              >
-                Retry captions
-              </Button>
-            </div>
-            <Button
-              icon={PhoneOff}
-              variant="danger"
-              disabled={!active}
-              onClick={() => void run(() => media.current!.leave())}
-            >
-              Leave
-            </Button>
-          </div>
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-              {record?.title ?? "Transcript"}
-            </span>
+            )}
             <Button icon={MessageSquare} disabled={!record} onClick={() => setAsk(true)}>
               Ask Claude
             </Button>
-            <Button
-              disabled={!record || busy}
-              onClick={() =>
-                void run(async () => {
-                  const chat = await call("meetings.notes", { id: record!.id });
-                  await openChat(chat.sessionId);
-                })
-              }
-            >
-              Generate notes
-            </Button>
-            <Button disabled={!record?.actions.length} onClick={() => setReview(true)}>
-              Review actions
-            </Button>
-            <Button
+            <IconButton
+              icon={ExternalLink}
+              label="Open in Teams"
               disabled={!record || Boolean(active)}
               onClick={() => void run(() => call("app.openExternal", { url: record!.joinUrl }))}
-            >
-              Open in Teams
-            </Button>
+            />
           </div>
-          <div className="flex min-h-0 flex-1">
-            <div
-              data-testid="meeting-transcript"
-              ref={transcriptContainer}
-              onScroll={() => {
-                const container = transcriptContainer.current;
-                if (container)
-                  followingTranscript.current =
-                    container.scrollHeight - container.scrollTop - container.clientHeight < 32;
-              }}
-              className="min-w-0 flex-1 overflow-y-auto p-4"
-            >
-              {!record?.captions.length && (
-                <p className="text-sm text-muted">
-                  Captions will appear here as people speak. No audio recording is saved.
-                </p>
-              )}
-              {record?.captions.map((c) => (
-                <div key={c.id} className="mb-3 flex h-24 gap-3 overflow-hidden text-sm">
-                  <time className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-                    {time(c.timestamp)}
-                  </time>
-                  <div className="min-w-0 flex-1 overflow-y-auto">
-                    <span className="font-semibold">{c.speaker}</span>
-                    <p className={c.final ? "whitespace-pre-wrap" : "whitespace-pre-wrap text-muted"}>
-                      {c.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {record?.gaps.map((g, index) => (
-                <p key={`${g.at}-${index}`} className="text-sm text-warning">
-                  {time(g.at)} · {g.reason}
-                </p>
-              ))}
-            </div>
-            <Pane
-              id="addon.meetings.notes"
-              edge="left"
-              defaultSize={300}
-              min={220}
-              max={600}
-              className="overflow-y-auto border-l border-line p-4"
-            >
-              <h2 className="mb-3 text-sm font-semibold">Meeting notes</h2>
-              {record?.notes ? (
-                <Markdown text={record.notes} />
-              ) : (
-                <p className="text-sm text-muted">
-                  Generate notes when you want them. Claude is only invoked by your actions.
-                </p>
-              )}
-            </Pane>
-          </div>
+          <Transcript
+            record={record}
+            live={Boolean(active && record?.id === active.id)}
+            busy={pending === "notes"}
+            onGenerateNotes={() =>
+              void run(async () => {
+                const chat = await call("meetings.notes", { id: record!.id });
+                await openChat(chat.sessionId);
+              }, "notes")
+            }
+            onReview={() => setReview(true)}
+          />
         </div>
       </main>
+      <footer
+        role="status"
+        className="flex h-7 shrink-0 items-center gap-2 border-t border-line bg-surface px-3 text-xs"
+      >
+        {error ? (
+          <>
+            <span className="min-w-0 flex-1 truncate text-danger" title={error}>
+              {error}
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss error"
+              className="rounded-sm text-hint hover:text-fg"
+              onClick={() => setError("")}
+            >
+              <X className="size-3.5" />
+            </button>
+          </>
+        ) : (
+          <>
+            <span
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                active ? (mediaState.state === "Connected" ? "bg-success" : "bg-warning") : "bg-hint",
+              )}
+            />
+            <span className="min-w-0 truncate text-muted">
+              {active
+                ? `${mediaState.state} · ${active.capture}${mediaState.sharing ? " · Sharing your screen" : ""}`
+                : "No call"}
+            </span>
+            {captionTrouble && !overview.fake && (
+              <button
+                type="button"
+                className="shrink-0 text-accent hover:underline"
+                onClick={() => void run(() => media.current!.startCaptions())}
+              >
+                Retry captions
+              </button>
+            )}
+            <span className="ml-auto shrink-0 truncate text-hint">
+              Meetings are global · switching projects won't interrupt a call
+            </span>
+          </>
+        )}
+      </footer>
       {settings && (
         <Connection
           settings={overview.settings}
-          connected={Boolean(overview.account)}
-          busy={busy}
+          account={overview.account}
+          fake={overview.fake}
+          busy={pending === "connection"}
           onClose={() => setSettings(false)}
           onSave={(next) =>
             run(async () => {
               await call("meetings.configure", next);
               setSettings(false);
-            })
+            }, "connection")
           }
-          onConnect={() =>
+          onConnect={(next) =>
             run(async () => {
+              await call("meetings.configure", next);
               await call("meetings.signIn");
               setSettings(false);
-            })
+              loadedCalendar.current = false;
+            }, "connection")
           }
-          onDisconnect={() => run(() => call("meetings.signOut"))}
+          onDisconnect={() =>
+            run(async () => {
+              await call("meetings.signOut");
+              setEvents(undefined);
+              loadedCalendar.current = false;
+            }, "connection")
+          }
         />
       )}
       {devicePicker && (
@@ -424,7 +384,7 @@ function Room() {
           meeting={joining}
           fake={overview.fake}
           media={media.current}
-          busy={busy}
+          busy={pending === "join"}
           onClose={() => setJoining(undefined)}
           onError={(e) => setError(errorMessage(e))}
           onJoin={(meeting, options) =>
@@ -433,7 +393,7 @@ function Room() {
               setSelected(r.id);
               setJoining(undefined);
               await media.current!.join(r, { ...options, fake: overview.fake });
-            })
+            }, "join")
           }
         />
       )}
@@ -441,14 +401,14 @@ function Room() {
         <Ask
           record={record}
           projects={projects}
-          busy={busy}
+          busy={pending === "ask"}
           onClose={() => setAsk(false)}
           onAsk={(question, projectId) =>
             run(async () => {
               const chat = await call("meetings.ask", { id: record.id, question, projectId });
               await openChat(chat.sessionId);
               setAsk(false);
-            })
+            }, "ask")
           }
         />
       )}
@@ -456,551 +416,116 @@ function Room() {
         <Review
           record={record}
           projects={projects}
-          busy={busy}
+          busy={pending === "queue"}
           onClose={() => setReview(false)}
           onQueue={(actions, actionIds) =>
             run(async () => {
               await call("meetings.actions", { id: record.id, actions });
               await call("meetings.queue", { id: record.id, actionIds });
               setReview(false);
-            })
+            }, "queue")
           }
         />
       )}
       {sharing && (
-        <Dialog open title="Share a screen or window" width="lg" onClose={() => setSharing(undefined)}>
-          <div className="grid grid-cols-2 gap-3">
-            {sharing.map((source) => (
-              <button
-                type="button"
-                key={source.id}
-                className="rounded-lg border border-line p-2 text-left hover:bg-hover"
-                onClick={() =>
-                  void run(async () => {
-                    setSharing(undefined);
-                    await media.current!.share(source.id);
-                  })
-                }
-              >
-                {source.thumbnail ? (
-                  <img src={source.thumbnail} alt="" className="aspect-video w-full object-contain" />
-                ) : (
-                  <div className="flex aspect-video w-full items-center justify-center bg-surface text-muted">
-                    <MonitorUp className="size-12" />
-                  </div>
-                )}
-                <span className="block truncate text-sm">{source.name}</span>
-              </button>
-            ))}
-          </div>
-        </Dialog>
+        <ShareSources
+          sources={sharing}
+          onClose={() => setSharing(undefined)}
+          onPick={(id) =>
+            void run(async () => {
+              setSharing(undefined);
+              await media.current!.share(id);
+            })
+          }
+        />
       )}
     </div>
   );
 }
 
-function DevicePicker({
-  media,
-  onClose,
-  onError,
-}: {
-  media: MeetingMedia;
-  onClose(): void;
-  onError(error: unknown): void;
-}) {
-  const [devices, setDevices] = useState<Awaited<ReturnType<MeetingMedia["prepare"]>>>();
-  const [microphone, setMicrophone] = useState("");
-  const [speaker, setSpeaker] = useState("");
-  const [camera, setCamera] = useState("");
-  const [busy, setBusy] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: enumerate once when the user opens the picker.
-  useEffect(() => {
-    void media.prepare().then(setDevices).catch(onError);
-  }, []);
-  return (
-    <Dialog
-      open
-      title="Meeting devices"
-      onClose={onClose}
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            busy={busy}
-            disabled={!devices}
-            variant="primary"
-            onClick={() =>
-              void (async () => {
-                setBusy(true);
-                try {
-                  await media.devices(microphone, speaker, camera, false);
-                  onClose();
-                } catch (e) {
-                  onError(e);
-                } finally {
-                  setBusy(false);
-                }
-              })()
-            }
-          >
-            Apply devices
-          </Button>
-        </>
-      }
-    >
-      <div className="h-48 space-y-3">
-        {!devices ? (
-          <Spinner center />
-        ) : (
-          (
-            [
-              ["Microphone", microphone, setMicrophone, devices.microphones],
-              ["Speakers", speaker, setSpeaker, devices.speakers],
-              ["Camera", camera, setCamera, devices.cameras],
-            ] as const
-          ).map(([label, value, setValue, choices]) => (
-            <label key={label} htmlFor={`in-call-${label}`} className="block text-sm">
-              {label}
-              <Select id={`in-call-${label}`} value={value} onChange={(e) => setValue(e.target.value)}>
-                <option value="">System default</option>
-                {choices.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          ))
-        )}
-      </div>
-    </Dialog>
-  );
-}
-
-function Connection({
-  settings,
+/** The next 14 days of Teams meetings, by day, times and Join buttons each in their own column. */
+function Upcoming({
+  events,
+  loading,
   connected,
   busy,
-  onClose,
-  onSave,
   onConnect,
-  onDisconnect,
-}: {
-  settings: MeetingSettings;
-  connected: boolean;
-  busy: boolean;
-  onClose(): void;
-  onSave(value: MeetingSettings): Promise<void>;
-  onConnect(): Promise<void>;
-  onDisconnect(): Promise<void>;
-}) {
-  const [value, setValue] = useState(settings);
-  return (
-    <Dialog
-      open
-      title="Microsoft meeting connection"
-      onClose={onClose}
-      footer={
-        <>
-          <Button disabled={busy} onClick={() => void onSave(value)}>
-            Save settings
-          </Button>
-          <Button
-            busy={busy}
-            disabled={!settings.clientId || !settings.endpoint}
-            variant="primary"
-            onClick={() => void onConnect()}
-          >
-            Connect Microsoft
-          </Button>
-        </>
-      }
-    >
-      <p className="mb-4 text-sm text-muted">
-        Your Azure CLI sign-in authorises the calling resource. Microsoft sign-in opens in your browser.
-        Credentials stay in memory; reconnect after restarting Jig. Calling has Azure usage charges.
-      </p>
-      <div className="space-y-3">
-        {(
-          [
-            ["tenantId", "Tenant ID"],
-            ["clientId", "Application client ID"],
-            ["endpoint", "Communication Services endpoint"],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} htmlFor={`meeting-${key}`} className="block text-sm">
-            {label}
-            <Input
-              id={`meeting-${key}`}
-              value={value[key]}
-              onChange={(e) => setValue({ ...value, [key]: e.target.value })}
-            />
-          </label>
-        ))}
-      </div>
-      <p className="mt-3 text-sm text-muted">
-        If approval is required: ask your administrator to approve Jig's Teams.ManageCalls, Teams.ManageChats
-        and Calendars.ReadBasic delegated permissions.
-      </p>
-      {connected && (
-        <Button className="mt-3" disabled={busy} onClick={() => void onDisconnect()}>
-          Disconnect Microsoft
-        </Button>
-      )}
-    </Dialog>
-  );
-}
-
-function Prejoin({
-  meeting,
-  fake,
-  media,
-  busy,
-  onClose,
-  onError,
   onJoin,
 }: {
-  meeting: { url: string; title: string };
-  fake: boolean;
-  media: MeetingMedia;
+  events?: MeetingEvent[];
+  loading: boolean;
+  connected: boolean;
   busy: boolean;
-  onClose(): void;
-  onError(error: unknown): void;
-  onJoin(
-    meeting: { url: string; title: string },
-    options: { muted: boolean; camera: boolean; language: string },
-  ): Promise<void>;
+  onConnect(): void;
+  onJoin(event: MeetingEvent): void;
 }) {
-  const [value, setValue] = useState(meeting);
-  const [devices, setDevices] = useState<Awaited<ReturnType<MeetingMedia["prepare"]>>>();
-  const [mic, setMic] = useState("");
-  const [speaker, setSpeaker] = useState("");
-  const [camera, setCamera] = useState("");
-  const [cameraOn, setCameraOn] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [consent, setConsent] = useState(false);
-  const [language, setLanguage] = useState("en-us");
-  const preview = useRef<HTMLDivElement>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: prepare devices once per pre-join modal; onError is a parent callback.
-  useEffect(() => {
-    if (!fake) void media.prepare().then(setDevices).catch(onError);
-    return () => media.cancelPreview();
-  }, []);
-  const configure = async () => {
-    await media.devices(mic, speaker, camera, cameraOn, preview.current ?? undefined);
-  };
+  if (!connected)
+    return (
+      <Empty icon={CalendarDays} title="Calendar not connected" className="h-full">
+        <p>Connect Microsoft to see your Teams meetings for the next 14 days.</p>
+        <Button className="mt-3" onClick={onConnect}>
+          Connect…
+        </Button>
+      </Empty>
+    );
+  if (!events) return loading ? <Spinner center /> : null;
+  if (!events.length)
+    return (
+      <Empty icon={CalendarDays} title="Nothing in the next 14 days" className="h-full">
+        Paste a Teams link to join any meeting.
+      </Empty>
+    );
+  const now = Date.now();
+  const days = new Map<string, MeetingEvent[]>();
+  for (const event of events) {
+    const label = dayLabel(event.start);
+    days.set(label, [...(days.get(label) ?? []), event]);
+  }
   return (
-    <Dialog
-      open
-      title="Join Teams meeting"
-      width="lg"
-      onClose={onClose}
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            busy={busy}
-            disabled={!consent || !value.url || (!fake && !devices)}
-            onClick={() =>
-              void (async () => {
-                try {
-                  if (!fake) await configure();
-                  await onJoin(value, { muted, camera: cameraOn, language });
-                } catch (e) {
-                  onError(e);
-                }
-              })()
-            }
-          >
-            Join meeting
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        <label htmlFor="meeting-title" className="block">
-          Meeting title
-          <Input
-            id="meeting-title"
-            value={value.title}
-            onChange={(e) => setValue({ ...value, title: e.target.value })}
-          />
-        </label>
-        <label htmlFor="meeting-url" className="block">
-          Teams join link
-          <Input
-            id="meeting-url"
-            value={value.url}
-            onChange={(e) => setValue({ ...value, url: e.target.value })}
-          />
-        </label>
-        <div
-          ref={preview}
-          className="flex h-48 items-center justify-center overflow-hidden rounded-lg bg-surface"
-        >
-          {!devices && !fake ? <Spinner center /> : "Camera preview"}
-        </div>
-        {(
-          [
-            ["Microphone", mic, setMic, devices?.microphones],
-            ["Speakers", speaker, setSpeaker, devices?.speakers],
-            ["Camera", camera, setCamera, devices?.cameras],
-          ] as const
-        ).map(([label, selected, setter, choices]) => (
-          <label key={label} htmlFor={`meeting-device-${label}`} className="flex items-center gap-3">
-            <span className="w-24">{label}</span>
-            <Select
-              id={`meeting-device-${label}`}
-              aria-label={label}
-              value={selected}
-              onChange={(e) => setter(e.target.value)}
-            >
-              <option value="">System default</option>
-              {choices?.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-        ))}
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={cameraOn} onChange={(e) => setCameraOn(e.target.checked)} />
-          Camera on
-          <Button size="sm" disabled={!devices} onClick={() => void configure().catch(onError)}>
-            Preview
-          </Button>
-        </label>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={muted} onChange={(e) => setMuted(e.target.checked)} />
-          Join muted
-        </label>
-        <label htmlFor="meeting-language" className="flex items-center gap-3">
-          <span className="w-24">Speech language</span>
-          <Select
-            id="meeting-language"
-            aria-label="Speech language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          >
-            <option value="en-us">English (US)</option>
-            <option value="en-gb">English (UK)</option>
-            <option value="sv-se">Swedish</option>
-            <option value="es-es">Spanish</option>
-            <option value="de-de">German</option>
-            <option value="fr-fr">French</option>
-            <option value="nl-nl">Dutch</option>
-            <option value="it-it">Italian</option>
-            <option value="pt-br">Portuguese (Brazil)</option>
-            <option value="ja-jp">Japanese</option>
-            <option value="zh-cn">Chinese (Simplified)</option>
-          </Select>
-        </label>
-        <label className="flex items-start gap-2">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span>
-            I will inform participants that Jig saves captions as meeting notes. Joining uses Azure calling
-            and incurs usage charges. No audio or video recording is saved.
-          </span>
-        </label>
-      </div>
-    </Dialog>
-  );
-}
-
-function Ask({
-  record,
-  projects,
-  busy,
-  onClose,
-  onAsk,
-}: {
-  record: MeetingRecord;
-  projects: ProjectsState;
-  busy: boolean;
-  onClose(): void;
-  onAsk(question: string, projectId?: string): Promise<void>;
-}) {
-  const [question, setQuestion] = useState("");
-  const [context, setContext] = useState("current");
-  const projectId = context === "current" ? projects.activeId : context || undefined;
-  const project = projects.projects.find((p) => p.id === projectId);
-  return (
-    <Dialog
-      open
-      title="Ask Claude about this meeting"
-      width="lg"
-      onClose={onClose}
-      footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            busy={busy}
-            disabled={!question.trim()}
-            variant="primary"
-            onClick={() => void onAsk(question, projectId)}
-          >
-            Ask in chat
-          </Button>
-        </>
-      }
-    >
-      <label htmlFor="meeting-question" className="block">
-        Question
-        <Textarea
-          id="meeting-question"
-          rows={5}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          autoFocus
-        />
-      </label>
-      <label htmlFor="meeting-context" className="mt-3 block">
-        Project context
-        <Select
-          id="meeting-context"
-          aria-label="Question project context"
-          value={context}
-          onChange={(e) => setContext(e.target.value)}
-        >
-          <option value="current">Current Jig project</option>
-          <option value="">Meeting only</option>
-          {projects.projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </Select>
-      </label>
-      <div className="mt-3 flex h-8 items-center gap-2 text-sm text-muted">
-        {project && <ProjectSwatch color={project.color} />}
-        <span>
-          {project?.name ?? "Meeting only"} · Transcript so far from {record.title}
-        </span>
-      </div>
-      <p className="text-sm text-muted">
-        Opens a normal Claude Code chat in Plan mode. The meeting keeps running. That chat retains this
-        project even if you switch projects later.
-      </p>
-    </Dialog>
-  );
-}
-
-function Review({
-  record,
-  projects,
-  busy,
-  onClose,
-  onQueue,
-}: {
-  record: MeetingRecord;
-  projects: ProjectsState;
-  busy: boolean;
-  onClose(): void;
-  onQueue(actions: MeetingAction[], selected: string[]): Promise<void>;
-}) {
-  const [actions, setActions] = useState(record.actions);
-  const [selected, setSelected] = useState<string[]>([]);
-  const update = (id: string, patch: Partial<MeetingAction>) =>
-    setActions((list) => list.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  return (
-    <Dialog
-      open
-      title="Review meeting actions"
-      width="xl"
-      onClose={onClose}
-      footer={
-        <>
-          <span className="mr-auto text-sm text-muted">
-            Adds selected tasks in Plan mode and pauses the queue. Start it from Task queue.
-          </span>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            busy={busy}
-            disabled={!selected.length || actions.some((a) => selected.includes(a.id) && !a.projectId)}
-            onClick={() => void onQueue(actions, selected)}
-          >
-            Add selected to queue
-          </Button>
-        </>
-      }
-    >
-      <p className="mb-3 text-sm text-muted">
-        Choose tasks for Claude explicitly. Other people's actions can stay in the meeting plan. Each selected
-        task needs its own destination project.
-      </p>
-      <div className="space-y-3">
-        {actions.map((a) => (
-          <div key={a.id} className="rounded-lg border border-line p-3">
-            <div className="flex items-center gap-3">
-              <input
-                aria-label={`Select ${a.title}`}
-                type="checkbox"
-                disabled={a.queued}
-                checked={selected.includes(a.id)}
-                onChange={(e) =>
-                  setSelected((ids) => (e.target.checked ? [...ids, a.id] : ids.filter((id) => id !== a.id)))
-                }
-              />
-              <Input
-                aria-label="Action title"
-                value={a.title}
-                disabled={a.queued}
-                onChange={(e) => update(a.id, { title: e.target.value })}
-              />
-              <span className="w-20 shrink-0 text-right text-xs text-muted">
-                {a.queued ? "Queued" : a.mine ? "Your action" : "Draft"}
-              </span>
-            </div>
-            <div className="mt-2 flex gap-3">
-              <label htmlFor={`owner-${a.id}`} className="w-48 shrink-0">
-                Owner
-                <Input
-                  id={`owner-${a.id}`}
-                  disabled={a.queued}
-                  value={a.owner}
-                  onChange={(e) => update(a.id, { owner: e.target.value })}
-                />
-              </label>
-              <label htmlFor={`project-${a.id}`} className="min-w-0 flex-1">
-                Project
-                <Select
-                  id={`project-${a.id}`}
-                  aria-label={`Project for ${a.title}`}
-                  disabled={a.queued}
-                  value={a.projectId ?? ""}
-                  onChange={(e) => update(a.id, { projectId: e.target.value || undefined })}
+    <div className={cn(loading && "opacity-60")}>
+      {[...days].map(([label, list]) => (
+        <section key={label}>
+          <h3 className="flex h-7 items-center px-2 text-2xs font-semibold tracking-wide text-hint uppercase">
+            {label}
+          </h3>
+          {list.map((event) => {
+            const ongoing = new Date(event.start).getTime() <= now && now < new Date(event.end).getTime();
+            return (
+              <div key={event.id} className="flex h-12 items-center gap-2 rounded-md px-2 hover:bg-hover">
+                <time
+                  className={cn(
+                    "w-10 shrink-0 text-right text-sm tabular-nums",
+                    ongoing ? "font-semibold text-accent" : "text-muted",
+                  )}
                 >
-                  <option value="">Choose project…</option>
-                  {projects.projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
-            <label htmlFor={`prompt-${a.id}`} className="mt-2 block">
-              Standalone task prompt
-              <Textarea
-                id={`prompt-${a.id}`}
-                rows={3}
-                disabled={a.queued}
-                value={a.prompt}
-                onChange={(e) => update(a.id, { prompt: e.target.value })}
-              />
-            </label>
-            <p className="mt-2 text-xs text-muted">Evidence: {a.evidence || "Not provided"}</p>
-          </div>
-        ))}
-      </div>
-    </Dialog>
+                  {clock(event.start)}
+                </time>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm" title={event.title}>
+                    {event.title}
+                  </div>
+                  <div className="truncate text-xs text-muted">
+                    {ongoing ? "Now · " : ""}
+                    {event.organizer}
+                  </div>
+                </div>
+                <span className="flex w-12 shrink-0 justify-end">
+                  {event.joinUrl && (
+                    <Button
+                      size="sm"
+                      variant={ongoing ? "primary" : "secondary"}
+                      disabled={busy}
+                      onClick={() => onJoin(event)}
+                    >
+                      Join
+                    </Button>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </div>
   );
 }
