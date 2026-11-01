@@ -224,6 +224,8 @@ export interface HostMethods {
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /** Pinned chats stay at the top of their project. */
   "sessions.setPinned": { args: { id: string; pinned: boolean }; result: void };
+  /** Talking with Claude (D-209): its next replies are spoken, so it answers briefly and plainly. */
+  "sessions.setVoice": { args: { id: string; voice: boolean }; result: void };
   /** Sends a message (with files kept by `sessions.addAttachment`), or queues it while Claude works. */
   /** `now`: while Claude works, the message joins the running turn instead of waiting in the queue. */
   "sessions.send": {

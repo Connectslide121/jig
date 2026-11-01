@@ -93,6 +93,7 @@ settings, add-on permissions.
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |
 | `sessions.removeQueued` | `{ id, queuedId }` | — | |
 | `sessions.setModel` / `sessions.setPermissionMode` | `{ id, model }` / `{ id, mode }` | — | applied live |
+| `sessions.setVoice` | `{ id, voice }` | — | you are talking with Claude in this chat: each turn tells it to answer briefly for reading aloud (D-209) |
 | `sessions.rename` / `sessions.archive` | `{ id, title }` / `{ id, archived }` | — | |
 | `sessions.stop` | `{ id }` | — | ends the Claude Code process (resumes on the next message) |
 | `sessions.delete` | `{ id }` | — | removes Jig's record; Claude Code's own transcript stays |
@@ -168,7 +169,7 @@ settings, add-on permissions.
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 | `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
 | `addons.galleryInstall` | `{ source, id, replace? }` | `{ id, name }` | installs an add-on from a source in Settings (no other), like `addons.importPackage` (schema) |
-| `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, bytes on disk (D-208) |
+| `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |
 | `speech.microphone` | — | `MicrophoneAccess` | `granted`, `denied` or `unknown`; asks macOS for access the first time, reads Windows' privacy switch |
 

@@ -37,13 +37,7 @@ export function toggleReadAloud(id: string, markdown: string): void {
     useReading.setState({ reading: undefined });
     return;
   }
-  const utterance = new SpeechSynthesisUtterance(speakableText(markdown));
-  const wanted = useConfig.getState().config?.speech.voice;
-  const voice = wanted ? synth.getVoices().find((v) => v.name === wanted) : undefined;
-  if (voice) {
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-  }
+  const utterance = voiceUtterance(speakableText(markdown));
   const done = () => {
     if (useReading.getState().reading === id) useReading.setState({ reading: undefined });
   };
@@ -51,6 +45,36 @@ export function toggleReadAloud(id: string, markdown: string): void {
   utterance.onerror = done;
   useReading.setState({ reading: id });
   synth.speak(utterance);
+}
+
+/** An utterance in the chosen voice, at the chosen speed. */
+export function voiceUtterance(text: string): SpeechSynthesisUtterance {
+  const utterance = new SpeechSynthesisUtterance(text);
+  const speech = useConfig.getState().config?.speech;
+  const voice = speech?.voice
+    ? window.speechSynthesis.getVoices().find((v) => v.name === speech.voice)
+    : undefined;
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+  }
+  utterance.rate = speech?.rate ?? 1;
+  return utterance;
+}
+
+/**
+ * How much of a message that is still being written can be spoken now (from `from`): up to the
+ * last finished sentence or line, never into an unfinished code block. All of it once `final`.
+ */
+export function speakableUntil(markdown: string, from: number, final: boolean): number {
+  if (final) return markdown.length;
+  let end = from;
+  const boundary = /[.!?:;](?=\s)|\n/g;
+  boundary.lastIndex = from;
+  for (let m = boundary.exec(markdown); m; m = boundary.exec(markdown)) end = m.index + m[0].length;
+  const fences = [...markdown.slice(0, end).matchAll(/^\s{0,3}```/gm)];
+  if (fences.length % 2 === 1) end = Math.max(from, fences[fences.length - 1]!.index ?? from);
+  return end;
 }
 
 /** The system's voices; they may arrive a moment after the page loads. */

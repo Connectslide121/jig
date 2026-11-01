@@ -1,6 +1,7 @@
 import {
   ArrowUp,
   AtSign,
+  AudioLines,
   BookmarkPlus,
   Bot,
   ChevronDown,
@@ -39,7 +40,9 @@ import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { DictationButton, toggleDictation } from "../speech/DictationButton";
 import { cancelDictation, useDictation } from "../speech/dictation";
-import { insertDictation } from "../speech/protocol";
+import { type DictationSpan, placeDictation } from "../speech/protocol";
+import { VoiceButton } from "../speech/VoiceButton";
+import { toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
 import { newSession } from "./actions";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
 import { ComposerPicker, type PickerItem } from "./ComposerPicker";
@@ -149,6 +152,7 @@ export function Composer({
   const suggestion = busy ? undefined : meta.suggestion;
   const mode = inputMode(text);
   const dictating = useDictation((s) => s.target === meta.id && s.phase === "recording");
+  const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
 
   const setText = (value: string, at = value.length) => {
     setTextState(value);
@@ -213,13 +217,39 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
   }, [text]);
 
-  /** What you said goes where the caret is (read from the field: it may have changed meanwhile). */
-  const dictated = (spoken: string) => {
+  /** Where the words being dictated are, replaced as they come in. */
+  const spoken = useRef<{ span: DictationSpan; text: string }>(undefined);
+  /**
+   * What you say goes where the caret is (read from the field: it may have changed meanwhile), and
+   * is replaced as Whisper hears more; `final` is the last time.
+   */
+  const dictated = (words: string, final: boolean) => {
     const el = ref.current;
-    const next = insertDictation(el?.value ?? text, el?.selectionStart ?? caret, spoken);
+    const value = el?.value ?? text;
+    const last = spoken.current;
+    let span = last?.span;
+    if (last && value.slice(last.span.start, last.span.end) !== last.text) {
+      // You typed meanwhile: find the words again, or start over at the caret.
+      const at = last.text ? value.indexOf(last.text) : -1;
+      span = at >= 0 ? { start: at, end: at + last.text.length } : undefined;
+    }
+    span ??= { start: el?.selectionStart ?? caret, end: el?.selectionEnd ?? caret };
+    const next = placeDictation(value, span, words);
     setText(next.text, next.caret);
+    spoken.current = final
+      ? undefined
+      : { span: next.span, text: next.text.slice(next.span.start, next.span.end) };
     el?.focus();
   };
+  // Dictation and talking keep these for as long as they run: always call this render's functions.
+  const latest = useRef({ dictated, send: (_value: string) => {} });
+  const speechHooks = useMemo<VoiceHooks>(
+    () => ({
+      onText: (words, final) => latest.current.dictated(words, final),
+      send: () => latest.current.send(ref.current?.value ?? ""),
+    }),
+    [],
+  );
 
   const pick = (item: PickerItem) => {
     if (!token) return;
@@ -254,6 +284,7 @@ export function Composer({
       notify({ title: "Not sent", message: errorMessage(error), tone: "danger" });
     }
   };
+  latest.current = { dictated, send: (value) => void send(value) };
   const runShell = async () => {
     const command = text.trim().replace(/^!\s*/, "");
     setText("");
@@ -357,6 +388,12 @@ export function Composer({
     },
     { label: "Remember in CLAUDE.md", icon: BookmarkPlus, shortcut: "#", onSelect: () => startWith("# ") },
     { label: "Attach files…", icon: Paperclip, onSelect: () => void attach() },
+    {
+      label: talking ? "Stop talking with Claude" : "Talk with Claude",
+      icon: AudioLines,
+      onSelect: () => toggleVoice(meta.id, speechHooks),
+      testId: "more-voice",
+    },
     { separator: true },
     {
       label: "Model and effort…",
@@ -559,7 +596,7 @@ export function Composer({
               const el = e.currentTarget;
               if (e.code === "Space" && e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey) {
                 e.preventDefault();
-                if (!e.repeat) toggleDictation(meta.id, dictated);
+                if (!e.repeat) toggleDictation(meta.id, speechHooks.onText);
                 return;
               }
               if (e.key === "Escape" && dictating) {
@@ -637,7 +674,8 @@ export function Composer({
               label="Attach files (images, PDF, Word, Excel, PowerPoint, text)"
               onClick={() => void attach()}
             />
-            <DictationButton target={meta.id} onText={dictated} />
+            <DictationButton target={meta.id} onText={speechHooks.onText} />
+            <VoiceButton target={meta.id} hooks={speechHooks} />
             {meta.kind !== "builder" && (
               <IconButton
                 icon={Split}

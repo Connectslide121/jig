@@ -5,11 +5,14 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import {
+  SPEECH_COMMON_FILES,
   SPEECH_MODEL_IDS,
   SPEECH_MODELS,
-  SPEECH_REQUIRED_FILES,
+  SPEECH_VARIANTS,
   type SpeechModel,
   type SpeechModelStatus,
+  type SpeechVariant,
+  speechFiles,
 } from "../../shared/speech";
 import { renameWithRetry } from "../state/jsonStore";
 
@@ -49,8 +52,9 @@ class NotOnServer extends Error {}
 
 /**
  * Speech models in `<root>/<org>/<model>/`. A file the worker asks for is served from disk, or first
- * downloaded from Hugging Face and kept (progress through `onProgress`). A complete model never goes
- * online again: a file it doesn't have is an optional one the repo lacks.
+ * downloaded from Hugging Face and kept (progress through `onProgress`). Once a model's description
+ * files are there, a JSON file it lacks is an optional one the repo doesn't have: no going online.
+ * Weight files are always fetched when missing (the other variant's weights, the first time).
  */
 export class SpeechModels {
   private readonly downloads = new Map<string, Promise<void>>();
@@ -69,7 +73,10 @@ export class SpeechModels {
 
   async status(model: SpeechModel): Promise<SpeechModelStatus> {
     const repo = SPEECH_MODELS[model].repo;
-    return { model, downloaded: await this.complete(repo), bytes: await folderSize(this.dir(repo)) };
+    const variants: SpeechVariant[] = [];
+    for (const variant of SPEECH_VARIANTS)
+      if (await this.has(repo, speechFiles(variant))) variants.push(variant);
+    return { model, downloaded: variants.length > 0, variants, bytes: await folderSize(this.dir(repo)) };
   }
 
   list(): Promise<SpeechModelStatus[]> {
@@ -80,10 +87,10 @@ export class SpeechModels {
     await rm(this.dir(SPEECH_MODELS[model].repo), { recursive: true, force: true });
   }
 
-  private async complete(repo: string): Promise<boolean> {
+  private async has(repo: string, files: readonly string[]): Promise<boolean> {
     const dir = this.dir(repo);
     const present = await Promise.all(
-      SPEECH_REQUIRED_FILES.map((f) =>
+      files.map((f) =>
         stat(join(dir, f)).then(
           (s) => s.isFile(),
           () => false,
@@ -101,7 +108,8 @@ export class SpeechModels {
     const headers = { "content-type": contentType(file), "access-control-allow-origin": "*" };
     let local = await stat(file).catch(() => undefined);
     if (!local?.isFile()) {
-      if (await this.complete(target.repo)) return new Response("Not found", { status: 404, headers });
+      if (!target.file.startsWith("onnx/") && (await this.has(target.repo, SPEECH_COMMON_FILES)))
+        return new Response("Not found", { status: 404, headers });
       try {
         await this.download(target.model, target.repo, target.file, file);
       } catch (error) {

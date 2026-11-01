@@ -2211,3 +2211,30 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   skipped.
 - Tests: with `JIG_ENGINE=fake` Chromium's fake microphone and a fake transcriber.
 
+
+## D-209: Real-time speech and talking with Claude
+
+- Status: accepted. Asked for by Jon: "as real time as possible" (he has a strong PC) and "talk to
+  the AI real time, it answers me in a speech live conversation, and when we agree to the task and
+  it's all clear, it starts working". How is **Claude, on my own** (he was asleep).
+- Speed: Whisper runs on the graphics card with WebGPU when there is an adapter (`speech.gpu`,
+  default on): fp32 encoder (q8 encoders are slow or wrong on WebGPU) and q4 decoder; else
+  WebAssembly with q8. The variants have different files, so the model store tracks which are
+  complete. Warm-up on one second of silence so the first words aren't slow.
+- Live text: the microphone is read with Web Audio at 16 kHz (no more `MediaRecorder` + decode);
+  Whisper reads the current piece again every ~250 ms and the composer replaces the dictated span.
+  Pieces longer than 20 s are cut at their quietest moment and their text kept, so each pass stays
+  short. Rejected: true streaming Whisper (not in transformers.js); a cloud recogniser (D-208).
+- Talking with Claude is a renderer loop on a normal chat, not a new engine: voice activity
+  detection (adaptive noise floor) ends a turn after `speech.pause` ms; the text is sent through the
+  composer; Claude's text is read with the system's voices sentence by sentence while it streams;
+  talking over it (a higher threshold while it speaks, since system speech isn't echo-cancelled)
+  stops it. Rejected: realtime speech-to-speech models (another AI runtime and the Anthropic API,
+  against "Claude Code is the only engine").
+- "Agree, then work" uses Claude Code's own plan mode: starting a conversation switches an idle
+  chat to plan mode; Claude presents ExitPlanMode; "yes, go ahead" approves it as the plan card
+  does (`acceptEdits`, or bypass if the chat had it), anything else denies it with what you said as
+  feedback. Other permissions: yes/no by voice. The chat's `voice` flag adds `VOICE_GUIDANCE` to each
+  turn's context (short spoken answers, one question at a time, plan via ExitPlanMode).
+- Reachable from a button in the composer and the + menu (no command: D-091). Tests: in fake mode
+  the conversation hears `jig-fake-speech` window events instead of the microphone.

@@ -502,8 +502,19 @@ Worker (`features/speech/speech.worker.ts`), with the ONNX runtime bundled. The 
 the model files (`main/speech/`): the worker loads them from the privileged `jig-speech:` scheme
 (`jig-speech://hf/<org>/<model>/<file>`, only Jig's three models), which serves them from
 `~/.jig/models` or downloads them once from Hugging Face, reporting `speech.progress`. A complete
-model never goes online again. The composer records with `MediaRecorder`, decodes to 16 kHz mono
-and inserts the text at the caret; nothing is sent until you press Enter. Read aloud uses the
+model never goes online again. `features/speech/engine.ts` reads the microphone at 16 kHz with Web
+Audio (`Capture`) and `LiveText` has Whisper read the current piece again while you speak; the
+composer replaces the dictated span as words come in, and nothing is sent until you press Enter.
+With a graphics card the worker uses WebGPU (fp32 encoder, q4 decoder; D-209), else WebAssembly
+(q8); each variant's files are downloaded separately. Read aloud uses the
 system's voices (`speechSynthesis`). Chromium's Web Speech recognition doesn't work in Electron and
 Claude Code's own voice mode needs claude.ai, so neither is used.
+
+Talking with Claude (`features/speech/voice.ts`, D-209) is a renderer loop around a normal chat:
+voice activity detection on the microphone frames starts and ends your turn, the text goes through
+the composer and `sessions.send`; Claude's streamed text is read aloud sentence by sentence
+(`speakableUntil`) and talking over it cancels it. Pending permissions are read out and answered by
+voice (`replies.ts`: yes → allow, else deny with what you said as feedback). The chat's `voice` flag
+(`sessions.setVoice`) makes the host add `VOICE_GUIDANCE` (`main/speech/voice.ts`) to each turn's
+context, so Claude answers in short spoken sentences and presents a plan with ExitPlanMode.
 

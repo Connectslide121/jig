@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SPEECH_REQUIRED_FILES } from "../../shared/speech";
+import { SPEECH_COMMON_FILES, speechFiles } from "../../shared/speech";
 import { parseModelUrl, SpeechModels } from "./models";
 
 const URL_BASE = "jig-speech://hf/onnx-community/whisper-base";
@@ -65,26 +65,35 @@ describe("SpeechModels", () => {
       throw new Error("offline");
     });
     expect((await offline.serve(`${URL_BASE}/config.json`)).status).toBe(502);
-    for (const file of SPEECH_REQUIRED_FILES) {
+    for (const file of SPEECH_COMMON_FILES) {
       const path = join(root, "onnx-community", "whisper-base", file);
       await mkdir(join(path, ".."), { recursive: true });
       await writeFile(path, "x");
     }
-    // A complete model stays offline: what it lacks is optional.
+    // With its description files there, a JSON file it lacks is optional: no going online…
     expect((await offline.serve(`${URL_BASE}/processor_config.json`)).status).toBe(404);
+    // …but missing weights (the other variant's) are still downloaded.
+    expect((await offline.serve(`${URL_BASE}/onnx/encoder_model.onnx`)).status).toBe(502);
     expect((await offline.serve("jig-speech://hf/other/repo/x.json")).status).toBe(404);
   });
 
-  it("is downloaded when every required file is there, and can be removed", async () => {
+  it("is downloaded per variant when every file is there, and can be removed", async () => {
     const models = new SpeechModels(root, async () => new Response("", { status: 404 }));
     expect((await models.status("base")).downloaded).toBe(false);
     const dir = join(root, "onnx-community", "whisper-base");
-    for (const file of SPEECH_REQUIRED_FILES) {
+    for (const file of speechFiles("cpu")) {
       await mkdir(join(dir, file, ".."), { recursive: true });
       await writeFile(join(dir, file), "x");
     }
     const status = await models.status("base");
-    expect(status).toEqual({ model: "base", downloaded: true, bytes: SPEECH_REQUIRED_FILES.length });
+    expect(status).toEqual({
+      model: "base",
+      downloaded: true,
+      variants: ["cpu"],
+      bytes: speechFiles("cpu").length,
+    });
+    for (const file of speechFiles("gpu")) await writeFile(join(dir, file), "x");
+    expect((await models.status("base")).variants).toEqual(["gpu", "cpu"]);
     expect((await models.list()).map((m) => m.downloaded)).toEqual([false, true, false]);
     await models.remove("base");
     expect((await models.status("base")).downloaded).toBe(false);

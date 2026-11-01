@@ -229,7 +229,9 @@ And more:
 - **In a chat:**
   - Paste screenshots, and drop PDF, Word, Excel and PowerPoint files.
   - Talk instead of typing: dictation with Whisper running on your machine (mic button or
-    Ctrl+Shift+Space), and Read aloud on Claude's answers.
+    Ctrl+Shift+Space; on the GPU, words appear as you speak), and Read aloud on Claude's answers.
+  - Talk *with* Claude: a spoken conversation that works out the task, then "yes, go ahead"
+    approves the plan and Claude starts working.
   - Permission cards with Allow once / Always / Deny.
   - Queue messages while Claude works, or send one into the running turn with Ctrl+Enter.
   - Next-message suggestions.

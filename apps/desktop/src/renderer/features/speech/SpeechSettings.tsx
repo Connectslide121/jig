@@ -8,12 +8,16 @@ import {
 } from "../../../shared/speech";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
-import { Button, confirmDialog, Select, Spinner } from "../../ui";
+import { Button, confirmDialog, Select, Spinner, Switch } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { DICTATION_SHORTCUT } from "./DictationButton";
+import { hasGpu } from "./engine";
 import { speechVoices } from "./speak";
+
+const PAUSES = [600, 800, 1000, 1500, 2000, 3000];
+const RATES = [0.8, 1, 1.15, 1.3, 1.5];
 
 function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1_000_000)} MB`;
@@ -24,6 +28,7 @@ export function SpeechSettings() {
   const config = useConfig((s) => s.config);
   const [models, setModels] = useState<SpeechModelStatus[]>();
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>();
+  const [gpu, setGpu] = useState<boolean>();
   const refresh = () =>
     void call("speech.models")
       .then(setModels)
@@ -31,9 +36,11 @@ export function SpeechSettings() {
   useEffect(refresh, []);
   useEffect(() => {
     void speechVoices().then(setVoices);
+    void hasGpu().then(setGpu);
   }, []);
   if (!config) return <Spinner center />;
   const s = config.speech;
+  const variant = s.gpu && gpu ? "gpu" : "cpu";
   const languages = SPEECH_LANGUAGES.some((l) => l.code === s.language)
     ? SPEECH_LANGUAGES
     : [...SPEECH_LANGUAGES, { code: s.language, label: s.language }];
@@ -67,10 +74,34 @@ export function SpeechSettings() {
           >
             {SPEECH_MODEL_IDS.map((id) => (
               <option key={id} value={id}>
-                {SPEECH_MODELS[id].label} ({SPEECH_MODELS[id].size})
+                {SPEECH_MODELS[id].label} ({SPEECH_MODELS[id].size[variant]})
               </option>
             ))}
           </Select>
+        </SettingRow>
+        <SettingRow
+          label="Use the graphics card"
+          description={
+            gpu === false
+              ? "No graphics card WebGPU can use was found; Whisper runs on the processor."
+              : "Much faster with a good graphics card (WebGPU), close to real time. Off: the processor."
+          }
+        >
+          <Switch
+            label="Use the graphics card"
+            checked={s.gpu}
+            onChange={(v) => void updateConfig({ speech: { gpu: v } })}
+          />
+        </SettingRow>
+        <SettingRow
+          label="Show words as you speak"
+          description="The text appears while you talk and is corrected as you go. Off: once you stop."
+        >
+          <Switch
+            label="Show words as you speak"
+            checked={s.live}
+            onChange={(v) => void updateConfig({ speech: { live: v } })}
+          />
         </SettingRow>
         <SettingRow
           label="Language you speak"
@@ -99,7 +130,7 @@ export function SpeechSettings() {
                 !m || m.bytes === 0
                   ? "Not downloaded."
                   : m.downloaded
-                    ? "Downloaded, in Jig's folder (models)."
+                    ? `Downloaded for the ${m.variants.map((v) => (v === "gpu" ? "graphics card" : "processor")).join(" and ")}, in Jig's folder (models).`
                     : "Partly downloaded; the next dictation with it finishes the download."
               }
             >
@@ -120,8 +151,30 @@ export function SpeechSettings() {
         })}
       </SettingsSection>
       <SettingsSection
+        title="Talking with Claude"
+        description="Click the Talk button (sound waves) in a chat's message box to talk: Claude answers out loud, asks what it needs, and when you agree to its plan (say “yes, go ahead”) it starts working. Click again to stop. Headphones keep Claude from hearing itself."
+      >
+        <SettingRow
+          label="Pause that ends your turn"
+          description="How long you stay quiet before Claude answers."
+        >
+          <Select
+            value={String(s.pause)}
+            aria-label="Pause that ends your turn"
+            data-testid="settings-speech-pause"
+            onChange={(e) => void updateConfig({ speech: { pause: Number(e.target.value) } })}
+          >
+            {(PAUSES.includes(s.pause) ? PAUSES : [...PAUSES, s.pause].sort((a, b) => a - b)).map((ms) => (
+              <option key={ms} value={ms}>
+                {(ms / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} s
+              </option>
+            ))}
+          </Select>
+        </SettingRow>
+      </SettingsSection>
+      <SettingsSection
         title="Reading aloud"
-        description="Hover one of Claude's messages and click the speaker to hear it. It uses your system's voices; code blocks are skipped."
+        description="Hover one of Claude's messages and click the speaker to hear it. It uses your system's voices; code blocks are skipped. Talking with Claude uses the same voice."
       >
         <SettingRow
           label="Voice"
@@ -143,6 +196,20 @@ export function SpeechSettings() {
             {s.voice && !voices?.some((v) => v.name === s.voice) && (
               <option value={s.voice}>{s.voice}</option>
             )}
+          </Select>
+        </SettingRow>
+        <SettingRow label="Speed" description="How fast the voice speaks.">
+          <Select
+            value={String(s.rate)}
+            aria-label="Speed"
+            data-testid="settings-speech-rate"
+            onChange={(e) => void updateConfig({ speech: { rate: Number(e.target.value) } })}
+          >
+            {(RATES.includes(s.rate) ? RATES : [...RATES, s.rate].sort((a, b) => a - b)).map((r) => (
+              <option key={r} value={r}>
+                {r === 1 ? "Normal" : `${r}×`}
+              </option>
+            ))}
           </Select>
         </SettingRow>
       </SettingsSection>

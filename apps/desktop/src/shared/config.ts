@@ -99,6 +99,14 @@ export const ConfigSchema = z.object({
       language: z.string().max(10).default(""),
       /** System voice for reading Claude's messages aloud (its name); empty = the system's default. */
       voice: z.string().max(200).default(""),
+      /** Run Whisper on the graphics card (WebGPU) when there is one; much faster. */
+      gpu: z.boolean().default(true),
+      /** Show the words while you speak (Whisper runs again every moment on what you said so far). */
+      live: z.boolean().default(true),
+      /** Talking with Claude: how long a pause (ms) ends what you say and sends it. */
+      pause: z.number().int().min(400).max(4000).default(1000),
+      /** Speed of the voice that reads aloud (1 = normal). */
+      rate: z.number().min(0.5).max(2).default(1),
     })
     .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */

@@ -5,24 +5,52 @@
  */
 
 export const SPEECH_MODELS = {
-  tiny: { repo: "onnx-community/whisper-tiny", label: "Small and fast", size: "about 40 MB" },
-  base: { repo: "onnx-community/whisper-base", label: "Balanced", size: "about 80 MB" },
-  small: { repo: "onnx-community/whisper-small", label: "Most accurate, slower", size: "about 250 MB" },
+  tiny: {
+    repo: "onnx-community/whisper-tiny",
+    label: "Small and fast",
+    size: { cpu: "about 40 MB", gpu: "about 60 MB" },
+  },
+  base: {
+    repo: "onnx-community/whisper-base",
+    label: "Balanced",
+    size: { cpu: "about 80 MB", gpu: "about 130 MB" },
+  },
+  small: {
+    repo: "onnx-community/whisper-small",
+    label: "Most accurate",
+    size: { cpu: "about 250 MB", gpu: "about 470 MB" },
+  },
 } as const;
 
 export type SpeechModel = keyof typeof SPEECH_MODELS;
 export const SPEECH_MODEL_IDS = Object.keys(SPEECH_MODELS) as SpeechModel[];
 
-/** Files the worker needs for 8-bit weights on WebAssembly; all present = the model is downloaded. */
-export const SPEECH_REQUIRED_FILES = [
+/**
+ * How Whisper runs: on the graphics card (WebGPU: full-precision encoder, 4-bit decoder) or on the
+ * processor (WebAssembly, 8-bit weights). Each needs its own weight files.
+ */
+export type SpeechVariant = "cpu" | "gpu";
+export const SPEECH_VARIANTS: SpeechVariant[] = ["gpu", "cpu"];
+
+/** The model's description files, the same for both variants. */
+export const SPEECH_COMMON_FILES = [
   "config.json",
   "generation_config.json",
   "preprocessor_config.json",
   "tokenizer.json",
   "tokenizer_config.json",
-  "onnx/encoder_model_quantized.onnx",
-  "onnx/decoder_model_merged_quantized.onnx",
 ] as const;
+
+/** Weight files per variant (names follow transformers.js' dtype suffixes). */
+export const SPEECH_WEIGHT_FILES: Record<SpeechVariant, readonly string[]> = {
+  cpu: ["onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"],
+  gpu: ["onnx/encoder_model.onnx", "onnx/decoder_model_merged_q4.onnx"],
+};
+
+/** Every file a variant needs; all present = downloaded for it. */
+export function speechFiles(variant: SpeechVariant): string[] {
+  return [...SPEECH_COMMON_FILES, ...SPEECH_WEIGHT_FILES[variant]];
+}
 
 /** Languages offered in Settings (Whisper knows more; empty = recognise the language). */
 export const SPEECH_LANGUAGES: Array<{ code: string; label: string }> = [
@@ -44,7 +72,10 @@ export const SPEECH_LANGUAGES: Array<{ code: string; label: string }> = [
 
 export interface SpeechModelStatus {
   model: SpeechModel;
+  /** Downloaded for at least one variant. */
   downloaded: boolean;
+  /** The variants it is downloaded for. */
+  variants: SpeechVariant[];
   /** Bytes on disk for this model. */
   bytes: number;
 }

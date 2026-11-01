@@ -2,12 +2,19 @@ import { Mic } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn, Dialog, Spinner } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
-import { cancelDictation, startDictation, stopDictation, useDictation } from "./dictation";
+import {
+  cancelDictation,
+  type DictationText,
+  startDictation,
+  stopDictation,
+  useDictation,
+} from "./dictation";
+import { useSpeechEngine } from "./engine";
 
 export const DICTATION_SHORTCUT = "Mod+Shift+Space";
 
 /** Starts or stops dictating into a chat's composer. */
-export function toggleDictation(target: string, onText: (text: string) => void): void {
+export function toggleDictation(target: string, onText: DictationText): void {
   const { phase, target: current } = useDictation.getState();
   if (phase === "recording" && current === target) stopDictation();
   else if (phase === "idle") void startDictation(target, onText);
@@ -17,8 +24,10 @@ export function toggleDictation(target: string, onText: (text: string) => void):
  * The composer's microphone: click to speak, click again to stop; the text goes where the caret is.
  * Always the same square, whatever it is doing (no layout shift).
  */
-export function DictationButton({ target, onText }: { target: string; onText: (text: string) => void }) {
-  const phase = useDictation((s) => (s.target === target ? s.phase : "idle"));
+export function DictationButton({ target, onText }: { target: string; onText: DictationText }) {
+  const dictation = useDictation((s) => (s.target === target ? s.phase : "idle"));
+  const downloading = useSpeechEngine((s) => s.downloading?.target === target);
+  const phase = downloading ? "downloading" : dictation;
   const busyElsewhere = useDictation((s) => s.phase !== "idle" && s.target !== target);
   // A chat that closes while you speak drops the recording.
   useEffect(
@@ -34,7 +43,7 @@ export function DictationButton({ target, onText }: { target: string; onText: (t
       : phase === "transcribing"
         ? "Turning what you said into text…"
         : phase === "downloading"
-          ? "Downloading the dictation model…"
+          ? "Downloading the speech model…"
           : `Dictate: speak instead of typing (${formatShortcut(DICTATION_SHORTCUT)})`;
   return (
     <>
@@ -60,13 +69,14 @@ export function DictationButton({ target, onText }: { target: string; onText: (t
           <Mic className={cn("size-4.5", phase === "recording" && "motion-safe:animate-pulse")} />
         )}
       </button>
-      {phase === "downloading" && <DownloadDialog />}
+      {phase === "downloading" && <SpeechDownloadDialog />}
     </>
   );
 }
 
-function DownloadDialog() {
-  const progress = useDictation((s) => s.progress);
+/** The model download's progress (dictation and talking with Claude). */
+export function SpeechDownloadDialog() {
+  const progress = useSpeechEngine((s) => s.downloading);
   const percent = progress?.total ? Math.min(100, (progress.loaded / progress.total) * 100) : 0;
   const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(0)} MB`;
   // Closing it doesn't stop the download: the microphone keeps spinning and a note says when it's ready.
@@ -75,7 +85,7 @@ function DownloadDialog() {
     <Dialog
       open={open}
       width="sm"
-      title="Getting dictation ready"
+      title="Getting speech ready"
       onClose={() => setOpen(false)}
       testId="dictation-download"
     >
