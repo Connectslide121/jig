@@ -49,6 +49,7 @@ function change<T>(api: AddonHostApi, fn: (q: Queue) => Promise<[Queue, T]> | [Q
     if (JSON.stringify(next) !== json || JSON.stringify(await load(api)) !== json) {
       await api.storage.set(KEY, next);
       api.emit("changed");
+      showWaiting(api, next);
       const unused = unusedFiles(before, next);
       if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
     }
@@ -74,6 +75,8 @@ function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Q
       title: `Task queue paused: ${STATUS_LABEL[done.status].toLowerCase()}`,
       message: done.title,
       tone: "warning",
+      system: true,
+      actions: [{ label: "Open Tasks", view: "tasks" }],
     });
   }
   return next;
@@ -91,6 +94,8 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
           title: "Task queue finished",
           message: `${done} of ${q.tasks.length} done`,
           tone: "success",
+          system: true,
+          actions: [{ label: "Open Tasks", view: "tasks" }],
         });
       }
       return q;
@@ -128,7 +133,13 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
       };
       q = replace(q, failed);
       if (shouldPause(q, failed)) {
-        api.notify({ title: "Task queue paused", message: failed.error, tone: "warning" });
+        api.notify({
+          title: "Task queue paused",
+          message: failed.error,
+          tone: "warning",
+          system: true,
+          actions: [{ label: "Open Tasks", view: "tasks" }],
+        });
         return { ...q, running: false };
       }
     }
@@ -282,7 +293,13 @@ export async function chatChanged(
     if (status === "working" || status === "starting")
       return [replace(q, { ...task, status: "running", sawBusy: true }), undefined];
     if (status === "needs_you") {
-      api.notify({ title: "A queued task needs you", message: task.title, tone: "warning" });
+      api.notify({
+        title: "A queued task needs you",
+        message: task.title,
+        tone: "warning",
+        system: true,
+        actions: [{ label: "Open Tasks", view: "tasks" }],
+      });
       return [replace(q, { ...task, status: "needs_you", sawBusy: true }), undefined];
     }
     const chat = await api.chats.get(sessionId);
@@ -292,8 +309,14 @@ export async function chatChanged(
 }
 
 /** Every minute: catches up on chats that finished while nobody told us (a restart), and goes on. */
+/** The Tasks view's badge: how many tasks wait for you (badges are kept in memory, so `tick` sets it again). */
+function showWaiting(api: AddonHostApi, q: Queue): void {
+  api.setBadge("tasks", q.tasks.filter((t) => t.status === "needs_you").length);
+}
+
 export async function tick(_args: unknown, api: AddonHostApi): Promise<void> {
   const q = await load(api);
+  showWaiting(api, q);
   if (!q.running && !q.tasks.some(isActive)) return;
   await change(api, async (current) => [await advance(api, await reconcile(api, current)), undefined]);
 }

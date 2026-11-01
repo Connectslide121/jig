@@ -528,8 +528,9 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
             next.warned.push(id);
             api.notify({
               title: `${item.name}: ${env.name} deploy without a release`,
-              message: `Run ${run.buildNumber ?? id} deploys ${commit.slice(0, 7)}, which has no version. Release first? (Releases panel)`,
+              message: `Run ${run.buildNumber ?? id} deploys ${commit.slice(0, 7)}, which has no version. Release first?`,
               tone: "warning",
+              actions: [{ label: "Open Releases", view: "releases" }],
             });
           }
           waiting = true;
@@ -556,8 +557,9 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
         } else if (action === "warn" && !next.warned.includes(id)) {
           api.notify({
             title: `${item.name}: deployed to ${env.name} without a release`,
-            message: `${commit.slice(0, 7)} has no version. Make a release in the Releases panel.`,
+            message: `${commit.slice(0, 7)} has no version. Make a release next time.`,
             tone: "warning",
+            actions: [{ label: "Open Releases", view: "releases" }],
           });
         }
         await logDeploy(api, item.path, {
@@ -595,8 +597,9 @@ export async function remind(_: unknown, api: AddonHostApi) {
     ) {
       api.notify({
         title: `${s.name} has unreleased work`,
-        message: `${s.unreleased} commits since ${s.latest?.tag ?? "the start"}. Time for a release? (Releases panel)`,
+        message: `${s.unreleased} commits since ${s.latest?.tag ?? "the start"}. Time for a release?`,
         tone: "info",
+        actions: [{ label: "Open Releases", view: "releases" }],
       });
       reminded[s.path] = now.toISOString();
       changed = true;

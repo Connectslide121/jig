@@ -13,6 +13,7 @@ import {
   IconButton,
   Spinner,
   useAddon,
+  useJigEvent,
   useProjectList,
   useStorage,
   useWorkspaceList,
@@ -89,6 +90,9 @@ function useOverview() {
       clearInterval(timer);
     };
   }, [ctx, key]);
+  // A commit or branch switch (in a chat, a terminal or another app) shows right away, not at the next poll.
+  useJigEvent("git.commit", () => void refresh(ctx));
+  useJigEvent("git.branch", () => void refresh(ctx));
   return { repos, reload: () => rescan(ctx) };
 }
 

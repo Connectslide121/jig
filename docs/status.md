@@ -244,7 +244,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     finishes / needs you / fails, a commit lands, the branch or the active project changes, live
     output from long-running programs (`api.spawn`), file watching (`api.fs.watch`), results in Go to
     (Ctrl+P), and calling each other's shared functions (`exports`). The builder and the weekly
-    review know all of it. Try it: ask the builder for "a view that counts TODO comments in this
+    review know all of it. The built-in add-ons use them where it clearly helps: Pipelines' "run
+    finished" and Tasks' "needs you / paused / finished" are also system notifications with a button
+    (Open run, Open Tasks), the Tasks icon counts tasks waiting for you, Workflows and Releases
+    reminders have Open Workflows / Open Releases, and Repos refreshes right after a commit or branch
+    switch. Try it: ask the builder for "a view that counts TODO comments in this
     project, with a badge, that updates when files change and after each commit".
   - Saving a file reloads that add-on; a crash shows "Turn off" in its place, never a broken app.
   - Host code runs in its own process with permission-checked `exec`/`fs`/`fetch`.

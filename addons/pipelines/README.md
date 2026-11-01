@@ -30,7 +30,7 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
   and every minute otherwise, only while Jig is in front; a finished run's stages
   (`az devops invoke … Timeline`) are asked for once.
 - **Watcher:** runs you started from Jig are checked every minute; you get a notification when one
-  succeeds or fails.
+  succeeds or fails, with **Open run**, and a system notification when Jig isn't in front (D-215).
 - **More pipelines in your organisations** (collapsed, loaded when opened; D-125): every other
   pipeline of the organisations your `az` login belongs to (or the ones listed in Settings →
   Pipelines), per organisation and project; Run opens the same form, described from Azure DevOps.

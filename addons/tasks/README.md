@@ -25,7 +25,8 @@ went, so you read the results as a table instead of scrolling one long chat.
   no task uses them any more (`unusedFiles`) or the dialog is cancelled (the host's `discard`).
 - **Start / Pause:** the queue runs in the add-on's host, so it goes on with the view closed. A task
   that needs you (a permission or a question) shows "Needs you" and notifies; answer in its chat and
-  the queue goes on. With **Stop when a task fails** on (the default) a failed, blocked or broken task
+  the queue goes on. The Tasks view's icon counts the tasks waiting for you, and "needs you", "paused"
+  and "finished" are also system notifications when Jig isn't in front, with **Open Tasks** (D-215). With **Stop when a task fails** on (the default) a failed, blocked or broken task
   pauses the queue.
 - **The report:** while a task runs, its chat is told (each turn, `contributes.context`) that it is
   task N of the queue and to call `addon_tasks_report` when done: outcome (done, partial, failed,

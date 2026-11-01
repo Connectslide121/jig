@@ -263,6 +263,9 @@ export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
           title: `${t.name} ${state === "succeeded" ? "succeeded" : state === "failed" ? "failed" : state === "canceled" ? "was cancelled" : "finished"}`,
           message: `Run ${r.buildNumber} on ${r.branch}`,
           tone: state === "succeeded" ? "success" : state === "failed" ? "danger" : "warning",
+          // You started it and moved on: tell you even when you're in another app.
+          system: true,
+          actions: [{ label: "Open run", url: runUrl(t.org, t.project, t.runId) }],
         });
       }
     } catch (error) {
