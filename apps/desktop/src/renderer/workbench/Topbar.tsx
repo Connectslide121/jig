@@ -36,7 +36,7 @@ const TOPBAR_MENU = "topbar";
  * get a menu of their own. Search (Ctrl+P or Ctrl+K) also finds registered actions.
  */
 const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
-  { menu: "Chats", groups: ["Chats", "Claude", "Workflows"] },
+  { menu: "Chats", groups: ["Chats", "Claude", "Workflows", "Meetings"] },
   { menu: "Code", groups: ["Git", "Files", "Terminals", "Pipelines"] },
   { menu: "Build", groups: ["Build"] },
   { menu: "View", groups: ["Layout", "Appearance"] },
@@ -266,7 +266,7 @@ export function Topbar() {
           <button
             type="button"
             data-testid="topbar-new-chat"
-            className="no-drag flex h-7 items-center gap-1.5 rounded-md border border-line-strong px-2 text-fg hover:border-accent hover:bg-hover"
+            className="no-drag flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-line-strong px-2 whitespace-nowrap text-fg hover:border-accent hover:bg-hover"
             onClick={() => runAction("jig.newSession")}
           >
             <MessageSquarePlus className="size-4 text-accent" />

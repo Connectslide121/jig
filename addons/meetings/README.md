@@ -3,7 +3,7 @@
 Join Teams meetings in a separate Jig window, capture named live captions, ask Claude with any
 project's context, and review actions for the task queue. Meetings are global (D-217).
 
-- **Open:** Meetings → Meetings, or search for Meetings. The call stays in its own window while
+- **Open:** Chats → Meetings, or search for Meetings. The call stays in its own window while
   you switch projects, chats and files. Closing an active window offers Keep meeting running or Leave.
 - **Setup:** create a public desktop Entra registration and an Azure Communication Services resource
   with `scripts/setup-meetings.ps1 -SubscriptionId <subscription-id>` (usage charges apply). It writes
