@@ -57,7 +57,8 @@ in this order:
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
 | "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
-| "make a plan" | a plan to approve (ExitPlanMode); the reply says the mode after approval |
+| "make a plan" (or a message starting "go ahead") | a plan to approve (ExitPlanMode); the reply says the mode after approval |
+| "look at the code" | searches (Grep) and reads `cart.ts` (Read), slowly, then asks a question: Claude looking at the code while you talk (D-210) |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |
 | "background job" | a Bash command that keeps running in the background (Stop ends it) |
 | "edit <file>" | edits the file's first line; the card shows the diff |

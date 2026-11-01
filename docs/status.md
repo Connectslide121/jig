@@ -143,6 +143,15 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
   Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
   instructions for talking and for adding system voices (Windows, macOS, Linux).
+- Talking window (D-210): talking opens a window over the chat with sound waves (blue: you, from
+  the microphone; accent: Claude, a pulse per spoken word), the sentence being said now, and tabs
+  for the whole Conversation (scroll back) and the Plan. Claude searches and reads the code while
+  you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every few
+  seconds while it thinks). Controls: Mute, Stop Claude's voice, End talking, Go ahead. "Go ahead"
+  (said or pressed) approves the plan, or asks Claude for it and approves it as it comes; talking
+  ends and Claude works as in any chat, with a soft note every 2.4 s and a chime when it finishes
+  or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
+  work goes on, and the chat returns to its own permission mode when idle.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
@@ -605,6 +614,12 @@ Things the cloud build environment couldn't verify:
   Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
   words, corrections); talk with Claude with headphones, then with speakers (the system voice may
   be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
+- **Talking window (D-210):** untested with a real microphone and voice: whether the waves follow
+  your voice smoothly (128 ms batches played back in 16 ms steps), whether your system voice gives
+  word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working
+  note and chimes, and whether "go ahead" is heard reliably. Try: plan a small change by voice, ask
+  Claude to look at something in the code, then press or say "go ahead" and listen for the sound
+  while it works and the chime at the end.
 - **Checked on Windows 11 (Oct 29, first local run):**
   - `npm install` works (Node 24, Electron download, node-pty, the Agent SDK's win32 package).
   - A fresh clone used to fail `npm run check`: Git for Windows checks files out with CRLF

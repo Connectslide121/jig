@@ -32,7 +32,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 18 | [Next: Jon's list](18-next.md) | ✅ | done (the rest is in the backlog): file explorer, light editing in Preview, projects you manage, arranging Scripts/Pipelines, split view, project links, Releases (start versioning), Learning 2 (evidence, profile, coaching, check-ins, workflows); after it: worktree chats, sharing add-ons, review comments, add-on tools and data scope, a repo sweep, named layouts, Go to, workflow event triggers, chats board, add-on gallery, the task queue |
 | 19 | [Model defaults and desktop polish](19-models-and-desktop-polish.md) | 🟡 | configurable native model defaults, pipeline project visibility, grouped menus, money formatting and Windows icon; installer verification remains |
 | 20 | [Skills library](20-skills-library.md) | ✅ | nine curated native plugins, one library with global/project controls and AI feature defaults |
-| 21 | [Speech](21-speech.md) | 🟡 | dictation with local Whisper (mic button, Ctrl+Shift+Space) with live text and WebGPU, Read aloud, talking with Claude (voice turns, spoken replies, approve the plan by voice), Settings → Speech; real download, GPU and microphones need checking on a real machine |
+| 21 | [Speech](21-speech.md) | 🟡 | dictation with local Whisper (mic button, Ctrl+Shift+Space) with live text and WebGPU, Read aloud, talking with Claude (voice turns, spoken replies, approve the plan by voice) in a talking window with sound waves, Claude reading the code while you plan, go-ahead hand-off with a working sound, Settings → Speech; real download, GPU and microphones need checking on a real machine |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

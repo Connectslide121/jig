@@ -107,6 +107,8 @@ export const ConfigSchema = z.object({
       pause: z.number().int().min(400).max(4000).default(1000),
       /** Speed of the voice that reads aloud (1 = normal). */
       rate: z.number().min(0.5).max(2).default(1),
+      /** Soft sounds while Claude works after you hand it a task by voice, and when it finishes (D-210). */
+      workSound: z.boolean().default(true),
     })
     .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */

@@ -36,5 +36,32 @@ speech live conversation, and when we agree to the task … it starts working".
 - [ ] Check on a real machine: WebGPU speed and the GPU download, echo without headphones,
       turn-taking feel with `speech.pause`, how well Whisper hears short answers ("yes").
 
+## The talking window (D-210)
+
+Asked for by Jon: "a dedicated interface … sound waves when we talk … one line showing the sentence
+being said", "Claude able to search code while we are talking", "when I give it the go ahead it
+should start its work and the speech mode should turn off", "some sound that indicates it's working
+… during the work", "saying bye should not stop the chat or Claude's work", controls for closing,
+going ahead and the transcript.
+
+- [x] A window over the chat while talking (`VoiceDialog.tsx`), always the same size: sound waves
+      (`Waves.tsx`, `meter.ts`) for you and for Claude, the status line with what Claude is doing,
+      and the sentence being said now.
+- [x] Conversation tab: every line said, scrollable, follows the end unless you scroll up; Plan tab:
+      the plan Claude asks to start, shown as it comes.
+- [x] Controls: Mute, Stop Claude's voice, End talking, Go ahead.
+- [x] Claude looks at the code while you plan (guidance: search and read, say what it's looking at;
+      plan mode keeps it read-only); a soft note while it thinks.
+- [x] Go ahead (said: `isGoAhead`, or the button): approves the plan, or asks for it and approves it
+      as it comes; talking ends; Claude works in the chat's work mode.
+- [x] Working sound (`cues.ts`): a soft note every 2.4 s while the chat works, a chime when done or
+      when it needs you; `speech.workSound`.
+- [x] "Bye" ends only talking: Claude's work goes on (followed by the sound), and the chat returns to
+      its own permission mode when idle.
+- [x] e2e: looking at the code, the transcript and plan tabs, go-ahead by voice and by button, mute,
+      bye during work.
+- [ ] Check on a real machine: waves with a real microphone, word pulses with your system voice,
+      the volume of the sounds.
+
 Later ideas: neural voices (Piper/Kokoro on the GPU) instead of the system's; reading every reply
 aloud outside talking; a push-to-talk key.

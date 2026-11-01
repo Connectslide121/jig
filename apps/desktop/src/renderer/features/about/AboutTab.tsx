@@ -593,7 +593,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Paste screenshots, drop PDFs, Word, Excel and PowerPoint files",
                 "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine, words appearing as you speak; Read aloud on Claude's answers",
-                "Talk with Claude: the Talk button (sound waves) starts a spoken conversation; agree on the plan and say “yes, go ahead” to start the work",
+                "Talk with Claude: the Talk button (sound waves) opens a talking window with live waves and the sentence being said; Claude looks at the code while you plan, “go ahead” (or the button) starts the work, and a soft sound plays while it works",
                 "Permission cards: allow once, always, or deny",
                 "Queue messages while Claude works",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",

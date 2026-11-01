@@ -58,38 +58,103 @@ test("speech: settings choose the model and language; only Jig's models can be r
   expect(await hostCall(page, "speech.removeModel", { model: "../../etc" })).toMatchObject({ ok: false });
 });
 
-test("speech: talk with Claude, agree on a plan by voice and it starts working", async ({
-  page,
-  jigHome,
-}) => {
+async function talkingChat(page: import("@playwright/test").Page, jigHome: string, mode?: string) {
   await mkdir(join(jigHome, "shop"), { recursive: true });
   await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
   await page.keyboard.press("Control+N");
   const tab = page.locator("[data-tab-id]:not(.hidden)");
   const voice = tab.getByTestId("composer-voice");
-  const metas = async () =>
-    ((await hostCall(page, "sessions.list")) as { value: Array<{ voice?: boolean; permissionMode: string }> })
-      .value[0];
-
-  await voice.click();
-  await expect(voice).toHaveAttribute("data-phase", "listening");
-  await expect.poll(metas).toMatchObject({ voice: true, permissionMode: "plan" });
-
+  const meta = async () =>
+    (
+      (await hostCall(page, "sessions.list")) as {
+        value: Array<{ id: string; voice?: boolean; permissionMode: string; status: string }>;
+      }
+    ).value[0];
   // The fake engine hears what the test says (no microphone in tests).
   const say = (text: string) =>
     page.evaluate((detail) => window.dispatchEvent(new CustomEvent("jig-fake-speech", { detail })), text);
+  if (mode) {
+    const id = (await meta())!.id;
+    await hostCall(page, "sessions.setPermissionMode", { id, mode });
+    await expect.poll(async () => (await meta())?.permissionMode).toBe(mode);
+  }
+  await voice.click();
+  const dialog = page.getByTestId("voice-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(voice).toHaveAttribute("data-phase", "listening");
+  await expect.poll(meta).toMatchObject({ voice: true, permissionMode: "plan" });
+  return { tab, voice, dialog, meta, say };
+}
+
+test("speech: talk with Claude, it looks at the code, agree on a plan and it starts working", async ({
+  page,
+  jigHome,
+}) => {
+  const { tab, voice, dialog, meta, say } = await talkingChat(page, jigHome);
+
+  // Claude looks at the code while you plan; the window says what it is doing.
+  await say("Please look at the code for the cart");
+  await expect(dialog.getByTestId("voice-status")).toContainText(/Searching the code|Reading cart\.ts/);
+  await expect(dialog.getByTestId("voice-now")).toContainText("Shall the discount go there?");
+
+  // The conversation so far, yours and Claude's.
+  await dialog.getByRole("tab", { name: "Conversation" }).click();
+  const lines = dialog.getByTestId("voice-line");
+  await expect(lines.first()).toHaveAttribute("data-who", "you");
+  await expect(lines.first()).toContainText("look at the code");
+  await expect(dialog.getByTestId("voice-transcript")).toContainText("worked out in cart.ts");
+
+  // The plan shows in the window as it comes.
   await say("Let's make a plan for discounts");
-  await expect(tab.getByTestId("plan-card")).toBeVisible();
+  await expect(dialog.getByTestId("voice-plan")).toContainText("discount");
   await expect(voice).toHaveAttribute("data-said", /Shall I start\?/);
 
+  // The go-ahead: Claude starts, talking ends, and the work is followed with sounds until it's done.
   await say("Yes, go ahead.");
+  await expect(dialog).toBeHidden();
+  await expect(voice).toHaveAttribute("data-phase", "off");
   await expect(tab.getByTestId("assistant-message").last()).toContainText(
     "Starting on the plan (mode: acceptEdits)",
   );
-  await expect(voice).toHaveAttribute("data-said", /Starting on the plan/);
+  await expect(voice).toHaveAttribute("data-last-cue", "done");
+  await expect(voice).not.toHaveAttribute("data-following", "true");
+  await expect.poll(async () => (await meta())?.voice).toBeFalsy();
   await expect(tab.getByTestId("composer-input")).toHaveValue("");
+});
 
-  await say("Bye!");
+test("speech: the Go ahead button asks for the plan and starts it; mute ignores you", async ({
+  page,
+  jigHome,
+}) => {
+  const { tab, voice, dialog, say } = await talkingChat(page, jigHome);
+
+  await dialog.getByTestId("voice-mute").click();
+  await expect(dialog.getByTestId("voice-status")).toContainText("Microphone muted");
+  await say("Let's make a plan for discounts");
+  await page.waitForTimeout(500);
+  await expect(tab.getByTestId("plan-card")).toHaveCount(0);
+  await dialog.getByTestId("voice-mute").click();
+
+  await dialog.getByTestId("voice-go-ahead").click();
+  await expect(dialog).toBeHidden();
+  await expect(tab.getByTestId("user-message").last()).toContainText("Go ahead, start working.");
+  await expect(tab.getByTestId("assistant-message").last()).toContainText(
+    "Starting on the plan (mode: acceptEdits)",
+  );
+  await expect(voice).toHaveAttribute("data-last-cue", "done");
+});
+
+test("speech: bye ends talking, not the chat or Claude's work", async ({ page, jigHome }) => {
+  const { tab, voice, dialog, meta, say } = await talkingChat(page, jigHome, "acceptEdits");
+
+  await say("Please look at the code for the cart");
+  await expect(dialog.getByTestId("voice-status")).toContainText(/Searching the code|Reading cart\.ts/);
+  await say("OK, bye!");
+  await expect(dialog).toBeHidden();
   await expect(voice).toHaveAttribute("data-phase", "off");
-  await expect.poll(async () => (await metas())?.voice).toBeFalsy();
+  // Claude carries on and finishes; then the chat is back in its own mode.
+  await expect(tab.getByTestId("assistant-message").last()).toContainText("worked out in cart.ts");
+  await expect(voice).toHaveAttribute("data-last-cue", "done");
+  await expect.poll(async () => (await meta())?.permissionMode).toBe("acceptEdits");
+  expect((await meta())?.voice).toBeFalsy();
 });

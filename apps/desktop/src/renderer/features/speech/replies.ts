@@ -12,7 +12,11 @@ const clean = (text: string) =>
 const YES =
   /^(yes|yeah|yep|yup|sure|ok|okay|alright|all right|go|go ahead|do it|start|let's go|sounds good|perfect|great|approved?|correct|right|of course|please do|absolutely|sí|si|vale|dale|claro|ja|oui|da)(?= |$)/;
 const NO = /^(no|nope|nah|don't|do not|wait|not yet|hold on|stop|cancel)(?= |$)/;
-const END = /^(stop listening|stop talking|that's all|bye|goodbye|good bye|end conversation|we're done)$/;
+const END =
+  /^(ok |okay |thanks |thank you )?(stop listening|stop talking|that's all|bye( bye)?|goodbye|good bye|see you( later)?|talk (to you )?later|end conversation|we're done)( claude| for now| then)?$/;
+/** Phrases that hand the work to Claude: "go ahead", "start working", "let's do it". */
+const GO_AHEAD =
+  /\b(go ahead|go for it|start working|start the work|get to work|get started|let's do it|let's do this|make it so|you can start|start now|begin now)\b/;
 
 /** "Yes, go ahead": a short answer that agrees and adds nothing else. */
 export function isYes(text: string): boolean {
@@ -26,6 +30,18 @@ export function isYes(text: string): boolean {
 export function isNo(text: string): boolean {
   const t = clean(text);
   return NO.test(t) && t.split(" ").length <= 3;
+}
+
+/**
+ * "Go ahead, start working": hands the work to Claude even before it has shown a plan (a plain "yes"
+ * might just answer its question, so it isn't enough). Short, and without changes in it.
+ */
+export function isGoAhead(text: string): boolean {
+  const t = clean(text);
+  if (!GO_AHEAD.test(t) || NO.test(t)) return false;
+  return (
+    !/\b(but|except|change|instead|however|although|first|before)\b/.test(t) && t.split(" ").length <= 10
+  );
 }
 
 /** "Bye", "stop listening": ends talking. */
@@ -49,4 +65,29 @@ export function permissionPrompt(request: PermissionRequest): string {
       .join(" ");
   }
   return `${request.title ?? `Claude wants to use ${request.toolName}`}. Allow it?`;
+}
+
+const fileName = (path: unknown) => (typeof path === "string" ? path.split(/[\\/]/).pop() : undefined);
+
+/** What Claude is doing with a tool, in a few words for the talking window ("Reading cart.ts"). */
+export function toolActivity(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case "Grep":
+    case "Glob":
+      return "Searching the code";
+    case "Read":
+      return fileName(input.file_path) ? `Reading ${fileName(input.file_path)}` : "Reading a file";
+    case "Task":
+    case "Agent":
+      return "Exploring the code";
+    case "WebSearch":
+    case "WebFetch":
+      return "Looking it up online";
+    case "Bash":
+      return "Running a command";
+    case "TodoWrite":
+      return "Making a list";
+    default:
+      return name.startsWith("mcp__") ? `Using ${name.split("__")[2] ?? name}` : `Using ${name}`;
+  }
 }
