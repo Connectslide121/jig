@@ -109,8 +109,8 @@ stays inside the composer; full labels remain available in tooltips. Alignment/o
 includes an 800-pixel window. The screenshot generator selects the last preview tab when several exist.
 The screenshot suite passes; chat, overview, details and related chat screenshots were refreshed.
 
-Task entry (2026-10-31): Add tasks uses compact single-line prompt rows with inline filename chips.
-The attachment area reserves its width and scrolls horizontally; files never grow a row or move its
+Task entry (2026-11-01, D-212): Add tasks prompts are 3 rows tall; files sit in a fixed box beside
+them, one per line, with "+N more" (a menu) past 3 and no scrolling; files never grow a row or move its
 controls. Click a filename to preview or × to remove; paste, drop and paperclip still work.
 Validation: production build and `npm run check` pass (592 tests, 8 skipped). The fake-engine task
 queue regression verifies image paste, document drop, unchanged row/prompt geometry, retained files
@@ -267,7 +267,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
     changed parameters) and its stages; **Run** opens a modal form with the branch, a picker per YAML
-    parameter and a checkbox per boolean, queued only on **Queue run**; notifications when your
+    parameter and a checkbox per boolean, queued only on **Queue run** (the form closes at once, toasts
+    say queueing, then queued; D-211); notifications when your
     runs finish. New pipelines join their repository on their own and the form reads the YAML in
     Azure DevOps on the picked branch (D-166). Every organisation's other pipelines (D-125) under
     "More pipelines", with the same form.

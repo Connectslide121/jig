@@ -137,21 +137,12 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await expect(form.getByTestId("pipeline-summary")).toContainText(
     "on develop with Deploy to: production · Run tests: false",
   );
-  const queue = form.getByTestId("pipeline-queue");
-  const box = await queue.boundingBox();
-  await queue.click();
-  await expect(queue).toHaveAttribute("aria-busy", "true");
-  await expect(queue).toBeDisabled();
-  await expect(queue).toHaveCSS("opacity", "1");
-  const spinner = queue.getByLabel("Loading");
-  await expect(spinner).toBeVisible();
-  expect(await spinner.evaluate((el) => getComputedStyle(el).color)).toBe(
-    await queue.evaluate((el) => getComputedStyle(el).color),
-  );
-  expect(await queue.boundingBox()).toEqual(box);
-  await page.screenshot({ path: "test-results/pipeline-queue-spinner.png" });
-  await expect(page.getByTestId("toast")).toContainText("Shop CI queued");
+  // Queueing doesn't hold the form open: it closes at once, a toast says it's queueing, then one says it's queued.
+  await form.getByTestId("pipeline-queue").click();
   await expect(form).toHaveCount(0);
+  await expect(page.getByTestId("toast").filter({ hasText: "Queueing Shop CI" })).toBeVisible();
+  await expect(page.getByTestId("toast").filter({ hasText: "Shop CI queued" })).toBeVisible();
+  await expect(page.getByTestId("toast").filter({ hasText: "Queueing Shop CI" })).toHaveCount(0);
   const args = JSON.parse(await readFile(join(jigHome, "az-run.json"), "utf8")) as string[];
   expect(args).toEqual(
     expect.arrayContaining(["--id", "12", "--branch", "develop", "deployTo=production", "runTests=false"]),
