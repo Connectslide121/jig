@@ -69,6 +69,12 @@ start and daily), open the folder, delete all.
   ≥ 0.5 on content words; ≥ 3 on ≥ 2 days). Each pattern has a stable `key`, counts, distinct days and
   projects, examples, and a score; the top 20 survive. Patterns you said "Never" to, or that already
   have a suggestion, are left out.
+- **Practices** (`practicePatterns` in `review.ts`, D-213), kind `practice`, security first: a secret
+  (`«secret»`) in a message or a command, a download piped into a shell, certificate checks off,
+  `chmod 777`, permission checks skipped, `sudo` package installs (each once is enough); force pushes
+  without `--force-with-lease`, `--no-verify` (2+), pushes straight to main/master (3+ on 2+ days); and
+  5+ commits on 2+ days with no tests run (by you or Claude: `npm test`, `vitest`, `pytest`, `dotnet
+  test`…).
 - **View habits** (`viewHabitPatterns`, D-175): a view you keep opening as a main tab (4+ times on
   3+ days) and haven't moved to a region since; the reflection may suggest placing it.
 - Learning 2 signals (`signals.ts`): **friction** that repeats (3+ on 2+ days, one pattern per
@@ -98,14 +104,25 @@ notification. `learning.worked` caches it for an hour.
 
 ## 3. Reflect (AI, on demand or weekly)
 
-Only when there are patterns or notes: one Claude Code query without tools (`Engine.oneShot`, model
+When there are patterns or notes, or enough activity to review (30+ events on 3+ days,
+`enoughToReview`, D-213): one Claude Code query without tools (`Engine.oneShot`, model
 `learning.model`, default `haiku`) gets the patterns, the add-on catalog and your past answers, with
 instructions to return at most 3 suggestions as JSON (title, why with evidence, goal, level, kind,
-minutes saved per week, pattern keys, note ids, workflow steps) plus `profileUpdates`. Learning 2 adds
+minutes saved per week, pattern keys, note ids, workflow steps, `addonId`, `actionId`) plus
+`profileUpdates`.
+
+**What Claude looks at, in order (D-213):** safety and good practice (security first); what you
+already have (an add-on, a Jig feature, a setting, a skill); how you work with Claude (prompting and
+habits, quoting your own messages); repeated work (workflow, routine, CLAUDE.md); a new tool last, at
+most one per review (also enforced by the parser). It also gets: an overview of the activity per kind
+(`activityOverview`), up to 20 recent messages (masked, pastes collapsed, 6 per day, 240 characters;
+`promptSample`), Jig's features with their action ids (`main/learning/features.ts`), and each add-on's
+use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, shown as `Used:` in the
+catalog with the add-on's action ids). Learning 2 adds
 the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
 a tip is allowed (at most one coaching tip a week). The reply is validated (`main/learning/reflect.ts`):
 extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
-**No patterns and no notes → no AI call → no quota used.**
+**No patterns, no notes and too little activity → no AI call → no quota used.**
 
 Triggers: **Look for patterns now** (Suggestions view, Settings → Learning, grouped menus) and the weekly
 run (`learning.schedule`, default Monday 10:00 local time). A scheduled run that was missed because Jig
@@ -127,6 +144,9 @@ Each kind has its own action:
 | `automation` | **Make a routine** → a chat that makes a Claude Code routine |
 | `prompting-tip`, `habit-tip` | **Got it** / **Remind me** / **Dismiss** (at most one tip a week, always with your own examples) |
 | `profile` | **Add to my profile** (written at once) |
+| `practice` | **Fix it with Claude** → a chat that explains the risk and fixes it (D-213) |
+| `use-addon` | **Switch it on** when it is off, else **Show me** (runs `actionId`), else **Got it** |
+| `use-feature` | **Show me** (runs the Jig action `actionId`), else **Got it** |
 
 - **Not now** → hidden for 14 days. **Never** → its patterns are blocked for good.
 - **Did it help?** A week or more after a suggestion was built or adopted, the next run compares how

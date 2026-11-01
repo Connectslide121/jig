@@ -1,7 +1,15 @@
 import { type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import { addonToolName, addonViewId, checkTokens, intervalMs, scopeLabel, uiExports } from "@jig/sdk";
+import {
+  addonActionId,
+  addonToolName,
+  addonViewId,
+  checkTokens,
+  intervalMs,
+  scopeLabel,
+  uiExports,
+} from "@jig/sdk";
 import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
@@ -405,7 +413,8 @@ export class AddonService {
   }
 
   /** A text catalog of the add-ons for Claude (jig_list_addons) and the builder. */
-  catalog(): string {
+  /** The add-ons as text for Claude (the builder, `jig_list_addons`); `usage` adds a line each (Learning, D-213). */
+  catalog(usage?: (id: string) => string): string {
     const lines: string[] = [];
     for (const { info } of this.loaded.values()) {
       const c = info.manifest?.contributes;
@@ -413,7 +422,7 @@ export class AddonService {
         ? [
             ...c.views.map((v) => `view "${v.title}" (${addonViewId(info.id, v.id)})`),
             ...c.tabs.map((t) => `tab "${t.title}"`),
-            ...c.actions.map((a) => `Tools action "${a.title}"`),
+            ...c.actions.map((a) => `Tools action "${a.title}" (${addonActionId(info.id, a.id)})`),
             ...c.menus.map((m) => `${m.slot} menu "${m.title}"`),
             ...c.statusbar.map(() => "status bar item"),
             ...c.dashboard.map(() => "dashboard widget"),
@@ -430,7 +439,8 @@ export class AddonService {
             : "") +
           (info.manifest?.storage?.scope && info.manifest.storage.scope !== "global"
             ? `\n  Data: ${scopeLabel(info.manifest.storage.scope)}`
-            : ""),
+            : "") +
+          (usage ? `\n  Used: ${usage(info.id)}` : ""),
       );
     }
     return lines.length ? lines.join("\n") : "No add-ons are installed.";

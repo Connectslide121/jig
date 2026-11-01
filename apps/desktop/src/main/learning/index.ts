@@ -15,6 +15,7 @@ import { sessionManager } from "../sessions";
 import { jigHome, paths } from "../state/paths";
 import { ActivityLog, isExcluded } from "./activity";
 import { claudeWrittenLines } from "./claudeLines";
+import { featuresText } from "./features";
 import { KnowledgeStore, profileIsEmpty } from "./knowledge";
 import { profileInterviewPrompt, REFLECTION_INSTRUCTIONS } from "./reflect";
 import { LearningService } from "./service";
@@ -88,7 +89,8 @@ export async function startLearning(): Promise<void> {
     activity,
     schedule: () => getConfig().learning.schedule,
     recording: () => getConfig().learning.recording,
-    catalog: () => addonService().catalog(),
+    catalog: (usage) => addonService().catalog(usage),
+    features: featuresText,
     reflect: (prompt) => {
       const { engine, learning } = getConfig();
       return getEngine().oneShot(prompt, {

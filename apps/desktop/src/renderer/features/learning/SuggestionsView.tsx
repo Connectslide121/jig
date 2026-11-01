@@ -8,7 +8,10 @@ import {
   Lightbulb,
   ListChecks,
   MessageSquare,
+  MousePointerClick,
+  Power,
   Search,
+  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -24,6 +27,7 @@ import {
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { Badge, Button, Card, Empty, Spinner } from "../../ui";
+import { runAction, useRegistry } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { newSession } from "../sessions/actions";
@@ -42,6 +46,9 @@ const KIND_LABEL: Record<Suggestion["kind"], string> = {
   "habit-tip": "habit tip",
   automation: "automation",
   profile: "your profile",
+  "use-addon": "an add-on you have",
+  "use-feature": "a Jig feature",
+  practice: "better practice",
 };
 
 async function answer(s: Suggestion, a: SuggestionAnswer) {
@@ -65,6 +72,12 @@ function useNotes(): EvidenceNote[] {
 /** Each kind's own action (the builder, a chat with a draft, a workflow draft, the profile). */
 function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: () => Promise<void> } {
   const workflows = useAddons((a) => a.addons.some((x) => x.id === "workflows" && x.enabled));
+  const addon = useAddons((a) => a.addons.find((x) => x.id === s.addonId));
+  const hasAction = useRegistry((r) => Boolean(s.actionId && r.actions[s.actionId]));
+  const showMe = async () => {
+    runAction(s.actionId!);
+    await answer(s, "act");
+  };
   const chat = (draft: string) => async () => {
     await newSession(undefined, undefined, draft);
     await answer(s, "act");
@@ -110,6 +123,29 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
       };
     case "profile":
       return { label: "Add to my profile", icon: UserRound, run: () => answer(s, "act") };
+    case "practice":
+      return {
+        label: "Fix it with Claude",
+        icon: ShieldCheck,
+        run: chat(
+          `Help me change this practice (explain the risk briefly, then help me fix it here; never print secrets): ${s.goal}`,
+        ),
+      };
+    case "use-addon":
+      if (addon && !addon.enabled)
+        return {
+          label: "Switch it on",
+          icon: Power,
+          run: async () => {
+            await call("addons.setEnabled", { id: addon.id, enabled: true });
+            await answer(s, "act");
+          },
+        };
+      if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
+    case "use-feature":
+      if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
     default:
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
   }
@@ -124,7 +160,11 @@ function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) 
   return (
     <Card className="flex flex-col gap-2 p-3" data-testid="suggestion">
       <div className="flex items-start gap-2">
-        <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" />
+        {s.kind === "practice" ? (
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-warning" />
+        ) : (
+          <Lightbulb className="mt-0.5 size-4 shrink-0 text-accent" />
+        )}
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">{s.title}</div>
           <div className="mt-0.5 text-xs text-muted">{s.why}</div>
@@ -367,9 +407,9 @@ export function SuggestionsView() {
         <CheckInCard />
         {fresh.length === 0 && (
           <Empty icon={Lightbulb} title="No suggestions">
-            Jig notices what you repeat, what slows you down and what you mention in chats (locally) and
-            suggests tools, workflows and tips here. Patterns are checked when you press the button and every
-            week.
+            Jig looks at what you repeat, what slows you down, risky practices and what you mention in chats
+            (locally), and suggests add-ons and features you already have, safer practices, tips, workflows or
+            new tools here. It looks when you press the button and every week.
           </Empty>
         )}
         {fresh.map((s) => (

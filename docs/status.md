@@ -333,6 +333,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       script, a pipeline, a message to Claude). Run it step by step with the output shown; schedule it
       (while Jig is open); export it as a Claude Code skill; Move to the cloud asks Claude to make it a
       routine or a pipeline. Workflow suggestions open here as drafts.
+    - **Reviews, not only repetition** (D-213): the weekly run also looks for risky practices
+      (secrets in messages or commands, piping downloads into a shell, certificate checks off, force
+      pushes, `--no-verify`, commits without tests…), reads a sample of your recent messages for
+      prompting tips, knows Jig's features and how much you use each add-on, and runs once there is
+      enough activity even when nothing repeats. New suggestions: **better practice** (Fix it with
+      Claude), **an add-on you have** (Switch it on / Show me) and **a Jig feature** (Show me). New
+      tools come last, at most one per review. Needs trying with real Claude (haiku) on a real month.
     - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
       list — so API calls are debugged there instead of copied from your browser.
@@ -706,6 +713,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
   - Commands with quotes in `cmd.exe` (Scripts, Workflows, Claude's terminals): Jig now passes one
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
+  - Learning review (D-213): the quality of practice, add-on and feature suggestions with real Claude.
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

@@ -2287,3 +2287,30 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   is a dashed drop zone that attaches on click. The paperclip and ⋯ stack at the right. Nothing
   scrolls and attaching never changes the row's size (no layout shift). Rejected: chips wrapping
   under the prompt (rows would grow and move what's below); a scrolling list (hides files).
+
+## D-213: Suggestions review how you work, and prefer what you already have
+
+- Status: accepted. Asked for by Jon: suggestions focused on repetition and almost always on building a
+  new tool; they should also look at bad practices and security, suggest add-ons he already has, tips
+  on prompting and ways to use Jig that save time. "Go and enhance it even further." The details are
+  **Claude, on my own**.
+- **Practice patterns** (`packages/learning/src/review.ts`, no AI): secrets in messages or commands
+  (the masked `«secret»`), downloads piped into a shell, certificate checks off, `chmod 777`, skipped
+  permission checks, `sudo` package installs (security), force pushes without `--force-with-lease`,
+  `--no-verify`, pushes straight to main, and 5+ commits on 2+ days with no tests run by anyone. They
+  are patterns of kind `practice` (security ones score highest), so "Never" blocks them as usual.
+- **The reflection gets more to judge by:** an overview of the activity per kind, a sample of recent
+  messages (masked, pastes collapsed, at most 20, 6 per day, 240 characters), Jig's own features with
+  action ids (`main/learning/features.ts`), and per add-on how much it was used in 4 weeks (actions,
+  tabs, Claude's calls; `addonUsage`) with its action ids in the catalog.
+- **A review also runs when nothing repeats**, once there are 30+ events on 3+ days
+  (`enoughToReview`). Below that, still no AI call. This uses the same one small query a week.
+- **Instructions, in order:** safety and good practice, then what they already have, then how they
+  work with Claude, then repeated work, and a new tool last. At most one tool to build per review
+  (also enforced when parsing).
+- **New kinds**, each with its action: `practice` (Fix it with Claude → a chat), `use-addon` (Switch
+  it on when off, else Show me → runs the add-on action, `addonId` required) and `use-feature` (Show
+  me → runs the Jig action). "Show me" falls back to Got it when the action doesn't exist.
+- Rejected: recording more kinds of activity (Jon: more data wouldn't make suggestions more
+  meaningful; how it is processed matters); a second AI pass (quota); hard-coding the "What Jig can do"
+  page's JSX into the prompt (renderer-only; a short curated list in main is kept beside it instead).

@@ -32,6 +32,13 @@ inbox, the Monday 10:00 run happens (or catches up at next launch), and Build it
 - [x] Answers stored and fed to the next reflection
 - [x] `docs/reference/learning.md`
 
+### Review, not only repetition (D-213)
+- [x] Practice patterns (security first): secrets, risky commands, skipped checks and tests
+- [x] Add-on use per add-on and Jig's features in the reflection; recent messages for prompting tips
+- [x] A review runs with enough activity even when nothing repeats
+- [x] Instructions prefer what exists; at most one tool to build per review
+- [x] New kinds `practice`, `use-addon`, `use-feature` with Fix it with Claude / Switch it on / Show me
+
 ## Notes
 
 - No AI call is made when mining finds nothing (D-056); the first start doesn't run at once (D-057).

@@ -1354,8 +1354,24 @@ export class FakeEngine implements Engine {
           { attempt: 2, strengths: "Short and clear", weaknesses: "No tests" },
         ],
       });
-    if (/commit message/i.test(prompt))
+    // The learning reflection starts with "## Patterns" and mentions commit messages in Jig's features.
+    if (/commit message/i.test(prompt) && !prompt.startsWith("## Patterns"))
       return "Apply the discount in the cart total\n\nSum the items with reduce and take the discount off the total.";
+    // A risky practice (D-213): a "practice" suggestion that opens a chat to fix it.
+    const practice = /key: (\S+) \| practice \| "([^"]*)"/.exec(prompt);
+    if (practice)
+      return JSON.stringify({
+        suggestions: [
+          {
+            title: "Keep keys out of your messages to Claude",
+            why: `${practice[2]}.`,
+            goal: "Move the key into an environment variable, rotate it, and refer to it by name in chats",
+            level: 1,
+            kind: "practice",
+            patternKeys: [practice[1]],
+          },
+        ],
+      });
     const first = /key: (\S+) \| ([\w-]+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
     // A note from a chat (jig_note_evidence) about manual work: a workflow, and a profile addition.
     const note = /- id: (\S+) \| [\d-]+ \| manual-work \| (.+)/.exec(prompt);
