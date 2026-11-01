@@ -72,6 +72,47 @@ test("a risky practice becomes a suggestion that opens a chat to fix it", async 
   });
 });
 
+test("asking piece by piece becomes a prompting tip with a whole prompt to try", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await mkdir(join(jigHome, "activity"), { recursive: true });
+  const asks = [
+    "write a function that validates orders",
+    "now write an endpoint for it",
+    "ok now add a service that calls it",
+    "then create the tests",
+  ];
+  for (const back of [1, 2]) {
+    const d = new Date();
+    d.setDate(d.getDate() - back);
+    const name = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.jsonl`;
+    const lines = asks.map((text, i) =>
+      JSON.stringify({
+        at: new Date(d.getTime() + i * 60_000).toISOString(),
+        kind: "prompt",
+        text,
+        projectId: "p",
+        detail: { chat: `chat${back}` },
+      }),
+    );
+    await writeFile(join(jigHome, "activity", name), `${lines.join("\n")}\n`);
+  }
+  await page.getByTestId("suggestions-badge").click();
+  await page.getByTestId("look-for-patterns").click();
+  const card = page.getByTestId("suggestion").filter({ hasText: "Ask for the whole feature in one go" });
+  await expect(card).toContainText("prompting tip", { timeout: 15000 });
+  await expect(card.getByTestId("suggestion-example")).toContainText("end to end");
+  await expect(card.getByTestId("suggestion-build")).toHaveText("Try this prompt");
+  await card.getByTestId("suggestion-build").click();
+  await expect(page.getByTestId("composer-input")).toHaveValue(/Add order validation to the Shop API/, {
+    timeout: 15000,
+  });
+});
+
 test("Not now hides a suggestion, and the same pattern isn't suggested again", async ({ page, jigHome }) => {
   await seed(jigHome);
   await page.getByTestId("suggestions-badge").click();

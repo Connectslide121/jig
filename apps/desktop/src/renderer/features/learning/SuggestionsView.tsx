@@ -11,6 +11,7 @@ import {
   MousePointerClick,
   Power,
   Search,
+  Send,
   ShieldCheck,
   UserRound,
   X,
@@ -143,6 +144,10 @@ function useAction(s: Suggestion): { label: string; icon: typeof Hammer; run: ()
         };
       if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
+    case "prompting-tip":
+      if (s.example) return { label: "Try this prompt", icon: Send, run: chat(s.example) };
+      return { label: "Got it", icon: Check, run: () => answer(s, "act") };
+    case "habit-tip":
     case "use-feature":
       if (hasAction) return { label: "Show me", icon: MousePointerClick, run: showMe };
       return { label: "Got it", icon: Check, run: () => answer(s, "act") };
@@ -176,6 +181,13 @@ function SuggestionCard({ s, notes }: { s: Suggestion; notes: EvidenceNote[] }) 
             <li key={l}>{l}</li>
           ))}
         </ul>
+      ) : s.example ? (
+        <div
+          className="ml-6 whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-fg"
+          data-testid="suggestion-example"
+        >
+          {s.example}
+        </div>
       ) : s.steps?.length ? (
         <ol className="ml-6 list-decimal text-xs text-fg">
           {s.steps.map((x) => (
@@ -407,9 +419,10 @@ export function SuggestionsView() {
         <CheckInCard />
         {fresh.length === 0 && (
           <Empty icon={Lightbulb} title="No suggestions">
-            Jig looks at what you repeat, what slows you down, risky practices and what you mention in chats
-            (locally), and suggests add-ons and features you already have, safer practices, tips, workflows or
-            new tools here. It looks when you press the button and every week.
+            Jig looks at how you ask Claude for things, what you repeat, what slows you down, risky practices
+            and what you mention in chats (locally), and suggests better prompts, add-ons and features you
+            already have, safer practices, workflows or new tools here. It looks when you press the button and
+            every week.
           </Empty>
         )}
         {fresh.map((s) => (

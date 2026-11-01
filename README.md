@@ -61,10 +61,10 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **Releases with discipline.** Per repository, a release policy Claude helps you set up (or that
   adopts what you already do). Jig shows what's unreleased, drafts the changelog and notes with Claude,
   and releases in one action; it warns when production gets a build without a version.
-- **Jig learns how you work.** Locally, it notices what you repeat, what slows you down, risky
-  practices and what you tell Claude you do by hand, and suggests what would help: an add-on or feature
-  you already have, a safer practice, a prompting tip, a **workflow**, a CLAUDE.md line, a routine, or a
-  new tool. One page shows everything it knows, and you can edit or delete it. Workflows can run
+- **Jig learns how you work.** Locally, it notices how you ask Claude for things, what you repeat, what
+  slows you down, risky practices and what you tell Claude you do by hand, and suggests what would help:
+  **coaching on how you work with Claude** (with your own request rewritten the better way), an add-on or feature you already
+  have, a safer practice, a **workflow**, a CLAUDE.md line, a routine, or a new tool. One page shows everything it knows, and you can edit or delete it. Workflows can run
   on a schedule, after you push, or when a pipeline finishes.
 - **Tools you build by asking.** Describe a button, a view or a watcher and Jig's builder writes it as
   an add-on. You review it before it's kept. When an add-on can't do it, the builder writes a
@@ -185,9 +185,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   <tr>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=17" alt="A suggestion based on repeated actions">
-      <b>Suggestions.</b> Jig notices what you repeat, what slows you down, risky practices and what you
-      mention to Claude (locally, on your machine) and suggests an add-on or feature you already have, a
-      safer practice, a tip, a workflow, a CLAUDE.md line, a routine or a tool, each with its evidence and one-click action. A week later it checks whether it helped.
+      <b>Suggestions.</b> Jig notices how you prompt, what you repeat, what slows you down, risky practices
+      and what you mention to Claude (locally, on your machine) and suggests a better prompt, an add-on or
+      feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine or a tool, each with its evidence and one-click action. A week later it checks whether it helped.
     </td>
     <td valign="top">
       <img src="apps/desktop/src/renderer/features/about/shots/usage.jpg?v=17" alt="Plan usage card">

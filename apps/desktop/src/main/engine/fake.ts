@@ -1372,6 +1372,23 @@ export class FakeEngine implements Engine {
           },
         ],
       });
+    // A prompting habit (D-214): a "prompting-tip" with the request rewritten as one complete prompt.
+    const habit = /key: (\S+) \| habit \| "([^"]*)"/.exec(prompt);
+    if (habit)
+      return JSON.stringify({
+        suggestions: [
+          {
+            title: "Ask for the whole feature in one go",
+            why: `${habit[2]}.`,
+            goal: "Describe the whole feature once, with how to check it's done, and let Claude plan and build it",
+            level: 1,
+            kind: "prompting-tip",
+            example:
+              "Add order validation to the Shop API end to end: a validator, a POST /orders endpoint that uses it, and the service between them, following the existing products code. Done when the tests for all three pass. Plan it first.",
+            patternKeys: [habit[1]],
+          },
+        ],
+      });
     const first = /key: (\S+) \| ([\w-]+) \| "([^"]*)" \| (\d+) times on (\d+) day/.exec(prompt);
     // A note from a chat (jig_note_evidence) about manual work: a workflow, and a profile addition.
     const note = /- id: (\S+) \| [\d-]+ \| manual-work \| (.+)/.exec(prompt);

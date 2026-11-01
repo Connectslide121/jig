@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEvent } from "./mine";
 import { mine } from "./mine";
-import {
-  activityOverview,
-  addonUsage,
-  addonUseText,
-  enoughToReview,
-  practicePatterns,
-  promptSample,
-} from "./review";
+import { activityOverview, addonUsage, addonUseText, enoughToReview, practicePatterns } from "./review";
 
 const ev = (day: number, kind: ActivityEvent["kind"], text: string, detail?: Record<string, string>) => ({
   at: `2026-10-${String(day).padStart(2, "0")}T09:00:00.000Z`,
@@ -83,20 +76,6 @@ describe("overview, sample and threshold", () => {
       "3 events on 2 of the last 28 days in 1 project(s): prompt 2, git 1",
     );
     expect(activityOverview([], 28)).toBe("(nothing recorded)");
-  });
-
-  it("samples recent messages, shortened, a few per day, oldest first", () => {
-    const events = [
-      ...Array.from({ length: 8 }, (_, i) => ({
-        ...ev(1, "prompt", `day one ${i}`),
-        at: `2026-10-01T0${i}:00:00.000Z`,
-      })),
-      ev(2, "prompt", `long ${"x".repeat(300)}\nline`),
-    ];
-    const sample = promptSample(events, 20, 20, 3);
-    expect(sample).toHaveLength(4);
-    expect(sample[0]).toBe("2026-10-01T05:00 day one 5");
-    expect(sample[3]).toBe(`2026-10-02T09:00 long ${"x".repeat(15)}…`);
   });
 
   it("needs 30 events on 3 days for a review", () => {

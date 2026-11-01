@@ -2,8 +2,8 @@ import { type ActivityEvent, hashKey, type Pattern, summarizeGroup } from "./min
 
 /**
  * What the weekly review reads besides repetition (pure, tested; D-213): risky or careless practices
- * found in the log (security first), how much each add-on is used, an overview of the activity, and a
- * sample of recent messages for prompting tips. No AI.
+ * found in the log (security first), how much each add-on is used and an overview of the activity.
+ * How you prompt is in `habits.ts`. No AI.
  */
 
 const COMMANDISH = new Set(["terminal.command", "script.run", "session.tool", "git"]);
@@ -191,26 +191,6 @@ export function activityOverview(events: ActivityEvent[], days: number): string 
     .map(([k, n]) => `${k} ${n}`)
     .join(", ");
   return `${events.length} events on ${active} of the last ${days} days in ${projects} project(s): ${list}`;
-}
-
-/**
- * The most recent messages to Claude, one line each and cut short (already masked, pastes collapsed),
- * at most `perDay` per day so one long chat doesn't fill it.
- */
-export function promptSample(events: ActivityEvent[], limit = 20, max = 240, perDay = 6): string[] {
-  const perDayCount = new Map<string, number>();
-  const out: string[] = [];
-  const prompts = events.filter((e) => e.kind === "prompt").sort((a, b) => b.at.localeCompare(a.at));
-  for (const e of prompts) {
-    if (out.length >= limit) break;
-    const day = e.at.slice(0, 10);
-    if ((perDayCount.get(day) ?? 0) >= perDay) continue;
-    const text = e.text.replace(/\s+/g, " ").trim();
-    if (!text) continue;
-    perDayCount.set(day, (perDayCount.get(day) ?? 0) + 1);
-    out.push(`${e.at.slice(0, 16)} ${text.length > max ? `${text.slice(0, max)}…` : text}`);
-  }
-  return out.reverse();
 }
 
 /**

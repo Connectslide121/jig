@@ -16,6 +16,8 @@ export interface Suggestion {
   addonId?: string;
   /** `use-feature` / `use-addon`: the Jig or add-on action "Show me" runs (D-213). */
   actionId?: string;
+  /** `prompting-tip`: one of your requests rewritten as a complete prompt ("Try this prompt", D-214). */
+  example?: string;
   /** Workflow suggestions: the steps of the draft workflow. */
   steps?: string[];
   /** Notes from chats this is based on (`EvidenceNote` ids), shown with it. */
@@ -36,7 +38,7 @@ export interface Suggestion {
 /**
  * What a suggestion is (each has its own action): tools (layout, settings, change-addon, new-addon,
  * app → the builder), a workflow, Claude Code setup (MCP server, skill, hook), project memory
- * (CLAUDE.md), tips (prompting, habits; at most one a week), an automation (a routine), additions
+ * (CLAUDE.md), tips (prompting, habits; one of each a week at most), an automation (a routine), additions
  * to your profile, and (D-213) an add-on you already have, a Jig feature, or a safer practice.
  */
 export type SuggestionKind =

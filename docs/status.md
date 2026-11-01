@@ -316,7 +316,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       without a commit, and hopping between projects. Pastes per kind and
       "Claude's browser never used for UI work" are signals too.
     - **More kinds of suggestions**, each with its action: workflows (Draft a workflow), Claude Code
-      setup, CLAUDE.md additions, routines, tips (at most one a week, with your own examples), and
+      setup, CLAUDE.md additions, routines, tips (one prompting and one habit tip a week at most, with your own examples), and
       additions to your profile. **Did it help?** shows on built or adopted suggestions after a week.
     - **What Jig knows about me** (the person button in Suggestions, Tools, Settings → Learning): your
       profile (`~/.jig/profile.md`, editable), the notes (deletable), activity per kind and **How you
@@ -340,6 +340,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
       enough activity even when nothing repeats. New suggestions: **better practice** (Fix it with
       Claude), **an add-on you have** (Switch it on / Show me) and **a Jig feature** (Show me). New
       tools come last, at most one per review. Needs trying with real Claude (haiku) on a real month.
+    - **Coaching how you work with Claude** (D-214): the weekly review reads your recent chats message
+      by message, like a coach, and names the change that would help you most (how you ask, what
+      context you give, how much you hand over, planning, checking the result…), with your messages
+      as evidence. A few habits Jig spots itself (asking piece by piece, one-off asks, big changes
+      without a plan) are hints for it. A **prompting tip** shows one of your requests rewritten the
+      better way, with **Try this prompt** (a new chat with it filled in); a habit tip can **Show me**
+      the Jig feature. One of each a week at most.
     - **Claude's browser records the network:** Claude reads the page's requests (status, headers,
       bodies; credentials redacted) with `jig_browser_network`, and the browser view has a Network
       list — so API calls are debugged there instead of copied from your browser.
@@ -714,6 +721,8 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
     command line (`/d /s /c "…"`) so `echo "a b"` keeps its quotes.
   - Saving a file in Preview while an antivirus scanner holds it (the save retries a few times).
   - Learning review (D-213): the quality of practice, add-on and feature suggestions with real Claude.
+  - Coaching (D-214): whether real Claude's coaching and rewritten prompts are specific and useful, and
+    whether the habit-hint thresholds fit real chats.
   - Learning 2: "How you worked" on a real week of commits; the check-in chat with real Claude
     (`jig_read_profile`, `jig_update_profile`); Claude saving notes on its own (`jig_note_evidence`)
     with the real model.

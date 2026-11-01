@@ -94,7 +94,8 @@ More behaviour:
   levels; `github` connected and `jira` needing sign-in).
 - **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups,
   commit messages and release drafts (bump, changelog, one note for customers). The reflection
-  answers a `practice` pattern with a "better practice" suggestion (D-213), any other pattern with a
+  answers a `practice` pattern with a "better practice" suggestion (D-213), a `habit` pattern with a
+  prompting tip whose `example` is a rewritten prompt (D-214), any other pattern with a
   new-add-on suggestion, and a `manual-work` note (without patterns) with a workflow suggestion plus
   a profile update.
 - **The builder:** its sessions run a scripted build (`fakeBuilder.ts`). A goal with "jig itself" or

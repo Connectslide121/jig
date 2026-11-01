@@ -136,15 +136,18 @@ describe("reflection", () => {
     expect(prompt).toContain("- Old idea: never");
   });
 
-  it("gives Claude features, activity, recent messages and add-on use, and asks for existing things first", () => {
+  it("gives Claude features, activity, how they prompt, recent chats and add-on use", () => {
     const prompt = reflectionPrompt([pattern], "- git — Git\n  Used: 3 actions run", [], {
       features: "- Search: find anything (Ctrl+P) [actionId: jig.tools]",
       overview: "40 events on 4 of the last 28 days",
-      prompts: ["2026-10-20T09:00 fix it"],
+      prompting: "2 chats, 5 messages",
+      chats: ["chat on 2026-10-20T09:00, 1 message(s), 0 edit(s):\n  1. fix it"],
     });
     expect(prompt).toContain("[actionId: jig.tools]");
     expect(prompt).toContain("40 events on 4 of the last 28 days");
-    expect(prompt).toContain("- 2026-10-20T09:00 fix it");
+    expect(prompt).toContain("## How they prompt (last 4 weeks)\n2 chats, 5 messages");
+    expect(prompt).toContain("  1. fix it");
+    expect(prompt).toContain("one prompting tip and one habit tip");
     expect(prompt).toContain("Used: 3 actions run");
   });
 
@@ -202,13 +205,16 @@ describe("LearningService", () => {
     const { activity, service } = setup();
     for (const d of [19, 20, 21])
       for (let i = 0; i < 10; i++)
-        await activity.record({ kind: "prompt", text: `topic${d * 100 + i}` }, day(d, 9 + (i % 8)));
+        await activity.record(
+          { kind: "prompt", text: `topic${d * 100 + i}`, detail: { chat: `c${d}` } },
+          day(d, 9 + (i % 8)),
+        );
     reply = '{"suggestions":[]}';
     const run = await service.run("manual", day(22));
     expect(run).toMatchObject({ ok: true, patterns: 0, suggestions: 0 });
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toContain("30 events on 3 of the last 28 days");
-    expect(prompts[0]).toContain("## Recent messages to Claude");
+    expect(prompts[0]).toContain("## Recent chats, message by message");
     expect(prompts[0]).toContain("topic21");
   });
 

@@ -5,6 +5,7 @@
  */
 
 export * from "./attribution";
+export * from "./habits";
 export * from "./mine";
 export * from "./normalize";
 export * from "./review";

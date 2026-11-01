@@ -9,28 +9,30 @@ import { profileIsEmpty } from "./knowledge";
  * Jig's features, the add-on catalog with their use and your past answers, and returns at most 3
  * suggestions as JSON, validated here. Existing things and safe practice come before new tools (D-213).
  */
-export const REFLECTION_INSTRUCTIONS = `You review how the user works with Jig, a desktop workbench around Claude Code, and suggest what would help them most. You are a thoughtful senior colleague, not a tool salesman.
-You get: patterns mined from their local activity (repeated commands, sequences and similar prompts; friction such as interrupts, corrections and failing scripts; what they paste into chats; Jig tools that fit but were never used; views they keep opening as a tab, a "view-habit"; and "practice" patterns: risky or careless practices, security first), notes Claude saved from their chats (manual work, work outside Jig, frustration, preferences), their profile, an overview of their activity, a sample of their recent messages to Claude, lines written by Claude vs by hand, how Claude worked for them across chats (tools, skills, subagents, add-ons, MCP servers), Jig's own features, the installed add-ons with how much each was used, and their past answers with whether they helped.
-Look at their work from these angles, and pick what matters most:
-1. Safety and good practice: secrets in chats or commands, risky commands, skipped checks or tests, force pushes, work that is never committed, permissions skipped. A security problem with evidence comes first.
-2. Use what they already have: an installed add-on that fits but is unused or switched off ("use-addon"), a Jig feature they don't seem to use ("use-feature"), a setting, a Claude Code skill or MCP server.
-3. How they work with Claude: prompting (vague asks, missing context, one huge chat for everything, correcting Claude often, pasting what Claude could read itself) and habits (plan first, worktrees for parallel work, tests before commits). Quote their own messages as before/after.
-4. Repeated work: a workflow, a routine, a line for CLAUDE.md.
-5. Only then a new tool or add-on to build, when nothing existing fits.
+export const REFLECTION_INSTRUCTIONS = `You review how the user works with Jig, a desktop workbench around Claude Code, and suggest what would help them most. You are a thoughtful senior colleague who wants them to get the most out of Claude, not a tool salesman and not a security auditor.
+You get: patterns mined from their local activity (repeated commands, sequences and similar prompts; friction such as interrupts, corrections, rewinds, long chats without a commit, hopping between projects and failing scripts; what they paste into chats; Jig tools that fit but were never used; views they keep opening as a tab, a "view-habit"; "practice" patterns: risky or careless practices; and "habit" patterns: how they prompt and run chats), notes Claude saved from their chats (manual work, work outside Jig, frustration, preferences), their profile, an overview of their activity, numbers on how they prompt, their recent chats message by message, lines written by Claude vs by hand, how Claude worked for them across chats (tools, skills, subagents, add-ons, MCP servers), Jig's own features, the installed add-ons with how much each was used, and their past answers with whether they helped.
+Look at their work from these angles, and pick what would make the biggest difference. Spread your suggestions over different angles; don't spend them all on one:
+- How they work with Claude, usually the biggest win. Read their recent chats the way a coach watching over their shoulder would, and find what would most improve their results or save them the most time; the "habit" patterns and the prompting numbers are only hints. Anything goes, for example: how clearly they say what they want and why; whether Claude gets the context it needs (or has to guess, or they paste what it could read itself); how big a piece of work they hand over (Claude Code can take a whole task end to end, so tiny one-off asks or feeding it piece by piece can waste time, while one huge chat for everything loses focus); whether they say how to check it's done and let Claude run the tests; planning before big changes; how they react when Claude goes wrong (correcting, rewinding, starting fresh); reusing what they keep explaining (CLAUDE.md, skills); working in parallel (worktrees, "Try several ways"); reviewing and committing in small steps. Name the one change that matters most, with their own messages as the evidence.
+- Use what they already have: an installed add-on that fits but is unused or switched off ("use-addon"), a Jig feature they don't seem to use ("use-feature"), a setting, a Claude Code skill or MCP server.
+- Safety and good practice: secrets in chats or commands, risky commands, skipped checks or tests, force pushes, work never committed, permissions skipped. A real security problem with evidence comes first; otherwise weigh it like the rest.
+- Repeated work: a workflow, a routine, a line for CLAUDE.md.
+- Only then a new tool or add-on to build, when nothing existing fits.
 Suggest AT MOST 3 things, only with real evidence, each of one kind, ideally of different kinds:
+- "prompting-tip": how to ask Claude better, ONLY from their own messages (quote them). "example": one of their real requests rewritten the better way, as a prompt they could send next time, in their language and about their real project. At most one.
+- "habit-tip": a better way of working with Claude or Jig, from their activity; "actionId" when a Jig feature helps. At most one.
 - "practice": a safer or better practice. "goal": what to change and how, concretely (a chat helps them fix it). Name the risk plainly; never quote a secret.
 - "use-addon": an installed add-on that fits. "addonId" required; "actionId" one of its actions (addon.<id>.<action>) when you know it. "goal": what to use it for, and how.
 - "use-feature": a Jig feature from the list. "actionId" from the list when it has one. "goal": when and how to use it.
-- "prompting-tip" or "habit-tip": coaching, ONLY with the user's own messages or activity as evidence (quote them, before/after); at most one tip in total (none when "Tips allowed: no").
 - "workflow": a repeated multi-step chore. "steps": the steps in order. "goal": what it is for.
 - "automation": something to run on a schedule as a Claude Code routine. "goal": what it does and when.
 - "project-memory": something Claude keeps being told, for the project's CLAUDE.md. "goal": the text to add.
 - "claude-setup": an MCP server, skill or hook for Claude Code. "goal": what to set up and why.
 - a tool to build, AT MOST ONE per review and only if nothing existing does it: "layout" or "settings" (level 1), "change-addon" with its addonId or "new-addon" (level 2), or "app" (level 3: a new extension point). "goal" is what to ask Jig's builder.
+No tips at all when "Tips allowed: no".
 Level: 1 for using what exists, tips and practices; 2 for workflows, automations and setup; 3 only for "app".
 Be specific to THIS user (their projects, commands, words), never generic advice. Don't suggest what they said "never" to, nor repeat what they built, adopted or snoozed; learn from what helped and what didn't. Few good suggestions beat three weak ones.
 Also propose additions to the profile ("profileUpdates": short facts the evidence shows, not already in it; none if unsure).
-Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","actionId":"…","steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
+Answer with JSON only, no prose: {"suggestions":[{"title":"…","why":"… (cite the evidence: how often, on how many days, quotes)","goal":"…","level":1|2|3,"kind":"…","addonId":"…","actionId":"…","example":"…","steps":["…"],"minutesPerWeek":N,"patternKeys":["…"],"noteIds":["…"]}],"profileUpdates":["…"]}
 Return {"suggestions":[]} when nothing is worth it.`;
 
 export interface PastAnswer {
@@ -52,8 +54,10 @@ export interface ReflectionContext {
   features?: string;
   /** Events per kind (`activityOverview`). */
   overview?: string;
-  /** Recent messages to Claude, masked (`promptSample`), for prompting tips. */
-  prompts?: string[];
+  /** How they prompt, in numbers (`promptStats`, D-214). */
+  prompting?: string;
+  /** Recent chats message by message, masked (`chatSample`), for prompting tips. */
+  chats?: string[];
 }
 
 export function reflectionPrompt(
@@ -81,12 +85,13 @@ export function reflectionPrompt(
     `## Profile\n${context.profile?.trim() || "(empty)"}`,
     `## How they worked (last 7 days)\n${context.worked || "(no commits measured)"}`,
     `## Activity (last 4 weeks)\n${context.overview || "(not given)"}`,
-    `## Recent messages to Claude (masked, shortened)\n${context.prompts?.length ? context.prompts.map((p) => `- ${p}`).join("\n") : "(none)"}`,
+    `## How they prompt (last 4 weeks)\n${context.prompting || "(not given)"}`,
+    `## Recent chats, message by message (masked, shortened)\n${context.chats?.length ? context.chats.join("\n") : "(none)"}`,
     `## How Claude worked for them (last 4 weeks)\n${context.usage || "(no chats recorded)"}`,
     `## Jig's features\n${context.features || "(not given)"}`,
     `## Add-ons (installed, with their use in the last 4 weeks)\n${catalog}`,
     `## Past answers\n${past}`,
-    `Tips allowed: ${context.tipsAllowed === false ? "no" : "yes (at most one)"}`,
+    `Tips allowed: ${context.tipsAllowed === false ? "no" : "yes (at most one prompting tip and one habit tip)"}`,
     "Reply with the JSON only.",
   ].join("\n\n");
 }
@@ -114,6 +119,7 @@ const SuggestionSchema = z.object({
   ]),
   addonId: z.string().optional(),
   actionId: z.string().max(200).optional(),
+  example: z.string().max(4000).optional(),
   steps: z.array(z.string()).optional(),
   noteIds: z.array(z.string()).optional(),
   minutesPerWeek: z.number().nonnegative().optional(),
@@ -127,8 +133,9 @@ const ReplySchema = z.object({
 
 /**
  * Parses the model's reply (tolerating text around the JSON); throws with a readable message. Tips
- * beyond the first (or any, when not allowed) are dropped, so are tools to build beyond the first
- * and "use-addon" ones without an add-on (D-213); profile updates become one "profile" suggestion.
+ * beyond one of each kind (or any, when not allowed) are dropped (D-214), so are tools to build beyond
+ * the first and "use-addon" ones without an add-on (D-213); profile updates become one "profile"
+ * suggestion.
  */
 export function parseReflection(
   text: string,
@@ -150,14 +157,15 @@ export function parseReflection(
     throw new Error(`The reply didn't match the expected format: ${result.error.issues[0]?.message}`);
   const known = new Map(patterns.map((p) => [p.key, p]));
   const noteIds = new Set((options.notes ?? []).map((n) => n.id));
-  let tips = options.tipsAllowed === false ? 1 : 0;
+  const tips = new Set<string>();
   let builds = 0;
   const picked = result.data.suggestions.filter((s) => {
     if (s.kind === "use-addon" && !s.addonId) return false;
     if (BUILD_KINDS.includes(s.kind)) return ++builds === 1;
     if (!TIP_KINDS.includes(s.kind)) return true;
-    tips++;
-    return tips === 1;
+    if (options.tipsAllowed === false || tips.has(s.kind)) return false;
+    tips.add(s.kind);
+    return true;
   });
   const suggestions: Suggestion[] = picked.map((s) => {
     const keys = s.patternKeys.filter((k) => known.has(k));
@@ -172,6 +180,7 @@ export function parseReflection(
       kind: s.kind,
       addonId: s.addonId || undefined,
       actionId: s.actionId?.trim() || undefined,
+      example: s.kind === "prompting-tip" && s.example?.trim() ? s.example.trim() : undefined,
       steps: s.kind === "workflow" && s.steps?.length ? s.steps : undefined,
       noteIds: notes.length ? notes : undefined,
       minutesPerWeek: s.minutesPerWeek,

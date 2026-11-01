@@ -2314,3 +2314,31 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Rejected: recording more kinds of activity (Jon: more data wouldn't make suggestions more
   meaningful; how it is processed matters); a second AI pass (quota); hard-coding the "What Jig can do"
   page's JSX into the prompt (renderer-only; a short curated list in main is kept beside it instead).
+
+## D-214: Suggestions coach how you work with Claude
+
+- Status: accepted. Asked for by Jon: D-213 leaned on security; it should look more broadly at ways
+  of working and help people prompt better. His example (colleagues asking for a function, then an
+  endpoint, then a service, one message at a time) is one case, not the target: "should be a coach,
+  not only looking for that specific improvement". The details are **Claude, on my own**.
+- **The coaching is Claude's**, from reading the chats; it names the one change that would help most,
+  whatever it is, with the user's messages as evidence. The instructions list examples of what to look
+  at (clarity, context, how much work is handed over, how to check it's done, planning, reacting when
+  Claude goes wrong, reusing explanations, parallel work, small commits), not rules.
+- **Habit hints** (`packages/learning/src/habits.ts`, no AI, nothing new recorded): from messages
+  and Claude's tools grouped by chat, asking for a feature piece by piece, mostly one-off short asks,
+  and big changes (15+ edits) without a plan. Kind `habit`; only starting points for the coach. Friction already covered corrections,
+  interrupts, long chats and project hopping, so those weren't duplicated.
+- **The reflection sees how you prompt:** numbers (`promptStats`) and the 10 most recent chats message
+  by message (`chatSample`, replacing the flat message sample of D-213), so it can see a whole
+  sequence and rewrite it.
+- **Instructions:** how they work with Claude comes first; security is first only for a real problem
+  with evidence; suggestions are spread over different angles.
+- **Prompting tips carry an `example`**: one of their own requests rewritten the better way, shown on
+  the card with **Try this prompt** (a new chat with it as the draft). Habit tips get **Show me** when
+  they name a Jig action.
+- **One prompting tip and one habit tip a week** instead of one tip in total (still none without
+  evidence from their own messages or activity).
+- Rejected: judging message quality with a second AI pass or per message (quota; the weekly query
+  sees the chats); recording chat outcomes or more data (D-213); counting repeated permission approvals
+  (not recorded; Jig's permission rules already offer "always allow").

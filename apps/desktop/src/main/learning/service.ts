@@ -3,11 +3,12 @@ import {
   activityOverview,
   addonUsage,
   addonUseText,
+  chatSample,
   enoughToReview,
   isRunDue,
   mine,
   nextOccurrence,
-  promptSample,
+  promptStats,
   type WeeklySchedule,
 } from "@jig/learning";
 import { z } from "zod";
@@ -33,7 +34,7 @@ const FileSchema = z.object({
   blocked: z.array(z.string()).default([]),
   runs: z.array(z.custom<PatternRun>()).default([]),
   lastRun: z.string().optional(),
-  /** The last coaching tip (at most one a week). */
+  /** The last coaching tips (one prompting and one habit tip a week at most). */
   lastTipAt: z.string().optional(),
   checkIn: z.object({ offered: z.boolean().default(false), last: z.string().optional() }).prefault({}),
 });
@@ -210,7 +211,8 @@ export class LearningService {
               tipsAllowed,
               features: this.options.features?.(),
               overview: activityOverview(events, days),
-              prompts: promptSample(events),
+              prompting: promptStats(events),
+              chats: chatSample(events),
             },
           ),
         );

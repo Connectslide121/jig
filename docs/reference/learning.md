@@ -75,6 +75,13 @@ start and daily), open the folder, delete all.
   without `--force-with-lease`, `--no-verify` (2+), pushes straight to main/master (3+ on 2+ days); and
   5+ commits on 2+ days with no tests run (by you or Claude: `npm test`, `vitest`, `pytest`, `dotnet
   test`…).
+- **Habit hints** (`habitPatterns` in `habits.ts`, D-214), kind `habit`: a few habits the coach can
+  start from (the coaching itself is Claude's, from your chats; see Reflect). From messages and
+  Claude's tools grouped by chat (`detail.chat`): asking for one feature **piece by piece** (4+ short
+  "write a…", "now add…" messages in a chat, in 2+ chats on 2+ days; the examples are one whole
+  sequence in order), **mostly one-off asks** (6+ chats of a single message under 15 words, 60%+ of
+  chats, on 3+ days), and **big changes without a plan** (15+ Edit/Write calls in a chat with no plan
+  asked for or `ExitPlanMode`; 3+ chats on 2+ days).
 - **View habits** (`viewHabitPatterns`, D-175): a view you keep opening as a main tab (4+ times on
   3+ days) and haven't moved to a region since; the reflection may suggest placing it.
 - Learning 2 signals (`signals.ts`): **friction** that repeats (3+ on 2+ days, one pattern per
@@ -111,17 +118,24 @@ instructions to return at most 3 suggestions as JSON (title, why with evidence, 
 minutes saved per week, pattern keys, note ids, workflow steps, `addonId`, `actionId`) plus
 `profileUpdates`.
 
-**What Claude looks at, in order (D-213):** safety and good practice (security first); what you
-already have (an add-on, a Jig feature, a setting, a skill); how you work with Claude (prompting and
-habits, quoting your own messages); repeated work (workflow, routine, CLAUDE.md); a new tool last, at
-most one per review (also enforced by the parser). It also gets: an overview of the activity per kind
-(`activityOverview`), up to 20 recent messages (masked, pastes collapsed, 6 per day, 240 characters;
-`promptSample`), Jig's features with their action ids (`main/learning/features.ts`), and each add-on's
+**What Claude looks at (D-213, D-214):** how you work with Claude first, usually the biggest win: it
+reads your recent chats like a coach and names the one change that would most improve results or
+save time, with your messages as evidence (anything: clarity, context, how much work you hand over,
+saying how to check it's done, planning, reacting when Claude goes wrong, reusing what you keep
+explaining, parallel work, small commits; the habit hints and numbers are only starting points); what you already have (an add-on, a Jig feature, a
+setting, a skill); safety and good practice (a real security problem with evidence comes first);
+repeated work (workflow, routine, CLAUDE.md); a new tool last, at most one per review (also enforced
+by the parser). Suggestions are spread over different angles. It also gets: an overview of the
+activity per kind (`activityOverview`), how you prompt in numbers (`promptStats`: messages per chat,
+length of first messages, single-message chats, "one more piece" messages, first messages that say
+how to check it's done, chats with a plan), the 10 most recent chats message by message (masked,
+pastes collapsed, 10 messages each, 200 characters; `chatSample`), Jig's features with their action ids (`main/learning/features.ts`), and each add-on's
 use in 4 weeks (actions run, opened as a tab, Claude's calls; `addonUsage`, shown as `Used:` in the
 catalog with the add-on's action ids). Learning 2 adds
 the notes, the profile, "How you worked", "How Claude worked for them" (`usageText`, D-185), past answers with their "did it help?" outcome, and whether
-a tip is allowed (at most one coaching tip a week). The reply is validated (`main/learning/reflect.ts`):
-extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
+tips are allowed (one prompting tip and one habit tip a week at most). A prompting tip carries
+`example`: one of your own requests rewritten the better way. The reply is validated
+(`main/learning/reflect.ts`): extra tips are dropped, and profile updates become one "Add to what Jig knows about you" suggestion.
 **No patterns, no notes and too little activity → no AI call → no quota used.**
 
 Triggers: **Look for patterns now** (Suggestions view, Settings → Learning, grouped menus) and the weekly
@@ -142,7 +156,8 @@ Each kind has its own action:
 | `claude-setup` | **Set it up with Claude** → a chat with the goal |
 | `project-memory` | **Add to CLAUDE.md** → a chat that adds the text |
 | `automation` | **Make a routine** → a chat that makes a Claude Code routine |
-| `prompting-tip`, `habit-tip` | **Got it** / **Remind me** / **Dismiss** (at most one tip a week, always with your own examples) |
+| `prompting-tip` | Shows the rewritten prompt; **Try this prompt** → a new chat with it filled in (D-214), else **Got it**; **Remind me** / **Dismiss** |
+| `habit-tip` | **Show me** when it names a Jig action, else **Got it**; **Remind me** / **Dismiss** (tips always quote your own activity; one of each a week at most) |
 | `profile` | **Add to my profile** (written at once) |
 | `practice` | **Fix it with Claude** → a chat that explains the risk and fixes it (D-213) |
 | `use-addon` | **Switch it on** when it is off, else **Show me** (runs `actionId`), else **Got it** |

@@ -39,6 +39,12 @@ inbox, the Monday 10:00 run happens (or catches up at next launch), and Build it
 - [x] Instructions prefer what exists; at most one tool to build per review
 - [x] New kinds `practice`, `use-addon`, `use-feature` with Fix it with Claude / Switch it on / Show me
 
+### How you work with Claude (D-214)
+- [x] Claude coaches from your recent chats, message by message, for whatever helps most
+- [x] Habit hints (piece by piece, one-off asks, big changes without a plan) and prompting numbers
+- [x] Instructions put ways of working first
+- [x] Prompting tips with a rewritten prompt and Try this prompt; one prompting and one habit tip a week
+
 ## Notes
 
 - No AI call is made when mining finds nothing (D-056); the first start doesn't run at once (D-057).
