@@ -29,7 +29,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.2.0 being prepared (2026-11-02): Jig 0.2.0 adds the Tests add-on, a natural on-device voice for Read aloud and talking, editable queued messages and a shell picker for terminals; updates are now announced and downloaded on request. Publication not yet verified.
+Jig 0.2.0 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.2.0),
+source/tag `5f286d05f57fdd650e0037ca1331d11166d9b858`. Installer: 369,632,053 bytes;
+SHA-256 `7861d02d5d13c7170ac879ee221cbb7c8f6694720a3b17137af9b0c3b72bacca`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.2.0 with its feed and installer. In 0.2.0: Jig 0.2.0 adds the Tests add-on, a natural on-device voice for Read aloud and talking, editable queued messages and a shell picker for terminals; updates are now announced and downloaded on request.
 
 Jig 0.1.3 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.3),
 source/tag `e493da1047d1b3fd3f91e20b98bad6d059fcddfe`. Installer: 259,677,586 bytes;
