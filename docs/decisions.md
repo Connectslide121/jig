@@ -2685,6 +2685,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   `quitAndInstall(false, true)`, so the assisted NSIS installer shows its progress window, then starts Jig.
   The meeting/working-chat guards apply to installing only, not downloading.
 
+## D-237: Tune Inter's vertical metrics so icons line up with text
+
+- Jon: icons sit a bit lower than the text beside them in many places (the chat's steps line spinner,
+  file icons in Files). Measured: rows centre correctly, but Chromium rounds Inter's ascent/descent to
+  whole pixels and floors the half-leading, so the capitals sat 0.2–0.9px above the line box centre at
+  most of Jig's sizes (13px xs: -0.69px), i.e. every `items-center` icon looked low.
+- **Claude, on my own:** fix it once in the font, not per view: `styles/inter.css` re-declares
+  @fontsource-variable/inter's faces with ascent-override 99% / descent-override 22% (same 1.21em total,
+  so line boxes and layout don't change). A sweep over the type scale (2xs–2xl) at 12/13/14px picked the
+  split with mean error ~0 and max ±0.6px. A custom UI font (Settings) keeps its own metrics. Don't
+  nudge icons with margins/translate to compensate; keep icon + text rows on `items-center`.
+
 ## D-238: The Scripts list follows the files
 
 - Jon: a new script file or npm script didn't show until Jig restarted, and a group containing it said

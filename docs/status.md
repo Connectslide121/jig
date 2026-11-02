@@ -1,5 +1,9 @@
 # Status
 
+Icon/text alignment (2026-11-02, D-237): Inter's vertical metrics are tuned so text in icon rows sits
+centred on its icons (they looked ~1px low everywhere: chat steps line, Files, Git…). Upgrading
+@fontsource-variable/inter means updating `styles/inter.css`.
+
 Terminal shells (2026-11-02, D-240, D-241): Settings → Terminal picks the shell from the installed ones
 (PowerShell 7, Windows PowerShell, cmd, Git Bash, … / `/etc/shells`) or a custom path. In the Terminals panel the
 chevron next to "+" opens one terminal in another shell (also right-click on "+" and Code → New terminal in…);

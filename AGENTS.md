@@ -143,6 +143,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   times right-aligned. Status marks, badges and colour swatches go at the far right edge, so they form
   one straight line however long the text is. Never let one element's width push the next one
   sideways. Check this on every row-like view you touch or build.
+- **Icons sit centred on text through the font, not per view (D-237).** Rows put icons and text on
+  `items-center`; Inter's tuned metrics in `styles/inter.css` centre the capitals in the line box. Never
+  nudge icons with margins or translate; when upgrading @fontsource-variable/inter, regenerate that file.
 - **Tokens only.** Use the Tailwind token utilities (`bg-surface`, `text-muted`, `border-border`,
   `text-accent`, …) and the spacing/type scales. **Never** hard-code colours (`#fff`, `rgb()`, `red-500`)
   or arbitrary values (`w-[13px]`, `text-[#…]`). `npm run check:tokens` enforces this in
