@@ -580,7 +580,7 @@ function PrepareCard({
         <h2 className="flex-1 text-sm font-semibold text-fg">
           Unreleased{" "}
           <span className="font-normal text-muted">
-            · {unreleasedLabel(commits.length, commits.at(-1)?.date)}
+            · {unreleasedLabel(data.unreleasedCount, data.unreleasedSince)}
           </span>
         </h2>
         {!open && (commits.length > 0 || !data.latest) && (
@@ -627,7 +627,9 @@ function PrepareCard({
             )}
           </div>
         ))}
-        {commits.length > 50 && <div className="py-1 text-xs text-hint">and {commits.length - 50} more</div>}
+        {data.unreleasedCount > 50 && (
+          <div className="py-1 text-xs text-hint">and {data.unreleasedCount - 50} more</div>
+        )}
       </div>
       {data.pullRequests.length > 0 && (
         <div className="mt-2 border-t border-line pt-2" data-testid="release-prs">

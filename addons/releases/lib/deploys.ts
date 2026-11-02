@@ -60,6 +60,7 @@ export function shouldRemind(input: {
 }
 
 /** "14 commits, 3 weeks" for a badge. */
+/** "N commits, 3 weeks": how many commits wait, and for how long (`since`: the last release). */
 export function unreleasedLabel(count: number, oldest: string | undefined, now = new Date()): string {
   if (count === 0) return "Nothing unreleased";
   const commits = `${count} commit${count === 1 ? "" : "s"}`;

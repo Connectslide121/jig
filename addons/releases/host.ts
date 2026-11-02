@@ -128,6 +128,28 @@ async function unreleasedCommits(api: AddonHostApi, path: string, since?: string
     });
 }
 
+/**
+ * How many commits are unreleased (all of them, not only the ones listed) and since when: the last
+ * release's date, or the first commit's when there is no release yet. (Not the oldest unreleased
+ * commit: a long-lived branch merged after the release would make that look months old.)
+ */
+async function unreleasedSpan(
+  api: AddonHostApi,
+  path: string,
+  latest: Release | undefined,
+): Promise<{ count: number; since?: string }> {
+  const counted = await git(
+    api,
+    path,
+    ["rev-list", "--count", "--no-merges", latest ? `${latest.tag}..HEAD` : "HEAD"],
+    { ok: [0, 128] },
+  );
+  const count = Number.parseInt(counted.trim(), 10) || 0;
+  if (latest || !count) return { count, since: latest?.date };
+  const roots = await git(api, path, ["log", "--max-parents=0", "--format=%cI", "HEAD"], { ok: [0, 128] });
+  return { count, since: roots.trim().split("\n").filter(Boolean).sort()[0] };
+}
+
 async function fileVersion(path: string, policy?: ReleasePolicy): Promise<string | undefined> {
   if (!policy?.versionFile) return undefined;
   const kind = versionFileKind(policy.versionFile);
@@ -141,6 +163,7 @@ export interface RepoSummary {
   policy?: ReleasePolicy;
   latest?: { tag: string; version: string; date: string };
   unreleased: number;
+  /** Since when they wait: the last release, else the first commit. */
   oldest?: string;
   error?: string;
 }
@@ -151,25 +174,13 @@ async function summarize(api: AddonHostApi, item: RepoItem): Promise<RepoSummary
   try {
     const list = await releases(api, item.path, policy.tagFormat);
     const latest = latestOf(list);
-    const dates = (
-      await git(
-        api,
-        item.path,
-        ["log", "--no-merges", "--format=%cI", latest ? `${latest.tag}..HEAD` : "HEAD"],
-        {
-          ok: [0, 128],
-        },
-      )
-    )
-      .trim()
-      .split("\n")
-      .filter(Boolean);
+    const { count, since } = await unreleasedSpan(api, item.path, latest);
     return {
       ...item,
       policy,
       latest: latest && { tag: latest.tag, version: latest.version, date: latest.date },
-      unreleased: dates.length,
-      oldest: dates.at(-1),
+      unreleased: count,
+      oldest: since,
     };
   } catch (error) {
     return { ...item, policy, unreleased: 0, error: (error as Error).message };
@@ -241,7 +252,11 @@ export interface RepoDetail {
   policyFile: string;
   latest?: Release;
   releases: Release[];
+  /** The newest unreleased commits (at most 500). */
   unreleased: Classified[];
+  /** How many commits are unreleased in all, and since when (the last release, else the first commit). */
+  unreleasedCount: number;
+  unreleasedSince?: string;
   /** Pull requests merged since the last release (merge commits and Azure DevOps squash merges). */
   pullRequests: PullRequest[];
   fileVersion?: string;
@@ -259,8 +274,9 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
   const format = policy?.tagFormat ?? "v{version}";
   const list = await releases(api, path, format);
   const latest = latestOf(list);
-  const [unreleased, version, status, head] = await Promise.all([
+  const [unreleased, span, version, status, head] = await Promise.all([
     unreleasedCommits(api, path, latest?.tag),
+    unreleasedSpan(api, path, latest),
     fileVersion(path, policy),
     git(api, path, ["status", "--porcelain"], { ok: [0, 128] }),
     git(api, path, ["rev-parse", "HEAD"], { ok: [0, 128] }),
@@ -293,6 +309,8 @@ export async function detail({ path }: { path: string }, api: AddonHostApi): Pro
     latest,
     releases: list.slice(0, 50),
     unreleased,
+    unreleasedCount: Math.max(span.count, unreleased.length),
+    unreleasedSince: span.since,
     pullRequests,
     fileVersion: version,
     mismatch,
@@ -683,7 +701,9 @@ export async function toolChanges(args: ToolArgs, api: AddonHostApi): Promise<st
   if (d.fileVersion) lines.push(`Version file says: ${d.fileVersion}`);
   if (d.mismatch) lines.push(`Mismatch: ${d.mismatch}`);
   lines.push(
-    `Unreleased commits (${d.unreleased.length}):`,
+    d.unreleasedCount > d.unreleased.length
+      ? `Unreleased commits (${d.unreleasedCount}; the newest ${d.unreleased.length}):`
+      : `Unreleased commits (${d.unreleasedCount}):`,
     ...d.unreleased.map(
       (c) =>
         `- ${c.hash.slice(0, 7)} ${c.date.slice(0, 10)} ${c.author}: ${c.subject}${c.breaking ? " [breaking]" : ""}${c.workItems.length ? ` [AB#${c.workItems.join(", AB#")}]` : ""}`,
