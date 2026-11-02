@@ -1,4 +1,4 @@
-import { ArrowDownUp, Globe, SquareTerminal } from "lucide-react";
+import { ArrowDownUp, MonitorCog, SquareTerminal } from "lucide-react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState, type WheelEvent } from "react";
 import {
   type BrowserInput,
@@ -179,7 +179,7 @@ export function BrowserView(_props: ViewProps) {
             />
           </div>
         ) : (
-          <Empty title="Claude’s browser" icon={Globe}>
+          <Empty title="Claude’s browser" icon={MonitorCog}>
             Claude opens pages here to check its work: it clicks, types, takes screenshots and reads the
             console. Ask a chat to "open the app and check the login form".
           </Empty>

@@ -1,7 +1,7 @@
 # Status
 
 Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
-Claude’s browser has an explicit heading and read-only address; navigation, viewport and test-launch
+Claude’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
 controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available
 for sign-ins. A permanent hint links directly to your own Browser.
 

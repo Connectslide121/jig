@@ -23,7 +23,7 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 
 - [x] Native user Browser tab in the main panel, separate from Claude’s offscreen browser (D-225).
 
-- [x] Top-right Browser icon; Claude’s browser has page interaction for sign-ins, read-only navigation and a hint/link to the user Browser (D-226).
+- [x] Top-right globe Browser icon; Claude’s browser uses MonitorCog and has page interaction for sign-ins, read-only navigation and a hint/link to the user Browser (D-226).
 
 ## Later
 

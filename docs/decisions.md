@@ -2575,3 +2575,4 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   and paste; show a read-only URL, remove Back/Forward, Reload, viewport and test-launch controls.
 - A permanent hint explains page assistance and links to the user's Browser. Console/Network remain
   inspection controls; error badges reserve fixed slots. Implementation details: Claude, on my own.
+- Jon chose Lucide MonitorCog for Claude’s browser (view, menu action and empty state); the user's Browser keeps Globe, including the top-right shortcut.

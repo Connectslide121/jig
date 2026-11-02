@@ -1,4 +1,4 @@
-import { FlaskConical, Globe } from "lucide-react";
+import { FlaskConical, Globe, MonitorCog } from "lucide-react";
 import { useHostEvent } from "../../lib/host";
 import { registerAction, registerTopbarItem, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
@@ -14,7 +14,7 @@ export function registerBrowser(): void {
   registerView({
     id: BROWSER_VIEW,
     title: "Claude’s browser",
-    icon: Globe,
+    icon: MonitorCog,
     defaultRegion: "right",
     component: BrowserView,
     owner: "core",
@@ -32,7 +32,7 @@ export function registerBrowser(): void {
     id: "jig.openClaudeBrowser",
     title: "Open Claude’s browser",
     group: "Claude",
-    icon: Globe,
+    icon: MonitorCog,
     keywords: ["agent", "browser", "automation"],
     run: () => workbench.showView(BROWSER_VIEW),
   });

@@ -25,6 +25,8 @@ by [Electron](https://www.electronjs.org/docs/latest/api/web-contents-view).
 
 ## Claude's browser
 
+Claude’s browser uses the MonitorCog icon in its tab, menu and empty state; your browser uses Globe.
+
 Code: `apps/desktop/src/main/browser/` (service, tools, page scripts),
 `apps/desktop/src/shared/browser.ts` (types), `apps/desktop/src/renderer/features/browser/` (the view).
 Decisions: D-090, D-095.
