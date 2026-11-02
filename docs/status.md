@@ -1,7 +1,14 @@
 # Status
 
-Jig 0.1.3 being prepared (2026-11-02): Meetings sign-in fix (D-235) and the composer without the
-permission line above the box. Publication not yet verified.
+Jig 0.1.3 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.3),
+source/tag `e493da1047d1b3fd3f91e20b98bad6d059fcddfe`. Installer: 259,677,586 bytes;
+SHA-256 `ccbf3bd4993bf2005ae9b4bb213255cecf952e3de6095be9ce9109db53a0143f`.
+Draft digests and a downloaded installer matched local artifacts; unauthenticated latest-release discovery
+returns v0.1.3, latest.yml reports 0.1.3 and the installer returns HTTP 200. No installation was performed.
+In 0.1.3: Meetings keeps a fresh Microsoft sign-in for silent token requests (D-235, one browser tab on
+Connect, Join no longer bounces to the lobby), rejected join links show in the pre-join modal again, and
+the composer drops the permission line above the box. npm run check, chat/meetings e2e and the packaged
+app test passed. A real Teams join with a real account still needs acceptance on a real machine.
 
 Jig 0.1.2 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.2),
 source/tag `7a03748d3e2821628fed46a203c677ae8132a28d`. Installer: 259,677,522 bytes;
