@@ -5,7 +5,8 @@
  * installer and tests it, tags and pushes, creates a draft release, verifies it, publishes it and
  * records the result in docs/status.md. Stops at the first failure; run it again to continue (a
  * release commit already made is reused, a draft already uploaded is checked, not recreated).
- * Run with: npm run release (`npm run release -- --check` checks the plan and the repository only).
+ * Run with: npm run release (`npm run release -- --check` checks the plan and the repository only;
+ * `-- --skip-tests` skips check and e2e when they already passed on this source).
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -159,10 +160,16 @@ if (!resuming) {
 const sha = read("git", ["rev-parse", "HEAD"]);
 
 // ── Checks, package, packaged test ────────────────────────────────────────
-step("npm run check");
-run("npm", ["run", "check"]);
-step("The whole e2e suite");
-run("npm", ["run", "e2e"]);
+// --skip-tests: only when check and the whole e2e suite already passed on this source (a rerun after
+// a packaging fix); the packaged app test below always runs.
+if (process.argv.includes("--skip-tests")) {
+  console.log("\nSkipping npm run check and the e2e suite (--skip-tests).");
+} else {
+  step("npm run check");
+  run("npm", ["run", "check"]);
+  step("The whole e2e suite");
+  run("npm", ["run", "e2e"]);
+}
 step("Building and packaging the installer");
 run("npm", ["run", "build"]);
 run("npm", ["run", "dist", "--workspace", "@jig/desktop", "--", "--no-open"]);
