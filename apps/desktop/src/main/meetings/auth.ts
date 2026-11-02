@@ -4,9 +4,10 @@ import { join } from "node:path";
 import { CommunicationIdentityClient } from "@azure/communication-identity";
 import { AzureCliCredential } from "@azure/identity";
 import { type AccountInfo, PublicClientApplication, type TokenCacheContext } from "@azure/msal-node";
-import { safeStorage, shell } from "electron";
+import { safeStorage } from "electron";
 import { JigError } from "../../shared/ipc";
 import type { MeetingEvent, MeetingSettings } from "../../shared/meetings";
+import { openExternal } from "../appWindows";
 import { logger } from "../log";
 
 import { writeText } from "../state/jsonStore";
@@ -138,7 +139,7 @@ export class MeetingAuth {
         const result = await client.acquireTokenInteractive({
           scopes,
           openBrowser: async (url) => {
-            await shell.openExternal(url);
+            await openExternal(url);
           },
           successTemplate: "You are connected to Jig. You can close this page.",
           errorTemplate: "Microsoft could not connect Jig. Return to Jig for details.",

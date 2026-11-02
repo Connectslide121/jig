@@ -8,7 +8,7 @@ import { JigError } from "../../shared/ipc";
 import type { MeetingEvent, MeetingRecord } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
-import { appWindows } from "../appWindows";
+import { appWindows, hiddenMode, revealWindow } from "../appWindows";
 import { registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
@@ -58,9 +58,7 @@ function lifecycle(r: MeetingRecord, status: MeetingRecord["status"], capture: s
 async function open(): Promise<void> {
   enabled();
   if (room && !room.isDestroyed()) {
-    if (room.isMinimized()) room.restore();
-    room.show();
-    room.focus();
+    revealWindow(room);
     return;
   }
   const here = fileURLToPath(new URL(".", import.meta.url));
@@ -154,7 +152,7 @@ async function open(): Promise<void> {
   const url = new URL(process.env.JIG_RENDERER_URL || (await meetingPage(window.webContents.id)));
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
-  if (!process.env.JIG_HIDDEN) window.show();
+  if (!hiddenMode()) window.show();
 }
 
 export function hasActiveMeeting(): boolean {
@@ -228,11 +226,7 @@ export async function startMeetings(): Promise<void> {
     await sessionManager().snapshot(sessionId);
     emit("meetings.chatOpen", { sessionId });
     const workbench = appWindows().find((w) => w !== room);
-    if (workbench) {
-      if (workbench.isMinimized()) workbench.restore();
-      workbench.show();
-      workbench.focus();
-    }
+    if (workbench) revealWindow(workbench);
   });
   handle("meetings.overview", async () => {
     enabled();

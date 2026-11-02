@@ -1,8 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import { release } from "node:os";
 import { join } from "node:path";
-import { app, shell } from "electron";
+import { app } from "electron";
 import { addonService } from "../addons";
+import { openExternal, showInFolder } from "../appWindows";
 import { buildService } from "../builder";
 import { handle } from "../ipc/router";
 import { paths } from "../state/paths";
@@ -26,10 +27,10 @@ export function startDevRequests(): void {
     downloads: () => process.env.JIG_MAIL_OUT || app.getPath("downloads"),
     openEmail: async (url) => {
       if (process.env.JIG_MAIL_OUT) await writeFile(join(process.env.JIG_MAIL_OUT, "mailto.txt"), url);
-      else await shell.openExternal(url);
+      else await openExternal(url);
     },
     showFile: (path) => {
-      if (!process.env.JIG_MAIL_OUT) shell.showItemInFolder(path);
+      if (!process.env.JIG_MAIL_OUT) showInFolder(path);
     },
   });
   handle("devRequests.create", ({ buildId }) => s.create(buildId));

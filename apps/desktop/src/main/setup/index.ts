@@ -1,7 +1,8 @@
 import { join } from "node:path";
-import { app, net, shell } from "electron";
+import { app, net } from "electron";
 import { JigError } from "../../shared/ipc";
 import { compareVersions, type UpdateInfo } from "../../shared/setup";
+import { openExternal } from "../appWindows";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
@@ -126,7 +127,7 @@ export function registerSetupHandlers(): void {
     }
     const info = await checkForUpdates();
     if (info.mode === "release") {
-      if (info.url) await shell.openExternal(info.url);
+      if (info.url) await openExternal(info.url);
       return { restarting: false };
     }
     const repo = await sourceRepo();

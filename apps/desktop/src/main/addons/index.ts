@@ -8,7 +8,7 @@ import { app, dialog, Notification, protocol, utilityProcess } from "electron";
 import type { AddonInfo } from "../../shared/addons";
 import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import { appWindows, focusJig } from "../appWindows";
+import { appWindows, focusJig, hiddenMode } from "../appWindows";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -177,7 +177,7 @@ export async function startAddons(): Promise<void> {
   const shown = new Set<Notification>();
   const systemNotify = (title: string, message?: string): boolean => {
     if (!notificationsAllowed(getConfig().notifications.desktop, process.env)) return false;
-    if (appWindows().some((w) => w.isFocused()) || !Notification.isSupported()) return false;
+    if (hiddenMode() || appWindows().some((w) => w.isFocused()) || !Notification.isSupported()) return false;
     const n = new Notification({ title, body: message ?? "", icon: APP_ICON });
     shown.add(n);
     n.on("click", () => focusJig());

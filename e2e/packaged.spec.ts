@@ -21,7 +21,8 @@ test("the packaged app starts, loads the built-in add-ons and opens Get started"
   const app = await electron.launch({
     executablePath: executable!,
     args: process.platform === "linux" ? ["--no-sandbox"] : [],
-    env: { ...process.env, JIG_HOME: home, JIG_ENGINE: "fake" } as Record<string, string>,
+    // Hidden like every other test (JIG_HIDDEN= shows it).
+    env: { JIG_HIDDEN: "1", ...process.env, JIG_HOME: home, JIG_ENGINE: "fake" } as Record<string, string>,
   });
   try {
     const page = await app.firstWindow();

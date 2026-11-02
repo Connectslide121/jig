@@ -1,6 +1,7 @@
-import { app, BrowserWindow, dialog, shell } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import type { AppInfo } from "../shared/ipc";
 import { JigError } from "../shared/ipc";
+import { openExternal, openPath, showInFolder } from "./appWindows";
 import { handle } from "./ipc/router";
 import { EXECUTABLE } from "./ipc/validate";
 import { jigHome } from "./state/paths";
@@ -23,16 +24,16 @@ export function registerAppHandlers(): void {
   handle("app.openExternal", async ({ url }) => {
     if (!/^(https?|mailto):/.test(url))
       throw new JigError("invalid_url", "Only http(s) and mailto links can be opened");
-    await shell.openExternal(url);
+    await openExternal(url);
   });
-  handle("app.showItemInFolder", ({ path }) => shell.showItemInFolder(path));
+  handle("app.showItemInFolder", ({ path }) => showInFolder(path));
   handle("app.openPath", async ({ path }) => {
     // Opening a program or script runs it: show it in its folder instead.
     if (EXECUTABLE.test(path)) {
-      shell.showItemInFolder(path);
+      showInFolder(path);
       return;
     }
-    const error = await shell.openPath(path);
+    const error = await openPath(path);
     if (error) throw new JigError("open_failed", error);
   });
   handle("app.pickFolder", async ({ title }, ctx) => {

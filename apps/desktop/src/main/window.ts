@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, screen, shell } from "electron";
+import { app, BrowserWindow, screen } from "electron";
 import { z } from "zod";
-import { closeHelpersIfAlone } from "./appWindows";
+import { closeHelpersIfAlone, hiddenMode, openExternal } from "./appWindows";
 import { logger } from "./log";
 import { readJson, writeJson } from "./state/jsonStore";
 import { paths } from "./state/paths";
@@ -91,7 +91,7 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   }
 
   window.once("ready-to-show", () => {
-    if (!process.env.JIG_HIDDEN) {
+    if (!hiddenMode()) {
       if (process.platform === "win32") {
         window.setIcon(APP_ICON);
         window.setSkipTaskbar(false);
@@ -119,13 +119,13 @@ export async function createMainWindow(): Promise<BrowserWindow> {
 
   // Links open in the user's browser, never inside Jig.
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+    if (/^https?:\/\//.test(url)) void openExternal(url);
     return { action: "deny" };
   });
   window.webContents.on("will-navigate", (event, url) => {
     if (url !== window.webContents.getURL()) {
       event.preventDefault();
-      if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+      if (/^https?:\/\//.test(url)) void openExternal(url);
     }
   });
 
