@@ -2672,3 +2672,16 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - **Claude, on my own:** the plugin keeps the latest serialized cache in memory and deserializes it on every
   access, persisting it encrypted as before (memory-only when safeStorage is unavailable). Silent failures
   log only MSAL's error code, never its message or tokens. Teams desktop being in the same call is unrelated.
+
+## D-236: Updates are announced, downloaded on request, installed visibly
+
+- Jon, after trying 0.1.3's updater: checking must not download by itself; Jig checks when it opens and
+  shows a toast with a button when an update exists; installing must show a window with progress instead
+  of closing and installing invisibly. Supersedes D-233's auto-download.
+- **Claude, on my own:** electron-updater runs with `autoDownload` off. A check 5 s after start (and
+  Check again) emits the available state; the workbench shows an "available" toast once per version per
+  run (Download, Details), skipped while Get started is the active tab. `updates.apply` downloads when
+  nothing is ready; the existing "ready" toast offers Install and restart. Install calls
+  `quitAndInstall(false, true)`, so the assisted NSIS installer shows its progress window, then starts Jig.
+  The meeting/working-chat guards apply to installing only, not downloading.
+

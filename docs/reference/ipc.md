@@ -52,7 +52,7 @@ settings, add-on permissions.
 | `usage.get` / `usage.refresh` | — | `PlanUsage` | your Claude plan usage (5-hour and weekly windows) from Claude Code (`docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
-| `updates.apply` | — | `{ restarting }` | Windows: install downloaded update/restart; source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
+| `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236); source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |

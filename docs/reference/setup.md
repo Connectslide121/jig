@@ -31,8 +31,8 @@ started tab until you press **Done**.
 
 | Method | Result | |
 |---|---|---|
-| `updates.check` | `UpdateInfo { mode, current, latest?, available, detail, url?, download?, percent? }` | Installed Windows: GitHub NSIS feed, background download; source: git fetch/upstream status; other platforms: latest-release API |
-| `updates.apply` | `{ restarting }` | Installed Windows: install downloaded update and restart, refusing active meetings/working chats. Source: existing dirty-clone guard, snapshot, fast-forward/install/build/launcher. Other platforms: release page |
+| `updates.check` | `UpdateInfo { mode, current, latest?, available, detail, url?, download?, percent? }` | Installed Windows: GitHub NSIS feed, check only (no download, D-236); source: git fetch/upstream status; other platforms: latest-release API |
+| `updates.apply` | `{ restarting }` | Installed Windows: download the update when none is ready (progress via `updates.state`); otherwise install it with the visible installer and restart, refusing active meetings/working chats. Source: existing dirty-clone guard, snapshot, fast-forward/install/build/launcher. Other platforms: release page |
 
 `updates.state` emits progress/ready/error states. Installed Windows checks 15 seconds after startup;
 Get started also checks on mount, always shows the version, and reserves status/progress/action space.

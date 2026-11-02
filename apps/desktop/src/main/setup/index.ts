@@ -14,9 +14,11 @@ import { restarter, sourceRepo } from "../updates/relaunch";
 import { sourceStatus, updateSource } from "../updates/source";
 import {
   checkWindowsUpdates,
+  downloadWindowsUpdate,
   installWindowsUpdate,
   startWindowsUpdates,
   supportsWindowsUpdates,
+  windowsUpdateReady,
 } from "../updates/windows";
 import { execTool, runSetupChecks } from "./checks";
 
@@ -109,6 +111,10 @@ export function registerSetupHandlers(): void {
   handle("updates.check", () => checkForUpdates());
   handle("updates.apply", async () => {
     if (supportsWindowsUpdates()) {
+      if (!windowsUpdateReady()) {
+        await downloadWindowsUpdate();
+        return { restarting: false };
+      }
       if (hasActiveMeeting())
         throw new JigError("meeting_active", "Leave the meeting before restarting Jig to install an update.");
       if ((await sessionManager().list()).some((chat) => chat.status === "working"))
@@ -116,9 +122,7 @@ export function registerSetupHandlers(): void {
           "chats_active",
           "Wait for your running chats to finish before installing the update.",
         );
-      if (installWindowsUpdate()) return { restarting: true };
-      await checkWindowsUpdates();
-      return { restarting: false };
+      return { restarting: installWindowsUpdate() };
     }
     const info = await checkForUpdates();
     if (info.mode === "release") {

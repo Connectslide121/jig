@@ -176,7 +176,7 @@ export interface HostMethods {
   /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
   "setup.check": { args: void; result: SetupCheck[] };
   "updates.check": { args: void; result: UpdateInfo };
-  /** From a git clone: pull, build, restart. Installed Windows: download or install/restart. */
+  /** From a git clone: pull, build, restart. Installed Windows: download (on request), or install/restart. */
   "updates.apply": { args: void; result: { restarting: boolean } };
   "app.openExternal": { args: { url: string }; result: void };
   "app.showItemInFolder": { args: { path: string }; result: void };

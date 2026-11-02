@@ -34,17 +34,37 @@ export function registerSetup(): void {
   });
 }
 
-/** An installed Jig opens Get started on its first start. */
+const announced = new Set<string>();
+/** Each update notice shows once per run. */
+const announce = (key: string) => !announced.has(key) && Boolean(announced.add(key));
+
+/** An installed Jig opens Get started on its first start, and tells about updates with a toast. */
 export function useFirstRun(ready: boolean): void {
   useHostEvent("updates.state", (state) => {
-    if (state.download === "ready")
+    if (state.mode !== "release" || !state.latest) return;
+    if (state.download === "ready") {
+      if (!announce(`ready:${state.latest}`)) return;
       notify({
         title: `Jig ${state.latest} is ready`,
-        message: "Install the update when you're ready to restart.",
+        message: "Install the update when you're ready to restart. The installer shows its progress.",
         tone: "success",
         timeout: 0,
         actions: [{ label: "Install and restart", run: () => void applyUpdate(state) }],
       });
+    } else if (state.available && !state.download) {
+      // Found by the check when Jig opens (or Check again): the user decides when to download.
+      if (workbench.activeTab()?.type === "jig.setup" || !announce(`available:${state.latest}`)) return;
+      notify({
+        title: `Jig ${state.latest} is available`,
+        message: `You have ${state.current}.`,
+        tone: "info",
+        timeout: 0,
+        actions: [
+          { label: "Download", run: () => void applyUpdate(state) },
+          { label: "Details", run: () => void workbench.openTab("jig.setup") },
+        ],
+      });
+    }
   });
   const info = useConfig((s) => s.info);
   const done = useConfig((s) => s.config?.setup.firstRunDone);

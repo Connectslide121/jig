@@ -131,6 +131,12 @@ export async function applyUpdate(info: UpdateInfo): Promise<void> {
       return;
     }
     const { restarting } = await call("updates.apply");
+    if (info.mode === "release" && info.download !== "ready" && !restarting)
+      notify({
+        title: `Downloading Jig ${info.latest ?? "update"}`,
+        message: "You'll get a notice when it's ready to install. Progress is in Get started.",
+        tone: "info",
+      });
     if (info.mode === "source" || restarting)
       notify({
         title: restarting ? "Updated — restarting Jig" : "Updated — restart Jig to use it",

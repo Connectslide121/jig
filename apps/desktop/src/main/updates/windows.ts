@@ -27,7 +27,8 @@ function updater() {
   const updater = electronUpdater.autoUpdater;
   if (!started) {
     started = true;
-    updater.autoDownload = true;
+    // Checking only tells; the user starts the download (D-236).
+    updater.autoDownload = false;
     // Restart only after the user's Install and restart action, never on an ordinary quit.
     updater.autoInstallOnAppQuit = false;
     updater.allowDowngrade = false;
@@ -35,9 +36,9 @@ function updater() {
       send({
         latest: info.version,
         available: true,
-        download: "downloading",
-        percent: 0,
-        detail: `Downloading Jig ${info.version}…`,
+        download: undefined,
+        percent: undefined,
+        detail: `Jig ${info.version} is available.`,
       });
     });
     updater.on("download-progress", (progress) => {
@@ -70,8 +71,6 @@ export async function checkWindowsUpdates(): Promise<UpdateInfo> {
   if (state?.download === "ready" || state?.download === "downloading") return state;
   try {
     const result = await updater().checkForUpdates();
-    // Downloads run in the background; always handle their rejection.
-    void result?.downloadPromise?.catch(() => {});
     if (!result?.isUpdateAvailable)
       return send({
         available: false,
@@ -85,8 +84,7 @@ export async function checkWindowsUpdates(): Promise<UpdateInfo> {
       send({
         available: true,
         latest: result.updateInfo.version,
-        download: "downloading",
-        detail: "Downloading update…",
+        detail: `Jig ${result.updateInfo.version} is available.`,
       })
     );
   } catch (error) {
@@ -94,14 +92,37 @@ export async function checkWindowsUpdates(): Promise<UpdateInfo> {
   }
 }
 
+/** Starts the download the user asked for; progress and the result arrive as `updates.state`. */
+export async function downloadWindowsUpdate(): Promise<UpdateInfo> {
+  if (state?.download === "ready" || state?.download === "downloading") return state;
+  if (!state?.available) {
+    await checkWindowsUpdates();
+    if (!state?.available) return state!;
+  }
+  const info = send({
+    download: "downloading",
+    percent: 0,
+    detail: `Downloading Jig ${state.latest ?? "update"}…`,
+  });
+  // Failures arrive through the updater's error event.
+  void updater()
+    .downloadUpdate()
+    .catch(() => {});
+  return info;
+}
+
+export const windowsUpdateReady = () => state?.download === "ready";
+
 export function installWindowsUpdate(): boolean {
-  if (state?.download !== "ready") return false;
-  setTimeout(() => updater().quitAndInstall(true, true), 300);
+  if (!windowsUpdateReady()) return false;
+  // Not silent: the installer's own window shows its progress, then Jig starts again (D-236).
+  setTimeout(() => updater().quitAndInstall(false, true), 300);
   return true;
 }
 
+/** Checks once shortly after Jig opens; an available update shows as a toast with Download. */
 export function startWindowsUpdates(): void {
   if (!supportsWindowsUpdates() || process.env.JIG_ENGINE === "fake") return;
-  const timer = setTimeout(() => void checkWindowsUpdates(), 15_000);
+  const timer = setTimeout(() => void checkWindowsUpdates(), 5_000);
   timer.unref();
 }
