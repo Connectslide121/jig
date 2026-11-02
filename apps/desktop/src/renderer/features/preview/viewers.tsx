@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import type { FilePreview } from "../../../shared/preview";
 import { extensionOf } from "../../../shared/preview";
-import { Button, CodeBlock, cn, Markdown, Mermaid, SearchInput } from "../../ui";
+import { Button, CodeBlock, cn, ImagePreview, Markdown, Mermaid, SearchInput } from "../../ui";
 import { parseJsonLoose } from "./paths";
 
 /** Rows shown in a table before "show more" (the DOM stays fast). */
@@ -330,27 +330,7 @@ export function MediaView({ preview }: { preview: FilePreview }) {
 }
 
 export function ImageFileView({ preview }: { preview: FilePreview }) {
-  const [actual, setActual] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setActual(!actual)}
-      title={actual ? "Fit to window" : "Actual size"}
-      className={cn(
-        "flex h-full w-full bg-canvas p-4",
-        actual
-          ? "cursor-zoom-out items-start justify-start overflow-auto"
-          : "cursor-zoom-in items-center justify-center",
-      )}
-    >
-      <img
-        src={preview.url}
-        alt={preview.name}
-        className={actual ? "max-w-none" : "max-h-full max-w-full object-contain"}
-        data-testid="preview-image"
-      />
-    </button>
-  );
+  return <ImagePreview src={preview.url} alt={preview.name} bytes={preview.size} />;
 }
 
 export function HtmlView({ preview, scripts }: { preview: FilePreview; scripts: boolean }) {

@@ -1,5 +1,11 @@
 # Status
 
+Image zoom (2026-11-02, D-227): image tabs, image/SVG Preview and both sides of Git image diffs
+now have zoom out/in, a 10–800% percentage menu, Fit and 100%. Ctrl/Cmd + scroll zooms; ordinary
+scrolling pans oversized images. The toolbar stays in place.
+Suggestions width (D-228): its header, cards and weekly summary use a centered readable column
+on wide screens and still fill narrow panels.
+
 Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
 Claude’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
 controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available

@@ -64,3 +64,7 @@ shell, the native Chromium page capture and the actual native view bounds under
 `.tmp/browser-screenshot/`. Run `python scripts/compose-browser-screenshot.py` (Pillow required)
 to place the real page pixels into that slot and write `shots/browser.jpg`. This shows both
 the user's native tab and Claude's separate live view without a blank native surface.
+
+Image zoom and Suggestions width screenshots (D-227/D-228) come from `e2e/images.spec.ts`
+(the Git image comparison/image tab scenario → `shots/image-zoom.jpg`) and `e2e/learning.spec.ts`
+(the centered Suggestions width scenario → `shots/suggestions.jpg`) with `JIG_SCREENSHOTS=1`.

@@ -33,9 +33,53 @@ test("Git shows a changed image before and after, and opens it in an image tab",
   const diff = page.getByTestId("git-image-diff");
   await expect(diff.getByTestId("git-image-before").getByTestId("image-size")).toHaveText("1 × 1 px");
   await expect(diff.getByTestId("git-image-after").getByTestId("image-size")).toHaveText("1024 × 1024 px");
+  const after = diff.getByTestId("git-image-after");
+  const toolbar = after.getByTestId("image-toolbar");
+  const toolbarBox = await toolbar.boundingBox();
+  await after.getByRole("button", { name: "Actual size", exact: true }).click();
+  await after.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(after.getByTestId("image-zoom")).toHaveText("125%");
+  await after.getByRole("button", { name: "Zoom out", exact: true }).click();
+  await expect(after.getByTestId("image-zoom")).toHaveText("100%");
+  await after.getByRole("button", { name: "Image zoom", exact: true }).click();
+  await page.getByRole("menuitem", { name: "50%", exact: true }).click();
+  await expect
+    .poll(async () => (await after.getByTestId("image-preview-img").boundingBox())?.width)
+    .toBe(512);
+  await expect(diff.getByTestId("git-image-before").getByTestId("image-zoom")).toHaveText("Fit");
+  expect(await toolbar.boundingBox()).toEqual(toolbarBox);
+  await after.getByRole("button", { name: "Fit image", exact: true }).click();
+  await expect(after.getByTestId("image-zoom")).toHaveText("Fit");
   await page.getByRole("button", { name: "Open the image" }).click();
   await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1024 × 1024 px");
   await expect(page.getByTestId("tab-jig.image")).toContainText("logo.png");
+  const imageTab = page.getByTestId("image-tab");
+  await imageTab.getByRole("button", { name: "Image zoom", exact: true }).click();
+  await page.getByRole("menuitem", { name: "200%", exact: true }).click();
+  await expect
+    .poll(async () => (await imageTab.getByTestId("image-preview-img").boundingBox())?.width)
+    .toBe(2048);
+  expect(await imageTab.getByTestId("image-viewport").evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+    true,
+  );
+  await imageTab.getByTestId("image-viewport").dispatchEvent("wheel", { deltaY: 100, ctrlKey: true });
+  await expect(imageTab.getByTestId("image-zoom")).toHaveText("150%");
+  await imageTab.getByRole("button", { name: "Fit image", exact: true }).click();
+  if (process.env.JIG_SCREENSHOTS) {
+    await page.screenshot({
+      path: "apps/desktop/src/renderer/features/about/shots/image-zoom.jpg",
+      type: "jpeg",
+      quality: 90,
+    });
+  }
+  // Preview uses the same image controls, including for SVG files.
+  await page.getByTestId("git-file-unstaged-logo.png").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Preview", exact: true }).click();
+  const preview = page.locator("[data-tab-id]:not(.hidden)").getByTestId("preview");
+  await expect(preview.getByTestId("image-zoom")).toHaveText("Fit");
+  await preview.getByRole("button", { name: "Actual size", exact: true }).click();
+  await preview.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(preview.getByTestId("image-zoom")).toHaveText("125%");
 });
 
 test("an image Claude reads shows as a thumbnail in its tool card", async ({ page, jigHome }) => {

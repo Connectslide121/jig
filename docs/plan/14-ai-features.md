@@ -25,6 +25,8 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 
 - [x] Top-right globe Browser icon; Claude’s browser uses MonitorCog and has page interaction for sign-ins, read-only navigation and a hint/link to the user Browser (D-226).
 
+- [x] Shared image zoom controls, presets and Ctrl/Cmd + scroll in image tabs, previews and Git comparisons (D-227).
+
 ## Later
 
 - Browser: several tabs, recording a session as a GIF, network requests in the console pane.

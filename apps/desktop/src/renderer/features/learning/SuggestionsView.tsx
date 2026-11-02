@@ -450,7 +450,7 @@ export function SuggestionsView() {
   const done = state.suggestions.filter((s) => s.status === "built" || s.status === "adopted").slice(0, 5);
   const last = state.runs[0];
   return (
-    <div className="flex h-full flex-col" data-testid="suggestions-view">
+    <div className="mx-auto flex h-full w-full min-w-0 max-w-3xl flex-col" data-testid="suggestions-view">
       <div className="flex shrink-0 flex-col gap-1 border-b border-line p-2">
         <div className="flex gap-1">
           <Button

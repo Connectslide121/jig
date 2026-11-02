@@ -240,3 +240,34 @@ test("an empty profile offers a chat where Claude interviews you and fills it in
   });
   expect(await readFile(join(jigHome, "profile.md"), "utf8")).toContain("Publishes the webshop");
 });
+
+test("Suggestions has a centered readable width in a wide main panel", async ({ page, app, jigHome }) => {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()
+      .find((w) => w.webContents.getURL().startsWith("jig-app:"))!
+      .setContentSize(2000, 1000);
+  });
+  await page.getByTestId("suggestions-badge").click();
+  const view = page.getByTestId("suggestions-view");
+  await expect(view).toBeVisible();
+  const bounds = (await view.boundingBox())!;
+  const main = (await page.getByTestId("main-area").boundingBox())!;
+  expect(bounds.width).toBeLessThanOrEqual(768);
+  expect(bounds.x + bounds.width / 2).toBeCloseTo(main.x + main.width / 2, 0);
+  if (process.env.JIG_SCREENSHOTS) {
+    await seed(jigHome);
+    await page.getByTestId("look-for-patterns").click();
+    await expect(page.getByTestId("suggestion")).toContainText("git pull → npm run dev", { timeout: 15000 });
+    await page.screenshot({
+      path: "apps/desktop/src/renderer/features/about/shots/suggestions.jpg",
+      type: "jpeg",
+      quality: 90,
+    });
+  }
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()
+      .find((w) => w.webContents.getURL().startsWith("jig-app:"))!
+      .setContentSize(800, 700);
+  });
+  await expect.poll(() => view.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+});

@@ -49,6 +49,7 @@ import configure from "./shots/configure.jpg";
 import dashboard from "./shots/dashboard.jpg";
 import filesShot from "./shots/files.jpg";
 import git from "./shots/git.jpg";
+import imageZoomShot from "./shots/image-zoom.jpg";
 import knowledgeShot from "./shots/knowledge.jpg";
 import meetingsShot from "./shots/meetings.png";
 import releasesShot from "./shots/releases.jpg";
@@ -742,12 +743,14 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="previews"
             title="Previews"
             lead="Files open the way they're meant to be read: Markdown with Mermaid diagrams, HTML pages (sandboxed), PDFs, CSV and Excel as tables, JSON as editable source with an optional tree preview, notebooks, images, audio, video, Word and PowerPoint text, and highlighted code. A preview follows the file while Claude edits it."
+            shot={{ src: imageZoomShot, alt: "An image preview with zoom controls, Fit and actual size" }}
           >
             <Bullets
               items={[
                 "Right-click a file in Git → Preview, or the eye on a chat tool card",
                 "Links between Markdown files open their preview",
                 "Preview / Source switch, and Ask Claude about the file",
+                "Images: zoom buttons, 10–800% presets, Fit/100% and Ctrl/Cmd + scroll, including both sides of Git comparisons",
                 "Two tabs side by side: right-click a tab → Open to the side, or drag it to the right edge",
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
@@ -880,6 +883,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "“Did it help?” a week after you act on one",
                 "What Jig knows about me: your editable profile, the notes and the activity — delete anything",
                 "How you worked: lines by Claude vs by hand in your commits, and how often each was changed again",
+                "Suggestions use a centered reading column on wide screens and still fit narrow panels",
                 "How Claude worked for you: the skills, subagents, add-ons and MCP servers it used across chats, which suggestions build on",
                 "An empty profile? Jig offers a short interview chat where Claude asks, follows up and fills it in; plus an optional weekly check-in chat (off by default)",
                 "Workflows: steps you repeat, per project — Jig does some, asks before others, leaves the rest to you; on a schedule, as a skill, or in the cloud",

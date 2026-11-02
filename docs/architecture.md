@@ -190,7 +190,9 @@ through Claude Code's permission prompt and leave a card with Undo in the chat; 
 program-running settings are Settings-only. Reference: `docs/reference/configure.md`.
 
 **File previews.** One Preview tab renders Markdown (with Mermaid), HTML, PDF, CSV/Excel, JSON,
-notebooks, media, Office text and code. Binary content is served through `jig-file:` with per-folder
+notebooks, media, Office text and code. Image/SVG previews, image tabs and Git image comparisons share `ImagePreview`, with
+a fixed-height zoom toolbar, natural-pixel scaling and an independently scrollable viewport (D-227).
+Binary content is served through `jig-file:` with per-folder
 grants, never from arbitrary paths. Reference: `docs/reference/preview.md`.
 
 **The chat.** It follows Claude Code's own UI: `/` commands and skills, `@` files, `!` shell, `#`

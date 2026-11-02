@@ -123,7 +123,7 @@ child with a drag handle on `edge`; the size is remembered in `layout.json` unde
 and the bare `ResizeHandle`. `FileIcon` (`<FileIcon path folder? expanded?>`) draws a file's icon in
 the user's file icon theme (`docs/reference/file-icons.md`); `fileIcon: <path>` in `openTab` params gives
 the tab that icon. For images: `ImagePreview` (`<ImagePreview src bytes? compact?>`: fitted on a
-checkerboard, 100% toggle, pixel and file size), `useImageFile(path)` → `{ data?: { dataUrl, bytes, mime }, error? }`
+checkerboard, zoom buttons/presets (10–800%), Fit/100%, Ctrl/Cmd + wheel zoom, pixel and file size), `useImageFile(path)` → `{ data?: { dataUrl, bytes, mime }, error? }`
 (reads through the host), `isImagePath(path)` and `formatBytes(n)`. `Attachments` (`<Attachments files onRemove? className?>`)
 shows a message's files as in the chat: image thumbnails and document chips that open them. `@jig/sdk` also exports
 `isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.

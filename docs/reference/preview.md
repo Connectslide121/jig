@@ -19,7 +19,7 @@ read. Open it from:
 | JSON | `.json .jsonc .geojson .webmanifest` | **Source** by default; optional collapsible tree in Preview (comments and trailing commas allowed) |
 | Notebook | `.ipynb` | Markdown cells, code cells, text/image/error outputs |
 | Diagram | `.mmd .mermaid` | Mermaid, in the theme's colours |
-| Image, SVG | `.png .jpg .gif .webp .bmp .ico .avif .svg` | fit / actual size |
+| Image, SVG | `.png .jpg .gif .webp .bmp .ico .avif .svg` | shared image viewer: Fit, 100%, zoom buttons and 10–800% presets; Ctrl/Cmd + scroll zooms, regular scrolling pans |
 | Audio, video | `.mp3 .wav .ogg .m4a .flac .mp4 .webm .mov .m4v` | players (seeking works: Range requests) |
 | Word, PowerPoint | `.docx .pptx` | the extracted text |
 | Diff | `.diff .patch` | coloured lines |
@@ -28,6 +28,16 @@ read. Open it from:
 Kinds with a rendered and a raw form (Markdown, HTML, JSON, notebooks, SVG, diagrams, tables, diffs)
 have a **Preview / Source** switch. Every preview has **Ask Claude**: a new chat with a request suited to
 the file (review a document, summarise data, explain code), typed in and not sent.
+
+## Image zoom (D-227)
+
+`ui/ImagePreview.tsx` is shared by image tabs, image/SVG Preview and each side of a Git image diff.
+The fixed-height footer provides Zoom out, a percentage menu (10–800%), Zoom in, Fit image and 100%.
+Fit leaves a small margin and does not enlarge small images. Explicit zoom uses the natural pixel
+size; oversized images scroll in both directions, and zoom preserves the point at the viewport's
+centre. Ctrl/Cmd + wheel zooms only within the image viewport; an ordinary wheel scrolls it.
+Each before/after side has its own zoom. A different image resets to Fit; compact chat thumbnails
+keep their existing size and have no zoom controls. Loading/error states keep the toolbar's space.
 
 ## Editing
 

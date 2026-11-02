@@ -2576,3 +2576,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - A permanent hint explains page assistance and links to the user's Browser. Console/Network remain
   inspection controls; error badges reserve fixed slots. Implementation details: Claude, on my own.
 - Jon chose Lucide MonitorCog for Claude’s browser (view, menu action and empty state); the user's Browser keeps Globe, including the top-right shortcut.
+
+## D-227: Image zoom beyond Fit and 100%
+
+- Jon requested zoom in/out from the image comparison viewer. Extend shared `ImagePreview` so
+  image tabs, both Git diff sides and image/SVG Preview all get the same controls.
+- Implementation choices are **Claude, on my own**: 10–800% preset steps, plus/minus buttons,
+  Fit and 100% shortcuts, Ctrl/Cmd + wheel zoom, scrolling oversized images and retaining the
+  viewport centre while zooming. Preserve the fixed toolbar/viewport slots, independent diff-side
+  zoom and compact chat thumbnails. A changed image resets to Fit.
+
+## D-228: A readable maximum width for Suggestions
+
+- Jon reported the full-width Suggestions page was too wide to read on a large display.
+- Center the whole view (header, suggestions and weekly summary) with the existing `max-w-3xl`
+  token; retain full available width in narrow panels. Exact token choice: **Claude, on my own**.

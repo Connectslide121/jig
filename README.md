@@ -193,7 +193,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=17" alt="A suggestion based on repeated actions">
+      <img src="apps/desktop/src/renderer/features/about/shots/suggestions.jpg?v=18" alt="A suggestion based on repeated actions">
       <b>Suggestions.</b> Jig notices how you prompt, what you repeat, what slows you down, risky practices
       and what you mention to Claude (locally, on your machine) and suggests a better prompt, an add-on or
       feature you already have, a safer practice, a tip, a workflow, a CLAUDE.md line, a routine or a tool, each with its evidence and one-click action. A week later it checks whether it helped.

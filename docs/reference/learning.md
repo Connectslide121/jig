@@ -4,6 +4,9 @@ Code: `packages/learning` (mining, schedule — pure, tested), `apps/desktop/src
 log, reflection, service), `apps/desktop/src/renderer/features/learning/` (inbox). Principle 7: local
 and quiet.
 
+The Suggestions view uses a centered `max-w-3xl` (48rem) column for its action header,
+suggestion cards and weekly summary, filling narrow sidebars without horizontal overflow (D-228).
+
 ## 1. Record (always, no AI, local only)
 
 Sources publish to `main/activity/bus.ts`; the log appends one JSON line per event to

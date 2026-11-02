@@ -46,6 +46,8 @@ inbox, the Monday 10:00 run happens (or catches up at next launch), and Build it
 - [x] Prompting tips: Compare prompts (yours and a better one side by side, why and what changed), Try this prompt
 - [x] One prompting and one habit tip a week
 
+- [x] Center Suggestions in a readable-width column that still fits narrow panels (D-228).
+
 ## Notes
 
 - No AI call is made when mining finds nothing (D-056); the first start doesn't run at once (D-057).
