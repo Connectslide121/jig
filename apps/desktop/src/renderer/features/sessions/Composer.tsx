@@ -498,32 +498,16 @@ export function Composer({
             ))}
           </div>
         )}
-        {(mode || meta.permissionMode !== "default") && (
+        {mode && (
           <div className="flex items-center gap-2 text-2xs" data-testid="composer-mode">
             {mode === "shell" ? (
               <span className="flex items-center gap-1 font-medium text-warning">
                 <SquareTerminal className="size-3" /> Shell: runs in {meta.cwd}; Claude sees the output with
                 your next message
               </span>
-            ) : mode === "memory" ? (
+            ) : (
               <span className="flex items-center gap-1 font-medium text-info">
                 <BookmarkPlus className="size-3" /> Remember: Enter to choose which CLAUDE.md
-              </span>
-            ) : (
-              <span
-                className={cn(
-                  "flex items-center gap-1 font-medium",
-                  meta.permissionMode === "bypassPermissions" ? "text-danger" : "text-accent",
-                )}
-              >
-                {meta.permissionMode === "plan" ? (
-                  <ListChecks className="size-3" />
-                ) : (
-                  <Shield className="size-3" />
-                )}
-                {PERMISSION_MODE_LABELS[meta.permissionMode]}
-                {meta.permissionMode === "plan" ? ": Claude plans and doesn't change files" : ""}
-                <span className="font-normal text-hint">· Shift+Tab to switch</span>
               </span>
             )}
           </div>

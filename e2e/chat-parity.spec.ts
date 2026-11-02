@@ -86,13 +86,16 @@ test("composer: / commands, @ files, ! shell, # memory, history, Shift+Tab", asy
   await expect(input).toHaveValue("");
 
   // Shift+Tab goes through the permission modes; a new chat starts in plan mode (the default).
-  await expect(page.getByTestId("composer-mode")).toContainText("Plan only");
-  await input.press("Shift+Tab");
+  // The picker in the box shows the mode; there is no extra line above the box for it.
+  const permissions = page.getByTestId("permission-menu");
+  await expect(permissions).toContainText("Plan only");
   await expect(page.getByTestId("composer-mode")).toHaveCount(0);
   await input.press("Shift+Tab");
-  await expect(page.getByTestId("composer-mode")).toContainText("Accept edits");
+  await expect(permissions).not.toContainText("Plan only");
   await input.press("Shift+Tab");
-  await expect(page.getByTestId("composer-mode")).toContainText("Plan only");
+  await expect(permissions).toContainText("Accept edits");
+  await input.press("Shift+Tab");
+  await expect(permissions).toContainText("Plan only");
 });
 
 test("transcript: todos, plan approval, subagent progress, diffs, background tasks", async ({

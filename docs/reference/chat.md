@@ -21,7 +21,7 @@ resolved active model is recorded separately and never replaces the selected ali
 | `!` bash mode | `! command` runs in the chat's folder (PowerShell on Windows, `$SHELL` elsewhere, 2 minutes at most). The output shows as a card and goes to Claude with your next message as `<bash-input>`/`<bash-stdout>`, like Claude Code |
 | `#` memory | `# text` → Enter asks which CLAUDE.md: the chat folder's or `~/.claude/CLAUDE.md`; a line `- text` is appended |
 | ↑ / ↓ history | your earlier messages of this chat (↑ on the first line of an empty box; a recalled `/command` doesn't open the picker) |
-| Shift+Tab modes | Ask before changes → Accept edits → Plan only → Ask. The mode shows above the box; plan mode outlines it |
+| Shift+Tab modes | Ask before changes → Accept edits → Plan only → Ask. The mode shows in the picker in the box (no line above it, Jon); plan mode outlines the box |
 | Esc | stops Claude |
 | Typing while Claude works | Enter queues the message for after the turn (the list above the box). **Ctrl+Enter** or ⚡ sends it now: it joins the running turn and Claude reads it at its next step (`priority: "next"`) |
 | Esc Esc / `/rewind` | your message's ⋯ → **Edit and send again** or **Rewind to before this message** (the chat; the chat and the files; or only the files). The transcript drops the message and what came after, the text goes back into the box, and the next message continues the conversation from the turn before (`resumeSessionAt`), or starts a new one when it was the first message |
