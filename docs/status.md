@@ -1,5 +1,11 @@
 # Status
 
+Learning evidence (2026-11-02, D-229): sent prompts record shared-file counts, including image-only
+messages, without inferring paste/drop/picker use from paths. Browser-gap mining requires web
+context and reports only missing recorded calls. Reflection guidance rejects “let Claude” reminder
+habits and nonexistent browser-enable settings; the catalog now distinguishes Claude’s browser
+from the user browser. Existing suggestions are unchanged.
+
 Image zoom (2026-11-02, D-227): image tabs, image/SVG Preview and both sides of Git image diffs
 now have zoom out/in, a 10–800% percentage menu, Fit and 100%. Ctrl/Cmd + scroll zooms; ordinary
 scrolling pans oversized images. The toolbar stays in place.

@@ -4,8 +4,15 @@ import { join } from "node:path";
 import type { Pattern } from "@jig/learning";
 import { describe, expect, it } from "vitest";
 import type { Suggestion } from "../../shared/learning";
+import { featuresText } from "./features";
 import { appendToSection, KnowledgeStore, PROFILE_TEMPLATE, profileIsEmpty } from "./knowledge";
-import { checkInPrompt, parseReflection, profileInterviewPrompt, reflectionPrompt } from "./reflect";
+import {
+  checkInPrompt,
+  parseReflection,
+  profileInterviewPrompt,
+  REFLECTION_INSTRUCTIONS,
+  reflectionPrompt,
+} from "./reflect";
 import { didItHelp } from "./service";
 
 describe("profile", () => {
@@ -55,6 +62,17 @@ const pattern: Pattern = {
 };
 
 describe("reflection 2", () => {
+  it("keeps file transport and missing browser events separate from user habits", () => {
+    const prompt = reflectionPrompt([], "", [], { chats: ["Check the saved attachment /tmp/clipboard.png"] });
+    expect(prompt).toContain("Image paths do not identify paste/drop/picker use");
+    expect(prompt).toContain("does not establish denied permission");
+    expect(REFLECTION_INSTRUCTIONS).toContain("Never infer");
+    expect(REFLECTION_INSTRUCTIONS).toContain("none if unsure");
+    expect(REFLECTION_INSTRUCTIONS).toContain("without a repeated user reminder");
+    expect(REFLECTION_INSTRUCTIONS).toContain("repository implementation details");
+    expect(featuresText()).toMatch(/Claude’s browser:.*\[actionId: jig.openClaudeBrowser\]/);
+    expect(featuresText()).toMatch(/- Browser:.*\[actionId: jig.openBrowser\]/);
+  });
   it("gives Claude the notes, profile, work summary and whether tips are allowed", () => {
     const prompt = reflectionPrompt(
       [pattern],

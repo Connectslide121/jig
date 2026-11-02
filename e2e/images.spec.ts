@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { strToU8, zipSync } from "fflate";
@@ -132,6 +132,13 @@ test("screenshots pasted or dropped into the composer go to Claude with the mess
   await expect(page.getByTestId("user-message").getByTestId("chat-attachment")).toHaveCount(1);
   await expect(page.getByTestId("user-message")).toContainText("what is this?");
   await expect(page.getByTestId("assistant-message").last()).toContainText("I see 1 image.");
+  await expect
+    .poll(async () => {
+      const activityDir = join(jigHome, "activity");
+      const files = await readdir(activityDir).catch(() => []);
+      return (await Promise.all(files.map((file) => readFile(join(activityDir, file), "utf8")))).join("\n");
+    })
+    .toContain('"imageAttachments":"1"');
   await expect(page.getByTestId("composer").getByTestId("chat-attachment")).toHaveCount(0);
   // The thumbnail opens the image tab.
   await page.getByTestId("user-message").getByTestId("chat-attachment").getByRole("button").click();

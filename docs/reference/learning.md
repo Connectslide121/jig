@@ -7,6 +7,24 @@ and quiet.
 The Suggestions view uses a centered `max-w-3xl` (48rem) column for its action header,
 suggestion cards and weekly summary, filling narrow sidebars without horizontal overflow (D-228).
 
+## Evidence limits (D-229)
+
+The session manager passes shared image/document counts to the activity bus. No filenames, paths,
+file contents or paste/drop/picker source are added for attachments. Image-only messages are retained
+rather than silently skipped. The reflection's recent-chat sample shows these counts even when text
+is shortened. Older events without counts are unknown; their absence does not prove no images were
+shared. Pasted images are stored as files internally, so image paths cannot establish an input habit.
+Shared-file chats are not classified as short one-off asks just because their text is short.
+
+A browser-verification gap requires explicit web context (a web page/dev-server URL or web-app
+reference), not generic desktop UI wording. Its summary says no Jig browser calls were *recorded*;
+it does not establish permission denial, missing verification through other tools or subagents, or
+that the user should repeat browser instructions. Claude already receives those instructions.
+The feature catalog points Claude’s browser to `jig.openClaudeBrowser`; `jig.openBrowser` is the
+user's native browser. The reflection is instructed to omit non-actionable “let Claude” reminders
+and imaginary enable-browser settings, respect Electron test/screenshot verification, and keep
+repository implementation facts out of personal profile proposals. Existing cards are not rewritten.
+
 ## 1. Record (always, no AI, local only)
 
 Sources publish to `main/activity/bus.ts`; the log appends one JSON line per event to
@@ -14,7 +32,7 @@ Sources publish to `main/activity/bus.ts`; the log appends one JSON line per eve
 
 | `kind` | From |
 |---|---|
-| `prompt` | every message you send in a chat (pastes collapsed, secrets masked — see below) |
+| `prompt` | every message you send in a chat, including image/document-only messages; `detail.imageAttachments` / `detail.fileAttachments` are string counts (pastes collapsed, secrets masked — see below) |
 | `session.tool` | tool calls in sessions (the command for Bash); `detail`: `tool`, `chat` and, for a skill, subagent, add-on or MCP tool, `use` (`skill`/`subagent`/`addon`/`mcp`) and `name` (D-185) |
 | `terminal.command` | lines typed in Jig terminals (not in private ones, like the Claude sign-in) |
 | `script.run` | scripts started from Jig |

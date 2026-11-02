@@ -139,26 +139,33 @@ const UI_WORDS =
   /\b(css|styles?|layout|button|page|ui|ux|screen|component|render(s|ed|ing)?|looks?|display(s|ed)?|modal|form|responsive|mobile|click(s|ed)?)\b/i;
 
 /**
- * Jig tools that fit the work but were never used: in a project where 5+ messages on 2+ days were
- * about the UI, Claude's browser (`jig_browser_*`) was never used.
+ * A gap in recorded browser verification alongside UI messages. This is not proof that the user
+ * denied access, or that no other UI verification method was used.
  */
 export function unusedToolPatterns(events: ActivityEvent[], min = { count: 5, days: 2 }): Pattern[] {
   const byProject = new Map<string, ActivityEvent[]>();
   const usedBrowser = new Set<string>();
+  const webProjects = new Set<string>();
   for (const e of events) {
     const project = e.projectId ?? "";
     if (e.kind === "session.tool" && /jig_browser/.test(e.detail?.tool ?? e.text)) usedBrowser.add(project);
+    if (
+      e.kind === "prompt" &&
+      /https?:\/\/|\blocalhost(?::\d+)?\b|\b(web app|website|webpage|dev server)\b/i.test(e.text)
+    )
+      webProjects.add(project);
     if (e.kind === "prompt" && UI_WORDS.test(e.text))
       byProject.set(project, [...(byProject.get(project) ?? []), e]);
   }
   return [...byProject.entries()]
-    .filter(([project]) => !usedBrowser.has(project))
+    .filter(([project]) => webProjects.has(project) && !usedBrowser.has(project))
     .map(([project, list]) => {
       const s = summarizeGroup(list);
       return {
         key: `u-${hashKey(`browser:${project}`)}`,
         kind: "unused-tool" as const,
-        summary: "Claude's browser was never used, though these messages were about the UI",
+        summary:
+          "No Jig browser tool calls were recorded for these UI-related messages; other verification and user permissions are unknown",
         ...s,
         score: s.count * 0.8 * Math.sqrt(s.days),
       };

@@ -58,6 +58,15 @@ describe("habitPatterns", () => {
     expect(habitPatterns([...piecemealChat(1, "a"), ...piecemealChat(1, "b")])).toEqual([]);
   });
 
+  it("does not call image-only chats short one-off asks", () => {
+    const events = Array.from({ length: 6 }, (_, i) => ({
+      ...prompt(1 + (i % 3), `image${i}`, ""),
+      detail: { chat: `image${i}`, imageAttachments: "1", fileAttachments: "0" },
+    }));
+    expect(habitPatterns(events)).toEqual([]);
+    expect(promptStats(events)).toContain("messages with recorded shared images/documents: 6");
+  });
+
   it("finds mostly one-off short asks", () => {
     const events = Array.from({ length: 6 }, (_, i) => prompt(1 + (i % 3), `c${i}`, "fix this bug"));
     const found = habitPatterns(events);
@@ -101,6 +110,16 @@ describe("promptStats", () => {
 });
 
 describe("chatSample", () => {
+  it("shows shared images independently of text truncation without claiming an input method", () => {
+    const event = prompt(1, "a", "");
+    event.detail = { chat: "a", imageAttachments: "2", fileAttachments: "0" };
+    const sample = chatSample([event], 10, 10, 5).join("\n");
+    expect(sample).toContain("2 image(s), 0 document(s)");
+    expect(sample).toContain("paste/drop/picker source not recorded");
+    const legacy = chatSample([prompt(2, "b", "Check /tmp/screenshot.png")]).join("\n");
+    expect(legacy).not.toContain("0 image(s)");
+    expect(legacy).not.toContain("shared files:");
+  });
   it("shows recent chats message by message, shortened, oldest chat first", () => {
     const sample = chatSample(
       [...piecemealChat(1, "a"), prompt(2, "b", `long ${"x".repeat(50)}`), tool(2, "b", "Edit", 1)],

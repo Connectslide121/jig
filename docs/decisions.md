@@ -2591,3 +2591,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Jon reported the full-width Suggestions page was too wide to read on a large display.
 - Center the whole view (header, suggestions and weekly summary) with the existing `max-w-3xl`
   token; retain full available width in narrow panels. Exact token choice: **Claude, on my own**.
+
+## D-229: Learning must separate transport details and agent work from user habits
+
+- Jon reported a false profile proposal claiming he saves PNGs rather than pasting (he pastes),
+  and browser coaching he could not act on despite never refusing browser access.
+- Record counts of shared images/documents for sent prompts, including messages with no text.
+  Keep paths/content and input method out of that metadata. Recent-chat samples retain the counts;
+  historical missing counts remain unknown. Paths and generated wrappers never prove paste vs picker.
+- Require explicit web context for browser-gap mining and describe only missing recorded calls,
+  not “never used” or denied permissions. Claude already has browser/tester instructions; do not
+  turn agent verification into a recurring user reminder, invent an enable setting or disregard
+  Electron tests/screenshots. Correct the feature catalog's Claude/user browser actions.
+- Profile proposals need direct statements or unambiguous behavior, not repository implementation
+  facts. Counts, contextual mining and prompt guard implementation are **Claude, on my own**.
+  These fixes affect future reviews; do not silently rewrite saved suggestions or the user profile.

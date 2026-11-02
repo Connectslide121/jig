@@ -69,3 +69,5 @@ Phase 14 also includes a native user Browser in the main panel, separate from Cl
 Phase 14 also includes a top-right browser shortcut and clear ownership of Claude’s browser controls (D-226); its status remains done.
 
 Phase 14 also includes shared image zoom controls (D-227), and phase 9 includes a readable Suggestions width (D-228); both remain done.
+
+Phase 9 also includes conservative attachment/browser evidence and corrected browser feature actions (D-229); its status remains done.

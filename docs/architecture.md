@@ -447,6 +447,11 @@ the request be built as an add-on — which you can copy and implement in Jig's 
    the builder with the suggestion as the goal; **Not now** snoozes; **Never** blocks that pattern.
    Answers feed the next reflection.
 
+Prompt activity includes shared image/document counts even for attachment-only messages, without
+file paths/content or inferred input provenance. Reflection samples retain the counts; browser gaps
+require explicit web context and never imply user permission denial (D-229).
+See `docs/reference/learning.md`.
+
 ## 11. Git and the built-in add-ons
 
 Jig's own Git tab is the built-in add-on `addons/git`: the Git view (current branch, working changes
@@ -574,4 +579,3 @@ then create normal project/meeting-only Plan-mode chats that read paginated text
 Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'
 shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
 See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.
-

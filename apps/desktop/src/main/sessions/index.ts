@@ -230,7 +230,11 @@ export function startSessions(): void {
           kind: "prompt",
           text: event.text,
           projectId,
-          detail: { chat: event.session.id },
+          detail: {
+            chat: event.session.id,
+            imageAttachments: String(event.imageAttachments ?? 0),
+            fileAttachments: String(event.fileAttachments ?? 0),
+          },
         });
         if (correctionSignal(event.text))
           publishActivity({

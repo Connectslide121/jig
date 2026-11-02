@@ -60,9 +60,14 @@ describe("signals", () => {
       ["You pasted HTTP requests/responses into chats", 5],
     ]);
   });
-  it("notices Claude's browser was never used for UI work", () => {
-    const ui = [1, 1, 2, 2, 3].map((d) => ev(d, "prompt", "the button looks wrong on the page"));
+  it("reports missing browser activity without asserting use or permissions", () => {
+    const desktop = [1, 1, 2, 2, 3].map((d) => ev(d, "prompt", "the button looks wrong in the desktop app"));
+    expect(unusedToolPatterns(desktop)).toEqual([]);
+    const ui = [1, 1, 2, 2, 3].map((d) => ev(d, "prompt", "the button looks wrong on http://localhost:5173"));
     expect(unusedToolPatterns(ui)).toHaveLength(1);
+    expect(unusedToolPatterns(ui)[0]?.summary).toContain("were recorded");
+    expect(unusedToolPatterns(ui)[0]?.summary).toContain("permissions are unknown");
+    expect(unusedToolPatterns(ui)[0]?.summary).not.toContain("never used");
     expect(
       unusedToolPatterns([...ui, ev(3, "session.tool", "{}", { tool: "mcp__jig__jig_browser_open" })]),
     ).toHaveLength(0);

@@ -67,6 +67,30 @@ describe("ActivityLog", () => {
     expect(await activity.stats()).toMatchObject({ days: 2, events: 2 });
   });
 
+  it("keeps image-only messages with counts while ignoring empty messages", async () => {
+    const { activity } = setup();
+    expect(
+      await activity.record(
+        { kind: "prompt", text: "", detail: { chat: "c1", imageAttachments: "2", fileAttachments: "0" } },
+        day(20),
+      ),
+    ).toBe(true);
+    expect(
+      await activity.record(
+        { kind: "prompt", text: "", detail: { chat: "c1", imageAttachments: "0", fileAttachments: "0" } },
+        day(20),
+      ),
+    ).toBe(false);
+    expect(await activity.record({ kind: "prompt", text: "" }, day(20))).toBe(false);
+    const [entry] = await activity.read(30, day(21));
+    expect(entry).toMatchObject({ text: "", detail: { imageAttachments: "2", fileAttachments: "0" } });
+    expect(JSON.stringify(entry)).not.toContain(".png");
+    settings.recording = false;
+    expect(
+      await activity.record({ kind: "prompt", text: "", detail: { imageAttachments: "1" } }, day(20)),
+    ).toBe(false);
+  });
+
   it("respects pause and exclusions, prunes and clears", async () => {
     const { activity } = setup();
     settings.recording = false;

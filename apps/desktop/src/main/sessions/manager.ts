@@ -103,6 +103,9 @@ export interface SessionManagerOptions {
     session: SessionMeta;
     text: string;
     tool?: string;
+    /** Shared files only; input method and paths are not recorded for learning. */
+    imageAttachments?: number;
+    fileAttachments?: number;
     /** The tool's input (to record the lines Claude writes). */
     input?: Record<string, unknown>;
     /** Friction (Learning 2): interrupt, rewind, denied, tool-errors. */
@@ -466,7 +469,13 @@ export class SessionManager {
     };
     updates.push({ op: "meta", meta: live.state.meta });
     this.emit(live, updates);
-    this.options.onActivity?.({ kind: "prompt", session: live.state.meta, text });
+    this.options.onActivity?.({
+      kind: "prompt",
+      session: live.state.meta,
+      text,
+      imageAttachments: attachments.filter((a) => (a.kind ?? "image") === "image").length,
+      fileAttachments: attachments.filter((a) => (a.kind ?? "image") !== "image").length,
+    });
     live.toolErrors = 0;
     // Output of `!` commands you ran since the last message goes with it, as Claude Code sends it.
     const shells = live.state.items.filter(

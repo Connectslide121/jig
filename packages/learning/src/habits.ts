@@ -14,6 +14,9 @@ const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 const PLAN = /\bplan\b/i;
 const VERIFY = /\b(tests?|verify|check|lint|typecheck|build|acceptance|done when|criteria)\b/i;
 
+const hasSharedFiles = (event: ActivityEvent) =>
+  Number(event.detail?.imageAttachments) > 0 || Number(event.detail?.fileAttachments) > 0;
+
 const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
 interface Chat {
@@ -98,7 +101,9 @@ export function habitPatterns(events: ActivityEvent[]): Pattern[] {
     worst?.prompts.filter(isPiece),
   );
 
-  const oneOff = chats.filter((c) => c.prompts.length === 1 && words(c.prompts[0]!.text) < 15);
+  const oneOff = chats.filter(
+    (c) => c.prompts.length === 1 && !hasSharedFiles(c.prompts[0]!) && words(c.prompts[0]!.text) < 15,
+  );
   if (oneOff.length / chats.length >= 0.6)
     add(
       "one-off",
@@ -136,6 +141,7 @@ export function promptStats(events: ActivityEvent[]): string {
   const first = chats.map((c) => words(c.prompts[0]!.text));
   return [
     `${chats.length} chats, ${prompts.length} messages; median ${median(chats.map((c) => c.prompts.length))} messages per chat`,
+    `messages with recorded shared images/documents: ${prompts.filter(hasSharedFiles).length} (text word counts do not include their content)`,
     `first message: median ${median(first)} words; ${pct(first.filter((w) => w < 15).length, chats.length)} under 15 words`,
     `chats with a single message: ${pct(chats.filter((c) => c.prompts.length === 1).length, chats.length)}`,
     `messages asking for one more piece ("now add…", "write a…"): ${pct(prompts.filter(isPiece).length, prompts.length)}`,
@@ -156,7 +162,11 @@ export function chatSample(events: ActivityEvent[], limit = 10, perChat = 10, ma
     .map((c) => {
       const shown = c.prompts.slice(0, perChat).map((e, i) => {
         const text = e.text.replace(/\s+/g, " ").trim();
-        return `  ${i + 1}. ${text.length > max ? `${text.slice(0, max)}…` : text}`;
+        const shared =
+          e.detail?.imageAttachments !== undefined || e.detail?.fileAttachments !== undefined
+            ? ` [shared files: ${Number(e.detail?.imageAttachments) || 0} image(s), ${Number(e.detail?.fileAttachments) || 0} document(s); paste/drop/picker source not recorded]`
+            : "";
+        return `  ${i + 1}. ${text.length > max ? `${text.slice(0, max)}…` : text}${shared}`;
       });
       const more = c.prompts.length > perChat ? `\n  (+${c.prompts.length - perChat} more)` : "";
       return `chat on ${c.prompts[0]!.at.slice(0, 16)}, ${c.prompts.length} message(s), ${c.edits} edit(s)${c.planned ? ", planned" : ""}:\n${shown.join("\n")}${more}`;

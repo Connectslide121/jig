@@ -59,9 +59,15 @@ export const JIG_FEATURES: Array<{ name: string; what: string; where: string; ac
     where: "mic button, Ctrl+Shift+Space",
   },
   {
+    name: "Claude’s browser",
+    what: "Claude is already instructed to verify web UI changes using its browser/tester; the user does not need to enable this or request it every time. Tool permissions still follow the chat's mode",
+    where: "opens automatically when Claude uses it; Show when used changes only its visibility",
+    action: "jig.openClaudeBrowser",
+  },
+  {
     name: "Browser",
-    what: "Claude opens the app, clicks through it, takes screenshots and reads the console itself",
-    where: "ask a chat to check the page",
+    what: "the user's native browser for personal browsing, separate from Claude's verification tools",
+    where: "top-right globe button",
     action: "jig.openBrowser",
   },
   {

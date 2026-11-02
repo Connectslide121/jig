@@ -60,7 +60,10 @@ export class ActivityLog {
 
   async record(event: ActivityInput, now = new Date()): Promise<boolean> {
     const s = this.settings();
-    if (!s.recording || !event.text.trim()) return false;
+    const hasSharedFiles =
+      event.kind === "prompt" &&
+      (Number(event.detail?.imageAttachments) > 0 || Number(event.detail?.fileAttachments) > 0);
+    if (!s.recording || (!event.text.trim() && !hasSharedFiles)) return false;
     if (isExcluded(event, s.exclusions, this.projectPath(event.projectId))) return false;
     const entry: ActivityEvent = { at: now.toISOString(), ...sanitizeEvent(event) };
     await appendLine(join(this.dir, `${localDay(now)}.jsonl`), JSON.stringify(entry));

@@ -9,6 +9,7 @@ import { SessionManager, summarize } from "./manager";
 let dir: string;
 let updates: Array<{ id: string; updates: ChatUpdate[] }>;
 let activity: string[];
+let sharedFiles: Array<{ images: number; files: number }>;
 
 function manager(engine = new FakeEngine(1)) {
   return new SessionManager({
@@ -22,7 +23,11 @@ function manager(engine = new FakeEngine(1)) {
     engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {} }),
     appendSystemPrompt: () => "You are inside Jig.",
     onUpdate: (id, u) => updates.push({ id, updates: u }),
-    onActivity: (e) => activity.push(`${e.kind}:${e.text}`),
+    onActivity: (e) => {
+      activity.push(`${e.kind}:${e.text}`);
+      if (e.kind === "prompt")
+        sharedFiles.push({ images: e.imageAttachments ?? 0, files: e.fileAttachments ?? 0 });
+    },
   });
 }
 
@@ -46,6 +51,7 @@ beforeEach(async () => {
   process.env.JIG_HOME = dir;
   updates = [];
   activity = [];
+  sharedFiles = [];
 });
 
 describe("SessionManager", () => {
@@ -137,6 +143,7 @@ describe("SessionManager", () => {
     await until(async () => (await metaOf(m, session.id)).turns === 1);
     const snap = await m.snapshot(session.id);
     expect(snap.meta.title).toBe("pasted");
+    expect(sharedFiles).toEqual([{ images: 1, files: 0 }]);
     expect(snap.items[0]).toMatchObject({ kind: "user", text: "", attachments: [image] });
     const reply = snap.items.find((i) => i.kind === "assistant");
     expect(reply?.kind === "assistant" && reply.text).toContain("I see 1 image.");

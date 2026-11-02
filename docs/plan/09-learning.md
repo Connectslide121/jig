@@ -48,6 +48,8 @@ inbox, the Monday 10:00 run happens (or catches up at next launch), and Build it
 
 - [x] Center Suggestions in a readable-width column that still fits narrow panels (D-228).
 
+- [x] Preserve shared-file evidence and qualify browser-verification gaps; avoid transport/profile inferences and non-actionable agent reminders (D-229).
+
 ## Notes
 
 - No AI call is made when mining finds nothing (D-056); the first start doesn't run at once (D-057).
