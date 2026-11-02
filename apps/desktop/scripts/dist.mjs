@@ -23,11 +23,15 @@ const bin = join(
   ".bin",
   process.platform === "win32" ? "electron-builder.cmd" : "electron-builder",
 );
-const result = spawnSync(bin, [platform, ...process.argv.slice(2).filter((a) => a !== "--no-open")], {
-  cwd: appDir,
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+const result = spawnSync(
+  bin,
+  [platform, "--publish", "never", ...process.argv.slice(2).filter((a) => a !== "--no-open")],
+  {
+    cwd: appDir,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  },
+);
 if (result.status === 0 && !process.env.CI && !process.argv.includes("--no-open")) showInstaller();
 process.exit(result.status ?? 1);
 

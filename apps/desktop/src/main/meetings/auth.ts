@@ -1,20 +1,30 @@
+import { createHash } from "node:crypto";
+import { readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { CommunicationIdentityClient } from "@azure/communication-identity";
 import { AzureCliCredential } from "@azure/identity";
-import { type AccountInfo, PublicClientApplication } from "@azure/msal-node";
-import { shell } from "electron";
+import { type AccountInfo, PublicClientApplication, type TokenCacheContext } from "@azure/msal-node";
+import { safeStorage, shell } from "electron";
 import { JigError } from "../../shared/ipc";
 import type { MeetingEvent, MeetingSettings } from "../../shared/meetings";
+
+import { writeText } from "../state/jsonStore";
+import { paths } from "../state/paths";
 
 const callingScopes = [
   "https://auth.msft.communication.azure.com/Teams.ManageCalls",
   "https://auth.msft.communication.azure.com/Teams.ManageChats",
 ];
 
-/** MSAL's cache stays in memory. Resource authentication uses the user's own Azure CLI login. */
+/** Microsoft sign-in persists only through OS-protected encryption; calling tokens stay in memory. */
 export class MeetingAuth {
   private client?: PublicClientApplication;
   private account?: AccountInfo;
   private interactive?: Promise<string>;
+  private epoch = 0;
+  private restored?: Promise<void>;
+  private persisting?: Promise<void>;
+  private cachedFile?: string;
   constructor(private readonly settings: () => MeetingSettings) {}
   get name(): string | undefined {
     return this.account?.username;
@@ -23,21 +33,82 @@ export class MeetingAuth {
     return this.account?.name;
   }
   reset(): void {
+    this.epoch++;
+    this.restored = undefined;
     this.client = undefined;
     this.account = undefined;
+  }
+  private cacheFile(): string | undefined {
+    const { tenantId, clientId } = this.settings();
+    if (!tenantId || !clientId) return undefined;
+    const key = createHash("sha256").update(`${tenantId}:${clientId}`).digest("hex");
+    return join(paths.cache(), "microsoft", `${key}.cache`);
+  }
+  async signOut(): Promise<void> {
+    const file = this.cachedFile ?? this.cacheFile();
+    this.reset();
+    await this.persisting?.catch(() => {});
+    if (file) await rm(file, { force: true });
+    this.cachedFile = undefined;
+  }
+  async restore(): Promise<void> {
+    if (!this.settings().clientId || !this.settings().tenantId) return;
+    this.restored ??= (async () => {
+      const epoch = this.epoch;
+      try {
+        const accounts = await this.app().getTokenCache().getAllAccounts();
+        if (this.epoch === epoch && !this.account) this.account = accounts[0];
+      } catch {
+        /* An unavailable/corrupt protected cache requires a fresh sign-in. */
+      }
+    })();
+    await this.restored;
   }
   private app(): PublicClientApplication {
     const { tenantId, clientId } = this.settings();
     if (!tenantId || !clientId)
       throw new JigError("meeting_setup", "Configure the Microsoft tenant and app registration first");
-    this.client ??= new PublicClientApplication({
+    if (this.client) return this.client;
+    const file = this.cacheFile();
+    const epoch = this.epoch;
+    this.cachedFile = file;
+    let loaded: Promise<void> | undefined;
+    const protectedStorage = () =>
+      safeStorage.isEncryptionAvailable() &&
+      (process.platform !== "linux" || safeStorage.getSelectedStorageBackend() !== "basic_text");
+    this.client = new PublicClientApplication({
+      cache: {
+        cachePlugin: {
+          beforeCacheAccess: async (context: TokenCacheContext) => {
+            loaded ??= (async () => {
+              if (!file || !protectedStorage() || this.epoch !== epoch) return;
+              try {
+                const encoded = await readFile(file, "utf8");
+                const serialized = safeStorage.decryptString(Buffer.from(encoded, "base64"));
+                if (this.epoch === epoch) context.tokenCache.deserialize(serialized);
+              } catch {
+                /* No plaintext fallback and no credential-bearing error logging. */
+              }
+            })();
+            await loaded;
+          },
+          afterCacheAccess: async (context: TokenCacheContext) => {
+            if (!context.cacheHasChanged || !file || !protectedStorage() || this.epoch !== epoch) return;
+            const encrypted = safeStorage.encryptString(context.tokenCache.serialize()).toString("base64");
+            this.persisting = writeText(file, encrypted);
+            await this.persisting;
+          },
+        },
+      },
       auth: { clientId, authority: `https://login.microsoftonline.com/${tenantId}` },
       system: { loggerOptions: { piiLoggingEnabled: false, loggerCallback: () => {} } },
     });
     return this.client;
   }
   private async access(scopes: string[], interactive: boolean): Promise<string> {
+    await this.restore();
     const client = this.app();
+    const epoch = this.epoch;
     if (this.account) {
       try {
         return (await client.acquireTokenSilent({ account: this.account, scopes })).accessToken;
@@ -59,6 +130,7 @@ export class MeetingAuth {
           successTemplate: "You are connected to Jig. You can close this page.",
           errorTemplate: "Microsoft could not connect Jig. Return to Jig for details.",
         });
+        if (this.epoch !== epoch) throw new Error("Sign-in cancelled");
         this.account = result.account ?? undefined;
         return result.accessToken;
       } catch {

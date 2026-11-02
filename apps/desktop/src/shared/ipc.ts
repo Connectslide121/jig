@@ -89,6 +89,7 @@ export interface HostMethods {
   "meetings.open": { args: void; result: void };
   "meetings.revealChat": { args: { sessionId: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
+  "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
   "meetings.delete": { args: { id: string }; result: void };
   "meetings.layout": { args: import("./meetingLayout").MeetingLayout; result: void };
@@ -175,7 +176,7 @@ export interface HostMethods {
   /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
   "setup.check": { args: void; result: SetupCheck[] };
   "updates.check": { args: void; result: UpdateInfo };
-  /** From a git clone: pull, build, restart. Installed: opens the release page. */
+  /** From a git clone: pull, build, restart. Installed Windows: download or install/restart. */
   "updates.apply": { args: void; result: { restarting: boolean } };
   "app.openExternal": { args: { url: string }; result: void };
   "app.showItemInFolder": { args: { path: string }; result: void };
@@ -526,6 +527,7 @@ export interface HostEvents {
   "themes.changed": void;
   /** The host changed the layout (e.g. an accepted level-1 build). */
   "layout.changed": Layout;
+  "updates.state": UpdateInfo;
   "projects.changed": ProjectsState;
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };

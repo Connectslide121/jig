@@ -10,8 +10,8 @@ checksum and publishes a verified GitHub draft as the latest stable release. It 
 `git` / `gh` login. An explicit publication request authorizes the release-scoped push; merely
 preparing a release does not. See `AGENTS.md` → Releasing Jig.
 
-The app's existing update check then sees the new stable tag and links to its installer. No
-GitHub Actions workflow, extra token, app developer UI or silent installation is required. Creating
+Installed Windows Jig downloads the release in-app and offers Install and restart. No
+GitHub Actions workflow, extra token or app developer UI is required. Creating
 the skill itself does not publish the first release. The updater repository is `Connectslide121/jig`.
 A public repository with no published stable release also returns 404 from `/releases/latest`.
 
@@ -68,10 +68,15 @@ Search → **Check for updates…** (and the Updates card in Get started):
   branch is behind its upstream, and **Pull, build and restart** does `git pull --ff-only`, `npm
   install` when `package.json`/`package-lock.json` changed, `npm run build`, and restarts through the
   launcher (the running build is kept as the fallback). It refuses when the clone has uncommitted changes.
-- **Installed**: Jig looks at the latest GitHub release of `Connectslide121/jig` and, if it is newer,
-  opens its page to download the installer. (A private repository answers 404: "Couldn't check".)
+- **Installed Windows**: checks after startup and when Get started opens, shows your version and
+  status, downloads a newer installer with verified feed hash, then offers **Install and restart**.
+  It never installs on ordinary quit and refuses restart during a meeting or working chat.
+  Save edited files before installing. Versions 0.1.0/0.1.1 require one manual upgrade to gain this.
+- **Other installed platforms**: latest-release discovery opens GitHub for manual download.
 
-There is no silent auto-update (D-067).
+Windows releases must include the NSIS installer, `.exe.blockmap`, `latest.yml` and checksums.
+The feed version, filename and SHA-512 must match the installer. Packaging generates metadata but
+always uses `--publish never`; the release skill uploads and verifies all assets (D-233).
 
 ## Windows notes
 

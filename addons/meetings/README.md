@@ -12,10 +12,11 @@ project's context, and review actions for the task queue. Meetings are global (D
   resource key is needed. Your existing `az login` authorises the resource; the signed-in Azure user
   needs resource access permitting identity token issuance (Owner/Contributor are supported).
 - **Connect Microsoft:** uses the external system browser, a desktop loopback redirect and MSAL's
-  memory-only cache. Calling asks for delegated Teams.ManageCalls and Teams.ManageChats. Calendar
+  OS-encrypted cache. Calling asks for delegated Teams.ManageCalls and Teams.ManageChats. Calendar
   consent (Calendars.ReadBasic) happens separately on Refresh calendar, so a blocked calendar does
-  not prevent joining by link. Reconnect after restarting Jig. If tenant policies require approval,
+  not prevent joining by link. Jig restores the account after restarting; Disconnect deletes the cache. If tenant policies require approval,
   an administrator approves those permissions for the `jig-meetings` registration.
+- **Lobby view:** Agenda/Week is remembered across window closes and app restarts.
 - **Upcoming:** refresh the next 14 days of your default Microsoft calendar (recurrences expanded,
   cancelled events excluded). Events with Teams join links have Join. Join from link works without
   calendar permission. Some imported invitations have no structured join link: paste it instead.
@@ -26,6 +27,9 @@ project's context, and review actions for the task queue. Meetings are global (D
 - **During:** microphone/camera and in-call device controls, participant video, incoming screen shares, your screen/window
   sharing with a modal picker and Stop sharing, live text and capture status. Call controls always
   affect the active call even while inspecting a past transcript. Retry captions keeps the language chosen before joining. System-audio sharing isn't enabled.
+- **Connection status:** Joining lasts until Connected or the Teams lobby; stalled joins time out
+  after 90 seconds with a visible error. Call-end errors include Microsoft's numeric codes.
+  Camera-off joins omit video options (the SDK rejects an empty stream list).
 - **Transcript:** follows the latest speech until you scroll up to read earlier material. SDK caption events supply speaker identifiers/names, timestamps and partial/final
   text. Partial sentences are replaced, late partials cannot overwrite finals, and repeated utterances
   are retained. Speech before joining/caption activation is unavailable. Capture failures and restarts
@@ -45,8 +49,9 @@ project's context, and review actions for the task queue. Meetings are global (D
   is assigned. The Tasks add-on must be enabled.
 
 The global `addon-data/meetings.json` is written atomically through the state module. Frozen question
-snapshots are in `addon-data/meeting-snapshots/`. Microsoft and calling access tokens stay only in
-memory, with the latter delivered only to the owned meeting window. Logs/activity contain action ids,
+snapshots are in `addon-data/meeting-snapshots/`. MSAL sign-in persists only as OS-encrypted
+ciphertext in `cache/microsoft/<tenant-client-hash>.cache`, with no plaintext fallback. Calling
+tokens remain in memory, delivered only to the owned meeting window. Logs/activity contain action ids,
 not transcript text, resource keys or credentials. Media uses the renderer SDK with host-managed
 permissions, while authentication, Graph requests, files and durable call lifecycle belong to main.
 The public add-on entry point is `ctx.meetings.open()`; the media/IPC implementation is host-owned.

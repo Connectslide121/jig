@@ -4,6 +4,7 @@ import type { SetupCheck, UpdateInfo } from "../../../shared/setup";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, Card, Spinner } from "../../ui";
+import { dirtyTabIds } from "../../workbench/dirty";
 import { runAction } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -121,8 +122,16 @@ export function SetupTab() {
 
 export async function applyUpdate(info: UpdateInfo): Promise<void> {
   try {
+    if (info.download === "ready" && dirtyTabIds().size) {
+      notify({
+        title: "Save your files before restarting",
+        message: "Your update is ready. Save or close edited files, then install it.",
+        tone: "warning",
+      });
+      return;
+    }
     const { restarting } = await call("updates.apply");
-    if (info.mode === "source")
+    if (info.mode === "source" || restarting)
       notify({
         title: restarting ? "Updated — restarting Jig" : "Updated — restart Jig to use it",
         tone: "success",
@@ -133,8 +142,22 @@ export async function applyUpdate(info: UpdateInfo): Promise<void> {
 }
 
 function UpdatesCard() {
+  const installedVersion = useConfig((s) => s.info?.version);
   const [info, setInfo] = useState<UpdateInfo>();
   const [busy, setBusy] = useState(false);
+  useHostEvent("updates.state", setInfo);
+  useEffect(() => {
+    void call("updates.check")
+      .then(setInfo)
+      .catch((error) =>
+        setInfo({
+          mode: "release",
+          current: installedVersion ?? "",
+          available: false,
+          detail: `Couldn't check for updates: ${errorMessage(error)}`,
+        }),
+      );
+  }, [installedVersion]);
   const check = () => {
     setBusy(true);
     void call("updates.check")
@@ -147,30 +170,43 @@ function UpdatesCard() {
       <div className="flex items-center gap-2">
         <span className="flex-1 font-medium">Updates</span>
         <Button size="sm" icon={RefreshCw} onClick={check} disabled={busy} data-testid="updates-check">
-          Check for updates
+          Check again
         </Button>
       </div>
-      <div className="text-muted">
-        {info
-          ? info.detail
-          : "Running from a git clone, Jig updates with git pull + build. An installed Jig looks for a newer release on GitHub."}
+      <div className="h-5 text-muted" data-testid="installed-version">
+        Your version: {info?.current ?? installedVersion ?? "—"}
       </div>
-      {info?.available && (
-        <div>
+      <div className="h-10 overflow-hidden text-muted" title={info?.detail}>
+        {info ? info.detail : <Spinner center />}
+      </div>
+      <div className="h-1 shrink-0 overflow-hidden rounded bg-line">
+        <div
+          className="h-full bg-accent transition-none"
+          style={{ width: `${info?.download === "downloading" ? (info.percent ?? 0) : 0}%` }}
+        />
+      </div>
+      <div className="h-7 shrink-0">
+        {info?.available && (
           <Button
             size="sm"
             variant="primary"
-            disabled={busy}
+            disabled={busy || info.download === "downloading"}
             onClick={() => {
               setBusy(true);
               void applyUpdate(info).finally(() => setBusy(false));
             }}
             data-testid="updates-apply"
           >
-            {info.mode === "source" ? "Pull, build and restart" : "Download the new version"}
+            {info.mode === "source"
+              ? "Pull, build and restart"
+              : info.download === "ready"
+                ? "Install and restart"
+                : info.download === "downloading"
+                  ? "Downloading…"
+                  : "Download update"}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 }

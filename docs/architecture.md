@@ -563,7 +563,7 @@ a temporary loopback server for its bundled media page: ACS rejects the workbenc
 scheme. Its localhost URL binds only 127.0.0.1 on an ephemeral port, checks Host/method/path, serves with CSP and
 no remote scripts, and closes with the window. Only its registered window/main frame gets IPC from
 that exact origin. Development continues using Vite's configured origin (D-222).
-No token cache,
+MSAL sign-in persists only as OS-encrypted safeStorage ciphertext (D-232); no plaintext cache,
 client secret or resource key is persisted. Only the owned window can obtain a calling credential,
 write captions/status, select a screen, or send questions/actions. The first-party media renderer
 uses the pinned official Calling SDK; this narrow media exception follows the speech/device pattern.

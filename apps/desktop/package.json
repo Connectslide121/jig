@@ -1,7 +1,7 @@
 {
   "name": "@jig/desktop",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "main": "dist/main/index.mjs",
   "scripts": {
@@ -25,6 +25,7 @@
     "@jig/themes": "*",
     "@lydell/node-pty": "1.1.0",
     "@modelcontextprotocol/sdk": "1.32.1",
+    "electron-updater": "6.8.11",
     "esbuild": "0.28.2",
     "fflate": "0.8.3",
     "mermaid": "12.1.0",

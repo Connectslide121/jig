@@ -1,5 +1,14 @@
 # Status
 
+Prepared in source, not yet released (2026-11-02, D-231–D-234): Meetings remembers Agenda/Week and
+restores Microsoft sign-in from an OS-encrypted MSAL cache. Windows downloads updates in-app and
+offers Install and restart; Get started checks automatically and shows the installed version.
+The real Teams join stuck at None/no audio was traced to a camera-off empty stream list, which SDK
+2.0.0 rejects before connecting and silently catches. Jig now omits video options in that case.
+Join handling also waits for Connected/InLobby and reports timeout/connection failure instead of waiting indefinitely.
+Type checking, lint, design-token checks and production build passed; further tests were explicitly skipped by Jon.
+Real corrected meeting join, sign-in restoration and installed update/restart acceptance remain pending.
+
 Jig 0.1.1 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.1),
 source/tag `1555bb10d6b98e215495499bd81fc7f1b0abd5af`. Public unauthenticated latest-release discovery
 returns v0.1.1 and the installer download returns HTTP 200. The installer is 259,395,400 bytes;

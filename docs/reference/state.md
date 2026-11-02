@@ -138,7 +138,11 @@ has no project id; actions may have one. Captions carry id/speakerId/speaker/tim
 actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically
 and are serialized across captions, notes and queue acknowledgements. Active records become interrupted
 with a gap on restart. Immutable question snapshots live in addon-data/meeting-snapshots/<sha256>.json.
-No audio/video or token file is created. MSAL/calling tokens are memory-only; az retains its own login.
+The lobby's `lobbyView` is `agenda` or `week` (default `agenda`), independent of the live room layout.
+No audio/video file is created. MSAL sign-in persists as safeStorage-encrypted base64 ciphertext in
+`cache/microsoft/<sha256(tenantId:clientId)>.cache`. Windows uses DPAPI; Linux's `basic_text` backend
+is refused. Disconnect or changing connection settings deletes the cache. Calling tokens stay in
+memory; az retains its own login.
 Source builds may import ignored .azure-local/meetings.json once when normal default-home settings are
 empty. The script's setup metadata contains no secret. Connection settings are edited in Meetings →
 Connection, and are not exposed as AI-editable ConfigSchema fields because they govern paid calling.

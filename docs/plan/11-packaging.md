@@ -15,10 +15,12 @@ Claude Code, git and az, and can update.
 - [x] Windows paths and shells documented and handled (PowerShell default, cmd, Git Bash; `.cmd` tools, junctions, `windowsHide`) — **testing on a real Windows machine is listed in docs/status.md**
 
 - [x] Repository-owned agent release skill shared by Codex, Claude Code and Jig, with version synchronization and verified GitHub publication workflow (D-230).
+- [x] Windows in-app download, explicit Install and restart, automatic version checks and release feed assets (D-233).
+- [ ] Verify installed updater downloads and restarts between two published versions on Windows.
 
 ## Notes
 
 - The installer is built on Windows with `npm run dist` (`docs/guides/packaging.md`); the cloud
   environment packaged and ran the Linux build (`e2e/packaged.spec.ts`).
 - No asar (D-065); first-run checks only ask for versions (D-066); updates: pull + build from a clone,
-  GitHub releases page when installed (D-067); unsigned installer for now (D-068).
+  in-app GitHub/NSIS update on Windows (D-233, superseding D-067 there); unsigned installer for now (D-068).

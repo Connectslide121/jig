@@ -47,7 +47,7 @@ export function selfPerson(media: MediaState): Person {
   return {
     id: "local",
     name: "You",
-    state: "Connected",
+    state: media.state,
     camera: media.camera,
     screen: media.sharing,
     muted: media.muted,
@@ -83,6 +83,7 @@ export class MeetingMedia {
   private fakeTimer?: ReturnType<typeof setInterval>;
   private fakeSequence = 0;
   private captionsStarting = false;
+  private cancelJoin?: () => void;
   private leaving = false;
   private spokenLanguage = "en-us";
   private statusChain: Promise<unknown> = Promise.resolve();
@@ -248,7 +249,7 @@ export class MeetingMedia {
     const c = this.active;
     if (!c) return;
     this.update({
-      state: c.state,
+      state: c.state === "None" ? "Joining" : c.state,
       muted: c.isMuted,
       camera: c.localVideoStreams.some((s) => s.mediaStreamType === "Video"),
       sharing: c.isScreenSharingOn,
@@ -345,11 +346,13 @@ export class MeetingMedia {
         refreshProactively: true,
       });
       this.agent = await this.client!.createTeamsCallAgent(this.credential);
+      let joining = true;
       this.active = this.agent.join(
         { meetingLink: record.joinUrl },
         {
           audioOptions: { muted: options.muted },
-          videoOptions: { localVideoStreams: options.camera && this.video ? [this.video] : [] },
+          // ACS requires exactly one stream if this list is present; [] silently stalls at None.
+          ...(options.camera && this.video ? { videoOptions: { localVideoStreams: [this.video] } } : {}),
         },
       );
       const c = this.active;
@@ -359,8 +362,10 @@ export class MeetingMedia {
           this.status("connected", "Starting captions");
           void this.startCaptions(options.language);
         }
-        if (c.state === "Disconnected" && !this.leaving) {
-          this.status("interrupted", "Disconnected", "The call disconnected");
+        if (c.state === "Disconnected" && !this.leaving && !joining) {
+          const failure = this.disconnected(c);
+          this.status("interrupted", "Disconnected", failure.message);
+          this.error(failure);
           void this.dispose();
         }
       };
@@ -374,11 +379,61 @@ export class MeetingMedia {
       });
       for (const p of c.remoteParticipants) this.watchParticipant(p);
       state();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const finish = (error?: Error) => {
+            clearTimeout(timer);
+            c.off("stateChanged", check);
+            this.agent?.off("connectionStateChanged", connection);
+            this.cancelJoin = undefined;
+            if (error) reject(error);
+            else resolve();
+          };
+          const check = () => {
+            if (c.state === "Connected" || c.state === "InLobby") finish();
+            else if (c.state === "Disconnected") finish(this.disconnected(c));
+          };
+          const connection = ({ newValue, reason }: { newValue: string; reason?: string }) => {
+            if (newValue === "Disconnected")
+              finish(
+                new Error(
+                  reason === "invalidToken"
+                    ? "Microsoft could not authenticate the call. Reconnect Microsoft and try joining again."
+                    : "Jig lost its connection to Microsoft before joining. Check your connection and try again.",
+                ),
+              );
+          };
+          const timer = setTimeout(
+            () =>
+              finish(
+                new Error(
+                  `Jig could not join the meeting (call state: ${c.state}; Microsoft connection: ${this.agent?.connectionState ?? "unknown"}). No meeting audio was connected. Try joining again or use Teams.`,
+                ),
+              ),
+            90_000,
+          );
+          this.cancelJoin = () => finish(new Error("Joining cancelled"));
+          c.on("stateChanged", check);
+          this.agent!.on("connectionStateChanged", connection);
+          check();
+        });
+      } finally {
+        joining = false;
+      }
     } catch (error) {
-      this.status("interrupted", "Could not join", "Joining failed");
+      if (this.leaving) return;
+      this.status("interrupted", "Could not join", error instanceof Error ? error.message : "Joining failed");
+      await this.active?.hangUp().catch(() => {});
       await this.dispose();
+      this.update({ ...initial, state: "Could not join" });
       throw error;
     }
+  }
+  private disconnected(c: TeamsCall): Error {
+    const reason = c.callEndReason;
+    return new Error(
+      `The Teams call disconnected${reason ? ` (code ${reason.code}, subcode ${reason.subCode ?? 0})` : ""}. Try joining again or use Teams.`,
+    );
   }
   async startCaptions(language = this.spokenLanguage): Promise<void> {
     this.spokenLanguage = language;
@@ -464,6 +519,7 @@ export class MeetingMedia {
   async leave(): Promise<void> {
     if (!this.record || this.leaving) return;
     this.leaving = true;
+    this.cancelJoin?.();
     clearInterval(this.fakeTimer);
     this.fakeTimer = undefined;
     try {

@@ -31,15 +31,21 @@ started tab until you press **Done**.
 
 | Method | Result | |
 |---|---|---|
-| `updates.check` | `UpdateInfo { mode, current, latest?, available, detail, url? }` | `source` when Jig runs from a git clone (not packaged, `sourceRepo()` found): `git fetch` + commits behind `@{u}`; else `release`: GitHub API `repos/Connectslide121/jig/releases/latest` |
-| `updates.apply` | `{ restarting }` | `source`: refuse a dirty clone, snapshot the running build to `app-builds/previous`, `git pull --ff-only`, install if dependencies changed, build, restart through the launcher (not with `JIG_NO_RESTART`); `release`: opens the release page. Error `update_failed` |
+| `updates.check` | `UpdateInfo { mode, current, latest?, available, detail, url?, download?, percent? }` | Installed Windows: GitHub NSIS feed, background download; source: git fetch/upstream status; other platforms: latest-release API |
+| `updates.apply` | `{ restarting }` | Installed Windows: install downloaded update and restart, refusing active meetings/working chats. Source: existing dirty-clone guard, snapshot, fast-forward/install/build/launcher. Other platforms: release page |
+
+`updates.state` emits progress/ready/error states. Installed Windows checks 15 seconds after startup;
+Get started also checks on mount, always shows the version, and reserves status/progress/action space.
+Downloads verify the feed's SHA-512. Installation requires an explicit action, never ordinary quit.
+The initiating workbench refuses unsaved files. The packaged app uses `main/updates/windows.ts`;
+source updates retain the launcher below. Pre-updater installations need one manual upgrade.
 
 Settings → **Updates** (`config.updates`): Jig's source repository (empty = the repo Jig runs from), the
 build command and the install command.
 
 Publishing is handled by the repository's shared `.agents/skills/jig-release/SKILL.md`, with a
 Claude entry under `.claude/skills/jig-release`. An authorized release publishes a stable GitHub
-release containing `Jig-Setup-<version>.exe` and `SHA256SUMS.txt`; the public latest-release endpoint
+release containing `Jig-Setup-<version>.exe`, its `.blockmap`, `latest.yml` and `SHA256SUMS.txt`; the public latest-release endpoint
 must be readable without authentication. A 404 can mean there is no stable release yet as well as
 an inaccessible repository. See `docs/guides/packaging.md` for agent invocation.
 

@@ -358,6 +358,14 @@ function Room() {
         </main>
       ) : (
         <Lobby
+          view={overview.lobbyView}
+          onView={(view) => {
+            setOverview((current) => (current ? { ...current, lobbyView: view } : current));
+            void call("meetings.lobbyView", { view }).catch((e) => {
+              setError(errorMessage(e));
+              void reload();
+            });
+          }}
           events={events}
           records={overview.records}
           loading={pending === "calendar"}
@@ -471,6 +479,9 @@ function Room() {
               const r = await call("meetings.join", meeting);
               setJoining(undefined);
               await media.current!.join(r, { ...options, fake: overview.fake });
+              await reload();
+            } catch (error) {
+              setError(errorMessage(error));
               await reload();
             } finally {
               setPending(undefined);

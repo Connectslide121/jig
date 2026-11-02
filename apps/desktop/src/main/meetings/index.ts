@@ -157,6 +157,10 @@ async function open(): Promise<void> {
   if (!process.env.JIG_HIDDEN) window.show();
 }
 
+export function hasActiveMeeting(): boolean {
+  return Boolean(activeId);
+}
+
 export async function startMeetings(): Promise<void> {
   await store.load();
   if (!store.settings().clientId && !process.env.JIG_HOME) {
@@ -230,8 +234,9 @@ export async function startMeetings(): Promise<void> {
       workbench.focus();
     }
   });
-  handle("meetings.overview", () => {
+  handle("meetings.overview", async () => {
     enabled();
+    if (!fake()) await auth.restore();
     return {
       settings: store.settings(),
       account: fake() ? "Test account" : auth.name,
@@ -239,12 +244,18 @@ export async function startMeetings(): Promise<void> {
       activeId,
       records: store.records(),
       layout: store.layout(),
+      lobbyView: store.lobbyView(),
     };
   });
   handle("meetings.delete", async ({ id }, ctx) => {
     own(ctx);
     if (id === activeId) throw new JigError("meeting_active", "Leave the meeting before deleting it");
     await store.remove(id);
+    changed();
+  });
+  handle("meetings.lobbyView", async ({ view }, ctx) => {
+    own(ctx);
+    await store.setLobbyView(view);
     changed();
   });
   handle("meetings.layout", async (layout, ctx) => {
@@ -254,8 +265,8 @@ export async function startMeetings(): Promise<void> {
   handle("meetings.configure", async (settings, ctx) => {
     own(ctx);
     if (activeId) throw new JigError("meeting_active", "Leave the meeting before changing its connection");
+    await auth.signOut();
     await store.configure(settings);
-    auth.reset();
     changed();
   });
   handle("meetings.signIn", async (_args, ctx) => {
@@ -265,10 +276,10 @@ export async function startMeetings(): Promise<void> {
     changed();
     return name;
   });
-  handle("meetings.signOut", (_args, ctx) => {
+  handle("meetings.signOut", async (_args, ctx) => {
     own(ctx);
     if (activeId) throw new JigError("meeting_active", "Leave the meeting before disconnecting");
-    auth.reset();
+    await auth.signOut();
     changed();
   });
   handle("meetings.calendar", async () => {

@@ -41,6 +41,8 @@ const ongoing = (e: MeetingEvent, now: number) =>
  */
 export function Lobby({
   events,
+  view,
+  onView,
   records,
   loading,
   connected,
@@ -52,6 +54,8 @@ export function Lobby({
   onDelete,
 }: {
   events?: MeetingEvent[];
+  view: "agenda" | "week";
+  onView(view: "agenda" | "week"): void;
   records: MeetingRecord[];
   loading: boolean;
   connected: boolean;
@@ -63,7 +67,6 @@ export function Lobby({
   onDelete(id: string): void;
 }) {
   const now = useMinute();
-  const [view, setView] = useState<"agenda" | "week">("agenda");
   const [weekOffset, setWeekOffset] = useState(0);
   const joinable = (events ?? []).filter((e) => new Date(e.end).getTime() > now || ongoing(e, now));
   const [next, ...later] = joinable;
@@ -142,7 +145,7 @@ export function Lobby({
               <Segmented<"agenda" | "week">
                 className="ml-auto"
                 value={view}
-                onChange={setView}
+                onChange={onView}
                 items={[
                   ["agenda", "Agenda"],
                   ["week", "Week"],

@@ -62,6 +62,7 @@ const attachment = z.object({
 });
 
 export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
+  "meetings.lobbyView": z.object({ view: z.enum(["agenda", "week"]) }).strict(),
   "meetings.configure": z
     .object({ tenantId: z.uuid(), clientId: z.uuid(), endpoint: z.url().max(1000) })
     .strict(),

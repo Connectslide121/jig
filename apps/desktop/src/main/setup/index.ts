@@ -6,10 +6,18 @@ import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
+import { hasActiveMeeting } from "../meetings";
+import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { claudeBinary } from "../terminals/claudeBinary";
 import { restarter, sourceRepo } from "../updates/relaunch";
 import { sourceStatus, updateSource } from "../updates/source";
+import {
+  checkWindowsUpdates,
+  installWindowsUpdate,
+  startWindowsUpdates,
+  supportsWindowsUpdates,
+} from "../updates/windows";
 import { execTool, runSetupChecks } from "./checks";
 
 const log = logger("setup");
@@ -31,6 +39,7 @@ async function latestRelease(): Promise<{ version: string; url: string }> {
 }
 
 async function checkForUpdates(): Promise<UpdateInfo> {
+  if (supportsWindowsUpdates()) return checkWindowsUpdates();
   const current = app.getVersion();
   const repo = app.isPackaged ? undefined : await sourceRepo();
   if (repo) {
@@ -83,6 +92,7 @@ async function checkForUpdates(): Promise<UpdateInfo> {
 }
 
 export function registerSetupHandlers(): void {
+  startWindowsUpdates();
   // The fake engine never asks the real Claude Code about its login.
   handle("setup.check", () =>
     runSetupChecks(execTool, claudeBinary(getConfig().engine.claudePath), {
@@ -98,6 +108,18 @@ export function registerSetupHandlers(): void {
   });
   handle("updates.check", () => checkForUpdates());
   handle("updates.apply", async () => {
+    if (supportsWindowsUpdates()) {
+      if (hasActiveMeeting())
+        throw new JigError("meeting_active", "Leave the meeting before restarting Jig to install an update.");
+      if ((await sessionManager().list()).some((chat) => chat.status === "working"))
+        throw new JigError(
+          "chats_active",
+          "Wait for your running chats to finish before installing the update.",
+        );
+      if (installWindowsUpdate()) return { restarting: true };
+      await checkWindowsUpdates();
+      return { restarting: false };
+    }
     const info = await checkForUpdates();
     if (info.mode === "release") {
       if (info.url) await shell.openExternal(info.url);

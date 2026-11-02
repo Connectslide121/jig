@@ -24,6 +24,9 @@ export interface UpdateInfo {
   current: string;
   latest?: string;
   available: boolean;
+  /** In-app Windows update download status. */
+  download?: "downloading" | "ready" | "error";
+  percent?: number;
   detail: string;
   /** Release page to download from (release mode). */
   url?: string;

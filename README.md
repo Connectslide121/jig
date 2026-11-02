@@ -335,7 +335,8 @@ npm run dist     # → apps/desktop/release/Jig-Setup-<version>.exe
 ```
 
 On first start, **Get started** checks Claude Code, git, gh, az and VS Code and links what's missing.
-Later, **Jig menu → Check for updates…** pulls, builds and restarts. Details:
+Installed Windows Jig downloads updates automatically and offers **Install and restart**.
+Source checkouts use **Check for updates…** to pull, build and restart. Details:
 [`docs/guides/packaging.md`](docs/guides/packaging.md).
 
 **Or run it from source:**

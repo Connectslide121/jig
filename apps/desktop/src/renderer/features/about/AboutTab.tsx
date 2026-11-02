@@ -711,6 +711,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Meetings → Meetings: a two-week calendar agenda, Join from link, and saved meetings",
+                "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job",
                 "Claude runs only when you ask; reviewed actions are queued in Plan mode and the queue stays paused",

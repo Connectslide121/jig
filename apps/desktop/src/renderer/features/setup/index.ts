@@ -1,9 +1,11 @@
 import { CircleCheckBig, Download } from "lucide-react";
 import { useEffect } from "react";
+import { useHostEvent } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { registerAction, registerTabType } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
-import { SetupTab } from "./SetupTab";
+import { notify } from "../../workbench/toasts";
+import { applyUpdate, SetupTab } from "./SetupTab";
 
 export function registerSetup(): void {
   registerTabType({
@@ -34,6 +36,16 @@ export function registerSetup(): void {
 
 /** An installed Jig opens Get started on its first start. */
 export function useFirstRun(ready: boolean): void {
+  useHostEvent("updates.state", (state) => {
+    if (state.download === "ready")
+      notify({
+        title: `Jig ${state.latest} is ready`,
+        message: "Install the update when you're ready to restart.",
+        tone: "success",
+        timeout: 0,
+        actions: [{ label: "Install and restart", run: () => void applyUpdate(state) }],
+      });
+  });
   const info = useConfig((s) => s.info);
   const done = useConfig((s) => s.config?.setup.firstRunDone);
   useEffect(() => {

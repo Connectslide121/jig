@@ -33,8 +33,12 @@ extraResources:
     filter:
       - "**/*"
 npmRebuild: false
-# Updates are checked by Jig itself (Tools → Check for updates…), not electron-updater (D-067).
-publish: null
+# Generate the update feed; release assets are uploaded explicitly by the agent skill.
+publish:
+  provider: github
+  owner: Connectslide121
+  repo: jig
+  releaseType: draft
 win:
   target:
     - target: nsis

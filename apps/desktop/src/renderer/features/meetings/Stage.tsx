@@ -84,7 +84,7 @@ export function Stage({
           </div>
         </div>
       ) : (
-        <Gallery people={everyone} slot={slot} waiting={!people.length} />
+        <Gallery people={everyone} slot={slot} waiting={!people.length && media.state === "Connected"} />
       )}
       {active && (
         <>

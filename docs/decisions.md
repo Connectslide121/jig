@@ -2621,3 +2621,44 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Implementation details are **Claude, on my own**: next patch by default, a tested manifest-version
   helper, existing Windows packaging and `gh`, checksum asset, bounded retries and resume checks.
   No new CI service or stored token is needed. The first actual release is a separate invocation.
+
+## D-231: Remember the meeting lobby view
+
+- Jon prefers Week and wants the lobby to remember its last Agenda/Week choice.
+- Store it globally through typed room-only IPC, rather than storage tied to the ephemeral
+  meeting origin. Existing users start on Agenda until they choose Week.
+  Persistence details are **Claude, on my own**.
+
+## D-232: Restore Microsoft sign-in with OS-protected storage
+
+- Jon requests remembered Microsoft connection across app restarts. This supersedes D-217's
+  memory-only Microsoft sign-in cache; calling credentials remain memory-only.
+- **Claude, on my own:** MSAL cache hooks encrypt with Electron safeStorage before atomic storage,
+  partitioned by tenant/client hash. Unavailable encryption never falls back to plaintext; Linux's
+  basic_text backend is refused. Restore account metadata on overview and let MSAL refresh silently;
+  tenant reauthentication still applies. Disconnect/configuration changes invalidate pending saves
+  and remove ciphertext. Claude credentials, client secrets and resource keys are never stored.
+
+## D-233: Download Windows updates inside Jig
+
+- Jon expects an in-app update, installed version/latest status, and automatic checks when opening
+  Get started. Do not show source-checkout instructions as the initial product message.
+- **Claude, on my own:** use electron-updater's GitHub/NSIS feed, auto-download on a startup check
+  and page open, show progress and offer Install and restart. No installation on ordinary quit.
+  Block restart during meetings/working chats; the initiating workbench also checks unsaved files.
+  Feed SHA-512 verification is handled by electron-updater. Signing remains a separate gap.
+- Publish latest.yml and installer blockmap alongside every Windows release; packaging itself
+  never publishes. Old 0.1.0/0.1.1 installations require one manual upgrade to gain the updater.
+
+## D-234: A join request is not a connected meeting
+
+- Jon reports a real Teams meeting stuck at None with no audio while Teams works normally.
+  Root cause found in pinned SDK 2.0.0: getLocalVideoStreamFromCallOptions rejects a present stream
+  list unless its length is exactly one. Jig passed [] for camera-off; the SDK throws before its
+  start-call try/catch, while TeamsCallAgent.createCall suppresses the rejected promise with catch(noop).
+  Hence no connection begins and state remains None. Omit videoOptions when no camera stream exists.
+- **Claude, on my own:** normalize initial None to Joining, await Connected or InLobby, fail a
+  stalled join after 90 seconds, surface Microsoft connection loss and numeric call-end codes.
+  Catch join failures in the room itself: the prejoin modal is already unmounted after submission.
+  Show Waiting for others only after Connected; do not label the self tile Connected prematurely.
+  Live meeting participation with the corrected options still requires real-machine acceptance.

@@ -52,7 +52,7 @@ settings, add-on permissions.
 | `usage.get` / `usage.refresh` | — | `PlanUsage` | your Claude plan usage (5-hour and weekly windows) from Claude Code (`docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
-| `updates.apply` | — | `{ restarting }` | pull + build + restart, or open the release page; `update_failed`, `no_source` |
+| `updates.apply` | — | `{ restarting }` | Windows: install downloaded update/restart; source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |
@@ -243,7 +243,8 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
 | meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room only, never the live one |
 | meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; room only (D-221) |
-| meetings.signIn / meetings.signOut | External browser sign-in / clear memory cache; room only |
+| meetings.lobbyView | Save Agenda/Week preference; room only |
+| meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; room only |
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token; owned room sender only |

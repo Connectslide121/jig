@@ -94,11 +94,12 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Never read, copy, store, log or forward Claude credentials or tokens.** No login UI. Keep the
   default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session environments.
 - **The user's own tools and credentials** for git, GitHub, Azure, Azure DevOps (`git`, `gh`, `az`).
-  Jig stores no tokens.
+  Jig does not copy those tools' credentials. The Microsoft meeting sign-in exception is below.
 - **Teams media (D-217):** the official calling SDK runs only in the dedicated sandboxed meeting
   window. Main owns Microsoft sign-in, Graph, atomic meeting state and screen-source grants. Microsoft
-  and calling credentials stay in memory; only the owned media window receives the calling token.
-  Never persist a token cache, retrieve resource keys, or pass credentials to add-on code.
+  sign-in cache may persist only with OS-backed safeStorage encryption (D-232), never plaintext;
+  calling credentials stay in memory and only the owned media window receives the calling token.
+  Never retrieve resource keys or pass credentials to add-on code.
   Its typed host-managed data cannot be changed through generic add-on storage tools.
 - **Settings are configurable from chats too.** A new setting goes into `ConfigSchema`, the
   `SETTINGS_GUIDE` in `main/configure/tools.ts` and `docs/reference/state.md`; one that decides billing

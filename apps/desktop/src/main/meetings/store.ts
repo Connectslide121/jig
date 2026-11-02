@@ -43,6 +43,7 @@ const schema = z.object({
   settings: z
     .object({ tenantId: z.string(), clientId: z.string(), endpoint: z.string() })
     .default({ tenantId: "", clientId: "", endpoint: "" }),
+  lobbyView: z.enum(["agenda", "week"]).default("agenda"),
   records: z.array(record).default([]),
   layout: z.unknown().optional(),
 });
@@ -67,6 +68,14 @@ export class MeetingStore {
   }
   settings(): MeetingSettings {
     return { ...this.data.settings };
+  }
+  lobbyView(): "agenda" | "week" {
+    return this.data.lobbyView;
+  }
+  setLobbyView(view: "agenda" | "week"): Promise<void> {
+    return this.change(() => {
+      this.data.lobbyView = view;
+    });
   }
   layout(): MeetingLayout | undefined {
     return this.data.layout === undefined ? undefined : normalizeMeetingLayout(this.data.layout);

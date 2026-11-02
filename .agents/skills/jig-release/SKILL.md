@@ -70,7 +70,9 @@ other agent and edits this repository directly, never the in-app builder.
   npm run dist --workspace @jig/desktop -- --no-open
   ```
 
-  The expected artifact is `apps/desktop/release/Jig-Setup-<version>.exe`.
+  Expected artifacts are `apps/desktop/release/Jig-Setup-<version>.exe`, its `.exe.blockmap`,
+  and `latest.yml`. Packaging always passes `--publish never`; this skill owns publication.
+  Verify latest.yml names this installer, version matches and SHA-512 matches its bytes.
   Check the exit status, actual file, nonzero size and Windows `VersionInfo.ProductVersion`;
   its normalized version must match the chosen version. Check the unpacked app includes native runtime dependencies,
   the Claude Code binary, built-in add-ons and curated skills. Do not launch an interactive installer.
@@ -78,8 +80,9 @@ other agent and edits this repository directly, never the in-app builder.
   environment. The test launches `win-unpacked/Jig.exe` using a temporary home and the fake
   engine. Require a passing test, not a skip; an older unpacked build is not evidence for this
   release. Relevant source e2e tests run against the fresh build before packaging.
-- Generate `apps/desktop/release/SHA256SUMS.txt` containing the lowercase SHA-256 and installer
-  basename, using `Get-FileHash` or Node crypto. Record the hash, size and tested source SHA.
+- Generate `apps/desktop/release/SHA256SUMS.txt` containing lowercase SHA-256 and basename for
+  installer, blockmap and latest.yml, using `Get-FileHash` or Node crypto. Record installer size/hash
+  and tested source SHA. Never publish an installer without its matching update metadata.
 - Review the release diff, commit only the intended release changes on main, and record the
   release commit SHA. The installer must have been built from exactly that tracked source state
   (a version-only/release-documentation commit changes the SHA, not the built inputs). If any
@@ -98,10 +101,10 @@ other agent and edits this repository directly, never the in-app builder.
    ```
 
    If the remote tag already exists, verify its peeled commit. Never move it to another build.
-2. Create a **draft** with the installer and checksum file uploaded together:
+2. Create a **draft** with installer, blockmap, latest.yml and checksum file uploaded together:
 
    ```text
-   gh release create v<version> <installer-path> <checksum-path> --repo Connectslide121/jig --verify-tag --draft --title "Jig <version>" --notes-file <notes-path>
+   gh release create v<version> <installer-path> <blockmap-path> <latest-yml-path> <checksum-path> --repo Connectslide121/jig --verify-tag --draft --title "Jig <version>" --notes-file <notes-path>
    ```
 
    Use actual structured tool arguments or proper shell quoting for paths. On retry, inspect an
@@ -120,13 +123,15 @@ other agent and edits this repository directly, never the in-app builder.
 
 5. Verify via `gh release view` and the **unauthenticated public** GitHub
    `/repos/Connectslide121/jig/releases/latest` API: correct tag, not draft/prerelease, installer
-   asset present and downloadable. The public check matters because installed Jig does not attach
+   installer, blockmap and latest.yml assets present and downloadable, with matching feed version/hash.
+   The public check matters because installed Jig does not attach
    a GitHub login. Confirm the published version compares newer than the previous installed app.
    If publication succeeded but verification failed, report that state; do not create another version.
 6. Record the published URL/version in the docs and commit that documentation correction. Do not
    move the release tag or rebuild/reupload merely for this post-publication documentation update.
    Follow the release request's authorized push scope for this docs-only follow-up.
 
-Report the release link, version, installer/hash and validation outcome. Installed Jig's existing
-**Check for updates** then opens the release page; users download/run the installer. This workflow
-does not add silent installation, in-app developer UI, a new credential store or a required CI service.
+Report the release link, version, installer/hash and validation outcome. Installed Windows Jig
+downloads updates automatically and offers Install and restart. Versions 0.1.0/0.1.1 need one manual
+upgrade to gain this updater. Do not install or restart the user's app without authorization or during
+an active meeting. No developer UI, GitHub credential store or required CI service is introduced.

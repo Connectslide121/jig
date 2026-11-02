@@ -43,7 +43,10 @@ export interface MeetingEvent {
   organizer: string;
   joinUrl?: string;
 }
+export type LobbyView = "agenda" | "week";
+
 export interface MeetingOverview {
+  lobbyView: LobbyView;
   settings: MeetingSettings;
   account?: string;
   fake: boolean;

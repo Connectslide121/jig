@@ -73,3 +73,8 @@ Phase 14 also includes shared image zoom controls (D-227), and phase 9 includes 
 Phase 9 also includes conservative attachment/browser evidence and corrected browser feature actions (D-229); its status remains done.
 
 Phase 11 also includes the repository-owned cross-agent release skill (D-230); its status remains done.
+
+Phase 11 adds in-app Windows update download/install and automatic version status (D-233).
+Phase 22 adds remembered lobby view, OS-protected Microsoft sign-in and bounded join failure handling
+(D-231/D-232/D-234). Camera-off empty video options caused the stuck join; fixed in source.
+Real meeting join acceptance remains open.
