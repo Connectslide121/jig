@@ -8,6 +8,7 @@
   "permissions": [],
   "storage": { "scope": "global" },
   "contributes": {
+    "topbar": [{ "id": "open", "component": "MeetingsButton" }],
     "actions": [
       { "id": "open", "title": "Meetings", "group": "Meetings", "icon": "video", "run": "openMeetings" }
     ]

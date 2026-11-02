@@ -262,19 +262,24 @@ export function Topbar() {
             </button>
           ))}
         </div>
-        {project && (
-          <button
-            type="button"
-            data-testid="topbar-new-chat"
-            className="no-drag flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-line-strong px-2 whitespace-nowrap text-fg hover:border-accent hover:bg-hover"
-            onClick={() => runAction("jig.newSession")}
-          >
-            <MessageSquarePlus className="size-4 text-accent" />
-            New chat
-          </button>
-        )}
       </div>
-      <TopbarSearch />
+      {/* Search with New chat beside it; the button keeps its place (invisible) without a project. */}
+      <div className="flex min-w-0 items-center justify-center gap-2">
+        <TopbarSearch />
+        <button
+          type="button"
+          data-testid="topbar-new-chat"
+          disabled={!project}
+          className={cn(
+            "no-drag flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-line-strong px-2 whitespace-nowrap text-fg hover:border-accent hover:bg-hover",
+            !project && "invisible",
+          )}
+          onClick={() => runAction("jig.newSession")}
+        >
+          <MessageSquarePlus className="size-4 text-accent" />
+          New chat
+        </button>
+      </div>
       <div className="flex min-w-0 items-center justify-end gap-1">
         <TopbarItems />
         <IconButton

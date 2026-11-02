@@ -1,5 +1,8 @@
 # Status
 
+Top bar (2026-11-02, Jon): New chat sits beside the search in the centre; Meetings is a video icon
+button among the icons on the right (the Meetings add-on's `topbar` item), and still in Chats → Meetings.
+
 Meeting window screens (2026-11-02, D-221): the window now has a lobby (a large Next up card, the
 next 14 days as cards with an Agenda | Week toggle, saved meetings as cards; every card is clickable), a live room and a saved meeting's review. In the live room the call is
 the main area; Transcript and Notes go in the left, right or bottom slot from their ⋯ menus, share
