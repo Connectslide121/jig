@@ -1,0 +1,54 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "tests",
+  "name": "Tests",
+  "description": "The test suites in your project's repositories (npm test scripts, Playwright, Vitest, Jest, Karma, dotnet test), run with one click, with their results, failing tests and history; Claude can run them too.",
+  "version": "1.0.0",
+  "icon": "flask-conical",
+  "permissions": ["exec:npm", "exec:dotnet", "exec:taskkill", "fs:read"],
+  "contributes": {
+    "views": [
+      {
+        "id": "tests",
+        "title": "Tests",
+        "icon": "flask-conical",
+        "region": "right",
+        "hidden": true,
+        "component": "TestsView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Show tests",
+        "group": "Terminals",
+        "icon": "flask-conical",
+        "run": "showTests"
+      }
+    ],
+    "tools": [
+      {
+        "id": "list",
+        "description": "List the test suites in the calling chat's project repositories (npm test scripts, Playwright, Vitest, Jest, Karma, dotnet test projects) with each suite's last result. Use before running tests, to pick the suite a change needs (a 'changed' suite runs only what the change touches).",
+        "readOnly": true,
+        "run": "toolList"
+      },
+      {
+        "id": "run",
+        "description": "Run one test suite and wait for it: returns passed/failed counts, the failing tests and the last lines of output. The user sees it run in the Tests view. Prefer the smallest suite that covers the change; a full end-to-end suite can take minutes.",
+        "params": {
+          "suite": {
+            "type": "string",
+            "description": "The suite id from the list tool, e.g. npm:test or dotnet:tests/Shop.Tests/Shop.Tests.csproj"
+          },
+          "repo": {
+            "type": "string",
+            "description": "The repository's path or name from the list tool (needed when several have the suite)",
+            "optional": true
+          }
+        },
+        "run": "toolRun"
+      }
+    ]
+  }
+}

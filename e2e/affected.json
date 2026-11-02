@@ -149,6 +149,7 @@
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts"] },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts"] },
+    { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {
       "files": ["apps/desktop/src/renderer/features/projects/**", "apps/desktop/src/main/projects/**"],
       "specs": ["projects.spec.ts", "navigation.spec.ts", "ux.spec.ts"]

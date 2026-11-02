@@ -692,7 +692,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests)\b/.test(
             lower,
           )
         ) {
@@ -736,6 +736,11 @@ export class FakeEngine implements Engine {
           } else if (/since the last release/.test(lower)) {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
+          } else if (/run the unit tests/.test(lower)) {
+            // The Tests add-on's tools: list the suites, then run one and report what it says.
+            await call("addon_tests_list", {});
+            await call("addon_tests_run", { suite: "npm:test" });
+            await stream(`${msg}:text:0`, "The unit tests ran: see the result above.", signal);
           } else if (/remember in the notes/.test(lower)) {
             // The Notes add-on's tool: a note for this project (it shows in the Notes view).
             await call("addon_notes_add", {

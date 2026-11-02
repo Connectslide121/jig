@@ -66,6 +66,8 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **Files and a real editor.** The project's tree with git colours, and code that is editable right in
   Preview: your theme's code colours, indentation guides, closing brackets, several cursors, folding,
   find and replace, go to line and a status line. Two tabs side by side when you need both.
+- **Tests in one place.** Every repo's test suites (npm test scripts, Playwright, Vitest, Jest, Karma,
+  `dotnet test`), run with one click, with failing tests, output and history; Claude runs them too.
 - **Releases with discipline.** Per repository, a release policy Claude helps you set up (or that
   adopts what you already do). Jig shows what's unreleased, drafts the changelog and notes with Claude,
   and releases in one action; it warns when production gets a build without a version.

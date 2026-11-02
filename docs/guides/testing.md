@@ -88,6 +88,7 @@ in this order:
 | "as a workflow" | Claude saves a 4-step workflow "Write release notes" in the chat's project (`addon_workflows_save`) |
 | "since the last release" | Claude calls the Releases add-on's tool `addon_releases_changes` for the chat's repository |
 | "list jig library skills" | Reports the skill plugin ids actually selected at engine start; used to verify global/project controls and continuing chats |
+| "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) and runs `npm:test` (`addon_tests_run`); the run shows in the Tests view (D-244) |
 | "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `addon_notes_add`; all chats in that project see it |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |

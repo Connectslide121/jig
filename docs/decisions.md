@@ -2784,3 +2784,16 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   `phonemizer` contains espeak-ng compiled to WebAssembly, which is GPL-3.0 — fine for Jig as a private
   app; revisit before distributing Jig under another licence.
 - 19 voices: Kokoro's graded C- or better (American and British English) and its three Spanish voices.
+
+## D-244: A Tests add-on for every repo's test suites
+
+- Jon: after speeding up Jig's own e2e suite, an add-on to handle tests in all repos; no scheduled runs.
+- **Claude, on my own:** a built-in add-on (`addons/tests`, view starts hidden, Show tests) finds npm
+  scripts that run tests (by name or runner) at a repo's root and one folder down, and .NET test
+  projects, grouped as what-a-change-needs / unit / check / end-to-end. Runs spawn without a shell
+  (`CI=1`), Stop kills the process tree, the result is read from Vitest/Jest/Playwright/Karma/dotnet
+  summaries (else the exit code); a toast on finish; the last 30 runs per repo kept in add-on storage,
+  output only in memory. Rows are fixed columns with the status at the far right; details in a modal
+  with Ask Claude to fix. Claude gets `list` (read-only) and `run` tools. Per-test durations and flaky
+  detection are left for later (they need runner-specific JSON reporters).
+
