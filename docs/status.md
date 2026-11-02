@@ -1,5 +1,8 @@
 # Status
 
+Jig 0.1.3 being prepared (2026-11-02): Meetings sign-in fix (D-235) and the composer without the
+permission line above the box. Publication not yet verified.
+
 Jig 0.1.2 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.2),
 source/tag `7a03748d3e2821628fed46a203c677ae8132a28d`. Installer: 259,677,522 bytes;
 SHA-256 `bd6244d241b2ab01dbdbe80678b2ba110557a4a4ca0562bf2b78ab3f2bf854b1`.
