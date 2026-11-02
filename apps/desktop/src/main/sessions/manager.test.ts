@@ -195,6 +195,23 @@ describe("SessionManager", () => {
     await m.interrupt(session.id);
   });
 
+  it("edits a queued message in place, and refuses one already sent", async () => {
+    const m = manager();
+    const session = await create(m);
+    await m.send(session.id, "slow please");
+    await m.send(session.id, "later");
+    await m.send(session.id, "after that");
+    const [first, second] = (await m.snapshot(session.id)).queue;
+    await m.editQueued(session.id, first!.id, "later, but changed");
+    expect((await m.snapshot(session.id)).queue.map((q) => q.text)).toEqual([
+      "later, but changed",
+      "after that",
+    ]);
+    expect((await m.snapshot(session.id)).queue[1]!.id).toBe(second!.id);
+    await expect(m.editQueued(session.id, "gone", "x")).rejects.toThrow("already been sent");
+    await m.interrupt(session.id);
+  });
+
   it("asks for permission and continues when allowed", async () => {
     const m = manager();
     const session = await create(m);

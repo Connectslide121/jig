@@ -323,6 +323,8 @@ export interface HostMethods {
     result: void;
   };
   "sessions.removeQueued": { args: { id: string; queuedId: string }; result: void };
+  /** Changes a queued message's text before it is sent; fails when it has already been sent. */
+  "sessions.editQueued": { args: { id: string; queuedId: string; text: string }; result: void };
   "sessions.setModel": { args: { id: string; model: string }; result: void };
   "sessions.setPermissionMode": { args: { id: string; mode: PermissionMode }; result: void };
   "sessions.rename": { args: { id: string; title: string }; result: void };

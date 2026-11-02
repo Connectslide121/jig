@@ -217,6 +217,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     attachments: z.array(attachment).max(50).optional(),
     now: z.boolean().optional(),
   }),
+  "sessions.editQueued": z.object({ id, queuedId: id, text: text.min(1) }).strict(),
   "sessions.rewind": z.object({ id, itemId: id, files: z.boolean() }),
   "sessions.runShell": z.object({ id, command: z.string().min(1).max(10_000) }),
   "sessions.remember": z.object({

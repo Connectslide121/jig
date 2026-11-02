@@ -380,7 +380,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     (idle / working / needs you / error). New session: `Ctrl+N`, the `+` in the Sessions header, or Tools.
   - Chat tab: streaming markdown, collapsed thinking, tool-call cards (click to see input/output),
     permission prompts (Allow once / Always allow / Deny), Claude's questions as clickable options,
-    per-turn duration/tokens/cost, follow-ups queue while Claude works, Stop (or `Esc`), model and
+    per-turn duration/tokens/cost, follow-ups queue while Claude works (click one to edit it before it is sent), Stop (or `Esc`), model and
     permission-mode menus, attach files (`@path`), rename/archive/delete/stop from the `⋯` menu.
   - Sessions persist and resume with Claude Code's own session id after a restart.
   - API keys are stripped from sessions by default; a warning shows if a session still bills an API key.

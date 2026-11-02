@@ -865,6 +865,15 @@ export class SessionManager {
     this.scheduleSave(live, true);
   }
 
+  /** Changes a queued message's text before it is sent (it keeps its place and attachments). */
+  async editQueued(id: string, queuedId: string, text: string): Promise<void> {
+    const live = await this.live(id);
+    const queued = live.queue.find((q) => q.id === queuedId);
+    if (!queued) throw new JigError("not_found", "That message has already been sent");
+    live.queue = live.queue.map((q) => (q.id === queuedId ? { ...q, text } : q));
+    this.emit(live, [{ op: "queue", queue: live.queue }]);
+  }
+
   async removeQueued(id: string, queuedId: string): Promise<void> {
     const live = await this.live(id);
     live.queue = live.queue.filter((q) => q.id !== queuedId);

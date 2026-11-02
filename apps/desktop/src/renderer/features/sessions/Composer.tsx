@@ -52,7 +52,7 @@ import { registerComposer, takeDraft } from "./drafts";
 import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
 import { usePrompts } from "./prompts";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
-import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
+import { openEditQueuedDialog, openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
 
 /** Files Claude Code reads itself when mentioned with @. */
@@ -424,7 +424,21 @@ export function Composer({
           <div className="flex flex-col gap-1" data-testid="queue">
             <div className="text-2xs font-medium text-hint uppercase">Sends after this turn</div>
             {queue.map((q) => (
-              <div key={q.id} className="flex items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs">
+              // The whole row edits the message (a modal); its buttons send it now or remove it.
+              <div
+                key={q.id}
+                role="button"
+                tabIndex={0}
+                title="Edit this message before it is sent"
+                data-testid="queue-item"
+                onClick={() => openEditQueuedDialog(meta.id, q)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  openEditQueuedDialog(meta.id, q);
+                }}
+                className="flex cursor-pointer items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+              >
                 <span className="flex min-w-0 flex-1 items-center gap-1">
                   {q.attachments?.length ? (
                     <span className="flex shrink-0 items-center gap-0.5 text-muted">
@@ -440,7 +454,8 @@ export function Composer({
                     size="sm"
                     label="Send now: Claude reads it at its next step"
                     data-testid="queue-send-now"
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       await call("sessions.removeQueued", { id: meta.id, queuedId: q.id });
                       await send(q.text, q.attachments ?? [], true);
                     }}
@@ -450,7 +465,11 @@ export function Composer({
                   icon={X}
                   size="sm"
                   label="Remove from queue"
-                  onClick={() => void call("sessions.removeQueued", { id: meta.id, queuedId: q.id })}
+                  data-testid="queue-remove"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void call("sessions.removeQueued", { id: meta.id, queuedId: q.id });
+                  }}
                 />
               </div>
             ))}

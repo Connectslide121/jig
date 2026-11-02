@@ -112,10 +112,18 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
   await expect(page.getByTestId("composer-stop")).toBeVisible();
   await say(page, "and then this");
   await expect(page.getByTestId("queue")).toContainText("and then this");
+  // Clicking the queued message edits it in a dialog before it is sent.
+  await page.getByTestId("queue-item").click();
+  const dialog = page.getByTestId("edit-queued-dialog");
+  await expect(page.getByTestId("edit-queued-text")).toHaveValue("and then this");
+  await page.getByTestId("edit-queued-text").fill("and then this, edited");
+  await page.getByTestId("edit-queued-save").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("queue")).toContainText("and then this, edited");
   await page.getByTestId("composer-stop").click();
   await expect(page.getByTestId("turn-result").first()).toContainText("Interrupted");
   // The queued message is sent after the interrupted turn.
-  await expect(page.getByTestId("user-message").last()).toHaveText("and then this");
+  await expect(page.getByTestId("user-message").last()).toHaveText("and then this, edited");
   await expect(page.getByTestId("queue")).toHaveCount(0);
 });
 

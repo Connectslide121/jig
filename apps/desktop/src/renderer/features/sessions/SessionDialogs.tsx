@@ -1,13 +1,28 @@
 import { FolderPlus, Plug, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
-import type { McpServerInfo } from "../../../shared/engine";
+import type { McpServerInfo, QueuedMessage } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
-import { Badge, type BadgeTone, Button, Dialog, FileIcon, IconButton, Spinner, Switch } from "../../ui";
+import {
+  Badge,
+  type BadgeTone,
+  Button,
+  Dialog,
+  FileIcon,
+  IconButton,
+  Spinner,
+  Switch,
+  Textarea,
+} from "../../ui";
+import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { useSessions } from "./store";
 
-const useDialog = create<{ open: { kind: "mcp" | "folders"; sessionId: string } | undefined }>(() => ({
+type OpenDialog =
+  | { kind: "mcp" | "folders"; sessionId: string }
+  | { kind: "queued"; sessionId: string; queued: QueuedMessage };
+
+const useDialog = create<{ open: OpenDialog | undefined }>(() => ({
   open: undefined,
 }));
 
@@ -16,6 +31,10 @@ export const openMcpDialog = (sessionId: string) => useDialog.setState({ open: {
 /** Folders Claude may use besides the chat's own (Claude Code's /add-dir). */
 export const openFoldersDialog = (sessionId: string) =>
   useDialog.setState({ open: { kind: "folders", sessionId } });
+
+/** Changes a message waiting in the queue before it is sent. */
+export const openEditQueuedDialog = (sessionId: string, queued: QueuedMessage) =>
+  useDialog.setState({ open: { kind: "queued", sessionId, queued } });
 
 const STATUS: Record<McpServerInfo["status"], { label: string; tone: BadgeTone }> = {
   connected: { label: "connected", tone: "success" },
@@ -164,11 +183,90 @@ function FoldersDialog({ sessionId, onClose }: { sessionId: string; onClose: () 
   );
 }
 
+function EditQueuedDialog({
+  sessionId,
+  queued,
+  onClose,
+}: {
+  sessionId: string;
+  queued: QueuedMessage;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(queued.text);
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (!value.trim() || saving) return;
+    setSaving(true);
+    try {
+      await call("sessions.editQueued", { id: sessionId, queuedId: queued.id, text: value.trim() });
+      onClose();
+    } catch (e) {
+      notify({ title: "Couldn't change the message", message: errorMessage(e), tone: "danger" });
+      onClose();
+    }
+  };
+  const attached = queued.attachments?.length ?? 0;
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Edit queued message"
+      testId="edit-queued-dialog"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            busy={saving}
+            disabled={!value.trim()}
+            onClick={() => void save()}
+            data-testid="edit-queued-save"
+          >
+            Save
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-2 text-xs text-muted">
+        It sends after Claude's current turn, in the same place in the queue
+        {attached ? `, with its ${attached === 1 ? "attachment" : `${attached} attachments`}` : ""}.{" "}
+        {formatShortcut("Mod+Enter")} saves.
+      </p>
+      <Textarea
+        data-autofocus
+        rows={8}
+        value={value}
+        aria-label="Queued message"
+        data-testid="edit-queued-text"
+        className="w-full resize-none"
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+      />
+    </Dialog>
+  );
+}
+
 /** Mount once. */
 export function SessionDialogsHost() {
   const open = useDialog((s) => s.open);
   const close = () => useDialog.setState({ open: undefined });
   if (!open) return null;
+  if (open.kind === "queued")
+    return (
+      <EditQueuedDialog
+        key={open.queued.id}
+        sessionId={open.sessionId}
+        queued={open.queued}
+        onClose={close}
+      />
+    );
   return open.kind === "mcp" ? (
     <McpDialog sessionId={open.sessionId} onClose={close} />
   ) : (

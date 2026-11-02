@@ -347,6 +347,7 @@ export function startSessions(): void {
     m.answerPermission(id, requestId, decision),
   );
   handle("sessions.removeQueued", ({ id, queuedId }) => m.removeQueued(id, queuedId));
+  handle("sessions.editQueued", ({ id, queuedId, text }) => m.editQueued(id, queuedId, text));
   handle("sessions.setModel", ({ id, model }) => m.setModel(id, model));
   handle("sessions.setPermissionMode", ({ id, mode }) => m.setPermissionMode(id, mode));
   handle("sessions.rename", ({ id, title }) => m.rename(id, title));
