@@ -7,11 +7,12 @@ import {
   Plug,
   RefreshCw,
   Sparkles,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { MeetingEvent, MeetingRecord } from "../../../shared/meetings";
-import { Badge, type BadgeTone, Button, cn, IconButton, Spinner } from "../../ui";
+import { Badge, type BadgeTone, Button, cn, contextMenu, IconButton, Spinner } from "../../ui";
 import { clock, dayAndTime, dayLabel, duration, startsIn } from "./format";
 
 export const STATUS: Record<MeetingRecord["status"], { label: string; tone: BadgeTone }> = {
@@ -48,6 +49,7 @@ export function Lobby({
   onJoin,
   onJoinLink,
   onOpen,
+  onDelete,
 }: {
   events?: MeetingEvent[];
   records: MeetingRecord[];
@@ -58,6 +60,7 @@ export function Lobby({
   onJoin(event: MeetingEvent): void;
   onJoinLink(): void;
   onOpen(id: string): void;
+  onDelete(id: string): void;
 }) {
   const now = useMinute();
   const [view, setView] = useState<"agenda" | "week">("agenda");
@@ -179,7 +182,7 @@ export function Lobby({
           ) : (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
               {records.map((r) => (
-                <SavedCard key={r.id} record={r} onOpen={onOpen} />
+                <SavedCard key={r.id} record={r} onOpen={onOpen} onDelete={onDelete} />
               ))}
             </div>
           )}
@@ -321,13 +324,26 @@ function EventCard({
   );
 }
 
-function SavedCard({ record, onOpen }: { record: MeetingRecord; onOpen(id: string): void }) {
+function SavedCard({
+  record,
+  onOpen,
+  onDelete,
+}: {
+  record: MeetingRecord;
+  onOpen(id: string): void;
+  onDelete(id: string): void;
+}) {
   const open = record.actions.filter((a) => !a.queued).length;
   return (
     <button
       type="button"
       aria-label={`Open ${record.title}`}
       onClick={() => onOpen(record.id)}
+      onContextMenu={contextMenu([
+        { label: "Open", icon: FileText, onSelect: () => onOpen(record.id) },
+        { separator: true },
+        { label: "Delete meeting…", icon: Trash2, danger: true, onSelect: () => onDelete(record.id) },
+      ])}
       className={cn(card, "h-28 flex-col justify-between p-4")}
     >
       <div className="w-full space-y-0.5">

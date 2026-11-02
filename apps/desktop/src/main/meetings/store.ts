@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
@@ -93,6 +94,30 @@ export class MeetingStore {
     value.captions = value.captions.filter((c) => c.timestamp <= through);
     value.gaps = value.gaps.filter((g) => g.at <= through);
     await writeJson(this.snapshotFile(id, through), value);
+  }
+  /**
+   * Deletes a saved meeting and every frozen copy made for its questions and notes. Snapshot files
+   * are named by a hash, so they are matched by the record id inside them.
+   */
+  async remove(id: string): Promise<void> {
+    await this.change(() => {
+      const index = this.data.records.findIndex((r) => r.id === id);
+      if (index < 0) throw new Error("Meeting not found");
+      if (["joining", "connected"].includes(this.data.records[index]!.status))
+        throw new Error("Leave the meeting before deleting it");
+      this.data.records.splice(index, 1);
+    });
+    const dir = join(dirname(this.file), "meeting-snapshots");
+    const names = await readdir(dir).catch(() => [] as string[]);
+    for (const name of names.filter((n) => n.endsWith(".json"))) {
+      const path = join(dir, name);
+      const content = await readFile(path, "utf8").catch(() => "");
+      try {
+        if ((JSON.parse(content) as { id?: unknown }).id === id) await rm(path, { force: true });
+      } catch {
+        // Not a snapshot we can read: leave it.
+      }
+    }
   }
   async readSnapshot(id: string, through: string): Promise<MeetingRecord> {
     return readJson(this.snapshotFile(id, through), record);

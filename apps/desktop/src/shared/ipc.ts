@@ -83,6 +83,7 @@ export interface HostMethods {
   "meetings.revealChat": { args: { sessionId: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
+  "meetings.delete": { args: { id: string }; result: void };
   "meetings.layout": { args: import("./meetingLayout").MeetingLayout; result: void };
   "meetings.signIn": { args: void; result: string };
   "meetings.signOut": { args: void; result: void };

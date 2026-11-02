@@ -7,7 +7,9 @@ a slot with a resizable split, can be hidden or reset from Layout, and the layou
 The call shows everyone like Teams: a gallery of tiles (camera
 when on, initials when off, muted mic, a ring while speaking, you included); when someone presents,
 their screen gets the space with everyone's tiles in a strip beside it. People (hidden by default,
-toggled from the participant count) is a third movable panel. Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
+toggled from the participant count) is a third movable panel. Saved meetings can be deleted (review ⋯ → Delete
+meeting…, or right-click a saved card), after a confirm; this also removes the meeting's frozen
+question/notes snapshots. Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
 now shows "Stopped" instead of Claude Code's red diagnostic, and Meetings sits in the Chats menu.
 
 Automatic source cleanup (2026-11-02, D-220): fresh Claude Code/Jig chats opened in this repository

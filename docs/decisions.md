@@ -2523,3 +2523,7 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   The media owner renders each stream into its tile's slot (`slot(key)`, stable ref callbacks), so
   React re-renders don't recreate video views. People is a third panel (hidden by default; the
   participant count toggles it); a slot can hold all three, each split remembered.
+- Deleting a saved meeting (Jon): a rare action, so it sits in the review's ⋯ menu and a saved card's
+  right-click menu, behind a confirm. `meetings.delete` removes the record and the snapshot files
+  whose content carries its id (they are named by a hash); never the live call. Chats that already
+  used the transcript keep their own history.

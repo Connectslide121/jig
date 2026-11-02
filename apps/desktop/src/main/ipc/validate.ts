@@ -106,6 +106,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     })
     .strict(),
   "meetings.notes": z.object({ id }).strict(),
+  "meetings.delete": z.object({ id }).strict(),
   "meetings.actions": z.object({ id, actions: z.array(meetingAction).max(200) }).strict(),
   "meetings.queue": z.object({ id, actionIds: z.array(id).min(1).max(200) }).strict(),
   "meetings.selectShare": z.object({ sourceId: id }).strict(),

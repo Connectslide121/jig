@@ -168,6 +168,14 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/meetings.png",
     });
+    // Deleting asks first, then removes the meeting and returns to the lobby.
+    await room.getByRole("button", { name: "Meeting options", exact: true }).click();
+    await room.getByRole("menuitem", { name: "Delete meeting…" }).click();
+    const confirm = room.getByRole("dialog", { name: /Delete "Weekly products"/ });
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/delete.png" });
+    await confirm.getByRole("button", { name: "Delete meeting", exact: true }).click();
+    await expect.poll(async () => (await overview()).records.length).toBe(0);
+    await expect(room.getByText("No saved meetings yet")).toBeVisible();
   } finally {
     await app.close();
   }

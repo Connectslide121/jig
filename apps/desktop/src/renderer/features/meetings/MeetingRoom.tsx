@@ -4,12 +4,14 @@ import {
   LayoutPanelLeft,
   Link2,
   MessageSquare,
+  MoreHorizontal,
   PanelBottom,
   PanelLeft,
   PanelRight,
   RotateCcw,
   Settings,
   SquareArrowOutUpRight,
+  Trash2,
   Video,
   X,
 } from "lucide-react";
@@ -37,6 +39,8 @@ import {
   Badge,
   Button,
   cn,
+  confirmDialog,
+  DialogHost,
   ErrorBoundary,
   IconButton,
   type MenuEntry,
@@ -65,6 +69,7 @@ export function MeetingRoom(): React.JSX.Element {
     <ErrorBoundary label="Meeting room">
       <Room />
       <MenuHost />
+      <DialogHost />
     </ErrorBoundary>
   );
 }
@@ -190,6 +195,20 @@ function Room() {
     { separator: true },
     { label: "Reset layout", icon: RotateCcw, onSelect: () => changeLayout(DEFAULT_MEETING_LAYOUT) },
   ];
+  const remove = async (r: MeetingRecord) => {
+    const ok = await confirmDialog({
+      title: `Delete "${r.title}"?`,
+      message:
+        "Deletes its transcript, notes and actions from this computer. Chats where you already asked Claude about it keep what Claude read there.",
+      confirmLabel: "Delete meeting",
+      danger: true,
+    });
+    if (!ok) return;
+    await run(async () => {
+      await call("meetings.delete", { id: r.id });
+      if (opened === r.id) setOpened(undefined);
+    });
+  };
   const generateNotes = (id: string) =>
     void run(async () => {
       const chat = await call("meetings.notes", { id });
@@ -249,6 +268,24 @@ function Room() {
             >
               Open in Teams
             </Button>
+            <IconButton
+              icon={MoreHorizontal}
+              label="Meeting options"
+              onClick={(e) =>
+                openMenuAt(
+                  e.currentTarget,
+                  [
+                    {
+                      label: "Delete meeting…",
+                      icon: Trash2,
+                      danger: true,
+                      onSelect: () => void remove(shown),
+                    },
+                  ],
+                  true,
+                )
+              }
+            />
           </>
         ) : (
           <>
@@ -330,6 +367,10 @@ function Room() {
           onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
           onJoinLink={() => setJoining({ title: "Teams meeting", url: "" })}
           onOpen={setOpened}
+          onDelete={(id) => {
+            const r = overview.records.find((x) => x.id === id);
+            if (r) void remove(r);
+          }}
         />
       )}
       <footer

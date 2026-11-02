@@ -239,6 +239,12 @@ export async function startMeetings(): Promise<void> {
       layout: store.layout(),
     };
   });
+  handle("meetings.delete", async ({ id }, ctx) => {
+    own(ctx);
+    if (id === activeId) throw new JigError("meeting_active", "Leave the meeting before deleting it");
+    await store.remove(id);
+    changed();
+  });
   handle("meetings.layout", async (layout, ctx) => {
     own(ctx);
     await store.setLayout(layout);

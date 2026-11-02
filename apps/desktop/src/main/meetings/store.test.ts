@@ -62,6 +62,24 @@ describe("global meeting persistence", () => {
     );
     expect(store.get(record.id).captions[0]?.text).toBe("Ship Thursday");
   });
+  it("deletes a saved meeting with its frozen snapshots, but never a live one", async () => {
+    const { store } = await setup();
+    const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");
+    await store.snapshot(record.id, "2026-01-01T12:01:00.000Z");
+    await expect(store.remove(record.id)).rejects.toThrow("Leave");
+    await store.update(record.id, (r) => {
+      r.status = "ended";
+    });
+    const other = await store.create("https://teams.microsoft.com/l/meetup-join/other", "Shop sync");
+    await store.update(other.id, (r) => {
+      r.status = "ended";
+    });
+    await store.snapshot(other.id, "2026-01-01T12:01:00.000Z");
+    await store.remove(record.id);
+    expect(store.records().map((r) => r.id)).toEqual([other.id]);
+    await expect(store.readSnapshot(record.id, "2026-01-01T12:01:00.000Z")).rejects.toThrow();
+    expect((await store.readSnapshot(other.id, "2026-01-01T12:01:00.000Z")).id).toBe(other.id);
+  });
   it("accepts regional Azure endpoints and rejects off-resource credential destinations", async () => {
     const { store } = await setup();
     await store.configure({
