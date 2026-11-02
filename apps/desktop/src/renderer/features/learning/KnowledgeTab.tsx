@@ -165,9 +165,14 @@ export function KnowledgeTab() {
               className="group flex items-start gap-2 py-1 text-sm"
               data-testid="knowledge-note"
             >
-              <Badge className="mt-0.5 shrink-0">{CATEGORY[n.category]}</Badge>
+              {/* Fixed columns: the kind, the text, the date (right-aligned), then delete. */}
+              <span className="flex w-24 shrink-0 pt-0.5">
+                <Badge>{CATEGORY[n.category]}</Badge>
+              </span>
               <span className="min-w-0 flex-1 text-fg">{n.text}</span>
-              <span className="shrink-0 text-xs text-hint">{new Date(n.at).toLocaleDateString()}</span>
+              <span className="w-20 shrink-0 pt-0.5 text-right text-xs text-hint tabular-nums">
+                {new Date(n.at).toLocaleDateString()}
+              </span>
               <IconButton
                 icon={X}
                 size="sm"
