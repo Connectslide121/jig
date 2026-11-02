@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ownMediaUrl } from "./permissions";
+import { ownMediaUrl, ownPagePermission } from "./permissions";
 
 it("only permits first-party media origins, including the exact development origin", () => {
   expect(ownMediaUrl("jig-app://app/index.html?meetingRoom=1", undefined)).toBe(true);
@@ -19,4 +19,11 @@ it("permits only the current meeting loopback origin, not arbitrary localhost po
   const origin = "http://127.0.0.1:53142";
   expect(ownMediaUrl(`${origin}/index.html?meetingRoom=1`, undefined, origin)).toBe(true);
   expect(ownMediaUrl("http://127.0.0.1:53143/index.html", undefined, origin)).toBe(false);
+});
+
+it("lets Jig's own pages use the microphone and write to the clipboard, nothing else", () => {
+  expect(ownPagePermission("media")).toBe(true);
+  expect(ownPagePermission("clipboard-sanitized-write")).toBe(true);
+  for (const p of ["clipboard-read", "geolocation", "notifications", "openExternal"])
+    expect(ownPagePermission(p)).toBe(false);
 });

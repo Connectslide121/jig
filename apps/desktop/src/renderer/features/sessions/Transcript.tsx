@@ -19,6 +19,7 @@ import {
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { agentModels } from "../../../shared/toolModels";
+import { copyText } from "../../lib/clipboard";
 import { useConfig } from "../../stores/config";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
@@ -35,7 +36,7 @@ import { ToolCard } from "./ToolCard";
 function messageMenu(sessionId: string, text: string, own: MenuEntry[] = []): MenuEntry[] {
   const extra = contributedEntries({ slot: "context.message", sessionId, text });
   return [
-    { label: "Copy", icon: Copy, onSelect: () => void navigator.clipboard.writeText(text) },
+    { label: "Copy", icon: Copy, onSelect: () => void copyText(text) },
     ...own,
     ...(extra.length ? [{ separator: true } as const, ...extra] : []),
   ];
@@ -181,12 +182,7 @@ const Item = memo(function Item({
               data-testid="user-message-edit"
               onClick={() => void rewindChat(sessionId, item.id, false)}
             />
-            <IconButton
-              icon={Copy}
-              size="sm"
-              label="Copy"
-              onClick={() => void navigator.clipboard.writeText(item.text)}
-            />
+            <IconButton icon={Copy} size="sm" label="Copy" onClick={() => void copyText(item.text)} />
             <IconButton
               icon={MoreHorizontal}
               size="sm"
@@ -209,7 +205,7 @@ const Item = memo(function Item({
                 size="sm"
                 label="Copy"
                 data-testid="assistant-copy"
-                onClick={() => void navigator.clipboard.writeText(item.text)}
+                onClick={() => void copyText(item.text)}
               />
               <ReadAloudButton id={item.id} text={item.text} />
               <IconButton

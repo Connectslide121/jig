@@ -17,7 +17,7 @@ import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
 import { MeetingAuth } from "./auth";
 import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
-import { ownMediaUrl } from "./permissions";
+import { ownMediaUrl, ownPagePermission } from "./permissions";
 import { MeetingStore } from "./store";
 
 const store = new MeetingStore();
@@ -179,7 +179,7 @@ export async function startMeetings(): Promise<void> {
   }
   session.defaultSession.setPermissionCheckHandler(
     (wc, permission, origin, details) =>
-      permission === "media" &&
+      ownPagePermission(permission) &&
       Boolean(
         wc &&
           ownMediaUrl(wc.getURL(), process.env.JIG_RENDERER_URL, meetingPageOrigin()) &&
@@ -189,7 +189,7 @@ export async function startMeetings(): Promise<void> {
   );
   session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) =>
     callback(
-      permission === "media" &&
+      ownPagePermission(permission) &&
         details.isMainFrame &&
         ownMediaUrl(wc.getURL(), process.env.JIG_RENDERER_URL, meetingPageOrigin()) &&
         ownMediaUrl(details.requestingUrl, process.env.JIG_RENDERER_URL, meetingPageOrigin()),

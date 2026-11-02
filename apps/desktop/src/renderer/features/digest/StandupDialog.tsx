@@ -1,6 +1,7 @@
 import { Copy, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
+import { copyText } from "../../lib/clipboard";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, Dialog, Markdown, Spinner } from "../../ui";
 
@@ -50,7 +51,7 @@ function Standup() {
             disabled={!result || busy}
             onClick={() => {
               if (!result) return;
-              void navigator.clipboard.writeText(result.text);
+              void copyText(result.text);
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}

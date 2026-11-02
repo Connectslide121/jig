@@ -1,5 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { copyText } from "../lib/clipboard";
 import { highlight } from "../lib/highlight";
 import { useAppearance } from "../stores/appearance";
 import { cn } from "./cn";
@@ -28,8 +29,9 @@ export function CodeBlock({ code, lang, className }: { code: string; lang?: stri
           type="button"
           aria-label="Copy code"
           className="flex items-center gap-1 hover:text-fg"
-          onClick={() => {
-            void navigator.clipboard.writeText(code);
+          onClick={async () => {
+            // "Copied" only when it really is in the clipboard.
+            if (!(await copyText(code))) return;
             setCopied(true);
             setTimeout(() => setCopied(false), 1200);
           }}

@@ -15,13 +15,13 @@ import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
+import { copyText } from "../lib/clipboard";
 import { call, errorMessage } from "../lib/host";
 import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } from "../ui";
 import { contributedEntries } from "../workbench/contextMenus";
 import { useProjects } from "../workbench/projects";
 import { useWorkbench, workbench } from "../workbench/store";
 import { dismiss, notify } from "../workbench/toasts";
-
 import { iconByName } from "./icons";
 import { knownAddons, onJigEvent } from "./runtime";
 
@@ -288,7 +288,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       void call("app.openPath", { path }).catch((e) =>
         notify({ title: "Can't open", message: errorMessage(e), tone: "warning" }),
       ),
-    copy: (text) => void navigator.clipboard.writeText(text),
+    copy: (text) => void copyText(text),
     menu(items, at, target) {
       const entries = toEntries(items);
       const extra = target ? contributedEntries(target) : [];

@@ -14,6 +14,7 @@ import {
 } from "../../../shared/links";
 import type { ProjectInfo } from "../../../shared/projects";
 import { iconByName } from "../../addons/icons";
+import { copyText } from "../../lib/clipboard";
 import { call, errorMessage } from "../../lib/host";
 import {
   Button,
@@ -367,7 +368,7 @@ export function LinksView() {
   const groups = project.links ?? [];
   const linkMenu = (link: ProjectLink) => [
     { label: "Open", icon: ExternalLink, onSelect: () => open(link.url) },
-    { label: "Copy address", onSelect: () => void navigator.clipboard.writeText(link.url) },
+    { label: "Copy address", onSelect: () => void copyText(link.url) },
     {
       label: "Edit…",
       testId: "link-edit",

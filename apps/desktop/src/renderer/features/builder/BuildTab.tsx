@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import type { BuildJob, LayoutOp } from "../../../shared/builds";
 import type { DevRequestStatus } from "../../../shared/devRequest";
+import { copyText } from "../../lib/clipboard";
 import { call, errorMessage } from "../../lib/host";
 import { timeAgo } from "../../lib/time";
 import {
@@ -387,7 +388,7 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
             icon={Copy}
             onClick={() =>
               void act("Couldn't copy", async () => {
-                await navigator.clipboard.writeText(await call("devRequests.prompt", { buildId: job.id }));
+                await copyText(await call("devRequests.prompt", { buildId: job.id }));
                 notify({
                   title: "Prompt copied",
                   message: "Paste it into Claude Code in your Jig clone.",

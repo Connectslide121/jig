@@ -14,7 +14,11 @@ async function say(page: Page, text: string) {
   await page.keyboard.press("Enter");
 }
 
-test("chat: send, stream a markdown reply with highlighted code, show usage", async ({ page, jigHome }) => {
+test("chat: send, stream a markdown reply with highlighted code, show usage", async ({
+  app,
+  page,
+  jigHome,
+}) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
   await say(page, "Hello Claude");
@@ -22,6 +26,13 @@ test("chat: send, stream a markdown reply with highlighted code, show usage", as
   await expect(page.getByTestId("turn-result")).toContainText("Done");
   await expect(page.getByTestId("assistant-message")).toContainText("You said: Hello Claude");
   await expect(page.locator(".jig-code .shiki")).toHaveCount(1);
+  // Copy really puts the code in the clipboard (Jig's pages may write to it).
+  const code = page.locator(".jig-code").first();
+  await code.locator("xpath=..").getByRole("button", { name: "Copy code" }).click();
+  await expect(code.locator("xpath=..")).toContainText("Copied");
+  const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
+  expect(copied).toContain("const answer: number = 42;");
+  expect(copied).toContain('console.log("hello", answer);');
   await expect(page.getByTestId("tab-jig.chat")).toContainText("Hello Claude");
   await expect(page.getByTestId("chat-status")).toHaveText("Idle");
 });
