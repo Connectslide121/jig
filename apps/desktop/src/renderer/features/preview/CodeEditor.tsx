@@ -44,6 +44,7 @@ import { updateConfig, useConfig } from "../../stores/config";
 import { cn, IconButton, openMenuAt } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { editorSyntax } from "./editorSyntax";
+import { wrapIndent } from "./wrapIndent";
 
 /**
  * Colours from Jig's tokens, so the editor's frame follows the theme (Jig Dark, Jig Light or an
@@ -231,7 +232,7 @@ export function CodeEditor({
           guides,
           p.syntax.of(editorSyntax(theme, angular.current)),
           p.language.of([]),
-          p.wrap.of(settings?.wordWrap ? EditorView.lineWrapping : []),
+          p.wrap.of(settings?.wordWrap ? [EditorView.lineWrapping, wrapIndent] : []),
           p.whitespace.of(
             settings?.showWhitespace ? [highlightWhitespace(), highlightTrailingWhitespace()] : [],
           ),
@@ -297,7 +298,7 @@ export function CodeEditor({
     const p = parts.current;
     view.current?.dispatch({
       effects: [
-        p.wrap.reconfigure(settings?.wordWrap ? EditorView.lineWrapping : []),
+        p.wrap.reconfigure(settings?.wordWrap ? [EditorView.lineWrapping, wrapIndent] : []),
         p.whitespace.reconfigure(
           settings?.showWhitespace ? [highlightWhitespace(), highlightTrailingWhitespace()] : [],
         ),

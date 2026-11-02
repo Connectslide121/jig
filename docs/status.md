@@ -534,7 +534,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - A full editor (D-118): the theme's own syntax colours, indentation guides, the file's own
     indentation, closing brackets, several cursors (Alt+click, Alt+drag, Ctrl+D), folding, find and
     replace, go to line (Ctrl+G), toggle comment, move lines; a status line with line/column,
-    indentation, line endings, language, word wrap and whitespace. Settings → Editor.
+    indentation, line endings, language, word wrap (wrapped lines keep their indentation) and whitespace. Settings → Editor.
   - `Ctrl+S` or Save writes the file. If it changes on disk while you have unsaved edits, a bar asks:
     Keep mine / Load theirs / Show diff. Closing a tab with unsaved edits asks first.
 - **Files** (left sidebar, `Ctrl+Shift+E`): the project's files as a tree.

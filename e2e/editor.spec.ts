@@ -112,3 +112,21 @@ test("The editor: theme colours, the file's indentation, brackets, go to line, s
     .toBe(true);
   await expect(editor.locator(".cm-lineWrapping")).toHaveCount(1);
 });
+
+test("Wrapped long lines keep their indentation", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  const long = Array.from({ length: 40 }, (_, i) => `item${i}`).join(" + ");
+  await writeFile(join(dir, "cart.ts"), `function total() {\n        return ${long};\n}\n`);
+  await hostCall(page, "projects.add", { path: dir });
+  await hostCall(page, "config.update", { editor: { wordWrap: true } });
+  await page.keyboard.press("Control+Shift+E");
+  await page.getByTestId("files-view").getByTestId("files-entry-cart.ts").click();
+  const editor = page.locator("[data-tab-id]:not(.hidden)").getByTestId("code-editor");
+  const line = editor.locator(".cm-line").nth(1);
+  await expect(line).toHaveClass(/cm-wrapIndent/);
+  // The continuation rows start where the text starts, not at the left edge.
+  const box = (await line.boundingBox())!;
+  const first = (await editor.locator(".cm-line").first().boundingBox())!;
+  expect(box.height).toBeGreaterThan(first.height * 1.5);
+});
