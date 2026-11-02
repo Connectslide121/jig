@@ -542,7 +542,12 @@ back to its own mode once it is idle.
 
 The built-in Meetings add-on (global scope, addons/meetings) opens the host's dedicated media window
 through ctx.meetings.open(). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
-Graph calendar reads and keyless ACS credential exchange using AzureCliCredential. No token cache,
+Graph calendar reads and keyless ACS credential exchange using AzureCliCredential. It also owns
+a temporary loopback server for its bundled media page: ACS rejects the workbench's custom
+scheme. Its localhost URL binds only 127.0.0.1 on an ephemeral port, checks Host/method/path, serves with CSP and
+no remote scripts, and closes with the window. Only its registered window/main frame gets IPC from
+that exact origin. Development continues using Vite's configured origin (D-222).
+No token cache,
 client secret or resource key is persisted. Only the owned window can obtain a calling credential,
 write captions/status, select a screen, or send questions/actions. The first-party media renderer
 uses the pinned official Calling SDK; this narrow media exception follows the speech/device pattern.

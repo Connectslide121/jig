@@ -6,7 +6,9 @@ explicit project context, notes and reviewed multi-project tasks (Jon, D-217).
 - [x] Built-in Meetings add-on, global data and a dedicated call window independent of projects.
 - [x] Azure/Entra setup script, public desktop sign-in, CLI-authorised resource access, memory-only tokens.
 - [x] Separate read-only default-calendar consent and two-week agenda, recurring events, join by link.
-- [x] Pre-join devices/preview/mute/language/disclosure, audio/video, incoming video/content, own screen/window share.
+- [x] Pre-join devices/preview/mute/language, audio/video, incoming video/content, own screen/window share.
+- [x] Pre-join device errors and link failures visible in the modal, device retry; remove pre-join acknowledgement/notice (D-222).
+- [x] Production media on an owned ephemeral loopback origin accepted by ACS, with scoped IPC and CSP (D-222).
 - [x] Speaker-attributed caption revisions, durable text, gap/restart handling, no raw audio or batch processing.
 - [x] Explicit project per question; frozen transcript snapshots, read-only paginated tool, normal Claude Code chats.
 - [x] Notes chat and save tool, editable owner/project/action review; idempotent paused Tasks integration.

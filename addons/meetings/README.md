@@ -20,8 +20,9 @@ project's context, and review actions for the task queue. Meetings are global (D
   cancelled events excluded). Events with Teams join links have Join. Join from link works without
   calendar permission. Some imported invitations have no structured join link: paste it instead.
 - **Before joining:** choose microphone, speakers and camera, preview the camera, choose whether to
-  join muted, and choose a spoken language (including English and Swedish). Confirm that participants
-  will be informed about saved captions and that Azure calling incurs charges.
+  join muted, and choose a spoken language (including English and Swedish).
+  No acknowledgement checkbox or notice is shown before joining. The status area shows device readiness. Device and link errors appear inside the modal;
+  after device setup fails, use Retry devices once the device/access problem is corrected.
 - **During:** microphone/camera and in-call device controls, participant video, incoming screen shares, your screen/window
   sharing with a modal picker and Stop sharing, live text and capture status. Call controls always
   affect the active call even while inspecting a past transcript. Retry captions keeps the language chosen before joining. System-audio sharing isn't enabled.

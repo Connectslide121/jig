@@ -16,6 +16,7 @@ import { createChat, sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
 import { MeetingAuth } from "./auth";
+import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
 import { ownMediaUrl } from "./permissions";
 import { MeetingStore } from "./store";
 
@@ -148,8 +149,9 @@ async function open(): Promise<void> {
   });
   window.on("closed", () => {
     room = undefined;
+    closeMeetingPage();
   });
-  const url = new URL(process.env.JIG_RENDERER_URL || "jig-app://app/index.html");
+  const url = new URL(process.env.JIG_RENDERER_URL || (await meetingPage(window.webContents.id)));
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
   if (!process.env.JIG_HIDDEN) window.show();
@@ -176,8 +178,8 @@ export async function startMeetings(): Promise<void> {
       permission === "media" &&
       Boolean(
         wc &&
-          ownMediaUrl(wc.getURL()) &&
-          ownMediaUrl(details.requestingUrl ?? origin) &&
+          ownMediaUrl(wc.getURL(), process.env.JIG_RENDERER_URL, meetingPageOrigin()) &&
+          ownMediaUrl(details.requestingUrl ?? origin, process.env.JIG_RENDERER_URL, meetingPageOrigin()) &&
           !details.embeddingOrigin,
       ),
   );
@@ -185,8 +187,8 @@ export async function startMeetings(): Promise<void> {
     callback(
       permission === "media" &&
         details.isMainFrame &&
-        ownMediaUrl(wc.getURL()) &&
-        ownMediaUrl(details.requestingUrl),
+        ownMediaUrl(wc.getURL(), process.env.JIG_RENDERER_URL, meetingPageOrigin()) &&
+        ownMediaUrl(details.requestingUrl, process.env.JIG_RENDERER_URL, meetingPageOrigin()),
     ),
   );
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {

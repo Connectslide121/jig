@@ -224,6 +224,10 @@ can be installed through these methods. The details id is validated at the IPC b
 
 ## Meetings (D-217)
 
+Production media uses an ephemeral loopback origin (D-222), because ACS rejects `jig-app:`.
+The IPC router grants that origin only to the registered meeting window's main frame and entry
+page, not arbitrary localhost pages/windows. Closing the room revokes this grant and its server.
+
 All methods are typed in shared/ipc.ts; argument-bearing methods have validate.ts schemas.
 
 | Method | Purpose |

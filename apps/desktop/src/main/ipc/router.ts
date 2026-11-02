@@ -12,6 +12,7 @@ import {
 } from "../../shared/ipc";
 import { appWindows } from "../appWindows";
 import { logger } from "../log";
+import { isMeetingPage } from "../meetings/page";
 import { invalidArgs, isAllowedOrigin } from "./validate";
 
 const log = logger("ipc");
@@ -54,7 +55,11 @@ export function installRouter(): void {
       }
       // Only Jig's own page (its main frame) talks to the host; a previewed page or frame never can.
       const frame = event.senderFrame;
-      if (!frame || frame.parent || !isAllowedOrigin(frame.url)) {
+      if (
+        !frame ||
+        frame.parent ||
+        (!isAllowedOrigin(frame.url) && !isMeetingPage(event.sender.id, frame.url))
+      ) {
         log.warn(`Refused ${method} from ${frame?.url ?? "an unknown frame"}`);
         return { ok: false, error: { code: "forbidden", message: "Not allowed from this page" } };
       }

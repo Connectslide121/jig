@@ -2527,3 +2527,19 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   right-click menu, behind a confirm. `meetings.delete` removes the record and the snapshot files
   whose content carries its id (they are named by a hash); never the live call. Chats that already
   used the transcript keep their own history.
+
+## D-222: Show pre-join failures where joining happens
+
+- Accepted after Jon reported that joining by link appeared stuck in the redesigned modal.
+  Jon explicitly removed the pre-join checkbox and notice; feedback/retry details are Claude, on my own.
+- Device setup failure must stop its loading indicator and offer Retry devices. Link/host errors and
+  device failures appear inside pre-join, rather than solely in the obscured window status bar.
+- A real SDK test exposed the root cause: ACS rejects `jig-app:` despite Electron marking it secure.
+  Serve only the bundled meeting UI at an ephemeral localhost HTTP URL, binding only 127.0.0.1
+  (ACS requires the hostname localhost for HTTP). Validate Host, method and resolved path; retain
+  CSP, no remote scripts and sandboxing.
+  The IPC router trusts this exact origin/entry page only for the registered meeting window;
+  closing the room closes the server/revokes the grant. No general localhost IPC allowance.
+- Remove the pre-join acknowledgement and notice (Jon); device readiness and a supplied link gate Join.
+  Reserve a fixed-height status area from opening.
+  Keep the redesigned device/preview layout and do not shift controls when feedback changes.

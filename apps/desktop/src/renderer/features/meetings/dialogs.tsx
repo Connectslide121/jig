@@ -2,6 +2,7 @@ import { AppWindow, Info, Mic, Monitor, PlugZap, Video, VideoOff } from "lucide-
 import { useEffect, useRef, useState } from "react";
 import type { MeetingAction, MeetingRecord, MeetingSettings } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
+import { errorMessage } from "../../lib/host";
 import { Badge, Button, Card, cn, Dialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
 import { ProjectSwatch } from "../projects/colors";
 import { SPEECH_LANGUAGES } from "./format";
@@ -251,19 +252,46 @@ export function Prejoin({
   const [camera, setCamera] = useState("");
   const [cameraOn, setCameraOn] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [consent, setConsent] = useState(false);
   const [language, setLanguage] = useState("en-us");
+  const [deviceLoading, setDeviceLoading] = useState(!fake);
+  const [deviceAttempt, setDeviceAttempt] = useState(0);
+  const [error, setError] = useState("");
   const preview = useRef<HTMLDivElement>(null);
+  const reportError = (e: unknown) => {
+    setError(errorMessage(e));
+    onError(e);
+  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: prepare devices once per pre-join modal; onError is a parent callback.
   useEffect(() => {
-    if (!fake) void media.prepare().then(setDevices).catch(onError);
-    return () => media.cancelPreview();
-  }, []);
+    let cancelled = false;
+    if (!fake) {
+      setDeviceLoading(true);
+      setError("");
+      void media.prepare().then(
+        (value) => {
+          if (!cancelled) {
+            setDevices(value);
+            setDeviceLoading(false);
+          }
+        },
+        (e: unknown) => {
+          if (!cancelled) {
+            setDeviceLoading(false);
+            reportError(e);
+          }
+        },
+      );
+    }
+    return () => {
+      cancelled = true;
+      media.cancelPreview();
+    };
+  }, [deviceAttempt]);
   const configure = () => media.devices(mic, speaker, camera, cameraOn, preview.current ?? undefined);
   // The preview follows the camera switch and the chosen camera.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only camera choices change the preview.
   useEffect(() => {
-    if (devices) void configure().catch(onError);
+    if (devices) void configure().catch(reportError);
   }, [devices, cameraOn, camera]);
   return (
     <Dialog
@@ -278,14 +306,14 @@ export function Prejoin({
             variant="primary"
             icon={Video}
             busy={busy}
-            disabled={!consent || !value.url.trim() || (!fake && !devices)}
+            disabled={!value.url.trim() || (!fake && !devices)}
             onClick={() =>
               void (async () => {
                 try {
                   if (!fake) await configure();
                   await onJoin(value, { muted, camera: cameraOn, language });
                 } catch (e) {
-                  onError(e);
+                  reportError(e);
                 }
               })()
             }
@@ -323,7 +351,7 @@ export function Prejoin({
                   {fake ? "Test service: no camera" : "Camera is off"}
                 </div>
               )}
-              {!fake && !devices && <Spinner center />}
+              {deviceLoading && <Spinner center />}
             </div>
             <div className="flex h-8 items-center gap-6">
               <div className="flex items-center gap-2 text-sm">
@@ -370,20 +398,19 @@ export function Prejoin({
             </Field>
           </div>
         </div>
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface p-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 shrink-0 accent-accent"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span>
-            I will inform participants that Jig saves captions as meeting notes.
-            <span className="mt-1 block text-xs text-muted">
-              Joining uses Azure calling and incurs usage charges. No audio or video recording is saved.
-            </span>
-          </span>
-        </label>
+        <div className="flex h-16 items-center gap-3 overflow-hidden rounded-lg bg-surface px-3 text-xs">
+          <p
+            role={error ? "alert" : "status"}
+            className={cn("min-w-0 flex-1 overflow-y-auto max-h-full", error ? "text-danger" : "text-muted")}
+          >
+            {error || (deviceLoading ? "Checking microphone, speakers and camera…" : "Ready to join.")}
+          </p>
+          {!fake && !devices && !deviceLoading && (
+            <Button size="sm" onClick={() => setDeviceAttempt((n) => n + 1)}>
+              Retry devices
+            </Button>
+          )}
+        </div>
       </div>
     </Dialog>
   );

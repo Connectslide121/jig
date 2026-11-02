@@ -464,13 +464,18 @@ function Room() {
           busy={pending === "join"}
           onClose={() => setJoining(undefined)}
           onError={(e) => setError(errorMessage(e))}
-          onJoin={(meeting, options) =>
-            run(async () => {
+          onJoin={async (meeting, options) => {
+            setPending("join");
+            setError("");
+            try {
               const r = await call("meetings.join", meeting);
               setJoining(undefined);
               await media.current!.join(r, { ...options, fake: overview.fake });
-            }, "join")
-          }
+              await reload();
+            } finally {
+              setPending(undefined);
+            }
+          }}
         />
       )}
       {ask && record && (

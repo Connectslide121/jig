@@ -3,6 +3,45 @@ import { join } from "node:path";
 import type { MeetingOverview } from "../apps/desktop/src/shared/meetings";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
+test("Meetings: device setup failure is visible and retryable before joining", async ({ jigHome }) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    const newWindow = app.waitForEvent("window");
+    await hostCall(main, "meetings.open");
+    const room = await newWindow;
+    await room.emulateMedia({ reducedMotion: "reduce" });
+    await expect(room.getByTestId("meeting-room")).toBeVisible();
+    expect(new URL(room.url()).hostname).toBe("localhost");
+    // Exercise real SDK failure handling without giving a test access to physical devices.
+    await app.evaluate(({ session }) => {
+      session.defaultSession.setPermissionCheckHandler(() => false);
+      session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+    });
+    await room.evaluate(() => {
+      navigator.mediaDevices.getUserMedia = async () => {
+        throw new DOMException("Test denied device access", "NotAllowedError");
+      };
+    });
+    await room.getByRole("button", { name: "Join from link…", exact: true }).first().click();
+    const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    await expect(prejoin.getByRole("alert")).not.toBeEmpty({ timeout: 30_000 });
+    await expect(prejoin.getByRole("alert")).toContainText("Microphone access was denied");
+    await expect(prejoin.getByTestId("loading")).toHaveCount(0);
+    const geometry = await prejoin.boundingBox();
+    await prejoin.getByRole("button", { name: "Retry devices", exact: true }).click();
+    await expect(prejoin.getByRole("alert")).not.toBeEmpty();
+    expect(await prejoin.boundingBox()).toEqual(geometry);
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/device-error.png",
+    });
+  } finally {
+    await app.close();
+  }
+});
+
 test("Meetings: global live capture, project questions, notes and reviewed tasks", async ({ jigHome }) => {
   const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
   try {
@@ -22,6 +61,7 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await main.getByTestId("goto-input").fill("Meetings");
     await main.keyboard.press("Enter");
     const room = await newWindow;
+    await room.emulateMedia({ reducedMotion: "reduce" });
     await expect(room.getByTestId("meeting-room")).toBeVisible();
     await hostCall(room, "meetings.configure", {
       tenantId: "22222222-2222-4222-8222-222222222222",
@@ -46,9 +86,23 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await room.getByRole("button", { name: "Week", exact: true }).click();
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/week.png" });
     await room.getByRole("button", { name: "Agenda", exact: true }).click();
+    // Joining by link needs no acknowledgement and keeps host errors inside the modal.
+    await room.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const linkJoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    await linkJoin.getByLabel("Teams join link").fill("https://example.com/not-a-meeting");
+    await expect(linkJoin.getByRole("checkbox")).toHaveCount(0);
+    await expect(linkJoin.getByRole("button", { name: "Join meeting", exact: true })).toBeEnabled();
+    const beforeError = await linkJoin.boundingBox();
+    await linkJoin.getByRole("button", { name: "Join meeting", exact: true }).click();
+    await expect(linkJoin.getByRole("alert")).not.toBeEmpty();
+    expect(await linkJoin.boundingBox()).toEqual(beforeError);
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/join-error.png",
+    });
+    await linkJoin.getByRole("button", { name: "Cancel", exact: true }).click();
     await room.getByRole("button", { name: "Join Weekly products", exact: true }).click();
     const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
-    await prejoin.getByRole("checkbox", { name: /I will inform/ }).check();
     await prejoin.getByLabel("Speech language").selectOption("sv-se");
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/prejoin.png" });
     await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();

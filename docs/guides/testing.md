@@ -134,6 +134,10 @@ Set both JIG_ENGINE=fake and JIG_MEETINGS=fake for the isolated meeting service;
 never authorises a real meeting. e2e/meetings.spec.ts creates temporary Shop/Portal projects, joins
 a fake calendar meeting, verifies capture across project switches, modal geometry, caption revision
 merging, credential sender restrictions, sharing controls, notes and paused cross-project queueing.
+The join-by-link regression checks joining without an acknowledgement, invalid-link errors inside the modal and
+unchanged modal geometry; `join-error.png` captures that state. A second test uses the real SDK with
+media permission explicitly denied and no account: its microphone error and retry must appear in
+the modal (`device-error.png`), proving SDK initialization passes the production-origin check.
 No real Azure sign-in, microphones, cameras, speakers or billable call is used. Unit tests cover link
 validation, ordering/finals, snapshot isolation, atomic concurrent writes, restart interruption,
 media origin checks and idempotent reviewed task addition. The room screenshot is saved under

@@ -14,3 +14,9 @@ it("only permits first-party media origins, including the exact development orig
   ])
     expect(ownMediaUrl(url, "http://localhost:5173")).toBe(false);
 });
+
+it("permits only the current meeting loopback origin, not arbitrary localhost ports", () => {
+  const origin = "http://127.0.0.1:53142";
+  expect(ownMediaUrl(`${origin}/index.html?meetingRoom=1`, undefined, origin)).toBe(true);
+  expect(ownMediaUrl("http://127.0.0.1:53143/index.html", undefined, origin)).toBe(false);
+});

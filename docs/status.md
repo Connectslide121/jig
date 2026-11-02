@@ -1,5 +1,12 @@
 # Status
 
+Meeting join feedback (2026-11-02, D-222): pre-join shows device and link errors inside the modal,
+and production media loads from a window-owned loopback server: ACS rejected `jig-app:` before
+device setup. The workbench keeps its normal origin and meeting IPC remains restricted to its owner.
+stops the spinner after device failure and offers Retry devices. The pre-join checkbox and notice are removed at Jon's request; a reserved status area shows device
+readiness without moving existing controls.
+Physical devices and a real Teams call still need target-machine acceptance.
+
 Top bar (2026-11-02, Jon): New chat sits beside the search in the centre; Meetings is a video icon
 button among the icons on the right (the Meetings add-on's `topbar` item), and still in Chats → Meetings.
 
