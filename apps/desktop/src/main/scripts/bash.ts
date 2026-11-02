@@ -23,7 +23,7 @@ export function findGitBash(env: Env, exists: (path: string) => boolean): string
   for (const root of roots) {
     if (!root) continue;
     const bash = win32.join(root, "bin", "bash.exe");
-    if (!/[/]windows[/]system32[/]/i.test(bash) && exists(bash)) return bash;
+    if (!/[\\/]windows[\\/]system32[\\/]/i.test(bash) && exists(bash)) return bash;
   }
   return undefined;
 }

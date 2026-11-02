@@ -32,6 +32,12 @@ describe("findGitBash", () => {
     expect(
       findGitBash({ PATH: "C:\\Windows\\System32" }, has(wsl, "C:\\Windows\\System32\\git.exe")),
     ).toBeUndefined();
+    expect(
+      findGitBash(
+        { PATH: "C:\\Windows\\System32\\cmd" },
+        has("C:\\Windows\\System32\\cmd\\git.exe", "C:\\Windows\\System32\\bin\\bash.exe"),
+      ),
+    ).toBeUndefined();
     expect(findGitBash({}, () => false)).toBeUndefined();
   });
 });
