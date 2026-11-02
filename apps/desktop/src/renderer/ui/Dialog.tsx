@@ -53,9 +53,13 @@ export function Dialog({
     setClosing(true);
     closeTimer.current = setTimeout(onClose, MOTION_MS);
   };
-  useEffect(() => {
+  // Reopened: forget the last close in this render, not in an effect after it, or the dialog's first
+  // frames render as closing (no aria-modal, an Escape ignored).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) setClosing(false);
-  }, [open]);
+  }
   useEffect(() => () => clearTimeout(closeTimer.current), []);
   // Footer Cancel buttons conventionally receive the same close callback as the Dialog.
   const animatedFooter = (node: ReactNode): ReactNode =>
@@ -83,7 +87,8 @@ export function Dialog({
       <div
         ref={ref}
         role="dialog"
-        aria-modal="true"
+        // Closing (its fade-out), it no longer holds the keyboard: a shortcut right after Cancel works.
+        aria-modal={closing || !open ? undefined : true}
         aria-labelledby={titleId}
         tabIndex={-1}
         data-testid={testId}

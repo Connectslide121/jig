@@ -302,7 +302,9 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await tab.getByRole("button", { name: "Chat options" }).click();
   await page.getByTestId("session-overview").click();
   await expect(details).toBeVisible();
+  // Escape closes it even though the menu that opened it had focus.
   await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
   await tab.getByTestId("chat-overview-toggle").click();
   await expect(tab.getByTestId("chat-overview")).toHaveCount(0);
   // The column slides shut, so the chat re-centres instead of keeping the card's space.
