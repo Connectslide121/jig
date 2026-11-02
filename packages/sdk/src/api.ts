@@ -154,8 +154,11 @@ export interface MenuItemInput {
 }
 
 export interface AddonUiContext {
-  /** Opens Jig's dedicated Teams meeting window; the call survives project/view switches. */
-  meetings: { open(): Promise<void> };
+  /**
+   * Opens Jig's dedicated Teams meeting window; the call survives project/view switches. `history()`
+   * opens the meeting history as a tab in this window (D-250).
+   */
+  meetings: { open(): Promise<void>; history(): void };
   addon: { id: string; name: string };
   /** Calls a named export of this add-on's host.ts: `export async function status(args, api)`. */
   host: { call<T = unknown>(method: string, args?: unknown): Promise<T> };

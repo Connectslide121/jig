@@ -20,6 +20,7 @@ import {
   Square,
   SquarePlus,
   SquareTerminal,
+  Video,
   X,
   Zap,
 } from "lucide-react";
@@ -32,6 +33,7 @@ import {
   type SlashCommandInfo,
 } from "../../../shared/engine";
 import { fuzzyFilter } from "../../../shared/fuzzy";
+import type { MethodResult } from "../../../shared/ipc";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, FileIcon, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
@@ -142,6 +144,7 @@ export function Composer({
   const [closedAt, setClosedAt] = useState<string>();
   const [commands, setCommands] = useState<SlashCommandInfo[]>();
   const [found, setFound] = useState<{ query: string; files: string[] }>();
+  const [meetings, setMeetings] = useState<{ query: string; list: MethodResult<"meetings.mentions"> }>();
   const [history, setHistory] = useState<{ index: number; draft: string }>({ index: -1, draft: "" });
   const ref = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -184,16 +187,36 @@ export function Composer({
     }, 80);
     return () => clearTimeout(timer);
   }, [fileQuery, meta.cwd]);
+  // Meetings Jig kept can be mentioned too (D-250); none while the Meetings add-on is off.
+  useEffect(() => {
+    if (fileQuery === undefined) return;
+    const timer = setTimeout(() => {
+      void call("meetings.mentions", { query: fileQuery })
+        .then((list) => setMeetings({ query: fileQuery, list }))
+        .catch(() => setMeetings({ query: fileQuery, list: [] }));
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [fileQuery]);
   const items: PickerItem[] = useMemo(() => {
     if (!pickerOpen || !token) return [];
     if (token.kind === "command") return commandItems(commands, token.query);
-    return (found?.files ?? []).map((f) => ({
+    const files: PickerItem[] = (found?.files ?? []).map((f) => ({
       id: f,
       value: `@${f}`,
       label: f,
       icon: <FileIcon path={f} folder={f.endsWith("/")} className="size-3.5" />,
     }));
-  }, [pickerOpen, token, commands, found]);
+    const kept: PickerItem[] = (meetings?.list ?? []).map((m) => ({
+      id: `meeting:${m.id}`,
+      value: m.mention,
+      label: m.title,
+      description: `Meeting · ${new Date(m.startedAt).toLocaleDateString()}`,
+      plain: true,
+      icon: <Video className="size-3.5 text-muted" />,
+    }));
+    // Asking for a meeting by name puts meetings first; otherwise files lead and a few meetings follow.
+    return token.query.toLowerCase().startsWith("meeting") ? [...kept, ...files] : [...files, ...kept];
+  }, [pickerOpen, token, commands, found, meetings]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: back to the first item when the list changes.
   useEffect(() => setSelected(0), [tokenKey, token?.query]);
 
@@ -559,7 +582,11 @@ export function Composer({
           {pickerOpen && token && (
             <ComposerPicker
               title={
-                token.kind === "command" ? "Commands and skills" : `Files in ${meta.cwd.split(/[\\/]/).pop()}`
+                token.kind === "command"
+                  ? "Commands and skills"
+                  : meetings?.list.length
+                    ? `Files in ${meta.cwd.split(/[\\/]/).pop()} and meetings`
+                    : `Files in ${meta.cwd.split(/[\\/]/).pop()}`
               }
               items={items}
               selected={selected}

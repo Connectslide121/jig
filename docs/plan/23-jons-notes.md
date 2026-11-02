@@ -37,13 +37,13 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 3 — Meeting history in the main window
 
-- [ ] **Meetings view** in Jig's main window listing every saved meeting (renamed from "Saved
+- [x] **Meetings view** in Jig's main window listing every saved meeting (renamed from "Saved
       meetings" to the meeting history), with search; no need to open the meeting window.
-- [ ] **Actions per meeting:** Start a chat about it, Write notes, Review actions → task queue,
+- [x] **Actions per meeting:** Start a chat about it, Write notes, Review actions → task queue,
       Copy / export as Markdown, Rename, Delete.
-- [ ] **Mention a meeting in a chat:** the composer's `@` picker also lists meetings; picking one
+- [x] **Mention a meeting in a chat:** the composer's `@` picker also lists meetings; picking one
       makes Claude read it with `jig_meeting_read`.
-- [ ] **Shorter notes:** rewrite the notes prompt for concise output (a short summary, decisions,
+- [x] **Shorter notes:** rewrite the notes prompt for concise output (a short summary, decisions,
       open questions, short actions; evidence only inside actions).
 
 ## Session 4 — Teams calls (research first)

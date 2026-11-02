@@ -223,7 +223,7 @@ export class FakeEngine implements Engine {
           });
           const output = outputText(await options.toolHandlers.jig_meeting_read({ id, through }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
-          if (text.includes("Write meeting notes:") && options.toolHandlers.jig_meeting_save_notes) {
+          if (/Write (concise )?meeting notes/.test(text) && options.toolHandlers.jig_meeting_save_notes) {
             const projects = JSON.parse(
               /optional projectId from (\[.*?\])\./.exec(text)?.[1] ?? "[]",
             ) as Array<{ id: string }>;
@@ -260,6 +260,17 @@ export class FakeEngine implements Engine {
               `Meeting answer using this chat's project and the captured transcript.\n\n${output.slice(0, 1000)}`,
               signal,
             );
+        } else if (
+          options.toolHandlers?.jig_meeting_read &&
+          /with jig_meeting_read, id "([a-f\d-]{36})"/.test(sent)
+        ) {
+          // A message that mentions a meeting (`@meeting:…`, D-250): Jig's context names it; read it.
+          const id = /with jig_meeting_read, id "([a-f\d-]{36})"/.exec(sent)![1]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_meeting_read", input: { id } });
+          const output = outputText(await options.toolHandlers.jig_meeting_read({ id }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          await stream(`${msg}:text:0`, `From the mentioned meeting:\n\n${output.slice(0, 500)}`, signal);
         } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (/^\/\S/.test(text.trim())) {

@@ -77,7 +77,7 @@ export function MeetingRoom(): React.JSX.Element {
 type Pending = "calendar" | "notes" | "join" | "ask" | "queue" | "connection" | "call";
 
 /**
- * Three screens in one window (D-221): the lobby (upcoming and saved meetings), the live room (the
+ * Three screens in one window (D-221): the lobby (upcoming meetings and the history), the live room (the
  * call in the middle, Transcript and Notes in slots you arrange) and a saved meeting's review.
  */
 function Room() {

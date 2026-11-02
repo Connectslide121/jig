@@ -45,3 +45,85 @@ export function questionPrompt(record: MeetingRecord, question: string, through:
     question
   );
 }
+
+/**
+ * How a chat mentions a meeting (`@meeting:weekly-products-1a2b3c4d`): a readable name for you and the
+ * first 8 characters of its id for Jig, which tells Claude to read it (D-250).
+ */
+export function meetingMention(record: Pick<MeetingRecord, "id" | "title">): string {
+  const slug = record.title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/, "");
+  const short = record.id.replace(/-/g, "").slice(0, 8).toLowerCase();
+  return `@meeting:${slug ? `${slug}-` : ""}${short}`;
+}
+
+/**
+ * Meetings for the chat's `@` picker: newest first, matching every word of `query` (after an optional
+ * `meeting:`) in the title. An empty query lists the newest; a query naming no meeting lists none.
+ */
+export function meetingMatches<T extends Pick<MeetingRecord, "id" | "title" | "startedAt">>(
+  records: T[],
+  query: string,
+  limit = 5,
+): T[] {
+  const words = query
+    .toLowerCase()
+    .replace(/^meeting:?/, "")
+    .split(/[\s\-_]+/)
+    .filter(Boolean);
+  return records
+    .filter((r) => words.every((w) => r.title.toLowerCase().includes(w)))
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+    .slice(0, limit);
+}
+
+/** The meetings a message mentions with `meetingMention`, once each, in the order they're mentioned. */
+export function mentionedMeetings<T extends Pick<MeetingRecord, "id">>(text: string, records: T[]): T[] {
+  const out: T[] = [];
+  for (const m of text.matchAll(/(?:^|\s)@meeting:(?:[a-z0-9-]*-)?([0-9a-f]{8})(?=\s|$|[.,;:!?)])/gi)) {
+    const short = m[1]!.toLowerCase();
+    const record = records.find((r) => r.id.replace(/-/g, "").toLowerCase().startsWith(short));
+    if (record && !out.includes(record)) out.push(record);
+  }
+  return out;
+}
+
+const time = (iso: string) => new Date(iso).toISOString().slice(11, 16);
+
+/** A meeting as Markdown, to copy or save: notes, actions and the transcript by speaker. */
+export function meetingMarkdown(record: MeetingRecord): string {
+  const out = [`# ${record.title}`, ""];
+  const start = new Date(record.startedAt);
+  const minutes = record.endedAt
+    ? Math.max(1, Math.round((new Date(record.endedAt).getTime() - start.getTime()) / 60_000))
+    : undefined;
+  out.push(
+    `${start.toISOString().slice(0, 10)} ${time(record.startedAt)} UTC${minutes ? ` · ${minutes} min` : ""}`,
+    "",
+  );
+  if (record.notes.trim()) out.push("## Notes", "", record.notes.trim(), "");
+  if (record.actions.length) {
+    out.push("## Actions", "");
+    for (const a of record.actions)
+      out.push(`- [${a.queued ? "x" : " "}] ${a.title} (${a.owner || "Unknown"})`);
+    out.push("");
+  }
+  out.push("## Transcript", "");
+  let last: string | undefined;
+  for (const c of record.captions.filter((c) => c.final)) {
+    if (c.speaker !== last) out.push("", `**${c.speaker}** (${time(c.timestamp)})`);
+    out.push(c.text);
+    last = c.speaker;
+  }
+  if (!record.captions.some((c) => c.final)) out.push("No transcript was captured.");
+  return `${out
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()}\n`;
+}

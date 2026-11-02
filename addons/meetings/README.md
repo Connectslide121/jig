@@ -39,8 +39,15 @@ project's context, and review actions for the task queue. Meetings are global (D
   The selected chat keeps its project; a later question can use another project. Each Ask starts a new
   chat in this version; continue the opened chat normally and request newer meeting material by id.
   Capture invokes no AI on its own. Transcript speech is evidence, never executable instructions.
-- **Generate notes:** opens a normal Claude Code chat. Summary, decisions, unresolved questions and
-  owner/project/evidence-bearing actions are saved through `jig_meeting_save_notes` after its normal
+- **Meeting history (D-250):** the top-bar Meetings button → Meeting history (or Tools → Meeting
+  history) opens every past meeting in a tab of Jig's main window, with search, notes and transcript.
+  From there: Start a chat (pick a project; the chat's draft mentions the meeting), Generate notes,
+  Review actions, and ⋯ → Copy as Markdown, Export Markdown…, Copy chat reference, Rename…, Delete….
+- **Mention a meeting in a chat:** type `@` and a meeting's name (or `@meeting`) in any chat; the
+  picker lists meetings after files. `@meeting:<name>-<id>` tells Claude to read that meeting with
+  `jig_meeting_read`.
+- **Generate notes:** opens a normal Claude Code chat. Concise notes (a short summary, decisions, open
+  questions, one line per action) and owner/project/evidence-bearing actions are saved through `jig_meeting_save_notes` after its normal
   tool approval. Regenerating notes retains already queued actions. Review actions opens a modal to
   edit prompts/owners and choose each task's project. Select explicitly; nothing is preselected.
 - **Add selected to queue:** goes through Tasks' shared `addReviewed` export, idempotent per source
@@ -54,7 +61,7 @@ ciphertext in `cache/microsoft/<tenant-client-hash>.cache`, with no plaintext fa
 tokens remain in memory, delivered only to the owned meeting window. Logs/activity contain action ids,
 not transcript text, resource keys or credentials. Media uses the renderer SDK with host-managed
 permissions, while authentication, Graph requests, files and durable call lifecycle belong to main.
-The public add-on entry point is `ctx.meetings.open()`; the media/IPC implementation is host-owned.
+The public add-on entry points are `ctx.meetings.open()` and `ctx.meetings.history()`; the media/IPC implementation is host-owned.
 
 Teams policy/role restrictions apply. PowerPoint Live, Whiteboard and breakout participation are not
 supported by the SDK; use normal Teams for those meetings. Real Microsoft sign-in and keyless calling-credential issuance passed on the target machine. Calendar
@@ -65,4 +72,5 @@ the retirement/breaking-change guidance before upgrading beyond the pinned SDKs.
 
 For isolated tests, `JIG_ENGINE=fake JIG_MEETINGS=fake` supplies calendar, captions and media controls
 without an account, device access or billable call. Fake notes exercise the real transcript/notes
-tools and queue review. `e2e/meetings.spec.ts` covers the complete flow and project independence.
+tools and queue review. `e2e/meetings.spec.ts` covers the complete flow and project independence;
+`e2e/meeting-history.spec.ts` the history tab and mentions.

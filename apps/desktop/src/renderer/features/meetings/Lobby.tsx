@@ -37,7 +37,7 @@ const ongoing = (e: MeetingEvent, now: number) =>
 
 /**
  * Before a call: the next meeting as a large card, the rest of the next 14 days as cards by day,
- * and saved meetings as cards. A whole card is the button.
+ * and the meeting history as cards. A whole card is the button.
  */
 export function Lobby({
   events,
@@ -173,12 +173,12 @@ export function Lobby({
           </section>
         )}
         <section className="space-y-3">
-          <SectionHeading title="Saved meetings" />
+          <SectionHeading title="Meeting history" />
           {!records.length ? (
             <div className="h-28">
               <Placeholder
                 icon={FileText}
-                title="No saved meetings yet"
+                title="No meetings yet"
                 text="Captions and notes from meetings you join are kept here."
               />
             </div>

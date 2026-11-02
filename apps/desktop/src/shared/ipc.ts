@@ -98,6 +98,19 @@ export interface HostMethods {
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
   "meetings.delete": { args: { id: string }; result: void };
+  /** Past meetings, newest first, without the one in progress (the meeting history tab, D-250). */
+  "meetings.history": { args: void; result: import("./meetings").MeetingRecord[] };
+  /** Meetings for the chat's `@` picker, matching `query`; `mention` goes in the message. */
+  "meetings.mentions": {
+    args: { query: string };
+    result: Array<{ id: string; title: string; startedAt: string; mention: string }>;
+  };
+  /** Renames a meeting in the history (from the meeting window or the main window, D-250). */
+  "meetings.rename": { args: { id: string; title: string }; result: void };
+  /** A meeting as Markdown: notes, actions, the transcript by speaker. */
+  "meetings.markdown": { args: { id: string }; result: string };
+  /** Saves a meeting as Markdown (a save dialog); the file, or nothing if cancelled. */
+  "meetings.export": { args: { id: string }; result: string | undefined };
   "meetings.layout": { args: import("./meetingLayout").MeetingLayout; result: void };
   "meetings.signIn": { args: void; result: string };
   "meetings.signOut": { args: void; result: void };

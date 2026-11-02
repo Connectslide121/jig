@@ -127,6 +127,19 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Meeting history (2026-11-02, D-250): past meetings open in Jig's main window — the top-bar video
+button → **Meeting history** (or Tools → Meeting history). Search on the left; notes and transcript of
+the selected meeting on the right. **Start a chat** opens a chat in a project you pick with the
+meeting mentioned; **Generate notes** and **Review actions** work as in the meeting window; ⋯ copies or
+exports Markdown, copies the chat reference, renames or deletes. In any chat, `@` + a meeting's name
+lists meetings after files; sending `@meeting:…` makes Claude read it. Notes are now much shorter.
+The meeting window's "Saved meetings" is now "Meeting history". To try: join a meeting with
+`JIG_MEETINGS=fake`, leave, then open the history. Needs real-machine testing: Export Markdown's save
+dialog and how concise real notes come out.
+
+Add-on rows (2026-11-02, Jon): Settings → Add-ons rows show Change with AI, Share and the switch;
+History, Restore, Open folder, Reload and Delete are in the row's ⋯ menu.
+
 Top bar (2026-11-02, Jon): New chat sits beside the search in the centre; Meetings is a video icon
 button among the icons on the right (the Meetings add-on's `topbar` item), and still in Chats → Meetings.
 

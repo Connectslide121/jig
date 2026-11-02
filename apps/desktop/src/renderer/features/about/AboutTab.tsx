@@ -710,7 +710,9 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "Meetings → Meetings: a two-week calendar agenda, Join from link, and saved meetings",
+                "Meetings → Meetings: a two-week calendar agenda, Join from link, and the meeting history",
+                "Meeting history in the main window: start a chat about a meeting, notes, actions, Markdown export",
+                "Mention a meeting in any chat with @ — Claude reads its transcript",
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job",

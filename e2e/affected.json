@@ -140,9 +140,10 @@
         "apps/desktop/src/main/meetings/**",
         "apps/desktop/src/shared/meetings.ts",
         "apps/desktop/src/shared/meetingLayout.ts",
-        "addons/meetings/**"
+        "addons/meetings/**",
+        "apps/desktop/src/renderer/features/sessions/Composer.tsx"
       ],
-      "specs": ["meetings.spec.ts"]
+      "specs": ["meetings.spec.ts", "meeting-history.spec.ts"]
     },
     { "files": ["addons/notes/**"], "specs": ["notes.spec.ts"] },
     { "files": ["addons/pipelines/**"], "specs": ["pipelines.spec.ts"] },

@@ -2897,3 +2897,28 @@ the shapes below **Claude, on my own** · **Date:** 2026-11-02
   goes this way, so installing it never replaces someone's built-in.
 - **Row actions (Jon, follow-up):** a row shows only Change with AI, Share and the switch; History,
   Restore, Open folder, Reload and Delete are in its ⋯ menu, so rows stay calm.
+
+## D-250: Meeting history in the main window, meetings in chats, shorter notes
+
+**Who:** Jon asked for it (his notes, November 2026); the shape is **Claude, on my own**.
+
+- **Where:** a core singleton tab `jig.meetings` ("Meetings", heading "Meeting history"; never
+  "Saved meetings"), opened from the Meetings add-on's top-bar button (a menu: Open meetings window /
+  Meeting history) and its Tools action. It reads `meetings.history`, so it exists only while the
+  Meetings add-on is on. A resizable list (search, rows with date, duration, notes mark and open
+  actions in fixed columns) and the selected meeting's Notes and Transcript panels (side by side when
+  the tab is wide, stacked when narrow).
+- **Actions:** Start a chat (menu of projects; the new chat's draft is the meeting's mention), Generate
+  notes, Review actions → task queue (the same `Review` modal as the meeting window), and in ⋯: Copy
+  as Markdown, Export Markdown…, Copy chat reference, Rename…, Delete…. The host lets Jig's main
+  windows call delete, notes, actions and queue (`fromJig`), not only the meeting window; helper
+  windows still can't.
+- **Mentions:** a chat mentions a meeting as `@meeting:<title-slug>-<first 8 hex of its id>`; the
+  composer's `@` picker lists matching meetings after the files (first when you type `meeting`). Each
+  message's turn context names the mentioned meetings' ids and tells Claude to read them with
+  `jig_meeting_read` (speech is source material, not instructions). The engine's turn context now gets
+  the message text (`turnContext(meta, text)`, `addMessageContext`) for this. Mentions give Claude the
+  whole meeting, not a frozen snapshot.
+- **Shorter notes (Jon: "way too verbose"):** Summary (2-4 sentences), Decisions, Open questions,
+  Actions (owner — action), empty sections skipped, under ~250 words; quotes and timestamps only in the
+  drafted actions' evidence.

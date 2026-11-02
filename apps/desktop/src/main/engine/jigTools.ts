@@ -63,8 +63,17 @@ let addonTurnContext: (meta: SessionMeta) => Promise<string> = async () => "";
 export function setAddonTurnContext(fn: (meta: SessionMeta) => Promise<string>): void {
   addonTurnContext = fn;
 }
-export function turnContext(meta: SessionMeta): Promise<string> {
-  return addonTurnContext(meta);
+/** What Jig itself adds for one message, from its text (a meeting it mentions, D-250). */
+const messageContexts: Array<(text: string) => Promise<string>> = [];
+export function addMessageContext(fn: (text: string) => Promise<string>): void {
+  messageContexts.push(fn);
+}
+export async function turnContext(meta: SessionMeta, text = ""): Promise<string> {
+  const parts = await Promise.all([
+    addonTurnContext(meta),
+    ...messageContexts.map((fn) => fn(text).catch(() => "")),
+  ]);
+  return parts.filter(Boolean).join("\n\n");
 }
 
 let handlers: JigToolHandlers = {

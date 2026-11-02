@@ -249,7 +249,11 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.open | Open/focus the Meetings add-on's dedicated window |
 | meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
 | meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
-| meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room only, never the live one |
+| meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room or main window (meeting history, D-250), never the live one |
+| meetings.history | Past meetings newest first, without the live one (the main window's Meeting history tab, D-250) |
+| meetings.mentions | Meetings matching `{query}` for the chat's `@` picker, each with its `@meeting:<name>-<8 hex>` mention |
+| meetings.rename | `{id, title}`: rename a meeting; room or main window |
+| meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |
 | meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; room only (D-221) |
 | meetings.lobbyView | Save Agenda/Week preference; room only |
 | meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; room only |
@@ -258,13 +262,15 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.credential | Memory-only renewable calling token; owned room sender only |
 | meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only |
 | meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant |
-| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat |
+| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat (notes also from the main window) |
 | meetings.revealChat | Open the question/notes chat in the main workbench |
-| meetings.actions / meetings.queue | Room-only edited draft actions / explicitly selected ids to paused Task queue |
+| meetings.actions / meetings.queue | Edited draft actions / explicitly selected ids to paused Task queue; room or main window |
 
 Events: meetings.changed (refetch), meetings.leaveRequested (gracefully leave/close room),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
 Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
 and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
+A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Claude to
+read it with jig_meeting_read (speech is source material, not instructions; only while Meetings is on).
 Credential methods never expose Graph/MSAL/resource credentials. Non-Jig frames cannot call any IPC.
