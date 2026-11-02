@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { SLOTS } from "../packages/sdk/src/slots";
 import { expect, hostCall, test } from "./fixtures";
 
 test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page, jigHome }) => {
@@ -18,7 +19,9 @@ test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page
   await expect(about).toBeVisible();
 
   // Every slot, with the add-ons that use it.
-  await expect(about.getByTestId("about-slots").locator("[data-testid^=about-slot-]")).toHaveCount(18);
+  await expect(about.getByTestId("about-slots").locator("[data-testid^=about-slot-]")).toHaveCount(
+    Object.keys(SLOTS).length,
+  );
   const view = about.getByTestId("about-slot-view");
   const header = view.getByRole("button").first();
   await header.evaluate((el) => el.scrollIntoView({ behavior: "instant", block: "center" }));

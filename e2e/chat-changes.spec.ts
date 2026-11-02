@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, settledBox, test } from "./fixtures";
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
 
@@ -23,6 +23,8 @@ test("whole-chat changes stay above the input, show a breakdown, and undo locall
   git(dir, "remote", "add", "origin", remote);
   git(dir, "push", "-q", "-u", "origin", "main");
   await hostCall(page, "projects.add", { path: dir });
+  // The overview card slides in beside the chat; this test measures the changes bar, not that.
+  await hostCall(page, "config.update", { chat: { overview: false } });
   await page.keyboard.press("Control+N");
   const chat = page.locator("[data-tab-id]:not(.hidden)").getByTestId("chat");
   const composer = chat.getByTestId("composer");
@@ -43,8 +45,8 @@ test("whole-chat changes stay above the input, show a breakdown, and undo locall
   await expect(bar).not.toContainText("first.ts");
   await expect(bar.getByRole("button", { name: "Review", exact: true })).toHaveCount(0);
   await expect(chat.getByTestId("transcript").getByTestId("chat-changes")).toHaveCount(0);
-  const position = await bar.boundingBox();
-  const inputPosition = await composer.boundingBox();
+  const position = await settledBox(bar);
+  const inputPosition = await settledBox(composer);
   const scroll = chat.getByTestId("transcript");
   expect(await scroll.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   await scroll.evaluate((el) => {

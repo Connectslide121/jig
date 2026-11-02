@@ -100,20 +100,26 @@ test("A workflow runs by itself after you push", async ({ page, jigHome }) => {
 
   // The watcher (every minute; called directly here). The push before it was saved doesn't count.
   const check = () => hostCall(page, "addons.call", { id: "workflows", method: "checkSchedules", args: {} });
+  // The command's lines (Windows' cmd echo leaves a space and CRLF).
+  const pushed = async () =>
+    (await readFile(join(dir, "pushed.log"), "utf8").catch(() => ""))
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
   await check();
   await check();
-  expect(await readFile(join(dir, "pushed.log"), "utf8").catch(() => "")).toBe("");
+  expect(await pushed()).toEqual([]);
 
   await writeFile(join(dir, "NEWS.md"), "news\n");
   git(dir, "add", "NEWS.md");
   git(dir, "commit", "-q", "-m", "News");
   git(dir, "push", "-q");
   await check();
-  expect(await readFile(join(dir, "pushed.log"), "utf8")).toBe("pushed\n");
+  expect(await pushed()).toEqual(["pushed"]);
   await expect(page.getByTestId("toast").filter({ hasText: "After push ran" })).toBeVisible();
   // Once per push.
   await check();
-  expect(await readFile(join(dir, "pushed.log"), "utf8")).toBe("pushed\n");
+  expect(await pushed()).toEqual(["pushed"]);
 });
 
 test("A workflow tells you when a pipeline fails", async ({ page, jigHome }) => {

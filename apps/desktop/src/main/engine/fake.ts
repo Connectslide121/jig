@@ -500,7 +500,9 @@ export class FakeEngine implements Engine {
           for (const call of calls) {
             const toolId = `tool-${randomUUID()}`;
             onEvent({ type: "tool_use", id: toolId, name: call.name, input: call.input });
-            await sleep(this.delayMs * 20, signal);
+            // Slow enough (about 2 s in all) that a test can still talk to it while it works, even
+            // with many tests running side by side.
+            await sleep(this.delayMs * 60, signal);
             onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
           }
           await stream(
@@ -1405,8 +1407,8 @@ export class FakeEngine implements Engine {
           { attempt: 2, strengths: "Short and clear", weaknesses: "No tests" },
         ],
       });
-    // The learning reflection starts with "## Patterns" and mentions commit messages in Jig's features.
-    if (/commit message/i.test(prompt) && !prompt.startsWith("## Patterns"))
+    // The learning reflection has a "## Patterns" section and mentions commit messages in Jig's features.
+    if (/commit message/i.test(prompt) && !/^## Patterns$/m.test(prompt))
       return "Apply the discount in the cart total\n\nSum the items with reduce and take the discount off the total.";
     // A risky practice (D-213): a "practice" suggestion that opens a chat to fix it.
     const practice = /key: (\S+) \| practice \| "([^"]*)"/.exec(prompt);

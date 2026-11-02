@@ -2,7 +2,14 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { test as base, type ElectronApplication, _electron as electron, type Page } from "@playwright/test";
+import {
+  test as base,
+  type ElectronApplication,
+  _electron as electron,
+  expect,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 const appDir = fileURLToPath(new URL("../apps/desktop", import.meta.url));
 
@@ -80,4 +87,26 @@ export function hostCall(page: Page, method: string, args?: unknown) {
   return page.evaluate(([m, a]) => window.jig.invoke(m as string, a), [method, args] as const);
 }
 
-export { expect } from "@playwright/test";
+/**
+ * An element's box once it has stopped moving (two equal reads 100 ms apart): measure layout after
+ * panels finish their opening motion (D-200), not in the middle of it.
+ */
+export async function settledBox(locator: Locator) {
+  let last = "";
+  let box: Awaited<ReturnType<Locator["boundingBox"]>> = null;
+  await expect
+    .poll(
+      async () => {
+        box = await locator.boundingBox();
+        const now = JSON.stringify(box);
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [100] },
+    )
+    .toBe(true);
+  return box;
+}
+
+export { expect };
