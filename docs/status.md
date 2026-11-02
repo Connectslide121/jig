@@ -1,5 +1,8 @@
 # Status
 
+`.sh` scripts on Windows (2026-11-02, D-239): the Scripts view runs them with Git for Windows' bash, found
+automatically; without Git Bash the row says so. Needs a try on a real Windows machine.
+
 Scripts follow the files (2026-11-02, D-238): add, remove or rename a script file (`scripts/backend.sh`) or an npm
 script and the Scripts view updates by itself within a second, no restart; groups pick the script up again.
 Needs a try on a big real workspace (watch count, Windows).

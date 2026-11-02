@@ -2699,3 +2699,14 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   event. Pure parts in `scripts/changes.ts`, the service in `scripts/watch.ts`. Rejected: a poll or
   focus-triggered rescan only (late, and wasteful for 30 repos), and the add-on file-watch API (it's for
   add-on host code, not the host's own discovery).
+
+## D-239: `.sh` scripts on Windows run with Git Bash
+
+- Jon: `.sh` scripts failed in the Scripts view with "The term 'bash' is not recognized": the terminal is
+  PowerShell and Git's bash is not on Jig's PATH.
+- **Claude, on my own:** on Windows, discovery resolves Git for Windows' `bin\bash.exe` once (Program
+  Files, Program Files (x86), `%LOCALAPPDATA%\Programs\Git`, else derived from `git.exe` on PATH) in
+  `scripts/bash.ts` and writes the command for the shell the terminal uses: `& "…\bash.exe" "./f.sh"` in
+  PowerShell, `"…\bash.exe" "./f.sh"` in cmd, plain `bash` when the configured shell is itself bash.
+  `System32\bash.exe` (WSL) is never used: it would run the script inside Linux. With no Git Bash the command
+  stays `bash` and the row's detail says Git Bash is needed.

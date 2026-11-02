@@ -1,13 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { z } from "zod";
 import { JigError } from "../../shared/ipc";
 import type { ProjectScripts, ScriptGroup } from "../../shared/terminals";
 import { publishActivity } from "../activity/bus";
+import { getConfig } from "../config";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
 import { terminalManager } from "../terminals";
+import { defaultShell, makeWhich, shellFamily } from "../terminals/shell";
+import { findGitBash } from "./bash";
 import { discoverScriptsAndDirs } from "./discover";
 import { createScriptWatcher } from "./watch";
 
@@ -31,11 +35,28 @@ async function saveGroups(projectId: string, groups: ScriptGroup[]) {
   await writeJson(paths.scripts(), data);
 }
 
+let gitBash: { found?: string } | undefined;
+
+/** The shell scripts run in and, on Windows, the Git Bash for `.sh` files (looked up once). */
+function discoverOptions() {
+  const shell = shellFamily(
+    defaultShell(getConfig().terminal.shell, process.platform, process.env, makeWhich(process.env)),
+  );
+  if (process.platform !== "win32") return { shell };
+  gitBash ??= { found: findGitBash(process.env, existsSync) };
+  return { shell, bash: gitBash.found };
+}
+
 async function loadScripts(projectId: string) {
   const info = (await projectStore().state()).projects.find((p) => p.id === projectId);
   if (!info) throw new JigError("not_found", "Project not found");
   const repos = info.repos.map((r) => r.path);
-  const { scripts, dirs } = await discoverScriptsAndDirs(info.path, process.platform, repos);
+  const { scripts, dirs } = await discoverScriptsAndDirs(
+    info.path,
+    process.platform,
+    repos,
+    discoverOptions(),
+  );
   const result: ProjectScripts = { projectId, scripts, groups: await groupsFor(projectId) };
   return { result, dirs };
 }

@@ -1,6 +1,10 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import type { Script, ScriptKind } from "../../shared/terminals";
+import { type ShellKind, shellScriptCommand } from "./bash";
+
+/** What discovery needs to know about the machine to write runnable commands. */
+export type DiscoverOptions = { bash?: string; shell?: ShellKind };
 
 /**
  * Finds the things you start in a project, per folder: `package.json` scripts (npm / pnpm / yarn /
@@ -147,6 +151,7 @@ async function scan(
   out: Script[],
   platform: string,
   dirs: Set<string>,
+  options: DiscoverOptions,
 ) {
   let entries: import("node:fs").Dirent[];
   try {
@@ -202,8 +207,10 @@ async function scan(
         out.push(
           script("ps1", root, dir, file, platform === "win32" ? `& ".\\${file}"` : `pwsh -File "./${file}"`),
         );
-      else if (file.endsWith(".sh")) out.push(script("sh", root, dir, file, `bash "./${file}"`));
-      else if (platform === "win32" && /\.(cmd|bat)$/i.test(file))
+      else if (file.endsWith(".sh")) {
+        const sh = shellScriptCommand(file, { platform, ...options });
+        out.push(script("sh", root, dir, file, sh.command, sh.detail));
+      } else if (platform === "win32" && /\.(cmd|bat)$/i.test(file))
         out.push(script("cmd", root, dir, file, `.\\${file}`));
     }
   }
@@ -211,7 +218,7 @@ async function scan(
   if (depth >= MAX_DEPTH) return;
   for (const entry of entries) {
     if (entry.isDirectory() && !SKIP.has(entry.name) && !entry.name.startsWith(".")) {
-      await scan(root, join(dir, entry.name), depth + 1, out, platform, dirs);
+      await scan(root, join(dir, entry.name), depth + 1, out, platform, dirs, options);
     }
   }
 }
@@ -225,8 +232,9 @@ export async function discoverScripts(
   root: string,
   platform = process.platform,
   repos: string[] = [],
+  options: DiscoverOptions = {},
 ): Promise<Script[]> {
-  return (await discoverScriptsAndDirs(root, platform, repos)).scripts;
+  return (await discoverScriptsAndDirs(root, platform, repos, options)).scripts;
 }
 
 /** The scripts, plus the folders discovery read (what to watch to notice a change, D-238). */
@@ -234,12 +242,13 @@ export async function discoverScriptsAndDirs(
   root: string,
   platform = process.platform,
   repos: string[] = [],
+  options: DiscoverOptions = {},
 ): Promise<{ scripts: Script[]; dirs: string[] }> {
   const out: Script[] = [];
   const dirs = new Set<string>();
-  await scan(root, root, 0, out, platform, dirs);
+  await scan(root, root, 0, out, platform, dirs, options);
   for (const repo of repos)
-    if (repo === root || !(await isWorktree(repo))) await scan(root, repo, 0, out, platform, dirs);
+    if (repo === root || !(await isWorktree(repo))) await scan(root, repo, 0, out, platform, dirs, options);
   const unique = [...new Map(out.map((s) => [s.id, s])).values()];
   return {
     scripts: unique.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name)),
