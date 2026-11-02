@@ -619,8 +619,11 @@ function Editor({
             />
           )}
           {s.kind === "claude" && (
+            // Tall enough to read a real instruction without scrolling a two-line box; fixed, so
+            // typing never moves the steps below.
             <Textarea
-              rows={2}
+              rows={10}
+              className="resize-y"
               placeholder="What to ask Claude"
               value={s.prompt ?? ""}
               onChange={(e) => setStep(s.id, { prompt: e.target.value })}
