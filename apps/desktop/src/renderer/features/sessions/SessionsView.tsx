@@ -126,17 +126,22 @@ export function SessionsView() {
           const next = movePinned(metas, pinnedOrder, dragged.id, m.id);
           if (next) void updateConfig({ chatList: { pinnedOrder: next } });
         }}
-        leading={<StatusDot status={m.status} />}
+        leading={
+          <span className="flex items-center gap-1">
+            {/* A fixed slot left of the status dot, so dots and titles line up pinned or not. */}
+            <span className="flex size-3 shrink-0 items-center justify-center">
+              {m.pinned && <Pin className="size-3 shrink-0 text-hint" aria-label="Pinned" />}
+            </span>
+            <StatusDot status={m.status} />
+          </span>
+        }
         className={cn(
-          indent && "ml-7",
+          indent && "ml-3",
           m.archived && "opacity-60",
           dropBefore === m.id && reorder && "bg-accent-soft ring-1 ring-accent",
         )}
         trailing={
           <>
-            <span className="flex size-3 shrink-0 items-center justify-center group-hover:hidden">
-              {m.pinned && <Pin className="size-3 shrink-0 text-hint" aria-label="Pinned" />}
-            </span>
             {m.status === "needs_you" || m.status === "error" ? (
               <span
                 className={cn(
