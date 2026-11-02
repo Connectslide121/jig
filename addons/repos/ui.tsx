@@ -96,6 +96,17 @@ function useOverview() {
   return { repos, reload: () => rescan(ctx) };
 }
 
+const commits = (n: number) => `${n} commit${n === 1 ? "" : "s"}`;
+
+/** Says what the sync chip does: pull, push, both or publish, never just "Sync". */
+function syncTitle(r: { branch?: string; upstream?: string; ahead: number; behind: number }): string {
+  if (!r.upstream) return `Publish ${r.branch ?? "this branch"}`;
+  if (r.behind && r.ahead) return `Pull ${commits(r.behind)}, then push ${commits(r.ahead)}`;
+  if (r.behind) return `Pull ${commits(r.behind)} from ${r.upstream}`;
+  if (r.ahead) return `Push ${commits(r.ahead)} to ${r.upstream}`;
+  return `Sync with ${r.upstream}`;
+}
+
 async function act(ctx: AddonUiContext, label: string, method: string, path: string, extra?: object) {
   try {
     await ctx.host.call(method, { path, ...extra });
@@ -163,7 +174,7 @@ function RepoRow({
           onSelect: () => onExpand(!expanded),
         },
         { label: "Open in Git", icon: "git-branch", onSelect: () => void open() },
-        { label: "Sync (pull, then push)", icon: "refresh-cw", onSelect: () => void sync() },
+        { label: syncTitle(repo), icon: "refresh-cw", onSelect: () => void sync() },
         {
           label: "Fetch",
           icon: "cloud-download",
@@ -247,7 +258,7 @@ function RepoRow({
               <button
                 type="button"
                 disabled={syncing}
-                title={`${status.label}. Sync: pull, then push`}
+                title={syncTitle(repo)}
                 onClick={() => void sync()}
                 className="cursor-pointer rounded-full bg-accent-soft px-1.5 text-2xs font-semibold whitespace-nowrap text-accent tabular-nums transition-colors hover:bg-accent hover:text-on-accent disabled:cursor-default disabled:opacity-50"
               >

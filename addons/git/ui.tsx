@@ -29,6 +29,8 @@ import {
   VirtualList,
 } from "@jig/sdk/ui";
 import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
   Check,
   ChevronDown,
   ChevronRight,
@@ -71,6 +73,7 @@ import {
 } from "./lib/parse";
 import { type ReviewComment, reviewPrompt } from "./lib/review";
 import { NO_SHOWN, type Shown, showsAll, toggleExtra, visibleRepos } from "./lib/shown";
+import { syncAction } from "./lib/sync";
 import { type AutoFetchSettings, pollInterval } from "./lib/watch";
 
 /** A repository-relative path made absolute (git always prints forward slashes). */
@@ -699,17 +702,19 @@ function CommitBox({
   );
 }
 
-/** What Sync would do for a branch: counts to pull and push, or publishing it. */
-function syncLabel(b: Status["branch"]): string {
-  if (!b.upstream) return "Publish Branch";
-  const parts = [b.behind > 0 ? `↓${b.behind}` : "", b.ahead > 0 ? `↑${b.ahead}` : ""].filter(Boolean);
-  return parts.length ? `Sync Changes ${parts.join(" ")}` : "Sync Changes";
-}
+/** The sync button's icon: the same arrows as Pull and Push in the ⋯ menu. */
+const SYNC_ICONS = {
+  publish: CloudUpload,
+  pull: ArrowDownToLine,
+  push: ArrowUpFromLine,
+  sync: RefreshCw,
+  none: RefreshCw,
+} as const;
 
 const canSync = (b: Status["branch"]) =>
   Boolean(b.head && b.head !== "(detached)") && (!b.upstream || b.ahead > 0 || b.behind > 0);
 
-/** Pull, then push (or publish), like VS Code's Sync button. */
+/** Pull and/or push (or publish), like VS Code's Sync button. */
 async function syncRepo(ctx: AddonUiContext, cwd: string, reload: () => void) {
   try {
     const did = await ctx.host.call<string>("sync", { cwd });
@@ -721,8 +726,8 @@ async function syncRepo(ctx: AddonUiContext, cwd: string, reload: () => void) {
 }
 
 /**
- * The Sync button: full width where the commit box goes when there's nothing to commit (VS Code's
- * "Sync Changes ↓1 ↑2" / "Publish Branch"), or compact with its counts in the header.
+ * The sync button, named by what it does (Pull ↓1, Push ↑2, Sync ↓1 ↑2, Publish Branch): full width
+ * where the commit box goes when there's nothing to commit, or compact with its counts in the header.
  */
 function SyncButton({
   ctx,
@@ -739,6 +744,7 @@ function SyncButton({
 }) {
   const [busy, setBusy] = useState(false);
   const pending = canSync(branch);
+  const action = syncAction(branch);
   const go = () => {
     setBusy(true);
     void syncRepo(ctx, cwd, reload).finally(() => setBusy(false));
@@ -749,35 +755,27 @@ function SyncButton({
         variant="primary"
         size="sm"
         className="w-full"
-        icon={branch.upstream ? RefreshCw : CloudUpload}
+        icon={SYNC_ICONS[action.kind]}
         busy={busy}
         onClick={go}
         data-testid="git-sync-full"
-        title={branch.upstream ? "Pull, then push" : `Push ${branch.head} and track it on the remote`}
+        title={action.title}
       >
-        {syncLabel(branch)}
+        {action.label}
       </Button>
     );
   return (
     <Button
       size="sm"
       variant={pending ? "primary" : "ghost"}
-      icon={branch.upstream ? RefreshCw : CloudUpload}
+      icon={SYNC_ICONS[action.kind]}
       busy={busy}
       disabled={!branch.head || branch.head === "(detached)"}
       onClick={go}
       data-testid="git-sync"
-      title={
-        branch.upstream
-          ? `Sync: pull, then push (${syncLabel(branch).replace("Sync Changes", "").trim() || "up to date"})`
-          : "Publish this branch"
-      }
+      title={action.title}
     >
-      {!branch.upstream
-        ? "Publish"
-        : [branch.behind > 0 ? `↓${branch.behind}` : "", branch.ahead > 0 ? `↑${branch.ahead}` : ""]
-            .filter(Boolean)
-            .join(" ") || "Sync"}
+      {action.short}
     </Button>
   );
 }
@@ -1208,7 +1206,7 @@ function RepoSection({
           <button
             type="button"
             className="shrink-0 cursor-pointer rounded-full bg-accent-soft px-1.5 text-2xs font-semibold text-accent tabular-nums transition-colors hover:bg-accent hover:text-on-accent"
-            title="Sync: pull, then push"
+            title={syncAction(b).title}
             data-testid={`git-repo-sync-${repo.name}`}
             onClick={(e) => {
               e.stopPropagation();

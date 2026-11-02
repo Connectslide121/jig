@@ -5,7 +5,10 @@ import { expect, hostCall, test } from "./fixtures";
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
 
-test("Git: Sync like VS Code — Sync Changes pushes, a new branch is published", async ({ page, jigHome }) => {
+test("Git: the sync button says what it does — Push pushes, a new branch is published", async ({
+  page,
+  jigHome,
+}) => {
   // A local "remote" (a bare repository) and a clone of it with one commit to push.
   const origin = join(jigHome, "origin.git");
   await mkdir(origin, { recursive: true });
@@ -26,15 +29,16 @@ test("Git: Sync like VS Code — Sync Changes pushes, a new branch is published"
 
   await page.keyboard.press("Control+Shift+G");
   await expect(page.getByTestId("git-view")).toBeVisible({ timeout: 15000 });
-  // Nothing to commit: the commit box makes way for Sync Changes, and the header shows the count.
+  // Nothing to commit: the commit box makes way for Push, and the header shows the count.
   await expect(page.getByTestId("git-sync")).toContainText("↑1");
   const full = page.getByTestId("git-sync-full");
-  await expect(full).toContainText("Sync Changes ↑1");
+  await expect(full).toContainText("Push ↑1");
+  await expect(full).toHaveAttribute("title", /Push 1 commit to origin\/main/);
   await full.click();
-  await expect(page.getByTestId("toast").filter({ hasText: "Synced main: pushed 1" })).toBeVisible();
+  await expect(page.getByTestId("toast").filter({ hasText: "Pushed 1 commit to origin/main" })).toBeVisible();
   await expect(full).toHaveCount(0);
-  await expect(page.getByTestId("git-sync")).toContainText("Sync");
-  expect(git(origin, "log", "--format=%s", "-1", "main").trim()).toBe("Fix total");
+  await expect(page.getByTestId("git-sync")).toContainText("Up to date");
+  expect(git(origin, "--git-dir=.", "log", "--format=%s", "-1", "main").trim()).toBe("Fix total");
 
   // A branch without an upstream is published.
   git(dir, "switch", "-q", "-c", "feature/pay");
@@ -42,5 +46,5 @@ test("Git: Sync like VS Code — Sync Changes pushes, a new branch is published"
   await expect(full).toContainText("Publish Branch");
   await full.click();
   await expect(page.getByTestId("toast").filter({ hasText: "Published feature/pay" })).toBeVisible();
-  expect(git(origin, "branch", "--list", "feature/pay").trim()).toContain("feature/pay");
+  expect(git(origin, "--git-dir=.", "branch", "--list", "feature/pay").trim()).toContain("feature/pay");
 });
