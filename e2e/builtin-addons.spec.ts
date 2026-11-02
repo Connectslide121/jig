@@ -182,10 +182,8 @@ test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await expect(page.locator(".jig-xterm:visible .xterm-rows")).toContainText("shop-dev");
 });
 
-test("Scripts: a group starts and stops its scripts together; hidden scripts leave the tree", async ({
-  page,
-  jigHome,
-}) => {
+/** A folder with two long-running npm scripts and a quick one, open in the Scripts view. */
+async function scriptsFolder(page: Page, jigHome: string) {
   const dir = join(jigHome, "tools");
   await mkdir(dir, { recursive: true });
   const forever = 'node -e "setInterval(() => {}, 1000)"';
@@ -202,6 +200,11 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
   await expect(tree.getByTestId("scripts-addon-lint")).toBeVisible({ timeout: 15000 });
   await expect(tree).toContainText("npm");
 
+  return { view, tree };
+}
+
+test("Scripts: a group starts and stops its scripts together", async ({ page, jigHome }) => {
+  const { view, tree } = await scriptsFolder(page, jigHome);
   // A group, and two scripts added to it from their menu.
   await view.getByTestId("scripts-new-group").click();
   await page.getByTestId("dialog-input").fill("Tools");
@@ -227,6 +230,13 @@ test("Scripts: a group starts and stops its scripts together; hidden scripts lea
   await view.getByTestId("scripts-group-stop-Tools").click();
   await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
 
+});
+
+test("Scripts: All scripts folds, hidden scripts leave the tree, the filter finds one", async ({
+  page,
+  jigHome,
+}) => {
+  const { view, tree } = await scriptsFolder(page, jigHome);
   // "All scripts" folds away and comes back.
   await view.getByTestId("scripts-all-fold").click();
   await expect(tree).toHaveCount(0);
