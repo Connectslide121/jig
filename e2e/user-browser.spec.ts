@@ -30,9 +30,7 @@ test("native Browser opens in the main panel, takes native input and stays apart
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
   try {
-    await page.keyboard.press("Control+K");
-    await page.getByTestId("goto-input").fill("Open Browser");
-    await page.getByTestId("goto-action-jig.openBrowser").click();
+    await page.getByTestId("topbar-browser").click();
     const view = page.getByTestId("user-browser-view");
     await expect(view).toBeVisible();
     // The registered view opens in a main-area tab, not a sidebar.

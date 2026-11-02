@@ -2565,3 +2565,13 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   zoom shortcuts, detached DevTools, DOM overlay visibility guard, and a fixed-height status row.
   Claude never controls or observes the user's page. Hidden tabs preserve history; destroying the
   workbench closes the native contents. Multi-page browser tabs can be added later.
+
+## D-226: Direct browser access and page-only assistance in Claude’s browser
+
+- Jon could not find the Browser menu and requested a top-right icon. Register a permanent globe
+  button in the existing topbar slot, opening the native Browser in the main panel.
+- Jon wants Claude’s browser clearly labelled and browser controls owned by Claude, while keeping
+  the site interactive so he can help with credentials/sign-ins. Keep page click, scroll, typing
+  and paste; show a read-only URL, remove Back/Forward, Reload, viewport and test-launch controls.
+- A permanent hint explains page assistance and links to the user's Browser. Console/Network remain
+  inspection controls; error badges reserve fixed slots. Implementation details: Claude, on my own.

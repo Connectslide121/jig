@@ -116,7 +116,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.notes.notes` | left | the active project's shared notes (saved layouts retain placement) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |
 | view | `jig.browser` | right | Claude’s browser |
-| view | `jig.userBrowser` | hidden → main tab | Browser (native user page) |
+| view | `jig.userBrowser` | hidden → main tab | Browser (native user page; top-right globe icon) |
 | view | `jig.terminals` | bottom | terminals |
 | view | `jig.builds` | bottom | builds of the in-app builder |
 | tab type | `jig.view` | | a view opened in the main area (`params.viewId`, D-174) |

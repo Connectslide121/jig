@@ -1,7 +1,8 @@
 import { FlaskConical, Globe } from "lucide-react";
 import { useHostEvent } from "../../lib/host";
-import { registerAction, registerView } from "../../workbench/registry";
+import { registerAction, registerTopbarItem, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
+import { BrowserButton } from "./BrowserButton";
 import { BrowserView } from "./BrowserView";
 import { testSomething } from "./testing";
 import { UserBrowserView } from "./UserBrowserView";
@@ -9,6 +10,7 @@ import { UserBrowserView } from "./UserBrowserView";
 export const BROWSER_VIEW = "jig.browser";
 
 export function registerBrowser(): void {
+  registerTopbarItem({ id: "jig.browser", order: -5, component: BrowserButton, owner: "core" });
   registerView({
     id: BROWSER_VIEW,
     title: "Claude’s browser",

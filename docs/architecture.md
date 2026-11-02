@@ -210,7 +210,9 @@ reserved slot never changes size for loading/status. It is independent of Claude
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in the browser: one offscreen
 Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools
-with real input events and shown live in a view the user can take over. Hidden helper windows are kept
+with real input events and shown live in a view the user can click/type in for sign-ins.
+The address is read-only; Claude owns browser navigation/viewport controls. A hint links to the
+user Browser, also reachable from the top-right globe icon (D-226). Hidden helper windows are kept
 out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.
 
 **AI features around the chat.** Built on the same Claude Code:

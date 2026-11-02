@@ -9,11 +9,12 @@ const PAGE = `<!doctype html><html><head><title>Cart demo</title></head><body>
 <h1>Cart</h1>
 <button id="add" onclick="document.getElementById('count').textContent = String(Number(document.getElementById('count').textContent) + 1); console.error('added one')">Add item</button>
 <p>Items: <span id="count">0</span></p>
-<a href="#about">About</a>
+<a href="#about">About</a><input id="login" aria-label="Sign-in code">
 </body></html>`;
 
 test("Claude's browser: Claude opens a page, clicks and takes a screenshot you see live", async ({
   page,
+  app,
   jigHome,
 }) => {
   const dir = join(jigHome, "shop");
@@ -58,14 +59,37 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await page.screenshot({
     path: join(jigHome, "claude-browser.png"),
   });
-  // You can drive it too: the address bar navigates.
-  const other = join(dir, "other.html");
-  await writeFile(other, "<!doctype html><title>Other page</title><p>Hello from the other page</p>");
-  await view.getByTestId("browser-address").fill(pathToFileURL(other).href);
-  await view.getByTestId("browser-address").press("Enter");
+  // Claude owns navigation, while you can still click/type in the page for sign-in.
+  await expect(view.getByTestId("browser-address")).toHaveAttribute("readonly", "");
+  await expect(view.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: "Reload", exact: true })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: /Window size/ })).toHaveCount(0);
+  await expect(view.getByTestId("claude-browser-hint")).toContainText("sign-ins");
+  await view.getByTestId("browser-console-toggle").click();
+  const target = (await app.evaluate(async ({ webContents }, url) => {
+    const c = webContents.getAllWebContents().find((c) => c.getURL() === url)!;
+    return c.executeJavaScript(
+      "(() => { const b = document.querySelector('#login').getBoundingClientRect(); return { x:b.x+b.width/2, y:b.y+b.height/2 }; })()",
+    );
+  }, pathToFileURL(file).href)) as { x: number; y: number };
+  const box = (await view.getByTestId("browser-frame").boundingBox())!;
+  const scale = Math.min(box.width / 1280, box.height / 800);
+  await page.mouse.click(
+    box.x + (box.width - 1280 * scale) / 2 + target.x * scale,
+    box.y + (box.height - 800 * scale) / 2 + target.y * scale,
+  );
+  await page.keyboard.type("sample-code");
   await expect
-    .poll(async () => JSON.stringify(await hostCall(page, "browser.state")), { timeout: 10000 })
-    .toContain("Other page");
+    .poll(async () =>
+      app.evaluate(async ({ webContents }, url) => {
+        const c = webContents.getAllWebContents().find((c) => c.getURL() === url)!;
+        return c.executeJavaScript("document.querySelector('#login').value");
+      }, pathToFileURL(file).href),
+    )
+    .toBe("sample-code");
+  await view.getByTestId("claude-browser-open-browser").click();
+  await expect(page.getByTestId("user-browser-view")).toBeVisible();
+  await expect(view.getByTestId("browser-address")).toHaveValue(pathToFileURL(file).href);
 });
 
 test("Claude's browser: the network log shows requests, errors and their bodies", async ({ page }) => {

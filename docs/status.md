@@ -1,5 +1,10 @@
 # Status
 
+Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
+Claude’s browser has an explicit heading and read-only address; navigation, viewport and test-launch
+controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available
+for sign-ins. A permanent hint links directly to your own Browser.
+
 Native user browser (2026-11-02, D-225): Tools → Open Browser opens a Browser tab in the main panel,
 with direct Chromium rendering/input, navigation, stop/reload, zoom, developer tools and opening in
 the default browser. Claude’s browser keeps the existing offscreen tools/live view in the sidebar;

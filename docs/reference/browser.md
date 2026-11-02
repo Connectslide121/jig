@@ -2,7 +2,7 @@
 
 ## Your browser (D-225)
 
-**Tools → Open Browser** (or Ctrl+K → Open Browser) opens a Browser tab in the main panel.
+**The globe icon at the top right** (also Tools → Open Browser or Ctrl+K → Open Browser) opens a Browser tab in the main panel.
 It is a native Chromium `WebContentsView`: direct rendering and native mouse, keyboard, selection,
 clipboard and IME, without compressed frames or forwarded input. The toolbar offers address entry,
 Back/Forward, Reload/Stop, detached Developer tools and Open in default browser. Ctrl/Cmd+L focuses
@@ -34,7 +34,10 @@ size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s
 picture of it, so the view's size never limits Claude, and resizing never moves anything on screen.
 The view opens by itself when Claude starts browsing; turn off Settings → Claude Code → **Show Claude’s browser
 when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can take over
-in the view at any time.
+inside the page for sign-ins and other steps Claude needs your help with. The address is
+read-only; there are no user Back/Forward, Reload, viewport or test-launch controls in this view.
+A permanent hint explains who controls it and links to **open Browser** for personal browsing.
+Console and Network remain available for inspection (D-226).
 
 ## How it works
 

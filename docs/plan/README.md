@@ -65,3 +65,5 @@ Phase 19 also includes a stationary whole-chat file summary with a modal breakdo
 Phase 14 also includes the Browser display-name simplification (D-216); its status remains done.
 
 Phase 14 also includes a native user Browser in the main panel, separate from Claude’s browser (D-225); its status remains done.
+
+Phase 14 also includes a top-right browser shortcut and clear ownership of Claude’s browser controls (D-226); its status remains done.

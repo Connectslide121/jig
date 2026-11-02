@@ -1,14 +1,4 @@
-import {
-  ArrowDownUp,
-  ArrowLeft,
-  ArrowRight,
-  FlaskConical,
-  Globe,
-  MonitorSmartphone,
-  RotateCw,
-  SquareTerminal,
-  X,
-} from "lucide-react";
+import { ArrowDownUp, Globe, SquareTerminal } from "lucide-react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState, type WheelEvent } from "react";
 import {
   type BrowserInput,
@@ -16,14 +6,12 @@ import {
   type ConsoleEntry,
   isNetworkError,
   type NetworkEntry,
-  VIEWPORTS,
 } from "../../../shared/browser";
-import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { Badge, cn, Empty, IconButton, Input, openMenuAt } from "../../ui";
+import { call, useHostEvent } from "../../lib/host";
+import { Badge, cn, Empty, IconButton, Input } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import type { ViewProps } from "../../workbench/registry";
-import { notify } from "../../workbench/toasts";
-import { testSomething } from "./testing";
+import { workbench } from "../../workbench/store";
 
 const LEVEL_TONE: Record<ConsoleEntry["level"], string> = {
   log: "text-muted",
@@ -53,17 +41,12 @@ function useBrowser() {
  */
 export function BrowserView(_props: ViewProps) {
   const { state, frame } = useBrowser();
-  const [address, setAddress] = useState("");
-  const [editing, setEditing] = useState(false);
   const [panel, setPanel] = useState<"console" | "network">();
   const showConsole = panel === "console";
   const [entries, setEntries] = useState<ConsoleEntry[]>([]);
   const [requests, setRequests] = useState<NetworkEntry[]>([]);
   const image = useRef<HTMLImageElement>(null);
 
-  useEffect(() => {
-    if (!editing) setAddress(state?.url ?? "");
-  }, [state?.url, editing]);
   useEffect(() => {
     if (panel === "console") void call("browser.console", {}).then(setEntries);
     if (panel === "network") void call("browser.network", {}).then(setRequests);
@@ -72,14 +55,6 @@ export function BrowserView(_props: ViewProps) {
     if (panel === "console") void call("browser.console", {}).then(setEntries);
     if (panel === "network") void call("browser.network", {}).then(setRequests);
   });
-
-  const go = async (args: { url?: string; action?: "back" | "forward" | "reload" }) => {
-    try {
-      await call("browser.navigate", args);
-    } catch (e) {
-      notify({ title: "Couldn't open the page", message: errorMessage(e), tone: "danger" });
-    }
-  };
 
   /** Mouse position → page pixels, through the letterboxing of object-contain. */
   const toPage = (e: { clientX: number; clientY: number }) => {
@@ -119,79 +94,12 @@ export function BrowserView(_props: ViewProps) {
     } else send({ type, key: e.key });
   };
 
-  const preset = Object.entries(VIEWPORTS).find(
-    ([, v]) => v.width === state?.width && v.height === state?.height,
-  )?.[0];
   const open = state?.open && state.url && state.url !== "about:blank";
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden" data-testid="browser-view">
       <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1">
-        <IconButton
-          size="sm"
-          icon={ArrowLeft}
-          label="Back"
-          disabled={!state?.canGoBack}
-          onClick={() => void go({ action: "back" })}
-        />
-        <IconButton
-          size="sm"
-          icon={ArrowRight}
-          label="Forward"
-          disabled={!state?.canGoForward}
-          onClick={() => void go({ action: "forward" })}
-        />
-        <IconButton
-          size="sm"
-          icon={state?.loading ? X : RotateCw}
-          label={state?.loading ? "Loading…" : "Reload"}
-          disabled={!open}
-          onClick={() => void go({ action: "reload" })}
-        />
-        <form
-          className="min-w-0 flex-1"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setEditing(false);
-            if (address.trim()) void go({ url: address.trim() });
-          }}
-        >
-          <Input
-            value={address}
-            placeholder="localhost:5173"
-            aria-label="Address"
-            data-testid="browser-address"
-            onFocus={(e) => {
-              setEditing(true);
-              e.currentTarget.select();
-            }}
-            onBlur={() => setEditing(false)}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-        </form>
-        <IconButton
-          size="sm"
-          icon={FlaskConical}
-          label="Test this page… (a chat on the small tester model)"
-          onClick={() => void testSomething()}
-          data-testid="browser-test"
-        />
-        <IconButton
-          size="sm"
-          icon={MonitorSmartphone}
-          label={`Window size: ${preset ? VIEWPORTS[preset as keyof typeof VIEWPORTS].label : state ? `${state.width}×${state.height}` : "desktop"}`}
-          onClick={(e) =>
-            openMenuAt(
-              e.currentTarget,
-              Object.entries(VIEWPORTS).map(([id, v]) => ({
-                label: `${v.label} (${v.width}×${v.height})`,
-                checked: id === preset,
-                onSelect: () => void call("browser.resize", { width: v.width, height: v.height }),
-              })),
-              true,
-            )
-          }
-        />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">Claude’s browser</span>
         <IconButton
           size="sm"
           icon={SquareTerminal}
@@ -208,22 +116,44 @@ export function BrowserView(_props: ViewProps) {
           onClick={() => setPanel((v) => (v === "network" ? undefined : "network"))}
           data-testid="browser-network-toggle"
         />
-        {Boolean(state?.failedRequests) && (
-          <span title="Failed requests">
-            <Badge tone="warning">{state?.failedRequests}</Badge>
-          </span>
-        )}
-        {Boolean(state?.errors) && (
-          <span data-testid="browser-errors">
-            <Badge tone="danger">{state?.errors}</Badge>
-          </span>
-        )}
+        <span className="w-8 shrink-0 text-right" title="Failed requests">
+          {Boolean(state?.failedRequests) && <Badge tone="warning">{state?.failedRequests}</Badge>}
+        </span>
+        <span className="w-8 shrink-0 text-right" data-testid="browser-errors">
+          {Boolean(state?.errors) && <Badge tone="danger">{state?.errors}</Badge>}
+        </span>
+      </div>
+      <div className="shrink-0 border-b border-line px-2 py-1">
+        <Input
+          value={state?.url ?? ""}
+          readOnly
+          aria-label="Claude’s browser address"
+          data-testid="browser-address"
+          placeholder="Waiting for Claude to open a page"
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      </div>
+      <div
+        className="shrink-0 border-b border-line px-2 py-2 text-xs text-muted"
+        data-testid="claude-browser-hint"
+      >
+        Claude controls this browser. You can click and type in the page to help with sign-ins. For your own
+        browsing,{" "}
+        <button
+          type="button"
+          className="text-accent underline hover:text-fg"
+          onClick={() => workbench.openViewTab("jig.userBrowser")}
+          data-testid="claude-browser-open-browser"
+        >
+          open Browser
+        </button>
+        .
       </div>
       <div className="relative min-h-0 flex-1 bg-canvas">
         {open && frame ? (
           <div
             role="application"
-            aria-label="Browser page"
+            aria-label="Claude’s browser page"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: the live page takes keyboard input like a browser
             tabIndex={0}
             className="absolute inset-0 outline-none focus:ring-1 focus:ring-focus"
@@ -249,10 +179,9 @@ export function BrowserView(_props: ViewProps) {
             />
           </div>
         ) : (
-          <Empty title="Browser" icon={Globe}>
+          <Empty title="Claude’s browser" icon={Globe}>
             Claude opens pages here to check its work: it clicks, types, takes screenshots and reads the
-            console, and you watch. Ask a chat to "open the app and check the login form", or type an address
-            above.
+            console. Ask a chat to "open the app and check the login form".
           </Empty>
         )}
       </div>

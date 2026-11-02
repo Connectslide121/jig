@@ -680,7 +680,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="browser"
             title="Browser"
-            lead="Open Browser gives you a native Chromium tab in the main panel, with normal typing, scrolling, selection, navigation and developer tools. Claude has a separate browser to check its own web work: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; the browser view shows it live, and you can take over with your mouse and keyboard."
+            lead="The globe icon at the top right opens your native Chromium browser tab in the main panel, with normal typing, scrolling, selection, navigation and developer tools. Claude has a separate browser to check its own web work: it opens your dev server, reads the page, clicks and types like a person, takes screenshots at phone, tablet and desktop sizes (they show in the chat) and reads the console. The page runs off-screen at its own size, so nothing pops up and the panel's size never limits Claude; Claude’s browser shows it live: you can click and type for sign-ins while Claude controls navigation. Its hint links to your own Browser."
             shot={{
               src: browserShot,
               alt: "Claude checking a shop page in its browser, with a screenshot in the chat",
