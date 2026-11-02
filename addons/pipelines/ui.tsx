@@ -78,7 +78,7 @@ function RunStateIcon({ run }: { run?: Run }) {
   const state = runState(run);
   if (state === "running")
     return <LoaderCircle className="size-4 shrink-0 animate-spin text-info" aria-label="Running" />;
-  if (state === "queued") return <Clock3 className="size-4 shrink-0 text-muted" aria-label="Queued" />;
+  if (state === "queued") return <Clock3 className="size-4 shrink-0 text-warning" aria-label="Queued" />;
   if (state === "succeeded")
     return <CircleCheck className="size-4 shrink-0 text-success" aria-label="Succeeded" />;
   if (state === "failed") return <CircleX className="size-4 shrink-0 text-danger" aria-label="Failed" />;
@@ -667,7 +667,7 @@ function StateIcon({ kind, run }: { kind: RunKind; run?: PipelineRun | null }) {
     return <TriangleAlert className="size-4 shrink-0 text-warning" aria-label="Partly" />;
   // Queued and waiting for an agent: a clock, so it doesn't look like "never run".
   if (run?.status === "notStarted" || run?.status === "postponed")
-    return <Clock3 className="size-4 shrink-0 text-muted" aria-label={runLabel(run)} />;
+    return <Clock3 className="size-4 shrink-0 text-warning" aria-label={runLabel(run)} />;
   return (
     <CircleDashed className="size-4 shrink-0 text-hint" aria-label={run ? runLabel(run) : "Never run"} />
   );
