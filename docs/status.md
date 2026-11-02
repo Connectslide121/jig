@@ -1,15 +1,18 @@
 # Status
 
-Jig 0.1.1 release preparation (2026-11-02): the first public Windows installer is being packaged
-for authorized GitHub publication. Type checking, lint, 722 unit tests and token checks passed.
-The user requested immediate publication without further test runs; packaged smoke testing is
-omitted for this release. The release is not yet published.
+Jig 0.1.1 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.1),
+source/tag `1555bb10d6b98e215495499bd81fc7f1b0abd5af`. Public unauthenticated latest-release discovery
+returns v0.1.1 and the installer download returns HTTP 200. The installer is 259,395,400 bytes;
+SHA-256 `92817f6e1db7769530e5151ffd25d02b79f345398948a14e01c54231400f7f7c` matches GitHub's asset digest.
+Type checking, lint, 722 unit tests and token checks passed; seven already-running browser/image/
+Suggestions e2e scenarios also completed successfully. The user requested immediate publication
+without further test runs; packaged smoke testing was omitted for this release.
 
 Agent-managed Jig releases (2026-11-02, D-230): the repository now contains a shared `jig-release`
 skill, discoverable by Codex and Claude Code/Jig, routed from AGENTS.md. “Publish a Jig release”
 runs versioning, validation, Windows packaging, checksum/draft verification and GitHub publication
-with the existing CLIs. Creating the skill does not publish a release; live publication remains
-to be exercised on an explicit release request. No release UI was added.
+with the existing CLIs. The first authorized publication completed as v0.1.1, with matching uploaded installer digest and
+public update discovery. No release UI was added.
 
 Learning evidence (2026-11-02, D-229): sent prompts record shared-file counts, including image-only
 messages, without inferring paste/drop/picker use from paths. Browser-gap mining requires web
