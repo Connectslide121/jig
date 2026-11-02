@@ -37,7 +37,8 @@ const say = (value) => {
   if (file) require("node:fs").writeFileSync(file, JSON.stringify(value));
   else {
     const output = JSON.stringify(value);
-    process.stdout.write(Buffer.from(output, process.env.PYTHONIOENCODING === "utf-8" ? "utf8" : "latin1"));
+    // Like az.cmd on Windows (Python -I ignores PYTHONIOENCODING): the ANSI code page, not UTF-8.
+    process.stdout.write(Buffer.from(output, "latin1"));
   }
   process.exit(0);
 };

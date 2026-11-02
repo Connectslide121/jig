@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
   branchList,
+  decodeAzOutput,
   fromBuild,
   isRetired,
   newestPerPipeline,
@@ -50,11 +51,13 @@ const HOUR = 60 * 60_000;
 const PIPELINES_FOR = 10 * 60_000;
 
 async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> {
-  const r = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
+  const raw = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
     timeoutMs,
-    // az is Python: force UTF-8 on Windows pipes, too, so names and build numbers survive.
     env: { AZURE_CORE_NO_COLOR: "1", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
+    encoding: "base64",
   });
+  // Windows' az.cmd runs Python isolated (-I), which ignores the env above and prints in the ANSI code page.
+  const r = { ...raw, stdout: decodeAzOutput(Buffer.from(raw.stdout, "base64")) };
   if (r.code === 127) throw new Error("The Azure CLI (az) is not installed or not on PATH.");
   if (r.code !== 0) {
     const err = r.stderr.trim();

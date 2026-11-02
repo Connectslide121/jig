@@ -1,5 +1,8 @@
 # Status
 
+Pipelines on Windows (2026-11-02): run names, build numbers and branches with "·", "ö" and the like show
+correctly (az printed them in the Windows code page; they came out as "�" in toasts and the view).
+
 Restart a script (2026-11-02): in the Scripts view a running script shows ↻ on hover (and Restart in its
 ⋯ / right-click menu); a group with running scripts gets ↻ beside Stop to restart them. Uses the existing
 `scripts.restart` (stop, then start in a fresh terminal).
