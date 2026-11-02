@@ -39,7 +39,7 @@ const TOPBAR_MENU = "topbar";
  */
 const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
   { menu: "Chats", groups: ["Chats", "Claude", "Workflows", "Meetings"] },
-  { menu: "Code", groups: ["Git", "Files", "Terminals", "Pipelines"] },
+  { menu: "Code", groups: ["Git", "Files", "Terminals", "Pipelines", "Boards"] },
   { menu: "Build", groups: ["Build"] },
   { menu: "View", groups: ["Layout", "Appearance"] },
 ];

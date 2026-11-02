@@ -893,6 +893,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Boards per project (Code → Boards): pick team boards found in your organisations; a tab per board with its columns and cards, like Azure DevOps",
                 "Project notes shared across chats: important decisions, constraints, dependencies and links — you and Claude keep project knowledge current, separate from task plans",
               ]}
             />

@@ -55,8 +55,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 5 — Azure DevOps boards per project, update progress
 
-- [ ] **Boards per project:** each Jig project picks its DevOps boards (several allowed); the view
-      shows a tab per board.
+- [x] **Boards per project:** each Jig project picks its DevOps boards (several allowed); the view
+      shows a tab per board. Built-in add-on `addons/boards` (D-251): boards are found in your
+      organisations (no links to paste), shown with their real columns and cards like Azure DevOps.
 - [ ] **Update progress:** while an update installs, show the installer or a progress window
       instead of Jig vanishing. Needs testing on Windows.
 

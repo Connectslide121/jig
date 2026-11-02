@@ -112,6 +112,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | view | `addon.repos.overview` | left2 (lower left) | every repository at a glance |
 | view | `addon.scripts.scripts` | right | scripts of every workspace folder |
 | view | `addon.pipelines.pipelines` | right | Azure DevOps pipelines |
+| view | `addon.boards.boards` | left (hidden; Code → Boards) | Azure DevOps boards of the active project |
 | view | `addon.releases.releases` | hidden (right) | releases of every repository (D-110) |
 | view | `addon.notes.notes` | left | the active project's shared notes (saved layouts retain placement) |
 | view | `jig.suggestions` | hidden (right) | suggestions (Learning) |

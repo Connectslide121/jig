@@ -2922,3 +2922,24 @@ the shapes below **Claude, on my own** · **Date:** 2026-11-02
 - **Shorter notes (Jon: "way too verbose"):** Summary (2-4 sentences), Decisions, Open questions,
   Actions (owner — action), empty sections skipped, under ~250 words; quotes and timestamps only in the
   drafted actions' evidence.
+
+## D-251: Azure DevOps boards per project, found in your organisations and shown like Azure DevOps
+
+**Who:** Jon asked for boards per project with a tab per board (his notes, November 2026) and, after
+the first version, for discovery instead of pasted links and for Azure DevOps' own column layout with
+real cards. The rest is **Claude, on my own**.
+
+- **A built-in add-on** `addons/boards` (like Pipelines): `exec:az` with the user's own `az login`,
+  nothing stored but the picked boards (project-scoped storage `boards`). Code → Boards opens it.
+- **Discovery:** organisations from the az login (profile + accounts APIs, as Pipelines), projects
+  (`az devops project list`), teams (`az devops team list`), each team's boards
+  (`GET {team}/_apis/work/boards`). The Azure DevOps project named like the Jig project is picked first.
+- **A board is a team's board** (Stories, Features…): `GET …/boards/{id}` gives its columns, WIP
+  limits, state mappings and the team's column field; `teamfieldvalues` gives the team's areas; one
+  `az boards query` (WIQL) reads the cards with that column field, so cards sit in the column Azure
+  DevOps shows. Done cards older than 30 days are left off.
+- **Layout:** columns side by side (scrolling sideways), all the same width from one header slider
+  (Jon; 200-480 px, kept per project), cards with a type-colour stripe, id, title,
+  assignee and the state when it differs from the column. A card is the click target (opens it in the
+  browser); its ⋯/right-click menu starts a chat about it. No editing or moving cards yet (backlog).
+

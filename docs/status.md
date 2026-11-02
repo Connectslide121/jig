@@ -1,5 +1,14 @@
 # Status
 
+Azure DevOps boards per project (2026-11-02, D-251): Code → Boards opens the active project's boards,
+one tab per board. **+** finds the team boards of your Azure DevOps organisations (organisation and
+project pickers, the project named like the Jig one first; tick several). A board shows its real
+columns side by side (WIP limits, over-limit in amber, one width for all set by the header slider) with a card per work item: type colour, id,
+title, who has it, its state when it differs from the column. Click a card to open it in the browser;
+right-click or ⋯ for Start a chat about it, Copy link. Uses your own `az login`; Done cards older than
+30 days stay off, like Azure DevOps. Needs a real-machine check against a real organisation (fake `az`
+in the tests).
+
 Add-ons: restore and share (2026-11-02, D-249): add-ons installed from a gallery or a `.zip` keep their
 original; once changed they show **edited** in Settings → Add-ons, and ↶ restores them (an edited
 built-in: ↶ removes your copy). ⤓ opens Share: a `.zip` or a folder gallery source, as itself or as a
