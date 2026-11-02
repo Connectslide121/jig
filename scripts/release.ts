@@ -56,7 +56,9 @@ function run(cmd: string, args: string[], env: Record<string, string> = {}): voi
   const result = spawnSync(cmd, args, {
     cwd: root,
     stdio: "inherit",
-    shell: windows,
+    // npm/npx are .cmd shims that need a shell on Windows; git and gh are real executables, and a
+    // shell would split arguments with spaces (a commit message, a release title).
+    shell: windows && (cmd === "npm" || cmd === "npx"),
     env: { ...process.env, ...env },
   });
   if (result.status !== 0) fail(`${cmd} ${args.join(" ")} failed (exit ${result.status})`);
