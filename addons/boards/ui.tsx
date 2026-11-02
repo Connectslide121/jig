@@ -144,7 +144,7 @@ function Card({
   );
 }
 
-/** One width for every column (px), set from the header's slider and kept per project. */
+/** One width for every column (px), set from the header's slider and kept for every project and restart. */
 const COLUMN_WIDTH = { min: 200, max: 480, step: 8, initial: 288 };
 
 /** The board: its columns side by side (scrolls sideways), each with its cards (scrolls down). */
@@ -432,8 +432,10 @@ function AddBoards({
 export function BoardsView({ ctx }: AddonComponentProps) {
   const project = useActiveProject();
   const [boards, setBoards] = useStorage<Board[]>("boards", []);
-  const [width, setWidth] = useStorage<number>("columnWidth", COLUMN_WIDTH.initial);
-  const [selected, setSelected] = useState<string>();
+  const [width, setWidth] = useStorage<number>("columnWidth", COLUMN_WIDTH.initial, {
+    scope: "global",
+  });
+  const [selected, setSelected] = useStorage<string | undefined>("selected", undefined);
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const board = boards.find((b) => b.id === selected) ?? boards[0];
@@ -448,7 +450,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
     // Names follow the set: the team joins the name once boards of several teams are followed.
     const named = all.map((b) => ({ ...b, name: b.name || boardTitle(b, teams) }));
     void setBoards(named);
-    setSelected(named[boards.length]?.id);
+    void setSelected(named[boards.length]?.id);
     setAdding(false);
   };
   const move = (by: number) => {
@@ -522,7 +524,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
                 label: <span data-testid={`board-tab-${b.name}`}>{b.name}</span>,
               }))}
               value={board.id}
-              onChange={setSelected}
+              onChange={(id) => void setSelected(id)}
             />
           ) : (
             <span className="px-3 text-sm text-muted">Boards</span>

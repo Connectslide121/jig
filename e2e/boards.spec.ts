@@ -92,6 +92,12 @@ test("Boards: pick team boards found in Azure DevOps; columns and cards like Azu
   await view.getByTestId("boards-width").fill("400");
   for (const name of ["New", "Doing", "Closed"])
     await expect(view.getByTestId(`board-column-${name}`)).toHaveCSS("width", "400px");
+  // The width is kept: it comes back after a reload.
+  await expect(view.getByTestId("boards-width")).toHaveValue("400");
+  await page.waitForTimeout(300);
+  await page.reload();
+  await expect(page.getByTestId("board-column-New")).toHaveCSS("width", "400px");
+  await expect(page.getByTestId("boards-width")).toHaveValue("400");
   await expect(view.getByTestId("board-column-Doing").getByTestId("board-item-104")).toBeVisible();
 
   // Followed boards show as added the next time.

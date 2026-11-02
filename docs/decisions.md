@@ -2939,7 +2939,7 @@ real cards. The rest is **Claude, on my own**.
   `az boards query` (WIQL) reads the cards with that column field, so cards sit in the column Azure
   DevOps shows. Done cards older than 30 days are left off.
 - **Layout:** columns side by side (scrolling sideways), all the same width from one header slider
-  (Jon; 200-480 px, kept per project), cards with a type-colour stripe, id, title,
+  (Jon; 200-480 px, one global value kept across projects and restarts), cards with a type-colour stripe, id, title,
   assignee and the state when it differs from the column. A card is the click target (opens it in the
   browser); its ⋯/right-click menu starts a chat about it. No editing or moving cards yet (backlog).
 

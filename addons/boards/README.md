@@ -11,8 +11,8 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 - **A board:** its real columns side by side with WIP limits, a card per work item (type colour, id,
   title, who has it, its state when it differs from the column). Click a card to open it in Azure
   DevOps; ⋯ or right-click: Start a chat about it, Copy link, Copy #id. Done cards older than 30 days
-  are left off. A slider in the header sets one width for every column (kept per project).
+  are left off. A slider in the header sets one width for every column (kept for all projects, across restarts).
 - **How:** `GET {team}/_apis/work/boards/{id}` (columns, state mappings, column field) and
   `teamsettings/teamfieldvalues` (the team's areas) through `az rest`, then one `az boards query`.
 
-Storage (project scope): `boards`, the followed boards; `columnWidth`, the columns' width in px. Tested by `e2e/boards.spec.ts` with a fake `az`.
+Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px. Tested by `e2e/boards.spec.ts` with a fake `az`.
