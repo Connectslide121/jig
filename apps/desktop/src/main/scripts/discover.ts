@@ -140,13 +140,21 @@ async function isWorktree(dir: string): Promise<boolean> {
   return isWorktreeGitFile(content);
 }
 
-async function scan(root: string, dir: string, depth: number, out: Script[], platform: string) {
+async function scan(
+  root: string,
+  dir: string,
+  depth: number,
+  out: Script[],
+  platform: string,
+  dirs: Set<string>,
+) {
   let entries: import("node:fs").Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch {
     return;
   }
+  dirs.add(dir);
   const files = new Set(entries.filter((e) => e.isFile()).map((e) => e.name));
   // Worktrees inside a folder repeat their repository's scripts (D-127); one you open as its own
   // project (the root) still shows them.
@@ -175,6 +183,7 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
       files.has("requirements.txt"));
   const project = [...files].sort().find((f) => f.endsWith(".csproj") && !/\.Tests?\.csproj$/i.test(f));
   if (project) {
+    dirs.add(join(dir, "Properties"));
     const text = await readFile(join(dir, project), "utf8").catch(() => "");
     const settings = await readFile(join(dir, "Properties", "launchSettings.json"), "utf8")
       .then(parseLooseJson)
@@ -202,7 +211,7 @@ async function scan(root: string, dir: string, depth: number, out: Script[], pla
   if (depth >= MAX_DEPTH) return;
   for (const entry of entries) {
     if (entry.isDirectory() && !SKIP.has(entry.name) && !entry.name.startsWith(".")) {
-      await scan(root, join(dir, entry.name), depth + 1, out, platform);
+      await scan(root, join(dir, entry.name), depth + 1, out, platform, dirs);
     }
   }
 }
@@ -217,10 +226,23 @@ export async function discoverScripts(
   platform = process.platform,
   repos: string[] = [],
 ): Promise<Script[]> {
+  return (await discoverScriptsAndDirs(root, platform, repos)).scripts;
+}
+
+/** The scripts, plus the folders discovery read (what to watch to notice a change, D-238). */
+export async function discoverScriptsAndDirs(
+  root: string,
+  platform = process.platform,
+  repos: string[] = [],
+): Promise<{ scripts: Script[]; dirs: string[] }> {
   const out: Script[] = [];
-  await scan(root, root, 0, out, platform);
+  const dirs = new Set<string>();
+  await scan(root, root, 0, out, platform, dirs);
   for (const repo of repos)
-    if (repo === root || !(await isWorktree(repo))) await scan(root, repo, 0, out, platform);
+    if (repo === root || !(await isWorktree(repo))) await scan(root, repo, 0, out, platform, dirs);
   const unique = [...new Map(out.map((s) => [s.id, s])).values()];
-  return unique.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name));
+  return {
+    scripts: unique.sort((a, b) => a.folder.localeCompare(b.folder) || a.name.localeCompare(b.name)),
+    dirs: [...dirs],
+  };
 }

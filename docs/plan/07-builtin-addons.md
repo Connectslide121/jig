@@ -51,6 +51,7 @@ window.** Rebase, graph and blame are out of scope.
 ### Scripts (`addons/scripts`)
 - [x] Tools-menu actions and a view with every discovered script per project (from phase 5)
 - [x] Status bar item with running scripts
+- [x] The list follows script files and package.json changes without a restart (D-238)
 
 ## Notes
 

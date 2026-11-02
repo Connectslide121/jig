@@ -8,7 +8,8 @@ import { projectStore } from "../projects";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
 import { terminalManager } from "../terminals";
-import { discoverScripts } from "./discover";
+import { discoverScriptsAndDirs } from "./discover";
+import { createScriptWatcher } from "./watch";
 
 /** Script groups ("Start local" = front + back) per project, in `~/.jig/scripts.json`. */
 const GroupsSchema = z.object({
@@ -30,16 +31,21 @@ async function saveGroups(projectId: string, groups: ScriptGroup[]) {
   await writeJson(paths.scripts(), data);
 }
 
-export async function projectScripts(projectId: string): Promise<ProjectScripts> {
+async function loadScripts(projectId: string) {
   const info = (await projectStore().state()).projects.find((p) => p.id === projectId);
   if (!info) throw new JigError("not_found", "Project not found");
   const repos = info.repos.map((r) => r.path);
-  return {
-    projectId,
-    scripts: await discoverScripts(info.path, process.platform, repos),
-    groups: await groupsFor(projectId),
-  };
+  const { scripts, dirs } = await discoverScriptsAndDirs(info.path, process.platform, repos);
+  const result: ProjectScripts = { projectId, scripts, groups: await groupsFor(projectId) };
+  return { result, dirs };
 }
+
+export async function projectScripts(projectId: string): Promise<ProjectScripts> {
+  return (await loadScripts(projectId)).result;
+}
+
+/** Re-lists a project's scripts when their files change and tells the view (D-238). */
+const scriptWatcher = createScriptWatcher(loadScripts, (result) => emit("scripts.changed", result));
 
 function runningTerminal(projectId: string, scriptId: string) {
   return terminalManager()
@@ -67,7 +73,11 @@ export async function runScript(projectId: string, scriptId: string) {
 }
 
 export function registerScriptHandlers(): void {
-  handle("scripts.list", ({ projectId }) => projectScripts(projectId));
+  handle("scripts.list", async ({ projectId }) => {
+    const loaded = await loadScripts(projectId);
+    scriptWatcher.track(projectId, loaded);
+    return loaded.result;
+  });
   handle("scripts.run", ({ projectId, scriptId }) => runScript(projectId, scriptId));
   handle("scripts.stop", ({ projectId, scriptId }) => {
     const t = runningTerminal(projectId, scriptId);

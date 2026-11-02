@@ -204,7 +204,7 @@ settings, add-on permissions.
 | `browser.state` | `BrowserState` | Browser loaded, navigated, resized or logged an error |
 | `browser.frame` | `{ data, width, height }` | a JPEG of the page (base64), only while a view watches |
 | `browser.reveal` | — | Claude opened a page: show the browser view |
-| `scripts.changed` | `ProjectScripts` | a project's script groups changed |
+| `scripts.changed` | `ProjectScripts` | a project's script groups changed, or its scripts did (files added, removed, renamed; watched from the first `scripts.list`, D-238) |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
