@@ -2880,3 +2880,18 @@ The plan is `docs/plan/23-jons-notes.md`. Choices made with Jon:
 - **Which queue shows** (Jon): the view follows Jig's global project picker; its own project menu only
   overrides what it shows, until the global project changes again.
 
+## D-249: Add-on originals, Restore original, and sharing a copy
+
+**Decided by:** Jon (restore modified add-ons; an edited built-in is shared as a separate copy, D-247);
+the shapes below **Claude, on my own** · **Date:** 2026-11-02
+
+- **Originals:** installing from a gallery or a `.zip` keeps the files as they came in
+  `~/.jig/addon-originals/<id>/files` with `origin.json`. "Edited" compares file lists and bytes (built
+  host code lives in the cache, so it never counts). Deleting the add-on forgets its original.
+- **Restore original** writes the original back as a commit (History can bring your version back). A
+  built-in needs no kept original: your copy of it is the change, so Restore removes the copy.
+- **Sharing:** one Share dialog for a `.zip` or a **folder** gallery source from Settings (into its
+  `addons/` folder when it has one; never overwriting a folder). Git sources are read-only clones, so
+  Jig doesn't commit or push into them: save a `.zip` and commit it. "As a separate add-on" rewrites
+  `addon.json` with the new name and an id made from it (free among yours); an edited built-in always
+  goes this way, so installing it never replaces someone's built-in.

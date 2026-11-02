@@ -53,3 +53,13 @@ export interface GallerySource {
   error?: string;
   addons: GalleryAddon[];
 }
+
+/** Where an installed add-on came from (D-249), for "edited" and Restore original. */
+export interface AddonOriginInfo {
+  kind: "gallery" | "import";
+  /** The gallery source it was installed from. */
+  source?: string;
+  version?: string;
+  /** Its files differ from how it came. */
+  modified: boolean;
+}

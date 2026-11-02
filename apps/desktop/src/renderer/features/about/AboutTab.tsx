@@ -829,7 +829,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="addons"
             title="Your add-ons"
-            lead="What is installed now, and which slots each one uses. Share an add-on as a file, or install from the add-on gallery: a git repository or folder of add-ons your team keeps."
+            lead="What is installed now, and which slots each one uses. Share an add-on as a file or into a gallery folder (an edited one as a copy with its own name), or install from the add-on gallery: a git repository or folder of add-ons your team keeps. Installed add-ons you changed show as edited and restore to the original."
           >
             <AddonList />
             <div className="mt-3 flex gap-2">

@@ -30,9 +30,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 
-- [ ] **Restore original:** a modified add-on (built-in or from the gallery) can go back to the
+- [x] **Restore original:** a modified add-on (built-in or from the gallery) can go back to the
       version it came from, after a confirmation. Jig keeps the original to compare and restore.
-- [ ] **Share an edited built-in:** publishing it to the gallery makes a separate copy with its own
+- [x] **Share an edited built-in:** publishing it to the gallery makes a separate copy with its own
       id and name; installing it never touches the recipient's original.
 
 ## Session 3 — Meeting history in the main window

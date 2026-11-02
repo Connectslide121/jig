@@ -1,5 +1,10 @@
 # Status
 
+Add-ons: restore and share (2026-11-02, D-249): add-ons installed from a gallery or a `.zip` keep their
+original; once changed they show **edited** in Settings → Add-ons, and ↶ restores them (an edited
+built-in: ↶ removes your copy). ⤓ opens Share: a `.zip` or a folder gallery source, as itself or as a
+separate copy with its own name (always, for an edited built-in). Git gallery sources aren't written to.
+
 Task queue per project with history (2026-11-02, D-248): each project has its own queue (the view's
 project menu at the top right switches, with a count of queued tasks); queues run independently.
 Every run is kept: History lists the runs (started, tasks, done, failed, time, cost) and opens one

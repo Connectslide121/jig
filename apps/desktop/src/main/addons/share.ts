@@ -14,7 +14,7 @@ const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_UNPACKED = 100 * 1024 * 1024;
 
 /** Every file of an add-on folder (relative, forward slashes), without .git and node_modules. */
-async function files(dir: string, base = dir): Promise<string[]> {
+export async function files(dir: string, base = dir): Promise<string[]> {
   const out: string[] = [];
   for (const name of await readdir(dir)) {
     if (SKIP.has(name)) continue;
@@ -29,9 +29,71 @@ async function files(dir: string, base = dir): Promise<string[]> {
 
 /** The add-on folder as zip bytes, its files under `<id>/`. */
 export async function packAddon(dir: string, id: string): Promise<Uint8Array> {
+  return zipSync(await addonContents(dir, id), { level: 6 });
+}
+
+/** The add-on's files keyed `<id>/<path>`, ready to zip or write elsewhere. */
+export async function addonContents(dir: string, id: string): Promise<Record<string, Uint8Array>> {
   const entries: Record<string, Uint8Array> = {};
   for (const f of await files(dir)) entries[`${id}/${f}`] = new Uint8Array(await readFile(join(dir, f)));
-  return zipSync(entries, { level: 6 });
+  return entries;
+}
+
+/** A lower-case id from a name (`My Tasks!` → `my-tasks`), never empty. */
+export function idFromName(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/^[^a-z]+/, "");
+  return slug.slice(0, 60).replace(/-+$/, "") || "addon";
+}
+
+/** The first of `base`, `base-2`, `base-3`… that `taken` doesn't have. */
+export function freeId(base: string, taken: (id: string) => boolean): string {
+  if (!taken(base)) return base;
+  for (let i = 2; ; i++) if (!taken(`${base}-${i}`)) return `${base}-${i}`;
+}
+
+/**
+ * The add-on as a separate copy (D-249): the same files under a new id and name, so whoever installs
+ * it keeps their own original (an edited built-in shared as itself would replace theirs).
+ */
+export async function copyContents(
+  dir: string,
+  copy: { id: string; name: string },
+): Promise<Record<string, Uint8Array>> {
+  const entries = await addonContents(dir, copy.id);
+  const key = `${copy.id}/addon.json`;
+  const manifest = JSON.parse(new TextDecoder().decode(entries[key]));
+  entries[key] = new TextEncoder().encode(
+    `${JSON.stringify({ ...manifest, id: copy.id, name: copy.name }, null, 2)}\n`,
+  );
+  return entries;
+}
+
+/** Zip bytes of a copy (see `copyContents`). */
+export async function packCopy(dir: string, copy: { id: string; name: string }): Promise<Uint8Array> {
+  return zipSync(await copyContents(dir, copy), { level: 6 });
+}
+
+/** Writes `<id>/…` entries into `parent` (a gallery folder), refusing to overwrite a folder. */
+export async function writeContents(parent: string, entries: Record<string, Uint8Array>): Promise<string> {
+  const id = Object.keys(entries)[0]!.split("/")[0]!;
+  const target = join(parent, id);
+  const exists = await stat(target).then(
+    () => true,
+    () => false,
+  );
+  if (exists) throw new Error(`The gallery already has "${id}"`);
+  for (const [rel, data] of Object.entries(entries)) {
+    const file = join(parent, ...rel.split("/"));
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, data);
+  }
+  return target;
 }
 
 export interface AddonPackage {

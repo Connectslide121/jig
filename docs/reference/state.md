@@ -21,6 +21,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `attachments/addon-<id>/<uuid>.<ext>` | files | files an add-on kept for messages it sends later (`ctx.attachments`; the Tasks add-on's task files), copied into the chat when sent; the add-on deletes them (`api.attachments.remove`) |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
+| `addon-originals/<id>/` | `files/`, `origin.json` | how an add-on installed from a gallery or `.zip` came (`{ kind, source?, version?, savedAt }`), to show "edited" and Restore original (D-249); removed with the add-on |
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |

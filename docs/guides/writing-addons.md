@@ -116,8 +116,15 @@ In `ui.tsx`, `useJigEvent("git.commit", reload)` refreshes a view after each com
 
 ## Sharing an add-on
 
-- **Export:** Settings → Add-ons → the ⤓ button on an add-on saves it as `<id>-<version>.jig-addon.zip`
-  (its files, without `.git` and `node_modules`).
+- **Share:** Settings → Add-ons → the ⤓ button on an add-on opens Share: save it as
+  `<id>-<version>.jig-addon.zip`, or write it into a **folder** gallery source from Settings (a git
+  gallery is shared by committing the files yourself). "Share as a separate add-on" sends it with its own
+  name and an id made from it, so it sits beside the original; an edited built-in always goes this way
+  (D-249). Its files go without `.git` and `node_modules`.
+- **Edited and Restore original:** an add-on installed from a gallery or a `.zip` keeps its original
+  (`~/.jig/addon-originals/<id>`). Once you or the builder change it, it shows **edited**, and ↶ puts it
+  back as it came (as a commit, so History brings your version back). For your copy of a built-in, ↶
+  removes the copy and the built-in comes back.
 - **Import:** Settings → Add-ons → **Import add-on…** (or Search → Import an add-on…) picks a `.zip`.
   Jig shows its name, version, description, file count and permissions before installing it into
   `~/.jig/addons/<id>` (a zip with its files at the root or in one folder both work). An add-on with

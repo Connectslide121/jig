@@ -10,7 +10,7 @@
 
 import type { AddonSearchQuery, AddonSearchResult, AddonTarget, JigEventName } from "@jig/sdk";
 import type { SkillInfo } from "./about";
-import type { AddonCommit, AddonInfo, GallerySource } from "./addons";
+import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type {
@@ -447,8 +447,22 @@ export interface HostMethods {
   "addons.rollback": { args: { id: string; commit: string }; result: void };
   /** Deletes one of your add-ons (its folder, as a commit); a built-in it replaced comes back. */
   "addons.remove": { args: { id: string }; result: void };
-  /** Saves an add-on as a `.zip` to share (a save dialog); the chosen file, or nothing if cancelled. */
-  "addons.export": { args: { id: string }; result: string | undefined };
+  /**
+   * Shares an add-on: as a `.zip` (a save dialog), or into a folder gallery source from Settings
+   * (`gallerySource`). With `copy` it goes out as a separate add-on with that name and a new id (D-249);
+   * an edited built-in always does. The written file or folder, or nothing if cancelled.
+   */
+  "addons.export": {
+    args: { id: string; copy?: { name: string }; gallerySource?: string };
+    result: string | undefined;
+  };
+  /** Where your installed add-ons came from (a gallery or a `.zip`) and whether you changed them since. */
+  "addons.originals": { args: void; result: Record<string, AddonOriginInfo> };
+  /**
+   * Puts an add-on back as it came: an installed one from its kept original, an edited built-in by
+   * removing your copy (both as a commit, so it can be rolled back).
+   */
+  "addons.restoreOriginal": { args: { id: string }; result: void };
   /** Reads an add-on package (an open dialog when no `path`) without installing it. */
   "addons.inspectPackage": {
     args: { path?: string };

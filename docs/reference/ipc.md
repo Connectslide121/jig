@@ -175,7 +175,9 @@ settings, add-on permissions.
 | `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 | `addons.remove` | `{ id }` | — | your add-ons only: deletes the folder as a commit (stays in the history), keeps its stored data; a built-in it replaced comes back (schema, D-122) |
-| `addons.export` | `{ id }` | `string \| undefined` | saves the add-on as a `.zip` (save dialog); without `.git` and `node_modules` |
+| `addons.export` | `{ id, copy?: { name }, gallerySource? }` | `string \| undefined` | shares the add-on: a `.zip` (save dialog) or, with `gallerySource`, into a folder gallery source from Settings (never a git one); with `copy`, a separate add-on with that name and an id made from it (an edited built-in must go as a copy); without `.git` and `node_modules` (schema, D-249) |
+| `addons.originals` | — | `Record<id, AddonOriginInfo>` | your add-ons installed from a gallery or a `.zip`: where they came from and whether their files changed since (`modified`) (D-249) |
+| `addons.restoreOriginal` | `{ id }` | — | puts one of your add-ons back as it came (from its kept original, as a commit); an edited built-in without one is removed so the built-in comes back (schema, D-249) |
 | `addons.inspectPackage` | `{ path? }` | package info `\| undefined` | reads a `.zip` (open dialog without `path`): id, name, version, permissions, files, problems, `exists` (schema) |
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 | `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
