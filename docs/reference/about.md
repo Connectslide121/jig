@@ -57,3 +57,10 @@ The Skills section also shows the bundled library and its global/project control
 The Teams meetings section (D-217) uses `shots/meetings.png`, captured by `e2e/meetings.spec.ts`
 under `.jig-test-home-meeting-screenshots/meetings.png`; copy it into shots after reviewing the image.
 It uses the real Electron UI and isolated fake media/Claude services, with neutral sample participants.
+
+The native Browser screenshot (D-225) comes from `e2e/user-browser.spec.ts` with
+`JIG_SCREENSHOTS=1`. Playwright captures only the workbench renderer, so the test saves its
+shell, the native Chromium page capture and the actual native view bounds under
+`.tmp/browser-screenshot/`. Run `python scripts/compose-browser-screenshot.py` (Pillow required)
+to place the real page pixels into that slot and write `shots/browser.jpg`. This shows both
+the user's native tab and Claude's separate live view without a blank native surface.

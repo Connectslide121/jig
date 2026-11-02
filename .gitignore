@@ -9,3 +9,4 @@ playwright-report/
 .jig-test-home*/
 .DS_Store
 .azure-local/
+.tmp/browser-screenshot/

@@ -21,6 +21,8 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 
 - [x] Rename the visible browser feature to Browser across its view, menus, settings and About (D-216).
 
+- [x] Native user Browser tab in the main panel, separate from Claude’s offscreen browser (D-225).
+
 ## Later
 
 - Browser: several tabs, recording a session as a GIF, network requests in the console pane.

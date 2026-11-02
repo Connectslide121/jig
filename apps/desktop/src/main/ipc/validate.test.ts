@@ -25,6 +25,19 @@ describe("IPC checks", () => {
     expect(invalidArgs("layout.set", { main: {} } as never)).toBeUndefined();
   });
 
+  it("validates native browser URLs, commands and surface bounds", () => {
+    expect(invalidArgs("userBrowser.navigate", { url: "http://localhost:5173" })).toBeUndefined();
+    expect(invalidArgs("userBrowser.navigate", { action: "stop" })).toBeUndefined();
+    expect(invalidArgs("userBrowser.navigate", { action: "execute" })).toMatch(/^action:/);
+    expect(invalidArgs("userBrowser.navigate", { url: 4 })).toMatch(/^url:/);
+    expect(
+      invalidArgs("userBrowser.present", { bounds: { x: -1, y: 0, width: 800, height: 600 }, visible: true }),
+    ).toMatch(/^bounds.x:/);
+    expect(
+      invalidArgs("userBrowser.present", { bounds: { x: 0, y: 0, width: 800, height: 600 }, visible: true }),
+    ).toBeUndefined();
+  });
+
   it("knows which files would run when opened", () => {
     expect(EXECUTABLE.test("C:\\\\tools\\\\setup.EXE")).toBe(true);
     expect(EXECUTABLE.test("deploy.ps1")).toBe(true);

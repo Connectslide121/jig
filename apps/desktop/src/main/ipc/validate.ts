@@ -229,6 +229,25 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "routines.setEnabled": z.object({ id, enabled: z.boolean() }),
   "routines.runs": z.object({ id }),
   "routines.runLog": z.object({ sessionId: id }),
+  "userBrowser.present": z
+    .object({
+      bounds: z
+        .object({
+          x: int.min(0).max(32000),
+          y: int.min(0).max(32000),
+          width: int.min(0).max(32000),
+          height: int.min(0).max(32000),
+        })
+        .strict(),
+      visible: z.boolean(),
+    })
+    .strict(),
+  "userBrowser.navigate": z
+    .object({
+      url: z.string().min(1).max(8192).optional(),
+      action: z.enum(["back", "forward", "reload", "stop"]).optional(),
+    })
+    .strict(),
   "browser.navigate": z.object({
     url: z.string().max(8192).optional(),
     action: z.enum(["back", "forward", "reload"]).optional(),

@@ -80,6 +80,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   as a file, or install them from an **add-on gallery**: a git repository or folder your team keeps.
 - **Claude in parallel.** Hand one task to several Claude Code chats at once, each in its own git
   worktree and from its own angle; Claude judges the results and you keep the best.
+- **A native browser for you.** Open Browser creates a main-panel tab with sharp Chromium rendering, normal typing, scrolling and selection, navigation and developer tools. Claude keeps its own browser.
 - **Claude checks its own work.** Claude opens your dev server in its own browser inside Jig,
   clicks through it, takes screenshots at phone, tablet and desktop sizes and reads the console and the network requests, while you
   watch live and can take over. Its
@@ -181,7 +182,7 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=17" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
+      <img src="apps/desktop/src/renderer/features/about/shots/browser.jpg?v=18" alt="Claude checking a shop page in its own browser, with the screenshot in the chat">
       <b>Browser.</b> Claude opens your dev server in a real browser inside Jig, reads the page,
       clicks and types like a person, takes screenshots (shown in the chat) and reads the console. You
       watch it live next to the chat, switch to tablet or phone size, and take over with your own mouse

@@ -4,9 +4,12 @@ import { emit, handle } from "../ipc/router";
 import { BrowserService } from "./service";
 import { browserTools } from "./tools";
 
+import { registerUserBrowser } from "./userBrowser";
+
 let service: BrowserService | undefined;
 
 export function startBrowser(): void {
+  registerUserBrowser();
   const browser = new BrowserService({
     state: (state) => emit("browser.state", state),
     frame: (frame) => emit("browser.frame", frame),

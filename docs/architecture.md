@@ -201,6 +201,12 @@ and a reserved scrollbar gutter (the composer uses `--jig-scrollbar-size` paddin
 extend above the input without clipping). The overview card has a permanently reserved column alongside it,
 including empty/loading chats and when hidden, so its visibility never moves the conversation (D-189).
 
+**User browser (D-225).** Tools → Open Browser opens a main-panel tab backed by a native
+`WebContentsView`, owned by main per workbench window, with its own persistent cookie partition,
+no preload, sandboxing and context isolation. Typed `userBrowser.*` IPC reports native state and
+updates slot bounds/visibility. Hidden tabs and DOM menus/dialogs hide the native surface; the
+reserved slot never changes size for loading/status. It is independent of Claude's tools and frames.
+
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in the browser: one offscreen
 Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools

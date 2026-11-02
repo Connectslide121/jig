@@ -4,25 +4,43 @@ import { registerAction, registerView } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { BrowserView } from "./BrowserView";
 import { testSomething } from "./testing";
+import { UserBrowserView } from "./UserBrowserView";
 
 export const BROWSER_VIEW = "jig.browser";
 
 export function registerBrowser(): void {
   registerView({
     id: BROWSER_VIEW,
-    title: "Browser",
+    title: "Claude’s browser",
     icon: Globe,
     defaultRegion: "right",
     component: BrowserView,
     owner: "core",
   });
+  registerView({
+    id: "jig.userBrowser",
+    title: "Browser",
+    icon: Globe,
+    defaultRegion: "right",
+    startHidden: true,
+    component: UserBrowserView,
+    owner: "core",
+  });
+  registerAction({
+    id: "jig.openClaudeBrowser",
+    title: "Open Claude’s browser",
+    group: "Claude",
+    icon: Globe,
+    keywords: ["agent", "browser", "automation"],
+    run: () => workbench.showView(BROWSER_VIEW),
+  });
   registerAction({
     id: "jig.openBrowser",
     title: "Open Browser",
-    group: "Claude",
+    group: "Tools",
     icon: Globe,
     keywords: ["browser", "web", "preview", "localhost"],
-    run: () => workbench.showView(BROWSER_VIEW),
+    run: () => workbench.openViewTab("jig.userBrowser"),
   });
   registerAction({
     id: "jig.testSomething",

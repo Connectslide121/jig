@@ -2552,3 +2552,16 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   It is now a card grid sized by the panel (`@container`), whole cards clickable (Jon).
 - Add-on CSS compiled only the token `@theme`, so `md:` and `@xl:` variants generated nothing in add-ons.
   `main/addons/css.ts` now adds Tailwind's default screen and container sizes (Claude, on my own).
+
+## D-225: A native Browser for the user, separate from Claude
+
+- Jon requested a usable real browser because the compressed offscreen view looked blurry and
+  responded slowly; he explicitly chose native browsing inside Jig and opening in the main panel.
+- Keep Claude's existing offscreen service, tools and JPEG observer as “Claude’s browser”. Add a
+  native `WebContentsView` for the user's Browser tab: direct Chromium rendering and input, sized
+  to the actual slot. Do not route normal browsing through screenshots or input IPC.
+- Implementation details are **Claude, on my own**: one page per workbench window, persistent
+  isolated user partition, no preload/Node, permission denial, in-place popups, navigation and
+  zoom shortcuts, detached DevTools, DOM overlay visibility guard, and a fixed-height status row.
+  Claude never controls or observes the user's page. Hidden tabs preserve history; destroying the
+  workbench closes the native contents. Multi-page browser tabs can be added later.

@@ -1,13 +1,38 @@
 # Browser
 
+## Your browser (D-225)
+
+**Tools → Open Browser** (or Ctrl+K → Open Browser) opens a Browser tab in the main panel.
+It is a native Chromium `WebContentsView`: direct rendering and native mouse, keyboard, selection,
+clipboard and IME, without compressed frames or forwarded input. The toolbar offers address entry,
+Back/Forward, Reload/Stop, detached Developer tools and Open in default browser. Ctrl/Cmd+L focuses
+the address, Ctrl/Cmd+R or F5 reloads, Alt+Left/Right navigates history, and Ctrl/Cmd+plus/minus/0 zooms.
+A fixed-height status row shows the title or load failure without moving the page.
+
+Main owns one user page per workbench window (`main/browser/userBrowser.ts`). The isolated persistent
+partition `persist:jig-user-browser` holds cookies separately from both Jig and Claude. There is no
+preload or Node access; sandbox and context isolation stay enabled. Navigation and redirects allow
+http(s), file and about:blank only; popups open in place. Downloads use Chromium's save flow;
+camera, microphone, location and other permission requests remain denied. Claude's tools cannot read
+or drive this page. Closing its tab hides it; reopening keeps the page and history for that window.
+Closing the workbench destroys its native WebContents.
+
+`UserBrowserView` reports the reserved page slot's bounds and visibility only when they change.
+Main converts CSS coordinates using the workbench zoom, clips them to the content area, and sets the
+native view bounds. Hidden tabs and Jig dialogs/menus hide the surface, keeping DOM overlays usable.
+The page stays at the slot's real size; no scaled screenshot is used. The native view is documented
+by [Electron](https://www.electronjs.org/docs/latest/api/web-contents-view).
+
+## Claude's browser
+
 Code: `apps/desktop/src/main/browser/` (service, tools, page scripts),
 `apps/desktop/src/shared/browser.ts` (types), `apps/desktop/src/renderer/features/browser/` (the view).
 Decisions: D-090, D-095.
 
 Claude checks its own web work in a real Chromium page inside Jig. The page is offscreen with its own
-size: the **Browser** view (right sidebar; Search → Open Browser) only shows a scaled
+size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a scaled
 picture of it, so the view's size never limits Claude, and resizing never moves anything on screen.
-The view opens by itself when Claude starts browsing; turn off Settings → Claude Code → **Show Browser
+The view opens by itself when Claude starts browsing; turn off Settings → Claude Code → **Show Claude’s browser
 when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can take over
 in the view at any time.
 

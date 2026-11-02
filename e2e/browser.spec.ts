@@ -56,7 +56,7 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   expect(JSON.stringify(await hostCall(page, "browser.network", {}))).toContain("index.html");
 
   await page.screenshot({
-    path: "/tmp/claude-0/-home-user-jig/4879543c-4011-5b05-8342-5ec17a60e32a/scratchpad/browser.png",
+    path: join(jigHome, "claude-browser.png"),
   });
   // You can drive it too: the address bar navigates.
   const other = join(dir, "other.html");
@@ -97,8 +97,8 @@ test("Claude's browser: the network log shows requests, errors and their bodies"
     expect(detail).not.toContain("session=secret");
 
     await page.keyboard.press("Control+K");
-    await page.getByTestId("goto-input").fill("browser");
-    await page.keyboard.press("Enter");
+    await page.getByTestId("goto-input").fill("Open Claude’s browser");
+    await page.getByTestId("goto-action-jig.openClaudeBrowser").click();
     const view = page.getByTestId("browser-view");
     await view.getByTestId("browser-network-toggle").click();
     await view.getByTestId("browser-request").filter({ hasText: "/api/cart" }).click();

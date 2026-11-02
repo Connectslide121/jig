@@ -87,7 +87,7 @@ A new state file is documented here in the same commit that adds it.
 | `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | soft sounds while Claude works after you hand it a task by voice, a chime when it finishes or needs you (D-210) |
-| `browser.showWhenUsed` | `true` | open the browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
+| `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |
 | `learning.retentionDays` | `90` | delete activity older than this |

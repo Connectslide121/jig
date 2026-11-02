@@ -63,3 +63,5 @@ Phase 19 also includes shared project knowledge notes (D-202) and readable, stab
 Phase 19 also includes a stationary whole-chat file summary with a modal breakdown (D-204).
 
 Phase 14 also includes the Browser display-name simplification (D-216); its status remains done.
+
+Phase 14 also includes a native user Browser in the main panel, separate from Claude’s browser (D-225); its status remains done.

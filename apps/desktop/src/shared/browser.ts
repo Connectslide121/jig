@@ -112,3 +112,20 @@ export function networkSummary(
     )
     .join("\n");
 }
+
+/** The user's native browser; never exposed to Claude's browser tools. */
+export interface UserBrowserState {
+  url: string;
+  title: string;
+  loading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  error?: string;
+}
+
+export interface BrowserBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}

@@ -13,7 +13,14 @@ import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
-import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "./browser";
+import type {
+  BrowserBounds,
+  BrowserInput,
+  BrowserState,
+  ConsoleEntry,
+  NetworkEntry,
+  UserBrowserState,
+} from "./browser";
 import type { BuildJob, BuildRequestInput } from "./builds";
 import type { DeepPartial, JigConfig } from "./config";
 import type { DevRequestInfo, DevRequestStatus } from "./devRequest";
@@ -358,6 +365,13 @@ export interface HostMethods {
     result: NetworkEntry & { body?: string; bodyNote?: string };
   };
   "browser.close": { args: void; result: void };
+  "userBrowser.state": { args: void; result: UserBrowserState };
+  "userBrowser.present": { args: { bounds: BrowserBounds; visible: boolean }; result: void };
+  "userBrowser.navigate": {
+    args: { url?: string; action?: "back" | "forward" | "reload" | "stop" };
+    result: void;
+  };
+  "userBrowser.devtools": { args: void; result: void };
   /** Claude Code routines (through Claude Code's RemoteTrigger tool; each call costs a small model call). */
   "routines.list": { args: { refresh?: boolean }; result: { at: string; routines: Routine[] } };
   "routines.run": { args: { id: string }; result: void };
@@ -524,6 +538,8 @@ export interface HostEvents {
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };
+  "userBrowser.state": UserBrowserState;
+  "userBrowser.address": void;
   "browser.state": BrowserState;
   /** Routines changed (from Jig or a chat): reload them. */
   "routines.changed": void;

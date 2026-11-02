@@ -1,5 +1,14 @@
 # Status
 
+Native user browser (2026-11-02, D-225): Tools → Open Browser opens a Browser tab in the main panel,
+with direct Chromium rendering/input, navigation, stop/reload, zoom, developer tools and opening in
+the default browser. Claude’s browser keeps the existing offscreen tools/live view in the sidebar;
+the two pages have separate cookies and history. Native surfaces hide behind Jig menus/dialogs and
+when switching/closing tabs. Browser integration tests pass for native text/IME, address focus,
+history, overlay bounds, native Ctrl+W, Claude separation and existing screenshots/console/network.
+Reviewed the composed native/workbench screenshot; everyday browsing on the target machine remains
+to be tried.
+
 Meeting join feedback (2026-11-02, D-222): pre-join shows device and link errors inside the modal,
 and production media loads from a window-owned loopback server: ACS rejected `jig-app:` before
 device setup. The workbench keeps its normal origin and meeting IPC remains restricted to its owner.

@@ -120,6 +120,10 @@ settings, add-on permissions.
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
 | `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code's sign-in (`claude auth login`); when it ends, `claude.signIn` |
+| `userBrowser.state` | — | `UserBrowserState` | current window's native user page; separate from Claude |
+| `userBrowser.present` | `{ bounds: { x, y, width, height }, visible }` | — | native slot in CSS pixels; hidden for menus, dialogs and inactive tabs |
+| `userBrowser.navigate` | `{ url?, action? }` | — | http(s)/file URL or back/forward/reload/stop; starts without awaiting page load |
+| `userBrowser.devtools` | — | — | detached native page developer tools |
 | `browser.state` | — | `BrowserState` | Browser: open, url, title, loading, back/forward, size, error count (`docs/reference/browser.md`) |
 | `browser.watch` | `{ on }` | — | start/stop `browser.frame` events for a view |
 | `browser.navigate` | `{ url? , action? }` | `BrowserState` | open a URL (http, https, file), or `back` / `forward` / `reload` |
@@ -195,6 +199,8 @@ settings, add-on permissions.
 | `terminals.reveal` | `{ id }` | show this terminal (Claude started it from a chat) |
 | `claude.signIn` | `{ loggedIn, method? }` | the sign-in terminal ended: whether Claude Code is signed in now and how (never who); its terminal was closed if so (D-126) |
 | `routines.changed` | — | routines changed (from the tab or a chat): reload when shown |
+| `userBrowser.state` | `UserBrowserState` | owner window only: URL, title, loading, history and load error |
+| `userBrowser.address` | — | owner window only: native Ctrl/Cmd+L focuses its address field |
 | `browser.state` | `BrowserState` | Browser loaded, navigated, resized or logged an error |
 | `browser.frame` | `{ data, width, height }` | a JPEG of the page (base64), only while a view watches |
 | `browser.reveal` | — | Claude opened a page: show the browser view |
