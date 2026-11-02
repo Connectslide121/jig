@@ -61,8 +61,8 @@ other agent and edits this repository directly, never the in-app builder.
 
 ## Validate and package
 
-- Run `npm run check`. For changed runtime/UI paths, run the relevant Electron e2e tests with
-  the fake engine and temporary homes. Fix failures in scope before proceeding; don't skip checks.
+- Run `npm run check`, then the whole e2e suite with `npm run e2e` (parallel, a few minutes; it builds
+  first when stale). Every test must pass: fix failures in scope before proceeding; don't skip checks.
 - Run `npm run build` before packaging.
 - Build the NSIS installer on Windows without opening Explorer:
 
@@ -79,7 +79,7 @@ other agent and edits this repository directly, never the in-app builder.
 - After packaging, run `npx playwright test e2e/packaged.spec.ts` with `JIG_HIDDEN=1` in its
   environment. The test launches `win-unpacked/Jig.exe` using a temporary home and the fake
   engine. Require a passing test, not a skip; an older unpacked build is not evidence for this
-  release. Relevant source e2e tests run against the fresh build before packaging.
+  release. The full e2e suite runs against the fresh build before packaging.
 - Generate `apps/desktop/release/SHA256SUMS.txt` containing lowercase SHA-256 and basename for
   installer, blockmap and latest.yml, using `Get-FileHash` or Node crypto. Record installer size/hash
   and tested source SHA. Never publish an installer without its matching update metadata.

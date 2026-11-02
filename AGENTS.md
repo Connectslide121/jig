@@ -45,7 +45,8 @@ npm run dev            # Electron + Vite dev server with hot reload
 npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
 npm run check          # typecheck + lint + unit tests + design-token check — run before every commit
-npm run e2e            # build, then Playwright drives the real app (Linux needs xvfb-run)
+npm run e2e:changed    # the e2e specs your change needs (build when stale): after a change, < 1 min
+npm run e2e            # the whole e2e suite in parallel (~3-4 min): when releasing (Linux: xvfb-run)
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
@@ -197,6 +198,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`. A new
   fake-engine behaviour gets a row in the table in `docs/guides/testing.md`.
 - Never use real Claude credentials in tests.
+- **Run `npm run e2e:changed` after a change** that touches runtime/UI code; the full `npm run e2e` runs
+  when releasing (D-242). A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no
+  dependence on other tests or timing; keep each test short (the slowest sets the suite's time).
 
 ## Commits
 

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
 
 async function chat(page: import("@playwright/test").Page, jigHome: string) {
@@ -183,7 +184,8 @@ test("Try several ways: parallel attempts in worktrees, Claude judges, keep one"
   expect(git("branch", "--list", "jig/*").trim()).toBe("");
 });
 
-test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome }) => {
+/** A repository with a committed cart.ts, then changes: a debug line in it and a new discount.ts. */
+async function changedShop(page: Page, jigHome: string) {
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
@@ -197,12 +199,22 @@ test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome
   await writeFile(join(dir, "discount.ts"), "export const off = 0.1;\n");
   await hostCall(page, "projects.add", { path: dir });
 
+  return dir;
+}
+
+// One test per feature, so they run side by side.
+test("Check before committing finds debug output", async ({ page, jigHome }) => {
+  await changedShop(page, jigHome);
   // Check before committing finds the debug output.
   await page.keyboard.press("Control+Shift+G");
   await page.getByTestId("git-claude-menu").click();
   await page.getByRole("menuitem", { name: "Check before committing" }).click();
   await expect(page.getByTestId("git-findings")).toContainText("A console.log is left in.");
+});
 
+test("Walk me through the changes: a guided tour, file by file", async ({ page, jigHome }) => {
+  await changedShop(page, jigHome);
+  await page.keyboard.press("Control+Shift+G");
   // A guided tour of the changes.
   await page.getByTestId("git-claude-menu").click();
   await page.getByRole("menuitem", { name: "Walk me through the changes" }).click();
@@ -212,14 +224,20 @@ test("Tours, pre-commit check, chat to tool and standup", async ({ page, jigHome
   await tour.getByTestId("tour-next").click();
   await expect(tour.getByTestId("tour-current")).toContainText("discount.ts");
   await expect(tour.getByTestId("tour-hunk")).toContainText("+export const off = 0.1;");
+});
 
+test("Write my standup from the work done", async ({ page, jigHome }) => {
+  await changedShop(page, jigHome);
   // Standup.
   await page.getByTestId("goto-button").click();
   await page.getByTestId("goto-input").fill("Write my standup");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("standup-text")).toContainText("scripted standup");
   await page.keyboard.press("Escape");
+});
 
+test("Turn a chat into a tool: the builder gets what happened, in order", async ({ page, jigHome }) => {
+  await changedShop(page, jigHome);
   // Turn a chat into a tool: the builder gets what happened, in order.
   await page.keyboard.press("Control+N");
   await page.getByTestId("composer-input").fill("please write notes.txt");

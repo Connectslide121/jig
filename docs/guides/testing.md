@@ -3,11 +3,31 @@
 | Kind | Tool | Where | Run |
 |---|---|---|---|
 | Unit | Vitest | `*.test.ts` next to the code (`packages/*`, `apps/desktop/src/main`, `scripts`) | `npm test` |
-| End-to-end | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e` |
+| End-to-end, what a change needs | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e:changed` |
+| End-to-end, everything (releases) | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e` |
 | Design tokens | `scripts/check-tokens.ts` | renderer + add-ons | `npm run check:tokens` |
 | Everything fast | — | — | `npm run check` |
 
 ## End-to-end tests
+
+**Two ways to run them (D-242).**
+
+- `npm run e2e:changed` after a change: only the specs it needs, usually well under a minute. The
+  changed files are your uncommitted ones plus commits not yet pushed (`-- --since <ref>` for another
+  base; `-- --list` prints the choice without running). `scripts/e2e-select.ts` picks specs by the
+  rules in `e2e/affected.json` (source folders → specs), by the `data-testid`s a changed view renders
+  that a spec uses, and changed specs themselves; `smoke.spec.ts` always runs. Docs and unit tests run
+  nothing; fixtures, the Playwright config, the preload and the IPC router run everything; a file no
+  rule covers runs `fallback` and is named, so you can add a rule. A new spec needs a rule
+  (`scripts/e2e-select.test.ts` fails otherwise, and when a rule's glob matches no file).
+- `npm run e2e`, the whole suite: when releasing Jig (the release skill runs it). About 3–4 minutes.
+
+Both build first only when the build is stale (`scripts/build-if-stale.ts` keeps a stamp of the
+inputs in `apps/desktop/dist/.build-stamp`; `--force` rebuilds). Tests run side by side: one Electron
+per worker, a third of the cores (2–16; `JIG_E2E_WORKERS=n` to change), every test in its own temporary
+`JIG_HOME`. So a test must not depend on another or on timing: measure layout with `settledBox`
+(after panels finish their motion), and give fake work that a test talks to while it runs enough time.
+Keep tests short and focused (under ~30 s): the slowest single test sets how long the suite takes.
 
 `e2e/fixtures.ts` launches the **built** app (`apps/desktop/dist`) with:
 

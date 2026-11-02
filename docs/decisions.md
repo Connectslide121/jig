@@ -2745,6 +2745,20 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   one terminal and never changes the default. Each terminal row shows its shell's short name in a fixed
   column at the far right.
 
+## D-242: Fast e2e: parallel, only what a change needs, the whole suite when releasing
+
+- Jon: the full e2e suite took ~40 minutes, too long to run; it should be about a minute, and the full
+  suite runs only when publishing a release (no scheduled runs).
+- **Claude, on my own:** Playwright runs tests side by side (`fullyParallel`, a third of the cores,
+  2–16, `JIG_E2E_WORKERS`): every test already had its own Electron and temporary JIG_HOME. Measured
+  ~40 min sequential → ~4 min parallel. `npm run e2e:changed` runs only the specs a change needs
+  (uncommitted + unpushed files; `e2e/affected.json` rules, data-testids a changed view renders, changed
+  specs; smoke always), validated by unit tests so rules can't go stale. Builds run only when the inputs'
+  stamp changed. The release skill runs the whole suite. Long multi-format tests are split, because the
+  slowest single test sets the parallel run's length.
+- Fixing the 14 failing tests found two real Dialog bugs (a reopened dialog rendered as closing and
+  ignored Escape; a fading-out dialog swallowed the next shortcut), fixed in Dialog.tsx.
+
 ## D-243: A natural voice reads aloud: Kokoro on this computer
 
 - Jon: the system's voices sound flat and robotic; he wants a realistic voice like ElevenLabs without

@@ -13,19 +13,23 @@ async function preview(page: Page, name: string) {
   return tab;
 }
 
-test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagrams and code", async ({
-  page,
-  jigHome,
-}) => {
-  // One tab per format: more than the default minute on a busy machine.
-  test.setTimeout(120_000);
+/** A project with one file of every previewable kind, Git open (its rows open Preview). */
+async function previewProject(page: Page, jigHome: string) {
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
   await previewFolder(dir);
   await hostCall(page, "projects.add", { path: dir });
   await page.keyboard.press("Control+Shift+G");
+  return dir;
+}
 
+// Split by format so they run side by side.
+test("Preview: Markdown with a table, a Mermaid diagram and links to other files", async ({
+  page,
+  jigHome,
+}) => {
+  await previewProject(page, jigHome);
   // Markdown: rendered, table, Mermaid diagram, a link to another file opens its preview.
   const md = await preview(page, "docs/README.md");
   await expect(md.getByRole("heading", { name: "Shop" })).toBeVisible();
@@ -37,7 +41,10 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   await expect(
     page.locator("[data-tab-id]:not(.hidden)").getByRole("heading", { name: "Setup" }),
   ).toBeVisible();
+});
 
+test("Preview: CSV, JSON, notebooks and Excel", async ({ page, jigHome }) => {
+  await previewProject(page, jigHome);
   const csv = await preview(page, "orders.csv");
   await expect(csv.getByTestId("preview-table")).toContainText("3 rows · 3 columns");
   await expect(csv.getByTestId("preview-table")).toContainText("Ann, Ltd");
@@ -54,6 +61,12 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   await expect(nb.getByTestId("preview-notebook")).toContainText("Sales");
   await expect(nb.getByTestId("preview-notebook")).toContainText("3");
 
+  const xlsx = await preview(page, "budget.xlsx");
+  await expect(xlsx.getByTestId("preview-table")).toContainText("Servers");
+});
+
+test("Preview: HTML pages, and component templates open as source", async ({ page, jigHome }) => {
+  await previewProject(page, jigHome);
   const html = await preview(page, "page.html");
   const frame = page.frameLocator('[data-testid="preview-html"]');
   await expect(frame.locator("h1")).toHaveText("Static page");
@@ -76,12 +89,12 @@ test("Preview shows Markdown, tables, JSON, notebooks, HTML, PDF, Excel, diagram
   expect(await bracket.getAttribute("style")).toBeTruthy();
   await template.getByTestId("preview-mode-preview").click();
   await expect(template.getByTestId("preview-html")).toBeVisible();
+});
 
+test("Preview: PDF, diagrams, patches and code that follows edits", async ({ page, jigHome }) => {
+  const dir = await previewProject(page, jigHome);
   const pdfTab = await preview(page, "manual.pdf");
   await expect(pdfTab.getByTestId("preview-pdf")).toBeVisible();
-
-  const xlsx = await preview(page, "budget.xlsx");
-  await expect(xlsx.getByTestId("preview-table")).toContainText("Servers");
 
   const mmd = await preview(page, "flow.mmd");
   await expect(mmd.getByTestId("mermaid").locator("svg")).toBeVisible({ timeout: 15000 });

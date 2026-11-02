@@ -1,0 +1,226 @@
+{
+  "$comment": "Which e2e specs a change needs (npm run e2e:changed, scripts/e2e-select.ts). A changed file runs the specs of every rule it matches, plus specs that use a data-testid the file renders, plus changed specs themselves. `all` files run the whole suite; `ignore` files run nothing; other files with no match run `fallback`. Keep a rule per area when you add a spec.",
+  "always": ["smoke.spec.ts"],
+  "all": [
+    "e2e/fixtures.ts",
+    "e2e/global.d.ts",
+    "playwright.config.ts",
+    "package-lock.json",
+    "apps/desktop/package.json",
+    "apps/desktop/vite.config.ts",
+    "apps/desktop/src/preload/**",
+    "apps/desktop/src/main/index.ts",
+    "apps/desktop/src/main/ipc/router.ts"
+  ],
+  "ignore": [
+    "docs/**",
+    "**/*.md",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "scripts/**",
+    ".agents/**",
+    ".claude/**",
+    "skills/**",
+    "release/**",
+    "apps/desktop/build/**",
+    "apps/desktop/electron-builder.yml",
+    "e2e/affected.json",
+    "e2e/screenshots.spec.ts",
+    "e2e/packaged.spec.ts"
+  ],
+  "fallback": ["navigation.spec.ts", "workbench.spec.ts"],
+  "rules": [
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/about/**",
+        "apps/desktop/src/main/about/**",
+        "packages/sdk/src/slots.ts"
+      ],
+      "specs": ["about.spec.ts", "context.spec.ts"]
+    },
+    {
+      "files": ["apps/desktop/src/main/addons/**", "apps/desktop/src/renderer/addons/**", "packages/sdk/**"],
+      "specs": ["addons.spec.ts", "addon-scope.spec.ts", "share-addons.spec.ts", "gallery.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/ai/**",
+        "apps/desktop/src/main/tour/**",
+        "apps/desktop/src/main/digest/**",
+        "apps/desktop/src/renderer/features/tour/**",
+        "apps/desktop/src/renderer/features/digest/**"
+      ],
+      "specs": ["ai.spec.ts"]
+    },
+    {
+      "files": ["apps/desktop/src/main/browser/**", "apps/desktop/src/renderer/features/browser/**"],
+      "specs": ["browser.spec.ts", "user-browser.spec.ts", "tester.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/builder/**",
+        "apps/desktop/src/renderer/features/builder/**",
+        "apps/desktop/src/main/engine/fakeBuilder.ts"
+      ],
+      "specs": ["builder.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/engine/**",
+        "apps/desktop/src/main/sessions/**",
+        "apps/desktop/src/shared/engine.ts",
+        "apps/desktop/src/renderer/features/sessions/**"
+      ],
+      "specs": [
+        "chat.spec.ts",
+        "chat-parity.spec.ts",
+        "chat-changes.spec.ts",
+        "context.spec.ts",
+        "images.spec.ts",
+        "saved-chats.spec.ts",
+        "usage.spec.ts"
+      ]
+    },
+    { "files": ["apps/desktop/src/main/configure/**"], "specs": ["configure.spec.ts", "projects.spec.ts"] },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/preview/**",
+        "apps/desktop/src/main/files/**",
+        "packages/documents/**"
+      ],
+      "specs": ["preview.spec.ts", "editor.spec.ts", "images.spec.ts"]
+    },
+    {
+      "files": [
+        "addons/files/**",
+        "apps/desktop/src/renderer/features/files/**",
+        "apps/desktop/src/renderer/ui/FileIcon.tsx",
+        "apps/desktop/src/main/themes/fileIcons.ts"
+      ],
+      "specs": ["files.spec.ts", "file-icons.spec.ts"]
+    },
+    {
+      "files": ["addons/git/**", "apps/desktop/src/main/attempts/**"],
+      "specs": ["builtin-addons.spec.ts", "git-sync.spec.ts", "workspace.spec.ts", "images.spec.ts"]
+    },
+    {
+      "files": [
+        "addons/repos/**",
+        "addons/scripts/**",
+        "apps/desktop/src/main/scripts/**",
+        "apps/desktop/src/renderer/features/scripts/**"
+      ],
+      "specs": ["builtin-addons.spec.ts", "terminals.spec.ts"]
+    },
+    {
+      "files": ["apps/desktop/src/renderer/features/worktrees/**", "apps/desktop/src/main/worktrees/**"],
+      "specs": ["worktrees.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/learning/**",
+        "apps/desktop/src/main/learning/**",
+        "apps/desktop/src/main/activity/**",
+        "packages/learning/**",
+        "apps/desktop/src/shared/learning.ts"
+      ],
+      "specs": ["learning.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/links/**",
+        "apps/desktop/src/shared/links.ts",
+        "apps/desktop/src/main/links/**"
+      ],
+      "specs": ["links.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/meetings/**",
+        "apps/desktop/src/main/meetings/**",
+        "apps/desktop/src/shared/meetings.ts",
+        "apps/desktop/src/shared/meetingLayout.ts",
+        "addons/meetings/**"
+      ],
+      "specs": ["meetings.spec.ts"]
+    },
+    { "files": ["addons/notes/**"], "specs": ["notes.spec.ts"] },
+    { "files": ["addons/pipelines/**"], "specs": ["pipelines.spec.ts"] },
+    { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
+    { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts"] },
+    { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts"] },
+    {
+      "files": ["apps/desktop/src/renderer/features/projects/**", "apps/desktop/src/main/projects/**"],
+      "specs": ["projects.spec.ts", "navigation.spec.ts", "ux.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/routines/**",
+        "apps/desktop/src/renderer/features/artifacts/**",
+        "apps/desktop/src/main/routines/**",
+        "apps/desktop/src/main/artifacts/**",
+        "apps/desktop/src/main/engine/fakeCloud.ts"
+      ],
+      "specs": ["routines-artifacts.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/setup/**",
+        "apps/desktop/src/main/setup/**",
+        "apps/desktop/src/main/updates/**"
+      ],
+      "specs": ["setup.spec.ts", "updates.spec.ts"]
+    },
+    { "files": ["apps/launcher/**"], "specs": ["launcher.spec.ts"] },
+    {
+      "files": ["apps/desktop/src/renderer/features/skills/**", "apps/desktop/src/main/skills/**"],
+      "specs": ["skills.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/speech/**",
+        "apps/desktop/src/main/speech/**",
+        "apps/desktop/src/shared/speech.ts"
+      ],
+      "specs": ["speech.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/terminals/**",
+        "apps/desktop/src/main/terminals/**",
+        "apps/desktop/src/shared/terminals.ts",
+        "apps/desktop/src/shared/shellNames.ts"
+      ],
+      "specs": ["terminals.spec.ts", "terminal-shells.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/settings/**",
+        "packages/themes/**",
+        "apps/desktop/src/main/themes/**",
+        "apps/desktop/src/renderer/lib/theme.ts",
+        "apps/desktop/src/renderer/lib/style.ts",
+        "apps/desktop/src/renderer/styles/**"
+      ],
+      "specs": ["themes.spec.ts", "smoke.spec.ts", "workbench.spec.ts"]
+    },
+    {
+      "files": ["apps/desktop/src/renderer/features/usage/**", "apps/desktop/src/main/usage/**"],
+      "specs": ["usage.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/workbench/**",
+        "apps/desktop/src/shared/layout.ts",
+        "apps/desktop/src/main/layout/**",
+        "apps/desktop/src/renderer/features/goto/**",
+        "apps/desktop/src/renderer/features/home/**"
+      ],
+      "specs": ["workbench.spec.ts", "navigation.spec.ts", "split.spec.ts", "ux.spec.ts"]
+    },
+    {
+      "files": ["apps/desktop/src/renderer/ui/**"],
+      "specs": ["workbench.spec.ts", "navigation.spec.ts", "ux.spec.ts", "chat.spec.ts"]
+    }
+  ]
+}
