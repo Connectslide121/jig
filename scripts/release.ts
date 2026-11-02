@@ -122,11 +122,15 @@ try {
   fail((error as Error).message);
 }
 const subject = `Release Jig ${plan.version}`;
-const resuming = read("git", ["log", "-1", "--format=%s"]) === subject;
 const current = readVersions(root).current;
+// The release commit set the version; it may have been pushed and followed by other commits (a fix
+// for what stopped the release, or work committed meanwhile), so continue from HEAD while the
+// version is unpublished.
+const resuming = current === plan.version;
 if (resuming) {
-  if (current !== plan.version) fail(`HEAD is "${subject}" but the app version is ${current}.`);
-  console.log("The release commit is already there: continuing from it.");
+  if (!read("git", ["log", "--format=%s", "-200"]).split("\n").includes(subject))
+    fail(`The app version is already ${current}, but there is no "${subject}" commit.`);
+  console.log("The version is already set by the release commit: continuing from HEAD.");
 } else if (compareVersions(plan.version, current) <= 0)
   fail(`${plan.version} must be newer than ${current}.`);
 const remoteTag = read("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`]);

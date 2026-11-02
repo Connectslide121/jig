@@ -30,8 +30,8 @@ the notes. (Jon starts it with one click: the **Release Jig** workflow in Jig's 
    test, writes SHA256SUMS, tags and pushes atomically, uploads a draft, verifies the downloaded
    installer, publishes it as latest, checks the unauthenticated latest-release API, feed and
    installer, records the publication in docs/status.md and pushes that commit.
-5. On failure it stops and says why; fix the cause and run it again: it continues from the release
-   commit and an existing draft. Report the version, the reason for the bump, the link and notes.
+5. On failure it stops and says why; commit the fix and run it again: once the version is set it
+   continues from HEAD (fix commits after the release commit are fine) and an existing draft. Report the version, the reason for the bump, the link and notes.
 
 The sections below are what the script does and checks, for reviewing it or recovering by hand.
 
