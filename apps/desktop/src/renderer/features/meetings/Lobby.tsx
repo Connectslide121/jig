@@ -300,7 +300,7 @@ function EventCard({
       aria-label={`Join ${event.title}`}
       disabled={!event.joinUrl}
       onClick={() => onJoin(event)}
-      className={cn(card, "h-32 flex-col justify-between p-4")}
+      className={cn(card, "h-32 flex-col justify-between p-4", ongoing(event, now) && "border-accent")}
     >
       <div className="flex w-full items-center gap-2 text-sm tabular-nums">
         <span className="font-semibold">{clock(event.start)}</span>

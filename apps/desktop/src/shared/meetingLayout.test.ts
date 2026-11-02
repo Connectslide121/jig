@@ -18,13 +18,22 @@ describe("meeting layout", () => {
         sizes: { left: 300.4, right: -1, bottom: Number.NaN, other: 5 },
       }),
     ).toEqual({
-      panels: { transcript: { slot: "right" }, notes: { slot: "left", hidden: true } },
+      panels: {
+        people: { slot: "right", hidden: true },
+        transcript: { slot: "right" },
+        notes: { slot: "left", hidden: true },
+      },
       sizes: { left: 300 },
     });
   });
 
   it("lists a slot's visible panels in a fixed order", () => {
     expect(panelsIn(DEFAULT_MEETING_LAYOUT, "right")).toEqual(["transcript", "notes"]);
+    expect(panelsIn(setPanelHidden(DEFAULT_MEETING_LAYOUT, "people", false), "right")).toEqual([
+      "people",
+      "transcript",
+      "notes",
+    ]);
     const moved = movePanel(DEFAULT_MEETING_LAYOUT, "transcript", "left");
     expect(panelsIn(moved, "left")).toEqual(["transcript"]);
     expect(panelsIn(moved, "right")).toEqual(["notes"]);

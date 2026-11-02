@@ -1,8 +1,20 @@
-import { AlertTriangle, ListChecks, MessageSquareText, MoreHorizontal, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ListChecks,
+  MessageSquareText,
+  Mic,
+  MicOff,
+  MonitorUp,
+  MoreHorizontal,
+  Sparkles,
+  Video,
+  VideoOff,
+} from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
-import { Button, CountBadge, Empty, IconButton, Markdown, type MenuEntry, openMenuAt } from "../../ui";
+import { Button, CountBadge, cn, Empty, IconButton, Markdown, type MenuEntry, openMenuAt } from "../../ui";
 import { clock, initials } from "./format";
+import type { Person } from "./media";
 
 /** A panel's title bar: the same height everywhere, so panels side by side line up. */
 export function PanelHeader({
@@ -206,6 +218,46 @@ export function NotesPanel({
           </span>
         </Button>
       </div>
+    </section>
+  );
+}
+
+/** Everyone in the call, you first; mic, camera and presenting marks in fixed columns at the right. */
+export function PeoplePanel({ people, you, menu }: { people: Person[]; you: Person; menu?: MenuEntry[] }) {
+  const everyone = [you, ...[...people].sort((a, b) => a.name.localeCompare(b.name))];
+  return (
+    <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="People">
+      <PanelHeader title="People" detail={String(everyone.length)} menu={menu} />
+      <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+        {everyone.map((p) => (
+          <li key={p.id} className="flex h-11 items-center gap-3 rounded-md px-2 hover:bg-hover">
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-xs font-semibold",
+                p.speaking && "ring-2 ring-accent",
+              )}
+            >
+              {initials(p.name)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm">{p.name}</span>
+              {p.state !== "Connected" && (
+                <span className="block truncate text-xs text-muted">{p.state}</span>
+              )}
+            </span>
+            <span className="flex w-5 shrink-0 justify-center" title={p.screen ? "Presenting" : undefined}>
+              {p.screen && <MonitorUp className="size-4 text-accent" />}
+            </span>
+            <span className="flex w-5 shrink-0 justify-center" title={p.camera ? "Camera on" : "Camera off"}>
+              {p.camera ? <Video className="size-4 text-fg" /> : <VideoOff className="size-4 text-hint" />}
+            </span>
+            <span className="flex w-5 shrink-0 justify-center" title={p.muted ? "Muted" : "Microphone on"}>
+              {p.muted ? <MicOff className="size-4 text-hint" /> : <Mic className="size-4 text-fg" />}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

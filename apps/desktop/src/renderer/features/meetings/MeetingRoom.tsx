@@ -47,8 +47,8 @@ import {
 import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
 import { clock, dayAndTime } from "./format";
 import { Lobby, STATUS } from "./Lobby";
-import { type MediaState, MeetingMedia } from "./media";
-import { NotesPanel, TranscriptPanel } from "./Panels";
+import { INITIAL_MEDIA, type MediaState, MeetingMedia, selfPerson } from "./media";
+import { NotesPanel, PeoplePanel, TranscriptPanel } from "./Panels";
 import { SizedBox, Slot } from "./Slots";
 import { Stage } from "./Stage";
 
@@ -89,17 +89,9 @@ function Room() {
   const [ask, setAsk] = useState(false);
   const [review, setReview] = useState(false);
   const [sharing, setSharing] = useState<Array<{ id: string; name: string; thumbnail: string }>>();
-  const [mediaState, setMediaState] = useState<MediaState>({
-    state: "Not connected",
-    muted: true,
-    camera: false,
-    sharing: false,
-    participants: [],
-    hasVideo: false,
-  });
+  const [mediaState, setMediaState] = useState<MediaState>(INITIAL_MEDIA);
   const media = useRef<MeetingMedia | null>(null);
   media.current ??= new MeetingMedia((e) => setError(errorMessage(e)));
-  const attachCanvas = useCallback((element: HTMLDivElement | null) => media.current!.setCanvas(element), []);
   const refreshed = useRef(0);
   const reload = useCallback(async () => {
     const version = ++refreshed.current;
@@ -285,7 +277,9 @@ function Room() {
                 active={active}
                 media={mediaState}
                 fake={overview.fake}
-                attachCanvas={attachCanvas}
+                slot={(key) => media.current!.slot(key)}
+                peopleOpen={!layout.panels.people.hidden}
+                onPeople={() => changeLayout(setPanelHidden(layout, "people", !layout.panels.people.hidden))}
                 onMute={() => void run(() => media.current!.mute())}
                 onCamera={() => void run(() => media.current!.camera())}
                 onShare={() =>
@@ -485,6 +479,8 @@ function Room() {
 
   function panel(id: MeetingPanelId) {
     const r = active!;
+    if (id === "people")
+      return <PeoplePanel people={mediaState.people} you={selfPerson(mediaState)} menu={panelMenu(id)} />;
     return id === "transcript" ? (
       <TranscriptPanel record={r} live menu={panelMenu(id)} actions={askButton} />
     ) : (

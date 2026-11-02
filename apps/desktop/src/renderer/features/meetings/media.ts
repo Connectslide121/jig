@@ -5,6 +5,7 @@ import {
   Features,
   LocalVideoStream,
   type RemoteParticipant,
+  type RemoteVideoStream,
   type TeamsCall,
   type TeamsCallAgent,
   type TeamsCaptions,
@@ -15,22 +16,47 @@ import { AzureCommunicationTokenCredential, getIdentifierRawId } from "@azure/co
 import type { MeetingRecord } from "../../../shared/meetings";
 import { call } from "../../lib/host";
 
+/** Someone else in the call, as the tiles need them. */
+export interface Person {
+  id: string;
+  name: string;
+  state: string;
+  camera: boolean;
+  screen: boolean;
+  muted: boolean;
+  speaking: boolean;
+}
 export interface MediaState {
   state: string;
   muted: boolean;
   camera: boolean;
   sharing: boolean;
-  participants: string[];
-  hasVideo: boolean;
+  people: Person[];
 }
-const initial: MediaState = {
+export const INITIAL_MEDIA: MediaState = {
   state: "Not connected",
   muted: true,
   camera: false,
   sharing: false,
-  participants: [],
-  hasVideo: false,
+  people: [],
 };
+const initial = INITIAL_MEDIA;
+
+/** You, as a tile and a row in People. */
+export function selfPerson(media: MediaState): Person {
+  return {
+    id: "local",
+    name: "You",
+    state: "Connected",
+    camera: media.camera,
+    screen: media.sharing,
+    muted: media.muted,
+    speaking: false,
+  };
+}
+
+/** Video slots: `video:<id>` a person's camera, `screen:<id>` what they share, `local` your camera. */
+type SlotKey = string;
 
 /** One media owner per dedicated window. React views may rerender without touching the call. */
 export class MeetingMedia {
@@ -42,14 +68,18 @@ export class MeetingMedia {
   private record?: MeetingRecord;
   private captions?: TeamsCaptions;
   private video?: LocalVideoStream;
-  private renderers: VideoStreamRenderer[] = [];
+  private slots = new Map<SlotKey, HTMLElement>();
+  private slotRefs = new Map<SlotKey, (element: HTMLElement | null) => void>();
+  private views = new Map<
+    SlotKey,
+    { stream: RemoteVideoStream | LocalVideoStream; renderer: VideoStreamRenderer; target?: HTMLElement }
+  >();
   private preview?: VideoStreamRenderer;
   private cameraDevice?: VideoDeviceInfo;
   private previewVersion = 0;
   private participantCleanup: Array<() => void> = [];
   private listeners = new Set<(state: MediaState) => void>();
   private state = initial;
-  private paintVersion = 0;
   private fakeTimer?: ReturnType<typeof setInterval>;
   private fakeSequence = 0;
   private captionsStarting = false;
@@ -57,7 +87,6 @@ export class MeetingMedia {
   private spokenLanguage = "en-us";
   private statusChain: Promise<unknown> = Promise.resolve();
   private captionChain: Promise<unknown> = Promise.resolve();
-  private canvas?: HTMLElement;
   constructor(private readonly error: (error: unknown) => void) {}
   subscribe(listener: (state: MediaState) => void): () => void {
     this.listeners.add(listener);
@@ -132,49 +161,68 @@ export class MeetingMedia {
       if (target) target.replaceChildren(view.target);
     } else if (target) target.replaceChildren();
   }
-  setCanvas(target: HTMLElement | null): void {
-    this.canvas = target ?? undefined;
-    if (target) void this.paint();
+  /** A stable ref callback for a tile's video slot; the view follows the stream, not React renders. */
+  slot(key: SlotKey): (element: HTMLElement | null) => void {
+    let ref = this.slotRefs.get(key);
+    if (!ref) {
+      ref = (element) => {
+        if (element) this.slots.set(key, element);
+        else this.slots.delete(key);
+        void this.render();
+      };
+      this.slotRefs.set(key, ref);
+    }
+    return ref;
   }
-  private async paint(): Promise<void> {
-    const version = ++this.paintVersion;
-    for (const r of this.renderers) r.dispose();
-    this.renderers = [];
-    const target = this.canvas;
-    if (!target) return;
-    target.replaceChildren();
-    if (!this.active) return;
-    const streams = this.active.remoteParticipants.flatMap((p) =>
-      p.videoStreams
-        .filter((v) => v.isAvailable)
-        .map((stream) => ({ stream, name: p.displayName || "Participant" })),
-    );
-    const sharing = streams.filter((s) => s.stream.mediaStreamType === "ScreenSharing");
-    this.update({ hasVideo: streams.length > 0 });
-    for (const { stream, name } of (sharing.length ? sharing : streams).slice(0, 6)) {
-      const renderer = new VideoStreamRenderer(stream);
-      this.renderers.push(renderer);
+  private streamFor(key: SlotKey): RemoteVideoStream | LocalVideoStream | undefined {
+    const call = this.active;
+    if (!call) return undefined;
+    if (key === "local") return call.localVideoStreams.find((s) => s.mediaStreamType === "Video");
+    const [kind, ...rest] = key.split(":");
+    const id = rest.join(":");
+    const person = call.remoteParticipants.find((p) => getIdentifierRawId(p.identifier) === id);
+    const type = kind === "screen" ? "ScreenSharing" : "Video";
+    return person?.videoStreams.find((v) => v.mediaStreamType === type && v.isAvailable);
+  }
+  /** Puts each available stream into its tile's slot; drops views whose stream or tile went away. */
+  private async render(): Promise<void> {
+    for (const [key, view] of this.views) {
+      const slot = this.slots.get(key);
+      if (!slot || this.streamFor(key) !== view.stream) {
+        view.renderer.dispose();
+        this.views.delete(key);
+      } else if (view.target && view.target.parentElement !== slot) slot.replaceChildren(view.target);
+    }
+    for (const key of this.slots.keys()) {
+      if (this.views.has(key)) continue;
+      const stream = this.streamFor(key);
+      if (!stream) continue;
+      const entry: { stream: typeof stream; renderer: VideoStreamRenderer; target?: HTMLElement } = {
+        stream,
+        renderer: new VideoStreamRenderer(stream),
+      };
+      this.views.set(key, entry);
       try {
-        const view = await renderer.createView({ scalingMode: "Fit" });
-        if (version !== this.paintVersion) {
-          renderer.dispose();
+        const view = await entry.renderer.createView({
+          scalingMode: key.startsWith("screen:") ? "Fit" : "Crop",
+        });
+        if (this.views.get(key) !== entry) {
+          view.dispose();
           continue;
         }
-        const tile = document.createElement("div");
-        tile.className = "relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg bg-surface";
-        tile.setAttribute("aria-label", name);
-        tile.append(view.target);
-        target.append(tile);
+        entry.target = view.target;
+        this.slots.get(key)?.replaceChildren(view.target);
       } catch (error) {
-        if (version === this.paintVersion) this.error(error);
+        if (this.views.get(key) === entry) {
+          this.views.delete(key);
+          entry.renderer.dispose();
+          this.error(error);
+        }
       }
     }
   }
   private watchParticipant(p: RemoteParticipant): void {
-    const sync = () => {
-      this.sync();
-      void this.paint();
-    };
+    const sync = () => this.sync();
     const streams = () => {
       for (const stream of p.videoStreams) {
         stream.on("isAvailableChanged", sync);
@@ -184,10 +232,16 @@ export class MeetingMedia {
     };
     p.on("videoStreamsUpdated", streams);
     p.on("stateChanged", sync);
+    p.on("isMutedChanged", sync);
+    p.on("isSpeakingChanged", sync);
+    p.on("displayNameChanged", sync);
     streams();
     this.participantCleanup.push(() => {
       p.off("videoStreamsUpdated", streams);
       p.off("stateChanged", sync);
+      p.off("isMutedChanged", sync);
+      p.off("isSpeakingChanged", sync);
+      p.off("displayNameChanged", sync);
     });
   }
   private sync(): void {
@@ -198,8 +252,17 @@ export class MeetingMedia {
       muted: c.isMuted,
       camera: c.localVideoStreams.some((s) => s.mediaStreamType === "Video"),
       sharing: c.isScreenSharingOn,
-      participants: c.remoteParticipants.map((p) => `${p.displayName || "Participant"} · ${p.state}`),
+      people: c.remoteParticipants.map((p) => ({
+        id: getIdentifierRawId(p.identifier),
+        name: p.displayName || "Participant",
+        state: p.state,
+        camera: p.videoStreams.some((v) => v.mediaStreamType === "Video" && v.isAvailable),
+        screen: p.videoStreams.some((v) => v.mediaStreamType === "ScreenSharing" && v.isAvailable),
+        muted: p.isMuted,
+        speaking: p.isSpeaking,
+      })),
     });
+    void this.render();
   }
   cancelPreview(): void {
     this.previewVersion++;
@@ -223,7 +286,26 @@ export class MeetingMedia {
           state: "Connected",
           muted: options.muted,
           camera: false,
-          participants: ["Alex · Connected", "Sam · Connected"],
+          people: [
+            {
+              id: "alex",
+              name: "Alex",
+              state: "Connected",
+              camera: true,
+              screen: false,
+              muted: false,
+              speaking: false,
+            },
+            {
+              id: "sam",
+              name: "Sam",
+              state: "Connected",
+              camera: false,
+              screen: false,
+              muted: true,
+              speaking: false,
+            },
+          ],
         });
         this.status("connected", "Capturing live captions (test)");
         const texts = [
@@ -242,6 +324,13 @@ export class MeetingMedia {
             text: texts[seq % texts.length]!,
             final: true,
           };
+          this.update({
+            people: this.state.people.map((p) => ({
+              ...p,
+              speaking: p.id === caption.speakerId,
+              screen: p.id === "sam" ? seq >= 8 : p.screen,
+            })),
+          });
           this.captionChain = this.captionChain
             .then(() => call("meetings.caption", { id: record.id, caption }))
             .catch(this.error);
@@ -282,7 +371,6 @@ export class MeetingMedia {
       c.on("remoteParticipantsUpdated", (event) => {
         for (const p of event.added) this.watchParticipant(p);
         this.sync();
-        void this.paint();
       });
       for (const p of c.remoteParticipants) this.watchParticipant(p);
       state();
@@ -391,11 +479,10 @@ export class MeetingMedia {
   private async dispose(): Promise<void> {
     clearInterval(this.fakeTimer);
     this.fakeTimer = undefined;
-    this.paintVersion++;
     for (const fn of this.participantCleanup) fn();
     this.participantCleanup = [];
-    for (const r of this.renderers) r.dispose();
-    this.renderers = [];
+    for (const view of this.views.values()) view.renderer.dispose();
+    this.views.clear();
     this.preview?.dispose();
     this.preview = undefined;
     this.video?.dispose();
@@ -410,6 +497,6 @@ export class MeetingMedia {
     await this.client?.dispose().catch(this.error);
     this.client = undefined;
     this.deviceManager = undefined;
-    this.canvas?.replaceChildren();
+    for (const slot of this.slots.values()) slot.replaceChildren();
   }
 }

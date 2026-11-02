@@ -52,8 +52,8 @@ export function SizedBox({
 }
 
 /**
- * One of the room's slots. Empty, it isn't rendered at all; with two panels, the first gets a
- * remembered share and a handle, the second the rest.
+ * One of the room's slots. Empty, it isn't rendered at all; with several panels, each but the last
+ * gets a remembered share and a handle, the last one the rest.
  */
 export function Slot({
   slot,
@@ -70,7 +70,7 @@ export function Slot({
   if (!panels.length) return null;
   const across = slot === "bottom";
   const edge: ResizeEdge = slot === "left" ? "right" : slot === "right" ? "left" : "top";
-  const [first, second] = panels;
+  const splits: MeetingSizeKey[] = [`${slot}.split`, `${slot}.split2`];
   return (
     <SizedBox
       layout={layout}
@@ -87,23 +87,25 @@ export function Slot({
       )}
     >
       <div className={cn("flex size-full min-h-0 min-w-0", !across && "flex-col")}>
-        {second ? (
-          <>
+        {panels.map((id, index) =>
+          index === panels.length - 1 ? (
+            <div key={id} className="flex min-h-0 min-w-0 flex-1">
+              {render(id)}
+            </div>
+          ) : (
             <SizedBox
+              key={id}
               layout={layout}
-              sizeKey={`${slot}.split`}
+              sizeKey={splits[index]!}
               edge={across ? "right" : "bottom"}
-              min={across ? 260 : 140}
+              min={across ? 240 : 120}
               onResize={onResize}
-              label={`Resize ${first} and ${second}`}
+              label={`Resize ${id}`}
               className={across ? "border-r border-line" : "border-b border-line"}
             >
-              {render(first!)}
+              {render(id)}
             </SizedBox>
-            <div className="flex min-h-0 min-w-0 flex-1">{render(second)}</div>
-          </>
-        ) : (
-          render(first!)
+          ),
         )}
       </div>
     </SizedBox>

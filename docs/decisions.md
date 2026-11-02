@@ -2516,3 +2516,10 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   Monday–Sunday columns (Week, this and next week); saved meetings are cards with caption count,
   notes and open actions. Every card is the button. The test service returns a week of sample
   meetings so the views can be tested.
+- Call area, after Jon's feedback (see everyone while someone shares, see people without a camera,
+  "like teams handles it"; no profile photos): every participant and you get a tile, video when
+  their camera is on, initials otherwise, muted and speaking marks. Gallery tiles are sized to the
+  biggest 16:9 that fits. A presenter's screen fills the area with all tiles in a strip beside it.
+  The media owner renders each stream into its tile's slot (`slot(key)`, stable ref callbacks), so
+  React re-renders don't recreate video views. People is a third panel (hidden by default; the
+  participant count toggles it); a slot can hold all three, each split remembered.

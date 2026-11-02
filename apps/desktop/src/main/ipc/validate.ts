@@ -67,7 +67,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .strict(),
   "meetings.layout": z
     .object({
-      panels: z.object({ transcript: meetingPanel, notes: meetingPanel }).strict(),
+      panels: z.object({ people: meetingPanel, transcript: meetingPanel, notes: meetingPanel }).strict(),
       sizes: z.partialRecord(z.enum(MEETING_SIZES), z.number().min(0).max(10_000)),
     })
     .strict(),

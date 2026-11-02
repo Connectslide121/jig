@@ -4,7 +4,10 @@ Meeting window screens (2026-11-02, D-221): the window now has a lobby (a large 
 next 14 days as cards with an Agenda | Week toggle, saved meetings as cards; every card is clickable), a live room and a saved meeting's review. In the live room the call is
 the main area; Transcript and Notes go in the left, right or bottom slot from their ⋯ menus, share
 a slot with a resizable split, can be hidden or reset from Layout, and the layout is remembered.
-Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
+The call shows everyone like Teams: a gallery of tiles (camera
+when on, initials when off, muted mic, a ring while speaking, you included); when someone presents,
+their screen gets the space with everyone's tiles in a strip beside it. People (hidden by default,
+toggled from the participant count) is a third movable panel. Leaving a call opens its review (transcript, notes, Ask Claude, Open in Teams). A stopped chat turn
 now shows "Stopped" instead of Claude Code's red diagnostic, and Meetings sits in the Chats menu.
 
 Automatic source cleanup (2026-11-02, D-220): fresh Claude Code/Jig chats opened in this repository

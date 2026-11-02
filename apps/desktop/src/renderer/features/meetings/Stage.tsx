@@ -11,11 +11,11 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MeetingRecord } from "../../../shared/meetings";
 import { Button, cn, openMenuAt } from "../../ui";
 import { elapsed, initials } from "./format";
-import type { MediaState } from "./media";
+import { type MediaState, type Person, selfPerson } from "./media";
 
 /**
  * The call's video area. Its size never depends on the call: idle, it explains itself; live, the
@@ -25,7 +25,9 @@ export function Stage({
   active,
   media,
   fake,
-  attachCanvas,
+  slot,
+  peopleOpen,
+  onPeople,
   onMute,
   onCamera,
   onShare,
@@ -36,7 +38,10 @@ export function Stage({
   active?: MeetingRecord;
   media: MediaState;
   fake: boolean;
-  attachCanvas(element: HTMLDivElement | null): void;
+  /** A tile's video slot (`video:<id>`, `screen:<id>`, `local`); the media owner fills it. */
+  slot(key: string): (element: HTMLElement | null) => void;
+  peopleOpen: boolean;
+  onPeople(): void;
   onMute(): void;
   onCamera(): void;
   onShare(): void;
@@ -44,45 +49,42 @@ export function Stage({
   onRetryCaptions(): void;
   onLeave(): void;
 }) {
-  const people = media.participants.map((p) => {
-    const [name = "Participant", state = ""] = p.split(" · ");
-    return { name, state };
-  });
+  const people = media.people;
+  const presenter = people.find((p) => p.screen);
+  // Your own share isn't drawn here (you see your screen already), so your tile never presents.
+  const you: Person = { ...selfPerson(media), screen: false };
+  const everyone = [...people, you];
   return (
     <div className="relative h-full overflow-hidden bg-canvas">
-      <div ref={attachCanvas} className="flex h-full min-h-0 gap-2 overflow-hidden p-3" />
       {!active ? (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
           <span className="flex size-12 items-center justify-center rounded-full bg-surface text-hint">
             <Video className="size-6" />
           </span>
           <div className="text-base font-medium">No meeting in progress</div>
-          <p className="max-w-sm text-sm text-muted">
-            Join from your calendar or paste a Teams link. Video and shared screens show here.
-          </p>
+        </div>
+      ) : presenter ? (
+        // Someone presents: their screen gets the space, everyone stays visible in a strip beside it.
+        <div className="flex h-full gap-3 px-3 pt-13 pb-20">
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl bg-surface">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
+              <MonitorUp className="size-8 text-hint" />
+              {presenter.name}'s screen
+            </div>
+            <div ref={slot(`screen:${presenter.id}`)} className="absolute inset-0 *:size-full" />
+            <span className="absolute bottom-2 left-2 flex h-6 items-center gap-1.5 rounded-md bg-elevated px-2 text-xs shadow-card">
+              <MonitorUp className="size-3.5 text-accent" />
+              {presenter.name} is presenting
+            </span>
+          </div>
+          <div className="flex w-1/4 max-w-64 min-w-40 shrink-0 flex-col gap-2 overflow-y-auto p-0.5">
+            {everyone.map((p) => (
+              <Tile key={p.id} person={p} slot={slot} className="aspect-video w-full shrink-0" />
+            ))}
+          </div>
         </div>
       ) : (
-        !media.hasVideo && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 pb-20">
-            {people.length ? (
-              <div className="flex max-w-full flex-wrap items-start justify-center gap-6">
-                {people.slice(0, 8).map((p, index) => (
-                  <div key={`${p.name}-${index}`} className="flex w-24 flex-col items-center gap-2">
-                    <span className="flex size-16 items-center justify-center rounded-full bg-raised text-lg font-semibold text-fg shadow-card">
-                      {initials(p.name)}
-                    </span>
-                    <span className="w-full truncate text-center text-sm" title={p.name}>
-                      {p.name}
-                    </span>
-                    <span className="-mt-1.5 w-full truncate text-center text-xs text-muted">{p.state}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="text-sm text-muted">Waiting for others to join…</span>
-            )}
-          </div>
-        )
+        <Gallery people={everyone} slot={slot} waiting={!people.length} />
       )}
       {active && (
         <>
@@ -91,13 +93,20 @@ export function Stage({
             <span className="font-medium">{media.state === "Connected" ? "Live" : media.state}</span>
             <Elapsed from={active.startedAt} />
           </div>
-          <div
-            className="absolute top-3 right-3 flex h-7 items-center gap-1.5 rounded-md bg-elevated px-2 text-xs shadow-card"
-            title={people.map((p) => `${p.name} (${p.state})`).join("\n") || "No one else yet"}
+          <button
+            type="button"
+            aria-label={peopleOpen ? "Hide people" : "Show people"}
+            aria-pressed={peopleOpen}
+            title={peopleOpen ? "Hide people" : "Show people"}
+            onClick={onPeople}
+            className={cn(
+              "absolute top-3 right-3 flex h-7 items-center gap-1.5 rounded-md px-2 text-xs shadow-card transition-colors",
+              peopleOpen ? "bg-accent text-on-accent hover:bg-accent-hover" : "bg-elevated hover:bg-hover",
+            )}
           >
-            <Users className="size-3.5 text-muted" />
+            <Users className="size-3.5" />
             <span className="tabular-nums">{people.length + 1}</span>
-          </div>
+          </button>
           <div className="absolute inset-x-0 bottom-3 flex justify-center">
             <div className="flex items-center gap-1 rounded-xl border border-line bg-elevated p-1.5 shadow-popover">
               <DockButton
@@ -191,4 +200,91 @@ function Elapsed({ from }: { from: string }) {
     return () => clearInterval(timer);
   }, []);
   return <span className="min-w-8 text-muted tabular-nums">{elapsed(from, now)}</span>;
+}
+
+/** Everyone in a grid of equal tiles, sized to fit the stage like Teams' gallery. */
+function Gallery({
+  people,
+  slot,
+  waiting,
+}: {
+  people: Person[];
+  slot(key: string): (element: HTMLElement | null) => void;
+  waiting: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setBox({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  // The column count that gives the biggest 16:9 tiles in this box.
+  const gap = 12;
+  let best = { columns: 1, width: 0 };
+  for (let columns = 1; columns <= people.length; columns++) {
+    const rows = Math.ceil(people.length / columns);
+    const width = Math.min(
+      (box.width - gap * (columns - 1)) / columns,
+      ((box.height - gap * (rows - 1)) / rows) * (16 / 9),
+    );
+    if (width > best.width) best = { columns, width };
+  }
+  return (
+    <div ref={ref} className="absolute inset-x-3 top-13 bottom-20">
+      {waiting && (
+        <div className="absolute inset-x-0 -top-10 flex h-7 justify-center text-sm text-muted">
+          Waiting for others to join…
+        </div>
+      )}
+      <div className="flex h-full flex-wrap content-center items-center justify-center gap-3">
+        {people.map((p) => (
+          <Tile key={p.id} person={p} slot={slot} style={{ width: Math.max(0, Math.floor(best.width)) }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One person: their camera when it's on, otherwise their initials; name, muted mic and a ring while speaking. */
+function Tile({
+  person,
+  slot,
+  className,
+  style,
+}: {
+  person: Person;
+  slot(key: string): (element: HTMLElement | null) => void;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const key = person.id === "local" ? "local" : `video:${person.id}`;
+  return (
+    <div
+      role="group"
+      aria-label={person.name}
+      style={style}
+      className={cn(
+        "relative aspect-video overflow-hidden rounded-xl bg-surface transition-shadow",
+        person.speaking && "ring-2 ring-accent",
+        className,
+      )}
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="flex size-16 items-center justify-center rounded-full bg-raised text-lg font-semibold shadow-card">
+          {initials(person.name)}
+        </span>
+      </div>
+      {person.camera && <div ref={slot(key)} className="absolute inset-0 *:size-full" />}
+      <span className="absolute bottom-2 left-2 flex h-6 max-w-full items-center gap-1.5 rounded-md bg-elevated px-2 text-xs shadow-card">
+        {person.muted && <MicOff className="size-3.5 shrink-0 text-muted" />}
+        <span className="truncate">{person.name}</span>
+        {person.state !== "Connected" && <span className="shrink-0 text-muted">· {person.state}</span>}
+      </span>
+    </div>
+  );
 }

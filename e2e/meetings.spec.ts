@@ -68,6 +68,17 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/live-layout.png",
     });
+    // Everyone has a tile; People opens beside the call; a presenter's screen gets the space, tiles stay.
+    await expect(room.getByRole("group", { name: "Sam" })).toBeVisible();
+    await room.getByRole("button", { name: "Show people", exact: true }).click();
+    await expect(room.getByRole("region", { name: "People" })).toContainText("Alex");
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/people.png" });
+    await expect(room.getByText("Sam is presenting")).toBeVisible({ timeout: 15_000 });
+    await expect(room.getByRole("group", { name: "Alex" })).toBeVisible();
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/presenting.png",
+    });
     const before = await overview();
     const id = before.activeId!;
     const geometry = await transcript.boundingBox();
