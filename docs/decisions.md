@@ -2662,3 +2662,13 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   Catch join failures in the room itself: the prejoin modal is already unmounted after submission.
   Show Waiting for others only after Connected; do not label the self tile Connected prematurely.
   Live meeting participation with the corrected options still requires real-machine acceptance.
+
+## D-235: Hand MSAL the latest token cache on every access
+
+- Jon reports Join closing back to the lobby with "Reconnect your Microsoft account from Meetings", and
+  Connect opening two "connected" browser tabs. Root cause: MSAL Node 7 `overwriteCache()` clears memory
+  before each silent request and restores from what `beforeCacheAccess` deserializes; D-232's plugin read
+  the file once, so the stale (often empty) snapshot replaced a fresh sign-in and silent calls always failed.
+- **Claude, on my own:** the plugin keeps the latest serialized cache in memory and deserializes it on every
+  access, persisting it encrypted as before (memory-only when safeStorage is unavailable). Silent failures
+  log only MSAL's error code, never its message or tokens. Teams desktop being in the same call is unrelated.

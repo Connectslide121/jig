@@ -16,6 +16,12 @@ Join handling also waits for Connected/InLobby and reports timeout/connection fa
 Type checking, lint, design-token checks and production build passed; further tests were explicitly skipped by Jon.
 Real corrected meeting join, sign-in restoration and installed update/restart acceptance remain pending.
 
+Meeting sign-in fix (2026-11-02, D-235): Join failed with "Reconnect your Microsoft account" and
+Connect opened two browser tabs. The MSAL cache plugin only loaded the encrypted file once, but MSAL clears
+its memory before every silent request, so a fresh sign-in was wiped and every silent token failed. The
+plugin now hands back the latest cache on each access; silent failures log MSAL's error code only.
+Needs real-machine acceptance: Connect should open one tab and Join should no longer bounce to the lobby.
+
 Jig 0.1.1 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.1),
 source/tag `1555bb10d6b98e215495499bd81fc7f1b0abd5af`. Public unauthenticated latest-release discovery
 returns v0.1.1 and the installer download returns HTTP 200. The installer is 259,395,400 bytes;

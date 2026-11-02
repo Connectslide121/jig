@@ -7,9 +7,12 @@ import { type AccountInfo, PublicClientApplication, type TokenCacheContext } fro
 import { safeStorage, shell } from "electron";
 import { JigError } from "../../shared/ipc";
 import type { MeetingEvent, MeetingSettings } from "../../shared/meetings";
+import { logger } from "../log";
 
 import { writeText } from "../state/jsonStore";
 import { paths } from "../state/paths";
+
+const log = logger("meetings");
 
 const callingScopes = [
   "https://auth.msft.communication.azure.com/Teams.ManageCalls",
@@ -72,6 +75,10 @@ export class MeetingAuth {
     const file = this.cacheFile();
     const epoch = this.epoch;
     this.cachedFile = file;
+    // MSAL clears its in-memory cache before every silent request and rebuilds it from what
+    // beforeCacheAccess deserializes, so the latest state must be handed back on every access,
+    // not only the file's contents at first load (otherwise a fresh sign-in is wiped).
+    let latest: string | undefined;
     let loaded: Promise<void> | undefined;
     const protectedStorage = () =>
       safeStorage.isEncryptionAvailable() &&
@@ -84,17 +91,19 @@ export class MeetingAuth {
               if (!file || !protectedStorage() || this.epoch !== epoch) return;
               try {
                 const encoded = await readFile(file, "utf8");
-                const serialized = safeStorage.decryptString(Buffer.from(encoded, "base64"));
-                if (this.epoch === epoch) context.tokenCache.deserialize(serialized);
+                latest ??= safeStorage.decryptString(Buffer.from(encoded, "base64"));
               } catch {
                 /* No plaintext fallback and no credential-bearing error logging. */
               }
             })();
             await loaded;
+            if (latest && this.epoch === epoch) context.tokenCache.deserialize(latest);
           },
           afterCacheAccess: async (context: TokenCacheContext) => {
-            if (!context.cacheHasChanged || !file || !protectedStorage() || this.epoch !== epoch) return;
-            const encrypted = safeStorage.encryptString(context.tokenCache.serialize()).toString("base64");
+            if (!context.cacheHasChanged || this.epoch !== epoch) return;
+            latest = context.tokenCache.serialize();
+            if (!file || !protectedStorage()) return;
+            const encrypted = safeStorage.encryptString(latest).toString("base64");
             this.persisting = writeText(file, encrypted);
             await this.persisting;
           },
@@ -112,7 +121,11 @@ export class MeetingAuth {
     if (this.account) {
       try {
         return (await client.acquireTokenSilent({ account: this.account, scopes })).accessToken;
-      } catch {
+      } catch (error) {
+        // Only MSAL's error code: its messages can carry account details.
+        log.warn("Silent Microsoft token request failed", {
+          code: (error as { errorCode?: string }).errorCode ?? "unknown",
+        });
         if (!interactive)
           throw new JigError("meeting_signin", "Reconnect your Microsoft account from Meetings");
       }
