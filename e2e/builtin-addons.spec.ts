@@ -229,7 +229,6 @@ test("Scripts: a group starts and stops its scripts together", async ({ page, ji
   await expect(group).toContainText("2 of 2 running");
   await view.getByTestId("scripts-group-stop-Tools").click();
   await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
-
 });
 
 test("Scripts: All scripts folds, hidden scripts leave the tree, the filter finds one", async ({
