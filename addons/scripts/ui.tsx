@@ -35,6 +35,7 @@ import {
   MoreHorizontal,
   Package,
   Play,
+  RotateCw,
   Server,
   Square,
   SquareTerminal,
@@ -115,6 +116,8 @@ const isRunning = (m: Model, l: Located) => m.running.has(runKey(l.project.id, l
 const run = (m: Model, l: Located) =>
   safe(m.ctx, l.script.name, () => m.ctx.scripts.run(l.project.id, l.script.id));
 const stop = (m: Model, l: Located) => m.ctx.scripts.stop(l.project.id, l.script.id);
+const restart = (m: Model, l: Located) =>
+  safe(m.ctx, l.script.name, () => m.ctx.scripts.restart(l.project.id, l.script.id));
 
 /** The add-to-group submenu for a script: your groups (ticked when it's in), and New group…. */
 function groupSubmenu(m: Model, l: Located) {
@@ -157,6 +160,7 @@ function scriptMenu(m: Model, l: Located, e: MouseEvent, inGroup?: ScriptGroup) 
         : { label: "Run", icon: "play", onSelect: () => void run(m, l) },
       ...(r
         ? [
+            { label: "Restart", icon: "rotate-cw", onSelect: () => void restart(m, l) },
             {
               label: "Show its terminal",
               icon: "square-terminal",
@@ -259,14 +263,31 @@ function ScriptRow({
         {context ? `${l.pkg} · ${l.where}` : (l.script.detail ?? l.script.command)}
       </span>
       {hidden && <EyeOff className="size-3 shrink-0 text-hint" />}
+      {/* Fixed slots (an empty one when it doesn't apply), so every row's text ends at the same place. */}
       <span className="invisible flex shrink-0 items-center group-hover:visible group-focus-within:visible">
-        {l.script.url && on && (
+        {on ? (
+          <IconButton
+            icon={RotateCw}
+            size="sm"
+            label={`Restart ${l.script.name}`}
+            data-testid="script-restart"
+            onClick={(e) => {
+              e.stopPropagation();
+              void restart(m, l);
+            }}
+          />
+        ) : (
+          <span className="size-7" />
+        )}
+        {l.script.url && on ? (
           <IconButton
             icon={ExternalLink}
             size="sm"
             label={`Open ${l.script.url}`}
             onClick={() => m.ctx.openExternal(l.script.url!)}
           />
+        ) : (
+          <span className="size-7" />
         )}
         <IconButton
           icon={MoreHorizontal}
@@ -411,6 +432,15 @@ function GroupCard({
           >
             {running.length ? "Start the rest" : "Start"}
           </Button>
+        )}
+        {running.length > 0 && (
+          <IconButton
+            icon={RotateCw}
+            size="sm"
+            label={`Restart the running scripts in ${name}`}
+            onClick={() => void Promise.all(running.map((l) => restart(m, l)))}
+            data-testid={`scripts-group-restart-${id}`}
+          />
         )}
         {running.length > 0 && (
           <Button

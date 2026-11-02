@@ -222,11 +222,14 @@ test("Scripts: a group starts and stops its scripts together", async ({ page, ji
   await expect(group.getByTestId("scripts-addon-serve")).toBeVisible();
   await expect(group.getByTestId("scripts-addon-api")).toBeVisible();
 
-  // Start and Stop act on the whole group.
+  // Start, Restart and Stop act on the whole group.
   await view.getByTestId("scripts-group-start-Tools").click();
   await expect(view.getByTestId("scripts-running")).toContainText("serve", { timeout: 15000 });
   await expect(view.getByTestId("scripts-running")).toContainText("api");
   await expect(group).toContainText("2 of 2 running");
+  // Restart brings them back up in fresh terminals.
+  await view.getByTestId("scripts-group-restart-Tools").click();
+  await expect(group).toContainText("2 of 2 running", { timeout: 15000 });
   await view.getByTestId("scripts-group-stop-Tools").click();
   await expect(view.getByTestId("scripts-running")).toHaveCount(0, { timeout: 15000 });
 });

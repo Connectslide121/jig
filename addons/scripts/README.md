@@ -6,9 +6,11 @@ scripts plugin (D-142):
 
 - **Filter scripts** (top): type to find any script at once, by name, package, folder or command;
   the matches list flat with where they live.
-- **Running**: what runs now, wherever it's from, in a green box; ⋯ opens its address (a backend's
-  launch profile), shows its terminal or stops it.
-- **Groups**: cards with a **Start** button (**Start the rest** when some already run) and **Stop**,
+- **Running**: what runs now, wherever it's from, in a green box; ↻ on hover restarts it (stops it
+  and starts it again in a fresh terminal); ⋯ restarts it too, opens its address (a backend's launch
+  profile), shows its terminal or stops it.
+- **Groups**: cards with a **Start** button (**Start the rest** when some already run), ↻ to restart
+  the scripts that run and **Stop**,
   their scripts as rows. A group starts folded to its header (chevron to unfold, remembered in `expanded`);
   **All scripts** folds away too. Your own groups take scripts from any project ("Certumhub" = its frontend
   and backend): **New group** in the header, then a script's ⋯ (or right-click) → **Add to group**;

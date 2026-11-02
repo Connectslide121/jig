@@ -1,5 +1,9 @@
 # Status
 
+Restart a script (2026-11-02): in the Scripts view a running script shows ↻ on hover (and Restart in its
+⋯ / right-click menu); a group with running scripts gets ↻ beside Stop to restart them. Uses the existing
+`scripts.restart` (stop, then start in a fresh terminal).
+
 Icon/text alignment (2026-11-02, D-237): Inter's vertical metrics are tuned so text in icon rows sits
 centred on its icons (they looked ~1px low everywhere: chat steps line, Files, Git…). Upgrading
 @fontsource-variable/inter means updating `styles/inter.css`.
