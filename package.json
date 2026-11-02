@@ -1,7 +1,7 @@
 {
   "name": "jig",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Jig — a personal agentic workbench around Claude Code that builds its own tools.",
   "type": "module",
   "workspaces": [
