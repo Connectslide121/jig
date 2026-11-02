@@ -67,8 +67,11 @@ function updater() {
   return updater;
 }
 
+const busy = () =>
+  state?.download === "ready" || state?.download === "downloading" || state?.download === "installing";
+
 export async function checkWindowsUpdates(): Promise<UpdateInfo> {
-  if (state?.download === "ready" || state?.download === "downloading") return state;
+  if (busy()) return state!;
   try {
     const result = await updater().checkForUpdates();
     if (!result?.isUpdateAvailable)
@@ -94,7 +97,7 @@ export async function checkWindowsUpdates(): Promise<UpdateInfo> {
 
 /** Starts the download the user asked for; progress and the result arrive as `updates.state`. */
 export async function downloadWindowsUpdate(): Promise<UpdateInfo> {
-  if (state?.download === "ready" || state?.download === "downloading") return state;
+  if (busy()) return state!;
   if (!state?.available) {
     await checkWindowsUpdates();
     if (!state?.available) return state!;
@@ -111,12 +114,17 @@ export async function downloadWindowsUpdate(): Promise<UpdateInfo> {
   return info;
 }
 
+/** How long the "Installing…" notice shows before Jig closes for the installer. */
+const INSTALL_NOTICE_MS = 2_000;
+
 export const windowsUpdateReady = () => state?.download === "ready";
 
 export function installWindowsUpdate(): boolean {
   if (!windowsUpdateReady()) return false;
-  // Not silent: the installer's own window shows its progress, then Jig starts again (D-236).
-  setTimeout(() => updater().quitAndInstall(false, true), 300);
+  // Jig first says what happens next (a modal), so closing isn't a surprise; then the installer's own
+  // window shows its progress and starts Jig again with --updated (D-236, D-252).
+  send({ download: "installing", detail: `Installing Jig ${state?.latest ?? "update"}…` });
+  setTimeout(() => updater().quitAndInstall(false, true), INSTALL_NOTICE_MS);
   return true;
 }
 

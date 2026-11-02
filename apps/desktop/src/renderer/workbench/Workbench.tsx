@@ -14,6 +14,7 @@ import { useSessionsSync } from "../features/sessions";
 import { SavedChatsDialogHost } from "../features/sessions/SavedChatsDialog";
 import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
+import { UpdateInstallingHost } from "../features/setup/UpdateInstalling";
 import { VoiceDialogHost } from "../features/speech/VoiceDialog";
 import { useTerminalsSync } from "../features/terminals";
 import { useWorktreesSync } from "../features/worktrees";
@@ -124,6 +125,7 @@ export function Workbench() {
         <VoiceDialogHost />
         <StandupHost />
         <DialogHost />
+        <UpdateInstallingHost />
       </ErrorBoundary>
       <ErrorBoundary label="Notifications">
         <ToastHost />

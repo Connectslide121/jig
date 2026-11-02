@@ -2943,3 +2943,18 @@ real cards. The rest is **Claude, on my own**.
   assignee and the state when it differs from the column. A card is the click target (opens it in the
   browser); its ⋯/right-click menu starts a chat about it. No editing or moving cards yet (backlog).
 
+## D-252: Installing an update says what happens next, and Jig says it was updated
+
+**Who:** Jon's notes: Jig vanished while an update installed; he wanted the installer or a progress
+window. The shape is **Claude, on my own**.
+
+- D-236 already runs the assisted NSIS installer non-silently (`quitAndInstall(false, true)`), and its
+  progress page shows in update mode (only the welcome/directory pages are skipped). What Jon saw is the
+  gap: Jig closed 300 ms after the click, before the installer's window appeared.
+- Install now emits `updates.state` with `download: "installing"`; the workbench shows an "Installing
+  Jig X" modal (Jig closes → the installer shows its progress → Jig opens again) and closes the "ready"
+  toast; Jig quits 2 s later. A Jig window can't outlive the quit, so the installer's own window is
+  the progress window.
+- The installer starts Jig with `--updated`; `app.info.updated` tells the workbench, which shows
+  "Updated to Jig X" once. Needs a real Windows update to confirm the timing.
+

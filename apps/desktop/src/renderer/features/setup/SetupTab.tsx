@@ -137,7 +137,8 @@ export async function applyUpdate(info: UpdateInfo): Promise<void> {
         message: "You'll get a notice when it's ready to install. Progress is in Get started.",
         tone: "info",
       });
-    if (info.mode === "source" || restarting)
+    // A release install shows its own "Installing…" modal until Jig closes.
+    if (info.mode === "source")
       notify({
         title: restarting ? "Updated — restarting Jig" : "Updated — restart Jig to use it",
         tone: "success",
@@ -196,7 +197,7 @@ function UpdatesCard() {
           <Button
             size="sm"
             variant="primary"
-            disabled={busy || info.download === "downloading"}
+            disabled={busy || info.download === "downloading" || info.download === "installing"}
             onClick={() => {
               setBusy(true);
               void applyUpdate(info).finally(() => setBusy(false));
@@ -209,7 +210,9 @@ function UpdatesCard() {
                 ? "Install and restart"
                 : info.download === "downloading"
                   ? "Downloading…"
-                  : "Download update"}
+                  : info.download === "installing"
+                    ? "Installing…"
+                    : "Download update"}
           </Button>
         )}
       </div>

@@ -1,5 +1,11 @@
 # Status
 
+Update progress (2026-11-02, D-252): Install and restart now shows an "Installing Jig X" modal (Jig
+closes in a moment → the installer shows its progress → Jig opens again) for 2 s before Jig closes, and
+the "ready" toast goes away. When the installer starts Jig again (`--updated`), a toast says "Updated to
+Jig X". **Needs testing on Windows** with a real update: the gap between Jig closing and the installer's
+window appearing, and that the installer's progress page shows in update mode.
+
 Azure DevOps boards per project (2026-11-02, D-251): Code → Boards opens the active project's boards,
 one tab per board. **+** finds the team boards of your Azure DevOps organisations (organisation and
 project pickers, the project named like the Jig one first; tick several). A board shows its real

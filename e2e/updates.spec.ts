@@ -35,4 +35,14 @@ test("updates: a found update is a toast to download, a downloaded one a toast t
   await send({ download: "ready", percent: 100, detail: "Jig 0.1.4 is ready to install." });
   await expect(page.getByRole("button", { name: "Install and restart" }).first()).toBeVisible();
   await page.screenshot({ path: "test-results/update-ready-toast.png" });
+
+  // Installing says what happens next before Jig closes for the installer.
+  await send({ download: "installing", detail: "Installing Jig 0.1.4…" });
+  const installing = page.getByTestId("update-installing");
+  await expect(installing).toBeVisible();
+  await expect(installing).toContainText("Installing Jig 0.1.4");
+  await expect(installing).toContainText("The Jig installer opens and shows its progress.");
+  await expect(page.getByText("Jig 0.1.4 is ready")).toHaveCount(0);
+  await page.waitForTimeout(300); // the modal's fade-in, for the screenshot
+  await page.screenshot({ path: "test-results/update-installing.png" });
 });

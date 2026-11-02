@@ -88,6 +88,8 @@ export interface AppInfo {
   startedAfterFailure: boolean;
   /** An installed build (not running from source). */
   packaged: boolean;
+  /** Started again by the installer after an in-app update (`--updated`). */
+  updated: boolean;
 }
 
 /** Method name → argument and result types. */
