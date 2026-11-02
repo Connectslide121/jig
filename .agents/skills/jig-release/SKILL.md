@@ -1,6 +1,6 @@
 ---
 name: jig-release
-description: Prepare, build, validate and publish a Windows installer release of Jig from this repository to GitHub Releases. Use for requests to release, ship or publish Jig, or prepare its next release; not for releasing projects managed inside Jig or merely building a local installer.
+description: Prepare, build, validate and publish a Windows installer release of Jig from this repository to GitHub Releases (pick the version and write the notes into release/next.json, then npm run release). Use for requests to release, ship or publish Jig, or prepare its next release; not for releasing projects managed inside Jig or merely building a local installer.
 ---
 
 # Release Jig
@@ -8,6 +8,32 @@ description: Prepare, build, validate and publish a Windows installer release of
 Run from the Jig repository root. Read `AGENTS.md` and `docs/guides/packaging.md`.
 This is a repository maintenance skill: Claude Code inside Jig follows the same workflow as any
 other agent and edits this repository directly, never the in-app builder.
+
+## The way to release: a plan and `npm run release` (D-245)
+
+Everything below is automated by `scripts/release.ts`; an agent decides only the version and writes
+the notes. (Jon starts it with one click: the **Release Jig** workflow in Jig's Workflows.)
+
+1. See what changed since the last release (`addon_releases_changes` for this repository, or
+   `git log v<latest>..HEAD`). Pick the bump: **major** only for changes that break users' data,
+   settings or the add-on API; **minor** for new user-visible features; **patch** for fixes and
+   polish only. The version is exactly one bump above the latest published release.
+2. Write `release/next.json` (ignored by git): `version`, `bump`, `reason` (one sentence), `summary`
+   (one or two sentences for docs/status.md) and `notes` (Markdown for users: New / Improved / Fixed,
+   no commit hashes, decision ids or internal history; known gaps only when users will notice).
+3. `npm run release -- --check` validates the plan, the repository and GitHub without changing
+   anything. Fix a rejected plan; a rejected repository (uncommitted work, behind origin, gh signed
+   out) is the user's to resolve; never stash or commit someone else's work to get past it.
+4. `npm run release` (15–25 minutes; in Jig run it with `jig_terminal_run` so the user can watch).
+   It bumps and commits the version with a "being prepared" status line, runs `npm run check`, the
+   whole e2e suite, builds and packages, verifies the installer/feed/unpacked app, runs the packaged
+   test, writes SHA256SUMS, tags and pushes atomically, uploads a draft, verifies the downloaded
+   installer, publishes it as latest, checks the unauthenticated latest-release API, feed and
+   installer, records the publication in docs/status.md and pushes that commit.
+5. On failure it stops and says why; fix the cause and run it again: it continues from the release
+   commit and an existing draft. Report the version, the reason for the bump, the link and notes.
+
+The sections below are what the script does and checks, for reviewing it or recovering by hand.
 
 ## Scope and authorization
 

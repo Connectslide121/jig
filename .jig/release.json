@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "style": "planned",
+  "scheme": "semver",
+  "versionFile": "package.json",
+  "tagFormat": "v{version}",
+  "changelog": null,
+  "notes": [
+    { "audience": "Jig users (release notes on GitHub, shown by the in-app updater)", "language": "English" }
+  ],
+  "commitConvention": "none",
+  "cadence": "none"
+}

@@ -2797,3 +2797,23 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   with Ask Claude to fix. Claude gets `list` (read-only) and `run` tools. Per-test durations and flaky
   detection are left for later (they need runner-specific JSON reporters).
 
+
+## D-245: Jig releases in one click: Claude decides, a script publishes
+
+- Jon: releasing Jig should be one click with the least setup; Claude picks the version (which part
+  to bump) and writes the notes. Building locally is fine; the Releases add-on stays a tool for
+  shaping and recording releases, not for building them.
+- **Claude, on my own:** the jig-release skill's steps became `scripts/release.ts` (`npm run
+  release`), driven by `release/next.json` (version, bump, reason, summary, notes). It refuses a
+  dirty tree, a checkout behind origin, a version that isn't exactly one bump above the latest
+  release, an existing tag without a draft; it continues from its own release commit and draft when
+  run again. `--check` validates without changes. Pure parts are tested in `release-lib.test.ts`.
+- Local build, not GitHub Actions: the Windows build (native modules, the Claude Code binary, the
+  Electron e2e suite) already works here; a hosted Windows runner would need its own setup and a
+  token stored in GitHub. The script is the part a CI job would call, so moving later is small.
+- The one click is the **Release Jig** workflow (Jig project, Workflows add-on): a single Claude step,
+  because a workflow's Claude step only starts a chat and a following script step would not wait for
+  the plan. Claude runs the script in a Jig terminal and reports the result.
+- `.jig/release.json` (planned, semver, `v{version}`, version in package.json, no changelog file) makes
+  Jig a repository the Releases add-on tracks: unreleased commits, the suggested version, history.
+  Its own Release button only tags, so Jig's releases go through the workflow.

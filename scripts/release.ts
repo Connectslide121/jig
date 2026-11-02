@@ -79,7 +79,13 @@ const gitClean = () => read("git", ["status", "--porcelain"]) === "";
 step("Reading the plan (release/next.json)");
 const planFile = join(root, "release", "next.json");
 if (!existsSync(planFile)) fail("No release/next.json: ask Claude to prepare the release first.");
-const plan = parsePlan(readFileSync(planFile, "utf8"));
+const plan = (() => {
+  try {
+    return parsePlan(readFileSync(planFile, "utf8"));
+  } catch (error) {
+    fail((error as Error).message);
+  }
+})();
 const tag = `v${plan.version}`;
 console.log(`Jig ${plan.version} (${plan.bump}): ${plan.reason}`);
 
@@ -108,7 +114,11 @@ const releases = JSON.parse(
 const published = releases.filter((r) => !r.isDraft).map((r) => r.tagName.replace(/^v/, ""));
 const latest = published.sort(compareVersions).at(-1);
 if (published.includes(plan.version)) fail(`${tag} is already published.`);
-checkBump(plan, latest);
+try {
+  checkBump(plan, latest);
+} catch (error) {
+  fail((error as Error).message);
+}
 const subject = `Release Jig ${plan.version}`;
 const resuming = read("git", ["log", "-1", "--format=%s"]) === subject;
 const current = readVersions(root).current;

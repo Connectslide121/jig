@@ -215,7 +215,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 ## Releasing Jig
 
 For requests to release, ship or publish **Jig itself**, read and follow
-[the shared jig-release skill](.agents/skills/jig-release/SKILL.md). It lives in the repository for
+[the shared jig-release skill](.agents/skills/jig-release/SKILL.md). In short: pick the version and write the notes into
+`release/next.json`, then `npm run release` does the rest (D-245). It lives in the repository for
 all agents: Codex discovers `.agents/skills/jig-release`, Claude Code (including chats inside Jig)
 finds the forwarding entry under `.claude/skills/jig-release`; other agents use this link.
 This is separate from the bundled app skills in `skills/` and from releasing projects inside Jig.

@@ -2,6 +2,12 @@
 
 ## Agent-managed releases
 
+**One click (D-245):** Workflows → **Release Jig**. Claude reads what changed (the Releases add-on,
+which knows Jig through `.jig/release.json`), picks the version (major / minor / patch, with a
+reason), writes the notes into `release/next.json`, checks it with `npm run release -- --check` and
+runs `npm run release` in a terminal you can watch. The script does every step below and stops at
+the first failure; running it again continues. You only need `gh` signed in on this computer.
+
 Ask an agent working in this repository **“Publish a Jig release”** (optionally specify a version).
 It follows the shared [jig-release skill](../../.agents/skills/jig-release/SKILL.md), discovered by
 Codex and Claude Code, including Jig's own repository chats. The agent selects/synchronizes the app
