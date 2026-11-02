@@ -66,7 +66,7 @@ going ahead and the transcript.
 - [x] The plan as a card in the right margin, only while Claude asks to start something.
 - [x] Claude proposes a task queue (`addon_tasks_add`) instead of one plan when the work clearly
       needs several chats, or when the user asks; the go-ahead queues and starts it.
-- [x] Working sound louder (gain 0.09) and more frequent (every 1.4 s).
+- [x] Working sound louder (gain 0.09) and more frequent (every 1.4 s, then 1.17 s: 20% quicker, Jon 2026-11-02).
 - [ ] e2e for a spoken task queue (needs a fake-engine behaviour that calls `addon_tasks_add` in
       plan mode).
 - [x] e2e: looking at the code, the transcript and plan tabs, go-ahead by voice and by button, mute,

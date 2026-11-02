@@ -288,10 +288,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   asks to start something, its plan shows as a card in the right margin: one plan, or, for bigger
   work that needs several chats, a task queue (Claude decides, or you say "make it a queue"); "go
   ahead" then queues the tasks and starts them. Claude searches and reads the code while
-  you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every 1.4 s
+  you plan (the status line says "Searching the code…", "Reading cart.ts…"; a soft note every 1.17 s
   while it thinks). Controls: Mute, Stop Claude's voice, End talking, Go ahead. "Go ahead"
   (said or pressed) approves the plan, or asks Claude for it and approves it as it comes; talking
-  ends and Claude works as in any chat, with a soft note every 1.4 s and a chime when it finishes
+  ends and Claude works as in any chat, with a soft note every 1.17 s and a chime when it finishes
   or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
   work goes on, and the chat returns to its own permission mode when idle.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:

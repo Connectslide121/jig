@@ -29,8 +29,8 @@ const NOTES: Record<Exclude<Cue, "tick">, Array<[number, number]>> = {
 };
 /** The working motif: one soft note per tick, walking up and down. */
 const TICKS = [659.25, 783.99, 987.77, 783.99];
-/** How often the working motif plays (ms). */
-export const TICK_MS = 1400;
+/** How often the working motif plays (ms): 1400 / 1.2, 20% quicker after Jon's feedback. */
+export const TICK_MS = 1167;
 
 let context: AudioContext | undefined;
 let tickIndex = 0;
