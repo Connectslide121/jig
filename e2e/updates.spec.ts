@@ -15,7 +15,8 @@ test("updates: a found update is a toast to download, a downloaded one a toast t
 }) => {
   const send = (state: Record<string, unknown>) =>
     app.evaluate(({ BrowserWindow }, payload) => {
-      for (const w of BrowserWindow.getAllWindows()) w.webContents.send("jig:event", "updates.state", payload);
+      for (const w of BrowserWindow.getAllWindows())
+        w.webContents.send("jig:event", "updates.state", payload);
     }, update(state));
 
   // The check when Jig opens only tells: nothing downloads until the user presses Download.
