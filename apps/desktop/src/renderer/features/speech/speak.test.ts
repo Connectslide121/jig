@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { speakableText, speakableUntil } from "./speak";
+import { speakableText, speakableUntil, speechParts } from "./speak";
 
 describe("speakableText", () => {
   it("drops Markdown marks and names code blocks", () => {
@@ -41,5 +41,13 @@ describe("speakableUntil", () => {
   it("never stops inside an unfinished code block", () => {
     const text = "Look.\n```ts\nconst a = 1;\n";
     expect(speakableUntil(text, 0, false)).toBe("Look.\n".length);
+  });
+});
+
+describe("speechParts", () => {
+  it("splits text into sentences, joining short ones up to the limit", () => {
+    expect(speechParts("One. Two!\nThree? Four", 9)).toEqual(["One. Two!", "Three?", "Four"]);
+    expect(speechParts("Hello there. How are you?")).toEqual(["Hello there. How are you?"]);
+    expect(speechParts("  ")).toEqual([]);
   });
 });

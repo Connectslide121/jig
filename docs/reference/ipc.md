@@ -181,6 +181,10 @@ settings, add-on permissions.
 | `addons.galleryInstall` | `{ source, id, replace? }` | `{ id, name }` | installs an add-on from a source in Settings (no other), like `addons.importPackage` (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |
+| `speech.voiceModel` | — | `VoiceModelStatus` | the natural voice's model: `downloaded`, bytes on disk (D-243) |
+| `speech.prepareVoice` | `{ voice }` | — | downloads what the voice lacks (model, the voice's style file) and loads it in the voice process (schema: a known voice) |
+| `speech.say` | `{ text, voice, speed }` | `Float32Array` | `text` read by a natural voice: 24 kHz mono audio (schema: known voice, text ≤ 20 000, speed 0.5–2) |
+| `speech.removeVoiceModel` | — | — | stops the voice process and deletes its model |
 | `speech.microphone` | — | `MicrophoneAccess` | `granted`, `denied` or `unknown`; asks macOS for access the first time, reads Windows' privacy switch |
 
 ## Events
@@ -211,7 +215,7 @@ settings, add-on permissions.
 | `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
 | `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project; D-215) |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
-| `speech.progress` | `{ model, loaded, total }` | the dictation model is downloading (bytes; at most every 150 ms) |
+| `speech.progress` | `{ model, loaded, total }` | a dictation model, or the natural voice (`model: "voice"`), is downloading (bytes; at most every 150 ms) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
 | `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |
 | `learning.changed` | `LearningState` | a run started/finished, a suggestion was answered, activity deleted, the check-in setting changed |

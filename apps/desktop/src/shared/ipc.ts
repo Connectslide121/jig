@@ -54,7 +54,13 @@ import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
-import type { MicrophoneAccess, SpeechModel, SpeechModelStatus } from "./speech";
+import type {
+  MicrophoneAccess,
+  SpeechDownload,
+  SpeechModel,
+  SpeechModelStatus,
+  VoiceModelStatus,
+} from "./speech";
 import type { ProjectScripts, ScriptGroup, ShellChoices, TerminalInfo } from "./terminals";
 import type {
   FileIconThemeData,
@@ -205,6 +211,13 @@ export interface HostMethods {
   "speech.removeModel": { args: { model: SpeechModel }; result: void };
   /** Whether the system lets Jig use the microphone; on macOS asks the first time. */
   "speech.microphone": { args: void; result: MicrophoneAccess };
+  /** The natural voice (D-243): whether its model is downloaded and its size on disk. */
+  "speech.voiceModel": { args: void; result: VoiceModelStatus };
+  /** Downloads what the voice still lacks (progress as `speech.progress` with model "voice") and loads it. */
+  "speech.prepareVoice": { args: { voice: string }; result: void };
+  /** `text` read by a natural voice at `speed` (1 = normal): 24 kHz mono audio. */
+  "speech.say": { args: { text: string; voice: string; speed: number }; result: Float32Array };
+  "speech.removeVoiceModel": { args: void; result: void };
   "window.setTitleBarColors": { args: { symbolColor: string }; result: void };
   "window.minimize": { args: void; result: void };
   "window.toggleMaximize": { args: void; result: void };
@@ -559,7 +572,7 @@ export interface HostEvents {
   "builds.changed": BuildJob[];
   "usage.changed": PlanUsage;
   /** Dictation's model is downloading: bytes so far and in all (total grows as files start). */
-  "speech.progress": { model: SpeechModel; loaded: number; total: number };
+  "speech.progress": { model: SpeechDownload; loaded: number; total: number };
   "learning.changed": LearningState;
   /** The profile or the notes from chats changed. */
   "learning.knowledgeChanged": void;

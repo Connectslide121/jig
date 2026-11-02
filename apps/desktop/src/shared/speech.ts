@@ -1,7 +1,8 @@
 /**
  * Speech (D-208): dictation runs Whisper on this computer (transformers.js in a worker); the model
  * is downloaded once by the main process into `~/.jig/models` and served to the worker over
- * `jig-speech://hf/<org>/<model>/<file>`. Reading aloud uses the system's voices.
+ * `jig-speech://hf/<org>/<model>/<file>`. Reading aloud uses a natural voice (Kokoro, D-243) or the
+ * system's voices.
  */
 
 export const SPEECH_MODELS = {
@@ -82,3 +83,89 @@ export interface SpeechModelStatus {
 
 /** Microphone access the system gives Jig (macOS asks once; Windows has a privacy switch). */
 export type MicrophoneAccess = "granted" | "denied" | "restricted" | "not-determined" | "unknown";
+
+/**
+ * The natural voice that reads aloud (D-243): Kokoro-82M, run on the processor by a background
+ * process. The model and each voice's style file are downloaded once into `~/.jig/models`. Full
+ * precision: the smaller fp16/q4f16 files give broken audio (NaN) for some voices on the processor,
+ * and the 8-bit one is slower than speech.
+ */
+export const VOICE_MODEL = {
+  repo: "onnx-community/Kokoro-82M-v1.0-ONNX",
+  dtype: "fp32",
+  size: "about 330 MB",
+} as const;
+
+/** The model's files; all present = downloaded. Voices (`voices/<id>.bin`, 0.5 MB) come as used. */
+export const VOICE_MODEL_FILES = [
+  "config.json",
+  "tokenizer.json",
+  "tokenizer_config.json",
+  "onnx/model.onnx",
+] as const;
+
+/** The natural voice's output rate. */
+export const VOICE_SAMPLE_RATE = 24_000;
+
+export type VoiceLanguage = "en-us" | "en-gb" | "es";
+
+export const VOICE_LANGUAGES: Array<{ code: VoiceLanguage; label: string }> = [
+  { code: "en-us", label: "American English" },
+  { code: "en-gb", label: "British English" },
+  { code: "es", label: "Spanish" },
+];
+
+export interface NaturalVoice {
+  id: string;
+  name: string;
+  language: VoiceLanguage;
+  gender: "female" | "male";
+}
+
+const voice = (id: string, name: string): NaturalVoice => ({
+  id,
+  name,
+  language: id[0] === "b" ? "en-gb" : id[0] === "e" ? "es" : "en-us",
+  gender: id[1] === "f" ? "female" : "male",
+});
+
+/** Kokoro's voices that sound good, best first per language (its weakest ones are left out). */
+export const NATURAL_VOICES: NaturalVoice[] = [
+  voice("af_heart", "Heart"),
+  voice("af_bella", "Bella"),
+  voice("af_nicole", "Nicole"),
+  voice("af_aoede", "Aoede"),
+  voice("af_kore", "Kore"),
+  voice("af_sarah", "Sarah"),
+  voice("af_nova", "Nova"),
+  voice("af_alloy", "Alloy"),
+  voice("af_sky", "Sky"),
+  voice("am_michael", "Michael"),
+  voice("am_fenrir", "Fenrir"),
+  voice("am_puck", "Puck"),
+  voice("bf_emma", "Emma"),
+  voice("bf_isabella", "Isabella"),
+  voice("bm_george", "George"),
+  voice("bm_fable", "Fable"),
+  voice("ef_dora", "Dora"),
+  voice("em_alex", "Alex"),
+  voice("em_santa", "Santa"),
+];
+
+export const NATURAL_VOICE_IDS = NATURAL_VOICES.map((v) => v.id);
+export const DEFAULT_NATURAL_VOICE = "af_heart";
+
+/** A voice by id; an unknown id gets the default voice. */
+export function naturalVoice(id: string | undefined): NaturalVoice {
+  return NATURAL_VOICES.find((v) => v.id === id) ?? NATURAL_VOICES[0]!;
+}
+
+export interface VoiceModelStatus {
+  /** All the model's files are there. */
+  downloaded: boolean;
+  /** Bytes on disk (model and voices). */
+  bytes: number;
+}
+
+/** What is downloading: a dictation model, or the natural voice. */
+export type SpeechDownload = SpeechModel | "voice";

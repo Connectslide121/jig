@@ -90,14 +90,18 @@ export const ConfigSchema = z.object({
       overview: z.boolean().default(true),
     })
     .prefault({}),
-  /** Talking to Claude (D-208): dictation runs Whisper on this computer; reading aloud uses system voices. */
+  /** Talking to Claude (D-208): dictation runs Whisper on this computer; reading aloud uses a natural voice (D-243) or system voices. */
   speech: z
     .object({
       /** Whisper model for dictation: `tiny` (fast), `base` (balanced) or `small` (most accurate). */
       model: z.enum(["tiny", "base", "small"]).default("base"),
       /** Language you speak, as a code (`en`, `es`…); empty = Whisper recognises it. */
       language: z.string().max(10).default(""),
-      /** System voice for reading Claude's messages aloud (its name); empty = the system's default. */
+      /** What reads Claude's messages aloud: `natural` (Kokoro on this computer, D-243) or `system` voices. */
+      engine: z.enum(["natural", "system"]).default("natural"),
+      /** The natural voice (Kokoro voice id, e.g. `af_heart`, `ef_dora`). */
+      naturalVoice: z.string().max(40).default("af_heart"),
+      /** System voice for reading aloud when `engine` is `system` (its name); empty = the system's default. */
       voice: z.string().max(200).default(""),
       /** Run Whisper on the graphics card (WebGPU) when there is one; much faster. */
       gpu: z.boolean().default(true),

@@ -22,6 +22,8 @@ export const mainConfig = {
     index: `${appDir}/src/main/index.ts`,
     // The process add-on host code runs in (Electron utilityProcess).
     "addon-host": `${appDir}/src/main/addons/hostEntry.ts`,
+    // The natural voice's background process (Electron utilityProcess, D-242).
+    "voice-host": `${appDir}/src/main/speech/voiceHost.ts`,
   },
   outdir: `${appDir}/dist/main`,
   outExtension: { ".js": ".mjs" },

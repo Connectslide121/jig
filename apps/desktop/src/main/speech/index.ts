@@ -1,10 +1,35 @@
-import { app, net, protocol, systemPreferences } from "electron";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { app, net, protocol, systemPreferences, utilityProcess } from "electron";
 import type { MicrophoneAccess } from "../../shared/speech";
 import { emit, handle } from "../ipc/router";
+import { logger } from "../log";
 import { paths } from "../state/paths";
 import { SpeechModels } from "./models";
+import { NaturalVoiceHost, type VoiceChannel } from "./naturalVoice";
+import type { FromVoiceHost } from "./voiceProtocol";
+
+const log = logger("speech");
+const here = dirname(fileURLToPath(import.meta.url));
 
 let models: SpeechModels | undefined;
+let voice: NaturalVoiceHost | undefined;
+
+/** The natural voice's background process (`voice-host.mjs`, built next to the main bundle). */
+function voiceProcess(): VoiceChannel {
+  const child = utilityProcess.fork(join(here, "voice-host.mjs"), [paths.models()], {
+    serviceName: "Jig voice",
+    stdio: "pipe",
+  });
+  child.stdout?.on("data", (d: Buffer) => log.debug(`[voice] ${d.toString().trimEnd()}`));
+  child.stderr?.on("data", (d: Buffer) => log.warn(`[voice] ${d.toString().trimEnd()}`));
+  return {
+    send: (message) => child.postMessage(message),
+    onMessage: (listener) => child.on("message", (message: FromVoiceHost) => listener(message)),
+    onExit: (listener) => child.on("exit", listener),
+    kill: () => child.kill(),
+  };
+}
 
 /**
  * Before `app.whenReady`: with the fake engine (tests), Chromium's fake microphone plays a tone and
@@ -33,6 +58,21 @@ export function startSpeech(): void {
   handle("speech.models", () => models!.list());
   handle("speech.removeModel", ({ model }) => models!.remove(model));
   handle("speech.microphone", async () => microphoneAccess());
+  // The natural voice that reads aloud (D-243).
+  voice = new NaturalVoiceHost(voiceProcess);
+  handle("speech.voiceModel", () => models!.voiceStatus());
+  handle("speech.prepareVoice", async ({ voice: id }) => {
+    await models!.ensureVoice(id);
+    await voice!.load();
+  });
+  handle("speech.say", async ({ text, voice: id, speed }) => {
+    await models!.ensureVoice(id);
+    return voice!.say(text, id, speed);
+  });
+  handle("speech.removeVoiceModel", async () => {
+    voice!.stop();
+    await models!.removeVoice();
+  });
 }
 
 async function microphoneAccess(): Promise<MicrophoneAccess> {

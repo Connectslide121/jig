@@ -7,6 +7,7 @@ import { followWork, playCue, unfollowWork, WorkCue } from "./cues";
 import { cancelDictation, type DictationText, useDictation } from "./dictation";
 import { Capture, LiveText, prepareSpeech, speechSettings } from "./engine";
 import { amplitude, meters, sliceLevels } from "./meter";
+import { warmNaturalVoice } from "./naturalVoice";
 import { level, SAMPLE_RATE } from "./protocol";
 import {
   isEnd,
@@ -19,7 +20,7 @@ import {
   toolActivity,
   type VoicePlan,
 } from "./replies";
-import { speakableText, speakableUntil, voiceUtterance } from "./speak";
+import { preloadSpeech, speak, speakableText, speakableUntil, stopSpeaking } from "./speak";
 
 /**
  * Talking with Claude (D-209, D-210): Jig listens; when you pause, what you said is sent; Claude's
@@ -116,6 +117,8 @@ export async function startVoice(target: string, hooks: VoiceHooks): Promise<voi
       }
     }
     await ensureTranscript(target);
+    // The natural voice loads while you say your first words, so Claude's first answer doesn't wait.
+    if (!s.fake) warmNaturalVoice();
     await call("sessions.setVoice", { id: target, voice: true });
     active = new Conversation(target, hooks, capture, s.fake, s.pause);
     await active.begin();
@@ -247,7 +250,7 @@ class Conversation {
     }
     this.capture?.close();
     this.queue.length = 0;
-    window.speechSynthesis?.cancel();
+    stopSpeaking();
     const id = this.target;
     void call("sessions.setVoice", { id, voice: false }).catch(() => undefined);
     const meta = useSessions.getState().metas[id];
@@ -471,8 +474,7 @@ class Conversation {
     addLine("claude", line);
     this.stop(!queued);
     playCue("start");
-    const synth = window.speechSynthesis;
-    if (!this.fake && synth) synth.speak(voiceUtterance(line));
+    if (!this.fake) speak(line, { onEnd: () => undefined });
   }
 
   private pendingPermission(): PermissionItem | undefined {
@@ -554,6 +556,8 @@ class Conversation {
     if (!text.trim()) return;
     addLine("claude", text);
     this.queue.push(text);
+    // Made while the sentence before it plays.
+    if (this.speaking && !this.fake) preloadSpeech(text);
     this.pump();
   }
 
@@ -577,21 +581,20 @@ class Conversation {
       this.pump();
     };
     this.speaking = done;
-    const synth = window.speechSynthesis;
-    if (this.fake || !synth) {
+    if (this.fake) {
       wobble = setInterval(() => meters.claude.pulse(0.4 + Math.random() * 0.5), 70);
       timer = setTimeout(done, 300);
       return;
     }
-    const utterance = voiceUtterance(text);
-    utterance.onend = done;
-    utterance.onerror = done;
-    // The system's voice gives no sound to measure: each word is a pulse in the waves.
-    utterance.onstart = () => meters.claude.pulse(0.7);
-    utterance.onboundary = () => meters.claude.pulse(0.5 + Math.random() * 0.5);
-    // Some systems never say the voice ended.
-    timer = setTimeout(done, 3000 + (text.length * 120) / utterance.rate);
-    synth.speak(utterance);
+    // The next sentence is made while this one plays.
+    if (this.queue[0]) preloadSpeech(this.queue[0]);
+    speak(text, {
+      // The natural voice's real loudness moves the waves; the system's voices give a pulse per word.
+      onStart: (levels) =>
+        levels ? meters.claude.push(levels, performance.now()) : meters.claude.pulse(0.7),
+      onWord: () => meters.claude.pulse(0.5 + Math.random() * 0.5),
+      onEnd: done,
+    });
   }
 
   /** You started talking: Claude stops speaking, and the rest of what it was saying is skipped. */
@@ -603,6 +606,6 @@ class Conversation {
     const wasSpeaking = this.speaking;
     this.speaking = undefined;
     meters.claude.clear();
-    if (wasSpeaking) window.speechSynthesis?.cancel();
+    if (wasSpeaking) stopSpeaking();
   }
 }

@@ -81,7 +81,9 @@ A new state file is documented here in the same commit that adds it.
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
-| `speech.voice` | `""` | the system voice for Read aloud and talking; empty = the system's default |
+| `speech.engine` | `"natural"` | what reads aloud: `natural` (Kokoro on this computer, ~330 MB downloaded once; D-243) or `system` (the system's voices) |
+| `speech.naturalVoice` | `"af_heart"` | the natural voice: a Kokoro voice id (`NATURAL_VOICES` in `shared/speech.ts`: American/British English and Spanish, women and men) |
+| `speech.voice` | `""` | the system voice when `speech.engine` is `system`; empty = the system's default |
 | `speech.gpu` | `true` | run Whisper on the graphics card (WebGPU) when there is one (D-209) |
 | `speech.live` | `true` | show the words while you speak (Whisper reads again every ~250 ms) |
 | `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |

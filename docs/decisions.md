@@ -2744,3 +2744,29 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   shell or the configured one, so the renderer cannot start arbitrary programs. Picking a shell opens that
   one terminal and never changes the default. Each terminal row shows its shell's short name in a fixed
   column at the far right.
+
+## D-243: A natural voice reads aloud: Kokoro on this computer
+
+- Jon: the system's voices sound flat and robotic; he wants a realistic voice like ElevenLabs without
+  paying for a service, in English and Spanish, with women's and men's voices to choose from.
+- **Claude, on my own:** Kokoro-82M (Apache-2.0) is the default reading voice (`speech.engine`
+  `natural`, `speech.naturalVoice`, default `af_heart`); the system's voices stay as the other engine
+  and as the fallback while the model isn't downloaded or when it fails (one warning toast).
+- It runs in an Electron utilityProcess (`voice-host.mjs`) with transformers.js on onnxruntime-node,
+  not in a renderer worker: measured on Jon's machine, onnxruntime-web would be single-threaded (Jig's
+  page isn't cross-origin isolated) and slower than speech, while the native runtime makes a sentence
+  in about half its spoken length (after ~5–7 s loading once). Talking warms it up when it starts;
+  the process stops after 10 minutes unused to give the memory back.
+- Full-precision weights (`onnx/model.onnx`, ~330 MB): on the processor the fp16 and q4f16 files gave
+  NaN audio for 17–22 of 152 test sentences across the voices, q8f16 crashed onnxruntime-node and q8
+  was slower than speech. DirectML (GPU) gave no gain (it recompiles per sentence length).
+- Downloaded once into `~/.jig/models` by the main process (`SpeechModels.ensureVoice`, progress as
+  `speech.progress` with model `voice`), asking first; each voice's style file (0.5 MB) comes as it is
+  chosen. Settings → Speech: engine, voice (grouped by language, woman/man), Download/Remove.
+- English phonemes come from espeak-ng (`phonemizer` 1.2.1, which bundles only English data), with
+  kokoro-js 1.2.1's text preparation ported to Jig's transformers.js 4 (`main/speech/english.ts`;
+  kokoro-js itself pins transformers.js 3). Spanish uses rules written for it (`spanish.ts`), matching
+  espeak-ng's Castilian phonemes: checked by reading the audio back with Whisper (all words right).
+  `phonemizer` contains espeak-ng compiled to WebAssembly, which is GPL-3.0 — fine for Jig as a private
+  app; revisit before distributing Jig under another licence.
+- 19 voices: Kokoro's graded C- or better (American and British English) and its three Spanish voices.

@@ -9,10 +9,14 @@ import {
   SPEECH_MODEL_IDS,
   SPEECH_MODELS,
   SPEECH_VARIANTS,
+  type SpeechDownload,
   type SpeechModel,
   type SpeechModelStatus,
   type SpeechVariant,
   speechFiles,
+  VOICE_MODEL,
+  VOICE_MODEL_FILES,
+  type VoiceModelStatus,
 } from "../../shared/speech";
 import { renameWithRetry } from "../state/jsonStore";
 
@@ -46,7 +50,7 @@ function contentType(file: string): string {
 }
 
 type Fetch = (url: string) => Promise<Response>;
-export type DownloadProgress = (model: SpeechModel, loaded: number, total: number) => void;
+export type DownloadProgress = (model: SpeechDownload, loaded: number, total: number) => void;
 
 class NotOnServer extends Error {}
 
@@ -58,7 +62,7 @@ class NotOnServer extends Error {}
  */
 export class SpeechModels {
   private readonly downloads = new Map<string, Promise<void>>();
-  private readonly progress = new Map<SpeechModel, Map<string, { loaded: number; total: number }>>();
+  private readonly progress = new Map<SpeechDownload, Map<string, { loaded: number; total: number }>>();
 
   constructor(
     private readonly root: string,
@@ -85,6 +89,35 @@ export class SpeechModels {
 
   async remove(model: SpeechModel): Promise<void> {
     await rm(this.dir(SPEECH_MODELS[model].repo), { recursive: true, force: true });
+  }
+
+  /** The natural voice's model folder (the voice host reads it from there). */
+  voiceDir(): string {
+    return this.dir(VOICE_MODEL.repo);
+  }
+
+  async voiceStatus(): Promise<VoiceModelStatus> {
+    const dir = this.voiceDir();
+    return { downloaded: await this.has(VOICE_MODEL.repo, VOICE_MODEL_FILES), bytes: await folderSize(dir) };
+  }
+
+  async removeVoice(): Promise<void> {
+    await rm(this.voiceDir(), { recursive: true, force: true });
+  }
+
+  /** Downloads what the natural voice still lacks: the model, and the style file of `voice`. */
+  async ensureVoice(voice: string): Promise<void> {
+    const repo = VOICE_MODEL.repo;
+    const dir = this.voiceDir();
+    for (const name of [...VOICE_MODEL_FILES, `voices/${voice}.bin`]) {
+      const file = join(dir, ...name.split("/"));
+      if (await this.has(repo, [name])) continue;
+      try {
+        await this.download("voice", repo, name, file);
+      } catch (error) {
+        throw new Error(`Couldn't download the natural voice: ${errorText(error)}`);
+      }
+    }
   }
 
   private async has(repo: string, files: readonly string[]): Promise<boolean> {
@@ -127,7 +160,7 @@ export class SpeechModels {
   }
 
   /** One download per file, however many requests ask for it meanwhile. */
-  private download(model: SpeechModel, repo: string, name: string, file: string): Promise<void> {
+  private download(model: SpeechDownload, repo: string, name: string, file: string): Promise<void> {
     let running = this.downloads.get(file);
     if (!running) {
       running = this.fetchToDisk(model, repo, name, file).finally(() => this.downloads.delete(file));
@@ -136,7 +169,7 @@ export class SpeechModels {
     return running;
   }
 
-  private async fetchToDisk(model: SpeechModel, repo: string, name: string, file: string): Promise<void> {
+  private async fetchToDisk(model: SpeechDownload, repo: string, name: string, file: string): Promise<void> {
     const response = await this.fetchUpstream(`${this.upstream}/${repo}/resolve/main/${name}`);
     if (response.status === 404) throw new NotOnServer();
     if (!response.ok || !response.body) throw new Error(`${response.status} ${response.statusText}`.trim());

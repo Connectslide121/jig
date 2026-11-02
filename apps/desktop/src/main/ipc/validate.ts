@@ -4,7 +4,7 @@ import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PROJECT_COLORS } from "../../shared/projects";
-import { SPEECH_MODEL_IDS } from "../../shared/speech";
+import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
 
 /**
  * Checks at the IPC boundary. The renderer (which add-on UI code shares) is not trusted with the host:
@@ -118,6 +118,14 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "files.write": z.object({ path, text: z.string().max(10_000_000), expectedMtimeMs: z.number().optional() }),
   "app.openExternal": z.object({ url: z.string().max(8192) }),
   "speech.removeModel": z.object({ model: z.enum(SPEECH_MODEL_IDS) }),
+  "speech.prepareVoice": z.object({ voice: z.enum(NATURAL_VOICE_IDS) }).strict(),
+  "speech.say": z
+    .object({
+      text: z.string().max(20_000),
+      voice: z.enum(NATURAL_VOICE_IDS),
+      speed: z.number().min(0.5).max(2),
+    })
+    .strict(),
   "app.openPath": z.object({ path }),
   "app.showItemInFolder": z.object({ path }),
   "app.pickFiles": z.object({ title: z.string().max(200).optional(), defaultPath: path.optional() }),

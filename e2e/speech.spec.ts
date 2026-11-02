@@ -49,10 +49,21 @@ test("speech: settings choose the model and language; only Jig's models can be r
   await page.getByTestId("settings-speech-language").selectOption("sv");
   await expect(page.getByTestId("settings-speech-how-to-talk")).toContainText("yes, go ahead");
   await expect(page.getByTestId("settings-speech-more-voices")).toContainText("Restart Jig");
+  // The natural voice is the default; the system voice list is for the system engine.
+  await expect(page.getByTestId("settings-speech-engine")).toHaveValue("natural");
+  await expect(page.getByTestId("settings-speech-voice")).toBeDisabled();
+  await page.getByTestId("settings-speech-natural-voice").selectOption("ef_dora");
+  await expect(page.getByTestId("settings-speech-download-voice")).toBeVisible();
   await page.getByTestId("settings-speech-try").click();
   await expect
     .poll(async () => ((await hostCall(page, "config.get")) as { value: { speech: unknown } }).value.speech)
-    .toMatchObject({ model: "small", language: "sv" });
+    .toMatchObject({ model: "small", language: "sv", engine: "natural", naturalVoice: "ef_dora" });
+  await page.getByTestId("settings-speech-engine").selectOption("system");
+  await expect(page.getByTestId("settings-speech-natural-voice")).toBeDisabled();
+  expect(await hostCall(page, "speech.voiceModel")).toMatchObject({ value: { downloaded: false, bytes: 0 } });
+  expect(await hostCall(page, "speech.say", { text: "Hi", voice: "../x", speed: 1 })).toMatchObject({
+    ok: false,
+  });
   const models = (await hostCall(page, "speech.models")) as { value: Array<{ downloaded: boolean }> };
   expect(models.value.map((m) => m.downloaded)).toEqual([false, false, false]);
   expect(await hostCall(page, "speech.removeModel", { model: "../../etc" })).toMatchObject({ ok: false });

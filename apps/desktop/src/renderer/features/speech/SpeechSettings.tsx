@@ -1,10 +1,15 @@
-import { Trash2, Volume2 } from "lucide-react";
+import { Download, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
+  NATURAL_VOICES,
+  naturalVoice,
   SPEECH_LANGUAGES,
   SPEECH_MODEL_IDS,
   SPEECH_MODELS,
   type SpeechModelStatus,
+  VOICE_LANGUAGES,
+  VOICE_MODEL,
+  type VoiceModelStatus,
 } from "../../../shared/speech";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
@@ -14,7 +19,8 @@ import { notify } from "../../workbench/toasts";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { DICTATION_SHORTCUT } from "./DictationButton";
 import { hasGpu } from "./engine";
-import { speechVoices, voiceUtterance } from "./speak";
+import { downloadNaturalVoice, resetNaturalVoice, useNaturalVoice } from "./naturalVoice";
+import { speak, speechVoices, stopSpeaking } from "./speak";
 
 /** How to add voices to the system, per platform: Jig can only use the voices the system has. */
 const MORE_VOICES: Record<string, string[]> = {
@@ -35,15 +41,21 @@ const MORE_VOICES: Record<string, string[]> = {
   ],
 };
 
-/** Says a short sentence in the chosen voice and speed. */
+/** Says a short sentence in the chosen voice and speed (in the natural voice's language). */
 function tryVoice(): void {
-  const synth = window.speechSynthesis;
-  if (!synth) {
-    notify({ title: "No voices", message: "This system has no speech voices." });
-    return;
-  }
-  synth.cancel();
-  synth.speak(voiceUtterance("Hi, I'm Claude. This is how I sound when we talk."));
+  const speech = useConfig.getState().config?.speech;
+  const spanish = speech?.engine !== "system" && naturalVoice(speech?.naturalVoice).language === "es";
+  stopSpeaking();
+  speak(
+    spanish
+      ? "Hola, soy Claude. Así sueno cuando hablamos."
+      : "Hi, I'm Claude. This is how I sound when we talk.",
+    { onEnd: () => undefined },
+  );
+}
+
+function loadVoiceModel(): Promise<VoiceModelStatus> {
+  return call("speech.voiceModel").catch(() => ({ downloaded: false, bytes: 0 }));
 }
 
 const PAUSES = [600, 800, 1000, 1500, 2000, 3000];
@@ -59,11 +71,19 @@ export function SpeechSettings() {
   const [models, setModels] = useState<SpeechModelStatus[]>();
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>();
   const [gpu, setGpu] = useState<boolean>();
-  const refresh = () =>
+  const [voiceModel, setVoiceModel] = useState<VoiceModelStatus>();
+  const natural = useNaturalVoice();
+  const refresh = () => {
     void call("speech.models")
       .then(setModels)
       .catch(() => setModels([]));
+    void loadVoiceModel().then(setVoiceModel);
+  };
   useEffect(refresh, []);
+  // The model's size once a download finishes (or fails).
+  useEffect(() => {
+    if (natural.state === "ready" || natural.state === "missing") void loadVoiceModel().then(setVoiceModel);
+  }, [natural.state]);
   useEffect(() => {
     void speechVoices().then(setVoices);
     void hasGpu().then(setGpu);
@@ -91,6 +111,25 @@ export function SpeechSettings() {
     }
     refresh();
   };
+  const removeVoice = async () => {
+    const ok = await confirmDialog({
+      title: "Remove the natural voice?",
+      message: `Its model (${megabytes(voiceModel?.bytes ?? 0)}) is deleted; your system's voice reads until you download it again.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
+    stopSpeaking();
+    try {
+      await call("speech.removeVoiceModel");
+    } catch (error) {
+      notify({ title: "Couldn't remove it", message: errorMessage(error), tone: "danger" });
+    }
+    resetNaturalVoice();
+    refresh();
+  };
+  const downloading = natural.state === "downloading";
+  const naturalOn = s.engine === "natural";
   return (
     <div className="flex flex-col gap-6">
       <SettingsSection
@@ -238,16 +277,52 @@ export function SpeechSettings() {
       </SettingsSection>
       <SettingsSection
         title="Reading aloud"
-        description="Claude writes text; Jig reads it aloud with your system's voices, on this computer. The same voice and speed are used for Read aloud (the speaker on Claude's messages) and when talking with Claude. Code blocks are skipped."
+        description="Claude writes text; Jig reads it aloud on this computer, with a natural voice or your system's voices. The same voice and speed are used for Read aloud (the speaker on Claude's messages) and when talking with Claude. Code blocks are skipped."
       >
         <SettingRow
-          label="Voice"
-          description="The voices installed on your system. To get more, see “Adding voices” below."
+          label="Reads aloud"
+          description="The natural voice sounds like a person and runs on this computer; the system's voices need no download."
+        >
+          <Select
+            value={s.engine}
+            aria-label="Reads aloud"
+            data-testid="settings-speech-engine"
+            onChange={(e) => void updateConfig({ speech: { engine: e.target.value as typeof s.engine } })}
+          >
+            <option value="natural">Natural voice</option>
+            <option value="system">System voices</option>
+          </Select>
+        </SettingRow>
+        <SettingRow
+          label="Natural voice"
+          description="Women and men, in American and British English and in Spanish."
+        >
+          <Select
+            value={naturalVoice(s.naturalVoice).id}
+            aria-label="Natural voice"
+            disabled={!naturalOn}
+            data-testid="settings-speech-natural-voice"
+            onChange={(e) => void updateConfig({ speech: { naturalVoice: e.target.value } })}
+          >
+            {VOICE_LANGUAGES.map((l) => (
+              <optgroup key={l.code} label={l.label}>
+                {NATURAL_VOICES.filter((v) => v.language === l.code).map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.gender === "female" ? "woman" : "man"})
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Select>
+        </SettingRow>
+        <SettingRow
+          label="System voice"
+          description="The voices installed on your system. To get more, see “Adding system voices” below."
         >
           <Select
             value={s.voice}
-            aria-label="Voice"
-            disabled={!voices}
+            aria-label="System voice"
+            disabled={!voices || naturalOn}
             data-testid="settings-speech-voice"
             onChange={(e) => void updateConfig({ speech: { voice: e.target.value } })}
           >
@@ -281,8 +356,51 @@ export function SpeechSettings() {
             Try it
           </Button>
         </SettingRow>
+        <SettingRow
+          label="Natural voice model"
+          description={
+            downloading
+              ? "Downloading from Hugging Face; your system's voice reads until it's ready."
+              : voiceModel?.downloaded
+                ? "Downloaded, in Jig's folder (models). It runs on this computer; nothing it reads is sent anywhere."
+                : `Not downloaded (${VOICE_MODEL.size}). It downloads the first time it reads, or now.`
+          }
+        >
+          <span
+            className="w-16 text-right text-sm text-muted tabular-nums"
+            data-testid="settings-speech-voice-size"
+          >
+            {downloading
+              ? `${natural.total ? Math.floor((natural.loaded / natural.total) * 100) : 0}%`
+              : voiceModel && voiceModel.bytes > 0
+                ? megabytes(voiceModel.bytes)
+                : ""}
+          </span>
+          {voiceModel?.downloaded || downloading ? (
+            <Button
+              variant="ghost"
+              icon={Trash2}
+              disabled={downloading}
+              className="w-28 justify-start"
+              data-testid="settings-speech-remove-voice"
+              onClick={() => void removeVoice()}
+            >
+              Remove
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              icon={Download}
+              className="w-28 justify-start"
+              data-testid="settings-speech-download-voice"
+              onClick={() => void downloadNaturalVoice(false)}
+            >
+              Download
+            </Button>
+          )}
+        </SettingRow>
         <div className="px-4 py-3" data-testid="settings-speech-more-voices">
-          <div className="text-sm text-fg">Adding voices</div>
+          <div className="text-sm text-fg">Adding system voices</div>
           <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">
             {steps.map((step) => (
               <li key={step}>{step}</li>

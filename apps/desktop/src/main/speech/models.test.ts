@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SPEECH_COMMON_FILES, speechFiles } from "../../shared/speech";
+import { SPEECH_COMMON_FILES, speechFiles, VOICE_MODEL_FILES } from "../../shared/speech";
 import { parseModelUrl, SpeechModels } from "./models";
 
 const URL_BASE = "jig-speech://hf/onnx-community/whisper-base";
@@ -97,5 +97,25 @@ describe("SpeechModels", () => {
     expect((await models.list()).map((m) => m.downloaded)).toEqual([false, true, false]);
     await models.remove("base");
     expect((await models.status("base")).downloaded).toBe(false);
+  });
+
+  it("downloads the natural voice's model and a voice once, and removes them", async () => {
+    const fetch = vi.fn(async () => new Response("x", { headers: { "content-length": "1" } }));
+    const progress = vi.fn();
+    const models = new SpeechModels(root, fetch, progress, "https://models.test");
+    expect(await models.voiceStatus()).toEqual({ downloaded: false, bytes: 0 });
+    await models.ensureVoice("af_heart");
+    expect(fetch).toHaveBeenCalledTimes(VOICE_MODEL_FILES.length + 1);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://models.test/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/af_heart.bin",
+    );
+    expect(progress).toHaveBeenCalledWith("voice", 1, 1);
+    expect(await models.voiceStatus()).toEqual({ downloaded: true, bytes: VOICE_MODEL_FILES.length + 1 });
+    await models.ensureVoice("af_heart");
+    expect(fetch).toHaveBeenCalledTimes(VOICE_MODEL_FILES.length + 1);
+    await models.ensureVoice("ef_dora");
+    expect(fetch).toHaveBeenCalledTimes(VOICE_MODEL_FILES.length + 2);
+    await models.removeVoice();
+    expect(await models.voiceStatus()).toEqual({ downloaded: false, bytes: 0 });
   });
 });

@@ -291,7 +291,12 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks
   to download the Whisper model (Settings → Speech: tiny ~45 MB, base ~80 MB (default), small
   ~250 MB; language; remove). It runs locally, offline afterwards. Read aloud (speaker icon on
-  Claude's answers) uses the system's voices.
+  Claude's answers) and talking use the natural voice (below) or the system's voices.
+- Natural voice (D-243): Claude's replies are read with Kokoro, a realistic voice that runs on this
+  computer (19 voices: American and British English and Spanish, women and men). The first time it
+  reads, it asks to download the model (~330 MB) and the system's voice reads until it's ready.
+  Settings → Speech → Reading aloud: Reads aloud (natural / system), Natural voice, Try it, Natural
+  voice model (Download / Remove).
 - Real-time speech and talking with Claude (D-209): with a graphics card Whisper runs on it
   (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
   Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
@@ -800,6 +805,11 @@ Things the cloud build environment couldn't verify:
   Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
   words, corrections); talk with Claude with headphones, then with speakers (the system voice may
   be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
+- **Natural voice (D-243):** checked on Jon's Windows machine in the built app (English and Spanish,
+  ~1.5 s for 3 s of speech after ~7 s loading). Try: the first download from Read aloud (the dialog,
+  then the "ready" toast), talking with Claude (no gaps between sentences, speaking over it stops it,
+  the waves follow the real voice), each Spanish voice, Remove in Settings, and memory once the voice
+  process stops after 10 minutes unused. Packaged app: `voice-host.mjs` and `phonemizer` must ship.
 - **Talking window (D-210):** untested with a real microphone and voice: whether the waves follow
   your voice smoothly (128 ms batches played back in 16 ms steps), whether your system voice gives
   word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working

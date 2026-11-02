@@ -113,7 +113,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `attachments/addon-<id>/` | files an add-on keeps for messages it sends later (a task's files) |
 | `attempts/` | "Try several ways" runs and their git worktrees |
 | `themes/` | user themes (Jig or VS Code format) and imported themes |
-| `models/` | dictation's speech models, downloaded on first use (D-208) |
+| `models/` | dictation's speech models and the natural voice (Kokoro), downloaded on first use (D-208, D-243) |
 | `addons/` | the user's add-ons — **a git repository** (§8) |
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
@@ -529,8 +529,14 @@ model never goes online again. `features/speech/engine.ts` reads the microphone 
 Audio (`Capture`) and `LiveText` has Whisper read the current piece again while you speak; the
 composer replaces the dictated span as words come in, and nothing is sent until you press Enter.
 With a graphics card the worker uses WebGPU (fp32 encoder, q4 decoder; D-209), else WebAssembly
-(q8); each variant's files are downloaded separately. Read aloud uses the
-system's voices (`speechSynthesis`). Chromium's Web Speech recognition doesn't work in Electron and
+(q8); each variant's files are downloaded separately. Read aloud and talking use the natural voice
+(D-243) or the system's voices (`speechSynthesis`), through one API in `features/speech/speak.ts`
+(`speak`, `preloadSpeech`, `stopSpeaking`). The natural voice is Kokoro-82M in an Electron
+utilityProcess (`main/speech/voiceHost.ts` → `voice-host.mjs`, managed by `NaturalVoiceHost`, stopped
+after 10 minutes unused): `speech.say` returns 24 kHz audio, which `features/speech/naturalVoice.ts`
+plays with Web Audio, making the next sentence while one plays and feeding its loudness to the waves.
+Text becomes phonemes there: English with espeak-ng (`english.ts`, from kokoro-js), Spanish with
+rules (`spanish.ts`). The model is downloaded by `SpeechModels.ensureVoice` into `~/.jig/models`. Chromium's Web Speech recognition doesn't work in Electron and
 Claude Code's own voice mode needs claude.ai, so neither is used.
 
 Talking with Claude (`features/speech/voice.ts`, D-209) is a renderer loop around a normal chat:

@@ -95,7 +95,8 @@ let transcriber: Transcriber | undefined;
 const ready = new Set<string>();
 
 // The main process downloads the model and says how far it is.
-window.jig?.on("speech.progress", ({ loaded, total }) => {
+window.jig?.on("speech.progress", ({ model, loaded, total }) => {
+  if (model === "voice") return;
   const d = useSpeechEngine.getState().downloading;
   if (d) useSpeechEngine.setState({ downloading: { ...d, loaded, total } });
 });

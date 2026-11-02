@@ -74,5 +74,15 @@ going ahead and the transcript.
 - [ ] Check on a real machine: waves with a real microphone, word pulses with your system voice,
       the volume of the sounds.
 
-Later ideas: neural voices (Piper/Kokoro on the GPU) instead of the system's; reading every reply
-aloud outside talking; a push-to-talk key.
+## A natural voice (D-243)
+
+- [x] Kokoro-82M in a background process (utilityProcess, onnxruntime-node), full precision; the
+      system's voices as the other engine and the fallback.
+- [x] English (espeak-ng, ported from kokoro-js) and Spanish (rules) phonemes; 19 voices.
+- [x] One speaking API (`speak.ts`) for Read aloud, talking and Try it; the next sentence is made
+      while one plays; the waves follow the real audio.
+- [x] Download once (asking first, progress in Settings), Remove; Settings → Speech rows.
+- [ ] Check on a real machine: the first download, talking with it, packaged app.
+
+Later ideas: reading every reply aloud outside talking; a push-to-talk key; more languages for the
+natural voice (French, Italian, Portuguese voices exist; they need their own phoneme rules).

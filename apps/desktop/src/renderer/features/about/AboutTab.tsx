@@ -596,7 +596,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Paste screenshots, drop PDFs, Word, Excel and PowerPoint files",
-                "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine, words appearing as you speak; Read aloud on Claude's answers",
+                "Talk instead of typing: the mic button (Ctrl+Shift+Space) dictates with Whisper on your machine, words appearing as you speak; Read aloud on Claude's answers in a natural voice that runs on your computer (English and Spanish)",
                 "Talk with Claude: the Talk button (sound waves) opens a calm talking window with live waves and the conversation; Claude looks at the code while you plan, shows its plan (or a task queue for bigger work), “go ahead” (or the button) starts the work, and a soft sound plays while it works",
                 "Permission cards: allow once, always, or deny",
                 "Queue messages while Claude works",

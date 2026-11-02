@@ -2,7 +2,8 @@ import { level } from "./protocol";
 
 /**
  * How loud things are while talking with Claude (D-210), for the sound waves: your microphone, and
- * Claude's voice (the system's voices give no audio to measure, so each spoken word is a pulse).
+ * Claude's voice (the natural voice's real loudness; the system's voices give no audio to measure, so
+ * each spoken word is a pulse).
  */
 
 /** A microphone level (RMS, 0–1) as a wave height (0–1), on a log scale: a quiet room is 0. */
