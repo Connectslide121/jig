@@ -555,8 +555,8 @@ conversation fading upwards under them, a plan card in the right margin while a 
 or task-queue `addon_tasks_add` waits (`planOf` in `replies.ts`), and Mute / Stop voice / End talking /
 Go ahead. The go-ahead (a phrase from `isGoAhead`, or the button) approves the pending plan (a queue
 is allowed with `start: true`), or sends "Go ahead" and approves the plan as it comes; then talking
-ends (the chat leaves voice mode) and `cues.ts` follows the chat: a soft Web Audio note every 1.17 s while it works, a chime when it
-finishes or needs you (`speech.workSound`). "Bye" only ends talking; a chat Jig put in plan mode goes
+ends (the chat leaves voice mode) and `cues.ts` follows the chat quietly: a chime when it finishes or needs you (the soft note every
+1.17 s plays only while talking) (`speech.workSound`). "Bye" only ends talking; a chat Jig put in plan mode goes
 back to its own mode once it is idle.
 
 

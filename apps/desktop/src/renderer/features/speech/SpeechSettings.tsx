@@ -176,7 +176,7 @@ export function SpeechSettings() {
         </SettingRow>
         <SettingRow
           label="Sound while Claude works"
-          description="After you hand Claude a task by voice: a soft note every few seconds while it works, and a chime when it finishes or needs you."
+          description="While you talk: a soft note every few seconds while Claude thinks. After you hand it a task by voice: a chime when it finishes or needs you."
         >
           <Switch
             label="Sound while Claude works"
@@ -269,7 +269,7 @@ export function SpeechSettings() {
             </li>
             <li>
               The chat is in plan mode: Claude asks what it needs, then shows its plan. Say “yes, go ahead” or
-              press Go ahead: Claude starts working, talking ends, and a soft sound plays while it works.
+              press Go ahead: Claude starts working, talking ends, and a chime plays when it's done.
             </li>
             <li>Say “bye” or press End talking to stop talking; the chat and Claude's work go on.</li>
           </ol>

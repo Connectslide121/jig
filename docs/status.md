@@ -814,8 +814,8 @@ Things the cloud build environment couldn't verify:
   your voice smoothly (128 ms batches played back in 16 ms steps), whether your system voice gives
   word boundaries (else Claude's wave is a gentle pulse per sentence), the loudness of the working
   note and chimes, and whether "go ahead" is heard reliably. Try: plan a small change by voice, ask
-  Claude to look at something in the code, then press or say "go ahead" and listen for the sound
-  while it works and the chime at the end. D-218: plan something bigger ("one task per screen")
+  Claude to look at something in the code, then press or say "go ahead": the work is quiet (no
+  ticking once talking ends) and a chime plays at the end. D-218: plan something bigger ("one task per screen")
   and check Claude proposes a task queue, that the card lists the tasks, and that "go ahead"
   queues and starts them; check the louder, faster working note isn't too much.
 - **Checked on Windows 11 (Oct 29, first local run):**

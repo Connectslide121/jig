@@ -4,8 +4,8 @@ import { useConfig } from "../../stores/config";
 import { useSessions } from "../sessions/store";
 
 /**
- * Sounds that say what Claude is doing when you aren't looking (D-210): a soft repeating motif
- * while it works (so you know it hasn't hung), a rising chime when it finishes, and a falling one
+ * Sounds that say what Claude is doing (D-210): while you talk, a soft repeating motif while it
+ * thinks or works (so you know it hasn't hung); after talking hands work over, a rising chime when it finishes, and a falling one
  * when it needs you. Made with Web Audio, quiet, no files. `speech.workSound` turns them off.
  */
 export type Cue = "start" | "tick" | "done" | "attention";
@@ -118,18 +118,16 @@ export const useCues = create<{ following: string[]; played: Cue[] }>(() => ({ f
 const followed = new Map<string, () => void>();
 
 /**
- * Follows a chat's work after talking handed it over: the motif while it works, a chime when it
- * finishes (done) or waits for you (and again working when you answer), until the turn ends;
- * then `onDone`.
+ * Follows a chat's work after talking handed it over: a chime when it finishes (done) or waits for
+ * you, until the turn ends; then `onDone`. The working motif plays only while you are talking:
+ * once talking ends, Claude works quietly (Jon, 2026-11-02).
  */
 export function followWork(target: string, onDone?: () => void): void {
   unfollowWork(target);
-  const cue = new WorkCue();
   let waiting = false;
   /** Approving a plan leaves the chat waiting or idle for a moment before it works. */
   let seenWork = false;
   const end = () => {
-    cue.stop();
     clearTimeout(grace);
     unsubscribe();
     followed.delete(target);
@@ -140,10 +138,8 @@ export function followWork(target: string, onDone?: () => void): void {
     if (status === "working" || status === "starting") {
       seenWork = true;
       waiting = false;
-      cue.start(TICK_MS / 2);
     } else if (status && !seenWork && !force) return;
     else if (status === "needs_you") {
-      cue.stop();
       if (!waiting) playCue("attention");
       waiting = true;
     } else {
