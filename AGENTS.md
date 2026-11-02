@@ -91,7 +91,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   APIs or load claude.ai inside Jig.
 - **Jig's windows:** use `appWindows()` (`main/appWindows.ts`), never `BrowserWindow.getAllWindows()`,
   for anything meaning "Jig's windows" (events, focus, notifications, quitting). Hidden helper windows
-  (Claude's browser) are marked with `markHelperWindow`.
+  (Claude's browser) are marked with `markHelperWindow`. Show or focus a window with
+  `revealWindow`/`focusJig`, and open links, files and folders with `openExternal`/`openPath`/
+  `showInFolder` (same file): they do nothing while Jig runs hidden (`JIG_HIDDEN`, the e2e tests), so
+  tests never take over the user's screen.
 - **Never read, copy, store, log or forward Claude credentials or tokens.** No login UI. Keep the
   default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session environments.
 - **The user's own tools and credentials** for git, GitHub, Azure, Azure DevOps (`git`, `gh`, `az`).
