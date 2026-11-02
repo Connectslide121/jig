@@ -2834,3 +2834,24 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   devices in use (`MeetingMedia.selected()`), so Apply no longer silently resets them to the system
   default. Still needs a real-machine check with physical devices.
 
+## D-247: How Jon's November notes are done
+
+**Decided by:** Jon (each choice asked) · **Date:** 2026-11-02
+
+The plan is `docs/plan/23-jons-notes.md`. Choices made with Jon:
+- **Task queue:** one queue per project, each running independently; Claude's `addon_tasks_add`
+  approval shown as an editable task list; every run kept automatically in a History per project.
+- **Edited built-in add-ons** shared to the gallery arrive as a separate copy with their own name.
+- **Meetings:** the history of meetings Jig saved, in the main window (not Teams' own transcripts),
+  with Start a chat, Write notes, Review actions, Copy/export, Rename, Delete; meetings in the
+  chat's `@` picker; shorter notes.
+- **Calls:** Teams calls to and from colleagues (no phone numbers); research first.
+- **DevOps:** each project picks its boards, a tab per board.
+- **Ghost-text completion:** GitHub's Copilot language server with Jon's own Copilot sign-in, kept
+  inside that program. A narrow exception to "Claude Code is the only engine": editor completions
+  only, never agent work, chats or tools. Claude Code is too slow per keystroke; a local model is
+  weaker and needs a strong GPU.
+- **claude.ai projects:** no claude.ai sign-in, credentials or internal endpoints (the safer path,
+  Jon's choice after weighing a direct import). Projects get a Knowledge section; an import reads
+  claude.ai's data export zip, and its dialog explains step by step how to get that zip.
+

@@ -1,0 +1,105 @@
+# Phase 23 — Jon's notes (November 2026)
+
+**Goal:** the items from Jon's to-do list, grouped into work sessions that can each be done in one
+go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm run check`,
+`npm run e2e:changed`, docs and a decision record.
+
+**Done when:** every session below is ticked, or moved to the backlog with a reason.
+
+## Cleanup (done, D-246)
+
+- [x] Git: the sync button is named by what it does (Pull ↓1, Push ↑2, Sync ↓1 ↑2, Publish, Up to
+      date) with a tooltip naming commits and the remote branch; the Repos chip matches.
+- [x] Home / project dashboard: no separate chat box; a New chat button with the folder picker;
+      starters open a new chat with the message ready.
+- [x] Meetings: the in-call device picker opens on the devices in use. Needs a check with real devices.
+
+## Session 1 — Task queue: a queue per project, plan review, run history
+
+- [ ] **One queue per project**, each running independently, so agents in different projects
+      never collide. Migrate today's single global `queue` into per-project queues.
+- [ ] **Review Claude's proposal as an editable task list:** when Claude calls `addon_tasks_add`,
+      the approval shows the tasks as rows (title, prompt, project, chat grouping, files), editable
+      and reorderable before approving, instead of the raw tool input.
+- [ ] **Run history:** every run (Start until the queue finishes or stops) is kept automatically,
+      with its overview table, per-task reports, time and cost. A History list per project opens any
+      past run in the same results view. "Clear finished tasks" no longer loses results.
+
+## Session 2 — Add-ons: restore and share edited built-ins
+
+- [ ] **Restore original:** a modified add-on (built-in or from the gallery) can go back to the
+      version it came from, after a confirmation. Jig keeps the original to compare and restore.
+- [ ] **Share an edited built-in:** publishing it to the gallery makes a separate copy with its own
+      id and name; installing it never touches the recipient's original.
+
+## Session 3 — Meeting history in the main window
+
+- [ ] **Meetings view** in Jig's main window listing every saved meeting (renamed from "Saved
+      meetings" to the meeting history), with search; no need to open the meeting window.
+- [ ] **Actions per meeting:** Start a chat about it, Write notes, Review actions → task queue,
+      Copy / export as Markdown, Rename, Delete.
+- [ ] **Mention a meeting in a chat:** the composer's `@` picker also lists meetings; picking one
+      makes Claude read it with `jig_meeting_read`.
+- [ ] **Shorter notes:** rewrite the notes prompt for concise output (a short summary, decisions,
+      open questions, short actions; evidence only inside actions).
+
+## Session 4 — Teams calls (research first)
+
+- [ ] Research with the ACS calling SDK Jig already uses: 1:1 Teams calls to colleagues and
+      answering their calls; permissions or admin approval needed; ringing only while Jig runs;
+      the Teams app ringing at the same time.
+- [ ] Then build: call a contact, answer/decline incoming calls, in the existing meeting window.
+
+## Session 5 — Azure DevOps boards per project, update progress
+
+- [ ] **Boards per project:** each Jig project picks its DevOps boards (several allowed); the view
+      shows a tab per board.
+- [ ] **Update progress:** while an update installs, show the installer or a progress window
+      instead of Jig vanishing. Needs testing on Windows.
+
+## Session 6 — Ghost-text code completion in the editor
+
+- [ ] Inline AI completions in the editor (Tab accepts) through GitHub's Copilot language server
+      (`@github/copilot-language-server`), with the user's own Copilot sign-in kept inside that
+      program. Completions only, never agent work (D-247). An on/off setting and a status indicator.
+
+## Session 7 — Project knowledge and claude.ai import
+
+- [ ] **Knowledge in Jig projects:** documents kept with a project; every chat in it is told they
+      exist and can read them with a tool.
+- [ ] **Import from claude.ai's data export:** drop the export zip, pick projects, get Jig projects
+      with their instructions and knowledge. First confirm the export contains knowledge documents.
+      No claude.ai sign-in or internal endpoints (Jon chose the safe path, D-247).
+- [ ] **Clear steps in the UI:** Projects → ⋯ → "Import from claude.ai…" opens a dialog (`Dialog`)
+      that shows the numbered steps below as the first thing you see:
+      - each step on its own line with its number, the exact menu names in bold (Settings,
+        Privacy, Export data), and a short note on the email and the expiring link;
+      - an **Open claude.ai settings** button (`openExternal`, the system browser, never inside Jig);
+      - a fixed-size drop zone below the steps ("Drop the zip here, or Browse…"), so nothing moves
+        when the file is read; then the list of found projects with checkboxes in the same space;
+      - a line for Team/Enterprise plans ("Don't see Export data? Your organisation's owner
+        exports it.").
+      Also a line on "What Jig can do" and a Knowledge section empty state that links to it.
+
+### How to get the claude.ai export zip (the text the dialog shows)
+
+From Anthropic's help article "How can I export my Claude data?", written down from memory. Check
+it against the current article and a real export before building the import, and update this list.
+
+1. Open **claude.ai** in your normal web browser and sign in.
+2. Click your **initials / name** at the bottom left, then **Settings**.
+3. Open the **Privacy** section.
+4. Click **Export data** and confirm.
+5. Wait for the email from Anthropic (from minutes up to a few hours for large accounts). It has a
+   **download link** that expires (about 24 hours), so download the zip soon.
+6. Save the `.zip` file somewhere; don't unzip it. In Jig, drop it on the import dialog (or pick it
+   with Browse…).
+
+Notes:
+- **Team / Enterprise plans:** individual members may not see Export data; the organisation's
+  owner exports for the whole organisation (Settings → Data management or similar). Check this.
+- **Expected contents** (to verify with a real export): `conversations.json`, `users.json` and
+  `projects.json` (each project's name, description, instructions and knowledge documents with
+  their text). If knowledge documents turn out to be missing or only names, the import brings
+  instructions only and says which documents to add by hand.
+- The zip holds all your conversations; Jig reads only `projects.json` and never stores the rest.

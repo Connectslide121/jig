@@ -290,7 +290,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    Preview, projects you manage, arranging panels, split view, project links, Releases, Learning 2
    with Workflows). What's left of it is in `docs/plan/99-backlog.md`. Next: try phase 18 on Windows
    ("Needs testing on your machine" below) and ask Jon what comes next.
-5. Run `npm run check` before every commit; keep plan, docs and decisions true.
+5. Next work: `docs/plan/23-jons-notes.md`, session by session (agreed with Jon, D-247).
+6. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
 
