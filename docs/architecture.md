@@ -238,8 +238,8 @@ References: `docs/reference/routines.md`, `docs/reference/artifacts.md`.
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 
-**Home.** With no tab open, the main area is the active project's Home: a box that starts a chat,
-recent chats, next steps and the add-ons' widgets (also the project dashboard tab). Chat tabs show a
+**Home.** With no tab open, the main area is the active project's Home: a New chat button (with a folder
+picker and starter prompts that open a chat with the message ready; D-246), recent chats, next steps and the add-ons' widgets (also the project dashboard tab). Chat tabs show a
 dot when the chat works, needs you or finished unseen. Reference: `docs/reference/layout.md`.
 
 **What Jig can do.** A core tab (the main area's welcome screen until you add a project, and in the "Jig" menu) explains Jig with bundled screenshots and live data: the slots from

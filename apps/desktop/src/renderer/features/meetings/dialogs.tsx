@@ -91,7 +91,16 @@ export function DevicePicker({
   const [busy, setBusy] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: enumerate once when the user opens the picker.
   useEffect(() => {
-    void media.prepare().then(setDevices).catch(onError);
+    void media
+      .prepare()
+      .then((found) => {
+        const now = media.selected();
+        setMicrophone(now.microphone);
+        setSpeaker(now.speaker);
+        setCamera(now.camera);
+        setDevices(found);
+      })
+      .catch(onError);
   }, []);
   return (
     <Dialog

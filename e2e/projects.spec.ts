@@ -37,12 +37,14 @@ test("projects you manage: create with defaults, chats grouped, pinned, dragged 
   await expect(page.getByTestId("project-switcher")).toContainText("Shop");
   await expect(page.getByTestId("project-Shop")).toContainText("repos · shop");
 
-  // Its Home: its starter prompts, and a chat starts with its defaults.
+  // Its Home: its starter prompts, and New chat opens a chat with its defaults in the picked folder.
   const home = page.getByTestId("home").first();
   await expect(home).toContainText("Plan the next ticket");
-  await home.getByTestId("home-input").fill("hello");
   await home.getByTestId("home-folder").selectOption(join(repos, "elearning"));
-  await home.getByTestId("home-send").click();
+  await home.getByTestId("home-new-chat").click();
+  const composer = page.locator("[data-tab-id]:not(.hidden)").getByTestId("composer-input");
+  await composer.fill("hello");
+  await composer.press("Enter");
   await expect.poll(async () => (await chats(page)).length).toBe(1);
   const [first] = await chats(page);
   expect(first).toMatchObject({ permissionMode: "plan", cwd: join(repos, "elearning") });

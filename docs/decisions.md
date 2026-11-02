@@ -2817,3 +2817,20 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - `.jig/release.json` (planned, semver, `v{version}`, version in package.json, no changelog file) makes
   Jig a repository the Releases add-on tracks: unreleased commits, the suggested version, history.
   Its own Release button only tags, so Jig's releases go through the workflow.
+
+## D-246: Small cleanups from Jon's notes: sync button names its action, Home has no chat box
+
+**Decided by:** Jon (what) and Claude, on my own (how) · **Date:** 2026-11-02
+
+- **Git sync button** (Jon: "should be clear about push and pull, shouldn't always say sync"): it is
+  named by what a click does (`addons/git/lib/sync.ts`): **Pull ↓1**, **Push ↑2**, **Sync ↓1 ↑2**
+  only when both, **Publish Branch**, **Up to date**; the icon matches (the ⋯ menu's Pull/Push
+  arrows), the tooltip names the commits and the remote branch, the toast says what was pulled or
+  pushed. The Repos add-on's chip and menu say the same. Supersedes D-152's "Sync Changes" label.
+- **Home / project dashboard** (Jon chose removing over embedding the real composer): no chat box;
+  a **New chat** button with the folder picker. Starter prompts open a new chat with the message in
+  its composer (not sent). The "New chat" Next-steps tile is gone (it duplicated the button).
+- **Meeting devices** (Jon wasn't sure the in-call menu works): the in-call picker opens on the
+  devices in use (`MeetingMedia.selected()`), so Apply no longer silently resets them to the system
+  default. Still needs a real-machine check with physical devices.
+

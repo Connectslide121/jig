@@ -120,6 +120,14 @@ export class MeetingMedia {
       cameras: granted.video ? await this.deviceManager.getCameras() : [],
     };
   }
+  /** The devices in use now, so the in-call picker opens on them instead of "System default". */
+  selected(): { microphone: string; speaker: string; camera: string } {
+    return {
+      microphone: this.deviceManager?.selectedMicrophone?.id ?? "",
+      speaker: this.deviceManager?.selectedSpeaker?.id ?? "",
+      camera: this.cameraDevice?.id ?? "",
+    };
+  }
   async devices(
     microphoneId: string,
     speakerId: string,

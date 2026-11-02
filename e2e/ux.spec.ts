@@ -2,10 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
 
-test("Home: start a chat from the box; New chat in the top bar; tab dots; Ctrl+K", async ({
-  page,
-  jigHome,
-}) => {
+test("Home: New chat opens a chat; New chat in the top bar; tab dots; Ctrl+K", async ({ page, jigHome }) => {
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "notes.txt"), "one\ntwo\n");
@@ -14,9 +11,11 @@ test("Home: start a chat from the box; New chat in the top bar; tab dots; Ctrl+K
   // With a project and no tab open, the main area is the project's Home.
   const home = page.getByTestId("home");
   await expect(home).toBeVisible();
-  await page.getByTestId("home-input").fill("edit notes.txt");
-  await page.keyboard.press("Enter");
+  await expect(home.getByTestId("home-input")).toHaveCount(0);
+  await home.getByTestId("home-new-chat").click();
   const chat = page.locator("[data-tab-id]:not(.hidden)").getByTestId("chat");
+  await chat.getByTestId("composer-input").fill("edit notes.txt");
+  await page.keyboard.press("Enter");
   await expect(chat.getByTestId("turn-result")).toHaveCount(1, { timeout: 15000 });
 
   // Whole-chat changes, with Undo (restores the files after confirming).

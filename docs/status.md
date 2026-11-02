@@ -566,8 +566,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     on top, and drag pinned chats to reorder them; the chat's menu has Pin and Move to project.
     Removing a project moves its chats to "No project". The filter button in the header groups the list
     by project, status, day, or as one list (D-170).
-  - **Home** uses the project's starter prompts. Its chat box has a folder picker (any workspace or
-    one of its repositories; the project's default workspace first).
+  - **Home** uses the project's starter prompts (a click opens a new chat with it in the composer).
+    Its **New chat** button has a folder picker (any workspace or one of its repositories; the
+    project's default workspace first). No separate chat box there (D-246).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
 - **Project links** (section below Projects, and a card on Home): the project's places in groups you
@@ -679,7 +680,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     "start a background job", "edit README.md", "! ls".
 - **Easier to reach (UI/UX sweep, D-094):**
   - **Starting and finding chats:**
-    - **Home:** with no tab open, a project shows a box that starts a chat, starter prompts, recent
+    - **Home:** with no tab open, a project shows a New chat button, starter prompts, recent
       chats with their status, and "Next steps" tiles. It is also the project dashboard.
     - **New chat** is a button in the top bar.
     - **Ctrl+K** focuses the top-bar search field.
