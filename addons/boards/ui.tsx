@@ -29,7 +29,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { type MouseEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type Board,
   type BoardData,
@@ -58,7 +58,7 @@ function cardMenu(
   ctx: AddonUiContext,
   item: WorkItem,
   projectId: string | undefined,
-  at: MouseEvent | HTMLElement,
+  at: globalThis.MouseEvent | HTMLElement,
 ) {
   ctx.menu(
     [
@@ -101,7 +101,7 @@ function Card({
       onKeyDown={(e) => e.key === "Enter" && ctx.openExternal(item.url)}
       onContextMenu={(e) => {
         e.preventDefault();
-        cardMenu(ctx, item, projectId, e);
+        cardMenu(ctx, item, projectId, e.nativeEvent);
       }}
       className={cn(
         "group relative flex shrink-0 cursor-pointer flex-col gap-1.5 overflow-hidden rounded-md border border-line bg-elevated py-2 pr-1.5 pl-3.5 shadow-sm",
@@ -540,7 +540,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             value={width}
             disabled={!board}
             onChange={(e) => void setWidth(Number(e.target.value))}
-            className="w-24 accent-accent disabled:opacity-40"
+            className="jig-range w-24"
           />
         </div>
         <span className="flex size-7 shrink-0 items-center justify-center">
