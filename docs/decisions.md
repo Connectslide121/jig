@@ -2606,3 +2606,18 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Profile proposals need direct statements or unambiguous behavior, not repository implementation
   facts. Counts, contextual mining and prompt guard implementation are **Claude, on my own**.
   These fixes affect future reviews; do not silently rewrite saved suggestions or the user profile.
+
+## D-230: A repository-owned release skill for every agent
+
+- Jon wants an agent to handle Jig releases, and explicitly wants the workflow in the Jig repo so
+  Codex, Claude Code and Jig's own agents can all use it. He does not want developer release UI.
+- Canonical instructions live in `.agents/skills/jig-release/SKILL.md`; a thin Claude skill entry
+  forwards there, and `AGENTS.md` routes all other agents. This maintenance skill is separate from
+  the product's bundled skills and the Releases add-on for other projects.
+- An explicit publish/release request authorizes release-scoped main/tag pushes and publication,
+  as a narrow exception to the ordinary no-push rule. Skill creation or preparation alone does not.
+  The agent prepares and tests before pushing, publishes through a verified draft, checks installer
+  bytes and public unauthenticated update discovery, and does not replace published tags/assets.
+- Implementation details are **Claude, on my own**: next patch by default, a tested manifest-version
+  helper, existing Windows packaging and `gh`, checksum asset, bounded retries and resume checks.
+  No new CI service or stored token is needed. The first actual release is a separate invocation.

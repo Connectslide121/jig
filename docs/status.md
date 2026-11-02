@@ -1,5 +1,11 @@
 # Status
 
+Agent-managed Jig releases (2026-11-02, D-230): the repository now contains a shared `jig-release`
+skill, discoverable by Codex and Claude Code/Jig, routed from AGENTS.md. “Publish a Jig release”
+runs versioning, validation, Windows packaging, checksum/draft verification and GitHub publication
+with the existing CLIs. Creating the skill does not publish a release; live publication remains
+to be exercised on an explicit release request. No release UI was added.
+
 Learning evidence (2026-11-02, D-229): sent prompts record shared-file counts, including image-only
 messages, without inferring paste/drop/picker use from paths. Browser-gap mining requires web
 context and reports only missing recorded calls. Reflection guidance rejects “let Claude” reminder

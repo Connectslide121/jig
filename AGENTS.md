@@ -199,9 +199,24 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - Work directly on `main`. Do not create new branches; keep logical, validated commits on `main`.
 - Small, coherent commits with a clear message (what and why), including their tests and docs.
 - **Always commit (Jon).** Commit after each logical, validated change without being asked; never
-  leave completed work uncommitted, and never ask whether to commit. Never push.
+  leave completed work uncommitted, and never ask whether to commit. Never push except for an explicitly
+  requested Jig publication through the release skill below.
 - Run `npm run check` before committing.
 - No AI attribution trailers in commit messages.
+
+## Releasing Jig
+
+For requests to release, ship or publish **Jig itself**, read and follow
+[the shared jig-release skill](.agents/skills/jig-release/SKILL.md). It lives in the repository for
+all agents: Codex discovers `.agents/skills/jig-release`, Claude Code (including chats inside Jig)
+finds the forwarding entry under `.claude/skills/jig-release`; other agents use this link.
+This is separate from the bundled app skills in `skills/` and from releasing projects inside Jig.
+
+An explicit request to publish/release Jig authorizes the skill's release-scoped main/tag push and
+GitHub release publication. This is the only exception to the normal no-push rule; never force-push
+or silently include unfinished/unrelated work. A request to create the skill, explain releases,
+prepare a release or build a local installer does not authorize publication. When authorized,
+complete preparation, validation, packaging and publication without adding a redundant confirmation.
 
 ## What NOT to do
 

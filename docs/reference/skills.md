@@ -52,3 +52,12 @@ The real-app regression checks topbar access, modal geometry, switches, project 
 and selection reaching continuing chats. A prompt-free isolated native Claude Code discovery check
 confirmed all nine names without credentials or a model request. Live model output quality still
 needs everyday use; skill availability is not proof of better output on every task.
+
+## Repository maintenance skill (D-230)
+
+Jig's own release workflow is versioned at `.agents/skills/jig-release/SKILL.md`, with a thin
+Claude discovery entry at `.claude/skills/jig-release/SKILL.md` and routing from `AGENTS.md`.
+It is for agents working on this repository, including Claude Code launched inside Jig. It is
+not part of the curated `skills/` catalog loaded into every product chat, and does not release
+other repositories managed by Jig. Its version helper lives beside the skill and is tested by
+`scripts/release-version.test.ts`. The canonical instructions define preparation versus publication.

@@ -14,6 +14,8 @@ Claude Code, git and az, and can update.
 - [x] Update strategy (GitHub releases or "pull + build" in dev mode)
 - [x] Windows paths and shells documented and handled (PowerShell default, cmd, Git Bash; `.cmd` tools, junctions, `windowsHide`) — **testing on a real Windows machine is listed in docs/status.md**
 
+- [x] Repository-owned agent release skill shared by Codex, Claude Code and Jig, with version synchronization and verified GitHub publication workflow (D-230).
+
 ## Notes
 
 - The installer is built on Windows with `npm run dist` (`docs/guides/packaging.md`); the cloud

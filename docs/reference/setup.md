@@ -37,6 +37,12 @@ started tab until you press **Done**.
 Settings → **Updates** (`config.updates`): Jig's source repository (empty = the repo Jig runs from), the
 build command and the install command.
 
+Publishing is handled by the repository's shared `.agents/skills/jig-release/SKILL.md`, with a
+Claude entry under `.claude/skills/jig-release`. An authorized release publishes a stable GitHub
+release containing `Jig-Setup-<version>.exe` and `SHA256SUMS.txt`; the public latest-release endpoint
+must be readable without authentication. A 404 can mean there is no stable release yet as well as
+an inaccessible repository. See `docs/guides/packaging.md` for agent invocation.
+
 ## The launcher (`apps/launcher/launcher.mjs`)
 
 Plain Node, no dependencies, copied to `dist/main/launcher.mjs` by the build. After "Pull, build and

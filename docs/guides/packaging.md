@@ -1,5 +1,20 @@
 # Packaging, installing and updating Jig
 
+## Agent-managed releases
+
+Ask an agent working in this repository **“Publish a Jig release”** (optionally specify a version).
+It follows the shared [jig-release skill](../../.agents/skills/jig-release/SKILL.md), discovered by
+Codex and Claude Code, including Jig's own repository chats. The agent selects/synchronizes the app
+version, writes release notes, validates and builds on Windows, tests the unpacked app, creates a
+checksum and publishes a verified GitHub draft as the latest stable release. It uses your existing
+`git` / `gh` login. An explicit publication request authorizes the release-scoped push; merely
+preparing a release does not. See `AGENTS.md` → Releasing Jig.
+
+The app's existing update check then sees the new stable tag and links to its installer. No
+GitHub Actions workflow, extra token, app developer UI or silent installation is required. Creating
+the skill itself does not publish the first release. The updater repository is `Connectslide121/jig`.
+A public repository with no published stable release also returns 404 from `/releases/latest`.
+
 ## Build the Windows installer
 
 Build on **Windows** (npm installs the native parts — `@lydell/node-pty`, esbuild's binary and the Claude
