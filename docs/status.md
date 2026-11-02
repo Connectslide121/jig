@@ -1,5 +1,10 @@
 # Status
 
+Jig 0.1.1 release preparation (2026-11-02): the first public Windows installer is being packaged
+for authorized GitHub publication. Type checking, lint, 722 unit tests and token checks passed.
+The user requested immediate publication without further test runs; packaged smoke testing is
+omitted for this release. The release is not yet published.
+
 Agent-managed Jig releases (2026-11-02, D-230): the repository now contains a shared `jig-release`
 skill, discoverable by Codex and Claude Code/Jig, routed from AGENTS.md. “Publish a Jig release”
 runs versioning, validation, Windows packaging, checksum/draft verification and GitHub publication
