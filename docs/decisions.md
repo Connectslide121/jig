@@ -2895,3 +2895,5 @@ the shapes below **Claude, on my own** · **Date:** 2026-11-02
   Jig doesn't commit or push into them: save a `.zip` and commit it. "As a separate add-on" rewrites
   `addon.json` with the new name and an id made from it (free among yours); an edited built-in always
   goes this way, so installing it never replaces someone's built-in.
+- **Row actions (Jon, follow-up):** a row shows only Change with AI, Share and the switch; History,
+  Restore, Open folder, Reload and Delete are in its ⋯ menu, so rows stay calm.

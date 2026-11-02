@@ -4,6 +4,7 @@ import {
   FileUp,
   FolderOpen,
   History,
+  MoreHorizontal,
   Puzzle,
   RefreshCw,
   RotateCcw,
@@ -28,6 +29,8 @@ import {
   Empty,
   IconButton,
   Input,
+  type MenuEntry,
+  openMenuAt,
   Select,
   Spinner,
   Switch,
@@ -304,6 +307,40 @@ function AddonRow({ addon, origin }: { addon: AddonInfo; origin?: AddonOriginInf
     ),
     ...(addon.warnings ?? []),
   ];
+  // Rare actions live in the ⋯ menu so the row keeps a few buttons (Jon).
+  const menu: MenuEntry[] = [
+    ...(addon.source === "user"
+      ? [
+          { label: "History…", icon: History, onSelect: () => setHistory(true) },
+          {
+            label:
+              addon.overridesBuiltin && !origin ? "Restore the built-in add-on…" : "Restore the original…",
+            icon: Undo2,
+            disabled: !restorable,
+            testId: `addon-restore-${addon.id}`,
+            onSelect: () => void restoreAddon(addon, origin),
+          },
+        ]
+      : []),
+    {
+      label: "Open folder",
+      icon: FolderOpen,
+      onSelect: () => void call("app.openPath", { path: addon.dir }),
+    },
+    { label: "Reload", icon: RefreshCw, onSelect: () => void call("addons.reload", { id: addon.id }) },
+    ...(yours
+      ? [
+          { separator: true as const },
+          {
+            label: addon.overridesBuiltin ? "Delete your copy…" : "Delete…",
+            icon: Trash2,
+            danger: true,
+            testId: `addon-delete-${addon.id}`,
+            onSelect: () => void deleteAddon(addon),
+          },
+        ]
+      : []),
+  ];
   return (
     <div className="flex flex-col gap-2 px-4 py-3" data-testid={`addon-${addon.id}`}>
       <div className="flex items-center gap-3">
@@ -326,34 +363,15 @@ function AddonRow({ addon, origin }: { addon: AddonInfo; origin?: AddonOriginInf
           </div>
           {addon.description && <div className="text-xs text-muted">{addon.description}</div>}
         </div>
-        {canBuild && (
-          <IconButton
-            icon={Sparkles}
-            label="Change this with AI"
-            onClick={() => requestBuild({ goal: "", addonId: addon.id, origin: "settings" })}
-          />
-        )}
-        {addon.source === "user" && (
-          <IconButton icon={History} label="History" onClick={() => setHistory(true)} />
-        )}
-        {addon.source === "user" && (
-          <IconButton
-            icon={Undo2}
-            label={addon.overridesBuiltin && !origin ? "Restore the built-in add-on" : "Restore the original"}
-            data-testid={`addon-restore-${addon.id}`}
-            className={restorable ? undefined : "invisible"}
-            disabled={!restorable}
-            onClick={() => void restoreAddon(addon, origin)}
-          />
-        )}
-        {yours && (
-          <IconButton
-            icon={Trash2}
-            label={addon.overridesBuiltin ? `Delete your copy of ${addon.name}` : `Delete ${addon.name}`}
-            data-testid={`addon-delete-${addon.id}`}
-            onClick={() => void deleteAddon(addon)}
-          />
-        )}
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          {canBuild && (
+            <IconButton
+              icon={Sparkles}
+              label="Change this with AI"
+              onClick={() => requestBuild({ goal: "", addonId: addon.id, origin: "settings" })}
+            />
+          )}
+        </span>
         <IconButton
           icon={FileDown}
           label={`Share ${addon.name}`}
@@ -361,14 +379,10 @@ function AddonRow({ addon, origin }: { addon: AddonInfo; origin?: AddonOriginInf
           onClick={() => setSharing(true)}
         />
         <IconButton
-          icon={FolderOpen}
-          label="Open folder"
-          onClick={() => void call("app.openPath", { path: addon.dir })}
-        />
-        <IconButton
-          icon={RefreshCw}
-          label="Reload"
-          onClick={() => void call("addons.reload", { id: addon.id })}
+          icon={MoreHorizontal}
+          label={`More for ${addon.name}`}
+          data-testid={`addon-more-${addon.id}`}
+          onClick={(e) => openMenuAt(e.currentTarget, menu, true)}
         />
         <Switch
           label={addon.enabled ? `Turn off ${addon.name}` : `Turn on ${addon.name}`}

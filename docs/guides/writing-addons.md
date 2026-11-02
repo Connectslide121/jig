@@ -122,8 +122,8 @@ In `ui.tsx`, `useJigEvent("git.commit", reload)` refreshes a view after each com
   name and an id made from it, so it sits beside the original; an edited built-in always goes this way
   (D-249). Its files go without `.git` and `node_modules`.
 - **Edited and Restore original:** an add-on installed from a gallery or a `.zip` keeps its original
-  (`~/.jig/addon-originals/<id>`). Once you or the builder change it, it shows **edited**, and ↶ puts it
-  back as it came (as a commit, so History brings your version back). For your copy of a built-in, ↶
+  (`~/.jig/addon-originals/<id>`). Once you or the builder change it, it shows **edited**, and ⋯ → **Restore the original** puts it
+  back as it came (as a commit, so History brings your version back). For your copy of a built-in, Restore
   removes the copy and the built-in comes back.
 - **Import:** Settings → Add-ons → **Import add-on…** (or Search → Import an add-on…) picks a `.zip`.
   Jig shows its name, version, description, file count and permissions before installing it into

@@ -47,6 +47,7 @@ test("an add-on is exported to a zip and imported back after showing its permiss
     .toBeGreaterThan(100);
 
   // Deleted (after asking), then imported back: the dialog says what it is and what it may do.
+  await page.getByTestId("addon-more-greeter").click();
   await page.getByTestId("addon-delete-greeter").click();
   await expect(page.getByRole("dialog")).toContainText("Delete Greeter?");
   await page.getByTestId("dialog-confirm").click();
@@ -97,6 +98,7 @@ test("an installed add-on you changed is marked edited and restores to the origi
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-addons").click();
   await expect(page.getByTestId("addon-edited-hello")).toBeVisible();
+  await page.getByTestId("addon-more-hello").click();
   await page.getByTestId("addon-restore-hello").click();
   await expect(page.getByRole("dialog")).toContainText("Restore Hello to the original?");
   await page.getByTestId("dialog-confirm").click();
