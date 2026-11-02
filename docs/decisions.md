@@ -2877,4 +2877,6 @@ The plan is `docs/plan/23-jons-notes.md`. Choices made with Jon:
   review of `addon_tasks_add`.
 - The SDK menu items gained `project`, `badge` and `testId`, and `ProjectSwatch` is exported, so
   add-ons can show project pickers like Jig's own.
+- **Which queue shows** (Jon): the view follows Jig's global project picker; its own project menu only
+  overrides what it shows, until the global project changes again.
 

@@ -289,22 +289,18 @@ interface QueueOverview {
 }
 
 /**
- * The project whose queue the view shows: the active project, until you pick another in the view's
- * project menu (switching the active project brings it back to that one).
+ * The project whose queue the view shows: Jig's active project. Picking another in the view's project
+ * menu only overrides it until the global project changes again.
  */
 function useShownProject() {
   const active = useActiveProject();
   const projects = useProjectList();
-  const [picked, setPicked] = useState<{ forActive?: string; id: string }>();
-  const id =
-    picked && picked.forActive === active?.id && projects.some((p) => p.id === picked.id)
-      ? picked.id
-      : (active?.id ?? projects[0]?.id);
-  return {
-    project: projects.find((p) => p.id === id),
-    projects,
-    pick: (projectId: string) => setPicked({ forActive: active?.id, id: projectId }),
-  };
+  const [picked, setPicked] = useState<string>();
+  const activeId = active?.id;
+  // Any change of the global project takes over again: the view's own pick only overrides it.
+  useEffect(() => setPicked(undefined), [activeId]);
+  const id = picked && projects.some((p) => p.id === picked) ? picked : (activeId ?? projects[0]?.id);
+  return { project: projects.find((p) => p.id === id), projects, pick: setPicked };
 }
 
 /** One task queue per project (each runs on its own), with its runs kept in a history. */

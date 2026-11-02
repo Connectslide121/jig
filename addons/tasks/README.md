@@ -48,7 +48,8 @@ went, so you read the results as a table instead of scrolling one long chat.
   started changes status. A watcher (every minute) catches up after a restart; a task whose chat
   went idle without answering is marked "Interrupted".
 - **One queue per project** (D-248): the view's project picker (top right, with each project's
-  queued count) switches; the view follows the active project until you pick one. Queues run
+  queued count) switches; the view follows Jig's project picker; picking another project in the view only overrides what it
+  shows, until the global project changes again. Queues run
   independently; the badge and "needs you" count every project. The old global queue is split by
   project the first time the host runs.
 - **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes

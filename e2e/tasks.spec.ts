@@ -225,4 +225,13 @@ test("Tasks: Claude's queued tasks are reviewed first, and each project has its 
   await expect(page.getByTestId("tasks-project-shop")).toContainText("queued");
   await page.getByTestId("tasks-project-shop").click();
   await expect(view).toContainText("Contoso spec");
+
+  // The view's picker only overrides what it shows: changing the global project takes over again.
+  await view.getByTestId("tasks-project").click();
+  await page.getByTestId("tasks-project-blog").click();
+  await expect(view.getByTestId("tasks-project")).toContainText("blog");
+  await hostCall(page, "projects.setActive", { id: ids.blog });
+  await hostCall(page, "projects.setActive", { id: ids.shop });
+  await expect(view.getByTestId("tasks-project")).toContainText("shop");
+  await expect(view).toContainText("Contoso spec");
 });
