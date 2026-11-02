@@ -1,4 +1,4 @@
-import type { AddonComponentProps, AddonUiContext } from "@jig/sdk";
+import type { AddonComponentProps, AddonPermissionProps, AddonUiContext } from "@jig/sdk";
 import {
   Attachments,
   Badge,
@@ -8,10 +8,13 @@ import {
   Empty,
   FileIcon,
   IconButton,
+  Input,
   Markdown,
+  ProjectSwatch,
   Select,
   Spinner,
   Switch,
+  Tabs,
   Textarea,
   useActiveProject,
   useAddon,
@@ -20,6 +23,9 @@ import {
   useProjectList,
 } from "@jig/sdk/ui";
 import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
   CircleAlert,
   CircleCheck,
   CircleDashed,
@@ -28,6 +34,7 @@ import {
   CircleMinus,
   CircleX,
   CornerDownRight,
+  History,
   ListTodo,
   LoaderCircle,
   MessageSquare,
@@ -69,6 +76,8 @@ import {
   type NewTask,
   type PermissionMode,
   type Queue,
+  type Run,
+  runOutcome,
   STATUS_LABEL,
   type Task,
   type TaskFile,
@@ -234,10 +243,13 @@ function TaskFiles({
     </div>
   );
 }
-/** The queue, kept current: it reloads when the host says it changed. */
-function useQueue() {
-  const { data, reload, error } = useHostCall<Queue>("list");
-  useAddonEvent("changed", () => void reload());
+/** A project's queue, kept current: it reloads when the host says it changed. */
+function useQueue(projectId: string | undefined) {
+  const { data, reload, error } = useHostCall<Queue>("list", { projectId }, { skip: !projectId });
+  useAddonEvent("changed", (payload) => {
+    const changed = (payload as { projectId?: string } | undefined)?.projectId;
+    if (!changed || changed === projectId) void reload();
+  });
   // Running tasks' times tick.
   const [, setNow] = useState(0);
   const running = data?.tasks.some(isActive);
@@ -267,15 +279,150 @@ function LabeledSwitch({
   );
 }
 
-/** The task queue: prompts Claude does one after another, each with its report, as a table. */
+interface QueueOverview {
+  projectId: string;
+  queued: number;
+  active: number;
+  needsYou: number;
+  running: boolean;
+  runs: number;
+}
+
+/**
+ * The project whose queue the view shows: the active project, until you pick another in the view's
+ * project menu (switching the active project brings it back to that one).
+ */
+function useShownProject() {
+  const active = useActiveProject();
+  const projects = useProjectList();
+  const [picked, setPicked] = useState<{ forActive?: string; id: string }>();
+  const id =
+    picked && picked.forActive === active?.id && projects.some((p) => p.id === picked.id)
+      ? picked.id
+      : (active?.id ?? projects[0]?.id);
+  return {
+    project: projects.find((p) => p.id === id),
+    projects,
+    pick: (projectId: string) => setPicked({ forActive: active?.id, id: projectId }),
+  };
+}
+
+/** One task queue per project (each runs on its own), with its runs kept in a history. */
 export function TasksView({ ctx }: AddonComponentProps) {
-  const { queue, error } = useQueue();
+  const { project, projects, pick } = useShownProject();
+  const [tab, setTab] = useState<"queue" | "history">("queue");
+  const [run, setRun] = useState<string | undefined>();
+  const projectId = project?.id;
+  useEffect(() => setRun(undefined), [projectId]);
+
+  const showProjects = async (at: HTMLElement) => {
+    const all = await ctx.host.call<QueueOverview[]>("overview").catch(() => []);
+    ctx.menu(
+      projects.map((p) => {
+        const o = all.find((x) => x.projectId === p.id);
+        const busy = o ? o.queued + o.active : 0;
+        return {
+          label: p.name,
+          project: p.id,
+          checked: p.id === projectId,
+          testId: `tasks-project-${p.name}`,
+          badge: o?.needsYou ? "needs you" : o?.running ? "running" : busy ? `${busy} queued` : undefined,
+          onSelect: () => pick(p.id),
+        };
+      }),
+      at,
+    );
+  };
+
+  if (!project)
+    return (
+      <Empty icon={ListTodo} title="No projects yet" className="h-full">
+        <div className="max-w-sm text-xs text-muted">Add a project; each project has its own task queue.</div>
+      </Empty>
+    );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col" data-testid="tasks-view">
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line pl-1 pr-3">
+        <Tabs
+          className="border-b-0 px-1"
+          items={[
+            { id: "queue", label: "Queue" },
+            { id: "history", label: "History" },
+          ]}
+          value={tab}
+          onChange={(t) => {
+            setTab(t);
+            setRun(undefined);
+          }}
+        />
+        <button
+          type="button"
+          className="ml-auto flex h-7 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
+          title="Each project has its own task queue: show another"
+          data-testid="tasks-project"
+          onClick={(e) => void showProjects(e.currentTarget)}
+        >
+          <ProjectSwatch color={project.color} />
+          <span className="truncate">{project.name}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-muted" />
+        </button>
+      </div>
+      {tab === "queue" ? (
+        <QueuePanel key={project.id} ctx={ctx} projectId={project.id} onHistory={() => setTab("history")} />
+      ) : run ? (
+        <RunPanel
+          ctx={ctx}
+          projectId={project.id}
+          runId={run}
+          onBack={() => setRun(undefined)}
+          onQueued={() => setTab("queue")}
+        />
+      ) : (
+        <HistoryPanel key={project.id} projectId={project.id} onOpen={setRun} />
+      )}
+    </div>
+  );
+}
+
+/** The task menu's entries shared by the queue and past runs. */
+function openEntries(ctx: AddonUiContext, task: Task, onDetails: () => void) {
+  return [
+    { label: "Details", icon: "panel-top-open", onSelect: onDetails },
+    ...(task.attachments?.length
+      ? [{ label: "Files", icon: "paperclip", submenu: fileEntries(ctx, task.attachments) }]
+      : []),
+    ...(task.sessionId
+      ? [
+          {
+            label: "Open chat",
+            icon: "message-square",
+            onSelect: () => ctx.openChat({ sessionId: task.sessionId }),
+          },
+        ]
+      : []),
+  ];
+}
+
+/** The project's queue: prompts Claude does one after another, each with its report, as a table. */
+function QueuePanel({
+  ctx,
+  projectId,
+  onHistory,
+}: {
+  ctx: AddonUiContext;
+  projectId: string;
+  onHistory: () => void;
+}) {
+  const { queue, error } = useQueue(projectId);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>();
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
-  const call = (method: string, args?: unknown) =>
-    ctx.host.call(method, args).catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }));
+  const call = (method: string, args?: Record<string, unknown>) =>
+    ctx.host
+      .call(method, { projectId, ...args })
+      .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }));
 
   if (!queue) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   const n = counts(queue);
@@ -287,19 +434,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
     const queued = task.status === "queued";
     ctx.menu(
       [
-        { label: "Details", icon: "panel-top-open", onSelect: () => setOpen(task.id) },
-        ...(task.attachments?.length
-          ? [{ label: "Files", icon: "paperclip", submenu: fileEntries(ctx, task.attachments) }]
-          : []),
-        ...(task.sessionId
-          ? [
-              {
-                label: "Open chat",
-                icon: "message-square",
-                onSelect: () => ctx.openChat({ sessionId: task.sessionId }),
-              },
-            ]
-          : []),
+        ...openEntries(ctx, task, () => setOpen(task.id)),
         { separator: true as const },
         ...(queued
           ? [
@@ -338,11 +473,9 @@ export function TasksView({ ctx }: AddonComponentProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="tasks-view">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
-        <ListTodo className="size-4 shrink-0 text-muted" />
-        <span className="text-sm font-medium text-fg">Task queue</span>
-        <span className="truncate text-xs text-muted" data-testid="tasks-counts">
+    <>
+      <div className="flex h-10 shrink-0 items-center gap-2 px-3">
+        <span className="min-w-0 truncate text-xs text-muted" data-testid="tasks-counts">
           {n.total ? `${n.queued} queued · ${n.finished} of ${n.total} finished` : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -383,6 +516,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
                     disabled: !n.finished,
                     onSelect: () => void call("clearFinished"),
                   },
+                  { label: "Past runs", icon: "history", onSelect: onHistory },
                 ],
                 e.currentTarget,
               )
@@ -395,7 +529,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
           <div className="max-w-sm text-xs text-muted">
             Add prompts and press Start: Claude does them one after another, each in its own chat or
             continuing the one before, and reports how each went here. Claude can queue tasks too (ask it in a
-            chat, e.g. "queue a task for each spec in docs/").
+            chat, e.g. "queue a task for each spec in docs/"). Every run is kept in History.
           </div>
           <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
             Add tasks
@@ -404,37 +538,12 @@ export function TasksView({ ctx }: AddonComponentProps) {
       ) : (
         <>
           <QueueSummary tasks={queue.tasks} />
-          <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
-            <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
-              <span className="w-6 shrink-0 text-right">#</span>
-              <span className="min-w-0 flex-1">Task and how it went</span>
-              <span className="w-16 shrink-0 text-right">Started</span>
-              <span className="w-12 shrink-0 text-right">Notes</span>
-              <span className="w-20 shrink-0 text-right">Follow-ups</span>
-              <span className="w-12 shrink-0 text-right">Files</span>
-              <span className="w-12 shrink-0 text-right">Time</span>
-              <span className="w-14 shrink-0 text-right">Cost</span>
-              <span className="w-7 shrink-0" />
-              <span className="w-28 shrink-0 text-right">Status</span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {chatGroups(queue).map((group, gi) => (
-                <ChatCard
-                  key={group.tasks[0]!.task.id}
-                  ctx={ctx}
-                  group={group}
-                  number={gi + 1}
-                  projectName={projectName(group.projectId)}
-                  onOpen={setOpen}
-                  onMenu={menuFor}
-                />
-              ))}
-            </div>
-          </div>
+          <TaskTable ctx={ctx} queue={queue} projectName={projectName} onOpen={setOpen} onMenu={menuFor} />
         </>
       )}
       {adding && (
         <AddDialog
+          projectId={projectId}
           onClose={() => setAdding(false)}
           onSave={async (chats, permissionMode) => {
             for (const chat of chats)
@@ -443,6 +552,13 @@ export function TasksView({ ctx }: AddonComponentProps) {
                 projectId: chat.projectId,
                 newChat: true,
                 permissionMode,
+              });
+            const elsewhere = [...new Set(chats.map((c) => c.projectId))].filter((id) => id !== projectId);
+            if (elsewhere.length)
+              ctx.notify({
+                title: `Also queued in ${elsewhere.map(projectName).join(", ")}`,
+                message: "Each project has its own queue: pick it at the top of this view.",
+                tone: "info",
               });
             setAdding(false);
           }}
@@ -466,7 +582,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
           projectName={projectName(openTask.projectId)}
           onClose={() => setOpen(undefined)}
           onQueue={async (prompts) => {
-            await call("add", { prompts, projectId: openTask.projectId, newChat: true, from: openTask.id });
+            await call("add", { prompts, newChat: true, from: openTask.id });
             ctx.notify({
               title: `Queued ${prompts.length} follow-up${prompts.length === 1 ? "" : "s"}`,
               tone: "success",
@@ -478,7 +594,273 @@ export function TasksView({ ctx }: AddonComponentProps) {
           }}
         />
       )}
+    </>
+  );
+}
+
+/** The results table: the tasks grouped by chat, under one header row. */
+function TaskTable({
+  ctx,
+  queue,
+  projectName,
+  onOpen,
+  onMenu,
+}: {
+  ctx: AddonUiContext;
+  queue: Queue;
+  projectName: (id?: string) => string;
+  onOpen: (id: string) => void;
+  onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
+      <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
+        <span className="w-6 shrink-0 text-right">#</span>
+        <span className="min-w-0 flex-1">Task and how it went</span>
+        <span className="w-16 shrink-0 text-right">Started</span>
+        <span className="w-12 shrink-0 text-right">Notes</span>
+        <span className="w-20 shrink-0 text-right">Follow-ups</span>
+        <span className="w-12 shrink-0 text-right">Files</span>
+        <span className="w-12 shrink-0 text-right">Time</span>
+        <span className="w-14 shrink-0 text-right">Cost</span>
+        <span className="w-7 shrink-0" />
+        <span className="w-28 shrink-0 text-right">Status</span>
+      </div>
+      <div className="flex flex-col gap-3">
+        {chatGroups(queue).map((group, gi) => (
+          <ChatCard
+            key={group.tasks[0]!.task.id}
+            ctx={ctx}
+            group={group}
+            number={gi + 1}
+            projectName={projectName(group.projectId)}
+            onOpen={onOpen}
+            onMenu={onMenu}
+          />
+        ))}
+      </div>
     </div>
+  );
+}
+
+const when = (iso?: string) =>
+  iso ? new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+
+/** How long a run took: its tasks' times added up. */
+function runTime(run: Run): string {
+  const t = tally(run.tasks);
+  return formatMs(t.ms);
+}
+
+/** The project's past runs, newest first: when, how it went, time and cost. Each opens its results. */
+function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId: string) => void }) {
+  const { data: runs, reload, error } = useHostCall<Run[]>("history", { projectId });
+  useAddonEvent("changed", (payload) => {
+    const changed = (payload as { projectId?: string } | undefined)?.projectId;
+    if (!changed || changed === projectId) void reload();
+  });
+  if (!runs) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
+  if (!runs.length)
+    return (
+      <Empty icon={History} title="No runs yet" className="flex-1">
+        <div className="max-w-sm text-xs text-muted">
+          Every time this project's queue runs, its tasks and reports are kept here, so you can come back to
+          the results later.
+        </div>
+      </Empty>
+    );
+  return (
+    <div className="min-h-0 flex-1 overflow-auto px-3 pb-3" data-testid="tasks-history">
+      <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
+        <span className="w-40 shrink-0">Started</span>
+        <span className="min-w-0 flex-1">Tasks</span>
+        <span className="w-12 shrink-0 text-right">Done</span>
+        <span className="w-12 shrink-0 text-right">Failed</span>
+        <span className="w-12 shrink-0 text-right">Time</span>
+        <span className="w-14 shrink-0 text-right">Cost</span>
+        <span className="w-24 shrink-0 text-right">Status</span>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-line bg-raised">
+        {runs.map((run, i) => {
+          const o = runOutcome(run);
+          const t = tally(run.tasks);
+          const titles = run.tasks.map((task) => task.title).join(" · ");
+          return (
+            <button
+              key={run.id}
+              type="button"
+              data-testid={`tasks-run-${i}`}
+              onClick={() => onOpen(run.id)}
+              className="flex h-12 w-full items-center gap-3 border-b border-line px-3 text-left last:border-b-0 hover:bg-hover"
+            >
+              <span className="w-40 shrink-0 truncate text-xs tabular-nums text-fg">
+                {when(run.startedAt)}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-xs text-fg">
+                  {o.total} {o.total === 1 ? "task" : "tasks"}
+                </span>
+                <span className="truncate text-xs text-muted" title={titles}>
+                  {titles}
+                </span>
+              </span>
+              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{o.done || ""}</span>
+              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+                {o.failed || ""}
+              </span>
+              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{runTime(run)}</span>
+              <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+                {money(t.costUsd)}
+              </span>
+              <span className="flex w-24 shrink-0 items-center justify-end gap-1.5">
+                {run.finishedAt ? (
+                  o.failed ? (
+                    <Badge tone="danger">{o.failed} failed</Badge>
+                  ) : (
+                    <Badge tone="success">Finished</Badge>
+                  )
+                ) : (
+                  <Badge tone="info">Open</Badge>
+                )}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A past run's results, as the queue showed them: read-only, with Open chat, follow-ups and Run again. */
+function RunPanel({
+  ctx,
+  projectId,
+  runId,
+  onBack,
+  onQueued,
+}: {
+  ctx: AddonUiContext;
+  projectId: string;
+  runId: string;
+  onBack: () => void;
+  onQueued: () => void;
+}) {
+  const { data: runs, reload } = useHostCall<Run[]>("history", { projectId });
+  useAddonEvent("changed", () => void reload());
+  const [open, setOpen] = useState<string | undefined>();
+  const projects = useProjectList();
+  const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? "";
+  if (!runs) return <Spinner center />;
+  const run = runs.find((r) => r.id === runId);
+  if (!run)
+    return (
+      <Empty icon={History} title="This run is no longer in the history" className="flex-1">
+        <Button size="sm" icon={ArrowLeft} onClick={onBack}>
+          All runs
+        </Button>
+      </Empty>
+    );
+  const queue: Queue = { tasks: run.tasks, running: false, stopOnFailure: false, seq: 0 };
+  const openTask = run.tasks.find((t) => t.id === open);
+  const again = async (task: Task) => {
+    await ctx.host
+      .call("runFromHistory", { projectId, runId, id: task.id })
+      .then(() => ctx.notify({ title: "Queued again", message: task.title, tone: "success" }))
+      .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }));
+  };
+  const menuFor = (task: Task, at: MouseEvent | HTMLElement) =>
+    ctx.menu(
+      [
+        ...openEntries(ctx, task, () => setOpen(task.id)),
+        { separator: true as const },
+        { label: "Run again", icon: "rotate-ccw", onSelect: () => void again(task) },
+      ],
+      at,
+    );
+  return (
+    <>
+      <div className="flex h-10 shrink-0 items-center gap-2 px-3" data-testid="tasks-run">
+        <IconButton
+          size="sm"
+          icon={ArrowLeft}
+          label="All runs"
+          onClick={onBack}
+          data-testid="tasks-run-back"
+        />
+        <span className="min-w-0 truncate text-sm text-fg">Run of {when(run.startedAt)}</span>
+        <span className="shrink-0 text-xs text-muted">{run.finishedAt ? "" : "· still going"}</span>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <IconButton
+            size="sm"
+            icon={MoreHorizontal}
+            label="More"
+            onClick={(e) =>
+              ctx.menu(
+                [
+                  {
+                    label: "Queue every task again",
+                    icon: "rotate-ccw",
+                    onSelect: async () => {
+                      for (const task of run.tasks)
+                        await ctx.host
+                          .call("runFromHistory", { projectId, runId, id: task.id })
+                          .catch(() => {});
+                      onQueued();
+                    },
+                  },
+                  { separator: true as const },
+                  {
+                    label: "Remove from history",
+                    icon: "trash-2",
+                    danger: true,
+                    disabled: !run.finishedAt,
+                    onSelect: async () => {
+                      if (
+                        await ctx.confirm({
+                          title: "Remove this run from the history?",
+                          message: "Its reports and files are deleted. The chats stay.",
+                          confirmLabel: "Remove",
+                          danger: true,
+                        })
+                      )
+                        await ctx.host
+                          .call("forgetRun", { projectId, runId })
+                          .then(onBack)
+                          .catch((err: Error) => ctx.notify({ title: err.message, tone: "danger" }));
+                    },
+                  },
+                ],
+                e.currentTarget,
+              )
+            }
+          />
+        </div>
+      </div>
+      <QueueSummary tasks={run.tasks} />
+      <TaskTable ctx={ctx} queue={queue} projectName={projectName} onOpen={setOpen} onMenu={menuFor} />
+      {openTask && (
+        <TaskDialog
+          ctx={ctx}
+          task={openTask}
+          index={run.tasks.indexOf(openTask)}
+          projectName={projectName(openTask.projectId)}
+          onClose={() => setOpen(undefined)}
+          onQueue={async (prompts) => {
+            await ctx.host
+              .call("add", { projectId, prompts, newChat: true })
+              .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }));
+            ctx.notify({
+              title: `Queued ${prompts.length} follow-up${prompts.length === 1 ? "" : "s"}`,
+              tone: "success",
+            });
+          }}
+          onRunAgain={async () => {
+            await again(openTask);
+            setOpen(undefined);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -909,16 +1291,18 @@ function TaskDialog({
  * (cancelled, removed) are deleted.
  */
 function AddDialog({
+  projectId: chosenProject,
   onClose,
   onSave,
 }: {
   onClose: () => void;
+  projectId?: string;
   onSave: (chats: Array<{ projectId: string; tasks: NewTask[] }>, mode: PermissionMode) => Promise<void>;
 }) {
   const ctx = useAddon();
   const active = useActiveProject();
   const projects = useProjectList();
-  const firstProject = active?.id ?? projects[0]?.id ?? "";
+  const firstProject = chosenProject ?? active?.id ?? projects[0]?.id ?? "";
   const [chats, setChats] = useState<DraftChat[]>(() => [draftChat(firstProject)]);
   const [mode, setMode] = useState<PermissionMode>("acceptEdits");
   const [busy, setBusy] = useState(false);
@@ -1343,4 +1727,189 @@ function EditDialog({
 
 export function showTasks(ctx: AddonUiContext) {
   ctx.showView("tasks");
+}
+
+interface ReviewItem {
+  key: number;
+  title: string;
+  prompt: string;
+  newChat: boolean;
+}
+
+/** The tasks Claude asked to queue, as the add tool got them (strings or `{ title, prompt, newChat }`). */
+function reviewItems(input: Record<string, unknown>): ReviewItem[] {
+  const sameChat = input.sameChat === true;
+  return (Array.isArray(input.tasks) ? input.tasks : []).flatMap((item, key): ReviewItem[] => {
+    if (typeof item === "string")
+      return item.trim() ? [{ key, title: "", prompt: item, newChat: !sameChat }] : [];
+    if (!item || typeof item !== "object") return [];
+    const o = item as Record<string, unknown>;
+    const prompt = typeof o.prompt === "string" ? o.prompt : "";
+    if (!prompt.trim()) return [];
+    return [
+      {
+        key,
+        title: typeof o.title === "string" ? o.title : "",
+        prompt,
+        newChat: typeof o.newChat === "boolean" ? o.newChat : !sameChat,
+      },
+    ];
+  });
+}
+
+/**
+ * Claude asks to queue tasks (`addon_tasks_add`): the plan as an editable list before it goes in the
+ * queue. Change a title or prompt, drop a task, pick the project, then queue them, or say no.
+ */
+export function ReviewTasks({ request, status, projectId: chatProject, respond }: AddonPermissionProps) {
+  const projects = useProjectList();
+  const [items, setItems] = useState(() => reviewItems(request.input));
+  const named = typeof request.input.project === "string" ? request.input.project.trim().toLowerCase() : "";
+  const [projectId, setProjectId] = useState(
+    () =>
+      projects.find((p) => p.id === request.input.project || p.name.toLowerCase() === named)?.id ??
+      chatProject ??
+      projects[0]?.id ??
+      "",
+  );
+  const [startNow, setStartNow] = useState(request.input.start === true);
+  const [busy, setBusy] = useState(false);
+  const count = items.filter((i) => i.prompt.trim()).length;
+  const project = projects.find((p) => p.id === projectId);
+
+  if (status !== "pending")
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted" data-testid="tasks-review-done">
+        {status === "denied" || status === "cancelled" ? (
+          <X className="size-3.5 text-danger" />
+        ) : (
+          <CircleCheck className="size-3.5 text-success" />
+        )}
+        Queue tasks — {status === "denied" ? "not queued" : status === "cancelled" ? "cancelled" : "queued"}
+      </div>
+    );
+
+  const set = (key: number, change: Partial<ReviewItem>) =>
+    setItems((list) => list.map((i) => (i.key === key ? { ...i, ...change } : i)));
+  const answer = async (allow: boolean) => {
+    setBusy(true);
+    try {
+      if (!allow) {
+        await respond({ behavior: "deny", message: "The user chose not to queue these tasks." });
+        return;
+      }
+      const tasks = items
+        .filter((i) => i.prompt.trim())
+        .map((i) => ({
+          prompt: i.prompt.trim(),
+          newChat: i.newChat,
+          ...(i.title.trim() ? { title: i.title.trim() } : {}),
+        }));
+      await respond({
+        behavior: "allow",
+        input: { tasks, ...(projectId ? { project: projectId } : {}), start: startNow },
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="flex flex-col gap-2 rounded-md border border-accent bg-accent-soft p-3"
+      data-testid="tasks-review"
+    >
+      <div className="flex items-center gap-2 text-sm font-medium text-fg">
+        <ListTodo className="size-4 shrink-0 text-accent" />
+        <span className="min-w-0 truncate">
+          Claude wants to queue {count === 1 ? "a task" : `${count} tasks`}
+        </span>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {project && <ProjectSwatch color={project.color} />}
+          <Select
+            aria-label="Project"
+            className="w-40"
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            data-testid="tasks-review-project"
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+      <div className="flex max-h-96 flex-col overflow-y-auto rounded-md border border-line bg-raised">
+        {items.map((item, i) => (
+          <div
+            key={item.key}
+            className="flex items-start gap-2 border-b border-line p-2 last:border-b-0"
+            data-testid={`tasks-review-${i}`}
+          >
+            <span className="w-5 shrink-0 pt-1 text-right text-xs tabular-nums text-hint">{i + 1}</span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <Input
+                aria-label={`Title of task ${i + 1}`}
+                placeholder="Title (from the prompt when empty)"
+                value={item.title}
+                onChange={(e) => set(item.key, { title: e.target.value })}
+                data-testid={`tasks-review-title-${i}`}
+              />
+              <Textarea
+                aria-label={`Prompt of task ${i + 1}`}
+                rows={2}
+                value={item.prompt}
+                onChange={(e) => set(item.key, { prompt: e.target.value })}
+                data-testid={`tasks-review-prompt-${i}`}
+              />
+            </div>
+            <div className="flex w-32 shrink-0 flex-col items-end gap-1">
+              <IconButton
+                size="sm"
+                icon={X}
+                label={`Remove task ${i + 1}`}
+                onClick={() => setItems((list) => list.filter((x) => x.key !== item.key))}
+                data-testid={`tasks-review-remove-${i}`}
+              />
+              {i > 0 && (
+                <LabeledSwitch
+                  checked={!item.newChat}
+                  onChange={(on) => set(item.key, { newChat: !on })}
+                  label="Same chat"
+                />
+              )}
+            </div>
+          </div>
+        ))}
+        {!items.length && <div className="p-3 text-xs text-muted">No tasks left to queue.</div>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="primary"
+          icon={Check}
+          disabled={!count || !projectId || busy}
+          onClick={() => void answer(true)}
+          data-testid="tasks-review-allow"
+        >
+          {count === 1 ? "Queue the task" : `Queue ${count} tasks`}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={X}
+          disabled={busy}
+          onClick={() => void answer(false)}
+          data-testid="tasks-review-deny"
+        >
+          Don't queue
+        </Button>
+        <div className="ml-auto">
+          <LabeledSwitch checked={startNow} onChange={setStartNow} label="Start the queue right away" />
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -2851,7 +2851,30 @@ The plan is `docs/plan/23-jons-notes.md`. Choices made with Jon:
   inside that program. A narrow exception to "Claude Code is the only engine": editor completions
   only, never agent work, chats or tools. Claude Code is too slow per keystroke; a local model is
   weaker and needs a strong GPU.
+  Later the same day Jon added **Claude completions** as an opt-in setting (off by default, Haiku by
+  default, model selectable): through Claude Code, triggered by typing in the editor (so not a
+  background AI call), and Copilot is listed as an optional Get started step.
 - **claude.ai projects:** no claude.ai sign-in, credentials or internal endpoints (the safer path,
   Jon's choice after weighing a direct import). Projects get a Knowledge section; an import reads
   claude.ai's data export zip, and its dialog explains step by step how to get that zip.
+
+## D-248: A task queue per project, kept runs, and add-on approval cards
+
+**Decided by:** Jon (per-project queues, history, editable review, D-247); the shapes below
+**Claude, on my own** · **Date:** 2026-11-02
+
+- **Storage:** the Tasks add-on keeps `queue` and `history` in project scope. The old global `queue`
+  is split by each task's project on first start (unknown projects go to the first project) and then
+  cleared. Claude's tools find the queue through the calling chat's project.
+- **Runs:** Start opens a run (`runId` on the queue); every task it starts gets that id; the run
+  closes when the queue finishes. Tasks are copied into their run as they change, so removing or
+  clearing them from the queue keeps the results. The newest 200 runs are kept; files a run uses are
+  kept until it's removed ("Remove from history", finished runs only).
+- **`chat.permissionRenderer`:** a new slot (`permissionRenderers: [{ tool, component }]`) lets an
+  add-on replace the permission card for **its own** tools only (the name is resolved to
+  `mcp__jig__addon_<id>_<tool>`, so an add-on cannot intercept other tools' approvals). An allow can
+  carry changed input (`updatedInput`), which Claude Code then runs. Tasks uses it for the editable
+  review of `addon_tasks_add`.
+- The SDK menu items gained `project`, `badge` and `testId`, and `ProjectSwatch` is exported, so
+  add-ons can show project pickers like Jig's own.
 

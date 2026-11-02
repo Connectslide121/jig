@@ -15,6 +15,8 @@ export const SLOTS = {
   "context.message": "An entry in the menu of a chat message.",
   "chat.toolbar": "A button above the chat composer.",
   "chat.toolRenderer": "A custom card for a tool's result in the chat.",
+  "chat.permissionRenderer":
+    "A custom approval card for one of the add-on's tools in the chat: the user can change what Claude asked before allowing it.",
   prompt: "A reusable prompt shown as a button above the composer.",
   watcher: "Host code that runs on an interval (e.g. check pipeline runs).",
   "claude.tool": "A tool Claude can use in every chat (host code; read-only tools run without asking).",
@@ -42,6 +44,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   "context.message": "menus",
   "chat.toolbar": "chatToolbar",
   "chat.toolRenderer": "toolRenderers",
+  "chat.permissionRenderer": "permissionRenderers",
   prompt: "prompts",
   watcher: "watchers",
   "claude.tool": "tools",

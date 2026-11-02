@@ -5,19 +5,27 @@ import {
   chatFinished,
   chatGroups,
   chatToContinue,
+  closeRun,
   counts,
   duration,
   emptyQueue,
   finishTask,
+  historyFiles,
+  joinQueues,
   listing,
   moveTask,
   nextTask,
+  openRun,
   parseNewTasks,
   parsePrompts,
   parseReport,
   type Queue,
+  type Run,
+  recordRuns,
   requeue,
+  runOutcome,
   shouldPause,
+  splitQueue,
   type Task,
   tally,
   taskContext,
@@ -312,5 +320,88 @@ describe("chatGroups and tally", () => {
     expect(unusedFiles(q, without)).toEqual([spec.path]);
     expect(unusedFiles(q, without, [spec.path])).toEqual([]);
     expect(unusedFiles(q, q)).toEqual([]);
+  });
+});
+
+describe("run history", () => {
+  const start = (q: Queue, at = new Date("2026-11-02T10:00:00Z")) => openRun({ ...q, running: true }, at);
+  const ran = (q: Queue, id: string, status: Task["status"], sentAt = "2026-11-02T10:01:00Z"): Queue => ({
+    ...q,
+    tasks: q.tasks.map((t) => (t.id === id ? { ...t, status, sentAt, runId: q.runId } : t)),
+  });
+
+  it("opens one run until the queue finishes, and keeps it open while paused", () => {
+    const q = start(queued(["a"]));
+    expect(q.runId).toMatch(/^r/);
+    expect(openRun(q).runId).toBe(q.runId);
+    expect(closeRun(q).runId).toBeUndefined();
+    expect(closeRun(queued(["a"]))).toEqual(queued(["a"]));
+  });
+
+  it("records the tasks of the open run as they change, newest run first", () => {
+    const before = start(queued(["a", "b"]));
+    const one = ran(before, "t1", "running");
+    let history = recordRuns([], before, one, "2026-11-02T10:02:00Z");
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({ id: before.runId, startedAt: "2026-11-02T10:01:00Z" });
+    expect(history[0]!.finishedAt).toBeUndefined();
+    expect(history[0]!.tasks.map((t) => t.id)).toEqual(["t1"]);
+    // Nothing changed: the same array.
+    expect(recordRuns(history, one, one)).toBe(history);
+    const two = ran(ran(one, "t1", "done"), "t2", "failed");
+    history = recordRuns(history, one, two);
+    expect(history[0]!.tasks.map((t) => t.status)).toEqual(["done", "failed"]);
+    // Finished: closed at that time; cleared tasks stay in the run.
+    const finished = closeRun({ ...two, running: false });
+    history = recordRuns(history, two, finished, "2026-11-02T10:09:00Z");
+    expect(history[0]!.finishedAt).toBe("2026-11-02T10:09:00Z");
+    const cleared = { ...finished, tasks: [] };
+    expect(recordRuns(history, finished, cleared)).toBe(history);
+    // A new run goes first.
+    const again = start(addTasks(cleared, ["c"], { projectId: "p1", newChat: true }), new Date("2026-11-03"));
+    const next = recordRuns(history, cleared, ran(again, "t3", "running", "2026-11-03T08:00:00Z"));
+    expect(next.map((r) => r.id)).toEqual([again.runId, before.runId]);
+    expect(runOutcome(next[1]!)).toEqual({ done: 1, failed: 1, total: 2 });
+  });
+
+  it("skips runs with no tasks, keeps at most 200 and lists the files they use", () => {
+    const q = start(queued(["a"]));
+    expect(recordRuns([], q, q)).toEqual([]);
+    const many: Run[] = Array.from({ length: 200 }, (_, i) => ({ id: `old${i}`, startedAt: "x", tasks: [] }));
+    const withFile = {
+      ...q,
+      tasks: [{ ...q.tasks[0]!, runId: q.runId, attachments: [{ path: "/f/a.png", mime: "image/png" }] }],
+    };
+    const history = recordRuns(many, q, withFile);
+    expect(history).toHaveLength(200);
+    expect(history[0]!.id).toBe(q.runId);
+    expect(historyFiles(history)).toEqual(["/f/a.png"]);
+  });
+});
+
+describe("per-project queues", () => {
+  it("splits the old single queue by project, tasks without one going to the fallback", () => {
+    const q: Queue = {
+      ...addTasks(queued(["a"], true, "p1"), ["b"], { projectId: "p2", newChat: true }),
+      stopOnFailure: false,
+      running: true,
+    };
+    q.tasks.push({ ...q.tasks[0]!, id: "t9", projectId: undefined });
+    const split = splitQueue(q, "p1");
+    expect(Object.keys(split)).toEqual(["p1", "p2"]);
+    expect(split.p1!.tasks.map((t) => t.id)).toEqual(["t1", "t9"]);
+    expect(split.p1!.tasks[1]!.projectId).toBe("p1");
+    expect(split.p2).toMatchObject({ running: false, stopOnFailure: false, seq: q.seq });
+  });
+
+  it("joins a migrated queue after a project's own tasks, renumbering it", () => {
+    const own = queued(["a"]);
+    const from = queued(["b", "c"]);
+    from.tasks[1] = { ...from.tasks[1]!, from: "t1" };
+    expect(joinQueues(emptyQueue(), from)).toEqual(from);
+    const joined = joinQueues(own, from);
+    expect(joined.tasks.map((t) => t.id)).toEqual(["t1", "t2", "t3"]);
+    expect(joined.tasks[2]!.from).toBe("t2");
+    expect(joined.seq).toBe(3);
   });
 });

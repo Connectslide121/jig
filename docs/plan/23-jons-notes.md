@@ -16,12 +16,15 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 1 — Task queue: a queue per project, plan review, run history
 
-- [ ] **One queue per project**, each running independently, so agents in different projects
+- [x] **One queue per project**, each running independently, so agents in different projects
       never collide. Migrate today's single global `queue` into per-project queues.
-- [ ] **Review Claude's proposal as an editable task list:** when Claude calls `addon_tasks_add`,
+- [x] **Review Claude's proposal as an editable task list:** when Claude calls `addon_tasks_add`,
       the approval shows the tasks as rows (title, prompt, project, chat grouping, files), editable
-      and reorderable before approving, instead of the raw tool input.
-- [ ] **Run history:** every run (Start until the queue finishes or stops) is kept automatically,
+      and reorderable before approving, instead of the raw tool input. Done as the new
+      `chat.permissionRenderer` slot (D-248): titles, prompts, remove, same chat, project, start now.
+      Reordering and files stay in the queue itself after approving (Move up/down, Edit), to keep
+      the card compact.
+- [x] **Run history:** every run (Start until the queue finishes or stops) is kept automatically,
       with its overview table, per-task reports, time and cost. A History list per project opens any
       past run in the same results view. "Clear finished tasks" no longer loses results.
 
@@ -61,7 +64,17 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 - [ ] Inline AI completions in the editor (Tab accepts) through GitHub's Copilot language server
       (`@github/copilot-language-server`), with the user's own Copilot sign-in kept inside that
-      program. Completions only, never agent work (D-247). An on/off setting and a status indicator.
+      program. Completions only, never agent work (D-247). A status indicator in the editor.
+- [ ] **Get started:** a "GitHub Copilot" row in the Get started list, marked **optional** ("only
+      for code completion in the editor"), with its sign-in step; skipping it changes nothing else.
+- [ ] **Claude completions (Jon, 2026-11-02):** Settings → Editor → "Code completion with Claude",
+      **off by default**. Off: Copilot completes when a Copilot account is signed in, otherwise
+      nothing. On: Claude completes instead, with a model picker (**Haiku by default**; the list
+      comes from the running Claude Code, not hard-coded). It goes through Claude Code like
+      everything else (never the Anthropic API directly) and only after a typing pause, so it is
+      slower than Copilot; measure the delay with a warm Claude Code process before shipping and
+      note it in the setting's help text. Both settings go into `ConfigSchema`, `SETTINGS_GUIDE`
+      and `docs/reference/state.md`; the Claude one is protected (it spends plan usage, D-077).
 
 ## Session 7 — Project knowledge and claude.ai import
 

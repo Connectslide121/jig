@@ -326,16 +326,36 @@ export class FakeEngine implements Engine {
             name: "mcp__jig__addon_tasks_add",
             input,
           });
-          const output = outputText(
-            await options.toolHandlers.addon_tasks_add(input).catch((e: Error) => `Error: ${e.message}`),
-          );
-          onEvent({
-            type: "tool_result",
-            toolUseId: toolId,
-            output,
-            isError: output.startsWith("Error"),
-          });
-          await stream(`${msg}:text:0`, "Queued two tasks.", signal);
+          // Like Claude Code, it asks first (the Tasks add-on draws the request as an editable list).
+          const decision =
+            permissionMode === "bypassPermissions"
+              ? { behavior: "allow" as const, updatedInput: undefined }
+              : await options.askPermission(
+                  { requestId: toolId, toolName: "mcp__jig__addon_tasks_add", input, canAlwaysAllow: false },
+                  signal,
+                );
+          if (decision.behavior !== "allow") {
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: decision.message ?? "Denied",
+              isError: true,
+            });
+            await stream(`${msg}:text:0`, "OK, I didn't queue them.", signal);
+          } else {
+            const output = outputText(
+              await options.toolHandlers
+                .addon_tasks_add(decision.updatedInput ?? input)
+                .catch((e: Error) => `Error: ${e.message}`),
+            );
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output,
+              isError: output.startsWith("Error"),
+            });
+            await stream(`${msg}:text:0`, output.startsWith("Error") ? output : "Queued the tasks.", signal);
+          }
         } else if (isTestChat) {
           // Tools → Test something…: a short report that says which model and helpers ran it.
           const agents = Object.keys(options.agents ?? {}).join(", ") || "none";

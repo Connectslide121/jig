@@ -34,6 +34,7 @@ export const projectColorLabel: Record<ProjectColor, string> = {
  * A project's mark: a small rounded square in its colour. Chats have round status dots, so a
  * project never reads as a chat (lists, the top bar, the project picker).
  */
-export function ProjectSwatch({ color, className }: { color: ProjectColor; className?: string }) {
-  return <span className={cn("inline-block size-2.5 shrink-0 rounded-xs", dot[color], className)} />;
+export function ProjectSwatch({ color, className }: { color?: ProjectColor | string; className?: string }) {
+  const tone = dot[color as ProjectColor] ?? dot.accent;
+  return <span className={cn("inline-block size-2.5 shrink-0 rounded-xs", tone, className)} />;
 }

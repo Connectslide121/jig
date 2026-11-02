@@ -25,6 +25,8 @@ export interface AddonProject {
   repos: Array<{ path: string; name: string }>;
   /** The project's default Git repository (Git actions and the status bar use it). */
   focusRepo?: string;
+  /** Its colour (UI only), for `ProjectSwatch` and a menu entry's `project`. */
+  color?: string;
 }
 
 /** A folder the user added (a repository or a folder of repositories), whatever the projects. */
@@ -141,6 +143,12 @@ export interface MenuItemInput {
   danger?: boolean;
   disabled?: boolean;
   checked?: boolean;
+  /** A project id: its colour square before the label (a menu of projects). */
+  project?: string;
+  /** A small marker at the far right, in a column shared by the whole menu (a count). */
+  badge?: string;
+  /** Used by tests (`data-testid`). */
+  testId?: string;
   onSelect?: () => void;
   submenu?: Array<MenuItemInput | { separator: true }>;
 }
@@ -301,6 +309,28 @@ export interface AddonTabProps extends AddonComponentProps {
   params: Record<string, unknown>;
   tabId: string;
   active: boolean;
+}
+
+/**
+ * What an approval card (`chat.permissionRenderer`) receives besides `ctx`: Claude's request to use
+ * one of the add-on's tools, and `respond` to answer it. Allowing may pass changed `input` (what the
+ * tool then runs with); denying may say why, which Claude reads.
+ */
+export interface AddonPermissionProps extends AddonComponentProps {
+  request: {
+    /** The tool's full name, e.g. `mcp__jig__addon_tasks_add`. */
+    toolName: string;
+    input: Record<string, unknown>;
+    title?: string;
+  };
+  /** pending until answered; then what the user chose. */
+  status: "pending" | "allowed" | "always" | "denied" | "cancelled";
+  sessionId: string;
+  /** The chat's project. */
+  projectId?: string;
+  respond(
+    decision: { behavior: "allow"; input?: Record<string, unknown> } | { behavior: "deny"; message?: string },
+  ): Promise<void>;
 }
 
 /** What a context-menu handler receives: the thing that was right-clicked. */

@@ -1,23 +1,40 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
 
 const TINY_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
+/** Two projects, "shop" active; returns their ids by name. */
+async function twoProjects(page: Page, jigHome: string) {
+  for (const name of ["blog", "shop"]) {
+    await mkdir(join(jigHome, name), { recursive: true });
+    await hostCall(page, "projects.add", { path: join(jigHome, name) });
+  }
+  const state = (await hostCall(page, "projects.list")) as {
+    value: { projects: Array<{ id: string; name: string }> };
+  };
+  const ids = Object.fromEntries(state.value.projects.map((p) => [p.name, p.id]));
+  await hostCall(page, "projects.setActive", { id: ids.shop });
+  return ids as { shop: string; blog: string };
+}
+
+async function openTasks(page: Page) {
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
+  await page.keyboard.press("Enter");
+  return page.getByTestId("tasks-view");
+}
+
 test("Tasks: a queue Claude works through, each task reporting back, with links to the chats", async ({
   page,
   jigHome,
 }) => {
-  const dir = join(jigHome, "shop");
-  await mkdir(dir, { recursive: true });
-  await hostCall(page, "projects.add", { path: dir });
+  await twoProjects(page, jigHome);
 
   // Chats → Task queue (here through the Tools search, which lists the same actions).
-  await page.getByTestId("goto-button").click();
-  await page.getByTestId("goto-input").fill("task queue");
-  await page.keyboard.press("Enter");
-  const view = page.getByTestId("tasks-view");
+  const view = await openTasks(page);
   await expect(view).toContainText("No tasks queued");
 
   // One field per task, grouped in chats: chat 1 has one task, chat 2 two (the second continues it).
@@ -99,6 +116,36 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await expect(view.getByTestId("task-files-t1")).toHaveText("2");
   await expect(view.getByTestId("task-files-t2")).toHaveCount(0);
 
+  // Start: the first is done; its files open from the table's Files column.
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
+  await view.getByTestId("task-files-t1").click();
+  await page.getByRole("menuitem", { name: "cart.png" }).click();
+  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1 × 1 px");
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("task queue");
+  await page.keyboard.press("Enter");
+
+  // Each task links to its chat.
+  await view.getByTestId("task-group-chat-0").click();
+  await expect(page.getByText("Reported.").first()).toBeVisible();
+  // The files went with the prompt.
+  await expect(page.getByTestId("user-message").first().getByTestId("chat-attachment")).toHaveCount(2);
+});
+
+test("Tasks: every run is kept in the history, with its results", async ({ page, jigHome }) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: ["fix the cart with follow-ups", "fail this task please", "update the readme"],
+      newChat: true,
+      permissionMode: "acceptEdits",
+    },
+  });
   // Start: the first is done, the second fails and pauses the queue (stop when a task fails).
   await view.getByTestId("tasks-start").click();
   await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
@@ -114,33 +161,68 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await expect(details.getByTestId("task-summary")).toContainText("Did it: fix the cart");
   await expect(details.getByTestId("task-facts")).toContainText("Accept file edits");
   await expect(details).toContainText("A fake note to know");
-  // Its files stay with it after it ran, and open from here (and from the table's Files column).
-  await expect(details.getByTestId("task-files").getByTestId("chat-attachment")).toHaveCount(2);
   await details.getByTestId("task-followup-0").click();
   await expect(view.getByTestId("task-t4")).toContainText("Follow up on");
   await page.keyboard.press("Escape");
 
-  await view.getByTestId("task-files-t1").click();
-  await page.getByRole("menuitem", { name: "cart.png" }).click();
-  await expect(page.getByTestId("image-tab").getByTestId("image-size")).toHaveText("1 × 1 px");
-  await page.getByTestId("goto-button").click();
-  await page.getByTestId("goto-input").fill("task queue");
-  await page.keyboard.press("Enter");
+  // The queue paused on the failure: the run is still open, with the two tasks it ran.
+  await view.getByRole("tab", { name: "History" }).click();
+  await expect(view.getByTestId("tasks-run-0")).toContainText("2 tasks");
+  await view.getByTestId("tasks-run-0").click();
+  const run = view.getByTestId("tasks-run");
+  await expect(run).toContainText("still going");
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done");
+  await expect(view.getByTestId("task-status-t2")).toContainText("Failed");
+  await expect(view.getByTestId("task-t3")).toHaveCount(0);
+  await expect(view.getByTestId("task-t4")).toHaveCount(0);
+  await view.getByTestId("tasks-run-back").click();
+  await expect(view.getByTestId("tasks-run-0")).toBeVisible();
 
-  // Each task links to its chat.
-  await view.getByTestId("task-group-chat-0").click();
-  await expect(page.getByText("Reported.").first()).toBeVisible();
-  // The files went with the prompt.
-  await expect(page.getByTestId("user-message").first().getByTestId("chat-attachment")).toHaveCount(2);
+  // Clearing finished tasks from the queue keeps them in the history.
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "clearFinished",
+    args: { projectId: ids.shop },
+  });
+  await view.getByTestId("tasks-run-0").click();
+  await expect(view.getByTestId("tasks-run")).toBeVisible();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done");
+});
 
-  // Claude can queue tasks from a chat.
+test("Tasks: Claude's queued tasks are reviewed first, and each project has its own queue", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+
+  // Claude can queue tasks from a chat: you review them first, as a list you can change.
   await page.keyboard.press("Control+N");
   await page.locator("[data-testid=composer-input]:focus").fill("queue tasks for the specs in docs");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("Queued two tasks.").first()).toBeVisible({ timeout: 15000 });
+  const review = page.getByTestId("tasks-review");
+  await expect(review).toBeVisible({ timeout: 15000 });
+  await expect(review.getByTestId("tasks-review-prompt-0")).toHaveValue("Write the spec for Contoso");
+  await review.getByTestId("tasks-review-title-0").fill("Contoso spec");
+  await review.getByTestId("tasks-review-prompt-1").fill("Write the spec for Fabrikam, short");
+  await expect(review.getByTestId("tasks-review-allow")).toHaveText("Queue 2 tasks");
+  await review.getByTestId("tasks-review-allow").click();
+  await expect(page.getByText("Queued the tasks.").first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("tasks-review-done")).toContainText("queued");
   const queue = JSON.stringify(
-    await hostCall(page, "addons.call", { id: "tasks", method: "toolList", args: {} }),
+    await hostCall(page, "addons.call", { id: "tasks", method: "list", args: { projectId: ids.shop } }),
   );
-  expect(queue).toContain("Fabrikam spec");
-  expect(queue).toContain("Write the spec for Contoso");
+  expect(queue).toContain("Contoso spec");
+  expect(queue).toContain("Write the spec for Fabrikam, short");
+
+  // Each project has its own queue: the view's project menu switches between them.
+  await page.getByRole("tab", { name: "Task queue" }).click();
+  await view.getByTestId("tasks-project").click();
+  await page.getByTestId("tasks-project-blog").click();
+  await expect(view.getByTestId("tasks-project")).toContainText("blog");
+  await expect(view).toContainText("No tasks queued");
+  await view.getByTestId("tasks-project").click();
+  await expect(page.getByTestId("tasks-project-shop")).toContainText("queued");
+  await page.getByTestId("tasks-project-shop").click();
+  await expect(view).toContainText("Contoso spec");
 });

@@ -71,7 +71,7 @@ in this order:
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
 | a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups" |
-| "queue tasks for" | Claude queues two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` |
+| "queue tasks for" | Claude asks to queue two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` (an approval drawn by the add-on as an editable list; queues what you approved, unless the chat bypasses permissions) |
 | starts with "Test this in Claude's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |

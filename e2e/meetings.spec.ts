@@ -202,16 +202,23 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     });
     await review.getByRole("button", { name: "Add selected to queue", exact: true }).click();
     await expect(review).not.toBeVisible();
-    const queue = await hostCall(main, "addons.call", { id: "tasks", method: "list" });
-    expect(queue.ok).toBe(true);
-    if (queue.ok) {
-      const value = queue.value as {
-        running: boolean;
-        tasks: Array<{ projectId: string; prompt: string; status: string }>;
-      };
-      expect(value.running).toBe(false);
-      expect(value.tasks.map((t) => t.projectId)).toEqual([first!.id, second!.id]);
-      expect(value.tasks.every((t) => t.status === "queued" && t.prompt.includes(id))).toBe(true);
+    // One queue per project: each task went to its own project's queue.
+    for (const project of [first!, second!]) {
+      const queue = await hostCall(main, "addons.call", {
+        id: "tasks",
+        method: "list",
+        args: { projectId: project.id },
+      });
+      expect(queue.ok).toBe(true);
+      if (queue.ok) {
+        const value = queue.value as {
+          running: boolean;
+          tasks: Array<{ projectId: string; prompt: string; status: string }>;
+        };
+        expect(value.running).toBe(false);
+        expect(value.tasks.map((t) => t.projectId)).toEqual([project.id]);
+        expect(value.tasks.every((t) => t.status === "queued" && t.prompt.includes(id))).toBe(true);
+      }
     }
     const saved = JSON.parse(await readFile(join(jigHome, "addon-data", "meetings.json"), "utf8")) as {
       records: Array<{ captions: unknown[]; status: string }>;

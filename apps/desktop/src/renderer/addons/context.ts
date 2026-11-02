@@ -11,9 +11,10 @@ import {
   type StorageScope,
   scopedKey,
 } from "@jig/sdk";
-import { createContext, useContext } from "react";
+import { createContext, createElement, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { updateTabParams } from "../../shared/layout";
+import { ProjectSwatch } from "../features/projects/colors";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
 import { copyText } from "../lib/clipboard";
@@ -42,7 +43,13 @@ const toProject = (p: ReturnType<typeof useProjects.getState>["projects"][number
   exists: p.exists,
   repos: p.repos ?? [],
   focusRepo: p.focusRepo,
+  color: p.color,
 });
+
+function projectLeading(id: string | undefined) {
+  const project = id ? useProjects.getState().projects.find((p) => p.id === id) : undefined;
+  return project ? createElement(ProjectSwatch, { color: project.color }) : undefined;
+}
 
 function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry[] {
   return items.map((item) =>
@@ -54,6 +61,9 @@ function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry
           danger: item.danger,
           disabled: item.disabled,
           checked: item.checked,
+          badge: item.badge,
+          testId: item.testId,
+          leading: projectLeading(item.project),
           onSelect: item.onSelect,
           submenu: item.submenu ? toEntries(item.submenu) : undefined,
         },

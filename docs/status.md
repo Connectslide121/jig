@@ -1,5 +1,12 @@
 # Status
 
+Task queue per project with history (2026-11-02, D-248): each project has its own queue (the view's
+project menu at the top right switches, with a count of queued tasks); queues run independently.
+Every run is kept: History lists the runs (started, tasks, done, failed, time, cost) and opens one
+read-only, with Run again / Queue every task again and Remove from history. When Claude queues tasks
+(`addon_tasks_add`) the approval is an editable list (titles, prompts, project, start now). The old
+single queue moves to its projects on first start. Needs a try with a real Claude Code chat.
+
 Icon/text alignment (2026-11-02, D-237): Inter's vertical metrics are tuned so text in icon rows sits
 centred on its icons (they looked ~1px low everywhere: chat steps line, Files, Git…). Upgrading
 @fontsource-variable/inter means updating `styles/inter.css`.

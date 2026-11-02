@@ -1,11 +1,11 @@
-import { type AddonUiContext, addonActionId, addonTabType, addonViewId } from "@jig/sdk";
+import { type AddonUiContext, addonActionId, addonTabType, addonToolName, addonViewId } from "@jig/sdk";
 import { Puzzle } from "lucide-react";
 import { type ComponentType, createElement, useEffect } from "react";
 import { create } from "zustand";
 import type { AddonInfo } from "../../shared/addons";
 import { registerDashboardWidget } from "../features/projects/widgets";
 import { registerPrompt } from "../features/sessions/prompts";
-import { registerToolRenderer } from "../features/sessions/toolRenderers";
+import { registerPermissionRenderer, registerToolRenderer } from "../features/sessions/toolRenderers";
 import { registerSettingsPage } from "../features/settings/SettingsTab";
 import { call, useHostEvent } from "../lib/host";
 import { contributeMenu } from "../workbench/contextMenus";
@@ -185,6 +185,17 @@ async function mount(addon: AddonInfo): Promise<void> {
     if (Component)
       cleanups.push(
         registerToolRenderer({ tool: r.tool, owner, render: (item) => createElement(Component, { item }) }),
+      );
+  }
+  for (const r of c.permissionRenderers) {
+    const Component = component(r.component, `approval card for ${r.tool}`);
+    if (Component)
+      cleanups.push(
+        registerPermissionRenderer({
+          tool: `mcp__jig__${addonToolName(owner, r.tool)}`,
+          owner,
+          render: (props) => createElement(Component, props),
+        }),
       );
   }
   for (const p of c.prompts)

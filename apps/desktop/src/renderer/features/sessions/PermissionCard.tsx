@@ -5,7 +5,9 @@ import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, CodeBlock, cn, Markdown } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { QuestionCard } from "./QuestionCard";
+import { useSessions } from "./store";
 import { toolLabel, toolSummary } from "./ToolCard";
+import { usePermissionRenderer } from "./toolRenderers";
 
 type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
 
@@ -104,7 +106,35 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
   );
 }
 
+/** An add-on's own approval card for its tool (`chat.permissionRenderer`): it may change the input. */
+function AddonPermissionCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
+  const custom = usePermissionRenderer(item.request.toolName);
+  const projectId = useSessions((s) => s.metas[sessionId]?.projectId);
+  if (!custom) return null;
+  const { request } = item;
+  return (
+    <>
+      {custom.render({
+        request: { toolName: request.toolName, input: request.input, title: request.title },
+        status: item.status,
+        sessionId,
+        projectId,
+        respond: (decision) =>
+          answer(
+            sessionId,
+            request.requestId,
+            decision.behavior === "allow"
+              ? { behavior: "allow", ...(decision.input ? { updatedInput: decision.input } : {}) }
+              : decision,
+          ),
+      })}
+    </>
+  );
+}
+
 export function PermissionCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
+  const custom = usePermissionRenderer(item.request.toolName);
+  if (custom) return <AddonPermissionCard item={item} sessionId={sessionId} />;
   if (item.request.toolName === "AskUserQuestion") return <QuestionCard item={item} sessionId={sessionId} />;
   if (item.request.toolName === "ExitPlanMode") return <PlanCard item={item} sessionId={sessionId} />;
   const { request } = item;
