@@ -22,15 +22,23 @@ import {
   Circle,
   CircleCheck,
   CircleX,
+  ClipboardCheck,
+  Clock,
   Cloud,
   FileCode,
+  GitBranch,
+  Hourglass,
   ListChecks,
   LoaderCircle,
+  type LucideIcon,
+  MessageSquare,
   Pencil,
   Play,
   Plus,
+  Rocket,
   SkipForward,
   Square,
+  SquareTerminal,
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -59,6 +67,203 @@ const MODE_LABEL: Record<StepMode, string> = {
   ask: "Ask me first",
 };
 
+/** One icon per kind of step, the same wherever steps are shown. */
+const STEP_ICON: Record<StepKind, LucideIcon> = {
+  check: ClipboardCheck,
+  command: SquareTerminal,
+  script: FileCode,
+  pipeline: Rocket,
+  claude: MessageSquare,
+  wait: Hourglass,
+};
+
+/** How it starts: by hand, on a schedule, or after an event. */
+function triggerIcon(t: Trigger): LucideIcon {
+  if (t.kind === "schedule") return Clock;
+  if (t.kind === "push") return GitBranch;
+  if (t.kind === "pipeline") return Rocket;
+  return Play;
+}
+
+type LastRun = Pick<Run, "status" | "startedAt" | "finishedAt">;
+
+function ago(iso: string): string {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  return days < 30 ? `${days} day${days === 1 ? "" : "s"} ago` : new Date(iso).toLocaleDateString();
+}
+
+const RUN_LABEL: Record<LastRun["status"], string> = {
+  done: "Done",
+  failed: "Failed",
+  running: "Running",
+  stopped: "Stopped",
+};
+
+/**
+ * One workflow as a card: the whole card opens it; Run starts it. Its steps show as their icons
+ * (at most 8, then +n), with how it starts and how the last run went in fixed places.
+ */
+function WorkflowCard({
+  wf,
+  last,
+  onOpen,
+  onRun,
+}: {
+  wf: Workflow;
+  last?: LastRun;
+  onOpen: () => void;
+  onRun: () => void;
+}) {
+  const Trigger = triggerIcon(wf.trigger);
+  const shown = wf.steps.slice(0, 8);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault();
+        onOpen();
+      }}
+      title={`Open ${wf.name}`}
+      data-testid={`workflow-${wf.name}`}
+      className={cn(
+        "group flex min-w-0 cursor-pointer flex-col gap-2 rounded-lg border border-line bg-raised p-3 text-left shadow-card transition-colors",
+        "outline-none hover:border-accent hover:bg-hover focus-visible:ring-1 focus-visible:ring-accent",
+      )}
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
+          <ListChecks className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-fg">{wf.name}</span>
+          <span className="block truncate text-xs text-muted">{wf.goal?.trim() || "No description"}</span>
+        </span>
+        <IconButton
+          icon={Play}
+          size="sm"
+          label={`Run ${wf.name}`}
+          data-testid={`workflow-run-${wf.name}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRun();
+          }}
+        />
+      </div>
+      <div className="flex h-5 min-w-0 items-center gap-1 text-hint">
+        {shown.map((s) => {
+          const Icon = STEP_ICON[s.kind];
+          return (
+            <span
+              key={s.id}
+              title={s.title || s.kind}
+              className="flex size-5 items-center justify-center rounded-sm bg-active"
+            >
+              <Icon className="size-3" />
+            </span>
+          );
+        })}
+        {wf.steps.length > shown.length && <span className="text-xs">+{wf.steps.length - shown.length}</span>}
+        <span className="ml-1 truncate text-xs">
+          {wf.steps.length} step{wf.steps.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="flex min-w-0 items-center gap-3 border-t border-line pt-2 text-xs">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-muted">
+          <Trigger className="size-3.5 shrink-0" />
+          <span className="truncate">{triggerLabel(wf.trigger)}</span>
+        </span>
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1.5",
+            !last && "text-hint",
+            last?.status === "done" && "text-success",
+            last?.status === "failed" && "text-danger",
+            (last?.status === "running" || last?.status === "stopped") && "text-muted",
+          )}
+          title={last ? `Last run started ${new Date(last.startedAt).toLocaleString()}` : undefined}
+        >
+          {last ? (
+            <>
+              {RUN_LABEL[last.status]} · {ago(last.finishedAt ?? last.startedAt)}
+              <StatusIcon
+                status={
+                  last.status === "done"
+                    ? "done"
+                    : last.status === "failed"
+                      ? "failed"
+                      : last.status === "running"
+                        ? "running"
+                        : "skipped"
+                }
+              />
+            </>
+          ) : (
+            <>
+              Never run
+              <Circle className="size-4 shrink-0" />
+            </>
+          )}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function StepKindIcon({ kind }: { kind: StepKind }) {
+  const Icon = STEP_ICON[kind];
+  return (
+    <span
+      title={STEP_KINDS.find((k) => k.kind === kind)?.label}
+      className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-active text-hint"
+    >
+      <Icon className="size-3" />
+    </span>
+  );
+}
+
+/** What a step does, readable without opening the editor: the command, the script, the message… */
+function StepDetail({ step, scriptName }: { step: Step; scriptName: (id?: string) => string | undefined }) {
+  const box = "ml-20 rounded-md bg-surface px-2 py-1.5 text-xs text-muted";
+  if (step.kind === "command" && step.command)
+    return (
+      <div className={cn(box, "font-mono")} data-testid="step-detail">
+        {step.command}
+        {step.cwd && <span className="block text-hint">in {step.cwd}</span>}
+      </div>
+    );
+  if (step.kind === "script" && step.scriptId)
+    return (
+      <div className={box} data-testid="step-detail">
+        Runs the script <span className="font-mono text-fg">{scriptName(step.scriptId)}</span>
+      </div>
+    );
+  if (step.kind === "pipeline" && step.pipeline)
+    return (
+      <div className={box} data-testid="step-detail">
+        Pipeline {step.pipeline.id} in {step.pipeline.org}/{step.pipeline.project}
+        {step.pipeline.branch ? ` on ${step.pipeline.branch}` : ""}
+      </div>
+    );
+  if (step.kind === "claude" && step.prompt?.trim())
+    return (
+      <div
+        className={cn(box, "selectable leading-relaxed whitespace-pre-wrap text-fg")}
+        data-testid="step-detail"
+      >
+        {step.prompt.trim()}
+      </div>
+    );
+  return null;
+}
+
 function anchor() {
   return document.querySelector<HTMLElement>("[data-testid=goto-button]") ?? document.body;
 }
@@ -80,7 +285,16 @@ export function WorkflowsView({ ctx }: AddonComponentProps) {
     { projectId: project?.id ?? "" },
     { skip: !project },
   );
-  useAddonEvent("changed", () => void reload());
+  const { data: last, reload: reloadRuns } = useHostCall<Record<string, LastRun>>(
+    "lastRuns",
+    { projectId: project?.id ?? "" },
+    { skip: !project },
+  );
+  useAddonEvent("changed", () => {
+    void reload();
+    void reloadRuns();
+  });
+  useAddonEvent("runs", () => void reloadRuns());
   if (!project)
     return (
       <Empty icon={ListChecks} title="No project">
@@ -91,7 +305,13 @@ export function WorkflowsView({ ctx }: AddonComponentProps) {
   return (
     <div className="flex h-full flex-col" data-testid="workflows-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
-        <span className="min-w-0 flex-1 truncate">{project.name}</span>
+        <span className="min-w-0 flex-1 truncate">
+          {project.name}
+          <span className="text-hint">
+            {" "}
+            · {data.length} workflow{data.length === 1 ? "" : "s"}
+          </span>
+        </span>
         <IconButton
           icon={Plus}
           size="sm"
@@ -100,37 +320,37 @@ export function WorkflowsView({ ctx }: AddonComponentProps) {
           data-testid="workflow-new"
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        {data.length === 0 && (
+      <div className="@container min-h-0 flex-1 overflow-y-auto">
+        {data.length === 0 ? (
           <Empty icon={ListChecks} title="No workflows yet">
             A workflow is a list of steps you repeat — a release, a deploy, a morning routine. Jig can do the
             steps it can, ask first, or leave them to you. Suggestions draft them from what you do.
           </Empty>
-        )}
-        {data.map((wf) => (
-          <div
-            key={wf.id}
-            className="group flex items-center gap-1 rounded-md px-2 py-1 hover:bg-hover"
-            data-testid={`workflow-${wf.name}`}
-          >
+        ) : (
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-2 p-3 @xl:grid-cols-2 @4xl:grid-cols-3">
+            {data.map((wf) => (
+              <WorkflowCard
+                key={wf.id}
+                wf={wf}
+                last={last?.[wf.id]}
+                onOpen={() => openWorkflow(ctx, wf)}
+                onRun={() => openWorkflow(ctx, wf, true)}
+              />
+            ))}
             <button
               type="button"
-              className="flex min-w-0 flex-1 flex-col text-left"
-              onClick={() => openWorkflow(ctx, wf)}
+              onClick={() => newWorkflow(ctx, project)}
+              className={cn(
+                "group flex min-h-28 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-line p-3 text-xs text-hint transition-colors",
+                "outline-none hover:border-accent hover:text-accent focus-visible:ring-1 focus-visible:ring-accent",
+              )}
+              data-testid="workflow-new-card"
             >
-              <span className="truncate text-sm text-fg">{wf.name}</span>
-              <span className="truncate text-xs text-hint">
-                {wf.steps.length} step{wf.steps.length === 1 ? "" : "s"} · {triggerLabel(wf.trigger)}
-              </span>
+              <Plus className="size-4" />
+              New workflow
             </button>
-            <IconButton
-              icon={Play}
-              size="sm"
-              label={`Run ${wf.name}`}
-              onClick={() => openWorkflow(ctx, wf, true)}
-            />
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -330,19 +550,15 @@ function Runner({
               <div className="flex items-center gap-2">
                 <StatusIcon status={r?.status} />
                 <span className="w-5 shrink-0 text-xs text-hint">{i + 1}.</span>
+                <StepKindIcon kind={s.kind} />
                 <span className="min-w-0 flex-1 truncate text-sm text-fg">
-                  {s.title || s.command || s.prompt}
-                  {s.kind === "command" && s.title && s.command && s.title !== s.command && (
-                    <span className="ml-2 font-mono text-xs text-muted">{s.command}</span>
-                  )}
-                  {s.kind === "script" && (
-                    <span className="ml-2 text-xs text-muted">script {scriptName(s.scriptId)}</span>
-                  )}
+                  {s.title || STEP_KINDS.find((k) => k.kind === s.kind)?.label}
                 </span>
                 <Badge tone={mode === "auto" ? "accent" : mode === "ask" ? "info" : "neutral"}>
                   {MODE_LABEL[mode]}
                 </Badge>
               </div>
+              <StepDetail step={s} scriptName={scriptName} />
               {isNext && run && !busy && (
                 <div className="ml-11 flex gap-2">
                   {mode === "manual" ? (

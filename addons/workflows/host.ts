@@ -60,6 +60,19 @@ export async function runs({ id }: { id: string }, api: AddonHostApi): Promise<R
   return (await api.storage.get<Run[]>(`runs:${id}`)) ?? [];
 }
 
+/** Each workflow's newest run in a project (for the cards in the Workflows view). */
+export async function lastRuns(
+  { projectId }: { projectId: string },
+  api: AddonHostApi,
+): Promise<Record<string, Pick<Run, "status" | "startedAt" | "finishedAt">>> {
+  const out: Record<string, Pick<Run, "status" | "startedAt" | "finishedAt">> = {};
+  for (const wf of await list({ projectId }, api)) {
+    const run = (await runs({ id: wf.id }, api))[0];
+    if (run) out[wf.id] = { status: run.status, startedAt: run.startedAt, finishedAt: run.finishedAt };
+  }
+  return out;
+}
+
 export async function saveRun({ run }: { run: Run }, api: AddonHostApi): Promise<void> {
   const all = await runs({ id: run.workflowId }, api);
   const index = all.findIndex((r) => r.id === run.id);
