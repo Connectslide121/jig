@@ -440,6 +440,14 @@ export function WorkflowTab({ params, tabId }: AddonTabProps) {
             onSaved={(saved) => {
               setWf(saved);
               setEditing(false);
+              // The tab is named after the workflow, and reopens the stored one (not the draft).
+              ctx.updateTab(tabId, {
+                id: saved.id,
+                projectId: saved.projectId,
+                title: saved.name,
+                draft: undefined,
+                edit: undefined,
+              });
             }}
             onCancel={() => (params.draft ? undefined : setEditing(false))}
           />

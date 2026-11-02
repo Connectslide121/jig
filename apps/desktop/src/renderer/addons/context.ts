@@ -13,6 +13,7 @@ import {
 } from "@jig/sdk";
 import { createContext, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
+import { updateTabParams } from "../../shared/layout";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
 import { copyText } from "../lib/clipboard";
@@ -20,7 +21,7 @@ import { call, errorMessage } from "../lib/host";
 import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } from "../ui";
 import { contributedEntries } from "../workbench/contextMenus";
 import { useProjects } from "../workbench/projects";
-import { useWorkbench, workbench } from "../workbench/store";
+import { updateLayout, useWorkbench, workbench } from "../workbench/store";
 import { dismiss, notify } from "../workbench/toasts";
 import { iconByName } from "./icons";
 import { knownAddons, onJigEvent } from "./runtime";
@@ -180,6 +181,11 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       },
     },
     openTab: (type, params) => void workbench.openTab(addonTabType(id, type), params),
+    updateTab: (tabId, params) => {
+      // Only this add-on's own tabs.
+      const tab = useWorkbench.getState().layout?.main.tabs.find((t) => t.id === tabId);
+      if (tab?.type.startsWith(addonTabType(id, ""))) updateLayout((l) => updateTabParams(l, tabId, params));
+    },
     openImage: (path) => void workbench.openTab("jig.image", { path }),
     openPreview: (path) => void workbench.openTab("jig.preview", { path }),
     // A full id ("addon.git.git", "jig.terminals") shows another view; a short id one of this add-on's.

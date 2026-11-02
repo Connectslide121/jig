@@ -203,6 +203,11 @@ export interface AddonUiContext {
   };
   /** Opens one of this add-on's tab types (short type id from the manifest). */
   openTab(type: string, params?: Record<string, unknown>): void;
+  /**
+   * Changes an open tab of this add-on (its `tabId` from AddonTabProps): `params` are merged into its
+   * own, so `title` renames it and `undefined` drops a param (a draft that has been saved).
+   */
+  updateTab(tabId: string, params: Record<string, unknown>): void;
   /** Opens an image file (absolute path) in Jig's image tab. */
   openImage(path: string): void;
   /**

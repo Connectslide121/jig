@@ -30,6 +30,9 @@ test("Workflows: make one with a check and a command, run it step by step, expor
 
   const steps = page.getByTestId("workflow-steps");
   await expect(steps).toContainText("Read the build mail");
+  // Saved: the tab is named after the workflow, and each step shows what it does.
+  await expect(page.getByTestId("tab-addon.workflows.workflow")).toContainText("Morning");
+  await expect(steps.getByTestId("step-detail")).toContainText("echo hello-from-jig");
   await expect(page.getByTestId("workflows-view")).toContainText("Morning");
   await page.getByTestId("workflow-run").click();
   // The check is yours; then Jig runs the command by itself.

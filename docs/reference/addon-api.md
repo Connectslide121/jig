@@ -98,6 +98,7 @@ are add-ons':
 | `ai.tour(cwd, { focus? })` | opens a guided tour of the uncommitted changes of the repository `cwd` is in (Claude orders them and explains each step); needs `ai` |
 | `openPreview(path)` | opens a file in Jig's Preview tab (Markdown, HTML, PDF, tables, notebooks…; `docs/reference/preview.md`) |
 | `openTab(type, params)` | this add-on's tab types (short ids); `params.title` sets the tab title |
+| `updateTab(tabId, params)` | changes an open tab of this add-on: params merged, `title` renames it, `undefined` drops one |
 | `openImage(path)` | opens an image file (absolute path) in Jig's image tab |
 | `showView(id)` | a view of this add-on (short id) or any view by full id (`addon.git.git`, `jig.terminals`) |
 | `openSettings()` | this add-on's settings page |
