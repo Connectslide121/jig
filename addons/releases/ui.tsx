@@ -17,10 +17,12 @@ import {
   useHostCall,
 } from "@jig/sdk/ui";
 import {
+  ChevronRight,
   CircleAlert,
   Copy,
   FileCog,
   MessageSquare,
+  Plus,
   RefreshCw,
   Rocket,
   Share2,
@@ -73,7 +75,115 @@ function useOverview() {
 const toRelease = (repos: RepoSummary[]) =>
   repos.filter((r) => r.policy?.style === "planned" && r.unreleased > 0);
 
-/** The Releases panel (right, global): every repository with its style, version and unreleased work. */
+type CardKind = "due" | "tracked" | "setup" | "off";
+
+/** One repository as a card: the whole card opens it (its release tab, or setting it up). */
+function RepoCard({ r, kind, onOpen }: { r: RepoSummary; kind: CardKind; onOpen: () => void }) {
+  const cut = r.name.lastIndexOf("/");
+  const leaf = r.name.slice(cut + 1);
+  const parent = cut > 0 ? r.name.slice(0, cut) : "";
+  const detail = r.error
+    ? r.error
+    : kind === "setup"
+      ? "Set up versioning"
+      : kind === "off"
+        ? "Not tracked"
+        : r.policy?.style === "planned"
+          ? unreleasedLabel(r.unreleased, r.oldest)
+          : STYLE_LABEL[r.policy?.style ?? "none"];
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title={kind === "setup" ? `Set up versioning for ${r.name}` : `Open the releases of ${r.name}`}
+      data-testid={kind === "setup" ? `releases-setup-${r.name}` : `releases-repo-${r.name}`}
+      className={cn(
+        "group flex h-14 w-full min-w-0 items-center gap-3 rounded-lg border px-3 text-left transition-colors",
+        "outline-none focus-visible:ring-1 focus-visible:ring-accent",
+        kind === "setup"
+          ? "border-dashed border-line hover:border-accent hover:bg-hover"
+          : "border-line bg-raised shadow-card hover:border-accent hover:bg-hover",
+        kind === "off" && "opacity-70 hover:opacity-100",
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-md transition-colors",
+          kind === "due" && "bg-accent-soft text-accent",
+          kind === "tracked" && "bg-active text-muted",
+          kind === "off" && "bg-active text-hint",
+          kind === "setup" &&
+            "border border-dashed border-line text-hint group-hover:border-accent group-hover:text-accent",
+        )}
+      >
+        {kind === "setup" ? <Plus className="size-4" /> : <Tag className="size-4" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span
+            className={cn(
+              "truncate text-sm font-medium",
+              kind === "setup" ? "text-muted group-hover:text-fg" : "text-fg",
+            )}
+          >
+            {leaf}
+          </span>
+          {parent && <span className="min-w-0 truncate text-xs text-hint">{parent}</span>}
+        </span>
+        <span
+          className={cn(
+            "block truncate text-xs",
+            r.error ? "text-danger" : kind === "setup" ? "text-hint group-hover:text-accent" : "text-muted",
+          )}
+        >
+          {detail}
+        </span>
+      </span>
+      <span className="flex w-20 shrink-0 flex-col items-end gap-0.5">
+        <span className="truncate text-xs">
+          {kind === "due" || kind === "tracked" ? (
+            r.latest ? (
+              <span className="font-mono text-muted">{r.latest.version}</span>
+            ) : (
+              <span className="text-hint">No release yet</span>
+            )
+          ) : null}
+        </span>
+        {kind === "due" ? (
+          <Badge tone={r.unreleased > 20 ? "warning" : "accent"}>{r.unreleased}</Badge>
+        ) : (
+          <ChevronRight className="size-4 text-hint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+        )}
+      </span>
+    </button>
+  );
+}
+
+/** A titled group of cards in a grid that adds columns as the panel widens (sidebar or bottom panel). */
+function CardSection({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  if (count === 0) return null;
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="flex items-center gap-1.5 px-1 text-2xs font-semibold tracking-wide text-hint uppercase">
+        {title}
+        <span className="font-normal">{count}</span>
+      </h3>
+      <div className="grid grid-cols-1 gap-2 @xl:grid-cols-2 @4xl:grid-cols-3 @6xl:grid-cols-4">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** The Releases panel (global): every repository as a card, grouped by what it needs. */
 export function ReleasesView({ ctx }: AddonComponentProps) {
   const { data, error, loading, reload } = useOverview();
   if (error) return <div className="p-3 text-xs text-danger">{error}</div>;
@@ -84,73 +194,41 @@ export function ReleasesView({ ctx }: AddonComponentProps) {
         Add a workspace folder with repositories to version them here.
       </Empty>
     );
-  const tracked = data.filter((r) => r.policy && r.policy.style !== "none");
+  const due = toRelease(data).sort((a, b) => b.unreleased - a.unreleased);
+  const tracked = data.filter((r) => r.policy && r.policy.style !== "none" && !due.includes(r));
   const untracked = data.filter((r) => !r.policy);
   const off = data.filter((r) => r.policy?.style === "none");
+  const card = (r: RepoSummary, kind: CardKind) => (
+    <RepoCard key={r.path} r={r} kind={kind} onOpen={() => openRepo(ctx, r)} />
+  );
   return (
     <div className="flex h-full flex-col" data-testid="releases-view">
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
         <span className="min-w-0 flex-1 truncate">
-          {toRelease(data).length ? `${toRelease(data).length} with something to release` : "Releases"}
+          {due.length ? `${due.length} with something to release` : "Releases"}
+          <span className="text-hint">
+            {" "}
+            · {due.length + tracked.length} tracked · {untracked.length} not set up
+          </span>
         </span>
-        {loading && <Spinner size="sm" />}
+        <span className="flex size-4 items-center justify-center">{loading && <Spinner size="sm" />}</span>
         <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={() => void reload()} />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1">
-        {tracked.map((r) => (
-          <button
-            key={r.path}
-            type="button"
-            className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-hover"
-            onClick={() => openRepo(ctx, r)}
-            data-testid={`releases-repo-${r.name}`}
-          >
-            <Tag className="mt-0.5 size-4 shrink-0 text-muted" />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5">
-                <span className="truncate text-sm text-fg">{r.name}</span>
-                <span className="shrink-0 font-mono text-xs text-muted">
-                  {r.latest?.version ?? "no release yet"}
-                </span>
-              </span>
-              <span className="block truncate text-xs text-hint">
-                {STYLE_LABEL[r.policy!.style]}
-                {r.policy!.style === "planned" ? ` · ${unreleasedLabel(r.unreleased, r.oldest)}` : ""}
-                {r.error ? ` · ${r.error}` : ""}
-              </span>
-            </span>
-            {r.policy!.style === "planned" && r.unreleased > 0 && (
-              <Badge tone={r.unreleased > 20 ? "warning" : "accent"} className="mt-0.5 shrink-0">
-                {r.unreleased}
-              </Badge>
-            )}
-          </button>
-        ))}
-        {untracked.length > 0 && (
-          <>
-            <div className="px-2 pt-3 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase">
-              Not set up
-            </div>
-            {untracked.map((r) => (
-              <div key={r.path} className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-hover">
-                <Tag className="size-4 shrink-0 text-hint" />
-                <span className="min-w-0 flex-1 truncate text-sm text-muted">{r.name}</span>
-                {/* A real button, with its own hover on top of the row's (Jon's builder change). */}
-                <Button
-                  size="sm"
-                  className="hover:border-accent hover:text-accent"
-                  onClick={() => openRepo(ctx, r)}
-                  data-testid={`releases-setup-${r.name}`}
-                >
-                  Set up
-                </Button>
-              </div>
-            ))}
-          </>
-        )}
-        {off.length > 0 && (
-          <div className="px-2 pt-3 text-xs text-hint">Not tracked: {off.map((r) => r.name).join(", ")}</div>
-        )}
+      <div className="@container min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-4 p-3">
+          <CardSection title="To release" count={due.length}>
+            {due.map((r) => card(r, "due"))}
+          </CardSection>
+          <CardSection title="Tracked" count={tracked.length}>
+            {tracked.map((r) => card(r, "tracked"))}
+          </CardSection>
+          <CardSection title="Not set up" count={untracked.length}>
+            {untracked.map((r) => card(r, "setup"))}
+          </CardSection>
+          <CardSection title="Not tracked" count={off.length}>
+            {off.map((r) => card(r, "off"))}
+          </CardSection>
+        </div>
       </div>
     </div>
   );

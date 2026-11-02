@@ -2543,3 +2543,12 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - Remove the pre-join acknowledgement and notice (Jon); device readiness and a supplied link gate Join.
   Reserve a fixed-height status area from opening.
   Keep the redesigned device/preview layout and do not shift controls when feedback changes.
+
+## D-224: UI quality is a hard rule; add-ons get responsive variants
+
+- Jon: UI is extremely important, always: layout and good-looking systems are what we do. Added as a
+  hard rule in `AGENTS.md` (UI quality comes first).
+- Triggered by the Releases panel in the bottom bar: a narrow list with a small "Set up" button per row.
+  It is now a card grid sized by the panel (`@container`), whole cards clickable (Jon).
+- Add-on CSS compiled only the token `@theme`, so `md:` and `@xl:` variants generated nothing in add-ons.
+  `main/addons/css.ts` now adds Tailwind's default screen and container sizes (Claude, on my own).

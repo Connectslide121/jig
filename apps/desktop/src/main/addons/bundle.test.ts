@@ -104,6 +104,14 @@ describe("addon CSS", () => {
     expect(css).not.toContain("#1e1f22");
   });
 
+  it("generates screen and container variants (add-ons lay out per panel width)", async () => {
+    setTokensFile(tokens);
+    const css = await addonCss([`<div className="@container md:flex @xl:grid-cols-2" />`]);
+    expect(css).toContain("container-type");
+    expect(css).toContain(".md\\:flex");
+    expect(css).toContain(".\\@xl\\:grid-cols-2");
+  });
+
   it("splits candidates", () => {
     expect(candidates(`cn("p-2 bg-surface", x && 'hover:bg-hover', \`w-[var(--jig-x)]\`)`)).toEqual(
       expect.arrayContaining(["p-2", "bg-surface", "hover:bg-hover", "w-[var(--jig-x)]"]),

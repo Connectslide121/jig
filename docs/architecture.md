@@ -369,6 +369,7 @@ views, live program output (`spawn`), file watching, and calling each other's sh
   `react/jsx-runtime`, `react-dom`, `lucide-react`, `@jig/sdk` and `@jig/sdk/ui` mapped to the app's
   own instances through `globalThis.__jigShared` (so add-ons share React and the design system). The
   host also generates the add-on's Tailwind CSS at runtime from its source with Jig's token theme
+  and Tailwind's default screen and container sizes, so `md:` and `@xl:` work in add-ons too
   (`main/addons/css.ts`). The renderer loads both through the `jig-addon://` protocol and renders each
   contribution inside an error boundary. A crashing contribution shows an inline error with
   "Turn off" / "Fix with AI" — never a broken app.

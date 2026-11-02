@@ -123,6 +123,12 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 
 ## UI and design rules
 
+- **UI quality comes first (hard rule, Jon).** Layout and good-looking, consistent UI are what this
+  product is about; every change, however small, is designed, not just made to work. Lay a view out for
+  every place it can be shown (a sidebar, the bottom panel, a tab): size grids by the container
+  (`@container` with `@xl:`…), not the window. Make the whole row or card the click target instead of
+  a small button in it, keep icons consistent in meaning across views, and look at the result (a
+  screenshot) before calling UI work done.
 - **No layout shifts, ever (hard rule).** Nothing already on screen may move when something opens, loads
   or changes: no inline expanding panels or forms under a row, no content that pops in above or between
   existing content, no spinner that swaps for a differently sized result. A form or picker that needs

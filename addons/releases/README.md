@@ -3,8 +3,9 @@
 Versions, changelogs and release notes per repository, following its **release policy**
 (`.jig/release.json`, committed so the team shares it). D-110.
 
-- **View Releases** (right sidebar, Search → Show releases): every repository with its release style,
-  latest version and unreleased work; "Set up" for the ones without a policy. The status bar shows
+- **View Releases** (Search → Show releases; sidebar or bottom panel): every repository as a card,
+  grouped into To release, Tracked, Not set up and Not tracked. The grid adds columns as the panel
+  widens; the whole card opens the repository (or its setup). The status bar shows
   "N to release" for planned repositories with unreleased commits.
 - **Release tab** (click a repository):
   - **Set up:** what detection found (version files, tags and their format, changelog, conventional

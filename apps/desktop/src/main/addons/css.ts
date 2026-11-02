@@ -24,6 +24,19 @@ export function extractTheme(tokensCss: string): string {
   return "";
 }
 
+/**
+ * Tailwind's default screen and container sizes, which tokens.css doesn't redefine: without them an
+ * add-on's `md:` and `@xl:` variants silently generate nothing (the app gets them from its own import).
+ */
+const LAYOUT_SCALES = `@theme {
+  --breakpoint-sm: 40rem; --breakpoint-md: 48rem; --breakpoint-lg: 64rem; --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+  --container-3xs: 16rem; --container-2xs: 18rem; --container-xs: 20rem; --container-sm: 24rem;
+  --container-md: 28rem; --container-lg: 32rem; --container-xl: 36rem; --container-2xl: 42rem;
+  --container-3xl: 48rem; --container-4xl: 56rem; --container-5xl: 64rem; --container-6xl: 72rem;
+  --container-7xl: 80rem;
+}`;
+
 /** Class-name candidates in source code (Tailwind ignores anything that isn't a utility). */
 export function candidates(source: string): string[] {
   return [...new Set(source.split(/[\s"'`;{}<>=\\]+/).filter((c) => c.length > 1 && c.length < 120))];
@@ -32,9 +45,12 @@ export function candidates(source: string): string[] {
 export async function addonCss(sources: string[]): Promise<string> {
   if (!themeCss) throw new Error("Tokens file not set");
   const theme = await themeCss;
-  const compiler = await compile(`${theme}\n@layer utilities {\n@tailwind utilities;\n}\n`, {
-    base: "/",
-    loadStylesheet: async () => ({ path: "", base: "/", content: "" }),
-  });
+  const compiler = await compile(
+    `${LAYOUT_SCALES}\n${theme}\n@layer utilities {\n@tailwind utilities;\n}\n`,
+    {
+      base: "/",
+      loadStylesheet: async () => ({ path: "", base: "/", content: "" }),
+    },
+  );
   return compiler.build(sources.flatMap(candidates));
 }
