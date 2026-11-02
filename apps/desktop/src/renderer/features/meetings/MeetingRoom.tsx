@@ -475,17 +475,21 @@ function Room() {
           onJoin={async (meeting, options) => {
             setPending("join");
             setError("");
+            let r: MeetingRecord;
             try {
-              const r = await call("meetings.join", meeting);
-              setJoining(undefined);
-              await media.current!.join(r, { ...options, fake: overview.fake });
-              await reload();
-            } catch (error) {
-              setError(errorMessage(error));
-              await reload();
+              // A rejected link or host error stays in the still-open pre-join modal (D-222).
+              r = await call("meetings.join", meeting);
             } finally {
               setPending(undefined);
             }
+            // From here the modal is gone, so call failures show in the room (D-234).
+            setJoining(undefined);
+            try {
+              await media.current!.join(r, { ...options, fake: overview.fake });
+            } catch (error) {
+              setError(errorMessage(error));
+            }
+            await reload();
           }}
         />
       )}
