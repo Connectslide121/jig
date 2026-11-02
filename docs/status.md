@@ -1,5 +1,9 @@
 # Status
 
+Scripts follow the files (2026-11-02, D-238): add, remove or rename a script file (`scripts/backend.sh`) or an npm
+script and the Scripts view updates by itself within a second, no restart; groups pick the script up again.
+Needs a try on a big real workspace (watch count, Windows).
+
 Updates (2026-11-02, D-236): installed Windows Jig checks 5 s after opening and shows a toast
 (Download, Details) when a newer release exists; nothing downloads until you press Download (toast or
 Get started). When it's downloaded, a toast offers Install and restart, and the installer's own window

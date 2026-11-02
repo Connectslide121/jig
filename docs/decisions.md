@@ -2685,3 +2685,17 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   `quitAndInstall(false, true)`, so the assisted NSIS installer shows its progress window, then starts Jig.
   The meeting/working-chat guards apply to installing only, not downloading.
 
+## D-238: The Scripts list follows the files
+
+- Jon: a new script file or npm script didn't show until Jig restarted, and a group containing it said
+  "not found any more".
+- **Claude, on my own:** main watches, per project the Scripts view has listed, the folders discovery read
+  (`discoverScriptsAndDirs`: roots, repos, `scripts/` and every non-skipped folder to depth 3, plus
+  `Properties/`), with non-recursive `fs.watch`, so `node_modules`/`bin`/`obj` are never watched and no
+  recursive watch runs over a 30-repo workspace. Only relevant names (`package.json`, lockfiles,
+  `host.json`, `*.csproj`, `launchSettings.json`, `.sh/.ps1/.cmd/.bat`, folders coming or going) schedule a
+  400 ms debounced re-list; `scripts.changed` is emitted only when the list's fingerprint differs. Over 500
+  folders the shallowest are watched and a 60 s poll covers the rest. The add-on already re-lists on that
+  event. Pure parts in `scripts/changes.ts`, the service in `scripts/watch.ts`. Rejected: a poll or
+  focus-triggered rescan only (late, and wasteful for 30 repos), and the add-on file-watch API (it's for
+  add-on host code, not the host's own discovery).
