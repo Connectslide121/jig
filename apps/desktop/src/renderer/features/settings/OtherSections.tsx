@@ -1,15 +1,42 @@
-import { Eye, FolderOpen, LayoutTemplate, RotateCcw, Save, Search, Sparkles, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Eye,
+  FolderOpen,
+  LayoutTemplate,
+  Pencil,
+  RotateCcw,
+  Save,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
 import { modelOptions } from "../../../shared/models";
+import { shellName } from "../../../shared/shellNames";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
-import { Badge, Button, confirmDialog, IconButton, Input, Select, Spinner, Switch, Textarea } from "../../ui";
+import {
+  Badge,
+  Button,
+  confirmDialog,
+  IconButton,
+  Input,
+  MenuButton,
+  type MenuEntry,
+  promptDialog,
+  Select,
+  Spinner,
+  Switch,
+  Textarea,
+} from "../../ui";
 import { addWorkspace, hiddenViews, resetLayout, saveLayoutAs } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { lookForPatterns, useLearning } from "../learning/store";
+import { shellEntries } from "../terminals/shellEntries";
+import { useShellChoices } from "../terminals/shells";
 import { SettingRow, SettingsSection } from "./parts";
 
 export function LayoutSettings() {
@@ -439,16 +466,58 @@ export function EditorSettings() {
 
 export function TerminalSettings() {
   const config = useConfig((s) => s.config);
+  const choices = useShellChoices();
   if (!config) return <Spinner center />;
+  const current = config.terminal.shell;
+  const set = (shell: string) => void updateConfig({ terminal: { shell } });
+  const known = choices?.options.find((o) => o.path === current);
+  const shownName = !current
+    ? `Default (${choices?.defaultShell.name ?? "…"})`
+    : (known?.name ?? `Custom: ${shellName(current)}`);
+  const shownPath = current || choices?.defaultShell.path || "";
+  const entries = (): MenuEntry[] => [
+    { label: `Default (${choices?.defaultShell.name ?? "…"})`, checked: !current, onSelect: () => set("") },
+    { separator: true },
+    ...shellEntries(choices, set, current),
+    ...(current && !known
+      ? [{ label: `Custom: ${shellName(current)}`, detail: current, checked: true }]
+      : []),
+    { separator: true },
+    {
+      label: "Custom path…",
+      icon: Pencil,
+      onSelect: async () => {
+        const path = await promptDialog({
+          title: "Custom shell",
+          message: "Full path of the shell's executable, e.g. C:Tools\nu.exe or /usr/local/bin/fish.",
+          initial: current,
+          confirmLabel: "Use this shell",
+        });
+        if (path) set(path);
+      },
+    },
+  ];
   return (
     <SettingsSection title="Terminal">
-      <TextSetting
+      <SettingRow
         label="Shell"
-        description="Empty = PowerShell on Windows, your login shell elsewhere. Examples: pwsh.exe, cmd.exe, C:\\Program Files\\Git\\bin\\bash.exe"
-        value={config.terminal.shell}
-        placeholder="(default)"
-        onSave={(shell) => void updateConfig({ terminal: { shell } })}
-      />
+        description={
+          <span className="selectable block min-h-4 font-mono text-2xs" title={shownPath}>
+            {shownPath}
+          </span>
+        }
+      >
+        <MenuButton
+          entries={entries}
+          alignRight
+          label="Shell"
+          testId="settings-shell"
+          className="flex h-7 w-64 items-center gap-2 rounded-md border border-line-strong bg-raised px-2 text-sm text-fg hover:bg-hover"
+        >
+          <span className="min-w-0 flex-1 truncate text-left">{shownName}</span>
+          <ChevronDown className="size-4 shrink-0 text-muted" />
+        </MenuButton>
+      </SettingRow>
     </SettingsSection>
   );
 }

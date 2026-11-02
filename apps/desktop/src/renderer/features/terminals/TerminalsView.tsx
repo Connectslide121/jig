@@ -1,15 +1,31 @@
-import { MessageSquare, Pencil, Plus, Power, RotateCw, Sparkles, SquareTerminal, X } from "lucide-react";
+import {
+  ChevronDown,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Power,
+  RotateCw,
+  Sparkles,
+  SquareTerminal,
+  X,
+} from "lucide-react";
+import { shellName } from "../../../shared/shellNames";
 import type { TerminalInfo } from "../../../shared/terminals";
 import { call } from "../../lib/host";
-import { cn, contextMenu, Empty, IconButton, type MenuEntry, promptDialog } from "../../ui";
+import { cn, contextMenu, Empty, IconButton, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { newTerminal } from "./actions";
 import { askClaudeAboutTerminal } from "./askClaude";
+import { loadShells, newTerminalInEntries } from "./shells";
 import { useTerminals } from "./store";
 import { XTerm } from "./XTerm";
+
+/** The shell's file name without extension (`pwsh`, `bash`): short enough for the list's fixed column. */
+const shellStem = (path: string) =>
+  (path.split(/[\\/]/).pop() ?? path).replace(/\.exe$/i, "").replace(/^powershell$/i, "ps");
 
 export function terminalMenu(t: TerminalInfo): MenuEntry[] {
   return [
@@ -138,6 +154,14 @@ export function TerminalsView(_props: ViewProps) {
                   void call("terminals.close", { id: t.id });
                 }}
               />
+              {/* A fixed slot at the far right, so the shells line up in one column. */}
+              <span
+                className="w-12 shrink-0 truncate text-right font-mono text-2xs text-hint"
+                title={`${shellName(t.shell)}: ${t.shell}`}
+                data-testid="terminal-shell"
+              >
+                {shellStem(t.shell)}
+              </span>
             </div>
           ))}
         </div>
@@ -146,14 +170,34 @@ export function TerminalsView(_props: ViewProps) {
   );
 }
 
+/** A split button like VS Code's: "+" opens a terminal in the default shell, the chevron picks another. */
 export function TerminalsHeaderActions() {
   return (
-    <IconButton
-      icon={Plus}
-      label="New terminal (Ctrl+`)"
-      size="sm"
-      data-testid="new-terminal"
-      onClick={() => void newTerminal()}
-    />
+    <div
+      className="flex items-center"
+      onContextMenu={contextMenu(() => {
+        void loadShells();
+        return newTerminalInEntries();
+      })}
+    >
+      <IconButton
+        icon={Plus}
+        label="New terminal (Ctrl+`)"
+        size="sm"
+        data-testid="new-terminal"
+        onClick={() => void newTerminal()}
+      />
+      <IconButton
+        icon={ChevronDown}
+        label="New terminal in another shell"
+        size="sm"
+        data-testid="new-terminal-in"
+        className="w-4"
+        onClick={(e) => {
+          void loadShells();
+          openMenuAt(e.currentTarget, newTerminalInEntries(), true);
+        }}
+      />
+    </div>
   );
 }

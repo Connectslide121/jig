@@ -10,6 +10,7 @@ discovered in a project can be started/stopped from buttons with their output in
 - [x] Terminal host: `@lydell/node-pty`, one pty per terminal, resize, kill, exit status
 - [x] xterm.js view with theme ANSI colours and the mono font
 - [x] Terminals panel: tabs per terminal, new terminal in active project, rename, close
+- [x] Shell picker in Settings and "new terminal in another shell" (D-240, D-241)
 - [x] Default shell per OS (PowerShell on Windows), configurable
 - [x] Script discovery: `package.json` scripts, `*.ps1`/`*.sh` in the root and `scripts/`, `*.csproj`
       (dotnet run / watch), Azure Functions (`func start`) — per project and per sub-folder

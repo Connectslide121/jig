@@ -2710,3 +2710,25 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   PowerShell, `"…\bash.exe" "./f.sh"` in cmd, plain `bash` when the configured shell is itself bash.
   `System32\bash.exe` (WSL) is never used: it would run the script inside Linux. With no Git Bash the command
   stays `bash` and the row's detail says Git Bash is needed.
+
+## D-240: The terminal shell is picked from the installed shells
+
+- Jon: the shell setting was a free text field; pick from what is installed instead.
+- **Claude, on my own:** main detects the shells (`terminals/shells.ts`, pure with an injected probe, so
+  it is tested for every OS): on Windows PowerShell 7 (newest under Program Files, winget/Store aliases,
+  PATH), Windows PowerShell, Command Prompt, Git Bash (the D-239 resolver), Nushell on PATH and
+  Windows Terminal profiles whose commandline is a bare executable; elsewhere `$SHELL` and the existing
+  entries of `/etc/shells`. `terminals.shells` returns them with the shell an empty setting starts.
+  Settings stores the full path (shell.ts still derives the quoting from the file name), "Default (name)"
+  stores nothing, and "Custom path…" is a dialog. WSL is not offered: it needs `wsl -e`, not `-c`.
+  Menus got two optional parts for this: a muted `detail` column and a fixed `badge` column.
+
+## D-241: Open one terminal in another shell
+
+- Jon (agreed design): "+" stays one click in the default shell; a chevron beside it lists the installed
+  shells (name, muted path, "Default" at the far right) and "Change default shell…".
+- **Claude, on my own:** the same list is the right-click on "+" and the top bar's Code → "New terminal
+  in…". `terminals.create` takes an optional `shell`, which the host accepts only when it is a detected
+  shell or the configured one, so the renderer cannot start arbitrary programs. Picking a shell opens that
+  one terminal and never changes the default. Each terminal row shows its shell's short name in a fixed
+  column at the far right.

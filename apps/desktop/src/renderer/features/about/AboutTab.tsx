@@ -791,7 +791,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="terminals"
             title="Terminals & scripts"
-            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. When one fails, Ask Claude opens a chat with its output. When Claude starts a dev server or watcher, it runs in a terminal here (“Claude: …”) that you can see and stop."
+            lead="Real terminals at the bottom. Jig finds the scripts of every repo (package.json, Makefile, …) so you can run, restart and stop them from one place, also in groups. The chevron beside + opens a terminal in any installed shell (PowerShell, cmd, Git Bash, …); the default is picked in Settings. When one fails, Ask Claude opens a chat with its output. When Claude starts a dev server or watcher, it runs in a terminal here (“Claude: …”) that you can see and stop."
           />
           <Section
             id="configure"

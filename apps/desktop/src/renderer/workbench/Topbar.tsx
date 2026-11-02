@@ -15,11 +15,13 @@ import {
   Save,
   Settings,
   Settings2,
+  SquareTerminal,
 } from "lucide-react";
 import { LOWER_HALF } from "../../shared/layout";
 import { openAbout } from "../features/about";
 import { TopbarSearch } from "../features/goto";
 import { ProjectSwatch } from "../features/projects/colors";
+import { newTerminalInEntries } from "../features/terminals/shells";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
 import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
@@ -52,7 +54,14 @@ function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>) {
     });
     // View → Layouts: saved layouts to switch to sit with the layout actions.
     const items = (name: string, actions: ActionDef[]): MenuEntry[] =>
-      name === "Layout" ? [...actionMenu(actions), layoutsEntry()] : actionMenu(actions);
+      name === "Layout"
+        ? [...actionMenu(actions), layoutsEntry()]
+        : name === "Terminals"
+          ? [
+              ...actionMenu(actions),
+              { label: "New terminal in…", icon: SquareTerminal, submenu: newTerminalInEntries() },
+            ]
+          : actionMenu(actions);
     const entries: MenuEntry[] =
       parts.length === 1
         ? items(parts[0]!.name, parts[0]!.actions)

@@ -46,3 +46,17 @@ export interface ProjectScripts {
   scripts: Script[];
   groups: ScriptGroup[];
 }
+
+/** A shell installed on this machine, as the Settings picker lists it (D-240). */
+export interface ShellOption {
+  /** Friendly name ("PowerShell 7", "Git Bash"). */
+  name: string;
+  /** Full path of the executable; what `terminal.shell` stores. */
+  path: string;
+}
+
+export interface ShellChoices {
+  options: ShellOption[];
+  /** What Jig starts when `terminal.shell` is empty. */
+  defaultShell: ShellOption;
+}

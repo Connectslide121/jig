@@ -50,6 +50,8 @@ export interface CreateTerminal {
   title?: string;
   /** Run this command (and exit with its status) instead of an interactive shell. */
   command?: string;
+  /** Start this shell instead of the configured one (checked by the host: a detected or configured shell). */
+  shell?: string;
   /** Run this executable directly with `args` (e.g. Claude Code for sign-in). */
   file?: string;
   args?: string[];
@@ -88,7 +90,7 @@ export class TerminalManager {
   }
 
   create(input: CreateTerminal): TerminalInfo {
-    const shell = this.options.shell();
+    const shell = input.shell ?? this.options.shell();
     const file = input.file ?? shell;
     const args = input.file
       ? (input.args ?? [])

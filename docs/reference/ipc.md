@@ -115,7 +115,8 @@ settings, add-on permissions.
 | `artifacts.list` | `{ refresh? }` | `{ at, artifacts: RemoteArtifact[] }` | your claude.ai artifacts via Claude Code's Artifact tool (cached 5 min) |
 | `artifacts.fetch` | `{ url }` | `{ path }` | reads a claude.ai artifact through Claude Code into `~/.jig/cache/artifacts/` for Preview |
 | `terminals.list` | — | `TerminalInfo[]` | see `docs/reference/terminals.md` |
-| `terminals.create` | `{ projectId?, cwd?, command?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command` |
+| `terminals.create` | `{ projectId?, cwd?, command?, shell?, title?, cols?, rows? }` | `TerminalInfo` | a shell in the project folder (or `cwd`), or a shell running `command`; `shell` runs that shell once instead of the default, accepted only when it is a detected shell or the configured one (D-241) |
+| `terminals.shells` | — | `ShellChoices` | shells installed on this machine (`{ name, path }`) and the one an empty `terminal.shell` starts (D-240) |
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |

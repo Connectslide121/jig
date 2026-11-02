@@ -6,6 +6,7 @@ import { notify } from "../../workbench/toasts";
 import { RunningScripts } from "../scripts/RunningScripts";
 import { claudeLogin, newTerminal, showTerminal } from "./actions";
 import { askClaudeAboutTerminal, newlyFailed } from "./askClaude";
+import { loadShells } from "./shells";
 import { routeTerminalData, setTerminals, useTerminals } from "./store";
 import { TerminalsHeaderActions, TerminalsView } from "./TerminalsView";
 
@@ -48,6 +49,7 @@ export function registerTerminals(): void {
 export function useTerminalsSync(): void {
   useEffect(() => {
     void call("terminals.list").then(setTerminals);
+    void loadShells();
   }, []);
   useHostEvent("terminals.changed", (list) => {
     const failed = newlyFailed(useTerminals.getState().terminals, list);

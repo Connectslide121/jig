@@ -55,7 +55,7 @@ import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
 import type { MicrophoneAccess, SpeechModel, SpeechModelStatus } from "./speech";
-import type { ProjectScripts, ScriptGroup, TerminalInfo } from "./terminals";
+import type { ProjectScripts, ScriptGroup, ShellChoices, TerminalInfo } from "./terminals";
 import type {
   FileIconThemeData,
   FileIconThemeList,
@@ -332,6 +332,8 @@ export interface HostMethods {
       projectId?: string;
       cwd?: string;
       command?: string;
+      /** Run this shell once instead of the default; only a detected or configured shell is accepted. */
+      shell?: string;
       title?: string;
       cols?: number;
       rows?: number;
@@ -345,6 +347,8 @@ export interface HostMethods {
   "terminals.kill": { args: { id: string }; result: void };
   "terminals.close": { args: { id: string }; result: void };
   /** Opens a private terminal running Claude Code so you can sign in (`/login`). */
+  /** Shells installed on this machine and the default one (what an empty `terminal.shell` starts), D-240. */
+  "terminals.shells": { args: void; result: ShellChoices };
   "terminals.claudeLogin": { args: { projectId?: string }; result: TerminalInfo };
   /** Claude's browser: an offscreen page Claude (and you) drive; see docs/reference/browser.md. */
   "browser.state": { args: void; result: BrowserState };

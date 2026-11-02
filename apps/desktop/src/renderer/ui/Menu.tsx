@@ -19,6 +19,10 @@ export interface MenuItem {
   checked?: boolean;
   /** Shown before the label, after the icon or check (a project's colour). */
   leading?: ReactNode;
+  /** Muted text after the label, in its own column (a path); long ones truncate. */
+  detail?: string;
+  /** A small marker at the far right in a fixed column shared by the whole menu ("Default"). */
+  badge?: string;
   onSelect?: () => void;
   submenu?: MenuEntry[];
   /** Used by tests (`data-testid`). */
@@ -161,6 +165,8 @@ function MenuList({
   };
 
   const subEntry = sub ? entries[sub.index] : undefined;
+  const hasDetail = entries.some((e) => isItem(e) && e.detail);
+  const hasBadge = entries.some((e) => isItem(e) && e.badge);
   return (
     <>
       <div
@@ -169,7 +175,10 @@ function MenuList({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         style={{ left: place.left, top: place.top, minWidth: Math.max(minWidth ?? 0, 180) }}
-        className="jig-menu-panel no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] max-w-sm overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-sm text-fg shadow-popover outline-none"
+        className={cn(
+          "jig-menu-panel no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-sm text-fg shadow-popover outline-none",
+          hasDetail ? "max-w-xl" : "max-w-sm",
+        )}
       >
         {entries.map((entry, index) => {
           if ("separator" in entry) return <div key={index} className="my-1 h-px bg-line" />;
@@ -213,6 +222,15 @@ function MenuList({
               </span>
               {entry.leading}
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+              {entry.detail && (
+                <span
+                  className="selectable w-64 min-w-0 shrink truncate font-mono text-2xs text-muted"
+                  title={entry.detail}
+                >
+                  {entry.detail}
+                </span>
+              )}
+              {hasBadge && <span className="w-14 shrink-0 text-right text-2xs text-hint">{entry.badge}</span>}
               {entry.shortcut && <Kbd>{entry.shortcut}</Kbd>}
               {entry.submenu && <ChevronRight className="size-3.5 text-muted" />}
             </div>

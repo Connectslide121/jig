@@ -9,7 +9,7 @@ Code: `apps/desktop/src/main/terminals/` (ptys), `apps/desktop/src/main/scripts/
   rendered with xterm.js in the **Terminals** view (bottom panel by default) in the theme's ANSI
   colours and the mono font. Terminals stay alive while you switch tabs and views; they end when Jig
   quits (they are not restored after a restart).
-- **Shell**: Settings → Terminal → Shell; empty = PowerShell 7 (`pwsh.exe`) if installed, else Windows
+- **Shell**: Settings → Terminal → Shell is a picker of the installed shells (`terminals.shells`, `main/terminals/shells.ts`) plus "Custom path…"; the Terminals header's chevron next to `+`, right-click on `+` and Code → New terminal in… open one terminal in another shell without changing it (D-240, D-241). Empty = PowerShell 7 (`pwsh.exe`) if installed, else Windows
   PowerShell, on Windows; `$SHELL` elsewhere (`main/terminals/shell.ts`). Commands run as
   `pwsh -NoLogo -NoProfile -Command …`, `cmd /d /s /c …` or `sh -c …`. PowerShell gets a last line
   that exits with the program's own exit code (`POWERSHELL_EXIT`; on its own PowerShell says 1).

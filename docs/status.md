@@ -1,5 +1,17 @@
 # Status
 
+Terminal shells (2026-11-02, D-240, D-241): Settings → Terminal picks the shell from the installed ones
+(PowerShell 7, Windows PowerShell, cmd, Git Bash, … / `/etc/shells`) or a custom path. In the Terminals panel the
+chevron next to "+" opens one terminal in another shell (also right-click on "+" and Code → New terminal in…);
+each terminal row shows its shell. Needs a try on machines with PowerShell 7 and WSL (not offered).
+
+`.sh` scripts on Windows (2026-11-02, D-239): the Scripts view runs them with Git for Windows' bash, found
+automatically; without Git Bash the row says so. Needs a try on a real Windows machine.
+
+Scripts follow the files (2026-11-02, D-238): add, remove or rename a script file (`scripts/backend.sh`) or an npm
+script and the Scripts view updates by itself within a second, no restart; groups pick the script up again.
+Needs a try on a big real workspace (watch count, Windows).
+
 `.sh` scripts on Windows (2026-11-02, D-239): the Scripts view runs them with Git for Windows' bash, found
 automatically; without Git Bash the row says so. Needs a try on a real Windows machine.
 

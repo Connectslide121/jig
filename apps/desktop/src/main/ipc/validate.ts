@@ -276,6 +276,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     projectId: id.optional(),
     cwd: path.optional(),
     command: z.string().max(10_000).optional(),
+    shell: path.optional(),
     title: z.string().max(500).optional(),
     cols: int.min(1).max(1000).optional(),
     rows: int.min(1).max(1000).optional(),

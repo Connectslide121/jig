@@ -1,5 +1,7 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { spawn } from "@lydell/node-pty";
+import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
@@ -12,6 +14,7 @@ import { claudeBinary } from "./claudeBinary";
 import { terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
 import { defaultShell, makeWhich } from "./shell";
+import { detectShells } from "./shells";
 
 let manager: TerminalManager | undefined;
 /** The terminal running Claude Code's sign-in: when it ends, Jig asks whether it worked. */
@@ -62,9 +65,34 @@ export function startTerminals(): void {
   );
 
   handle("terminals.list", () => m.list());
-  handle("terminals.create", async ({ projectId, cwd, command, title, cols, rows }) => {
+  const shells = () =>
+    detectShells({
+      platform: process.platform,
+      env: process.env,
+      exists: existsSync,
+      list: (dir) => {
+        try {
+          return readdirSync(dir);
+        } catch {
+          return [];
+        }
+      },
+      read: (path) => {
+        try {
+          return readFileSync(path, "utf8");
+        } catch {
+          return undefined;
+        }
+      },
+      which,
+    });
+  handle("terminals.shells", () => shells());
+  handle("terminals.create", async ({ projectId, cwd, command, shell, title, cols, rows }) => {
     const folder = cwd ?? (projectId ? (await projectStore().get(projectId)).path : homedir());
-    return m.create({ projectId, cwd: folder, command, title, cols, rows });
+    // The renderer may pick a shell, but only one the host detected (or the configured one).
+    if (shell && shell !== getConfig().terminal.shell && !shells().options.some((o) => o.path === shell))
+      throw new JigError("invalid_args", "That shell was not found on this machine");
+    return m.create({ projectId, cwd: folder, command, shell, title, cols, rows });
   });
   handle("terminals.write", ({ id, data }) => m.write(id, data));
   handle("terminals.resize", ({ id, cols, rows }) => m.resize(id, cols, rows));
