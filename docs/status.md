@@ -1,6 +1,13 @@
 # Status
 
-Prepared in source, not yet released (2026-11-02, D-231–D-234): Meetings remembers Agenda/Week and
+Jig 0.1.2 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.1.2),
+source/tag `7a03748d3e2821628fed46a203c677ae8132a28d`. Installer: 259,677,522 bytes;
+SHA-256 `bd6244d241b2ab01dbdbe80678b2ba110557a4a4ca0562bf2b78ab3f2bf854b1`.
+Installer, blockmap and latest.yml server digests match local artifacts; feed version/size/SHA-512
+match the installer. Unauthenticated latest-release discovery returns v0.1.2, and feed/installer
+requests return HTTP 200. No installation or running-app restart was performed.
+
+In 0.1.2 (D-231–D-234): Meetings remembers Agenda/Week and
 restores Microsoft sign-in from an OS-encrypted MSAL cache. Windows downloads updates in-app and
 offers Install and restart; Get started checks automatically and shows the installed version.
 The real Teams join stuck at None/no audio was traced to a camera-off empty stream list, which SDK
