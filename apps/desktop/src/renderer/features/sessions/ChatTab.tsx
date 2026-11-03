@@ -190,7 +190,13 @@ export function ChatTab({ params, active, focused }: TabProps) {
                 onPick={(text) => fillComposer(id, text)}
               />
             ) : (
-              <Transcript items={transcript.items} sessionId={id} active={active} highlight={match} />
+              <Transcript
+                items={transcript.items}
+                sessionId={id}
+                active={active}
+                highlight={match}
+                working={meta.status === "working"}
+              />
             )
           ) : (
             <div className="flex flex-1 items-center justify-center">

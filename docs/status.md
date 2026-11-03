@@ -142,6 +142,10 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Chat (2026-11-03): in the Compact view the latest steps line keeps its spinner and glow while the
+chat works, also between steps ("· Working" while Claude writes its next step), not only while a
+tool runs.
+
 Teams calls (2026-11-03, D-254): in the meetings window, **Call…** finds people (recent calls,
 the people you work with, or a search of your organisation) and a whole row calls them (Camera on
 for video). While Jig runs, Teams calls ring in Jig too: the meetings window comes to the front with

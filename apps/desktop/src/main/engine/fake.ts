@@ -536,6 +536,9 @@ export class FakeEngine implements Engine {
             await sleep(this.delayMs * 60, signal);
             onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
           }
+          // A pause between the last tool and the answer, as while Claude writes: the steps line shows
+          // it's still working then.
+          await sleep(this.delayMs * 30, signal);
           await stream(
             `${msg}:text:0`,
             "The total is worked out in cart.ts. Shall the discount go there?",
