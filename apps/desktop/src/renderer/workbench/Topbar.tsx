@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LayoutTemplate,
   MessageSquarePlus,
+  Mic,
   PanelBottom,
   PanelLeft,
   PanelRight,
@@ -203,6 +204,7 @@ function jigMenu(): MenuEntry[] {
     ),
     { separator: true },
     { label: "Keyboard shortcuts", icon: Keyboard, onSelect: () => openAbout("shortcuts") },
+    { label: "Voice commands", icon: Mic, onSelect: () => openAbout("voice") },
     { label: "Extension slots", icon: Puzzle, onSelect: () => openAbout("slots") },
   ];
 }

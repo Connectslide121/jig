@@ -3302,3 +3302,21 @@ Claude, on my own.
   headphones button in the talking window, so devices change without leaving the conversation. A new
   microphone is opened at once; what you were saying on the old one is dropped.
 - Escape in a dialog opened over the talking window closes only that dialog.
+
+## D-277: "Hey Jig" voice commands run on this computer, from one command list
+
+**Who:** Jon: control Jig by voice like Siri ("hey Jig, open a new chat … in speech mode"), from
+anywhere in the house, without using the Claude subscription; commands are global (names come
+from your own projects), and there is a page listing them. Grammar, wake approach and wording:
+Claude, on my own.
+
+- The commands are one typed list (`renderer/features/speech/commands/grammar.ts`): group, title,
+  example phrases, patterns with named slots, and `confirm` for actions that need a spoken yes
+  (deploys, pulls). The matcher, the Voice commands page and "what can I say" all read it.
+- Matching is plain patterns plus fuzzy name matching (`commands/match.ts`); no AI. Speech Jig
+  doesn't know is answered "I didn't get that"; only "ask Claude …" starts a chat.
+- The wake phrase is found in Whisper's text (with the spellings it uses for "Jig") after the Silero
+  voice detector (D-275) has heard speech, instead of a separately trained wake-word model: no new
+  model to train or download, and "Hey Jig, new chat" can be said in one breath. A dedicated
+  wake-word model can replace it later behind the same detector.
+- A chat opened by voice starts in Talk mode.
