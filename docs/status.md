@@ -63,7 +63,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.4.0 being prepared (2026-11-03): Boards you manage in Jig (and Claude from chats), the Teams chat of meetings and calls, profile pictures, a frame around what you share, past meetings that stay joinable, a pipeline picker in workflows, file links in chats and a task queue that fits a sidebar. Publication not yet verified.
+Jig 0.4.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.4.0),
+source/tag `917606eb546b1fefe71a405fb689f48226a031d8`. Installer: 371,236,512 bytes;
+SHA-256 `3c07a133744ca5467f4e47fad1a00cfceb80a2440185e11748da3b1a03b30bbf`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.4.0 with its feed and installer. In 0.4.0: Boards you manage in Jig (and Claude from chats), the Teams chat of meetings and calls, profile pictures, a frame around what you share, past meetings that stay joinable, a pipeline picker in workflows, file links in chats and a task queue that fits a sidebar.
 
 Jig 0.3.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.3.0),
 source/tag `8d041765232c2dacc5d42d3ef83ec64aa5d4ff04`. Installer: 371,216,992 bytes;
