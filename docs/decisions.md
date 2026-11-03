@@ -3136,3 +3136,12 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   update/create/delete`); read tools are read-only, writes ask permission. Every write emits
   `changed`, so an open board reloads whether you or a chat changed it.
 
+## D-264: The board query names the project instead of `@project`
+
+**Who:** Jon saw columns but no cards on his board in 0.3.0. **Claude, on my own.**
+
+- `az boards query --project "Podium Systems"` (a project name with a space) returns nothing for
+  `[System.TeamProject] = @project`, without an error. The query now names the project in WIQL
+  (`'Podium Systems'`, quotes doubled) and doesn't pass `--project`. The test projects had no spaces,
+  so the e2e tests didn't catch it.
+

@@ -167,11 +167,9 @@ export async function board({ board: b }: { board: Board }, api: AddonHostApi): 
     "boards",
     "query",
     "--wiql",
-    boardQuery(columns, areaClause(areas), field),
+    boardQuery(columns, areaClause(areas), field, b.project),
     "--org",
     orgUrl(b.org),
-    "--project",
-    b.project,
   ]);
   const items = (Array.isArray(rows) ? rows : [])
     .map((r) => toWorkItem(r, b, field))

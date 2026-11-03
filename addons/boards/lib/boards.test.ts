@@ -89,6 +89,10 @@ describe("areaClause and boardQuery", () => {
     expect(q).toContain("UNDER 'Shop'");
     expect(q).toContain("[System.State] NOT IN ('Closed') OR [System.ChangedDate] >= @today - 30");
     expect(q).toContain("[WEF_1_Kanban.Column]");
+    // By name, not @project: az with a project name that has a space finds nothing otherwise.
+    expect(boardQuery(toColumns(BOARD) as BoardColumn[], undefined, undefined, "Shop's Web")).toContain(
+      "[System.TeamProject] = 'Shop''s Web'",
+    );
   });
 });
 

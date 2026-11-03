@@ -132,6 +132,7 @@ export function boardQuery(
   columns: BoardColumn[],
   area: string | undefined,
   field: string | undefined,
+  project?: string,
 ): string {
   const types = [...new Set(columns.flatMap((c) => Object.keys(c.stateMappings)))];
   const done = [
@@ -139,7 +140,11 @@ export function boardQuery(
       columns.filter((c) => c.columnType === "outgoing").flatMap((c) => Object.values(c.stateMappings)),
     ),
   ];
-  const where = ["[System.TeamProject] = @project", "[System.State] <> 'Removed'"];
+  // The project by name: `az boards query --project "Name with spaces"` returns nothing for @project.
+  const where = [
+    project ? `[System.TeamProject] = ${quote(project)}` : "[System.TeamProject] = @project",
+    "[System.State] <> 'Removed'",
+  ];
   if (types.length) where.push(`[System.WorkItemType] IN (${types.map(quote).join(", ")})`);
   if (area) where.push(area);
   if (done.length)
