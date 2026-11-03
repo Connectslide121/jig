@@ -38,11 +38,17 @@ export interface Tenant extends TenantInfo {
   addedAt: string;
 }
 
+/** Your own az login in the tenants file: what the last check found, and the name you gave it. */
+export interface DefaultTenant extends TenantInfo {
+  /** Your own name for it; missing means "Your az login". */
+  label?: string;
+}
+
 /** `~/.jig/azure/tenants.json`. */
 export interface TenantsFile {
   version: 1;
-  /** What the last check found about your own az login (no key: it isn't Jig's folder). */
-  default: TenantInfo;
+  /** Your own az login (no key: it isn't Jig's folder). */
+  default: DefaultTenant;
   tenants: Tenant[];
 }
 
@@ -107,7 +113,12 @@ export function parseTenantsFile(raw: unknown): TenantsFile {
       addedAt: str(t.addedAt) ?? new Date(0).toISOString(),
     });
   }
-  return { version: 1, default: info(r.default), tenants };
+  return { version: 1, default: defaultTenant(r.default), tenants };
+}
+
+function defaultTenant(raw: unknown): DefaultTenant {
+  const label = str((raw as Record<string, unknown> | undefined)?.label, 80);
+  return { ...info(raw), ...(label && label !== DEFAULT_TENANT_LABEL ? { label } : {}) };
 }
 
 /** A tenant id (GUID) or a domain (`contoso.onmicrosoft.com`); an empty string means "pick when signing in". */
@@ -161,11 +172,41 @@ export function azEnv(
 /** The list the UI shows, your az login first, and which one is in use. */
 export function tenantsState(file: TenantsFile, active: string | undefined): TenantsState {
   const tenants: TenantView[] = [
-    { ...file.default, key: DEFAULT_TENANT, label: DEFAULT_TENANT_LABEL, isDefault: true },
+    {
+      ...file.default,
+      key: DEFAULT_TENANT,
+      label: file.default.label ?? DEFAULT_TENANT_LABEL,
+      isDefault: true,
+    },
     ...file.tenants.map(({ requested: _r, addedAt: _a, ...t }) => ({ ...t, isDefault: false })),
   ];
   return { active: activeKey(file, active), tenants };
 }
+
+/**
+ * Renames a tenant: `label` trimmed to 80 characters, or no label to go back to the name it started
+ * with ("Your az login", or an added tenant's display name). Your az login stores its name in the
+ * file's `default` and keeps its key; naming it "Your az login" again stores nothing. Undefined when
+ * no tenant has that key.
+ */
+export function renameTenant(file: TenantsFile, key: string, label?: string): TenantsFile | undefined {
+  const name = label?.trim().slice(0, 80) || undefined;
+  if (key === DEFAULT_TENANT) {
+    const { label: _old, ...rest } = file.default;
+    return { ...file, default: name && name !== DEFAULT_TENANT_LABEL ? { ...rest, label: name } : rest };
+  }
+  if (!file.tenants.some((t) => t.key === key)) return undefined;
+  return {
+    ...file,
+    tenants: file.tenants.map((t) =>
+      t.key === key ? { ...t, label: name ?? defaultLabel(t, t.requested) } : t,
+    ),
+  };
+}
+
+/** Whether your az login has a name of your own (Manage tenants offers "Reset name" then). */
+export const isRenamedDefault = (t: Pick<TenantView, "label" | "isDefault">): boolean =>
+  t.isDefault && t.label !== DEFAULT_TENANT_LABEL;
 
 /** The tenant in use: the setting's key when it names an added tenant, else your az login. */
 export function activeKey(file: TenantsFile, active: string | undefined): string {
@@ -280,12 +321,15 @@ export function defaultLabel(t: TenantInfo, requested?: string): string {
 /**
  * One or two letters for a tenant's avatar: the label's words (`Contoso Dev` → `CD`), the first part of
  * a domain or email (`contoso.com` → `C`). Your az login is named after the tenant it signed in to,
- * since its label says nothing about it.
+ * since "Your az login" says nothing about it, unless you gave it a name of your own.
  */
 export function tenantInitials(
   t: Pick<TenantView, "label" | "isDefault" | "displayName" | "domain" | "user">,
 ): string {
-  const source = t.isDefault ? (t.displayName ?? t.domain ?? t.user?.split("@")[1] ?? "az") : t.label;
+  const source =
+    t.isDefault && !isRenamedDefault(t)
+      ? (t.displayName ?? t.domain ?? t.user?.split("@")[1] ?? "az")
+      : t.label;
   // A domain or an email is one word: its first part.
   const name = /\s/.test(source.trim()) ? source : (source.split("@")[0] ?? "").split(".")[0]!;
   const words = name

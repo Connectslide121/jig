@@ -1,6 +1,6 @@
 import { Plus, Settings2 } from "lucide-react";
 import { useEffect } from "react";
-import { DEFAULT_TENANT_LABEL } from "../../../shared/azure";
+import { DEFAULT_TENANT_LABEL, isRenamedDefault } from "../../../shared/azure";
 import { errorMessage } from "../../lib/host";
 import { type MenuEntry, openMenuAt, switchMenuAt, Tooltip } from "../../ui";
 import { useActiveProject } from "../../workbench/projects";
@@ -45,6 +45,7 @@ export function TenantChip({ menuBar }: { menuBar: string }) {
   const tip = active && (
     <div className="flex flex-col gap-0.5 py-0.5">
       <span className="font-medium">{active.label}</span>
+      {isRenamedDefault(active) && <span className="text-muted">Your own az login</span>}
       <span className="text-muted">
         {active.user ?? (active.isDefault ? "The Azure CLI as you left it" : "")}
       </span>

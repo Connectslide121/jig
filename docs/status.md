@@ -581,6 +581,12 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   expired, Pipelines says so in its list's place ("Couldn't list pipelines", naming the tenant)
   instead of "No pipelines found".
 
+  Your az login can be renamed too (D-301): Manage tenants → the pencil on its row; the avatar's
+  initials, the menu, the tooltip (which adds "Your own az login"), Settings → Azure, chat and
+  terminal tags, the project dialog's tenant picker, Boards' "In … (your own az login)" card and what
+  Claude is told all use the name; it still is the Azure CLI as you left it and can't be removed.
+  The ↺ button where other rows have Remove goes back to "Your az login".
+
   **Try it:** click the avatar at the top right → Add tenant…, type a tenant id or domain (or leave it
   empty and pick in the browser), Sign in. Then switch between it and "Your az login" from the avatar
   and watch Pipelines and Boards reload; start a chat and a terminal, switch, and look at the chat

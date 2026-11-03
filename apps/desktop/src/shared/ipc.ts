@@ -429,7 +429,12 @@ export interface HostMethods {
   "azure.signInAgain": { args: { key: string }; result: TenantsState };
   /** Stops the sign-in that is running (nothing when none is). */
   "azure.cancelSignIn": { args: void; result: void };
-  "azure.renameTenant": { args: { key: string; label: string }; result: TenantsState };
+  /**
+   * Renames a tenant, `default` (your own az login) too: it keeps its key and behaviour, its name is
+   * stored in `tenants.json`. No `label` goes back to the first name ("Your az login", or an added
+   * tenant's display name). `not_found` for an unknown key.
+   */
+  "azure.renameTenant": { args: { key: string; label?: string }; result: TenantsState };
   /** Removes a tenant and deletes its Azure CLI folder (its sign-in); your az login can't be removed. */
   "azure.removeTenant": { args: { key: string }; result: TenantsState };
   /** Makes a tenant the one `az` uses (`default` = your own az login); the `azure.activeTenant` setting. */

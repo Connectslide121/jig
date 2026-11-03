@@ -144,4 +144,8 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 - [x] `docs/status.md` (how to try it, what needs a real second tenant), architecture, decisions,
       this checklist and `README.md` agree. The About page screenshots were not regenerated: the
       only change on them is the small avatar at the top right.
+- [x] Your az login can be renamed too (D-301): Rename in every row's same slot, its name stored in
+      `tenants.json`'s `default.label`, "Reset name" in the slot where added tenants have Remove; the
+      name shows everywhere a tenant's name does (avatar initials, menu, tooltip, Settings, tags,
+      project picker, Boards, `jig_azure_tenants`, `jigContext`).
 - [ ] Needs a real machine: everything under `docs/status.md` → Needs testing → Azure tenants.

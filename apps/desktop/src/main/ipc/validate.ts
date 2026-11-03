@@ -424,7 +424,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "azure.tenants": z.object({ check: z.boolean().optional() }).strict(),
   "azure.addTenant": z.object({ tenant: tenantInput, label: z.string().max(80).optional() }).strict(),
   "azure.signInAgain": z.object({ key: tenantKey }).strict(),
-  "azure.renameTenant": z.object({ key: tenantKey, label: z.string().trim().min(1).max(80) }).strict(),
+  "azure.renameTenant": z
+    .object({ key: tenantKey, label: z.string().trim().min(1).max(80).optional() })
+    .strict(),
   "azure.removeTenant": z.object({ key: tenantKey }).strict(),
   "azure.setActiveTenant": z.object({ key: tenantKey }).strict(),
   "scripts.run": z.object({ projectId: id, scriptId: z.string().max(2000) }),

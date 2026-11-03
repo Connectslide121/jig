@@ -399,6 +399,10 @@ function BoardBody({
   );
 }
 
+/** Your own az login in a sentence, with the name you gave it in Jig ("Your az login" unless renamed). */
+const ownAzLogin = (label: string) =>
+  label === "Your az login" ? "your own az login" : `${label} (your own az login)`;
+
 /**
  * A board followed in another Azure tenant than the active one (D-282): in the board's own space, one
  * card that says which tenant and switches to it (the whole card is the button). A tenant that was
@@ -414,7 +418,7 @@ function InOtherTenant({ ctx, board, tenant }: { ctx: AddonUiContext; board: Boa
       ? undefined
       : { key: tenant, label: board.tenantLabel ?? tenant, isDefault: tenant === "default" });
   const label = known?.label ?? board.tenantLabel ?? tenant;
-  const where = known?.isDefault ? "your own az login" : `tenant ${label}`;
+  const where = known?.isDefault ? ownAzLogin(label) : `tenant ${label}`;
   if (!known)
     return (
       <Empty icon={Building2} title={`In tenant ${label}`} className="h-full">
@@ -585,8 +589,8 @@ function AddBoards({
       footer={
         <>
           <span className="mr-auto text-xs text-hint">
-            {tenant.isDefault ? "Uses your own az login." : `Uses tenant ${tenant.label}.`} Nothing changes in
-            Azure DevOps.
+            {tenant.isDefault ? `Uses ${ownAzLogin(tenant.label)}.` : `Uses tenant ${tenant.label}.`} Nothing
+            changes in Azure DevOps.
           </span>
           <Button variant="ghost" onClick={onClose}>
             Cancel

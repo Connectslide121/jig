@@ -1,4 +1,4 @@
-import { pinnedTenant } from "@jig/azure";
+import { isRenamedDefault, pinnedTenant } from "@jig/azure";
 import { FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { create } from "zustand";
@@ -209,7 +209,13 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
             <option value="">Default (the tenant in use stays)</option>
             {(tenants?.tenants ?? []).map((t) => (
               <option key={t.key} value={t.key}>
-                {t.user && !t.isDefault ? `${t.label} — ${t.user}` : t.label}
+                {t.isDefault
+                  ? isRenamedDefault(t)
+                    ? `${t.label} — your own az login`
+                    : t.label
+                  : t.user
+                    ? `${t.label} — ${t.user}`
+                    : t.label}
               </option>
             ))}
             {!tenants && tenant && <option value={tenant}>{tenant}</option>}

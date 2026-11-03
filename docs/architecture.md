@@ -484,7 +484,7 @@ own folder, `~/.jig/azure/<key>/`; Jig runs `az` with `AZURE_CONFIG_DIR` pointin
 (and `AZURE_EXTENSION_DIR` on your own extensions, so `azure-devops` is there in every tenant). The
 Azure CLI keeps and refreshes its tokens in that folder; Jig never reads, copies or logs them, nor
 `az` output. **Your az login** (no override) is always the first entry: without extra tenants nothing
-changes.
+changes. It can be renamed (its name is `default.label` in `tenants.json`, D-301) but keeps key `default`.
 
 - Pure logic: `packages/azure` (`tenantKey`, `parseTenantsFile`, `mergeSignIn` of `az account show`
   and ARM `/tenants`, `signInStatusFromError`, `azEnv`; `azFailure`, `decodeAzOutput`, `activeTenantRef`; `azPythonFor`, `azArgsViaFiles`).

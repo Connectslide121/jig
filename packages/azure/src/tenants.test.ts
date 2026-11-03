@@ -4,16 +4,19 @@ import {
   activeKey,
   azEnv,
   DEFAULT_TENANT,
+  DEFAULT_TENANT_LABEL,
   defaultLabel,
   emptyTenantsFile,
   errorLine,
   failedCheck,
   findTenant,
+  isRenamedDefault,
   isTenantInput,
   loginArgs,
   mergeSignIn,
   parseTenantsFile,
   pinnedTenant,
+  renameTenant,
   signInStatusFromError,
   type TenantInfo,
   tenantConfigDir,
@@ -259,5 +262,63 @@ describe("tenantInitials", () => {
     expect(t("Your az login", { isDefault: true, displayName: "Fabrikam Ltd" })).toBe("FL");
     expect(t("Your az login", { isDefault: true, user: "ann@contoso.com" })).toBe("C");
     expect(t("Your az login", { isDefault: true })).toBe("A");
+  });
+});
+
+describe("renameTenant", () => {
+  const file = parseTenantsFile({
+    default: { user: "ann@contoso.com", status: "ok" },
+    tenants: [
+      { key: "fabrikam", label: "Fab", displayName: "Fabrikam Ltd", requested: "fabrikam.com", addedAt: "x" },
+    ],
+  });
+  const labels = (f: ReturnType<typeof renameTenant>) =>
+    tenantsState(f!, undefined).tenants.map((t) => t.label);
+
+  it("names your own az login, keeping its key, status and default behaviour", () => {
+    const next = renameTenant(file, DEFAULT_TENANT, "  Work  ")!;
+    expect(next.default).toEqual({ user: "ann@contoso.com", status: "ok", label: "Work" });
+    const own = tenantsState(next, undefined).tenants[0]!;
+    expect(own).toMatchObject({ key: DEFAULT_TENANT, label: "Work", isDefault: true });
+    expect(isRenamedDefault(own)).toBe(true);
+    expect(labels(next)).toEqual(["Work", "Fab"]);
+  });
+
+  it("goes back to Your az login without a label, or with that name", () => {
+    const named = renameTenant(file, DEFAULT_TENANT, "Work")!;
+    for (const label of [undefined, "", "  ", DEFAULT_TENANT_LABEL]) {
+      const next = renameTenant(named, DEFAULT_TENANT, label)!;
+      expect(next.default).toEqual({ user: "ann@contoso.com", status: "ok" });
+      expect(isRenamedDefault(tenantsState(next, undefined).tenants[0]!)).toBe(false);
+    }
+  });
+
+  it("renames an added tenant, or resets it to its display name", () => {
+    expect(labels(renameTenant(file, "fabrikam", "Fabrikam prod"))).toEqual([
+      DEFAULT_TENANT_LABEL,
+      "Fabrikam prod",
+    ]);
+    expect(labels(renameTenant(file, "fabrikam"))).toEqual([DEFAULT_TENANT_LABEL, "Fabrikam Ltd"]);
+    expect(renameTenant(file, "fabrikam", "x".repeat(100))!.tenants[0]!.label).toHaveLength(80);
+  });
+
+  it("is undefined for a key that isn't there", () => {
+    expect(renameTenant(file, "nope", "X")).toBeUndefined();
+  });
+
+  it("survives a round trip through the file, dropping a stored Your az login", () => {
+    const next = renameTenant(file, DEFAULT_TENANT, "Work")!;
+    expect(parseTenantsFile(JSON.parse(JSON.stringify(next)))).toEqual(next);
+    expect(parseTenantsFile({ default: { label: DEFAULT_TENANT_LABEL } }).default).toEqual({
+      status: "unknown",
+    });
+    expect(parseTenantsFile({ default: { label: 7 } }).default).toEqual({ status: "unknown" });
+  });
+
+  it("names a renamed az login's avatar after its name", () => {
+    expect(tenantInitials({ label: "Work Main", isDefault: true, displayName: "Fabrikam Ltd" })).toBe("WM");
+    expect(
+      tenantInitials({ label: DEFAULT_TENANT_LABEL, isDefault: true, displayName: "Fabrikam Ltd" }),
+    ).toBe("FL");
   });
 });

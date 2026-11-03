@@ -151,6 +151,12 @@ describe("tenantContext", () => {
     );
   });
 
+  it("adds the name you gave your own az login", () => {
+    expect(tenantContext({ ...DEFAULT_TENANT_REF, label: 'Work "main"', user: "ann@contoso.com" })).toBe(
+      `Every az in this chat runs with the user's own az login (named "Work main" in Jig), signed in as ann@contoso.com.`,
+    );
+  });
+
   it("names an added tenant, its Entra details and user, on one line", () => {
     const text = tenantContext({
       ...contoso,

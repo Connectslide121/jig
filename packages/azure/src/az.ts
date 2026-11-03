@@ -1,4 +1,10 @@
-import { errorLine, signInStatusFromError, type TenantsState, tenantInitials } from "./tenants";
+import {
+  DEFAULT_TENANT_LABEL,
+  errorLine,
+  signInStatusFromError,
+  type TenantsState,
+  tenantInitials,
+} from "./tenants";
 
 /**
  * The tenant an `az` run used, as add-ons and error messages name it (the add-on event `azure.tenant`
@@ -17,7 +23,7 @@ export interface TenantRef {
   initials?: string;
 }
 
-export const DEFAULT_TENANT_REF: TenantRef = { key: "default", label: "Your az login", isDefault: true };
+export const DEFAULT_TENANT_REF: TenantRef = { key: "default", label: DEFAULT_TENANT_LABEL, isDefault: true };
 
 /** The active tenant of a tenants state (your az login when the list doesn't have it). */
 export function activeTenantRef(state: TenantsState): TenantRef {
@@ -157,7 +163,10 @@ const plain = (text: string) => text.replace(/["\s]+/g, " ").trim();
  */
 export function tenantContext(tenant: TenantRef): string {
   const who = tenant.user ? `, signed in as ${plain(tenant.user)}` : "";
-  if (tenant.isDefault) return `Every az in this chat runs with the user's own az login${who}.`;
+  if (tenant.isDefault) {
+    const named = tenant.label !== DEFAULT_TENANT_LABEL ? ` (named "${plain(tenant.label)}" in Jig)` : "";
+    return `Every az in this chat runs with the user's own az login${named}${who}.`;
+  }
   const entra = [tenant.displayName, tenant.domain, tenant.tenantId].filter(Boolean).map((x) => plain(x!));
   const where = entra.length ? ` (Entra tenant ${entra.join(", ")})` : "";
   return `Every az in this chat runs with the Azure tenant "${plain(tenant.label)}"${where}${who}.`;

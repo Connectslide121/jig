@@ -44,6 +44,8 @@ describe("IPC checks", () => {
     expect(invalidArgs("azure.addTenant", { tenant: "--use-device-code" })).toMatch(/^tenant:/);
     expect(invalidArgs("azure.signInAgain", { key: "../x" })).toMatch(/^key:/);
     expect(invalidArgs("azure.renameTenant", { key: "contoso", label: " " })).toMatch(/^label:/);
+    expect(invalidArgs("azure.renameTenant", { key: "default", label: "Work" })).toBeUndefined();
+    expect(invalidArgs("azure.renameTenant", { key: "default" })).toBeUndefined();
   });
 
   it("knows which files would run when opened", () => {

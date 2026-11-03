@@ -11,4 +11,10 @@ export interface TenantTag {
   label: string;
 }
 
-export { DEFAULT_TENANT, DEFAULT_TENANT_LABEL, isTenantInput, tenantInitials } from "@jig/azure";
+export {
+  DEFAULT_TENANT,
+  DEFAULT_TENANT_LABEL,
+  isRenamedDefault,
+  isTenantInput,
+  tenantInitials,
+} from "@jig/azure";

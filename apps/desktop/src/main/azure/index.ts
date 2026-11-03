@@ -16,6 +16,7 @@ import {
   mergeSignIn,
   parseTenantsFile,
   pinnedTenant,
+  renameTenant,
   type Tenant,
   type TenantInfo,
   type TenantsFile,
@@ -138,16 +139,22 @@ async function check<T extends TenantInfo>(key: string, previous: T): Promise<T>
   return mergeSignIn(previous, json(account.out), tenants.ok ? json(tenants.out) : undefined);
 }
 
+/** A check of your az login, with the name it has now (it may have been renamed while checking). */
+function keepName(checked: TenantsFile["default"]): TenantsFile["default"] {
+  const { label: _old, ...rest } = checked;
+  return file.default.label ? { ...rest, label: file.default.label } : rest;
+}
+
 async function checkAll(): Promise<TenantsState> {
   const [own, ...added] = await Promise.all([
     check(DEFAULT_TENANT, file.default),
     ...file.tenants.map((t) => check(t.key, t)),
   ]);
-  // Tenants removed or renamed while checking keep that change.
+  // Tenants removed or renamed while checking keep that change (your az login's name too).
   const byKey = new Map(added.map((t) => [t.key, t]));
   return save({
     ...file,
-    default: own!,
+    default: keepName(own!),
     tenants: file.tenants.map((t) => ({ ...(byKey.get(t.key) ?? t), label: t.label })),
   });
 }
@@ -230,7 +237,8 @@ async function addTenant(input: { tenant: string; label?: string }): Promise<Ten
 async function signInAgain(key: string): Promise<TenantsState> {
   if (key === DEFAULT_TENANT) {
     await login(key, undefined);
-    return save({ ...file, default: await check(key, file.default) });
+    const checked = await check(key, file.default);
+    return save({ ...file, default: keepName(checked) });
   }
   const tenant = find(key);
   await login(key, tenant.tenantId ?? tenant.requested);
@@ -318,12 +326,10 @@ export async function startAzure(): Promise<void> {
     if (signingIn) stop(signingIn);
   });
   handle("azure.renameTenant", ({ key, label }) => {
-    if (key === DEFAULT_TENANT) throw new JigError("invalid_args", "Your own az login keeps its name.");
-    find(key);
-    return save({
-      ...file,
-      tenants: file.tenants.map((t) => (t.key === key ? { ...t, label: label.trim().slice(0, 80) } : t)),
-    });
+    // Your az login keeps its key and behaviour; only its name is stored (in the file's `default`).
+    const next = renameTenant(file, key, label);
+    if (!next) throw new JigError("not_found", "That tenant isn't in Jig (any more).");
+    return save(next);
   });
   handle("azure.removeTenant", ({ key }) => removeTenant(key));
   handle("azure.setActiveTenant", ({ key }) => setActiveTenant(key));

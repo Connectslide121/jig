@@ -1,6 +1,11 @@
-import { LogIn, Pencil, Plus, Trash2, X } from "lucide-react";
+import { LogIn, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTenantInput, type TenantView } from "../../../shared/azure";
+import {
+  DEFAULT_TENANT_LABEL,
+  isRenamedDefault,
+  isTenantInput,
+  type TenantView,
+} from "../../../shared/azure";
 import { call, errorMessage, HostError, useHostEvent } from "../../lib/host";
 import {
   Button,
@@ -248,10 +253,19 @@ export function ManageTenantsDialog() {
     }
   };
   const rename = async (t: TenantView) => {
-    const label = await promptDialog({ title: "Rename tenant", initial: t.label, confirmLabel: "Rename" });
+    const label = await promptDialog({
+      title: t.isDefault ? "Rename your az login" : "Rename tenant",
+      message: t.isDefault
+        ? "Only the name Jig shows changes: it keeps using the Azure CLI as you left it."
+        : undefined,
+      initial: t.label,
+      confirmLabel: "Rename",
+    });
     if (label)
       await call("azure.renameTenant", { key: t.key, label }).catch((e) => setError(errorMessage(e)));
   };
+  const resetName = (t: TenantView) =>
+    void call("azure.renameTenant", { key: t.key }).catch((e) => setError(errorMessage(e)));
   const remove = async (t: TenantView) => {
     const ok = await confirmDialog({
       title: `Remove ${t.label}?`,
@@ -315,6 +329,7 @@ export function ManageTenantsDialog() {
               busy={Boolean(signingIn)}
               onSwitch={() => void switchTenant(t.key).catch((e) => setError(errorMessage(e)))}
               onRename={() => void rename(t)}
+              onResetName={() => resetName(t)}
               onSignIn={() => void signInAgain(t)}
               onRemove={() => void remove(t)}
             />
@@ -329,7 +344,8 @@ export function ManageTenantsDialog() {
 
 /**
  * One tenant: avatar, name, user and domain in fixed columns, the status mark at the far right of
- * the text, then the actions (always in their slots; your az login has no rename or remove).
+ * the text, then the actions (always in their slots). Your az login can't be removed: its last slot
+ * offers "Reset name" instead, once you renamed it.
  */
 function TenantRow({
   tenant: t,
@@ -338,6 +354,7 @@ function TenantRow({
   busy,
   onSwitch,
   onRename,
+  onResetName,
   onSignIn,
   onRemove,
 }: {
@@ -347,6 +364,7 @@ function TenantRow({
   busy: boolean;
   onSwitch: () => void;
   onRename: () => void;
+  onResetName: () => void;
   onSignIn: () => void;
   onRemove: () => void;
 }) {
@@ -356,7 +374,17 @@ function TenantRow({
       aria-selected={active}
       tabIndex={0}
       data-testid={`tenant-row-${t.key}`}
-      title={[t.label, t.user, t.domain, t.tenantId, statusText(t), t.problem].filter(Boolean).join("\n")}
+      title={[
+        t.label,
+        isRenamedDefault(t) && "Your own az login",
+        t.user,
+        t.domain,
+        t.tenantId,
+        statusText(t),
+        t.problem,
+      ]
+        .filter(Boolean)
+        .join("\n")}
       onClick={onSwitch}
       onKeyDown={(e) => {
         if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
@@ -397,11 +425,20 @@ function TenantRow({
           )}
         </span>
         <span className="flex size-7 items-center justify-center">
-          {!t.isDefault && <IconButton icon={Pencil} size="sm" label="Rename" onClick={onRename} />}
+          <IconButton icon={Pencil} size="sm" label="Rename" onClick={onRename} />
         </span>
         <span className="flex size-7 items-center justify-center">
-          {!t.isDefault && (
+          {!t.isDefault ? (
             <IconButton icon={Trash2} size="sm" label="Remove" disabled={signingIn} onClick={onRemove} />
+          ) : (
+            isRenamedDefault(t) && (
+              <IconButton
+                icon={RotateCcw}
+                size="sm"
+                label={`Reset name (${DEFAULT_TENANT_LABEL})`}
+                onClick={onResetName}
+              />
+            )
           )}
         </span>
       </span>

@@ -213,7 +213,7 @@ settings, add-on permissions.
 | `azure.addTenant` | `{ tenant, label? }` | `TenantsState` | `az login --tenant <tenant> --allow-no-subscriptions` with `AZURE_CONFIG_DIR=~/.jig/azure/<key>` (the system browser opens; empty `tenant` = pick in the browser), then a check. Output as `azure.signInProgress`; one sign-in at a time. `busy`, `cancelled`, `az_missing`, `az_login_failed`; a sign-in that didn't finish leaves no folder (schema: a GUID or a domain) |
 | `azure.signInAgain` | `{ key }` | `TenantsState` | `az login` again in that tenant's folder (`default`: your own az login, without `--tenant`); same errors (schema) |
 | `azure.cancelSignIn` | — | — | stops the running `az login` (its process tree); the waiting call rejects with `cancelled` |
-| `azure.renameTenant` | `{ key, label }` | `TenantsState` | your az login keeps its name (schema) |
+| `azure.renameTenant` | `{ key, label? }` | `TenantsState` | any tenant, `default` (your az login) too: it keeps its key and behaviour, only its name is stored (D-301). No `label` goes back to the first name ("Your az login", an added tenant's display name); `not_found` for an unknown key (schema) |
 | `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
 | `azure.setActiveTenant` | `{ key }` | `TenantsState` | sets `azure.activeTenant` (`default` → empty); the renderer may also change the setting directly (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |

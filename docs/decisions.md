@@ -3880,3 +3880,22 @@ the title should be written by the AI, not the request's first sentence.
 - The build page: badges, the title (base size, one line), the actions, then the full request in a
   "What you asked" card at body size that scrolls inside itself. The tab, the builds list and the
   chat's build card use the same title.
+
+## D-301: Your az login can be renamed; its name lives in `tenants.json`
+
+Jon, 2026-11-04: he wants to name all his tenants, "Your az login" included. Amends D-282/D-283.
+
+- The entry keeps key `default` and all it does (no `AZURE_CONFIG_DIR`, can't be removed, first in
+  the list); only its label changes. The name is stored as `default.label` in
+  `~/.jig/azure/tenants.json` (missing, or "Your az login", means the default name), so nothing
+  changes in `config.json` or for add-ons, which already read `label`.
+- `azure.renameTenant` accepts `default`, and no `label` resets a tenant to its first name
+  ("Your az login", or an added tenant's display name). The pure logic is `renameTenant` and
+  `isRenamedDefault` in `@jig/azure`. Checks and sign-ins that were running during a rename keep the
+  new name (they used to write back the `default` they started from).
+- Manage tenants (**Claude, on my own**, within Jon's "same slot" rule): Rename sits in the same slot
+  on every row; your az login's last slot, where added tenants have Remove, shows "Reset name" (↺)
+  once it was renamed, empty otherwise. A renamed az login's avatar uses its name's initials (not the
+  signed-in tenant's), and the avatar tooltip and Manage add "Your own az login" under the name. The
+  project dialog lists it as "<name> — your own az login", so it stays distinct from "Default (the
+  tenant in use stays)". Claude's context says "the user's own az login (named "X" in Jig)".
