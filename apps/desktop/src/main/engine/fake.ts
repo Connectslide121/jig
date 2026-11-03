@@ -848,6 +848,10 @@ export class FakeEngine implements Engine {
               text: "Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete",
             });
             await stream(`${msg}:text:0`, "Noted: this chat waits on the API review.", signal);
+          } else if (/change the queued task/.test(lower)) {
+            // The Tasks add-on's edit tool: adds a line to the first queued task (t1 in a new queue).
+            await call("addon_tasks_edit", { tasks: [{ id: "t1", append: "Don't run the e2e tests." }] });
+            await stream(`${msg}:text:0`, "I added the line to the queued task.", signal);
           } else if (/in the releases data/.test(lower)) {
             await call("jig_get_addon", { addonId: "releases" });
             await call("jig_set_addon_data", {

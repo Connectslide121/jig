@@ -102,6 +102,22 @@
         "run": "toolAdd"
       },
       {
+        "id": "edit",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, or whether they are left out of the run. Safe while the queue runs: it changes only those tasks, never the queue's status. Use it instead of jig_set_addon_data for the queue. addon_tasks_list gives the ids.",
+        "params": {
+          "tasks": {
+            "type": "array",
+            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut? }"
+          },
+          "project": {
+            "type": "string",
+            "description": "The project's name; leave out for this chat's project",
+            "optional": true
+          }
+        },
+        "run": "toolEdit"
+      },
+      {
         "id": "list",
         "description": "The user's task queue: each task's status and report summary.",
         "readOnly": true,

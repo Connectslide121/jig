@@ -3541,3 +3541,23 @@ with a note). How: Claude, on my own.
   tenants the user already added.
 - **The avatar says why.** Its tooltip adds "Pinned by the project X" when the active project's pin is
   the tenant in use.
+
+## D-287: The task queue can't be undone by a stale copy; running tasks know what's queued after them
+
+Jon, 2026-11-03, after a chat rewrote the Tasks queue with `jig_set_addon_data` from a copy it had read
+a minute earlier: the copy wiped a finished task's report, sent a started task back to queued (it ran
+twice, in two chats editing the same files) and switched a paused queue back on. Separately, a task's
+chat suggested the next queued task as a follow-up because nothing told it that task was planned.
+
+- **Changing add-on data needs a fresh read.** `jig_set_addon_data` and `jig_delete_addon_data`
+  refuse to replace or delete a key that exists unless this chat read it with `jig_get_addon_data`
+  (one key or all) and it still holds what was read; otherwise they say so and save nothing, and
+  Claude reads again and redoes its change. Creating a new key needs no read. Reads are remembered per
+  chat in the main process (a restart forgets them, so the next write asks for a read first).
+  (Claude, on my own: a per-chat "last read" check instead of revision numbers in the stored data, so
+  add-ons and their storage stay as they are.)
+- **`addon_tasks_edit`** changes queued tasks only (title, prompt, appended paragraph, left out),
+  through the add-on's own serialized `change`, so the queue's running state, other tasks' statuses
+  and reports can't be touched. The tool's description and `jig_set_addon_data`'s point Claude to it.
+- **A running task's instructions name the tasks still queued** (titles, left-out ones marked, at most
+  15) and say not to suggest them, or work they cover, as follow-ups.

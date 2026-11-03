@@ -4,6 +4,7 @@ import {
   chatFinished,
   chatToContinue,
   closeRun,
+  editTasks,
   emptyQueue,
   finishTask,
   historyFiles,
@@ -17,6 +18,7 @@ import {
   type PermissionMode,
   parseNewTasks,
   parseReport,
+  parseTaskEdits,
   type Queue,
   type Run,
   recordRuns,
@@ -650,6 +652,28 @@ export async function toolAdd(
         args.start ? " and started the queue" : "; the user starts the queue from its view"
       }.\n${listing(next)}`,
     ];
+  });
+}
+
+/** Claude changes queued tasks; the queue's own state (running, other tasks) stays as it is. */
+export async function toolEdit(
+  args: ChatArgs & { tasks?: unknown; project?: string },
+  api: AddonHostApi,
+): Promise<string> {
+  const edits = parseTaskEdits(args.tasks);
+  let projectId = args.chat?.projectId;
+  if (args.project) {
+    const wanted = args.project.trim().toLowerCase();
+    const found = (await api.projects()).find(
+      (p) => p.name.toLowerCase() === wanted || p.id === args.project,
+    );
+    if (!found) throw new Error(`There is no project called ${args.project}`);
+    projectId = found.id;
+  }
+  if (!projectId) throw new Error("Say which project's queue to change (this chat has none)");
+  return change(api, projectId, (q) => {
+    const next = editTasks(q, edits);
+    return [next, `Changed ${edits.length} task${edits.length === 1 ? "" : "s"}.\n${listing(next)}`];
   });
 }
 

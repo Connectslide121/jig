@@ -122,6 +122,43 @@ describe("add-on tools for Claude", () => {
     await expect(t.jig_get_addon!.handler({ addonId: "nope" }, meta)).rejects.toThrow(/No add-on/);
     expect(t.jig_set_addon_data!.readOnly).toBeFalsy();
   });
+
+  it("won't replace or delete a key that changed since this chat read it", async () => {
+    const store: Record<string, unknown> = { queue: { running: true } };
+    const tools = addonDataTools({
+      list: () => [addon("/x")],
+      all: async () => ({ ...store }),
+      set: async (_id, k, v) => {
+        store[k] = v;
+      },
+      remove: async (_id, k) => {
+        delete store[k];
+      },
+      changed: () => {},
+      addCard: async () => {},
+      card: (summary, details) => ({ kind: "change", id: "c", at: "", summary, details }),
+    });
+    const t = Object.fromEntries(tools.map((x) => [x.name, x]));
+    const set = (value: unknown, chat = meta) =>
+      t.jig_set_addon_data!.handler({ addonId: "releases", key: "queue", value }, chat);
+    // Never read: refused.
+    await expect(set({ running: true, x: 1 })).rejects.toThrow(/Read "queue"/);
+    await t.jig_get_addon_data!.handler({ addonId: "releases" }, meta);
+    // The add-on changes it after the read (e.g. the user pauses the queue): refused, nothing saved.
+    store.queue = { running: false };
+    await expect(set({ running: true, x: 1 })).rejects.toThrow(/changed "queue" since you read it/);
+    expect(store.queue).toEqual({ running: false });
+    await expect(
+      t.jig_delete_addon_data!.handler({ addonId: "releases", key: "queue" }, meta),
+    ).rejects.toThrow(/since you read it/);
+    // Read again: the change goes through, and a second change on top of it too.
+    await t.jig_get_addon_data!.handler({ addonId: "releases", key: "queue" }, meta);
+    await set({ running: false, x: 1 });
+    await set({ running: false, x: 2 });
+    expect(store.queue).toEqual({ running: false, x: 2 });
+    // Another chat's read doesn't count for this one.
+    await expect(set({ x: 3 }, { ...meta, id: "s2" } as SessionMeta)).rejects.toThrow(/Read "queue"/);
+  });
 });
 
 describe("add-ons' context for each turn", () => {

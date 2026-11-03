@@ -49,6 +49,13 @@ went, so you read the results as a table instead of scrolling one long chat.
 - **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
   chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue.
+- **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
+  to the prompt, or left out. Only queued tasks, and nothing else in the queue changes, so it is safe
+  while the queue runs. Claude uses it instead of rewriting the queue with `jig_set_addon_data`,
+  which now refuses to replace a key that changed since the chat read it.
+- **What a running task's chat is told** (`contributes.context`, D-287): its place in the queue, how to
+  report, and the titles of the tasks still queued (left-out ones marked), so it doesn't suggest work
+  that is already planned as follow-ups.
 - **How it follows the chats:** the host API `api.chats` (`create`, `send`, `get`; the `chat`
   permission) starts and reads chats, and main calls the host export `chatChanged` when a chat it
   started changes status. A watcher (every minute) catches up after a restart; a task whose chat

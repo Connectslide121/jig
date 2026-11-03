@@ -142,6 +142,25 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
     return a;
   };
   const show = (v: unknown) => (v === undefined ? "(none)" : preview(v, 200));
+  // What each chat last read of each key: an add-on (the task queue) may change a key between a
+  // chat's read and its write, and saving the stale copy would undo that change.
+  const seen = new Map<string, string>();
+  const seenKey = (chat: string, id: string, key: string) => `${chat}\n${id}\n${key}`;
+  const remember = (chat: string, id: string, key: string, value: unknown) =>
+    seen.set(seenKey(chat, id, key), JSON.stringify(value));
+  /** Changing a key that exists needs this chat to have read its current value. */
+  const checkFresh = (chat: string, a: AddonInfo, key: string, data: Record<string, unknown>) => {
+    if (!(key in data)) return;
+    const read = seen.get(seenKey(chat, a.id, key));
+    if (read === undefined)
+      throw new Error(
+        `Read "${key}" with jig_get_addon_data first, then make your change to what it holds now.`,
+      );
+    if (read !== JSON.stringify(data[key]))
+      throw new Error(
+        `${a.name} changed "${key}" since you read it (it updates its data while it runs). Read it again with jig_get_addon_data and redo your change on the new value; nothing was saved.`,
+      );
+  };
   return [
     {
       name: "jig_get_addon",
@@ -192,22 +211,24 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
         addonId: z.string(),
         key: z.string().optional().describe("One key; leave out for all of them"),
       },
-      handler: async (args) => {
+      handler: async (args, meta) => {
         const a = find(String(args.addonId));
         const data = await deps.all(a.id);
         if (args.key !== undefined) {
           const key = String(args.key);
           if (!(key in data))
             return `${a.name} stores nothing under "${key}". Keys: ${Object.keys(data).join(", ") || "(none)"}`;
+          remember(meta.id, a.id, key, data[key]);
           return toolText(JSON.stringify(data[key], null, 2));
         }
+        for (const [key, value] of Object.entries(data)) remember(meta.id, a.id, key, value);
         return Object.keys(data).length ? toolText(data) : `${a.name} stores no data yet.`;
       },
     },
     {
       name: "jig_set_addon_data",
       description:
-        "Create or replace one key of an add-on's stored data with a JSON value (e.g. add a workflow to Workflows' `workflows:<projectId>`). Read it first with jig_get_addon_data and keep the shape the add-on uses. The user sees a card with Undo.",
+        "Create or replace one key of an add-on's stored data with a JSON value (e.g. add a workflow to Workflows' `workflows:<projectId>`). Read it first with jig_get_addon_data and keep the shape the add-on uses; replacing a key fails if it changed since you read it (read again, redo the change). Prefer the add-on's own tools when it has one for the change (e.g. addon_tasks_edit for queued tasks). The user sees a card with Undo.",
       shape: {
         addonId: z.string(),
         key: z.string().min(1).max(200),
@@ -218,7 +239,9 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
         const key = String(args.key);
         if (args.value === undefined) throw new Error("Give a value (use jig_delete_addon_data to delete)");
         const before = await deps.all(a.id);
+        checkFresh(meta.id, a, key, before);
         await deps.set(a.id, key, args.value);
+        remember(meta.id, a.id, key, args.value);
         deps.changed(a.id, key);
         await deps.addCard(
           meta.id,
@@ -242,7 +265,9 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
         const key = String(args.key);
         const before = await deps.all(a.id);
         if (!(key in before)) return `${a.name} stores nothing under "${key}".`;
+        checkFresh(meta.id, a, key, before);
         await deps.remove(a.id, key);
+        seen.delete(seenKey(meta.id, a.id, key));
         deps.changed(a.id, key);
         await deps.addCard(
           meta.id,

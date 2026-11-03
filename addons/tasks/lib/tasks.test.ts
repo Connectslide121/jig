@@ -8,6 +8,7 @@ import {
   closeRun,
   counts,
   duration,
+  editTasks,
   emptyQueue,
   finishTask,
   historyFiles,
@@ -19,6 +20,7 @@ import {
   parseNewTasks,
   parsePrompts,
   parseReport,
+  parseTaskEdits,
   type Queue,
   type Run,
   recordRuns,
@@ -301,6 +303,47 @@ describe("taskContext, counts, duration, listing", () => {
     expect(taskContext(q, "s2")).toBe("");
     q.tasks[0]!.status = "done";
     expect(taskContext(q, "s1")).toBe("");
+  });
+  it("edits queued tasks only, leaving the queue's state alone", () => {
+    const q = { ...queued(["a", "b", "c"]), running: true };
+    q.tasks[0] = { ...q.tasks[0]!, status: "running", sessionId: "s1" };
+    const [, b, c] = q.tasks;
+    const next = editTasks(
+      q,
+      parseTaskEdits([
+        { id: b!.id, append: "Don't run e2e tests." },
+        { id: c!.id, title: "New title", prompt: "new prompt", leftOut: true },
+      ]),
+    );
+    expect(next.running).toBe(true);
+    expect(next.tasks[0]).toBe(q.tasks[0]);
+    expect(next.tasks[1]!.prompt).toBe(`${b!.prompt}\n\nDon't run e2e tests.`);
+    expect(next.tasks[2]).toMatchObject({ title: "New title", prompt: "new prompt", leftOut: true });
+    expect(editTasks(next, [{ id: c!.id, leftOut: false }]).tasks[2]!.leftOut).toBeUndefined();
+    // A running task, or one that isn't there: nothing changes.
+    expect(() =>
+      editTasks(q, [
+        { id: b!.id, append: "x" },
+        { id: q.tasks[0]!.id, append: "x" },
+      ]),
+    ).toThrow(/only queued tasks/);
+    expect(() => editTasks(q, [{ id: "nope", append: "x" }])).toThrow(/no task nope/);
+    expect(() => parseTaskEdits([{ id: b!.id }])).toThrow(/what to change/);
+    expect(() => parseTaskEdits([])).toThrow(/at least one/);
+  });
+  it("names the tasks still queued, so the chat doesn't suggest them as follow-ups", () => {
+    const q = queued(["a", "b", "c", "d"]);
+    q.tasks[0] = { ...q.tasks[0]!, status: "done" };
+    q.tasks[1] = { ...q.tasks[1]!, status: "running", sessionId: "s1" };
+    q.tasks[3] = { ...q.tasks[3]!, leftOut: true };
+    const text = taskContext(q, "s1");
+    expect(text).toContain("never suggest these");
+    expect(text).toContain(`- ${q.tasks[2]!.title}\n`);
+    expect(text).toContain(`- ${q.tasks[3]!.title} (left out of this run)`);
+    expect(text).not.toContain(`- ${q.tasks[0]!.title}`);
+    const last = queued(["a"]);
+    last.tasks[0] = { ...last.tasks[0]!, status: "running", sessionId: "s1" };
+    expect(taskContext(last, "s1")).not.toContain("Already queued");
   });
   it("counts and times", () => {
     const q = queued(["a", "b"]);

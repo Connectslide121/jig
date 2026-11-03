@@ -26,8 +26,8 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_install_theme { namespace, name }` | installs a theme extension from Open VSX (theme files only) | yes |
 | `jig_get_addon { addonId }` | what an add-on is and contributes, its permissions, files, README, and the keys of its stored data with a preview | no (read-only) |
 | `jig_get_addon_data { addonId, key? }` | an add-on's stored data: one key in full, or all of it | no (read-only) |
-| `jig_set_addon_data { addonId, key, value }` | creates or replaces one key (any JSON); Undo puts back the old value (or deletes a new key) | yes |
-| `jig_delete_addon_data { addonId, key }` | deletes one key; Undo puts it back | yes |
+| `jig_set_addon_data { addonId, key, value }` | creates or replaces one key (any JSON); Undo puts back the old value (or deletes a new key). Replacing an existing key needs this chat to have read it and it to be unchanged since (D-287) | yes |
+| `jig_delete_addon_data { addonId, key }` | deletes one key; Undo puts it back. Same fresh-read check | yes |
 
 Add-ons also give Claude their own tools (slot `claude.tool`, e.g. Releases' `addon_releases_changes`),
 listed with each add-on by `jig_list_addons`.

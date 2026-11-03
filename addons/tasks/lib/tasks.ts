@@ -327,6 +327,68 @@ export function parseNewTasks(value: unknown): NewTask[] {
   return tasks;
 }
 
+/** Claude's changes to queued tasks (`addon_tasks_edit`). */
+export interface TaskEdit {
+  id: string;
+  title?: string;
+  /** Replaces the prompt. */
+  prompt?: string;
+  /** Added to the prompt as a new paragraph. */
+  append?: string;
+  leftOut?: boolean;
+}
+
+export function parseTaskEdits(value: unknown): TaskEdit[] {
+  const items = Array.isArray(value) ? value : [];
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const edits = items.map((item): TaskEdit => {
+    const o = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+    const id = text(o.id);
+    if (!id) throw new Error("Each edit needs the task's id (addon_tasks_list shows them)");
+    const edit: TaskEdit = { id };
+    const title = text(o.title);
+    if (title) edit.title = title.slice(0, 120);
+    const prompt = text(o.prompt);
+    if (prompt) edit.prompt = prompt;
+    const append = text(o.append);
+    if (append) edit.append = append;
+    if (typeof o.leftOut === "boolean") edit.leftOut = o.leftOut;
+    if (Object.keys(edit).length === 1) throw new Error(`Say what to change in task ${id}`);
+    return edit;
+  });
+  if (!edits.length) throw new Error("Give at least one task to change");
+  return edits;
+}
+
+/**
+ * Applies edits to queued tasks only; the queue's own state (running, statuses, reports) is left as
+ * it is, so this is safe while the queue runs. Throws, changing nothing, when a task isn't queued.
+ */
+export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
+  const byId = new Map(queue.tasks.map((t) => [t.id, t]));
+  for (const e of edits) {
+    const task = byId.get(e.id);
+    if (!task) throw new Error(`There is no task ${e.id} in this queue`);
+    if (task.status !== "queued")
+      throw new Error(
+        `Task ${e.id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be changed`,
+      );
+  }
+  const wanted = new Map(edits.map((e) => [e.id, e]));
+  return {
+    ...queue,
+    tasks: queue.tasks.map((t) => {
+      const e = wanted.get(t.id);
+      if (!e) return t;
+      let prompt = e.prompt ?? t.prompt;
+      if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
+      let next: Task = { ...t, prompt, ...(e.title ? { title: e.title } : {}) };
+      if (e.leftOut !== undefined) next = setLeftOut({ ...queue, tasks: [next] }, e.leftOut).tasks[0]!;
+      return next;
+    }),
+  };
+}
+
 export function moveTask(queue: Queue, id: string, delta: -1 | 1): Queue {
   const tasks = [...queue.tasks];
   const i = tasks.findIndex((t) => t.id === id);
@@ -454,14 +516,26 @@ export function taskContext(queue: Queue, sessionId: string): string {
   const task = queue.tasks.find((t) => t.sessionId === sessionId && isActive(t));
   if (!task) return "";
   const n = queue.tasks.indexOf(task) + 1;
+  const waiting = queue.tasks.filter((t) => t.status === "queued");
+  const shown = waiting.slice(0, MAX_QUEUED_IN_CONTEXT);
   return [
     `This chat is running task ${n} of ${queue.tasks.length} in the user's task queue: "${task.title}".`,
     "Do the task fully without stopping to ask unless you really must. When you are done, or can't go on,",
     "call the addon_tasks_report tool once: outcome (done, partial, failed or blocked), a short summary of",
     "what you did, notes the user should know (decisions, risks, anything surprising), and follow-up",
     "tasks you suggest (each a prompt that could be queued). The user reads these reports in a table.",
+    ...(waiting.length
+      ? [
+          "Already queued, so never suggest these (or work they cover) as follow-ups, and leave their work to them:",
+          ...shown.map((t) => `- ${t.title}${t.leftOut ? " (left out of this run)" : ""}`),
+          ...(waiting.length > shown.length ? [`- … and ${waiting.length - shown.length} more`] : []),
+        ]
+      : []),
   ].join("\n");
 }
+
+/** Most queued tasks named in a running task's instructions. */
+const MAX_QUEUED_IN_CONTEXT = 15;
 
 export function counts(queue: Queue): {
   queued: number;
