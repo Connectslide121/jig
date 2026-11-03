@@ -1,5 +1,11 @@
 # Status
 
+Chats name themselves (2026-11-03, D-288): when you send a new chat's first message, the quick model
+(Haiku by default) gives it a short name of 2–5 words, in the message's language, a few seconds later.
+Until then it is called by the message's first words; renaming it yourself meanwhile wins. Turn it off
+in Settings → Claude Code → **Name new chats**. Needs testing on your machine: the name arrives and
+the chat list doesn't jump.
+
 Task queue control (2026-11-03, D-279): every queued task has a tick (all ticked by default; one on
 each chat and in the header ticks all): Start takes only the ticked ones, the others stay queued as
 "Left out" until ticked again. A finished or skipped task's menu has **Put back in the queue** (in its

@@ -3561,3 +3561,20 @@ chat suggested the next queued task as a follow-up because nothing told it that 
   and reports can't be touched. The tool's description and `jig_set_addon_data`'s point Claude to it.
 - **A running task's instructions name the tasks still queued** (titles, left-out ones marked, at most
   15) and say not to suggest them, or work they cover, as follow-ups.
+
+## D-288: New chats are named by the quick model
+
+Jon, 2026-11-03: "i want every new chat to be renamed by the ai as soon as it starts, so it has a
+meaningful short name".
+
+- **When:** on a chat's first message (only while it is still "New chat"; forks, imported Claude Code
+  chats, builder and other special chats keep their own titles). The first words stay as the title until
+  the name arrives, so something is shown at once; a rename by you in between wins.
+- **How:** a one-shot, no-tools question to `engine.quickModel` (Haiku by default) through the user's
+  Claude Code, with the first 4000 characters of the message: 2–5 words, the message's language, sentence
+  case. The answer is cleaned (first line, no quotes, "Title:" label or full stop, at most 60 characters).
+  A failure or timeout (60 s) leaves the first-words title. (Claude, on my own: once, not refreshed on
+  later turns, so a name doesn't change under you.)
+- **Setting:** `engine.aiTitles`, on by default; protected (it spends the plan, like caption
+  translation), so it's switched in Settings → Claude Code, not from a chat. This adds a third exception
+  to "nothing calls an AI in the background" in `AGENTS.md`.

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ChatUpdate, SessionMeta } from "../../shared/engine";
 import { FakeEngine } from "../engine/fake";
-import { SessionManager, summarize } from "./manager";
+import { cleanTitle, SessionManager, summarize } from "./manager";
 
 let dir: string;
 let updates: Array<{ id: string; updates: ChatUpdate[] }>;
@@ -312,6 +312,13 @@ describe("SessionManager", () => {
     expect(summarize("  fix   the\nbug ")).toBe("fix the bug");
     expect(summarize("x".repeat(100))).toHaveLength(58);
     expect(summarize("")).toBe("New chat");
+  });
+
+  it("cleans a model's chat name", () => {
+    expect(cleanTitle('"Fix login redirect."')).toBe("Fix login redirect");
+    expect(cleanTitle("\nTitle: **Auto-name new chats**\nBecause…")).toBe("Auto-name new chats");
+    expect(cleanTitle("x".repeat(100))).toHaveLength(58);
+    expect(cleanTitle("  ")).toBe("");
   });
 
   it("a chat deleted while Claude works stays deleted (its last events are ignored)", async () => {

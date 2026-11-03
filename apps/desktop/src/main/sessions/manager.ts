@@ -96,6 +96,11 @@ export interface SessionManagerOptions {
   ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
   /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
   onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
+  /**
+   * A short name for a new chat from its first message (the quick model, D-288). Until it answers the
+   * chat is called by the message's first words; a name you gave meanwhile is kept.
+   */
+  nameChat?: (meta: SessionMeta, text: string) => Promise<string | undefined>;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
@@ -410,6 +415,18 @@ export class SessionManager {
     }
   }
 
+  /** Replaces the first-words title with the quick model's name, unless the chat was renamed since. */
+  private async nameChat(live: Live, text: string, placeholder: string) {
+    if (!this.options.nameChat) return;
+    const name = await this.options.nameChat(live.state.meta, text).catch((error: Error) => {
+      log.warn("Couldn't name a chat", error);
+      return undefined;
+    });
+    const title = name ? cleanTitle(name) : "";
+    if (!title || live.deleted || live.state.meta.title !== placeholder) return;
+    this.setMeta(live, { title });
+  }
+
   /** Asks Claude Code how full the context window is and keeps it on the session. */
   private async refreshContext(live: Live) {
     const context = await live.engine?.contextUsage().catch(() => undefined);
@@ -476,10 +493,9 @@ export class SessionManager {
     const updates: ChatUpdate[] = [{ op: "upsert", item }];
     live.state.items.push(item);
     const meta = live.state.meta;
-    const title =
-      meta.turns === 0 && (meta.title === "New chat" || meta.title === "New session")
-        ? summarize(text || attachments[0]?.name || "Attachment")
-        : meta.title;
+    const unnamed = meta.turns === 0 && (meta.title === "New chat" || meta.title === "New session");
+    const title = unnamed ? summarize(text || attachments[0]?.name || "Attachment") : meta.title;
+    if (unnamed && text.trim()) void this.nameChat(live, text, title);
     live.state.meta = {
       ...meta,
       title,
@@ -1061,4 +1077,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 export function summarize(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
   return line.length > 60 ? `${line.slice(0, 57).trimEnd()}…` : line || "New chat";
+}
+
+/** A model's chat name as a title: its first line, without quotes, a "Title:" label or a full stop. */
+export function cleanTitle(answer: string): string {
+  const line = (answer.split("\n").find((l) => l.trim()) ?? "")
+    .replace(/^\s*(title|name)\s*:\s*/i, "")
+    .replace(/^[\s"'`*#]+|[\s"'`*.]+$/g, "")
+    .replace(/\s+/g, " ");
+  return line.length > 60 ? `${line.slice(0, 57).trimEnd()}…` : line;
 }

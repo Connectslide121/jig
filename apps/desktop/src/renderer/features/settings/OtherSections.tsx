@@ -377,6 +377,16 @@ export function EngineSettings() {
         />
       </SettingRow>
       <SettingRow
+        label="Name new chats"
+        description="The quick model gives each new chat a short name from its first message. Until it answers, the chat is called by the message's first words; renaming a chat yourself always wins."
+      >
+        <Switch
+          label="Name new chats"
+          checked={e.aiTitles}
+          onChange={(aiTitles) => void updateConfig({ engine: { aiTitles } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="Desktop notifications"
         description="A system notification (and a flashing taskbar button) when a chat needs you, finishes or fails while Jig is in the background. Click it to go to the chat."
       >

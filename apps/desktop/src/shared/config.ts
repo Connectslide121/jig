@@ -39,6 +39,8 @@ export const ConfigSchema = z.object({
       defaultPermissionMode: z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]).default("plan"),
       /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
       promptSuggestions: z.boolean().default(true),
+      /** The quick model names a new chat from its first message (a few words; D-288). */
+      aiTitles: z.boolean().default(true),
       /** Claude Code keeps a copy of files before it edits them, so a chat can restore them later. */
       fileCheckpoints: z.boolean().default(true),
       /** Model for testing in Claude's browser (the jig-tester subagent and Test something…, D-124). */
@@ -278,6 +280,7 @@ export const PROTECTED_SETTINGS = [
   "engine.allowApiKey",
   "editor.claudeCompletion",
   "editor.claudeCompletionModel",
+  "engine.aiTitles",
   "meetings.aiTranslation",
   "meetings.translationModel",
   "azure.activeTenant",
