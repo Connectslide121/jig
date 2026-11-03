@@ -181,6 +181,10 @@ class Conversation {
   private floor = 0.004;
   private loud = 0;
   private live?: LiveText;
+  /** Your last turn is being read and sent: a new one waits for it, so the two don't mix. */
+  private finishing = false;
+  /** Where a turn you started while the last one was being sent begins (audio index). */
+  private waitingFrom?: number;
   private lastVoice = 0;
   private turnStart = 0;
   private quietUntil = 0;
@@ -276,6 +280,7 @@ class Conversation {
     this.muted = muted;
     useVoice.setState({ muted });
     meters.you.clear();
+    if (muted) this.waitingFrom = undefined;
     if (muted && this.live) {
       this.live.cancel();
       this.live = undefined;
@@ -334,11 +339,17 @@ class Conversation {
         void this.endTurn();
       return;
     }
+    if (this.waitingFrom !== undefined) return;
     this.loud = voiced ? this.loud + 1 : 0;
     if (this.loud >= (speaking ? BARGE_IN_FRAMES : START_FRAMES)) {
       if (speaking) this.hush();
-      this.beginTurn(Math.max(0, now - (this.loud + 1) * frame.length - PREROLL));
-    } else if (!this.live) this.capture.forget(now - 2 * SAMPLE_RATE);
+      const from = Math.max(0, now - (this.loud + 1) * frame.length - PREROLL);
+      // Still sending what you said before: this turn starts once that is done.
+      if (this.finishing) {
+        this.loud = 0;
+        this.waitingFrom = from;
+      } else this.beginTurn(from);
+    } else if (!this.live && !this.finishing) this.capture.forget(now - 2 * SAMPLE_RATE);
   }
 
   private beginTurn(from: number): void {
@@ -354,7 +365,8 @@ class Conversation {
 
   private async endTurn(): Promise<void> {
     const live = this.live;
-    if (!live) return;
+    if (!live || this.finishing) return;
+    this.finishing = true;
     this.set("thinking");
     let text = "";
     try {
@@ -362,9 +374,15 @@ class Conversation {
     } catch (error) {
       notify({ title: "Couldn't understand that", message: errorMessage(error), tone: "danger" });
     }
-    if (this.live === live) this.live = undefined;
-    if (this.stopped) return;
-    await this.heard(text);
+    this.live = undefined;
+    try {
+      if (!this.stopped) await this.heard(text);
+    } finally {
+      this.finishing = false;
+    }
+    const from = this.waitingFrom;
+    this.waitingFrom = undefined;
+    if (from !== undefined && !this.stopped && !this.muted) this.beginTurn(from);
   }
 
   /** Tests: the fake engine "hears" `jig-fake-speech` events, and the waves move a little. */

@@ -145,6 +145,8 @@ export function Composer({
   active: boolean;
 }) {
   const [text, setTextState] = useState(() => takeDraft(meta.id));
+  /** The text as last set: the field shows it only after the next render. */
+  const latestText = useRef(text);
   const modelName = useModelLabel(meta);
   const [caret, setCaret] = useState(0);
   const [files, setFiles] = useState<ChatAttachment[]>([]);
@@ -171,6 +173,7 @@ export function Composer({
   const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
 
   const setText = (value: string, at = value.length) => {
+    latestText.current = value;
     setTextState(value);
     setCaret(at);
     requestAnimationFrame(() => ref.current?.setSelectionRange(at, at));
@@ -239,6 +242,7 @@ export function Composer({
   useEffect(
     () =>
       registerComposer(meta.id, (value) => {
+        latestText.current = value;
         setTextState(value);
         setCaret(value.length);
         requestAnimationFrame(() => ref.current?.focus());
@@ -261,7 +265,8 @@ export function Composer({
    */
   const dictated = (words: string, final: boolean) => {
     const el = ref.current;
-    const value = el?.value ?? text;
+    // Not the field's value: a word that just came in may not be on screen yet.
+    const value = latestText.current;
     const last = spoken.current;
     let span = last?.span;
     if (last && value.slice(last.span.start, last.span.end) !== last.text) {
@@ -282,7 +287,7 @@ export function Composer({
   const speechHooks = useMemo<VoiceHooks>(
     () => ({
       onText: (words, final) => latest.current.dictated(words, final),
-      send: () => latest.current.send(ref.current?.value ?? ""),
+      send: () => latest.current.send(latestText.current),
     }),
     [],
   );
@@ -638,6 +643,7 @@ export function Composer({
                     : "Message Claude…  / commands · @ files · ! shell · # remember"
               }
               onChange={(e) => {
+                latestText.current = e.target.value;
                 setTextState(e.target.value);
                 setCaret(e.target.selectionStart);
                 setClosedAt(undefined);
