@@ -148,7 +148,7 @@ Code completion with Claude (D-255) uses the fake engine's `completer`: after `r
 suggests `total;`, anywhere else `// suggested by the fake engine`. A caption to translate (D-277)
 comes back as `[<language>] <caption>`. The meetings test service rings for
 a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254). It has three
-Teams chats (D-293): an unread one-to-one with Alex, a "Portal planning" group and a one-to-one with
+Teams chats (D-296): an unread one-to-one with Alex, a "Portal planning" group and a one-to-one with
 Sam; Call… → Chat finds Alex's and Sam's, anyone else has none. Messages you send are kept while Jig runs.
 
 ## Screenshots

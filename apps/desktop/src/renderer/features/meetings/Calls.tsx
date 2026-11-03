@@ -44,7 +44,7 @@ export function CallDialog({
   records: MeetingRecord[];
   onClose(): void;
   onCall(person: MeetingPerson, options: { camera: boolean }): Promise<void>;
-  /** Opens your one-to-one chat with them (D-293); false when you have none yet. */
+  /** Opens your one-to-one chat with them (D-296); false when you have none yet. */
   onChat?(person: MeetingPerson): Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");

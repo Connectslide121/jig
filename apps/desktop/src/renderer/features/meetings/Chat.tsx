@@ -26,7 +26,7 @@ function blocks(messages: MeetingChatMessage[]): MeetingChatMessage[][] {
 
 /**
  * A Teams chat: the meeting's or call's (D-270), read every few seconds while you're in it, or one of
- * your chats in the lobby (D-293), with a box to write in it. Its states (loading, needs approval, no
+ * your chats in the lobby (D-296), with a box to write in it. Its states (loading, needs approval, no
  * chat) fill the list's space; the box keeps its row, so nothing moves.
  */
 export function ChatPanel({

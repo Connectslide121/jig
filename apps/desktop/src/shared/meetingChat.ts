@@ -113,7 +113,7 @@ export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMess
 /** A Teams chat id: a thread (`19:…@thread.v2`) or a one-to-one chat (`19:…@unq.gbl.spaces`). */
 export const TEAMS_CHAT_ID = /^19:[\w.-]+@(thread\.(v2|tacv2|skype)|unq\.gbl\.spaces)$/i;
 
-/** One of your Teams chats in the lobby's Chats list (D-293). */
+/** One of your Teams chats in the lobby's Chats list (D-296). */
 export interface TeamsChatSummary {
   id: string;
   kind: "oneOnOne" | "group" | "meeting";

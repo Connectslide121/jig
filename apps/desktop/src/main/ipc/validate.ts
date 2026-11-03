@@ -27,7 +27,7 @@ const meetingPanel = z.object({ slot: z.enum(MEETING_SLOTS), hidden: z.boolean()
 const MAX_TEXT = 1_000_000;
 const path = z.string().min(1).max(4096);
 const id = z.string().min(1).max(200);
-/** A Teams chat id (D-293): it goes into a Graph URL path, so only the two shapes Teams uses. */
+/** A Teams chat id (D-296): it goes into a Graph URL path, so only the two shapes Teams uses. */
 const teamsChatId = z.string().max(300).regex(TEAMS_CHAT_ID);
 const text = z.string().max(MAX_TEXT);
 const addonId = z

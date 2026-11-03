@@ -10,7 +10,7 @@ next). Chats stay on Claude Code. Checked on Windows with Codex 0.166.0 signed i
 testing on your machine: a real `codex login` from the row (browser sign-in, then the toast and the
 row turning green), and Codex installed through Homebrew or winget instead of npm.
 
-Teams chats in the lobby (2026-11-03, D-293): the Meetings lobby has a rail with **Meetings** and
+Teams chats in the lobby (2026-11-03, D-296): the Meetings lobby has a rail with **Meetings** and
 **Chats**. Chats lists your Teams chats newest first (picture or group icon, name, last message, time,
 an unread mark, the unread count on the rail); a row opens the chat beside the list, where you read
 and write (refreshed every 5 seconds). In **Call…** each person has a **Chat** button that opens your

@@ -55,7 +55,7 @@ function LobbyWindow() {
   const [calling, setCalling] = useState(false);
   const [ask, setAsk] = useState(false);
   const [review, setReview] = useState(false);
-  /** The lobby's two sections, from the rail on the left: meetings, or your Teams chats (D-293). */
+  /** The lobby's two sections, from the rail on the left: meetings, or your Teams chats (D-296). */
   const [section, setSection] = useState<"meetings" | "chats">("meetings");
   const [chatList, setChatList] = useState<ChatList>();
   const [chatsLoading, setChatsLoading] = useState(false);
@@ -292,7 +292,7 @@ function LobbyWindow() {
             onResize={resize}
             onOpen={(c) => {
               setTeamsChat(c);
-              // Opening it reads it (main counts it as read from then on, D-293).
+              // Opening it reads it (main counts it as read from then on, D-296).
               setChatList(
                 (l) =>
                   l && { ...l, chats: l.chats.map((x) => (x.id === c.id ? { ...x, unread: false } : x)) },

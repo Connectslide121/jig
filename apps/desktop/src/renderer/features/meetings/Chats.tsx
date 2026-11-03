@@ -57,7 +57,7 @@ function ChatAvatar({ chat, small }: { chat: OpenChat; small?: boolean }) {
 }
 
 /**
- * The lobby's Chats (D-293): your Teams chats newest first beside the open one. The list is read by
+ * The lobby's Chats (D-296): your Teams chats newest first beside the open one. The list is read by
  * the lobby (and refreshed while this shows); the open chat every 5 seconds while it is open.
  */
 export function ChatsView({

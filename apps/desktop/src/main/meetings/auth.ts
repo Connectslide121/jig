@@ -300,7 +300,7 @@ export class MeetingAuth {
     return undefined;
   }
   /**
-   * Your 50 most recent chats (D-293), with members and the last message's preview: Chat.Read is
+   * Your 50 most recent chats (D-296), with members and the last message's preview: Chat.Read is
    * enough. Where Graph refuses both expansions in one request, the two are read and merged.
    */
   async chats(readInJig: ReadonlyMap<string, string>): Promise<TeamsChatSummary[]> {

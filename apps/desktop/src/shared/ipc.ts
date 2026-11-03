@@ -201,7 +201,7 @@ export interface HostMethods {
   "meetings.chatSend": { args: { id: string; text: string }; result: void };
   /** Asks Microsoft for the chat permissions (opens the browser). */
   "meetings.chatConnect": { args: void; result: void };
-  /** Your Teams chats, newest first, for the lobby's Chats (D-293). */
+  /** Your Teams chats, newest first, for the lobby's Chats (D-296). */
   "meetings.chats": {
     args: void;
     result: {

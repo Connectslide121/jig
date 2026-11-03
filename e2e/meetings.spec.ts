@@ -392,7 +392,7 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await main.waitForSelector("[data-testid=app-root]");
     await hostCall(main, "meetings.open");
     const { lobby } = await meetingWindows(app);
-    // Only the Meetings windows read your chats (D-293).
+    // Only the Meetings windows read your chats (D-296).
     expect((await hostCall(main, "meetings.chats")).ok).toBe(false);
 
     // Your chats, newest first: name, last message, time, and the unread mark.

@@ -25,7 +25,7 @@ export const MEETING_SIZES = [
   "review.notes",
   "chats.list",
 ] as const;
-/** The sizes the lobby window owns (D-292, D-293); the call window keeps the rest. */
+/** The sizes the lobby window owns (D-292, D-296); the call window keeps the rest. */
 export const LOBBY_SIZES = ["review.notes", "chats.list"] as const satisfies readonly MeetingSizeKey[];
 export type MeetingSizeKey = (typeof MEETING_SIZES)[number];
 

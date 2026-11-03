@@ -60,7 +60,7 @@ const FAKE_PHOTOS: Record<string, string> = {
   "alex@contoso.com": svgPhoto("#4a7bd0"),
   "00000000-0000-4000-8000-0000000005a3": svgPhoto("#3f9d6b"),
 };
-/** The test meeting service's own account id, and a few Teams chats to list, open and write in (D-293). */
+/** The test meeting service's own account id, and a few Teams chats to list, open and write in (D-296). */
 const FAKE_ME = "00000000-0000-4000-8000-0000000000ee";
 const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
 const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
@@ -810,7 +810,7 @@ export async function startMeetings(): Promise<void> {
     if (!fake()) await auth.connectChat();
   });
 
-  // Your Teams chats in the lobby (D-293). Messages are read when asked and never kept or logged;
+  // Your Teams chats in the lobby (D-296). Messages are read when asked and never kept or logged;
   // when you last opened each chat in Jig counts as read (Jig can't mark it read in Teams).
   const readInJig = new Map<string, string>();
   const fakeChats = fakeChatData();

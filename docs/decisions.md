@@ -3705,7 +3705,7 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
   checks. **Claude, on my own.**
 - No `needs_you` status or notification is raised for a declined request.
 
-## D-293: Your Teams chats in the Meetings lobby, and Chat from Call…
+## D-296: Your Teams chats in the Meetings lobby, and Chat from Call…
 
 - Status: accepted. Asked for by Jon, 2026-11-03: a Chats view in the lobby with your Teams chats
   (newest first, picture, name, last message, time, unread), the open chat reusing the meeting chat

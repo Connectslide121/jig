@@ -93,7 +93,7 @@ describe("meeting chat", () => {
     expect(chatChanged(merged, mergeChat(merged, [b]))).toBe(false);
   });
 
-  describe("chat list (D-293)", () => {
+  describe("chat list (D-296)", () => {
     const one = {
       id: `19:${ME}_${ALEX}@unq.gbl.spaces`,
       chatType: "oneOnOne",
