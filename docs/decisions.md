@@ -3249,3 +3249,11 @@ the boards up to date from chats. The shape is **Claude, on my own**.
 - The release still runs `npm run check` and the packaged-app test, and runs the e2e suite unless the
   recorded commit differs from the release commit only in the version files and docs/status.md.
   Any other change, docs included, runs it again.
+
+## D-273: A selection on the active line is visible in the editor
+
+**Who:** Jon: a selected line looked the same as the active line.
+
+- CodeMirror draws the selection on a layer behind the lines, so the opaque active-line background hid
+  any selection on that line. The active line is now the hover colour at 45% over the canvas, letting
+  the selection show through; other lines are unchanged. Applies to every theme (tokens only).

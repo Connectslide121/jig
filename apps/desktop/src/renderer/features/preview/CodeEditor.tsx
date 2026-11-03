@@ -73,7 +73,9 @@ const frame = EditorView.theme({
     borderRight: "1px solid var(--color-line)",
   },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 12px" },
-  ".cm-activeLine": { backgroundColor: "var(--color-hover)" },
+  // CodeMirror draws the selection on a layer behind the lines: an opaque active line would hide a
+  // selection on it (Jon), so the active line lets it show through.
+  ".cm-activeLine": { backgroundColor: "color-mix(in srgb, var(--color-hover) 45%, transparent)" },
   ".cm-activeLineGutter": { backgroundColor: "var(--color-hover)", color: "var(--color-fg)" },
   ".cm-selectionMatch": { backgroundColor: "var(--color-accent-soft)" },
   "&.cm-focused .cm-matchingBracket": {
