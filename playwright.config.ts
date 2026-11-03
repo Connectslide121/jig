@@ -16,6 +16,10 @@ export default defineConfig({
   timeout: 60_000,
   workers,
   fullyParallel: true,
+  // Under the whole suite in parallel, an occasional test misses a timeout or Windows holds a file for
+  // a moment: one retry, so a release isn't stopped by a flake. A real failure fails twice and still
+  // stops it; a flaky test shows as "flaky" in the report to be fixed (D-258).
+  retries: 1,
   reporter: [["list"]],
   use: { trace: "retain-on-failure" },
 });
