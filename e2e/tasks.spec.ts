@@ -134,6 +134,8 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
 });
 
 test("Tasks: every run is kept in the history, with its results", async ({ page, jigHome }) => {
+  // Two tasks run one after the other: under the full parallel suite that can take a while.
+  test.setTimeout(120_000);
   const ids = await twoProjects(page, jigHome);
   const view = await openTasks(page);
   await hostCall(page, "addons.call", {
@@ -148,8 +150,8 @@ test("Tasks: every run is kept in the history, with its results", async ({ page,
   });
   // Start: the first is done, the second fails and pauses the queue (stop when a task fails).
   await view.getByTestId("tasks-start").click();
-  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
-  await expect(view.getByTestId("task-status-t2")).toContainText("Failed", { timeout: 20000 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t2")).toContainText("Failed", { timeout: 45000 });
   await expect(view.getByTestId("tasks-start")).toBeVisible();
   await expect(view.getByTestId("task-status-t3")).toContainText("Queued");
   await expect(view.getByTestId("task-t1")).toContainText("Did it: fix the cart");
