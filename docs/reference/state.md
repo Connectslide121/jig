@@ -151,7 +151,10 @@ read-only application resources, not user state. Personal/project Claude skills 
 
 Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint}, an optional room layout
 (`shared/meetingLayout.ts`: panels {people, transcript, notes, chat} → {slot, hidden?} and sizes in px, D-221) and records
-{id, title, joinUrl, startedAt, endedAt?, status, capture, captions, gaps, notes, actions, call?, chat?}.
+{id, title, joinUrl, startedAt, endedAt?, status, capture, captions, gaps, notes, actions, call?, chat?, folder?},
+and `folders` [{id, name}]: your meeting history folders (D-295). A record's `folder` is the folder you put it in,
+`null` when you took it out of every folder, or missing to let it go to its recurring meeting's folder (meetings
+whose join links name the same Teams meeting thread, two or more of them; worked out, not stored).
 `chat` is the meeting's Teams chat read while you were in it ({id, from, fromId?, at, text, mine?}, D-270). A record
 has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final;
 actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically

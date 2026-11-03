@@ -341,6 +341,13 @@ The meeting window's "Saved meetings" is now "Meeting history". To try: join a m
 `JIG_MEETINGS=fake`, leave, then open the history. Needs real-machine testing: Export Markdown's save
 dialog and how concise real notes come out.
 
+Meeting history folders (2026-11-03, D-295): in the history tab and the lobby, meetings sit in folders.
+**New folder** (beside the search, or the lobby's history heading) makes one; drag a meeting onto a
+folder, or use its menu → Move to folder. A recurring meeting (two or more meetings with the same Teams
+meeting link, e.g. a daily) gets its own folder by itself; you can still move one of its meetings
+elsewhere and back. A folder's ⋯ renames or deletes it (its meetings stay). To try: two meetings joined
+from the same recurring invite, then open the history.
+
 Add-on rows (2026-11-02, Jon): Settings → Add-ons rows show Change with AI, Share and the switch;
 History, Restore, Open folder, Reload and Delete are in the row's ⋯ menu.
 

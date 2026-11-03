@@ -730,7 +730,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "The meeting's or call's Teams chat in its own panel: read it, write in it, and Claude's notes include it",
                 "Your Teams chats in the meetings lobby: read and reply, and open your chat with someone from Call…",
                 "Live captions in your language (Teams translates, or Claude without Teams Premium), with what was said under each line",
-                "Meeting history in the main window: start a chat about a meeting, notes, actions, Markdown export",
+                "Meeting history in the main window and the lobby, in folders: make your own and drag meetings in, and each recurring meeting gets its own; start a chat about a meeting, notes, actions, Markdown export",
                 "Mention a meeting in any chat with @ — Claude reads its transcript",
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",

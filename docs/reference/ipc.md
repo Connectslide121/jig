@@ -290,6 +290,10 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.configure | Save tenant/client/ACS endpoint; lobby or room, no active call |
 | meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room or main window (meeting history, D-250), never the live one |
 | meetings.history | Past meetings newest first, without the live one (the main window's Meeting history tab, D-250) |
+| meetings.folders | Your meeting history folders [{id, name}] (D-295); series folders are worked out from the meetings |
+| meetings.saveFolder | `{id?, name}`: makes a folder, or renames one; names are unique ignoring case. Jig's windows |
+| meetings.deleteFolder | `{id}`: deletes a folder; its meetings go back to their series' folder or to none. Jig's windows |
+| meetings.moveToFolder | `{ids, place}`: `place` is a folder id, `none` (out of every folder) or `auto` (back to its series). Jig's windows |
 | meetings.mentions | Meetings matching `{query}` for the chat's `@` picker, each with its `@meeting:<name>-<8 hex>` mention |
 | meetings.rename | `{id, title}`: rename a meeting; room or main window |
 | meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |

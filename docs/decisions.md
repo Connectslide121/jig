@@ -3773,3 +3773,25 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
   install when missing. The `codex.signIn` event re-runs the checks and shows a toast, as for Claude.
 - Which features use which provider is the next step (per-feature provider and model in Settings).
 
+
+## D-295: Meeting history in folders: yours, and one per recurring meeting
+
+Jon, 2026-11-03: "folders that I can create manually and drag and drop meetings to, and meetings that
+are part of a series, like Sprinta daily, should go automatically to their own folder", in the history
+tab and in the lobby.
+
+- **Your folders** are stored in `meetings.json` (`folders` [{id, name}], names unique ignoring case);
+  a record's `folder` is the folder you put it in, `null` once you took it out of every folder, or
+  missing to follow its series. Deleting a folder only clears that field on its meetings.
+- **Series folders are worked out, not stored** (Claude, on my own): a recurring Teams meeting keeps
+  one meeting thread for all its occurrences, so meetings whose join links name the same thread
+  (`meetingChatId`) are one series, and two or more of them get a folder named after the newest. This
+  needs no extra calendar scope or fields (calendarView's `seriesMasterId` isn't fetched) and works for
+  meetings kept before folders existed. One-to-one calls have no series.
+- **Where you put a meeting wins** over its series; a series folder only takes back its own meetings
+  ("Its recurring meeting's folder"). The same places are in a meeting's Move to folder menu, so
+  nothing needs dragging.
+- Folders (yours and series, by name) come first, then "Not in a folder"; while searching, empty
+  folders hide and folders with matches open. Which folders are open is kept in the renderer's
+  localStorage, shared by both views. Both views use `useMeetingFolders` and the pure
+  `shared/meetingFolders.ts`.
