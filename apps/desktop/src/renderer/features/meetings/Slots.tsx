@@ -10,7 +10,11 @@ import {
 } from "../../../shared/meetingLayout";
 import { cn, type ResizeEdge, ResizeHandle } from "../../ui";
 
-/** A box with a remembered width (side edges) or height (top/bottom) and a drag handle on one edge. */
+/**
+ * A box with a remembered width (side edges) or height (top/bottom) and a drag handle on one edge.
+ * It shrinks when the window is smaller than when the size was set, so it never runs past the room
+ * (under the status bar).
+ */
 export function SizedBox({
   layout,
   sizeKey,
@@ -34,7 +38,7 @@ export function SizedBox({
   const horizontal = edge === "left" || edge === "right";
   return (
     <div
-      className={cn("relative flex min-h-0 min-w-0 shrink-0", className)}
+      className={cn("relative flex min-h-0 min-w-0 shrink", className)}
       style={horizontal ? { width: size } : { height: size }}
     >
       {children}
@@ -89,7 +93,8 @@ export function Slot({
       <div className={cn("flex size-full min-h-0 min-w-0", !across && "flex-col")}>
         {panels.map((id, index) =>
           index === panels.length - 1 ? (
-            <div key={id} className="flex min-h-0 min-w-0 flex-1">
+            // The last panel keeps at least the splits' minimum; the ones above it shrink first.
+            <div key={id} className={cn("flex flex-1", across ? "min-h-0 min-w-60" : "min-h-30 min-w-0")}>
               {render(id)}
             </div>
           ) : (
