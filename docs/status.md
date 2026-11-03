@@ -70,6 +70,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.5.0 being prepared (2026-11-03): Jig 0.5.0 adds "Hey Jig" voice commands, Claude-translated meeting captions when Teams can't translate, microphone and speaker choice, and a task queue you can tick, put back and start over; talking with Claude now ignores background noise. Publication not yet verified.
+
 Jig 0.4.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.4.0),
 source/tag `917606eb546b1fefe71a405fb689f48226a031d8`. Installer: 371,236,512 bytes;
 SHA-256 `3c07a133744ca5467f4e47fad1a00cfceb80a2440185e11748da3b1a03b30bbf`.
