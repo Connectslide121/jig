@@ -138,6 +138,10 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
 - **One-shot questions** (`oneShot`: no tools, one turn) serve the AI features around the chat:
   - commit messages, the pre-commit check, change tours, the standup, judging attempts;
   - `ctx.ai.ask` for add-ons.
+
+  They go through `main/providers/` (`oneShot(provider, model, prompt, timeoutMs)`, D-294): `claude`
+  is the engine's `oneShot`; `chatgpt` runs OpenAI's Codex CLI (`codex exec`, read-only sandbox, no
+  tools) from the user's PATH, signed in with their ChatGPT account. Chats always use Claude Code.
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.

@@ -1,5 +1,15 @@
 # Status
 
+ChatGPT through Codex (2026-11-03, D-294): Get started has an optional **ChatGPT (Codex)** row. With
+OpenAI's Codex CLI installed (`npm install -g @openai/codex`) it shows the version and whether Codex is
+signed in; **Sign in…** runs `codex login` in a private terminal (Codex opens your browser), and when
+it ends Jig says whether it worked, closes the terminal and checks again. Without Codex the row offers
+How to install. Under the hood Jig can now run a one-shot prompt on ChatGPT (`codex exec`, read-only,
+no tools) and list ChatGPT's models; no feature uses it yet (picking a provider per feature comes
+next). Chats stay on Claude Code. Checked on Windows with Codex 0.166.0 signed in and out. Needs
+testing on your machine: a real `codex login` from the row (browser sign-in, then the toast and the
+row turning green), and Codex installed through Homebrew or winget instead of npm.
+
 Teams chats in the lobby (2026-11-03, D-293): the Meetings lobby has a rail with **Meetings** and
 **Chats**. Chats lists your Teams chats newest first (picture or group icon, name, last message, time,
 an unread mark, the unread count on the rail); a row opens the chat beside the list, where you read
@@ -1050,7 +1060,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   - `npm run dist` packages Jig with electron-builder; on Windows it makes `Jig-Setup-<version>.exe`
     (per-user NSIS installer with Start menu shortcut and Jig's icon). Guide: `docs/guides/packaging.md`.
   - **Get started** (opens on an installed Jig's first start; Tools → Check your setup…): Claude Code,
-    git, gh, az + Azure DevOps extension, VS Code `code`, with install links and Sign in to Claude Code….
+    git, gh, az + Azure DevOps extension, VS Code `code`, with install links and Sign in to Claude Code…;
+    optionally ChatGPT (Codex) with its own Sign in… (D-294).
   - **Check for updates…**: from a git clone, pull + build + restart; installed, the latest GitHub release.
 
 ## How to try it

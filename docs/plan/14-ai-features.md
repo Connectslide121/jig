@@ -27,6 +27,11 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 
 - [x] Shared image zoom controls, presets and Ctrl/Cmd + scroll in image tabs, previews and Git comparisons (D-227).
 
+- [x] ChatGPT as a second provider for one-shot AI calls through OpenAI's Codex CLI: Get started row
+  with Codex's own sign-in in a private terminal, `oneShot(provider, …)`, model list per provider
+  (D-294; `main/providers/`, unit tests in `codex.test.ts` and `setup/checks.test.ts`, e2e in
+  `e2e/setup.spec.ts`).
+
 ## Later
 
 - Browser: several tabs, recording a session as a GIF, network requests in the console pane.

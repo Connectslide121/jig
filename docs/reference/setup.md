@@ -8,6 +8,7 @@ Code: `apps/desktop/src/main/setup/` (checks, IPC), `apps/desktop/src/main/updat
 | id | Needed | How it is checked |
 |---|---|---|
 | `claude` | yes | `<claude> --version`, where `<claude>` is Settings → Claude Code → binary, else the Agent SDK's binary for this platform |
+| `codex` | optional | `codex --version`, then `codex login status` (OpenAI's Codex CLI on PATH, for ChatGPT as a provider, D-294) |
 | `git` | yes | `git --version` |
 | `gh` | optional | `gh --version` |
 | `az` | optional | `az --version` (first line) |
@@ -23,6 +24,14 @@ the engine's `not_signed_in` banner with Sign in.
 **Sign in to Claude Code…** runs `claude auth login` in a private terminal. When it ends, Jig asks
 `claude auth status` again and emits `claude.signIn`: signed in → a toast says so and the terminal
 closes; not → a toast with Try again. Get started checks again.
+
+**ChatGPT (Codex)** is optional. Installed but signed out, the row has **Sign in…** (`SetupCheck.signIn`
+= `jig.codexLogin`), which runs `codex login` in a private terminal without `OPENAI_API_KEY` /
+`CODEX_API_KEY` (Codex opens the browser for the ChatGPT sign-in). When it ends Jig asks `codex login
+status`, emits `codex.signIn`, closes the terminal if signed in and Get started checks again. Only
+"signed in" and how are kept (`parseCodexLoginStatus`); never a key, token or account. Missing, the
+row shows How to install (`npm install -g @openai/codex`). With the fake engine the sign-in isn't
+asked and the terminal only echoes.
 
 `config.setup.firstRunDone` (default `false`): an installed Jig (`AppInfo.packaged`) opens the Get
 started tab until you press **Done**.

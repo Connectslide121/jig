@@ -68,6 +68,7 @@ settings, add-on permissions.
 | `completion.copilotSignIn` | — | `{ userCode, url }` | GitHub device sign-in; the server opens github.com and keeps the sign-in |
 | `completion.copilotSignOut` | — | — | sign out of Copilot |
 | `files.write` | `{ path, text, expectedMtimeMs? }` | `{ size, mtimeMs }` | the Preview editor saves: only inside a workspace or a file opened in Preview this run; with `expectedMtimeMs`, `changed` when the file changed on disk since; written next to the file and renamed over it. Errors `not_allowed`, `not_a_file`, `changed`, `write_failed` |
+| `ai.models` | `{ provider: "claude" \| "chatgpt" }` | `ModelInfo[]` | the models a provider offers for one-shot features: Claude Code's, or the Codex CLI's (`codex debug models`, else a short built-in list), D-294 (schema) |
 | `ai.ask` | `{ addonId, prompt, cwd?, quick? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`); `quick` uses `engine.quickModel` (schema) |
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |
 | `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code saved on this computer, newest first; `chatId` when one is already a Jig chat (D-150) |
@@ -145,6 +146,7 @@ settings, add-on permissions.
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
+| `terminals.codexLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running the Codex CLI's ChatGPT sign-in (`codex login`, no OpenAI API key in its environment); when it ends, `codex.signIn` (D-294) |
 | `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code's sign-in (`claude auth login`); when it ends, `claude.signIn` |
 | `userBrowser.state` | — | `UserBrowserState` | current window's native user page; separate from Claude |
 | `userBrowser.present` | `{ bounds: { x, y, width, height }, visible }` | — | native slot in CSS pixels; hidden for menus, dialogs and inactive tabs |
@@ -236,6 +238,7 @@ settings, add-on permissions.
 | `terminals.data` | `{ id, data }` | terminal output (batched) |
 | `terminals.changed` | `TerminalInfo[]` | a terminal was created, renamed, exited or closed |
 | `terminals.reveal` | `{ id }` | show this terminal (Claude started it from a chat) |
+| `codex.signIn` | `{ loggedIn, method? }` | the Codex sign-in terminal ended: whether Codex is signed in now and how (never who or a key); its terminal was closed if so (D-294) |
 | `claude.signIn` | `{ loggedIn, method? }` | the sign-in terminal ended: whether Claude Code is signed in now and how (never who); its terminal was closed if so (D-126) |
 | `routines.changed` | — | routines changed (from the tab or a chat): reload when shown |
 | `userBrowser.state` | `UserBrowserState` | owner window only: URL, title, loading, history and load error |

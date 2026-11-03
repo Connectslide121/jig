@@ -3736,3 +3736,40 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
   `meetings.chatWith {peerId}`; lobby or call window only (`lobbyOrCall`, D-292), chat ids validated
   to Teams' two shapes (`TEAMS_CHAT_ID`) because they go into Graph paths. `meetings.chatConnect` is
   now allowed from the lobby too.
+
+## D-294: Claude Code stays the chat engine; ChatGPT (Codex) is a second provider for non-chat AI
+
+- Status: accepted. Decided by Jon, 2026-11-03: he wrote "Claude Code is the only engine" (D-002,
+  principle 1, D-124, D-247) and is dropping it. **New rule:** Claude Code stays the engine for chats
+  (and everything agentic: tools, the builder, routines, Claude's browser); OpenAI's official **Codex
+  CLI**, signed in with the user's **ChatGPT** account, is a second provider for *non-chat* AI
+  features: one text in, one text out, no tools. Codex chats are a later, separate project.
+- **The no-credential rule covers Codex too** (Jon): Jig never reads, stores, logs or forwards Codex or
+  ChatGPT tokens (`~/.codex/auth.json`). It runs the official CLI, which signs in with its own flow
+  (`codex login`, in a private terminal like Claude Code's) and keeps its own login. Only "signed in"
+  and how (ChatGPT / an API key) are kept from `codex login status`; a masked key it prints is dropped.
+- **Where Codex comes from** (Claude, on my own): the user's own install on PATH (`npm i -g
+  @openai/codex`, Homebrew, winget), like `gh` and `az`. Not a dependency: the npm package is ~480 MB
+  per platform (a 370 MB native binary plus voice resources), too much for Jig's installer. The Codex
+  desktop app and the VS Code extension keep their binaries in versioned private folders, so Jig does
+  not look there. On Windows the npm `codex.cmd` shim is skipped for the native `codex.exe` behind it
+  (`findCodex`), so no `cmd.exe` sits between Jig and Codex.
+- **The call** (Claude, on my own): `codex exec --json --sandbox read-only` with approvals `never`,
+  the shell, unified exec, apps, plugins, sub-agents, images, browser/computer use, hooks and memories
+  disabled, web search off, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`,
+  `--skip-git-repo-check`, the chosen `--model` and `--cd`, the prompt on stdin. The answer is the last
+  `agent_message`; `turn.failed` / `error` events reject with their message; the same 3-minute timeout
+  and "... didn't answer in time" error as Claude's one-shot. `OPENAI_API_KEY` / `CODEX_API_KEY` are
+  removed from Codex's environment (and the sign-in terminal's) so it always uses the ChatGPT login.
+  Jig's extra instructions go before the prompt (Codex has no `append`).
+- **Models:** Claude's from Claude Code (`engine.models`); ChatGPT's from `codex debug models` (the
+  `list`-visible ones in Codex's priority order, read once per run), else `CHATGPT_FALLBACK_MODELS`
+  in `shared/providers.ts`. IPC `ai.models { provider }`.
+- **Code:** `main/providers/` (`oneShot(provider, model, prompt, timeoutMs)`, `providerModels`,
+  `codexBinary`; pure helpers in `codex.ts`, unit-tested). `ai.ask` goes through it on `claude`. With
+  the fake engine both providers answer from the fake engine's one-shot, so tests never run Codex.
+- **Get started:** an optional **ChatGPT (Codex)** row: `codex --version`, then `codex login status`;
+  Sign in… (action `jig.codexLogin`, `terminals.codexLogin`) when installed but signed out, How to
+  install when missing. The `codex.signIn` event re-runs the checks and shows a toast, as for Claude.
+- Which features use which provider is the next step (per-feature provider and model in Settings).
+

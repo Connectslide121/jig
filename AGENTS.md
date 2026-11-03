@@ -73,9 +73,12 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Pure logic goes in `packages/*`** (no Electron imports) so it can be unit-tested.
 - **State lives in `JIG_HOME`** (`~/.jig`); write files atomically through the state module, never
   with ad-hoc `fs.writeFile` on state files.
-- **Claude Code is the only engine.** Never add another agent runtime, never call the Anthropic API
-  directly for agent work, never assemble the system prompt yourself (only `append` to the
-  `claude_code` preset).
+- **Claude Code is the chat engine (D-294).** Chats and everything agentic (tools, the builder,
+  routines, Claude's browser) run on Claude Code: never add another agent runtime, never call the
+  Anthropic API directly for agent work, never assemble the system prompt yourself (only `append` to
+  the `claude_code` preset). **OpenAI's Codex CLI** (signed in with ChatGPT) is a second provider only
+  for non-chat, text-in/text-out AI calls, through `main/providers/` (`oneShot(provider, ...)`): no
+  tools, read-only sandbox. Never call the OpenAI API directly.
 - **Follow Claude Code, don't reimplement it.**
   - New Claude Code behaviour reaches the UI through `main/engine/normalize.ts`, which turns SDK
     messages into `EngineEvent`s. Unknown messages are ignored, never a crash.
@@ -96,8 +99,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   `revealWindow`/`focusJig`, and open links, files and folders with `openExternal`/`openPath`/
   `showInFolder` (same file): they do nothing while Jig runs hidden (`JIG_HIDDEN`, the e2e tests), so
   tests never take over the user's screen.
-- **Never read, copy, store, log or forward Claude credentials or tokens.** No login UI. Keep the
-  default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session environments.
+- **Never read, copy, store, log or forward Claude, Codex or ChatGPT credentials or tokens.** No login
+  UI: sign-in is the official CLI's own flow in a private terminal (`claude auth login`, `codex
+  login`). Keep the default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session
+  environments, and `OPENAI_API_KEY` / `CODEX_API_KEY` from Codex's.
 - **The user's own tools and credentials** for git, GitHub, Azure, Azure DevOps (`git`, `gh`, `az`).
   Jig does not copy those tools' credentials. The Microsoft meeting sign-in exception is below.
 - **Teams media (D-217):** the official calling SDK runs only in the dedicated sandboxed meeting

@@ -1,6 +1,7 @@
 # Engine and sessions reference
 
-Claude Code is the only engine (principle 1). Code: `apps/desktop/src/main/engine/` (engine),
+Claude Code is the chat engine (principle 1); non-chat one-shot calls may also run on ChatGPT through
+the Codex CLI (D-294, see Providers below). Code: `apps/desktop/src/main/engine/` (engine),
 `apps/desktop/src/main/sessions/` (session manager), `apps/desktop/src/shared/engine.ts` (types) and
 `apps/desktop/src/shared/chat.ts` (transcript reducer).
 
@@ -51,6 +52,30 @@ interface EngineSession {
 - Not signed in (assistant error `authentication_failed`, or a result error mentioning `/login`) sets
   `meta.needsLogin`; the chat shows how to sign in (`claude` → `/login` in a terminal) with a button that
   opens a Jig terminal running `claude` (action `jig.claudeLogin`, phase 5).
+
+## Providers (D-294)
+
+Non-chat AI features call `oneShot(provider, model, prompt, timeoutMs?, { cwd?, system? })` from
+`main/providers/index.ts` (`provider: "claude" | "chatgpt"`, `shared/providers.ts`). Both return the
+final text, reject with a plain message, and time out after 3 minutes ("... didn't answer in time").
+
+- **`claude`:** the engine's `oneShot` (above): no tools, one turn, `system` appended to the preset.
+- **`chatgpt`:** OpenAI's Codex CLI from PATH (`codexBinary()`; on Windows the native `codex.exe`
+  behind npm's `codex.cmd`). Jig does not ship it (the npm package is ~480 MB per platform). It runs
+  `codex exec` with `codexExecArgs(model, cwd)`: `--json`, `--sandbox read-only`, approvals `never`,
+  shell/exec/apps/plugins/sub-agents/images/browser/hooks/memories disabled, web search off,
+  `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`, prompt on stdin
+  (`system` goes before it). `parseCodexExec` returns the last `agent_message`; `turn.failed` and
+  top-level `error` events reject (`error` *items* are warnings). `OPENAI_API_KEY` and
+  `CODEX_API_KEY` are removed from its environment so it uses the ChatGPT sign-in.
+- **Models** (`providerModels`, IPC `ai.models { provider }`): Claude's from Claude Code; ChatGPT's
+  from `codex debug models` (visible ones, Codex's order; read once per run), else
+  `CHATGPT_FALLBACK_MODELS`.
+- **Credentials:** Jig never reads `~/.codex/auth.json` or any Codex/ChatGPT token. Sign-in is `codex
+  login` in a private terminal (`jig.codexLogin`); `codex login status` gives only yes/no and the
+  method (`parseCodexLoginStatus`).
+- **Fake engine:** both providers answer from the fake engine's `oneShot`; Codex never runs in tests.
+- `ai.ask` (add-ons) uses `oneShot("claude", ...)`.
 
 ## Events (`EngineEvent`)
 
