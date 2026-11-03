@@ -32,7 +32,13 @@ import {
   SLOT_TITLES,
   setPanelHidden,
 } from "../../../shared/meetingLayout";
-import type { MeetingCall, MeetingEvent, MeetingOverview, MeetingRecord } from "../../../shared/meetings";
+import {
+  AI_CAPTION_LANGUAGES,
+  type MeetingCall,
+  type MeetingEvent,
+  type MeetingOverview,
+  type MeetingRecord,
+} from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useThemeController } from "../../lib/theme";
@@ -294,7 +300,11 @@ function Room() {
       const chat = await call("meetings.notes", { id });
       await openChat(chat.sessionId);
     }, "notes");
-  const captionLanguages = mediaState.captionLanguages;
+  // Teams' languages, and the ones Claude translates into when Teams can't (D-277).
+  const captionLanguages = [
+    ...mediaState.captionLanguages,
+    ...AI_CAPTION_LANGUAGES.filter((c) => !mediaState.captionLanguages.some((t) => t.toLowerCase() === c)),
+  ];
   // "Swedish" rather than "Swedish (Sweden)", unless two variants of a language are offered.
   const languageName = (code: string) => {
     const base = code.split("-")[0]!;
@@ -309,12 +319,14 @@ function Room() {
   };
   const askButton = (
     <>
-      {/* Captions in your language: Teams translates (Teams Premium); the original stays under it. */}
+      {/*
+        Captions in your language: Teams translates (Teams Premium), or else Claude (D-277); the
+        original stays under it.
+      */}
       <Select
         aria-label="Show captions in"
-        title="Show captions in another language (Teams translates; needs Teams Premium for the meeting)"
+        title="Show captions in another language: Teams translates with Teams Premium, otherwise Claude does"
         className="h-7 w-40 text-xs"
-        disabled={!captionLanguages.length}
         value={mediaState.captionLanguage}
         onChange={(e) => {
           const language = e.target.value;

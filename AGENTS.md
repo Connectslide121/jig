@@ -113,7 +113,8 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   which masks secrets and keeps pastes only as their kind; never record raw pasted content, file
   contents or credentials (Claude's lines are recorded as hashes). Notes Claude saves
   (`jig_note_evidence`) are masked and respect the exclusions. Captured network headers are redacted
-  (`redactHeaders`). Nothing calls an AI in the background except the weekly reflection.
+  (`redactHeaders`). Nothing calls an AI in the background except the weekly reflection, and caption
+  translation while you have picked a caption language in a meeting (D-277).
 - **Menus, not commands.** Every feature must be reachable from a visible menu or button. Do not add
   Jig slash commands. The chat's `/` picker shows Claude Code's own commands; the few Claude Code
   names Jig answers itself (`/model`, `/mcp`…) map to existing menus and are also in the + menu (D-091).

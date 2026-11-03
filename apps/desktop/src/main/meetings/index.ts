@@ -23,6 +23,7 @@ import type { MeetingEvent, MeetingRecord } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
 import { appWindows, hiddenMode, markBackgroundWindow, revealWindow } from "../appWindows";
+import { getConfig } from "../config";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
@@ -34,6 +35,7 @@ import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
 import { ownMediaUrl, ownPagePermission } from "./permissions";
 import { hideShareFrame, showShareFrame } from "./shareFrame";
 import { MeetingStore } from "./store";
+import { CaptionTranslator } from "./translate";
 
 /** The test meeting service's people have pictures, so the avatars can be seen in tests. */
 const svgPhoto = (fill: string) =>
@@ -60,6 +62,24 @@ let selectedShare: { id: string; expires: number } | undefined;
 let queueChain: Promise<unknown> = Promise.resolve();
 const noteChats = new Map<string, string>();
 const changed = () => emit("meetings.changed", undefined);
+/** Claude's caption translation for the meeting you're in, when Teams can't translate (D-277). */
+const translator = new CaptionTranslator(
+  async ({ meetingId, captionId, source, text, language }) => {
+    await store.translated(meetingId, captionId, source, text, language);
+    changed();
+  },
+  (error) => {
+    const id = activeId;
+    if (!id) return;
+    const message = error instanceof Error ? error.message : String(error);
+    void store
+      .update(id, (r) => {
+        r.translationError = `Claude couldn't translate: ${message}`.slice(0, 300);
+      })
+      .then(changed)
+      .catch(() => undefined);
+  },
+);
 const activity = (text: string) =>
   publishActivity({ kind: "addon.action", text: `meetings.${text}`, detail: { addonId: "meetings" } });
 
@@ -638,6 +658,31 @@ export async function startMeetings(): Promise<void> {
     own(ctx);
     current(id);
     await store.caption(id, caption);
+    const language = store.get(id).aiTranslation;
+    if (language && caption.final && !caption.translated) translator.translate(id, caption, language);
+    changed();
+  });
+  handle("meetings.aiTranslation", async ({ id, language }, ctx) => {
+    own(ctx);
+    current(id);
+    if (language && !getConfig().meetings.aiTranslation)
+      throw new JigError(
+        "meeting_translation",
+        "Teams didn't translate the captions (that needs Teams Premium), and translation by Claude is off in Settings.",
+      );
+    if (store.get(id).aiTranslation === (language || undefined)) return;
+    translator.stop();
+    await store.update(id, (r) => {
+      r.aiTranslation = language || undefined;
+      r.translationError = undefined;
+    });
+    // The last few lines too, so what is on screen reads in the new language.
+    if (language)
+      for (const c of store
+        .get(id)
+        .captions.filter((c) => c.final && c.translatedLanguage !== language)
+        .slice(-3))
+        translator.translate(id, { ...c, translated: undefined }, language);
     changed();
   });
   handle("meetings.status", async ({ id, status, capture, gap }, ctx) => {
@@ -645,6 +690,10 @@ export async function startMeetings(): Promise<void> {
     current(id);
     await store.update(id, (r) => lifecycle(r, status, capture, gap));
     if (["ended", "interrupted"].includes(status)) {
+      translator.stop();
+      await store.update(id, (r) => {
+        r.aiTranslation = undefined;
+      });
       activeId = undefined;
       hideShareFrame();
       activity("leave");

@@ -192,6 +192,15 @@ small grey text under it; both are kept with the meeting and Claude reads both. 
 remembered. Teams translates: that needs Teams Premium for the meeting; without it Jig says so and
 captions stay as spoken. Needs a real meeting to confirm.
 
+Captions translated by Claude (D-277): when Teams can't translate (no Teams Premium, or a language
+Teams doesn't offer), Claude translates each finished caption on a fast model (Haiku), in order;
+the picker also lists common languages Teams may not (Swedish, Spanish, Basque, Catalan, French…).
+While it translates, each line keeps room for the original under it ("Translating…"), and the
+Transcript header says "AI translation, may be inaccurate" (or why a translation failed).
+Settings: `meetings.aiTranslation` (on) and `meetings.translationModel` (`haiku`), from a chat
+only with your approval. Untested in a real meeting; the fake meeting covers it in e2e (not yet run
+to the end: run `meetings.spec.ts` at the release and look at `translated-ai.png`).
+
 Language servers (2026-11-03, D-259): in the file editor, the language servers you install give
 errors and warnings as you type (wavy underlines, message on hover), hover information, go to
 definition (F12; another file opens in Preview), find references (Shift+F12), rename (F2), signature

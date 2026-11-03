@@ -140,7 +140,8 @@ write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAK
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
 
 Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
-suggests `total;`, anywhere else `// suggested by the fake engine`. The meetings test service rings for
+suggests `total;`, anywhere else `// suggested by the fake engine`. A caption to translate (D-277)
+comes back as `[<language>] <caption>`. The meetings test service rings for
 a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254).
 
 ## Screenshots

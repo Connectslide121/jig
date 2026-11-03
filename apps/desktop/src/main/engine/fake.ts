@@ -1409,6 +1409,12 @@ export class FakeEngine implements Engine {
       ask: async (prompt, signal) => {
         await new Promise((resolve) => setTimeout(resolve, this.delayMs * 4));
         if (signal?.aborted) throw new Error("Cancelled");
+        // Meeting captions (D-277): "[sv-se] the caption".
+        const caption =
+          /^Translate this meeting caption into .*\(([^)]+)\)\.\n<caption>\n([\s\S]*)\n<\/caption>$/.exec(
+            prompt,
+          );
+        if (caption) return `[${caption[1]}] ${caption[2]}`;
         return /return <CURSOR>/.test(prompt) ? "total;" : "// suggested by the fake engine";
       },
       close: () => {},

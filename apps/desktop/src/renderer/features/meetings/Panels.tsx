@@ -97,6 +97,10 @@ export function TranscriptPanel({
   const following = useRef(true);
   const previous = useRef<string | undefined>(undefined);
   const lastCaption = record.captions.at(-1);
+  // Claude translates (D-277): each line keeps a second line for its original, so nothing moves when
+  // the translation comes in.
+  const translating = Boolean(record.aiTranslation);
+  const aiTranslated = translating || record.captions.some((c) => c.translatedBy === "ai");
   // biome-ignore lint/correctness/useExhaustiveDependencies: follow new and revised captions.
   useEffect(() => {
     if (previous.current !== record.id) following.current = true;
@@ -106,7 +110,16 @@ export function TranscriptPanel({
   }, [record.id, lastCaption?.id, lastCaption?.text]);
   return (
     <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="Transcript">
-      <PanelHeader title="Transcript" detail={`${record.captions.length} captions`} menu={menu}>
+      <PanelHeader
+        title="Transcript"
+        detail={
+          record.translationError ??
+          (aiTranslated
+            ? `${record.captions.length} captions · AI translation, may be inaccurate`
+            : `${record.captions.length} captions`)
+        }
+        menu={menu}
+      >
         {actions}
       </PanelHeader>
       <div
@@ -161,11 +174,17 @@ export function TranscriptPanel({
                         >
                           {c.translated ?? c.text}
                         </p>
-                        {/* What was said, under its translation (D-260). */}
-                        {c.translated && (
+                        {/* What was said, under its translation (D-260); its space is kept while Claude translates. */}
+                        {c.translated ? (
                           <p className="whitespace-pre-wrap text-xs leading-relaxed text-hint" lang="">
                             {c.text}
                           </p>
+                        ) : (
+                          translating && (
+                            <p aria-hidden className="text-xs leading-relaxed text-hint">
+                              {c.final ? "Translating…" : " "}
+                            </p>
+                          )
                         )}
                       </div>
                     ))}

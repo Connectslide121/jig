@@ -17,6 +17,7 @@ const caption = z.object({
   final: z.boolean(),
   translated: z.string().optional(),
   translatedLanguage: z.string().optional(),
+  translatedBy: z.enum(["teams", "ai"]).optional(),
 });
 const action = z.object({
   id: z.string(),
@@ -59,6 +60,8 @@ const record = z.object({
       }),
     )
     .optional(),
+  aiTranslation: z.string().optional(),
+  translationError: z.string().optional(),
 });
 const schema = z.object({
   settings: z
@@ -236,6 +239,20 @@ export class MeetingStore {
       const r = this.data.records.find((r) => r.id === id);
       if (!r) throw new Error("Meeting not found");
       fn(r);
+    });
+  }
+  /**
+   * Claude's translation of a caption (D-277): kept only while the caption still says `source`
+   * (Teams may still revise it) and translation into `language` is still on.
+   */
+  translated(id: string, captionId: string, source: string, text: string, language: string): Promise<void> {
+    return this.update(id, (r) => {
+      const c = r.captions.find((c) => c.id === captionId);
+      if (!c || c.text !== source || r.aiTranslation !== language) return;
+      c.translated = text;
+      c.translatedLanguage = language;
+      c.translatedBy = "ai";
+      r.translationError = undefined;
     });
   }
   caption(id: string, value: MeetingCaption): Promise<void> {

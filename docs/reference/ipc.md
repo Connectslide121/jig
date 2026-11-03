@@ -280,6 +280,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token; owned room sender only |
+| meetings.aiTranslation | Claude translates the meeting's finished captions into `language` (`""` stops), when Teams can't (no Teams Premium; D-277); needs `meetings.aiTranslation` on; room only |
 | meetings.captionLanguage | The language live captions are shown in (`""` = as spoken), remembered; Teams translates (D-260); room only |
 | meetings.chat | Room only: reads the active meeting's or call's Teams chat (Graph Chat.Read) into its record; `{state: ok/consent/unavailable, error?}` (D-270) |
 | meetings.chatSend | Room only: writes in that chat as you (Graph ChatMessage.Send) |

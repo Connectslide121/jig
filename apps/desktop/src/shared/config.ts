@@ -136,6 +136,18 @@ export const ConfigSchema = z.object({
       workSound: z.boolean().default(true),
     })
     .prefault({}),
+  /** Teams meetings in Jig (D-217). */
+  meetings: z
+    .object({
+      /**
+       * When Teams can't translate captions (it needs Teams Premium), Claude translates each finished
+       * caption into the language you pick (D-277). Only while you have picked one.
+       */
+      aiTranslation: z.boolean().default(true),
+      /** The model that translates captions (a fast one: lines come every few seconds). */
+      translationModel: z.string().max(100).default("haiku"),
+    })
+    .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */
   chatList: z
     .object({
@@ -249,6 +261,8 @@ export const PROTECTED_SETTINGS = [
   "engine.allowApiKey",
   "editor.claudeCompletion",
   "editor.claudeCompletionModel",
+  "meetings.aiTranslation",
+  "meetings.translationModel",
   "terminal.shell",
   "updates",
   "addonGallery",

@@ -54,6 +54,18 @@ describe("meeting source material", () => {
     expect(mergeCaption(final, caption("one", "Review"))).toEqual(final);
     expect(mergeCaption(final, caption("two", "Review the API", true))).toHaveLength(2);
   });
+  it("keeps Claude's translation while the caption's text stays the same", () => {
+    const translated = {
+      ...caption("one", "Review the API", true),
+      translated: "Granska API:et",
+      translatedLanguage: "sv-se",
+      translatedBy: "ai" as const,
+    };
+    expect(mergeCaption([translated], caption("one", "Review the API", true))[0]).toEqual(translated);
+    expect(
+      mergeCaption([translated], caption("one", "Review the new API", true))[0]?.translated,
+    ).toBeUndefined();
+  });
   it("orders out-of-order captions without deduplicating repeated utterances", () => {
     const late = { ...caption("two", "Yes"), timestamp: "2026-01-01T12:01:00.000Z" };
     expect(mergeCaption([late], caption("one", "Yes")).map((c) => c.id)).toEqual(["one", "two"]);

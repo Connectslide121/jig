@@ -73,6 +73,8 @@ A new state file is documented here in the same commit that adds it.
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
 | `chat.overview` | `true` | the small overview card at the top right of each chat: turns, tool calls, files changed, commands, skills, subagents, add-ons, MCP calls, tokens; **Show details** opens the full breakdown in a modal (D-184). The chart button in the chat's top bar turns it on or off |
 | `chat.view` | `"compact"` | how chats show Claude's work: `compact` folds each run of steps (commands, reads, edits, thinking) into one line you can open; `detailed` shows every step as its card (D-159). The switch is in each chat's top bar |
+| `meetings.aiTranslation` | `true` | when Teams can't translate live captions (Teams Premium), Claude translates each finished caption into the language picked in the meeting (D-277); protected |
+| `meetings.translationModel` | `"haiku"` | the model that translates captions; protected |
 | `chatList.view` | `"project"` | how the Chats list groups chats: `project` (a group per project, then "No project"), `status` (Pinned, Needs you, Working, Error, Idle), `recent` (Pinned, Today, Yesterday, Last 7 days, Older) or `all` (one list). The switch is in the Chats header |
 | `chatList.pinnedOrder` | `[]` | ids of pinned chats in the order you dragged them; pinned chats not listed follow, newest first |
 | `editor.wordWrap` | `false` | long lines wrap in the file editor (Preview), continuation rows keep the line's indentation |

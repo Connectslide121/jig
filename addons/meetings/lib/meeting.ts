@@ -16,12 +16,24 @@ export function meetingLink(value: string): string {
   return url.href;
 }
 
-/** Stable ids replace partial results; late partials cannot overwrite a final caption. */
+/**
+ * Stable ids replace partial results; late partials cannot overwrite a final caption. Claude's
+ * translation (D-277) stays while the caption's text is the same.
+ */
 export function mergeCaption(captions: MeetingCaption[], incoming: MeetingCaption): MeetingCaption[] {
   const index = captions.findIndex((c) => c.id === incoming.id);
   if (index < 0) return [...captions, incoming].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  if (captions[index]!.final && !incoming.final) return captions;
-  return captions.map((c, i) => (i === index ? incoming : c));
+  const current = captions[index]!;
+  if (current.final && !incoming.final) return captions;
+  const keep =
+    current.translatedBy === "ai" && !incoming.translated && current.text === incoming.text
+      ? {
+          translated: current.translated,
+          translatedLanguage: current.translatedLanguage,
+          translatedBy: current.translatedBy,
+        }
+      : {};
+  return captions.map((c, i) => (i === index ? { ...incoming, ...keep } : c));
 }
 
 export function transcriptText(record: MeetingRecord, through?: string): string {

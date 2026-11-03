@@ -3303,6 +3303,28 @@ Claude, on my own.
   microphone is opened at once; what you were saying on the old one is dropped.
 - Escape in a dialog opened over the talking window closes only that dialog.
 
+## D-277: Claude translates live captions when Teams can't
+
+**Who:** Jon: translated captions only work with Teams Premium, which he and his team don't have;
+use a small model (Haiku) instead. Details: Claude, on my own.
+
+- Amends D-260. The meeting window still asks Teams first (a language Teams lists, Teams Premium).
+  When Teams refuses or doesn't offer the language, Teams shows captions as spoken and the window
+  calls `meetings.aiTranslation`; main translates each *final* caption through one warm
+  `completer` (no tools, `meetings.translationModel`, default Haiku), in order, and stores it as
+  `translated` with `translatedBy: "ai"`. Partial captions aren't translated (cost, flicker).
+- It runs only while a language is picked in a live meeting: it stops when the language is cleared,
+  the meeting ends, or Jig closes. That is the second exception to "nothing calls an AI in the
+  background" (AGENTS.md). Choosing a language is the opt-in, so `meetings.aiTranslation` defaults
+  to on (the plan said off; changed so it works without a trip to Settings); both settings are
+  protected because they spend the user's plan.
+- A translation is kept only while the caption's text is unchanged; a revised caption is translated
+  again. Failures are shown once in the Transcript header and captions stay as spoken.
+- Disclosure and layout: the header says "AI translation, may be inaccurate"; while Claude translates
+  every line keeps a second line ("Translating…", then the original), so nothing moves when a
+  translation arrives.
+- The picker offers Teams' languages plus `AI_CAPTION_LANGUAGES` (shared/meetings.ts).
+
 ## D-277: "Hey Jig" voice commands run on this computer, from one command list
 
 **Who:** Jon: control Jig by voice like Siri ("hey Jig, open a new chat … in speech mode"), from

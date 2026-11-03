@@ -66,6 +66,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.captionLanguage": z
     .object({ language: z.string().regex(/^([a-z]{2,3}(-[a-z0-9]{2,8})*)?$/i) })
     .strict(),
+  "meetings.aiTranslation": z
+    .object({ id: z.uuid(), language: z.string().regex(/^([a-z]{2,3}(-[a-z0-9]{2,8})*)?$/i) })
+    .strict(),
   "meetings.configure": z
     .object({ tenantId: z.uuid(), clientId: z.uuid(), endpoint: z.url().max(1000) })
     .strict(),
@@ -128,6 +131,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
           final: z.boolean(),
           translated: z.string().max(20_000).optional(),
           translatedLanguage: z.string().max(40).optional(),
+          // Only Teams' translations come from the meeting window; Claude's are made in main.
+          translatedBy: z.literal("teams").optional(),
         })
         .strict(),
     })

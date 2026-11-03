@@ -331,6 +331,14 @@ test("Meetings: live captions in another language, with what was said under them
     // The choice is remembered for the next meeting.
     const overview = (await hostCall(room, "meetings.overview")) as { value: MeetingOverview };
     expect(overview.value.captionLanguage).toBe("sv-se");
+    // A language Teams doesn't offer: Claude translates the finished captions (D-277), labelled as AI.
+    await room.getByTestId("caption-language").selectOption("fr-fr");
+    await expect(transcript).toContainText("[fr-fr] ", { timeout: 15_000 });
+    await expect(room.getByText(/AI translation, may be inaccurate/)).toBeVisible();
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/translated-ai.png",
+    });
     // Leave, so Jig closes without asking about the running meeting.
     await room.getByRole("button", { name: "Leave", exact: true }).click();
     await expect(room.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);

@@ -4,6 +4,28 @@ export interface MeetingSettings {
   clientId: string;
   endpoint: string;
 }
+/**
+ * Languages Claude can translate captions into when Teams can't (D-277); offered with the ones Teams
+ * lists for the call.
+ */
+export const AI_CAPTION_LANGUAGES = [
+  "en-us",
+  "sv-se",
+  "es-es",
+  "eu-es",
+  "ca-es",
+  "fr-fr",
+  "de-de",
+  "it-it",
+  "pt-pt",
+  "nl-nl",
+  "da-dk",
+  "nb-no",
+  "fi-fi",
+  "pl-pl",
+  "ja-jp",
+  "zh-cn",
+];
 export interface MeetingCaption {
   id: string;
   speakerId: string;
@@ -14,6 +36,8 @@ export interface MeetingCaption {
   /** The caption in the language you chose (Teams' translated captions), when it isn't the spoken one. */
   translated?: string;
   translatedLanguage?: string;
+  /** Who translated it: Teams (Premium) or Claude (D-277). */
+  translatedBy?: "teams" | "ai";
 }
 export interface MeetingAction {
   id: string;
@@ -41,6 +65,10 @@ export interface MeetingRecord {
   call?: MeetingCall;
   /** The meeting's or call's Teams chat, read while you were in it (D-270). */
   chat?: import("./meetingChat").MeetingChatMessage[];
+  /** The language Claude translates this meeting's captions into, while it does (D-277). */
+  aiTranslation?: string;
+  /** Why Claude's last translation failed (cleared when one works again or the language changes). */
+  translationError?: string;
 }
 /** Who a Teams call was with: their Microsoft Entra object id, so Jig can call them back. */
 export interface MeetingCall {
