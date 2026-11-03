@@ -6,7 +6,8 @@
  * records the result in docs/status.md. Stops at the first failure; run it again to continue (a
  * release commit already made is reused, a draft already uploaded is checked, not recreated).
  * Run with: npm run release (`npm run release -- --check` checks the plan and the repository only;
- * `-- --skip-tests` skips check and e2e when they already passed on this source).
+ * `-- --skip-tests` skips check and e2e when they already passed on this source). The e2e suite is
+ * skipped on its own when `npm run e2e` last passed in full on this source (D-272).
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -26,6 +27,8 @@ import { readVersions, setVersion } from "../.agents/skills/jig-release/scripts/
 import {
   checkBump,
   compareVersions,
+  E2E_STAMP,
+  e2eStillPasses,
   parseLatestYml,
   parsePlan,
   preparedParagraph,
@@ -76,6 +79,20 @@ function hash(file: string, algorithm: "sha256" | "sha512", encoding: "hex" | "b
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * The commit the whole e2e suite last passed on (`npm run e2e` records it), when nothing but the
+ * release's own files changed since; otherwise undefined and the suite runs.
+ */
+function e2ePassedOn(): string | undefined {
+  try {
+    const { sha } = JSON.parse(readFileSync(join(root, E2E_STAMP), "utf8")) as { sha?: string };
+    if (!sha || !/^[0-9a-f]{40}$/.test(sha)) return undefined;
+    return e2eStillPasses(read("git", ["diff", "--name-only", sha, "HEAD"]).split("\n")) ? sha : undefined;
+  } catch {
+    return undefined;
+  }
+}
 const gitClean = () => read("git", ["status", "--porcelain"]) === "";
 
 // ── The plan ──────────────────────────────────────────────────────────────
@@ -168,7 +185,10 @@ if (process.argv.includes("--skip-tests")) {
   step("npm run check");
   run("npm", ["run", "check"]);
   step("The whole e2e suite");
-  run("npm", ["run", "e2e"]);
+  const passed = e2ePassedOn();
+  if (passed)
+    console.log(`Already passed on ${passed.slice(0, 7)}, and only the version changed since: skipped.`);
+  else run("npm", ["run", "e2e"]);
 }
 step("Building and packaging the installer");
 run("npm", ["run", "build"]);

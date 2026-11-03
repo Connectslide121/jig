@@ -47,7 +47,7 @@ npm start              # run the production build
 npm run verify         # typecheck + lint + design-token check (no tests) — run before every commit
 npm run check          # verify + unit tests — when releasing
 npm run e2e:changed    # the e2e specs a change needs — only when Jon asks
-npm run e2e            # the whole e2e suite in parallel (~4-5 min): when releasing (Linux: xvfb-run)
+npm run e2e            # the whole e2e suite in parallel (~4-5 min): when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory

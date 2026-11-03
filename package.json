@@ -22,7 +22,7 @@
     "check:tokens": "node scripts/check-tokens.ts",
     "check": "npm run typecheck && npm run lint && npm run test && npm run check:tokens",
     "verify": "npm run typecheck && npm run lint && npm run check:tokens",
-    "e2e": "node scripts/build-if-stale.ts && playwright test",
+    "e2e": "node scripts/e2e.ts",
     "e2e:changed": "node scripts/e2e-changed.ts",
     "release": "node scripts/release.ts",
     "dist": "npm run build && npm run dist --workspace @jig/desktop"

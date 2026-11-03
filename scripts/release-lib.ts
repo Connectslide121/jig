@@ -129,3 +129,22 @@ export function withStatus(status: string, version: string, paragraph: string): 
   lines.splice(newest, 0, ...paragraph.split("\n"), "");
   return lines.join("\n");
 }
+
+/** Where `npm run e2e` records the commit the whole suite last passed on (ignored by git, D-272). */
+export const E2E_STAMP = ".jig-e2e-passed.json";
+
+/** What the release commit itself changes: the version and the status line, nothing the tests run. */
+const RELEASE_FILES = new Set([
+  "package.json",
+  "apps/desktop/package.json",
+  "package-lock.json",
+  "docs/status.md",
+]);
+
+/**
+ * Whether the e2e suite that passed on an earlier commit still stands for this one: true when the
+ * files changed since then (`git diff --name-only <passed> HEAD`) are only the release's own.
+ */
+export function e2eStillPasses(changed: string[]): boolean {
+  return changed.every((file) => RELEASE_FILES.has(file.trim()) || !file.trim());
+}

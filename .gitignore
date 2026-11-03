@@ -7,6 +7,7 @@ release/
 test-results/
 playwright-report/
 .jig-test-home*/
+.jig-e2e-passed.json
 .DS_Store
 .azure-local/
 .tmp/browser-screenshot/

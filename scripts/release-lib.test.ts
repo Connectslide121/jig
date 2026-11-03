@@ -3,6 +3,7 @@ import {
   bumped,
   checkBump,
   compareVersions,
+  e2eStillPasses,
   parseLatestYml,
   parsePlan,
   preparedParagraph,
@@ -108,5 +109,24 @@ describe("withStatus", () => {
 
   it("appends when there is no release yet", () => {
     expect(withStatus("# Status\n", "0.2.0", "Jig 0.2.0 x")).toBe("# Status\n\nJig 0.2.0 x\n");
+  });
+});
+
+describe("skipping an e2e suite that already passed (D-272)", () => {
+  it("holds when only the version and the status line changed", () => {
+    expect(e2eStillPasses([])).toBe(true);
+    expect(
+      e2eStillPasses([
+        "package.json",
+        "apps/desktop/package.json",
+        "package-lock.json",
+        "docs/status.md",
+        "",
+      ]),
+    ).toBe(true);
+  });
+  it("doesn't hold once anything else changed", () => {
+    expect(e2eStillPasses(["package.json", "addons/tasks/ui.tsx"])).toBe(false);
+    expect(e2eStillPasses(["docs/decisions.md"])).toBe(false);
   });
 });

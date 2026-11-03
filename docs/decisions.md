@@ -3238,3 +3238,14 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   their own summary row.
 - The queue and history tables hide optional columns in narrow containers (Started, Notes,
   Follow-ups, Files, Done/Failed below 48rem; Time and Cost below 36rem); task and status always stay.
+
+## D-272: The release skips an e2e suite that already passed on the same source
+
+**Who:** Jon: releases take too long; skip what's already tested.
+
+- `npm run e2e` (`scripts/e2e.ts`) records the commit in `.jig-e2e-passed.json` (ignored) after a
+  passing run of the whole suite on a clean checkout; a filtered or failing run, or one on
+  uncommitted changes, records nothing (and a full run first clears the old record).
+- The release still runs `npm run check` and the packaged-app test, and runs the e2e suite unless the
+  recorded commit differs from the release commit only in the version files and docs/status.md.
+  Any other change, docs included, runs it again.

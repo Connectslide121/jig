@@ -26,7 +26,7 @@ the notes. (Jon starts it with one click: the **Release Jig** workflow in Jig's 
    out) is the user's to resolve; never stash or commit someone else's work to get past it.
 4. `npm run release` (15–25 minutes; in Jig run it with `jig_terminal_run` so the user can watch).
    It bumps and commits the version with a "being prepared" status line, runs `npm run check`, the
-   whole e2e suite, builds and packages, verifies the installer/feed/unpacked app, runs the packaged
+   whole e2e suite (skipped when `npm run e2e` already passed in full on this source, D-272), builds and packages, verifies the installer/feed/unpacked app, runs the packaged
    test, writes SHA256SUMS, tags and pushes atomically, uploads a draft, verifies the downloaded
    installer, publishes it as latest, checks the unauthenticated latest-release API, feed and
    installer, records the publication in docs/status.md and pushes that commit.
