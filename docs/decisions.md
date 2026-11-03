@@ -3200,3 +3200,12 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   the meeting and that nothing is queued or started until you review the actions in Meetings and send
   them to the task queue, and has one button, **Save notes and actions for review**. "Keep planning"
   reads "Change the notes". Other chats' plan cards are unchanged.
+
+## D-269: Meetings that already took place stay in the calendar, faded and joinable
+
+**Who:** Jon: past meetings disappeared; he wants them faded but still joinable.
+
+- The calendar is read from Monday of this week (it started today at 00:00), so the whole week shows.
+- An ended meeting stays in the week view and, for today, under "Earlier today" at the top of the
+  agenda (now headed "Agenda"): faded (full on hover/focus), with "Ended at … · you can still join";
+  a click opens the usual join dialog. Next up still shows the next meeting that hasn't ended.

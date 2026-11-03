@@ -442,6 +442,15 @@ export async function startMeetings(): Promise<void> {
     const now = Date.now();
     const link = "https://teams.microsoft.com/l/meetup-join/test";
     return [
+      // Already over: shown faded, still joinable.
+      {
+        id: "standup",
+        title: "Morning stand-up",
+        start: new Date(now - 90 * 60_000).toISOString(),
+        end: new Date(now - 75 * 60_000).toISOString(),
+        organizer: "Sam",
+        joinUrl: link,
+      },
       {
         id: "weekly",
         title: "Weekly products",

@@ -69,7 +69,11 @@ export function Lobby({
 }) {
   const now = useMinute();
   const [weekOffset, setWeekOffset] = useState(0);
-  const joinable = (events ?? []).filter((e) => new Date(e.end).getTime() > now || ongoing(e, now));
+  const ended = (e: MeetingEvent) => new Date(e.end).getTime() <= now;
+  const joinable = (events ?? []).filter((e) => !ended(e));
+  // Meetings that already took place today stay, faded, and can still be joined.
+  const today = new Date(now).toDateString();
+  const earlier = (events ?? []).filter((e) => ended(e) && new Date(e.start).toDateString() === today);
   const [next, ...later] = joinable;
   const days = new Map<string, MeetingEvent[]>();
   for (const event of later) {
@@ -123,7 +127,7 @@ export function Lobby({
           <section className="space-y-4">
             <div className="flex h-8 items-center gap-2">
               <h2 className="text-xs font-semibold tracking-wide text-hint uppercase">
-                {view === "agenda" ? "Later" : weekTitle(weekOffset)}
+                {view === "agenda" ? "Agenda" : weekTitle(weekOffset)}
               </h2>
               {view === "week" && (
                 <span className="flex items-center">
@@ -154,21 +158,23 @@ export function Lobby({
               />
             </div>
             {view === "week" ? (
-              <Week events={joinable} offset={weekOffset} now={now} onJoin={onJoin} />
-            ) : !days.size ? (
+              <Week events={events} offset={weekOffset} now={now} onJoin={onJoin} />
+            ) : !days.size && !earlier.length ? (
               <p className="text-sm text-muted">Nothing else in the next 14 days.</p>
             ) : (
               <div className="space-y-6">
-                {[...days].map(([label, list]) => (
-                  <div key={label} className="space-y-3">
-                    <SectionHeading title={label} />
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
-                      {list.map((event) => (
-                        <EventCard key={event.id} event={event} now={now} onJoin={onJoin} />
-                      ))}
+                {[...(earlier.length ? [["Earlier today", earlier] as const] : []), ...days].map(
+                  ([label, list]) => (
+                    <div key={label} className="space-y-3">
+                      <SectionHeading title={label} />
+                      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
+                        {list.map((event) => (
+                          <EventCard key={event.id} event={event} now={now} onJoin={onJoin} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             )}
           </section>
@@ -305,9 +311,15 @@ function EventCard({
     <button
       type="button"
       aria-label={`Join ${event.title}`}
+      title={pastTitle(event, now)}
       disabled={!event.joinUrl}
       onClick={() => onJoin(event)}
-      className={cn(card, "h-32 flex-col justify-between p-4", ongoing(event, now) && "border-accent")}
+      className={cn(
+        card,
+        "h-32 flex-col justify-between p-4",
+        ongoing(event, now) && "border-accent",
+        isPast(event, now) && "opacity-55 hover:opacity-100 focus-visible:opacity-100",
+      )}
     >
       <div className="flex w-full items-center gap-2 text-sm tabular-nums">
         <span className="font-semibold">{clock(event.start)}</span>
@@ -427,7 +439,12 @@ function weekTitle(offset: number): string {
   return weekStart(offset).toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
-/** Monday to Sunday side by side; today is marked, past days are dimmed. */
+/** Ended (by its end time): shown faded, still joinable (Teams keeps a meeting's link open). */
+const isPast = (e: MeetingEvent, now: number) => new Date(e.end).getTime() <= now;
+const pastTitle = (e: MeetingEvent, now: number) =>
+  isPast(e, now) ? `Ended at ${clock(e.end)} · you can still join` : undefined;
+
+/** Monday to Sunday side by side; today is marked; past days and ended meetings are faded, still joinable. */
 function Week({
   events,
   offset,
@@ -459,10 +476,9 @@ function Week({
             className={cn(
               "flex min-h-72 min-w-0 flex-col gap-2 rounded-xl border p-2",
               isToday ? "border-accent bg-surface" : "border-line",
-              past && "opacity-50",
             )}
           >
-            <div className="flex h-7 items-baseline gap-1.5 px-1">
+            <div className={cn("flex h-7 items-baseline gap-1.5 px-1", past && "opacity-50")}>
               <span className={cn("text-xs font-semibold uppercase", isToday ? "text-accent" : "text-hint")}>
                 {d.toLocaleDateString([], { weekday: "short" })}
               </span>
@@ -477,12 +493,14 @@ function Week({
                 type="button"
                 key={event.id}
                 aria-label={`Join ${event.title}`}
+                title={pastTitle(event, now)}
                 disabled={!event.joinUrl}
                 onClick={() => onJoin(event)}
                 className={cn(
                   card,
                   "h-16 flex-col justify-center px-2.5",
                   ongoing(event, now) && "border-accent",
+                  isPast(event, now) && "opacity-55 hover:opacity-100 focus-visible:opacity-100",
                 )}
               >
                 <span className="text-xs text-muted tabular-nums">

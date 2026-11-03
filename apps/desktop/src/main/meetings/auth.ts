@@ -241,9 +241,12 @@ export class MeetingAuth {
   }
   async calendar(): Promise<MeetingEvent[]> {
     const token = await this.access(["https://graph.microsoft.com/Calendars.ReadBasic"], true);
-    const from = new Date();
-    from.setHours(0, 0, 0, 0);
-    const until = new Date(from);
+    // From Monday of this week, so meetings that already took place stay in the week (joinable again).
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const from = new Date(today);
+    from.setDate(from.getDate() - ((from.getDay() + 6) % 7));
+    const until = new Date(today);
     until.setDate(until.getDate() + 14);
     const query = new URLSearchParams({
       startDateTime: from.toISOString(),
