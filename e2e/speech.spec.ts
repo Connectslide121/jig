@@ -170,3 +170,38 @@ test("speech: bye ends talking, not the chat or Claude's work", async ({ page, j
   await expect.poll(async () => (await meta())?.permissionMode).toBe("acceptEdits");
   expect((await meta())?.voice).toBeFalsy();
 });
+
+test("speech: microphone, speaker and noise filter in Settings and while talking", async ({
+  page,
+  jigHome,
+}) => {
+  await page.keyboard.press("Control+,");
+  await page.getByTestId("settings-nav-speech").click();
+  // Chromium's fake devices (tests) are listed after "System default".
+  const mic = page.getByTestId("speech-input-device");
+  await expect(mic.locator("option").first()).toHaveText("System default");
+  await expect.poll(() => mic.locator("option").count()).toBeGreaterThan(1);
+  await expect(page.getByTestId("speech-output-device").locator("option").first()).toHaveText(
+    "System default",
+  );
+  await expect(page.getByTestId("settings-speech-noise")).toHaveValue("strong");
+  await page.getByTestId("settings-speech-noise").selectOption("light");
+  const device = await mic.locator("option").nth(1).getAttribute("value");
+  await mic.selectOption(device!);
+  await expect
+    .poll(async () => ((await hostCall(page, "config.get")) as { value: { speech: unknown } }).value.speech)
+    .toMatchObject({ noiseFilter: "light", inputDevice: device });
+  await page.keyboard.press("Escape");
+  const { dialog } = await talkingChat(page, jigHome);
+  await dialog.getByTestId("voice-devices").click();
+  const devices = page.getByTestId("audio-devices");
+  await expect(devices.getByTestId("speech-input-device")).toHaveValue(device!);
+  await devices.getByTestId("speech-input-device").selectOption("");
+  await page.keyboard.press("Escape");
+  await expect(devices).toBeHidden();
+  // Escape closed only the devices dialog: talking goes on.
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(async () => ((await hostCall(page, "config.get")) as { value: { speech: unknown } }).value.speech)
+    .toMatchObject({ inputDevice: "" });
+});

@@ -3288,3 +3288,17 @@ and came through as "you". Choices of detector and thresholds: Claude, on my own
   stays on, and the problem was deciding what is speech, which the detector does.
 - A turn you start while the previous one is still being transcribed and sent waits for it (its
   audio is kept); before, both wrote into the message box at once and left words behind.
+
+## D-276: Speech picks its microphone and speaker
+
+**Who:** Jon: "we should have a device selector in the speech window; I can't switch". Layout:
+Claude, on my own.
+
+- `speech.inputDevice` / `speech.outputDevice` hold media device ids ("" = the system's default).
+  The microphone is asked for with `deviceId: { exact }`; when it is unplugged, the default listens
+  and a toast says so. The natural voice and the talking sounds route their AudioContext with
+  `setSinkId`; system voices (`speechSynthesis`) can't be routed and the row says so.
+- The same rows are in Settings → Speech (first section) and in an Audio devices dialog from the
+  headphones button in the talking window, so devices change without leaving the conversation. A new
+  microphone is opened at once; what you were saying on the old one is dropped.
+- Escape in a dialog opened over the talking window closes only that dialog.

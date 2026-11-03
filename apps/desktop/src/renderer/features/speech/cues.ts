@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { SessionStatus } from "../../../shared/engine";
 import { useConfig } from "../../stores/config";
 import { useSessions } from "../sessions/store";
+import { routeToSpeaker } from "./devices";
 
 /**
  * Sounds that say what Claude is doing (D-210): while you talk, a soft repeating motif while it
@@ -38,6 +39,7 @@ let tickIndex = 0;
 function audio(): AudioContext | undefined {
   try {
     context ??= new AudioContext();
+    routeToSpeaker(context);
     if (context.state === "suspended") void context.resume();
     return context;
   } catch {

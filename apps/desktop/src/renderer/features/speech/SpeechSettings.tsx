@@ -17,6 +17,7 @@ import { Button, confirmDialog, Select, Spinner, Switch } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { SettingRow, SettingsSection } from "../settings/parts";
+import { AudioDeviceRows } from "./AudioDevicesDialog";
 import { DICTATION_SHORTCUT } from "./DictationButton";
 import { hasGpu } from "./engine";
 import { downloadNaturalVoice, resetNaturalVoice, useNaturalVoice } from "./naturalVoice";
@@ -132,6 +133,12 @@ export function SpeechSettings() {
   const naturalOn = s.engine === "natural";
   return (
     <div className="flex flex-col gap-6">
+      <SettingsSection
+        title="Microphone and speaker"
+        description="The devices dictation, talking with Claude and reading aloud use. While talking, the headphones button changes them too."
+      >
+        <AudioDeviceRows />
+      </SettingsSection>
       <SettingsSection
         title="Dictation"
         description={`Click the microphone in a chat's message box (or press ${formatShortcut(DICTATION_SHORTCUT)} there), speak, and click again: what you said appears in the message for you to check and send. Whisper turns speech into text on this computer; the model is downloaded once from Hugging Face.`}

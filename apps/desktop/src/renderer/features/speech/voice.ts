@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ChatItem, PermissionMode } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
+import { useConfig } from "../../stores/config";
 import { notify } from "../../workbench/toasts";
 import { ensureTranscript, useSessions } from "../sessions/store";
 import { followWork, playCue, unfollowWork, WorkCue } from "./cues";
@@ -208,6 +209,7 @@ class Conversation {
   private readonly queue: string[] = [];
   private speaking?: () => void;
   private unsubscribe?: () => void;
+  private unsubscribeConfig?: () => void;
   /** The permission mode before talking put the chat in plan mode (put back when you say bye). */
   private originalMode?: PermissionMode;
   /** The mode Claude works in once you approve the plan. */
@@ -223,7 +225,7 @@ class Conversation {
   constructor(
     private readonly target: string,
     private readonly hooks: VoiceHooks,
-    private readonly capture: Capture | undefined,
+    private capture: Capture | undefined,
     private readonly fake: boolean,
     private readonly pause: number,
     private readonly noiseFilter: "strong" | "light" | "off",
@@ -241,7 +243,15 @@ class Conversation {
       if (meta.permissionMode === "bypassPermissions") this.workMode = meta.permissionMode;
       await call("sessions.setPermissionMode", { id: this.target, mode: "plan" }).catch(() => undefined);
     }
-    if (this.capture) this.capture.onFrame = (frame, end, voice) => this.frame(frame, end, voice);
+    this.listen();
+    // Another microphone chosen while talking (Audio devices): listen to it from now on.
+    let device = useConfig.getState().config?.speech.inputDevice;
+    this.unsubscribeConfig = useConfig.subscribe((s) => {
+      const next = s.config?.speech.inputDevice;
+      if (next === device) return;
+      device = next;
+      void this.switchMicrophone();
+    });
     if (this.fake) window.addEventListener("jig-fake-speech", this.fakeSpeech);
     this.unsubscribe = useSessions.subscribe(() => this.scan());
     this.set("listening");
@@ -256,6 +266,7 @@ class Conversation {
     if (this.stopped) return;
     this.stopped = true;
     this.unsubscribe?.();
+    this.unsubscribeConfig?.();
     this.cue.stop();
     clearInterval(this.fakeVoice);
     window.removeEventListener("jig-fake-speech", this.fakeSpeech);
@@ -280,6 +291,33 @@ class Conversation {
     else if (meta && BUSY.has(meta.status)) followWork(id, restore);
     else restore();
     off();
+  }
+
+  private listen(): void {
+    if (this.capture) this.capture.onFrame = (frame, end, voice) => this.frame(frame, end, voice);
+  }
+
+  /** Opens the newly chosen microphone; what you were saying on the old one is dropped. */
+  private async switchMicrophone(): Promise<void> {
+    if (!this.capture || this.stopped) return;
+    const next = await Capture.open({ detectVoice: this.noiseFilter !== "off" });
+    if (!next) return;
+    if (this.stopped) {
+      next.close();
+      return;
+    }
+    if (this.live) {
+      this.live.cancel();
+      this.live = undefined;
+      this.text("", true);
+    }
+    this.waitingFrom = undefined;
+    this.capture.close();
+    this.capture = next;
+    this.loud = 0;
+    this.lastVoice = 0;
+    this.listen();
+    this.settle(true);
   }
 
   mute(muted: boolean): void {

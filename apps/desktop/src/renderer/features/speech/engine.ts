@@ -4,6 +4,7 @@ import { call, errorMessage } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { confirmDialog } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { inputDevice } from "./devices";
 import {
   cleanSpeech,
   isSilent,
@@ -252,9 +253,24 @@ export class Capture {
   static async open(options: { detectVoice?: boolean } = {}): Promise<Capture | undefined> {
     if (!(await microphoneAllowed())) return undefined;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
+      const audio = {
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+      const device = inputDevice();
+      const stream = await navigator.mediaDevices
+        .getUserMedia({ audio: device ? { ...audio, deviceId: { exact: device } } : audio })
+        .catch((error: unknown) => {
+          // The chosen microphone is unplugged: the system's default listens instead.
+          if (!device || (error as Error).name !== "OverconstrainedError") throw error;
+          notify({
+            title: "Using the default microphone",
+            message: "The chosen microphone isn't connected.",
+          });
+          return navigator.mediaDevices.getUserMedia({ audio });
+        });
       const detector = options.detectVoice ? await VoiceDetector.open() : undefined;
       const capture = new Capture(stream, detector);
       await capture.start();

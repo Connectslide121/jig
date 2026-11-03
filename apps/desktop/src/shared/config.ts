@@ -126,6 +126,10 @@ export const ConfigSchema = z.object({
        * use a voice detector on this computer; `off` goes by loudness alone.
        */
       noiseFilter: z.enum(["strong", "light", "off"]).default("strong"),
+      /** The microphone speech listens to (its device id); empty = the system's default. */
+      inputDevice: z.string().max(200).default(""),
+      /** The speaker the natural voice and talking sounds play on (device id); empty = the system's default. */
+      outputDevice: z.string().max(200).default(""),
       /** Speed of the voice that reads aloud (1 = normal). */
       rate: z.number().min(0.5).max(2).default(1),
       /** Soft sounds while Claude works after you hand it a task by voice, and when it finishes (D-210). */

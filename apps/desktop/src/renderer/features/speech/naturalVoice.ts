@@ -4,6 +4,7 @@ import { call, errorMessage } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { confirmDialog } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { routeToSpeaker } from "./devices";
 import { amplitude, sliceLevels } from "./meter";
 
 /**
@@ -136,6 +137,7 @@ export function playAudio(
 ): Playback {
   context ??= new AudioContext();
   const ctx = context;
+  routeToSpeaker(ctx);
   void ctx.resume();
   const buffer = ctx.createBuffer(1, Math.max(1, audio.length), VOICE_SAMPLE_RATE);
   buffer.getChannelData(0).set(audio);

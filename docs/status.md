@@ -454,6 +454,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   Settings → Speech → Talking with Claude → Ignore background noise: Strongly (default), A little, Off.
   A turn you start while the last one is still being sent now waits for it, so words no longer stay
   in the message box and come back in your next message.
+- Microphone and speaker (D-276): Settings → Speech → Microphone and speaker, and the headphones
+  button in the talking window (Audio devices dialog), choose the microphone dictation and talking
+  listen to and the speaker the natural voice and talking sounds play on. A new microphone is used
+  at once, also mid-conversation; an unplugged one falls back to the system's default.
 - Talking window (D-210, redesigned in D-218): talking opens a wide, calm window over the chat with
   sound waves in the centre (blue: you, from the microphone; accent: Claude, a pulse per spoken
   word) and the conversation under them, fading out upwards as it scrolls (no tabs). While Claude
@@ -960,6 +964,9 @@ Things the cloud build environment couldn't verify:
   Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
   words, corrections); talk with Claude with headphones, then with speakers (the system voice may
   be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
+- **Microphone and speaker (D-276):** e2e uses Chromium's fake devices; untested with a real
+  headset. Try: pick a USB/Bluetooth headset as microphone and speaker, talk (Claude's voice and the
+  working sound come from it), switch microphone in the talking window mid-conversation, unplug it.
 - **Ignoring background noise (D-275):** the detector was checked on recorded speech (voice ≈ 1.0,
   silence and noise ≤ 0.16 per 128 ms frame), not yet with a live microphone. Try: talk with Claude
   while running water, typing or clapping (no turn starts, Claude isn't interrupted), then speak

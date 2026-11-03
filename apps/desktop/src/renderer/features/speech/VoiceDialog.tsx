@@ -1,8 +1,9 @@
-import { ListTodo, Mic, MicOff, PhoneOff, Play, ScrollText, VolumeX, X } from "lucide-react";
+import { Headphones, ListTodo, Mic, MicOff, PhoneOff, Play, ScrollText, VolumeX, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button, cn, IconButton, Markdown, usePresence } from "../../ui";
 import { useSessions } from "../sessions/store";
+import { AudioDevicesDialog, openAudioDevices } from "./AudioDevicesDialog";
 import type { VoicePlan } from "./replies";
 import { goAhead, hushVoice, setVoiceMuted, stopVoice, useVoice, type VoicePhase } from "./voice";
 import { Waves } from "./Waves";
@@ -51,7 +52,11 @@ export function VoiceDialogHost() {
         data-testid="voice-dialog"
         data-phase={phase}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
+          // A dialog opened from here (Audio devices) closes on its own Escape; talking goes on.
+          if (
+            e.key === "Escape" &&
+            !document.querySelector('[role="dialog"][aria-modal="true"]:not([data-testid="voice-dialog"])')
+          ) {
             e.stopPropagation();
             stopVoice();
           }
@@ -248,6 +253,13 @@ function Controls() {
         data-testid="voice-hush"
         onClick={hushVoice}
       />
+      <IconButton
+        icon={Headphones}
+        label="Audio devices: microphone and speaker"
+        data-testid="voice-devices"
+        onClick={openAudioDevices}
+      />
+      <AudioDevicesDialog />
       <span className="mx-2 h-5 w-px shrink-0 bg-line" />
       <Button variant="ghost" icon={PhoneOff} data-testid="voice-end" onClick={stopVoice}>
         End talking

@@ -14,6 +14,7 @@ import {
   ListChecks,
   type LucideIcon,
   MessageSquare,
+  Mic,
   Palette,
   Puzzle,
   Settings2,
@@ -41,6 +42,7 @@ import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "../builder/BuildDialog";
 import { openGallery } from "../gallery";
 import { newSession } from "../sessions/actions";
+import { VoiceCommandsList } from "../speech/commands/VoiceCommandsList";
 import { BUILD_EXAMPLES, CONFIGURE_EXAMPLES, CONFIGURE_TOOLS, SLOT_EXAMPLES } from "./content";
 import browserShot from "./shots/browser.jpg";
 import build from "./shots/build.jpg";
@@ -83,6 +85,7 @@ const SECTIONS: Array<{ id: string; title: string; icon: LucideIcon }> = [
   { id: "knowledge", title: "What Jig knows about me", icon: UserRound },
   { id: "usage", title: "Plan usage", icon: Gauge },
   { id: "shortcuts", title: "Keyboard shortcuts", icon: Keyboard },
+  { id: "voice", title: "Voice commands", icon: Mic },
 ];
 
 /** Which slots a manifest uses (a context menu counts for its own slot only). */
@@ -949,6 +952,15 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             lead="Actions are in the top-bar menus and search. Click one to run it."
           >
             <Shortcuts />
+          </Section>
+          <Section
+            id="voice"
+            title="Voice commands"
+            lead={
+              'Say "Hey Jig" and a command, also while Jig is minimized or behind other windows. Jig hears and runs these on this computer, without Claude and without using your plan; only "ask Claude" starts a chat. Turn it on in Settings → Speech.'
+            }
+          >
+            <VoiceCommandsList />
           </Section>
         </div>
       </div>
