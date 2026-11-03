@@ -140,7 +140,8 @@ test("Repos: Refresh rescans removed repos and worktrees without restarting", as
   await expect(view.getByTestId("repo-workspace/review-worktree")).toBeVisible({ timeout: 15000 });
   await expect(view.getByTestId("repo-workspace/removed")).toBeVisible();
   git(source, "worktree", "remove", worktree);
-  await rm(removed, { recursive: true, force: true });
+  // Windows may still hold the folder open for a moment (Jig watches it): retry the delete.
+  await rm(removed, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   // The cached inventory still mentions removed paths before manual Refresh.
   const stale = (await hostCall(page, "addons.call", { id: "repos", method: "overview" })) as {
     value: Array<{ path: string; error?: string }>;
