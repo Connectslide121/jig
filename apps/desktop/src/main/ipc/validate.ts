@@ -6,6 +6,7 @@ import { LinkGroupSchema } from "../../shared/links";
 import { TEAMS_CHAT_ID } from "../../shared/meetingChat";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PROJECT_COLORS } from "../../shared/projects";
+import { AI_PROVIDERS } from "../../shared/providers";
 import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
 
 /**
@@ -239,6 +240,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     replace: z.boolean().optional(),
   }),
   "worktrees.start": z.object({ repo: path, name: z.string().max(200), projectId: id.optional() }),
+  "ai.models": z.object({ provider: z.enum(AI_PROVIDERS) }),
   "ai.ask": z.object({
     addonId,
     prompt: z.string().max(200_000),

@@ -31,6 +31,16 @@ function CheckRow({ check }: { check: SetupCheck }) {
             Sign in to Claude Code…
           </Button>
         )}
+        {check.signIn && (
+          <Button
+            size="sm"
+            icon={LogIn}
+            onClick={() => runAction(check.signIn!)}
+            data-testid={`setup-${check.id}-signin`}
+          >
+            Sign in…
+          </Button>
+        )}
         {!check.ok && check.url && (
           <Button
             size="sm"
@@ -92,6 +102,7 @@ export function SetupTab() {
   useEffect(() => load(), [load]);
   // Signing in from here changes what the checks say.
   useHostEvent("claude.signIn", () => load());
+  useHostEvent("codex.signIn", () => load());
   const missing = checks?.filter((c) => !c.ok && !c.optional).length ?? 0;
   return (
     <div className="h-full overflow-y-auto" data-testid="setup-tab">
@@ -100,8 +111,8 @@ export function SetupTab() {
           <h1 className="text-lg font-semibold">Get started</h1>
           <p className="mt-1 text-sm text-muted">
             Jig uses the tools already on your machine with your own logins — Claude Code, git, and optionally
-            the GitHub and Azure CLIs and VS Code. It asks each for its version, and Claude Code whether it's
-            signed in; it never reads a login.
+            OpenAI's Codex CLI, the GitHub and Azure CLIs and VS Code. It asks each for its version, and
+            Claude Code and Codex whether they're signed in; it never reads a login.
           </p>
         </div>
         <Card className="overflow-hidden">

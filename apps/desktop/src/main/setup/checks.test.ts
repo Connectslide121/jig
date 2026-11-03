@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SetupCheck } from "../../shared/setup";
 import { type Exec, runSetupChecks } from "./checks";
 
 describe("runSetupChecks", () => {
@@ -58,5 +59,26 @@ describe("runSetupChecks", () => {
     const checks = await runSetupChecks(async () => ({ code: 127, stdout: "", stderr: "" }), undefined);
     expect(checks[0]).toMatchObject({ id: "claude", ok: false });
     expect(checks[0]?.detail).toMatch(/^Not found/);
+  });
+
+  it("asks the Codex CLI for its version and ChatGPT sign-in, and offers Sign in… only when needed", async () => {
+    const exec =
+      (status: string, code: number): Exec =>
+      async (command, args) => {
+        if (command !== "/bin/codex") return { code: 127, stdout: "", stderr: "" };
+        if (args[0] === "login") return { code, stdout: status, stderr: "" };
+        return { code: 0, stdout: "codex-cli 0.166.0\n", stderr: "" };
+      };
+    const codex = (checks: SetupCheck[]) => checks.find((c) => c.id === "codex");
+    const options = { signIn: true, codex: "/bin/codex" };
+    const yes = codex(await runSetupChecks(exec("Logged in using ChatGPT\n", 0), undefined, options));
+    expect(yes).toMatchObject({ ok: true, optional: true, signIn: undefined, url: undefined });
+    expect(yes?.detail).toBe("Codex 0.166.0. Signed in with your ChatGPT account.");
+    const no = codex(await runSetupChecks(exec("Not logged in\n", 1), undefined, options));
+    expect(no).toMatchObject({ ok: false, optional: true, signIn: "jig.codexLogin", url: undefined });
+    expect(no?.detail).toContain("Not signed in");
+    const missing = codex(await runSetupChecks(exec("", 0), undefined, { signIn: true }));
+    expect(missing).toMatchObject({ ok: false, optional: true, signIn: undefined });
+    expect(missing?.url).toContain("codex");
   });
 });

@@ -4,7 +4,7 @@ import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerStatusItem, registerView } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { RunningScripts } from "../scripts/RunningScripts";
-import { claudeLogin, newTerminal, showTerminal } from "./actions";
+import { claudeLogin, codexLogin, newTerminal, showTerminal } from "./actions";
 import { askClaudeAboutTerminal, newlyFailed } from "./askClaude";
 import { loadShells } from "./shells";
 import { routeTerminalData, setTerminals, useTerminals } from "./store";
@@ -35,6 +35,14 @@ export function registerTerminals(): void {
     icon: KeyRound,
     keywords: ["login", "account"],
     run: () => void claudeLogin(),
+  });
+  registerAction({
+    id: "jig.codexLogin",
+    title: "Sign in to ChatGPT (Codex)…",
+    group: "Chats",
+    icon: KeyRound,
+    keywords: ["login", "account", "openai", "chatgpt", "codex"],
+    run: () => void codexLogin(),
   });
   registerStatusItem({
     id: "jig.runningScripts",
@@ -81,6 +89,22 @@ export function useTerminalsSync(): void {
             message: "The sign-in ended before you were signed in.",
             tone: "warning",
             actions: [{ label: "Try again", run: () => void claudeLogin() }],
+          },
+    ),
+  ); // The Codex sign-in ended: the same, for ChatGPT.
+  useHostEvent("codex.signIn", ({ loggedIn, method }) =>
+    notify(
+      loggedIn
+        ? {
+            title: "Signed in to ChatGPT",
+            message: `${method ? `With ${method}. ` : ""}The sign-in terminal is closed.`,
+            tone: "success",
+          }
+        : {
+            title: "Not signed in to ChatGPT yet",
+            message: "The sign-in ended before you were signed in.",
+            tone: "warning",
+            actions: [{ label: "Try again", run: () => void codexLogin() }],
           },
     ),
   );

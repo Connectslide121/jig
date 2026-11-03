@@ -474,6 +474,10 @@ function Skills() {
           <>
             <b>Your subscription</b> — you sign in to Claude Code yourself; Jig never sees your login
           </>,
+          <>
+            <b>Your ChatGPT plan too</b> (optional) — sign in to OpenAI's Codex CLI from Get started, for AI
+            features that don't need a chat
+          </>,
         ]}
       />
       {skills === undefined ? null : skills.length === 0 ? (

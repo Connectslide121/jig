@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import type { SetupCheck } from "../../shared/setup";
 import { resolveCommand } from "../addons/winCommand";
 import { azureEnv } from "../azure/env";
+import { codexSignInText, parseCodexLoginStatus } from "../providers/codex";
 import { parseSignIn, signInText } from "./signIn";
 
 export type Exec = (
@@ -47,19 +48,22 @@ const firstLine = (s: string) =>
 /**
  * What Jig needs on your machine. Versions, and whether Claude Code is signed in (asked from Claude
  * Code itself, `signIn`; only yes/no and the method are kept). Other tools aren't asked about logins.
- * `claude` is the Claude Code binary Jig uses (yours or the one shipped with the Agent SDK).
+ * `claude` is the Claude Code binary Jig uses (yours or the one shipped with the Agent SDK); `codex` the
+ * Codex CLI on PATH, asked the same way (`codex login status`, D-294).
  */
 export async function runSetupChecks(
   exec: Exec,
   claude: string | undefined,
-  options: { signIn?: boolean } = {},
+  options: { signIn?: boolean; codex?: string } = {},
 ): Promise<SetupCheck[]> {
   const version = async (command: string, args = ["--version"]) => {
     const r = await exec(command, args);
     return r.code === 0 ? firstLine(r.stdout) || firstLine(r.stderr) : undefined;
   };
-  const [claudeVersion, git, gh, az, code] = await Promise.all([
+  const { codex } = options;
+  const [claudeVersion, codexVersion, git, gh, az, code] = await Promise.all([
     claude ? version(claude) : Promise.resolve(undefined),
+    codex ? version(codex) : Promise.resolve(undefined),
     version("git"),
     version("gh"),
     version("az"),
@@ -68,6 +72,14 @@ export async function runSetupChecks(
   const signIn =
     claude && claudeVersion && options.signIn
       ? parseSignIn((await exec(claude, ["auth", "status", "--json"])).stdout)
+      : undefined;
+  // `codex login status` prints its answer on stderr in some versions, and exits 1 when signed out.
+  const codexSignIn =
+    codex && codexVersion && options.signIn
+      ? await exec(codex, ["login", "status"]).then((r) =>
+          parseCodexLoginStatus(`${r.stdout}
+${r.stderr}`),
+        )
       : undefined;
   const devops = az
     ? (await exec("az", ["extension", "show", "--name", "azure-devops", "--output", "none"])).code === 0
@@ -85,6 +97,22 @@ export async function runSetupChecks(
           : "Not found: no Claude Code shipped for this platform and none set in Settings → Claude Code.",
       help: "Sign in once with Sign in to Claude Code… (Claude Code's own sign-in, in a terminal; Jig never sees your login).",
       url: "https://docs.claude.com/en/docs/claude-code/setup",
+    },
+    {
+      id: "codex",
+      label: "ChatGPT (Codex)",
+      ok: Boolean(codexVersion) && codexSignIn?.loggedIn === true,
+      optional: true,
+      detail: !codexVersion
+        ? "Not found. Optional: OpenAI's Codex CLI lets Jig use your ChatGPT plan for some AI features."
+        : `${codexVersion.replace(/^codex-cli\s+/i, "Codex ")}. ${
+            options.signIn ? codexSignInText(codexSignIn) : "Sign-in isn't checked with the fake engine."
+          }`,
+      help: codexVersion
+        ? "Sign in with your ChatGPT account: Codex's own sign-in opens in a terminal and your browser; Jig never sees your login."
+        : "Install it with npm install -g @openai/codex, then restart Jig.",
+      url: codexVersion ? undefined : "https://developers.openai.com/codex/cli",
+      signIn: codexVersion && codexSignIn?.loggedIn !== true ? "jig.codexLogin" : undefined,
     },
     {
       id: "git",

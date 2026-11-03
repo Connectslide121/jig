@@ -9,6 +9,8 @@ import { getEngine, sessionEnv } from "../engine";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { CODEX_UNSET_ENV, codexBinary } from "../providers";
+import { type CodexSignIn, parseCodexLoginStatus } from "../providers/codex";
 import { sessionManager } from "../sessions";
 import { execTool } from "../setup/checks";
 import { type ClaudeSignIn, parseSignIn } from "../setup/signIn";
@@ -21,6 +23,8 @@ import { detectShells } from "./shells";
 let manager: TerminalManager | undefined;
 /** The terminal running Claude Code's sign-in: when it ends, Jig asks whether it worked. */
 let signInTerminal: string | undefined;
+/** The terminal running the Codex CLI's ChatGPT sign-in (D-294). */
+let codexSignInTerminal: string | undefined;
 
 export function terminalManager(): TerminalManager {
   if (!manager) throw new Error("Terminals not started");
@@ -43,6 +47,7 @@ export function startTerminals(): void {
     // A script that fails by itself is friction for Learning (not one you stopped).
     onExit: (terminal) => {
       if (terminal.id === signInTerminal) void afterSignIn(terminal.id);
+      if (terminal.id === codexSignInTerminal) void afterCodexSignIn(terminal.id);
       // A command Claude started has finished: tell its chat, so Claude reacts instead of polling.
       if (terminal.sessionId) {
         const notice = exitNotice(terminal, manager?.buffer(terminal.id) ?? "");
@@ -133,6 +138,64 @@ export function startTerminals(): void {
     signInTerminal = t.id;
     return t;
   });
+
+  // The Codex CLI's own ChatGPT sign-in (`codex login`): it opens the browser and ends once you're in.
+  handle("terminals.codexLogin", async ({ projectId }) => {
+    const cwd = projectId ? (await projectStore().get(projectId)).path : homedir();
+    const title = "ChatGPT sign-in (Codex)";
+    const binary = codexBinary();
+    if (getEngine().kind !== "fake" && !binary)
+      throw new JigError(
+        "codex_missing",
+        "The Codex CLI isn't installed. See Get started → ChatGPT (Codex).",
+      );
+    // A private terminal, like Claude Code's sign-in; without OPENAI_API_KEY so Codex asks for ChatGPT.
+    const t =
+      getEngine().kind === "fake"
+        ? m.create({
+            cwd,
+            projectId,
+            command: "echo Fake engine: Codex would sign you in to ChatGPT here",
+            title,
+            private: true,
+          })
+        : /\.(cmd|bat|ps1)$/i.test(binary!)
+          ? m.create({
+              cwd,
+              projectId,
+              command: "codex login",
+              title,
+              private: true,
+              unsetEnv: CODEX_UNSET_ENV,
+            })
+          : m.create({
+              cwd,
+              projectId,
+              file: binary!,
+              args: ["login"],
+              title,
+              private: true,
+              unsetEnv: CODEX_UNSET_ENV,
+            });
+    codexSignInTerminal = t.id;
+    return t;
+  });
+
+  /** The Codex sign-in ended: ask Codex whether it worked, say so, and close the terminal if it did. */
+  async function afterCodexSignIn(id: string) {
+    codexSignInTerminal = undefined;
+    const binary = codexBinary();
+    const signIn: CodexSignIn =
+      getEngine().kind === "fake"
+        ? { loggedIn: true, method: "the fake engine" }
+        : binary
+          ? (parseCodexLoginStatus((await execTool(binary, ["login", "status"])).stdout) ?? {
+              loggedIn: false,
+            })
+          : { loggedIn: false };
+    emit("codex.signIn", signIn);
+    if (signIn.loggedIn) m.close(id);
+  }
 
   /** The sign-in ended: ask Claude Code whether it worked, say so, and close the terminal if it did. */
   async function afterSignIn(id: string) {

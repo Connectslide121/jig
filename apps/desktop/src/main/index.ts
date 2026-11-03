@@ -27,6 +27,7 @@ import { startLanguageServers, stopLanguageServers } from "./lsp";
 import { startMeetings } from "./meetings";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
+import { registerProviderHandlers } from "./providers";
 import { registerRoutineHandlers } from "./routines";
 import { registerScriptHandlers } from "./scripts";
 import { sessionManager, startSessions } from "./sessions";
@@ -91,6 +92,7 @@ async function start() {
   registerLinkHandlers();
   registerAboutHandlers();
   registerAiHandlers();
+  registerProviderHandlers();
   registerTourHandlers();
   registerDigestHandlers();
   registerSetupHandlers();

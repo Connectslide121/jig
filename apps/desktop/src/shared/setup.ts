@@ -3,7 +3,7 @@
  * Jig only runs each tool's `--version` (or similar); it never reads anyone's login. Whether Claude
  * Code is signed in shows when your first session starts (Claude Code reports it).
  */
-export type SetupCheckId = "claude" | "git" | "gh" | "az" | "az-devops" | "code";
+export type SetupCheckId = "claude" | "codex" | "git" | "gh" | "az" | "az-devops" | "code";
 
 export interface SetupCheck {
   id: SetupCheckId;
@@ -16,6 +16,8 @@ export interface SetupCheck {
   /** What to do when it's missing. */
   help?: string;
   url?: string;
+  /** The tool is installed but not signed in: the action (`jig.codexLogin`) its Sign in… button runs. */
+  signIn?: string;
 }
 
 export interface UpdateInfo {

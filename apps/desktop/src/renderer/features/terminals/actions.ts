@@ -33,3 +33,18 @@ export async function claudeLogin(): Promise<void> {
     notify({ title: "Couldn't start Claude Code", message: errorMessage(error), tone: "danger" });
   }
 }
+
+/** The Codex CLI's ChatGPT sign-in in a private terminal (D-294); Jig re-checks when it ends. */
+export async function codexLogin(): Promise<void> {
+  try {
+    const t = await call("terminals.codexLogin", { projectId: useProjects.getState().activeId });
+    showTerminal(t.id);
+    notify({
+      title: "Sign in to ChatGPT",
+      message:
+        "Codex opens your browser to sign in. Jig tells you when you're signed in and closes the terminal; it never sees your login.",
+    });
+  } catch (error) {
+    notify({ title: "Couldn't start Codex", message: errorMessage(error), tone: "danger" });
+  }
+}

@@ -1,8 +1,8 @@
 import { JigError } from "../../shared/ipc";
 import { addonService } from "../addons";
 import { getConfig } from "../config";
-import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
+import { oneShot } from "../providers";
 import { jigHome } from "../state/paths";
 
 /** Longest prompt an add-on may send (about 50k tokens): diffs are cut before this. */
@@ -32,13 +32,16 @@ export function registerAiHandlers(): void {
     if (!prompt.trim()) throw new JigError("invalid_args", "Empty prompt");
     if (prompt.length > MAX_AI_PROMPT) throw new JigError("invalid_args", "The prompt is too long");
     const { engine } = getConfig();
-    const answer = await getEngine().oneShot(prompt, {
-      cwd: cwd || jigHome(),
-      model: quick ? engine.quickModel : engine.helperModel,
-      appendSystemPrompt: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench around Claude Code). Answer with exactly what was asked, without preamble.`,
-      env: sessionEnv(process.env, engine.allowApiKey),
-      claudePath: engine.claudePath,
-    });
+    const answer = await oneShot(
+      "claude",
+      quick ? engine.quickModel : engine.helperModel,
+      prompt,
+      undefined,
+      {
+        cwd: cwd || jigHome(),
+        system: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench around Claude Code). Answer with exactly what was asked, without preamble.`,
+      },
+    );
     return answer.trim();
   });
 }

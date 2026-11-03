@@ -206,6 +206,7 @@
       ],
       "specs": ["setup.spec.ts", "updates.spec.ts"]
     },
+    { "files": ["apps/desktop/src/main/providers/**"], "specs": ["setup.spec.ts", "ai.spec.ts"] },
     { "files": ["apps/launcher/**"], "specs": ["launcher.spec.ts"] },
     {
       "files": ["apps/desktop/src/renderer/features/skills/**", "apps/desktop/src/main/skills/**"],

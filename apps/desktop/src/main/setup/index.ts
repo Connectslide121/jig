@@ -8,6 +8,7 @@ import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
 import { hasActiveMeeting } from "../meetings";
+import { codexBinary } from "../providers";
 import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { claudeBinary } from "../terminals/claudeBinary";
@@ -100,6 +101,7 @@ export function registerSetupHandlers(): void {
   handle("setup.check", () =>
     runSetupChecks(execTool, claudeBinary(getConfig().engine.claudePath), {
       signIn: getEngine().kind !== "fake",
+      codex: codexBinary(),
     }),
   );
   handle("engine.models", () => {

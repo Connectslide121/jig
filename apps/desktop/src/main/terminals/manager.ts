@@ -58,6 +58,8 @@ export interface CreateTerminal {
   /** Run this executable directly with `args` (e.g. Claude Code for sign-in). */
   file?: string;
   args?: string[];
+  /** Environment variables to leave out (e.g. `OPENAI_API_KEY` for Codex's ChatGPT sign-in). */
+  unsetEnv?: string[];
   scriptId?: string;
   private?: boolean;
   sessionId?: string;
@@ -116,13 +118,20 @@ export class TerminalManager {
     };
     const live: Live = { info, buffer: "", pending: "", recent: "", altScreen: false };
     this.terminals.set(info.id, live);
+    const env: Record<string, string | undefined> = {
+      ...this.options.env(),
+      TERM: "xterm-256color",
+      COLORTERM: "truecolor",
+      TERM_PROGRAM: "Jig",
+    };
+    for (const name of input.unsetEnv ?? []) delete env[name];
     try {
       live.pty = this.options.spawn(file, args, {
         name: "xterm-256color",
         cols: input.cols ?? 100,
         rows: input.rows ?? 30,
         cwd: input.cwd,
-        env: { ...this.options.env(), TERM: "xterm-256color", COLORTERM: "truecolor", TERM_PROGRAM: "Jig" },
+        env,
       });
     } catch (error) {
       log.warn(`Could not start ${file}`, error);

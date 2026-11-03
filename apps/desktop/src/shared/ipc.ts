@@ -52,6 +52,7 @@ import type {
 import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
+import type { AiProvider } from "./providers";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
@@ -295,6 +296,8 @@ export interface HostMethods {
   "attempts.repoDirty": { args: { id: string }; result: boolean };
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
   "ai.ask": { args: { addonId: string; prompt: string; cwd?: string; quick?: boolean }; result: string };
+  /** The models an AI provider offers for one-shot features (D-294): Claude Code's, or Codex's list. */
+  "ai.models": { args: { provider: AiProvider }; result: ModelInfo[] };
   "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "engine.models": { args: void; result: ModelInfo[] };
@@ -509,6 +512,8 @@ export interface HostMethods {
   /** Shells installed on this machine and the default one (what an empty `terminal.shell` starts), D-240. */
   "terminals.shells": { args: void; result: ShellChoices };
   "terminals.claudeLogin": { args: { projectId?: string }; result: TerminalInfo };
+  /** Opens a private terminal running the Codex CLI's ChatGPT sign-in (`codex login`), D-294. */
+  "terminals.codexLogin": { args: { projectId?: string }; result: TerminalInfo };
   /** Claude's browser: an offscreen page Claude (and you) drive; see docs/reference/browser.md. */
   "browser.state": { args: void; result: BrowserState };
   /** Starts (`on`) or stops sending `browser.frame` events to this view. */
@@ -722,6 +727,8 @@ export interface HostEvents {
   "terminals.reveal": { id: string };
   /** Claude Code's sign-in terminal ended: whether you're signed in now, and how (never who). */
   "claude.signIn": { loggedIn: boolean; method?: string };
+  /** The Codex sign-in terminal ended: whether Codex is signed in now, and how (never who), D-294. */
+  "codex.signIn": { loggedIn: boolean; method?: string };
   /** Show this chat (a desktop notification about it was clicked). */
   "sessions.reveal": { sessionId: string };
   "terminals.data": { id: string; data: string };
