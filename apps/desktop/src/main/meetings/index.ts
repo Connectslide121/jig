@@ -189,13 +189,16 @@ async function open(options: { show?: boolean } = {}): Promise<void> {
     }
     if (activeId && !quitting) {
       event.preventDefault();
-      const choice = dialog.showMessageBoxSync(window, {
-        type: "question",
-        message: "A meeting is still running",
-        buttons: ["Keep meeting running", "Leave meeting"],
-        defaultId: 0,
-        cancelId: 0,
-      });
+      // Hidden (tests): nobody to ask, and the question would pop up on the user's screen; leave.
+      const choice = hiddenMode()
+        ? 1
+        : dialog.showMessageBoxSync(window, {
+            type: "question",
+            message: "A meeting is still running",
+            buttons: ["Keep meeting running", "Leave meeting"],
+            defaultId: 0,
+            cancelId: 0,
+          });
       if (choice === 0) window.hide();
       else {
         emit("meetings.leaveRequested", undefined);
@@ -313,6 +316,11 @@ export async function startMeetings(): Promise<void> {
   });
   app.on("before-quit", (event) => {
     if (!activeId || quitting) return;
+    // Hidden (tests): quit and leave without a question on the user's screen.
+    if (hiddenMode()) {
+      quitting = true;
+      return;
+    }
     const choice = dialog.showMessageBoxSync({
       type: "question",
       message: "Quit Jig and leave the active meeting?",
