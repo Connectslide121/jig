@@ -3118,3 +3118,21 @@ for test runs. Supersedes the per-change part of D-242.
 - `Markdown` (shared with add-ons) only gains an `inlineCode` hook; the chat supplies the link, so
   the UI library still never calls the host itself.
 
+## D-262: Boards become a workspace: cards managed in Jig, and by Claude
+
+**Who:** Jon wanted to open and manage cards in Jig (drag and drop, edit, delete) and Claude to keep
+the boards up to date from chats. The shape is **Claude, on my own**.
+
+- **Same `az`, more commands:** `az boards work-item show/update/create/delete` and `relation add`,
+  comments and a type's states through `az rest` (preview comments API 7.1-preview.4). Descriptions
+  are edited as plain text and stored as simple HTML (`htmlToText` / `textToHtml`), so Azure DevOps
+  formatting isn't preserved when a description is changed in Jig. Delete uses the recycle bin
+  (not `--destroy`).
+- **Moving a card** sets the board's column field (`WEF_…_Kanban.Column`) and the state the column
+  maps the card's type to, as Azure DevOps does; the card shows in its new column at once (faint
+  until saved) and goes back if Azure DevOps refuses. Order within a column isn't changed.
+- **New cards** go to the team's default area, so they appear on that board.
+- **One set of host functions** serves the UI and Claude's tools (`addon_boards_boards/cards/card/
+  update/create/delete`); read tools are read-only, writes ask permission. Every write emits
+  `changed`, so an open board reloads whether you or a chat changed it.
+

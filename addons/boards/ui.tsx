@@ -10,6 +10,7 @@ import {
   Spinner,
   Tabs,
   useActiveProject,
+  useAddonEvent,
   useHostCall,
   useStorage,
 } from "@jig/sdk/ui";
@@ -30,8 +31,10 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { CardDialog, NewCardDialog } from "./cards";
 import {
   type Board,
+  type BoardColumn,
   type BoardData,
   boardTitle,
   boardUrl,
@@ -54,24 +57,57 @@ function typeLook(type: string) {
   return { Icon: CircleDot, text: "text-muted", edge: "bg-line-strong" };
 }
 
+/** What a card can do from the board: open, chat, move, delete, copy (D-262). */
+interface CardActions {
+  open: (item: WorkItem) => void;
+  move: (item: WorkItem, column: string) => void;
+  remove: (item: WorkItem) => void;
+  columns: string[];
+}
+
 function cardMenu(
   ctx: AddonUiContext,
   item: WorkItem,
   projectId: string | undefined,
+  actions: CardActions,
   at: globalThis.MouseEvent | HTMLElement,
 ) {
   ctx.menu(
     [
-      { label: "Open in Azure DevOps", icon: "external-link", onSelect: () => ctx.openExternal(item.url) },
+      {
+        label: "Open",
+        icon: "panel-top-open",
+        testId: "board-item-open",
+        onSelect: () => actions.open(item),
+      },
       {
         label: "Start a chat about it",
         icon: "message-square-plus",
         testId: "board-item-chat",
         onSelect: () => void ctx.openChat({ projectId, draft: chatDraft(item) }),
       },
+      {
+        label: "Move to",
+        icon: "move-right",
+        submenu: actions.columns.map((c) => ({
+          label: c,
+          checked: c === item.column,
+          testId: `board-item-move-${c}`,
+          onSelect: () => actions.move(item, c),
+        })),
+      },
       { separator: true },
+      { label: "Open in Azure DevOps", icon: "external-link", onSelect: () => ctx.openExternal(item.url) },
       { label: "Copy link", icon: "link", onSelect: () => ctx.copy(item.url) },
       { label: `Copy #${item.id}`, icon: "hash", onSelect: () => ctx.copy(`#${item.id}`) },
+      { separator: true },
+      {
+        label: "Delete…",
+        icon: "trash-2",
+        danger: true,
+        testId: "board-item-delete",
+        onSelect: () => actions.remove(item),
+      },
     ],
     at,
   );
@@ -83,29 +119,40 @@ function Card({
   item,
   columnState,
   projectId,
+  actions,
+  moving,
 }: {
   ctx: AddonUiContext;
   item: WorkItem;
   /** The state this column maps the item's type to: the card shows its state only when it differs. */
   columnState?: string;
   projectId?: string;
+  actions: CardActions;
+  /** Being saved after a move: shown faint until Azure DevOps has it. */
+  moving?: boolean;
 }) {
   const { Icon, text, edge } = typeLook(item.type);
   return (
     <div
       role="button"
       tabIndex={0}
+      draggable
       data-testid={`board-item-${item.id}`}
       title={`${item.type} #${item.id}: ${item.title}`}
-      onClick={() => ctx.openExternal(item.url)}
-      onKeyDown={(e) => e.key === "Enter" && ctx.openExternal(item.url)}
+      onClick={() => actions.open(item)}
+      onKeyDown={(e) => e.key === "Enter" && actions.open(item)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("application/x-jig-card", String(item.id));
+        e.dataTransfer.effectAllowed = "move";
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
-        cardMenu(ctx, item, projectId, e.nativeEvent);
+        cardMenu(ctx, item, projectId, actions, e.nativeEvent);
       }}
       className={cn(
         "group relative flex shrink-0 cursor-pointer flex-col gap-1.5 overflow-hidden rounded-md border border-line bg-elevated py-2 pr-1.5 pl-3.5 shadow-sm",
         "transition-colors hover:border-line-strong focus-visible:border-focus focus-visible:outline-none",
+        moving && "opacity-60",
       )}
     >
       <span aria-hidden className={cn("absolute inset-y-0 left-0 w-1", edge)} />
@@ -120,7 +167,7 @@ function Card({
           data-testid={`board-item-more-${item.id}`}
           onClick={(e) => {
             e.stopPropagation();
-            cardMenu(ctx, item, projectId, e.currentTarget);
+            cardMenu(ctx, item, projectId, actions, e.currentTarget);
           }}
         />
       </div>
@@ -147,21 +194,35 @@ function Card({
 /** One width for every column (px), set from the header's slider and kept for every project and restart. */
 const COLUMN_WIDTH = { min: 200, max: 480, step: 8, initial: 288 };
 
-/** The board: its columns side by side (scrolls sideways), each with its cards (scrolls down). */
+/**
+ * The board: its columns side by side (scrolls sideways), each with its cards (scrolls down). Cards
+ * drag between columns; + in a column's header adds a card there.
+ */
 function BoardColumns({
   ctx,
   data,
   projectId,
   stale,
   width,
+  actions,
+  moving,
+  onNew,
 }: {
   ctx: AddonUiContext;
   data: BoardData;
   projectId?: string;
   stale: boolean;
   width: number;
+  actions: CardActions;
+  /** Cards being moved: id → the column they go to (shown there until the board reloads). */
+  moving: Record<number, string>;
+  onNew: (column: BoardColumn) => void;
 }) {
-  const lanes = placeCards(data);
+  const [target, setTarget] = useState<string>();
+  const lanes = placeCards({
+    ...data,
+    items: data.items.map((i) => (moving[i.id] ? { ...i, column: moving[i.id] } : i)),
+  });
   return (
     <div className={cn("flex h-full gap-3 overflow-x-auto p-3 transition-opacity", stale && "opacity-60")}>
       {lanes.map(({ column, items }) => {
@@ -170,14 +231,41 @@ function BoardColumns({
           <section
             key={column.id}
             data-testid={`board-column-${column.name}`}
-            className="flex h-full shrink-0 flex-col rounded-lg bg-hover/60"
+            className={cn(
+              "flex h-full shrink-0 flex-col rounded-lg border-2 bg-hover/60",
+              target === column.name ? "border-accent" : "border-transparent",
+            )}
             style={{ width }}
+            onDragOver={(e) => {
+              if (!e.dataTransfer.types.includes("application/x-jig-card")) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setTarget(column.name);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setTarget(undefined);
+            }}
+            onDrop={(e) => {
+              setTarget(undefined);
+              const id = Number(e.dataTransfer.getData("application/x-jig-card"));
+              const item = data.items.find((i) => i.id === id);
+              if (!item) return;
+              e.preventDefault();
+              actions.move(item, column.name);
+            }}
           >
-            <header className="flex h-10 shrink-0 items-center gap-2 px-3">
+            <header className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">{column.name}</span>
               <span className={cn("shrink-0 text-xs tabular-nums", over ? "text-warning" : "text-hint")}>
                 {column.itemLimit > 0 ? `${items.length}/${column.itemLimit}` : items.length}
               </span>
+              <IconButton
+                icon={Plus}
+                label={`New card in ${column.name}`}
+                size="sm"
+                data-testid={`board-new-${column.name}`}
+                onClick={() => onNew(column)}
+              />
             </header>
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {items.map((item) => (
@@ -187,6 +275,8 @@ function BoardColumns({
                   item={item}
                   projectId={projectId}
                   columnState={column.stateMappings[item.type]}
+                  actions={actions}
+                  moving={Boolean(moving[item.id])}
                 />
               ))}
             </div>
@@ -211,12 +301,50 @@ function BoardBody({
   width: number;
 }) {
   const { data, error, loading, reload } = useHostCall<BoardData>("board", { board });
+  const [open, setOpen] = useState<number>();
+  const [adding, setAdding] = useState<BoardColumn>();
+  const [moving, setMoving] = useState<Record<number, string>>({});
   useEffect(() => onLoading(loading), [loading, onLoading]);
   useEffect(() => {
     const again = () => void reload();
     window.addEventListener("jig-boards-refresh", again);
     return () => window.removeEventListener("jig-boards-refresh", again);
   }, [reload]);
+  // A change from here or from a chat (Claude's tools) reloads the board (D-262).
+  useAddonEvent("changed", () => void reload());
+  // Once the board has reloaded, cards are where Azure DevOps says.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear when new data arrives.
+  useEffect(() => setMoving({}), [data]);
+  const fail = (title: string, e: unknown) =>
+    ctx.notify({ title, message: e instanceof Error ? e.message : String(e), tone: "danger" });
+  const actions: CardActions = {
+    open: (item) => setOpen(item.id),
+    columns: data?.columns.map((c) => c.name) ?? [],
+    move: (item, column) => {
+      if (item.column === column) return;
+      setMoving((m) => ({ ...m, [item.id]: column }));
+      ctx.host.call("update", { board, id: item.id, patch: { column } }).catch((e: unknown) => {
+        setMoving((m) => {
+          const next = { ...m };
+          delete next[item.id];
+          return next;
+        });
+        fail(`Couldn't move #${item.id}`, e);
+      });
+    },
+    remove: async (item) => {
+      const yes = await ctx.confirm({
+        title: `Delete #${item.id}?`,
+        message: `"${item.title}" goes to the project's recycle bin in Azure DevOps, where it can be restored.`,
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (yes)
+        await ctx.host
+          .call("remove", { board, id: item.id })
+          .catch((e: unknown) => fail(`Couldn't delete #${item.id}`, e));
+    },
+  };
   if (error && !data)
     return (
       <Empty icon={TriangleAlert} title="Couldn't load this board" className="h-full">
@@ -235,7 +363,34 @@ function BoardBody({
         <p className="text-xs text-muted">Azure DevOps didn't return any columns for it.</p>
       </Empty>
     );
-  return <BoardColumns ctx={ctx} data={data} projectId={projectId} stale={loading} width={width} />;
+  return (
+    <>
+      <BoardColumns
+        ctx={ctx}
+        data={data}
+        projectId={projectId}
+        stale={loading}
+        width={width}
+        actions={actions}
+        moving={moving}
+        onNew={setAdding}
+      />
+      {open !== undefined ? (
+        <CardDialog
+          ctx={ctx}
+          board={board}
+          id={open}
+          columns={data.columns}
+          columnField={data.columnField}
+          projectId={projectId}
+          onClose={() => setOpen(undefined)}
+        />
+      ) : null}
+      {adding ? (
+        <NewCardDialog ctx={ctx} board={board} column={adding} onClose={() => setAdding(undefined)} />
+      ) : null}
+    </>
+  );
 }
 
 /** Pick boards from your Azure DevOps organisations: organisation, project, then teams' boards. */

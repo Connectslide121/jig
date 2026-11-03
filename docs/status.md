@@ -156,6 +156,12 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Boards you manage in Jig (2026-11-03, D-262): Code → Boards. Click a card to open it in Jig and
+edit it (title, description, column, state, assignee, tags, priority, story points, comments); drag
+cards between columns; + in a column adds a card; ⋯ → Move to / Delete…. Claude reads and updates the
+project's boards from chats (`addon_boards_*` tools; changes ask first). Uses your own `az`; needs a
+try against your real organisation.
+
 File links in chats (2026-11-03, D-261): a file or folder path Claude writes in inline code
 (`docs/status.md`, `E:\repos\x\index.html`, `src/a.ts:42`) is a link when it exists: click opens a
 file in Preview and a folder in the file manager; Ctrl/Cmd+click opens it with its own app (an HTML

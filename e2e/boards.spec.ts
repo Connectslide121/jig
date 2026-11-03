@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, test } from "./fixtures";
@@ -31,7 +31,21 @@ if (uri.endsWith("/Web/_apis/work/boards/b-stories")) say({
   ],
   fields: { columnField: { referenceName: "WEF_1_Kanban.Column" } },
 });
-if (uri.endsWith("/teamfieldvalues")) say({ field: { referenceName: "System.AreaPath" }, values: [{ value: "Shop\\\\Web", includeChildren: true }] });
+if (uri.endsWith("/teamfieldvalues")) say({ field: { referenceName: "System.AreaPath" }, defaultValue: "Shop\\\\Web", values: [{ value: "Shop\\\\Web", includeChildren: true }] });
+// Managing cards (D-262): writes are logged next to this script, for the test to read.
+const log = (line) => require("node:fs").appendFileSync(require("node:path").join(__dirname, "az-writes.log"), line + "\\n");
+const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+if (has("boards", "work-item", "show")) say({ id: Number(arg("--id")), fields: {
+  "System.Id": Number(arg("--id")), "System.Title": "Checkout fails with a saved card", "System.WorkItemType": "Bug",
+  "System.State": "Active", "WEF_1_Kanban.Column": "Doing", "System.AssignedTo": { displayName: "Ann Demo" },
+  "System.Description": "<div>Paying with a saved card fails.</div>", "System.Tags": "checkout; payments",
+  "Microsoft.VSTS.Common.Priority": 2, "System.AreaPath": "Shop\\\\Web",
+}, relations: [] });
+if (uri.endsWith("/comments")) say({ comments: [{ text: "<div>Seen on mobile too.</div>", createdBy: { displayName: "Ben Sample" }, createdDate: "2026-11-01T10:00:00Z" }] });
+if (uri.includes("/workitemtypes/")) say({ value: [{ name: "New" }, { name: "Active" }, { name: "Closed" }] });
+if (has("boards", "work-item", "update")) { log("update " + args.join(" ")); say(card(Number(arg("--id")), "x", "Bug", "Active", "Doing")); }
+if (has("boards", "work-item", "create")) { log("create " + args.join(" ")); say(card(105, arg("--title"), arg("--type"), "New", "New")); }
+if (has("boards", "work-item", "delete")) { log("delete " + args.join(" ")); say({}); }
 if (has("boards", "query")) {
   const wiql = args[args.indexOf("--wiql") + 1];
   if (!wiql.includes("UNDER 'Shop\\\\Web'") || !wiql.includes("[WEF_1_Kanban.Column]")) { console.error("unexpected query " + wiql); process.exit(1); }
@@ -119,4 +133,57 @@ test("Boards: az signed out says how to sign in", async ({ page, jigHome }) => {
   const dialog = page.getByTestId("boards-dialog");
   await expect(dialog.getByTestId("boards-find-error")).toContainText("az login");
   await expect(dialog.getByTestId("boards-add-picked")).toBeDisabled();
+});
+
+test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude's tools read the board", async ({
+  page,
+  jigHome,
+}) => {
+  const view = await setUp(page, jigHome, true);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await view.getByTestId("boards-add-first").click();
+  const dialog = page.getByTestId("boards-dialog");
+  await dialog.getByTestId("boards-pick-Web-Stories").click();
+  await dialog.getByTestId("boards-add-picked").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  const writes = async () => readFile(join(jigHome, "fake-bin", "az-writes.log"), "utf8").catch(() => "");
+
+  // A click opens the card in Jig: description, tags, comments; edit and save.
+  await view.getByTestId("board-item-101").click();
+  const card = page.getByTestId("board-card-dialog");
+  await expect(card.getByTestId("board-card-description")).toHaveValue("Paying with a saved card fails.");
+  await expect(card.getByTestId("board-card-comments")).toContainText("Seen on mobile too.");
+  await page.screenshot({ path: test.info().outputPath("card.png") });
+  await card.getByTestId("board-card-title").fill("Checkout fails with a saved Visa card");
+  await card.getByTestId("board-card-save").click();
+  await expect(card).toBeHidden();
+  await expect.poll(writes).toContain("--title Checkout fails with a saved Visa card");
+
+  // Drag a card to another column: its column and the column's state go to Azure DevOps.
+  await view.getByTestId("board-item-102").dragTo(view.getByTestId("board-column-Doing"));
+  await expect.poll(writes).toContain("--id 102");
+  expect(await writes()).toMatch(/--id 102 .*--state Active .*WEF_1_Kanban\.Column=Doing/);
+
+  // A new card in a column.
+  await view.getByTestId("board-new-New").click();
+  await page.getByTestId("board-new-card-title").fill("Gift cards");
+  await page.getByTestId("board-new-card-create").click();
+  await expect.poll(writes).toMatch(/create .*--title Gift cards .*--area Shop/);
+
+  // Delete from the card menu, after asking.
+  await view.getByTestId("board-item-103").click({ button: "right" });
+  await page.getByTestId("board-item-delete").click();
+  await page.getByTestId("dialog-confirm").click();
+  await expect.poll(writes).toMatch(/delete .*--id 103 /);
+
+  // Claude's tools read the same board for the chat's project.
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const projectId = projects.value.projects[0]!.id;
+  const listed = (await hostCall(page, "addons.call", {
+    id: "boards",
+    method: "toolCards",
+    args: { chat: { projectId }, column: "Doing" },
+  })) as { value: string };
+  expect(listed.value).toContain("## Doing");
+  expect(listed.value).toContain("#101 Bug");
 });

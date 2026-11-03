@@ -5,16 +5,25 @@ import {
   type BoardData,
   boardQuery,
   columnField,
+  defaultArea,
   type FoundBoard,
+  findBoard,
+  itemLine,
   orgName,
   orgUrl,
+  stateForColumn,
   teamApi,
+  textToHtml,
   toColumns,
+  toDetail,
   toWorkItem,
+  updateArgs,
   type WorkItem,
+  type WorkItemDetail,
+  type WorkItemPatch,
 } from "./lib/boards";
 
-export type { Board, BoardData, FoundBoard, WorkItem };
+export type { Board, BoardData, FoundBoard, WorkItem, WorkItemDetail, WorkItemPatch };
 
 /**
  * Azure DevOps team boards through the user's `az` CLI (az login + the azure-devops extension), like
@@ -42,7 +51,7 @@ async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Pro
 }
 
 /** `az rest` GET on Azure DevOps with your az login. */
-function rest<T>(api: AddonHostApi, uri: string, params: string[] = []): Promise<T> {
+function rest<T>(api: AddonHostApi, uri: string, params: string[] = [], version = "7.1"): Promise<T> {
   return az<T>(api, [
     "rest",
     "--method",
@@ -52,7 +61,7 @@ function rest<T>(api: AddonHostApi, uri: string, params: string[] = []): Promise
     "--uri",
     uri,
     "--uri-parameters",
-    "api-version=7.1",
+    `api-version=${version}`,
     ...params,
   ]);
 }
@@ -167,5 +176,224 @@ export async function board({ board: b }: { board: Board }, api: AddonHostApi): 
   const items = (Array.isArray(rows) ? rows : [])
     .map((r) => toWorkItem(r, b, field))
     .filter((i): i is WorkItem => !!i);
-  return { columns, items };
+  const area = defaultArea(areas);
+  return { columns, items, ...(field ? { columnField: field } : {}), ...(area ? { area } : {}) };
+}
+
+// ── Managing cards (D-262): the UI and Claude's tools use the same functions ────────────────────────
+
+const projectUrl = (b: Board) => `${orgUrl(b.org)}/${encodeURIComponent(b.project)}`;
+
+/** A card with its description, tags, comments and the states its type can be in. */
+export async function item(
+  { board: b, id, columnField: field }: { board: Board; id: number; columnField?: string },
+  api: AddonHostApi,
+): Promise<WorkItemDetail> {
+  const raw = await az<{ fields?: Record<string, unknown> }>(api, [
+    "boards",
+    "work-item",
+    "show",
+    "--id",
+    String(id),
+    "--expand",
+    "all",
+    "--org",
+    orgUrl(b.org),
+  ]);
+  const type = String(raw?.fields?.["System.WorkItemType"] ?? "");
+  const [comments, states] = await Promise.all([
+    rest<unknown>(api, `${projectUrl(b)}/_apis/wit/workItems/${id}/comments`, [], "7.1-preview.4").catch(
+      () => undefined,
+    ),
+    type
+      ? rest<unknown>(
+          api,
+          `${projectUrl(b)}/_apis/wit/workitemtypes/${encodeURIComponent(type)}/states`,
+        ).catch(() => undefined)
+      : undefined,
+  ]);
+  const detail = toDetail(raw, b, { comments, states, columnField: field });
+  if (!detail) throw new Error(`Work item #${id} wasn't found.`);
+  return detail;
+}
+
+/** Changes a card: fields, state, column (with the column's state for its type), a comment. */
+export async function update(
+  { board: b, id, patch }: { board: Board; id: number; patch: WorkItemPatch },
+  api: AddonHostApi,
+): Promise<void> {
+  let field: string | undefined;
+  let columnState: string | undefined;
+  let next = patch;
+  if (patch.column) {
+    const data = await board({ board: b }, api);
+    const wanted = patch.column.toLowerCase();
+    const column = data.columns.find((c) => c.name.toLowerCase() === wanted);
+    if (!column)
+      throw new Error(
+        `The board has no column "${patch.column}". Columns: ${data.columns.map((c) => c.name).join(", ")}`,
+      );
+    const type = data.items.find((i) => i.id === id)?.type;
+    field = data.columnField;
+    columnState = type ? stateForColumn(column, type) : undefined;
+    next = { ...patch, column: column.name };
+  }
+  const args = updateArgs(next, field, columnState);
+  if (!args.length) return;
+  await az(api, ["boards", "work-item", "update", "--id", String(id), "--org", orgUrl(b.org), ...args]);
+  api.emit("changed", { boardId: b.id });
+}
+
+export interface NewCard {
+  board: Board;
+  type: string;
+  title: string;
+  description?: string;
+  column?: string;
+  assignedTo?: string;
+  parentId?: number;
+}
+
+/** A new card on the board (in the team's area, so it shows there), optionally in a column. */
+export async function create(input: NewCard, api: AddonHostApi): Promise<WorkItem> {
+  const b = input.board;
+  if (!input.title.trim()) throw new Error("A card needs a title.");
+  const data = await board({ board: b }, api);
+  const created = await az<unknown>(api, [
+    "boards",
+    "work-item",
+    "create",
+    "--type",
+    input.type,
+    "--title",
+    input.title.trim(),
+    "--org",
+    orgUrl(b.org),
+    "--project",
+    b.project,
+    ...(data.area ? ["--area", data.area] : []),
+    ...(input.description?.trim() ? ["--description", textToHtml(input.description)] : []),
+    ...(input.assignedTo ? ["--assigned-to", input.assignedTo] : []),
+  ]);
+  const card = toWorkItem(created, b, data.columnField);
+  if (!card) throw new Error("Azure DevOps didn't return the new card.");
+  if (input.column) await update({ board: b, id: card.id, patch: { column: input.column } }, api);
+  if (input.parentId)
+    await az(api, [
+      "boards",
+      "work-item",
+      "relation",
+      "add",
+      "--id",
+      String(card.id),
+      "--relation-type",
+      "parent",
+      "--target-id",
+      String(input.parentId),
+      "--org",
+      orgUrl(b.org),
+    ]);
+  api.emit("changed", { boardId: b.id });
+  return card;
+}
+
+/** Moves a card to Azure DevOps' recycle bin (it can be restored there). */
+export async function remove(
+  { board: b, id }: { board: Board; id: number },
+  api: AddonHostApi,
+): Promise<void> {
+  await az(api, [
+    "boards",
+    "work-item",
+    "delete",
+    "--id",
+    String(id),
+    "--org",
+    orgUrl(b.org),
+    "--project",
+    b.project,
+    "--yes",
+  ]);
+  api.emit("changed", { boardId: b.id });
+}
+
+// ── Claude's tools: the boards of the chat's project ────────────────────────────────────────────────
+
+type ChatArgs = { chat?: { projectId?: string }; board?: string };
+
+async function followed(args: ChatArgs, api: AddonHostApi): Promise<Board[]> {
+  const projectId = args.chat?.projectId;
+  if (!projectId) throw new Error("Boards belong to a Jig project, and this chat isn't in one.");
+  return (await api.storage.get<Board[]>("boards", { scope: "project", id: projectId })) ?? [];
+}
+
+async function chatBoard(args: ChatArgs, api: AddonHostApi): Promise<Board> {
+  const boards = await followed(args, api);
+  if (!boards.length)
+    throw new Error("This project follows no Azure DevOps boards yet. Add one in Code → Boards (+).");
+  const found = findBoard(boards, args.board);
+  if (!found)
+    throw new Error(
+      `No board named ${JSON.stringify(args.board)}. Boards: ${boards.map((b) => b.name).join(", ")}`,
+    );
+  return found;
+}
+
+export async function toolBoards(args: ChatArgs, api: AddonHostApi): Promise<string> {
+  const boards = await followed(args, api);
+  if (!boards.length) return "This project follows no Azure DevOps boards yet (Code → Boards → +).";
+  return boards.map((b) => `- ${b.name} (team ${b.team}, ${b.org}/${b.project})`).join("\n");
+}
+
+export async function toolCards(
+  args: ChatArgs & { column?: string; query?: string },
+  api: AddonHostApi,
+): Promise<string> {
+  const b = await chatBoard(args, api);
+  const data = await board({ board: b }, api);
+  const q = args.query?.trim().toLowerCase();
+  const out = [`Board ${b.name} (${b.org}/${b.project}, team ${b.team}).`];
+  for (const column of data.columns) {
+    if (args.column && column.name.toLowerCase() !== args.column.toLowerCase()) continue;
+    const cards = data.items.filter(
+      (i) =>
+        (i.column ? i.column === column.name : column.stateMappings[i.type] === i.state) &&
+        (!q || `${i.id} ${i.title} ${i.assignedTo ?? ""}`.toLowerCase().includes(q)),
+    );
+    out.push(`\n## ${column.name} (${cards.length}${column.itemLimit ? `/${column.itemLimit}` : ""})`);
+    out.push(...cards.map((c) => `- ${itemLine(c)}`));
+  }
+  return out.join("\n");
+}
+
+export async function toolShow(args: ChatArgs & { id: number }, api: AddonHostApi): Promise<string> {
+  const b = await chatBoard(args, api);
+  return JSON.stringify(await item({ board: b, id: Number(args.id) }, api), null, 1);
+}
+
+export async function toolUpdate(
+  args: ChatArgs & WorkItemPatch & { id: number },
+  api: AddonHostApi,
+): Promise<string> {
+  const b = await chatBoard(args, api);
+  const { chat: _chat, board: _board, id, ...patch } = args;
+  await update({ board: b, id: Number(id), patch }, api);
+  const d = await item({ board: b, id: Number(id) }, api);
+  return `Updated: ${itemLine(d)}${d.column ? ` · column ${d.column}` : ""}`;
+}
+
+export async function toolCreate(
+  args: ChatArgs & Omit<NewCard, "board">,
+  api: AddonHostApi,
+): Promise<string> {
+  const b = await chatBoard(args, api);
+  const { chat: _chat, board: _board, ...input } = args;
+  const card = await create({ ...input, board: b }, api);
+  return `Created ${itemLine(card)} on ${b.name}: ${card.url}`;
+}
+
+export async function toolDelete(args: ChatArgs & { id: number }, api: AddonHostApi): Promise<string> {
+  const b = await chatBoard(args, api);
+  await remove({ board: b, id: Number(args.id) }, api);
+  return `Deleted #${args.id}: it's in Azure DevOps' recycle bin, where it can be restored.`;
 }

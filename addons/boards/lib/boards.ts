@@ -48,6 +48,10 @@ export interface WorkItem {
 export interface BoardData {
   columns: BoardColumn[];
   items: WorkItem[];
+  /** The field that holds a card's column on this board (moving a card sets it). */
+  columnField?: string;
+  /** The team's default area: new cards go there, so they show on this board. */
+  area?: string;
 }
 
 /** The organisation's URL for `--org`. */
@@ -213,4 +217,181 @@ export function initials(name: string): string {
 /** The chat draft for "Start a chat about it". */
 export function chatDraft(item: WorkItem): string {
   return `Azure DevOps ${item.type} #${item.id}: ${item.title}\n${item.url}\n\n`;
+}
+
+// ── Managing cards (D-262): details, edits, moves, new and deleted cards ─────────────────────────────
+
+/** A card with everything the detail view and Claude need. */
+export interface WorkItemDetail extends WorkItem {
+  /** The description as plain text (Azure DevOps keeps HTML; see `htmlToText`). */
+  description: string;
+  acceptance?: string;
+  tags: string[];
+  priority?: number;
+  storyPoints?: number;
+  areaPath?: string;
+  iteration?: string;
+  createdBy?: string;
+  created?: string;
+  parentId?: number;
+  childIds: number[];
+  comments: Array<{ by: string; at: string; text: string }>;
+  /** The states this type of work item can be in, in order. */
+  states: string[];
+}
+
+/** What can change on a card; `column` moves it on the board (and sets the column's state). */
+export interface WorkItemPatch {
+  title?: string;
+  description?: string;
+  state?: string;
+  column?: string;
+  assignedTo?: string;
+  tags?: string[];
+  priority?: number;
+  storyPoints?: number;
+  /** A comment added to the card's discussion. */
+  comment?: string;
+}
+
+/** Azure DevOps rich text as plain text: paragraphs and line breaks kept, tags and entities gone. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Plain text as Azure DevOps rich text: escaped, one paragraph per block, line breaks kept. */
+export function textToHtml(text: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => `<div>${esc(block).replace(/\n/g, "<br>")}</div>`)
+    .join("");
+}
+
+/** The state a card of `type` gets in `column`, from the board's state mappings. */
+export function stateForColumn(column: BoardColumn | undefined, type: string): string | undefined {
+  return column?.stateMappings[type];
+}
+
+/** The `az boards work-item update` arguments for a patch (no id/org; `columnField` from the board). */
+export function updateArgs(patch: WorkItemPatch, columnField?: string, columnState?: string): string[] {
+  const args: string[] = [];
+  const fields: string[] = [];
+  if (patch.title !== undefined) args.push("--title", patch.title);
+  const state = patch.state ?? columnState;
+  if (state) args.push("--state", state);
+  if (patch.assignedTo !== undefined) args.push("--assigned-to", patch.assignedTo);
+  if (patch.description !== undefined) args.push("--description", textToHtml(patch.description));
+  if (patch.comment?.trim()) args.push("--discussion", textToHtml(patch.comment));
+  if (patch.tags)
+    fields.push(
+      `System.Tags=${patch.tags
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .join("; ")}`,
+    );
+  if (patch.priority !== undefined) fields.push(`Microsoft.VSTS.Common.Priority=${patch.priority}`);
+  if (patch.storyPoints !== undefined)
+    fields.push(`Microsoft.VSTS.Scheduling.StoryPoints=${patch.storyPoints}`);
+  if (patch.column && columnField) fields.push(`${columnField}=${patch.column}`);
+  if (fields.length) args.push("--fields", ...fields);
+  return args;
+}
+
+/** `teamsettings/teamfieldvalues` → the team's default area path, for new cards. */
+export function defaultArea(raw: unknown): string | undefined {
+  const v = (raw as { defaultValue?: unknown })?.defaultValue;
+  return typeof v === "string" && v ? v : undefined;
+}
+
+/** A followed board by its id or name (any case), or the first one. */
+export function findBoard(boards: Board[], ref?: string): Board | undefined {
+  if (!ref?.trim()) return boards[0];
+  const r = ref.trim().toLowerCase();
+  return (
+    boards.find((b) => b.id === ref) ??
+    boards.find((b) => b.name.toLowerCase() === r) ??
+    boards.find((b) => b.boardName.toLowerCase() === r || `${b.team} ${b.boardName}`.toLowerCase() === r)
+  );
+}
+
+/** `az boards work-item show` (+ comments and the type's states) → the card's details. */
+export function toDetail(
+  raw: unknown,
+  b: Pick<Board, "org" | "project">,
+  extra: { comments?: unknown; states?: unknown; columnField?: string },
+): WorkItemDetail | undefined {
+  const item = toWorkItem(raw, b, extra.columnField);
+  if (!item) return undefined;
+  const f = (raw as { fields: Record<string, unknown> }).fields;
+  const relations = ((raw as { relations?: unknown }).relations ?? []) as Array<{
+    rel?: string;
+    url?: string;
+  }>;
+  const idOf = (url?: string) => Number(/\/(\d+)$/.exec(url ?? "")?.[1]);
+  const comments = (
+    ((extra.comments as { comments?: unknown[] })?.comments ?? []) as Array<{
+      text?: string;
+      createdBy?: { displayName?: string };
+      createdDate?: string;
+    }>
+  )
+    .map((c) => ({
+      by: c.createdBy?.displayName ?? "",
+      at: c.createdDate ?? "",
+      text: htmlToText(c.text ?? ""),
+    }))
+    .filter((c) => c.text);
+  const states = (((extra.states as { value?: unknown[] })?.value ?? []) as Array<{ name?: string }>)
+    .map((s) => s.name)
+    .filter((s): s is string => !!s);
+  const text = (k: string) => (typeof f[k] === "string" ? htmlToText(f[k] as string) : "");
+  const num = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : undefined);
+  return {
+    ...item,
+    description: text("System.Description"),
+    acceptance: text("Microsoft.VSTS.Common.AcceptanceCriteria") || undefined,
+    tags:
+      typeof f["System.Tags"] === "string"
+        ? (f["System.Tags"] as string)
+            .split(";")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [],
+    priority: num("Microsoft.VSTS.Common.Priority"),
+    storyPoints: num("Microsoft.VSTS.Scheduling.StoryPoints"),
+    areaPath: typeof f["System.AreaPath"] === "string" ? (f["System.AreaPath"] as string) : undefined,
+    iteration:
+      typeof f["System.IterationPath"] === "string" ? (f["System.IterationPath"] as string) : undefined,
+    createdBy: person(f["System.CreatedBy"]),
+    created: typeof f["System.CreatedDate"] === "string" ? (f["System.CreatedDate"] as string) : undefined,
+    parentId: relations
+      .filter((r) => r.rel === "System.LinkTypes.Hierarchy-Reverse")
+      .map((r) => idOf(r.url))
+      .find(Number.isFinite),
+    childIds: relations
+      .filter((r) => r.rel === "System.LinkTypes.Hierarchy-Forward")
+      .map((r) => idOf(r.url))
+      .filter(Number.isFinite),
+    comments,
+    states: states.length ? states : [item.state],
+  };
+}
+
+/** A card as one line for Claude: `#101 Bug "Checkout fails" · Active · Ann Demo`. */
+export function itemLine(item: WorkItem): string {
+  return `#${item.id} ${item.type} ${JSON.stringify(item.title)} · ${item.state}${item.assignedTo ? ` · ${item.assignedTo}` : " · unassigned"}`;
 }

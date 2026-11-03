@@ -2,8 +2,8 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "boards",
   "name": "Boards",
-  "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board, its columns side by side with a card per work item. Open a card in the browser or start a chat about it. Uses your own az login.",
-  "version": "1.0.0",
+  "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board. Open, edit, drag between columns, create and delete cards right here, and Claude can read and update them from your chats. Uses your own az login.",
+  "version": "2.0.0",
   "icon": "kanban",
   "permissions": ["exec:az", "chat"],
   "storage": {
@@ -27,6 +27,116 @@
         "group": "Boards",
         "icon": "kanban",
         "run": "showBoards"
+      }
+    ],
+    "tools": [
+      {
+        "id": "boards",
+        "description": "List the Azure DevOps boards the chat's Jig project follows (name, team, organisation/project). Use a board's name as `board` in the other boards tools; without it they use the first board.",
+        "readOnly": true,
+        "run": "toolBoards"
+      },
+      {
+        "id": "cards",
+        "description": "The cards on an Azure DevOps board of this project, column by column: id, type, title, state, who has it. Filter by column or by text in the id, title or assignee.",
+        "params": {
+          "board": {
+            "type": "string",
+            "description": "Board name (default: the first board)",
+            "optional": true
+          },
+          "column": { "type": "string", "description": "Only this column", "optional": true },
+          "query": {
+            "type": "string",
+            "description": "Text to find in id, title or assignee",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolCards"
+      },
+      {
+        "id": "card",
+        "description": "One Azure DevOps work item with everything: description, acceptance criteria, state, column, tags, priority, story points, parent and children, comments, and the states its type can be in.",
+        "params": {
+          "id": { "type": "number", "description": "The work item id (#123)" },
+          "board": {
+            "type": "string",
+            "description": "Board name (default: the first board)",
+            "optional": true
+          }
+        },
+        "readOnly": true,
+        "run": "toolShow"
+      },
+      {
+        "id": "update",
+        "description": "Change an Azure DevOps work item: title, description (plain text), state, move it to a board column (its state follows the column), assignee, tags, priority, story points, or add a comment. Only the given fields change. Keep the board up to date as work progresses in the chat.",
+        "params": {
+          "id": { "type": "number", "description": "The work item id" },
+          "board": {
+            "type": "string",
+            "description": "Board name (default: the first board)",
+            "optional": true
+          },
+          "title": { "type": "string", "optional": true },
+          "description": {
+            "type": "string",
+            "description": "Plain text; replaces the description",
+            "optional": true
+          },
+          "state": {
+            "type": "string",
+            "description": "One of the states its type can be in",
+            "optional": true
+          },
+          "column": {
+            "type": "string",
+            "description": "A column of the board, to move the card",
+            "optional": true
+          },
+          "assignedTo": {
+            "type": "string",
+            "description": "Email or display name; empty to unassign",
+            "optional": true
+          },
+          "tags": { "type": "array", "description": "Replaces the tags", "optional": true },
+          "priority": { "type": "number", "optional": true },
+          "storyPoints": { "type": "number", "optional": true },
+          "comment": { "type": "string", "description": "Added to the card's discussion", "optional": true }
+        },
+        "run": "toolUpdate"
+      },
+      {
+        "id": "create",
+        "description": "Create a work item on an Azure DevOps board of this project (in the team's area, so it shows on the board), optionally in a column, assigned, or under a parent item.",
+        "params": {
+          "type": { "type": "string", "description": "Work item type: User Story, Bug, Task, Feature…" },
+          "title": { "type": "string" },
+          "board": {
+            "type": "string",
+            "description": "Board name (default: the first board)",
+            "optional": true
+          },
+          "description": { "type": "string", "description": "Plain text", "optional": true },
+          "column": { "type": "string", "description": "The board column to put it in", "optional": true },
+          "assignedTo": { "type": "string", "optional": true },
+          "parentId": { "type": "number", "description": "A parent work item id", "optional": true }
+        },
+        "run": "toolCreate"
+      },
+      {
+        "id": "delete",
+        "description": "Delete an Azure DevOps work item (it goes to the project's recycle bin, where it can be restored). Only when the user asks for it.",
+        "params": {
+          "id": { "type": "number", "description": "The work item id" },
+          "board": {
+            "type": "string",
+            "description": "Board name (default: the first board)",
+            "optional": true
+          }
+        },
+        "run": "toolDelete"
       }
     ]
   }
