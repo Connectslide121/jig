@@ -266,15 +266,18 @@ function LabeledSwitch({
   checked,
   onChange,
   label,
+  labelClassName,
 }: {
   checked: boolean;
   onChange: (on: boolean) => void;
   label: string;
+  /** E.g. hide the words in a narrow container; the switch keeps its label for screen readers. */
+  labelClassName?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-muted">
+    <div className="flex items-center gap-2 text-xs text-muted" title={label}>
       <Switch checked={checked} onChange={onChange} label={label} />
-      <span className="truncate">{label}</span>
+      <span className={cn("truncate", labelClassName)}>{label}</span>
     </div>
   );
 }
@@ -470,54 +473,64 @@ function QueuePanel({
 
   return (
     <>
-      <div className="flex h-10 shrink-0 items-center gap-2 px-3">
-        <span className="min-w-0 truncate text-xs text-muted" data-testid="tasks-counts">
-          {n.total ? `${n.queued} queued · ${n.finished} of ${n.total} finished` : ""}
-        </span>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <LabeledSwitch
-            checked={queue.stopOnFailure}
-            onChange={(on) => void call("setStopOnFailure", { on })}
-            label="Stop when a task fails"
-          />
-          <Button size="sm" icon={Plus} onClick={() => setAdding(true)} data-testid="tasks-add">
-            Add tasks
-          </Button>
-          {queue.running ? (
-            <Button size="sm" icon={Pause} onClick={() => void call("pause")} data-testid="tasks-pause">
-              Pause
-            </Button>
-          ) : (
+      {/* One row: the queue's progress on the left, its controls on the right. In a narrow place
+          (a sidebar) the time and cost, then the switch's words and the status counts give way. */}
+      <div className="@container shrink-0">
+        <div className="flex h-10 items-center gap-3 px-3">
+          {queue.tasks.length > 0 ? <QueueSummary tasks={queue.tasks} inline /> : <span className="flex-1" />}
+          <div className="flex shrink-0 items-center gap-2">
+            <LabeledSwitch
+              checked={queue.stopOnFailure}
+              onChange={(on) => void call("setStopOnFailure", { on })}
+              label="Stop when a task fails"
+              labelClassName="hidden @3xl:inline"
+            />
             <Button
               size="sm"
-              variant="primary"
-              icon={Play}
-              disabled={!n.queued}
-              onClick={() => void call("start")}
-              data-testid="tasks-start"
+              icon={Plus}
+              onClick={() => setAdding(true)}
+              aria-label="Add tasks"
+              title="Add tasks"
+              data-testid="tasks-add"
             >
-              Start
+              <span className="hidden @xl:inline">Add tasks</span>
             </Button>
-          )}
-          <IconButton
-            size="sm"
-            icon={MoreHorizontal}
-            label="More"
-            onClick={(e) =>
-              ctx.menu(
-                [
-                  {
-                    label: "Clear finished tasks",
-                    icon: "list-x",
-                    disabled: !n.finished,
-                    onSelect: () => void call("clearFinished"),
-                  },
-                  { label: "Past runs", icon: "history", onSelect: onHistory },
-                ],
-                e.currentTarget,
-              )
-            }
-          />
+            {queue.running ? (
+              <Button size="sm" icon={Pause} onClick={() => void call("pause")} data-testid="tasks-pause">
+                Pause
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="primary"
+                icon={Play}
+                disabled={!n.queued}
+                onClick={() => void call("start")}
+                data-testid="tasks-start"
+              >
+                Start
+              </Button>
+            )}
+            <IconButton
+              size="sm"
+              icon={MoreHorizontal}
+              label="More"
+              onClick={(e) =>
+                ctx.menu(
+                  [
+                    {
+                      label: "Clear finished tasks",
+                      icon: "list-x",
+                      disabled: !n.finished,
+                      onSelect: () => void call("clearFinished"),
+                    },
+                    { label: "Past runs", icon: "history", onSelect: onHistory },
+                  ],
+                  e.currentTarget,
+                )
+              }
+            />
+          </div>
         </div>
       </div>
       {queue.tasks.length === 0 ? (
@@ -533,7 +546,6 @@ function QueuePanel({
         </Empty>
       ) : (
         <>
-          <QueueSummary tasks={queue.tasks} />
           <TaskTable ctx={ctx} queue={queue} projectName={projectName} onOpen={setOpen} onMenu={menuFor} />
         </>
       )}
@@ -609,16 +621,17 @@ function TaskTable({
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
+    // Narrow (a sidebar): the detail columns give way first, then time and cost; task and status stay.
+    <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
         <span className="w-6 shrink-0 text-right">#</span>
         <span className="min-w-0 flex-1">Task and how it went</span>
-        <span className="w-16 shrink-0 text-right">Started</span>
-        <span className="w-12 shrink-0 text-right">Notes</span>
-        <span className="w-20 shrink-0 text-right">Follow-ups</span>
-        <span className="w-12 shrink-0 text-right">Files</span>
-        <span className="w-12 shrink-0 text-right">Time</span>
-        <span className="w-14 shrink-0 text-right">Cost</span>
+        <span className="hidden @3xl:block w-16 shrink-0 text-right">Started</span>
+        <span className="hidden @3xl:block w-12 shrink-0 text-right">Notes</span>
+        <span className="hidden @3xl:block w-20 shrink-0 text-right">Follow-ups</span>
+        <span className="hidden @3xl:block w-12 shrink-0 text-right">Files</span>
+        <span className="hidden @xl:block w-12 shrink-0 text-right">Time</span>
+        <span className="hidden @xl:block w-14 shrink-0 text-right">Cost</span>
         <span className="w-7 shrink-0" />
         <span className="w-28 shrink-0 text-right">Status</span>
       </div>
@@ -666,14 +679,14 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
       </Empty>
     );
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-3 pb-3" data-testid="tasks-history">
+    <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3" data-testid="tasks-history">
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
-        <span className="w-40 shrink-0">Started</span>
+        <span className="w-24 shrink-0 @xl:w-40">Started</span>
         <span className="min-w-0 flex-1">Tasks</span>
-        <span className="w-12 shrink-0 text-right">Done</span>
-        <span className="w-12 shrink-0 text-right">Failed</span>
-        <span className="w-12 shrink-0 text-right">Time</span>
-        <span className="w-14 shrink-0 text-right">Cost</span>
+        <span className="hidden @3xl:block w-12 shrink-0 text-right">Done</span>
+        <span className="hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
+        <span className="hidden @xl:block w-12 shrink-0 text-right">Time</span>
+        <span className="hidden @xl:block w-14 shrink-0 text-right">Cost</span>
         <span className="w-24 shrink-0 text-right">Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
@@ -689,7 +702,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               onClick={() => onOpen(run.id)}
               className="flex h-12 w-full items-center gap-3 border-b border-line px-3 text-left last:border-b-0 hover:bg-hover"
             >
-              <span className="w-40 shrink-0 truncate text-xs tabular-nums text-fg">
+              <span className="w-24 shrink-0 truncate text-xs tabular-nums text-fg @xl:w-40">
                 {when(run.startedAt)}
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
@@ -700,12 +713,16 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
                   {titles}
                 </span>
               </span>
-              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{o.done || ""}</span>
-              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+                {o.done || ""}
+              </span>
+              <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
                 {o.failed || ""}
               </span>
-              <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{runTime(run)}</span>
-              <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+                {runTime(run)}
+              </span>
+              <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
                 {money(t.costUsd)}
               </span>
               <span className="flex w-24 shrink-0 items-center justify-end gap-1.5">
@@ -874,11 +891,24 @@ const SUMMARY_ORDER: TaskStatus[] = [
 ];
 
 /** The whole queue at a glance: a bar of how the tasks went, counts per status, time and cost. */
-function QueueSummary({ tasks }: { tasks: Task[] }) {
+/**
+ * The queue's progress: a bar, the count per status, the time and cost. `inline` sits in the queue's
+ * header row (inside its `@container`) and gives way as the row narrows; otherwise it's its own row.
+ */
+function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
   const t = tally(tasks);
   return (
-    <div className="flex h-12 shrink-0 items-center gap-4 px-6" data-testid="tasks-summary">
-      <div className="flex h-1.5 w-40 shrink-0 overflow-hidden rounded-full bg-raised">
+    <div
+      className={cn("flex min-w-0 items-center", inline ? "flex-1 gap-3" : "h-12 shrink-0 gap-4 px-6")}
+      data-testid="tasks-summary"
+      title={`${t.byStatus.queued ?? 0} queued · ${t.finished} of ${tasks.length} finished`}
+    >
+      <div
+        className={cn(
+          "flex h-1.5 shrink-0 overflow-hidden rounded-full bg-raised",
+          inline ? "w-16 @xl:w-28" : "w-40",
+        )}
+      >
         {SUMMARY_ORDER.map((status) =>
           t.byStatus[status] ? (
             <div
@@ -889,7 +919,12 @@ function QueueSummary({ tasks }: { tasks: Task[] }) {
           ) : null,
         )}
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden text-xs text-muted">
+      <div
+        className={cn(
+          "min-w-0 flex-1 items-center gap-3 overflow-hidden text-xs text-muted",
+          inline ? "hidden @lg:flex" : "flex",
+        )}
+      >
         {SUMMARY_ORDER.filter((status) => t.byStatus[status]).map((status) => (
           <span key={status} className="flex shrink-0 items-center gap-1">
             <StatusIcon status={status} />
@@ -898,9 +933,17 @@ function QueueSummary({ tasks }: { tasks: Task[] }) {
           </span>
         ))}
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-muted">
-        {[formatMs(t.ms), money(t.costUsd)].filter(Boolean).join(" · ")}
-      </span>
+      {(t.ms > 0 || (t.costUsd ?? 0) > 0) && (
+        <span className={cn("shrink-0 text-xs tabular-nums text-muted", inline && "hidden @4xl:inline")}>
+          {[formatMs(t.ms), money(t.costUsd)].filter(Boolean).join(" · ")}
+        </span>
+      )}
+      {/* Narrow: no counts per status, so say how far along the queue is. */}
+      {inline && (
+        <span className="min-w-0 truncate text-xs text-muted tabular-nums @lg:hidden">
+          {t.finished}/{tasks.length}
+        </span>
+      )}
     </div>
   );
 }
@@ -963,8 +1006,12 @@ function ChatCard({
             {projectName ? ` · ${projectName}` : ""}
           </span>
         </div>
-        <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{formatMs(t.ms)}</span>
-        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">{money(t.costUsd)}</span>
+        <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+          {formatMs(t.ms)}
+        </span>
+        <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+          {money(t.costUsd)}
+        </span>
         <span className="w-7 shrink-0" />
         <span className="w-28 shrink-0 text-right text-xs tabular-nums text-muted">
           {t.finished} of {tasks.length} finished
@@ -1050,12 +1097,16 @@ function TaskRow({
           {detail ?? task.prompt}
         </div>
       </div>
-      <span className="w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted">
+      <span className="hidden @3xl:block w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted">
         {startedAt(task)}
       </span>
-      <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{notes || ""}</span>
-      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted">{followUps || ""}</span>
-      <span className="flex w-12 shrink-0 justify-end">
+      <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+        {notes || ""}
+      </span>
+      <span className="hidden @3xl:block w-20 shrink-0 text-right text-xs tabular-nums text-muted">
+        {followUps || ""}
+      </span>
+      <span className="hidden w-12 shrink-0 justify-end @3xl:flex">
         {files.length > 0 && (
           <button
             type="button"
@@ -1073,8 +1124,12 @@ function TaskRow({
           </button>
         )}
       </span>
-      <span className="w-12 shrink-0 text-right text-xs tabular-nums text-muted">{duration(task)}</span>
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">{money(task.costUsd)}</span>
+      <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+        {duration(task)}
+      </span>
+      <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+        {money(task.costUsd)}
+      </span>
       <span className="w-7 shrink-0">
         <IconButton
           size="sm"

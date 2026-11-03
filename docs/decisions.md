@@ -3227,3 +3227,14 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   call keeps its room). Until the permissions are approved it says "Needs your admin's approval" with
   Connect chat…; the send box keeps its row and is disabled. **Claude, on my own:** the 5-second
   interval, the left default and the fallbacks.
+
+## D-271: The task queue's progress sits in its header row; the view fits a sidebar
+
+**Who:** Jon: the "6 queued" bar took a whole row; fit it in the row above and make it work in a sidebar.
+
+- The progress bar and the count per status sit in the queue's header row, left of the controls. The
+  row is a container: as it narrows, the time and cost, then the switch's words and the per-status
+  counts (replaced by "finished/total") give way, and Add tasks becomes an icon. Past runs keep
+  their own summary row.
+- The queue and history tables hide optional columns in narrow containers (Started, Notes,
+  Follow-ups, Files, Done/Failed below 48rem; Time and Cost below 36rem); task and status always stay.
