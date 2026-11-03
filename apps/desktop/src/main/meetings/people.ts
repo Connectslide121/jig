@@ -19,6 +19,10 @@ export function peopleSearchUrl(query: string): string {
   return `https://graph.microsoft.com/v1.0/users?${params}`;
 }
 
+/** An e-mail-shaped user principal name (`ann@contoso.com`), nothing that could leave Graph's users path. */
+export const isUserName = (value: string): boolean =>
+  /^[^@\s/\\?#%]+@[^@\s/\\?#%]+\.[^@\s/\\?#%]+$/.test(value);
+
 /** The people you work with most (Graph's `/me/people`), as user principal names to look up. */
 export const SUGGESTED_URL =
   "https://graph.microsoft.com/v1.0/me/people?$top=25&$select=displayName,userPrincipalName,personType";

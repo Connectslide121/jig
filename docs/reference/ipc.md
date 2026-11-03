@@ -299,6 +299,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.chatSend | Room only: writes in that chat as you (Graph ChatMessage.Send) |
 | meetings.chatConnect | Room only: asks Microsoft for the chat permissions (browser sign-in) |
 | meetings.photo | Someone's Microsoft profile picture (48×48 data URL) or null, by Teams id, object id or `local`; silent sign-in only, cached per run (D-263) |
+| people.photo | The same by e-mail / user principal name `{ email }`, for add-ons (`ctx.people.photo`, `PersonAvatar`; D-291); null without Meetings on or its sign-in (no request then), after a refused people token for 10 minutes, or for anything not e-mail-shaped; cached per run |
 | meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); room only |
 | meetings.startCall | Create the global record of a one-to-one Teams call (`{ peerId, peerName, direction }`); room only, one active call |
 | meetings.setRinging | Turn ringing for Teams calls in Jig on or off; room only |

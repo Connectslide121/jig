@@ -10,6 +10,7 @@ import {
   columnField,
   initials,
   orgName,
+  personEmail,
   placeCards,
   tabName,
   teamApi,
@@ -108,7 +109,7 @@ describe("toWorkItem and placeCards", () => {
           "System.Title": "Checkout",
           "System.WorkItemType": "Bug",
           "System.State": "Active",
-          "System.AssignedTo": { displayName: "Ann Demo" },
+          "System.AssignedTo": { displayName: "Ann Demo", uniqueName: "ann@example.com" },
           "WEF_1_Kanban.Column": "Doing",
         },
       },
@@ -120,6 +121,10 @@ describe("toWorkItem and placeCards", () => {
     expect(
       toWorkItem({ id: 8, fields: { "System.AssignedTo": "Ann Demo <a@example.com>" } }, where)?.assignedTo,
     ).toBe("Ann Demo");
+    expect(item?.assignedEmail).toBe("ann@example.com");
+    expect(personEmail("Ann Demo <a@example.com>")).toBe("a@example.com");
+    expect(personEmail({ displayName: "Build", uniqueName: "Build\\Shop" })).toBeUndefined();
+    expect(personEmail(undefined)).toBeUndefined();
     expect(toWorkItem(null, where)).toBeUndefined();
 
     const byState: WorkItem = { id: 9, title: "t", type: "User Story", state: "Closed", url: "" };

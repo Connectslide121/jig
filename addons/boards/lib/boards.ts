@@ -48,6 +48,8 @@ export interface WorkItem {
   /** The board column it's in, when Azure DevOps said. */
   column?: string;
   assignedTo?: string;
+  /** Who has it, by e-mail / user principal name (`uniqueName`): their picture is found by it. */
+  assignedEmail?: string;
   changed?: string;
   url: string;
 }
@@ -189,6 +191,17 @@ function person(value: unknown): string | undefined {
   return undefined;
 }
 
+/** A person field's e-mail / user principal name: `uniqueName`, or the `<…>` of "Name <email>". */
+export function personEmail(value: unknown): string | undefined {
+  const raw =
+    typeof value === "string"
+      ? /<([^>]+)>\s*$/.exec(value)?.[1]
+      : value && typeof value === "object" && "uniqueName" in value
+        ? (value as { uniqueName: unknown }).uniqueName
+        : undefined;
+  return typeof raw === "string" && raw.includes("@") ? raw.trim() : undefined;
+}
+
 /** One row of `az boards query` → a card; undefined for something that isn't a work item. */
 export function toWorkItem(
   raw: unknown,
@@ -208,6 +221,7 @@ export function toWorkItem(
     state: String(f["System.State"] ?? "New"),
     column: typeof column === "string" && column ? column : undefined,
     assignedTo: person(f["System.AssignedTo"]),
+    assignedEmail: personEmail(f["System.AssignedTo"]),
     changed: typeof f["System.ChangedDate"] === "string" ? f["System.ChangedDate"] : undefined,
     url: `${orgUrl(b.org)}/${encodeURIComponent(b.project)}/_workitems/edit/${id}`,
   };

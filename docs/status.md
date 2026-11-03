@@ -1,5 +1,11 @@
 # Status
 
+Board avatars (2026-11-03, D-291): Boards cards show who has them as an avatar at the far right
+(their Microsoft profile picture when Meetings' sign-in is connected, else initials; an empty slot when
+unassigned; hover for name and e-mail), and the card's detail shows it next to "Assigned to". Add-ons
+get the same through `PersonAvatar` / `ctx.people.photo`. Needs testing on your machine with the
+meeting sign-in connected: real colleagues' pictures appear on a real board.
+
 Boards text and delete (2026-11-03, D-290): card titles, descriptions, comments and names with "–",
 "…", "›", quotes or "ö" show and save as written (az now runs without cmd.exe and answers in UTF-8),
 creating a card whose description has double quotes no longer fails, and deleting a card no longer

@@ -1,5 +1,5 @@
 import type { AddonUiContext } from "@jig/sdk";
-import { Button, cn, Dialog, Input, Select, Spinner, Textarea, useHostCall } from "@jig/sdk/ui";
+import { Button, cn, Dialog, Input, PersonAvatar, Select, Spinner, Textarea, useHostCall } from "@jig/sdk/ui";
 import { ExternalLink, MessageSquarePlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -298,11 +298,27 @@ export function CardDialog({
                 </Select>
               </Field>
               <Field label="Assigned to">
-                <Input
-                  value={draft.assignedTo}
-                  placeholder="Email or name"
-                  onChange={(e) => setDraft({ ...draft, assignedTo: e.target.value })}
-                />
+                <span className="flex min-w-0 items-center gap-2">
+                  {/* The saved assignee's picture; while you type someone else, their initials. */}
+                  <PersonAvatar
+                    size="md"
+                    name={draft.assignedTo.trim()}
+                    email={
+                      draft.assignedTo.trim() === (data.assignedTo ?? "")
+                        ? data.assignedEmail
+                        : draft.assignedTo.includes("@")
+                          ? draft.assignedTo.trim()
+                          : undefined
+                    }
+                    data-testid="board-card-avatar"
+                  />
+                  <Input
+                    className="min-w-0 flex-1"
+                    value={draft.assignedTo}
+                    placeholder="Email or name"
+                    onChange={(e) => setDraft({ ...draft, assignedTo: e.target.value })}
+                  />
+                </span>
               </Field>
               <Field label="Tags">
                 <Input

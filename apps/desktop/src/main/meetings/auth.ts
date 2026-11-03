@@ -19,6 +19,7 @@ import { writeText } from "../state/jsonStore";
 import { paths } from "../state/paths";
 import {
   type GraphUser,
+  isUserName,
   PEOPLE_SCOPES,
   peopleSearchUrl,
   SUGGESTED_URL,
@@ -45,6 +46,7 @@ export class MeetingAuth {
   private client?: PublicClientApplication;
   private account?: AccountInfo;
   private interactive?: Promise<string>;
+  private noPhotosUntil = 0;
   private epoch = 0;
   private restored?: Promise<void>;
   private persisting?: Promise<void>;
@@ -180,6 +182,7 @@ export class MeetingAuth {
   }
   async signIn(): Promise<string> {
     await this.access(callingScopes, true);
+    this.noPhotosUntil = 0;
     return this.name ?? "Microsoft account";
   }
   async credential(): Promise<{ token: string }> {
@@ -209,14 +212,21 @@ export class MeetingAuth {
   /**
    * A person's profile picture (48×48) as a data URL, or null when they have none. Never asks you to
    * sign in (a call is no time for a browser pop-up): without the people permission it's just null.
-   * `objectId` "me" is you.
+   * `user` is an object id, a user principal name (e-mail) or "me" for you. Nothing is asked of
+   * Microsoft when the meeting sign-in isn't set up or connected, and after a refused token for the
+   * people permission it waits 10 minutes before asking again (a board has many people).
    */
-  async photo(objectId: string): Promise<string | null> {
-    const id = objectId === "me" ? this.account?.localAccountId : objectId;
-    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+  async photo(user: string): Promise<string | null> {
+    const id = user === "me" ? this.account?.localAccountId : user;
+    if (!id || !(/^[0-9a-f-]{36}$/i.test(id) || isUserName(id))) return null;
+    if (Date.now() < this.noPhotosUntil) return null;
     const token = await this.access(PEOPLE_SCOPES, false).catch(() => undefined);
-    if (!token) return null;
-    const response = await fetch(`https://graph.microsoft.com/v1.0/users/${id}/photos/48x48/$value`, {
+    if (!token) {
+      this.noPhotosUntil = Date.now() + 10 * 60_000;
+      return null;
+    }
+    const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(id)}/photos/48x48/$value`;
+    const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(15_000),
     }).catch(() => undefined);

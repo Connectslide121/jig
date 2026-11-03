@@ -16,6 +16,7 @@ import { createContext, createElement, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { updateTabParams } from "../../shared/layout";
 import { switchTenant, useTenants } from "../features/azure/store";
+import { personPhoto } from "../features/people/PersonAvatar";
 import { ProjectSwatch } from "../features/projects/colors";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
@@ -110,6 +111,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       open: () => call("meetings.open"),
       history: () => void workbench.openTab("jig.meetings", {}),
     },
+    people: { photo: personPhoto },
     host: {
       call: <T>(method: string, args?: unknown) => call("addons.call", { id, method, args }) as Promise<T>,
     },

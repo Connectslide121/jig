@@ -88,6 +88,7 @@ are add-ons':
 | `on(topic, listener)` | events from `api.emit` in host code |
 | `onJigEvent(name, listener)` | what happens in Jig while the view is open (see Jig events below); returns unsubscribe. `useJigEvent(name, listener)` from `@jig/sdk/ui` is the hook |
 | `setBadge(viewId, value)` | a badge on one of this add-on's views (its icon in a sidebar and on its tab): a count (above 99 shows `99+`) or up to 4 characters such as `!`; `0` or `undefined` clears it |
+| `people.photo(email)` → data URL or null | someone's Microsoft profile picture by e-mail / user principal name (D-291), from the meeting sign-in, silently; cached per window and per run; null when they have none or the sign-in isn't there (no request is made then). `PersonAvatar` uses it |
 | `azure.tenant()` / `azure.tenants()` / `azure.switchTo(key)` | the Azure tenant picked in the top bar (D-282) and all of them (your az login first), as `api.azure.tenant()` describes them; `switchTo` makes another one active (a view's "Switch" for something that lives in another tenant, like a Boards board). Follow switches with `useJigEvent("azure.tenant", …)` |
 | `addons.list()` / `addons.call(addonId, method, args)` | other add-ons (`{ id, name, enabled, exports }`) and calling a host method one shares (its `exports`) |
 | `projects.active()` / `projects.list()` / `projects.setActive(id)` | `{ id, name, path, isGitRepo, exists, repos, focusRepo? }`: a project (a group of chats the user manages, D-101). `path` and the facts are about its default workspace; `repos` lists the repositories inside it (`[{ path, name }]`, empty for a single repository) |
@@ -113,7 +114,7 @@ are add-ons':
 | `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added. An item may have `project` (shows its `ProjectSwatch` in front), `badge` (text at the right edge) and `testId` |
 | `confirm({…})`, `prompt({…})` | Jig dialogs |
 
-`@jig/sdk/ui` exports: `ProjectSwatch` (a project's square, `color` from `AddonProject.color`), `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
+`@jig/sdk/ui` exports: `ProjectSwatch` (a project's square, `color` from `AddonProject.color`), `PersonAvatar` (`{ name?, email?, size?: "sm" | "md" }`: a person's round avatar in a fixed-size slot, their picture through `ctx.people.photo` over their initials, an empty slot when there's nobody, name and e-mail on hover; D-291) and `personInitials`, `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
 `CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Collapse`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useActiveChat()` (the chat in front, or the last one: `{ sessionId, title, projectId }`), `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`

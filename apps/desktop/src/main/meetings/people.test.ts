@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { peopleSearchUrl, suggestedNames, toPeople, usersByNameUrl } from "./people";
+import { isUserName, peopleSearchUrl, suggestedNames, toPeople, usersByNameUrl } from "./people";
 
 describe("people to call", () => {
+  it("takes only e-mail-shaped user names for pictures", () => {
+    expect(isUserName("ann.demo@contoso.com")).toBe(true);
+    expect(isUserName("Ann Demo")).toBe(false);
+    for (const bad of ["a@b", "../me@contoso.com", "ann@contoso.com/photo", "a?b@contoso.com", "a\\b@c.com"])
+      expect(isUserName(bad)).toBe(false);
+  });
   it("searches by name or mail without letting quotes through", () => {
     const url = new URL(peopleSearchUrl(' al"ex\\ '));
     expect(url.pathname).toBe("/v1.0/users");

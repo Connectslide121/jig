@@ -89,6 +89,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
   "meetings.people": z.object({ query: z.string().max(200) }).strict(),
   "meetings.photo": z.object({ id: z.string().max(300) }).strict(),
+  "people.photo": z.object({ email: z.string().max(320) }).strict(),
   "meetings.chat": z.object({ id }).strict(),
   "meetings.chatSend": z.object({ id, text: z.string().trim().min(1).max(4000) }).strict(),
   "completion.request": z

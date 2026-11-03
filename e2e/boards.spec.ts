@@ -14,7 +14,7 @@ const say = (value) => { process.stdout.write(JSON.stringify(value)); process.ex
 const uri = args.includes("--uri") ? args[args.indexOf("--uri") + 1] : "";
 const card = (id, title, type, state, column, who) => ({ id, fields: {
   "System.Id": id, "System.Title": title, "System.WorkItemType": type, "System.State": state,
-  "WEF_1_Kanban.Column": column, ...(who ? { "System.AssignedTo": { displayName: who } } : {}),
+  "WEF_1_Kanban.Column": column, ...(who ? { "System.AssignedTo": { displayName: who, uniqueName: who.toLowerCase().replace(" ", ".") + "@contoso.com" } } : {}),
 }});
 if (uri.endsWith("/profiles/me")) say({ id: "me-1" });
 if (uri.endsWith("/_apis/accounts")) say({ value: [{ accountName: "contoso" }] });
@@ -99,6 +99,14 @@ test("Boards: pick team boards found in Azure DevOps; columns and cards like Azu
   await expect(view.getByTestId("board-tab-Mobile · Features")).toBeVisible();
   await view.getByTestId("board-tab-Web · Stories").click();
   await expect(view.getByTestId("board-item-101")).toContainText("Checkout fails with a saved card");
+  // Who has it: an avatar at the far right (initials without the meeting sign-in), an empty slot of
+  // the same size when nobody has it (D-291).
+  const avatar = view.getByTestId("board-item-avatar-101");
+  await expect(avatar).toHaveText("AD");
+  await expect(avatar).toHaveAttribute("aria-label", "Ann Demo (ann.demo@contoso.com)");
+  await expect(view.getByTestId("board-item-avatar-102")).toHaveText("");
+  const left = async (id: number) => (await view.getByTestId(`board-item-avatar-${id}`).boundingBox())?.x;
+  expect(await left(101)).toBe(await left(104));
   const columns = await view
     .locator("[data-testid^='board-column-']")
     .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));

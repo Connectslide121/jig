@@ -32,6 +32,7 @@ import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
 import { MeetingAuth } from "./auth";
 import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
+import { isUserName } from "./people";
 import { ownMediaUrl, ownPagePermission } from "./permissions";
 import { hideShareFrame, showShareFrame } from "./shareFrame";
 import { MeetingStore } from "./store";
@@ -46,6 +47,7 @@ const FAKE_PHOTOS: Record<string, string> = {
   alex: svgPhoto("#4a7bd0"),
   "00000000-0000-4000-8000-00000000a1e5": svgPhoto("#4a7bd0"),
   sam: svgPhoto("#3f9d6b"),
+  "alex@contoso.com": svgPhoto("#4a7bd0"),
   "00000000-0000-4000-8000-0000000005a3": svgPhoto("#3f9d6b"),
 };
 const store = new MeetingStore();
@@ -83,13 +85,12 @@ const translator = new CaptionTranslator(
 const activity = (text: string) =>
   publishActivity({ kind: "addon.action", text: `meetings.${text}`, detail: { addonId: "meetings" } });
 
+const meetingsOn = () =>
+  addonService()
+    .list()
+    .some((a) => a.id === "meetings" && a.enabled && !a.errors.length);
 function enabled(): void {
-  if (
-    !addonService()
-      .list()
-      .some((a) => a.id === "meetings" && a.enabled && !a.errors.length)
-  )
-    throw new JigError("meeting_disabled", "Enable the Meetings add-on first");
+  if (!meetingsOn()) throw new JigError("meeting_disabled", "Enable the Meetings add-on first");
 }
 function own(context: CallContext): void {
   if (!room || context.sender.id !== room.webContents.id)
@@ -611,6 +612,20 @@ export async function startMeetings(): Promise<void> {
     if (!photo) {
       photo = auth.photo(objectId).catch(() => null);
       photos.set(objectId, photo);
+    }
+    return photo;
+  });
+  // The same pictures by e-mail, for add-ons (Boards' "Assigned to", D-291). Only with Meetings on,
+  // so nothing asks Microsoft when you don't use its sign-in; null means initials.
+  handle("people.photo", async ({ email }, ctx) => {
+    fromJig(ctx);
+    const upn = email.trim().toLowerCase();
+    if (fake()) return FAKE_PHOTOS[upn] ?? null;
+    if (!isUserName(upn) || !meetingsOn()) return null;
+    let photo = photos.get(upn);
+    if (!photo) {
+      photo = auth.photo(upn).catch(() => null);
+      photos.set(upn, photo);
     }
     return photo;
   });

@@ -15,6 +15,11 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 - **A board:** its real columns side by side with WIP limits, a card per work item (type colour, id,
   title, who has it, its state when it differs from the column). Done cards older than 30 days are
   left off.
+- **Who has it (D-291):** each card shows its assignee as a round avatar at the far right of its
+  last line, in a fixed slot (empty when unassigned), so nothing moves while pictures load: their
+  Microsoft profile picture when the meeting sign-in can get it, otherwise initials; hover for name
+  and e-mail. Matched by the work item's `System.AssignedTo` `uniqueName`. The card's detail shows
+  the same avatar next to "Assigned to".
 - **Manage it here (D-262):** click a card to open it in Jig: title, description, column, state,
   assignee, tags, priority, story points, the discussion (add a comment), area, iteration, parent and
   children; Save sends only what changed. Drag a card to another column (its column and the column's

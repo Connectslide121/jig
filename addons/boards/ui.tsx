@@ -5,6 +5,7 @@ import {
   Dialog,
   Empty,
   IconButton,
+  PersonAvatar,
   SearchInput,
   Select,
   Spinner,
@@ -43,7 +44,6 @@ import {
   boardUrl,
   chatDraft,
   type FoundBoard,
-  initials,
   placeCards,
   tabName,
   type WorkItem,
@@ -178,18 +178,19 @@ function Card({
       <p className="line-clamp-3 pr-1 text-sm leading-snug font-medium break-words text-fg">{item.title}</p>
       <div className="flex h-5 items-center gap-1.5 pr-1 text-xs">
         {item.assignedTo ? (
-          <>
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-2xs font-semibold text-accent">
-              {initials(item.assignedTo)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-muted">{item.assignedTo}</span>
-          </>
+          <span className="min-w-0 flex-1 truncate text-muted">{item.assignedTo}</span>
         ) : (
           <span className="min-w-0 flex-1 truncate text-hint">Unassigned</span>
         )}
         {columnState && columnState !== item.state ? (
           <span className="shrink-0 text-hint">{item.state}</span>
         ) : null}
+        {/* Who has it, always in the same slot at the far right (empty when nobody has it). */}
+        <PersonAvatar
+          name={item.assignedTo}
+          email={item.assignedEmail}
+          data-testid={`board-item-avatar-${item.id}`}
+        />
       </div>
     </div>
   );

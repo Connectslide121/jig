@@ -3630,3 +3630,23 @@ Jon asked not to pass user text through cmd quoting.
 - **Tests' fake az reads `@file` like the real one** (`AZ_ARGV` in `e2e/fixtures.ts`): on Windows
   the fakes are batch files, so they get the file arguments.
 
+## D-291: People's pictures for add-ons come from the meeting sign-in, by e-mail
+
+Jon, 2026-11-03: show each Boards card's "Assigned to" as that person's avatar (photo when Jig can
+get it, otherwise initials) in a fixed slot at the far right, with name and e-mail on hover, also in
+the card's detail; use the same source as Meetings' photos, through a typed cached host call, with no
+network calls without the meeting sign-in; add-ons reach it through the SDK, not renderer meeting code.
+
+- **Host:** `people.photo { email }` (main/meetings) asks Graph `users/{upn}/photos/48x48` with the
+  meeting sign-in's silent token, like `meetings.photo` (D-263), and shares its per-run cache. Null
+  without the Meetings add-on on, without its sign-in (MSAL isn't even set up then: no request), or for
+  anything not e-mail-shaped (`isUserName`). (Claude, on my own: after a refused people token it
+  stops asking for 10 minutes, since a board has many people; signing in again resets that.)
+- **Add-ons:** `ctx.people.photo(email)` (cached per window) and `PersonAvatar` in `@jig/sdk/ui`:
+  fixed size (`sm` for a line of small text, `md` beside an input), initials under the picture, an
+  empty slot when there's nobody, Jig's `Tooltip` with name and e-mail.
+- **Boards:** cards carry `assignedEmail` (the `uniqueName` of `System.AssignedTo`, or the `<…>` of
+  "Name <email>"). (Claude, on my own: the name stays on the card's last line, the avatar moved from
+  in front of it to the far right; in the detail, while you type another assignee the avatar shows
+  their initials, and their picture once it's an e-mail.)
+

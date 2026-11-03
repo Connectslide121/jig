@@ -159,6 +159,12 @@ export interface AddonUiContext {
    * opens the meeting history as a tab in this window (D-250).
    */
   meetings: { open(): Promise<void>; history(): void };
+  /**
+   * People in your organisation (D-291): `photo(email)` is someone's Microsoft profile picture as a
+   * data URL, or null (no picture, or the meeting sign-in isn't there). Cached; `PersonAvatar` from
+   * `@jig/sdk/ui` uses it.
+   */
+  people: { photo(email: string): Promise<string | null> };
   addon: { id: string; name: string };
   /** Calls a named export of this add-on's host.ts: `export async function status(args, api)`. */
   host: { call<T = unknown>(method: string, args?: unknown): Promise<T> };

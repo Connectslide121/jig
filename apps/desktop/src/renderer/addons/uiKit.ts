@@ -5,6 +5,11 @@
 
 export { isImagePath } from "@jig/sdk";
 export { useImageFile } from "../features/files/images";
+/**
+ * A person as a fixed-size round avatar: their Microsoft profile picture when Jig can get it (the
+ * meeting sign-in), else initials; an empty slot when there's nobody; hover shows name and e-mail.
+ */
+export { PersonAvatar, personInitials } from "../features/people/PersonAvatar";
 /** A project's colour square (`project.color` from `useProjectList`). */
 export { ProjectSwatch } from "../features/projects/colors";
 /** A message's files: image thumbnails and document chips that open them; removable with `onRemove`. */

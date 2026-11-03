@@ -166,6 +166,11 @@ export interface HostMethods {
   "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
   /** Someone's Microsoft profile picture (a data URL), or null; `id` is a Teams id, an object id or "local" (D-263). */
   "meetings.photo": { args: { id: string }; result: string | null };
+  /**
+   * Someone's Microsoft profile picture (a data URL) by e-mail / user principal name, or null (D-291):
+   * from the meeting sign-in, silently, cached per run; no network without that sign-in.
+   */
+  "people.photo": { args: { email: string }; result: string | null };
   /** Reads the meeting's or call's Teams chat into its record (D-270); says why when it can't. */
   "meetings.chat": {
     args: { id: string };
