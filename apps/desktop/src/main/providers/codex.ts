@@ -1,5 +1,6 @@
 import { dirname, join } from "node:path";
 import type { ModelInfo } from "../../shared/engine";
+import type { RawCodexRateLimits, RawCodexWindow } from "../../shared/usage";
 
 /**
  * OpenAI's Codex CLI, signed in with the user's ChatGPT account (D-294). Pure helpers, unit-tested:
@@ -179,4 +180,76 @@ export function parseCodexModels(stdout: string): ModelInfo[] {
       displayName: typeof m.display_name === "string" && m.display_name ? m.display_name : (m.slug as string),
       description: typeof m.description === "string" ? m.description : "",
     }));
+}
+
+/** The JSON-RPC id of the rate-limit read in `codexRateLimitRequests`. */
+export const RATE_LIMITS_REQUEST_ID = 2;
+
+/**
+ * What Jig writes to `codex app-server` (stdio JSON-RPC, one message per line) to read the ChatGPT
+ * plan's rate limits: initialize, then `account/rateLimits/read` without the reset-credit details.
+ */
+export function codexRateLimitRequests(version: string): string {
+  return [
+    {
+      id: 1,
+      method: "initialize",
+      params: { clientInfo: { name: "jig", title: "Jig", version }, capabilities: null },
+    },
+    { method: "initialized" },
+    {
+      id: RATE_LIMITS_REQUEST_ID,
+      method: "account/rateLimits/read",
+      params: { excludeResetCreditDetails: true },
+    },
+  ]
+    .map((m) => JSON.stringify(m))
+    .join("\n")
+    .concat("\n");
+}
+
+/**
+ * The answer to the rate-limit read in app-server output: `{ limits }` (only the windows and the plan
+ * type; the account id and everything else is dropped), `{ signedOut: true }` when Codex has no
+ * ChatGPT sign-in, or undefined while the answer hasn't arrived. Other errors throw their message.
+ */
+export function parseCodexRateLimits(
+  stdout: string,
+): { limits: RawCodexRateLimits } | { signedOut: true } | undefined {
+  for (const line of stdout.split(/\r?\n/)) {
+    if (!line.trim().startsWith("{")) continue;
+    let message: { id?: unknown; result?: { rateLimits?: unknown }; error?: { message?: unknown } };
+    try {
+      message = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (message.id !== RATE_LIMITS_REQUEST_ID) continue;
+    if (message.error) {
+      const text = String(message.error.message ?? "Codex couldn't read the rate limits");
+      if (/auth|log ?in|sign ?in/i.test(text)) return { signedOut: true };
+      throw new Error(text);
+    }
+    const snapshot = (message.result?.rateLimits ?? {}) as Record<string, unknown>;
+    const window = (w: unknown): RawCodexWindow | null => {
+      if (!w || typeof w !== "object") return null;
+      const x = w as Record<string, unknown>;
+      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+      return {
+        usedPercent: num(x.usedPercent),
+        windowDurationMins: num(x.windowDurationMins),
+        resetsAt: num(x.resetsAt),
+      };
+    };
+    return {
+      limits: {
+        primary: window(snapshot.primary),
+        secondary: window(snapshot.secondary),
+        planType: typeof snapshot.planType === "string" ? snapshot.planType : null,
+        rateLimitReachedType:
+          typeof snapshot.rateLimitReachedType === "string" ? snapshot.rateLimitReachedType : null,
+      },
+    };
+  }
+  return undefined;
 }

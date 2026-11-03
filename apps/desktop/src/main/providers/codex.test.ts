@@ -2,11 +2,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   codexExecArgs,
+  codexRateLimitRequests,
   codexSignInText,
   findCodex,
   parseCodexExec,
   parseCodexLoginStatus,
   parseCodexModels,
+  parseCodexRateLimits,
+  RATE_LIMITS_REQUEST_ID,
 } from "./codex";
 
 describe("parseCodexLoginStatus", () => {
@@ -159,5 +162,69 @@ describe("findCodex", () => {
       brew,
     );
     expect(findCodex({ platform: "linux", arch: "x64", which: which(), exists: () => true })).toBeUndefined();
+  });
+});
+
+describe("Codex rate limits (app-server)", () => {
+  it("initializes, then reads the rate limits without reset-credit details", () => {
+    const lines = codexRateLimitRequests("0.7.0")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
+    expect(lines[0]).toMatchObject({
+      id: 1,
+      method: "initialize",
+      params: { clientInfo: { name: "jig", version: "0.7.0" } },
+    });
+    expect(lines[1]).toEqual({ method: "initialized" });
+    expect(lines[2]).toEqual({
+      id: RATE_LIMITS_REQUEST_ID,
+      method: "account/rateLimits/read",
+      params: { excludeResetCreditDetails: true },
+    });
+  });
+
+  it("keeps only the windows and the plan type from the answer", () => {
+    const out = [
+      '{"id":1,"result":{"userAgent":"jig/0.166.0","codexHome":"C:\\Users\\me\\.codex"}}',
+      '{"method":"account/updated","params":{"authMode":"chatgpt","planType":"plus"}}',
+      JSON.stringify({
+        id: 2,
+        result: {
+          ordinaryUsageAllowed: true,
+          rateLimits: {
+            limitId: "codex",
+            primary: { usedPercent: 13, windowDurationMins: 300, resetsAt: 1793756480 },
+            secondary: { usedPercent: 92, windowDurationMins: 10080, resetsAt: 1794089243 },
+            credits: { hasCredits: false, unlimited: false, balance: "0" },
+            planType: "plus",
+            rateLimitReachedType: null,
+          },
+          accountId: "00000000-0000-0000-0000-000000000000",
+        },
+      }),
+    ].join("\n");
+    const answer = parseCodexRateLimits(out);
+    expect(answer).toEqual({
+      limits: {
+        primary: { usedPercent: 13, windowDurationMins: 300, resetsAt: 1793756480 },
+        secondary: { usedPercent: 92, windowDurationMins: 10080, resetsAt: 1794089243 },
+        planType: "plus",
+        rateLimitReachedType: null,
+      },
+    });
+    expect(JSON.stringify(answer)).not.toContain("0000-0000");
+  });
+
+  it("waits for the answer, says when Codex isn't signed in, and throws other errors", () => {
+    expect(parseCodexRateLimits('{"id":1,"result":{}}\n{"id":2,"res')).toBeUndefined();
+    expect(
+      parseCodexRateLimits(
+        '{"error":{"code":-32600,"message":"codex account authentication required to read rate limits"},"id":2}',
+      ),
+    ).toEqual({ signedOut: true });
+    expect(() =>
+      parseCodexRateLimits('{"error":{"code":-32603,"message":"backend unavailable"},"id":2}'),
+    ).toThrow("backend unavailable");
   });
 });

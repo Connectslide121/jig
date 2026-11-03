@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatResetIn, formatResetShort, formatUsageAmount, planUsageFrom, usageTone } from "./usage";
+import {
+  codexUsageFrom,
+  formatResetIn,
+  formatResetShort,
+  formatUsageAmount,
+  planName,
+  planUsageFrom,
+  usageTone,
+  windowShort,
+} from "./usage";
 
 const now = new Date("2026-10-28T10:00:00Z");
 
@@ -30,9 +39,27 @@ describe("planUsageFrom", () => {
       state: "ok",
       subscription: "max",
       windows: [
-        { id: "five_hour", label: "Current session (5 h)", percent: 42.4, resetsAt: "2026-10-28T12:13:00Z" },
-        { id: "seven_day", label: "This week (all models)", percent: 100, resetsAt: "2026-11-02T09:00:00Z" },
-        { id: "model:Fable", label: "This week (Fable)", percent: 7, resetsAt: "2026-11-02T09:00:00Z" },
+        {
+          id: "five_hour",
+          label: "Current session (5 h)",
+          percent: 42.4,
+          resetsAt: "2026-10-28T12:13:00Z",
+          minutes: 300,
+        },
+        {
+          id: "seven_day",
+          label: "This week (all models)",
+          percent: 100,
+          resetsAt: "2026-11-02T09:00:00Z",
+          minutes: 10080,
+        },
+        {
+          id: "model:Fable",
+          label: "This week (Fable)",
+          percent: 7,
+          resetsAt: "2026-11-02T09:00:00Z",
+          minutes: 10080,
+        },
       ],
       extra: { enabled: true, percent: 25, usedCredits: 12.5, monthlyLimit: 50, currency: "USD" },
       updatedAt: now.toISOString(),
@@ -83,5 +110,103 @@ describe("formatUsageAmount", () => {
     expect(formatUsageAmount(4000, "JPY")).toContain("4,000");
     expect(formatUsageAmount(1234, "KWD")).toContain("1.234");
     expect(formatUsageAmount(4000, "invalid")).toBe("40.00 invalid");
+  });
+});
+
+describe("codexUsageFrom", () => {
+  it("maps Codex's primary and secondary windows onto Jig's usage shape", () => {
+    // As `codex app-server` answers account/rateLimits/read (Codex 0.166).
+    const u = codexUsageFrom(
+      {
+        planType: "plus",
+        primary: { usedPercent: 13, windowDurationMins: 300, resetsAt: 1793756480 },
+        secondary: { usedPercent: 92, windowDurationMins: 10080, resetsAt: 1794089243 },
+        rateLimitReachedType: null,
+      },
+      now,
+    );
+    expect(u).toEqual({
+      state: "ok",
+      subscription: "plus",
+      windows: [
+        {
+          id: "primary",
+          label: "Current session (5 h)",
+          percent: 13,
+          resetsAt: new Date(1793756480 * 1000).toISOString(),
+          minutes: 300,
+        },
+        {
+          id: "secondary",
+          label: "This week",
+          percent: 92,
+          resetsAt: new Date(1794089243 * 1000).toISOString(),
+          minutes: 10080,
+        },
+      ],
+      warning: undefined,
+      updatedAt: now.toISOString(),
+      message: undefined,
+    });
+    // The same helpers as Claude's windows.
+    expect(usageTone(u.windows[1]?.percent)).toBe("danger");
+    expect(windowShort(u.windows[0])).toBe("5h");
+    expect(windowShort(u.windows[1])).toBe("wk");
+  });
+
+  it("clamps percentages, skips empty windows and names other lengths", () => {
+    const u = codexUsageFrom(
+      {
+        primary: { usedPercent: 140, windowDurationMins: 180, resetsAt: null },
+        secondary: null,
+        planType: "unknown",
+      },
+      now,
+    );
+    expect(u.windows).toEqual([
+      { id: "primary", label: "3-hour window", percent: 100, resetsAt: undefined, minutes: 180 },
+    ]);
+    expect(u.subscription).toBeUndefined();
+    expect(windowShort(u.windows[0])).toBe("3h");
+  });
+
+  it("warns when a limit is reached, and says so when Codex isn't signed in or reports nothing", () => {
+    const reached = codexUsageFrom(
+      {
+        primary: { usedPercent: 100, windowDurationMins: 300, resetsAt: null },
+        rateLimitReachedType: "rate_limit_reached",
+      },
+      now,
+    );
+    expect(reached.warning).toEqual({ window: "rate_limit_reached", status: "rejected" });
+    expect(codexUsageFrom(undefined, now)).toMatchObject({ state: "unavailable", windows: [] });
+    expect(codexUsageFrom({ primary: null, secondary: null }, now).state).toBe("unavailable");
+  });
+});
+
+describe("planName and windowShort", () => {
+  it("names plans for their badge", () => {
+    expect(planName("max")).toBe("Max");
+    expect(planName("plus")).toBe("Plus");
+    expect(planName("promax")).toBe("Pro Max");
+    expect(planName("self_serve_business_usage_based")).toBe("Self Serve Business Usage Based");
+    expect(planName(undefined)).toBeUndefined();
+  });
+
+  it("gives Claude's windows the same short names", () => {
+    const u = planUsageFrom(
+      {
+        subscription_type: "max",
+        rate_limits_available: true,
+        rate_limits: {
+          five_hour: { utilization: 1, resets_at: null },
+          seven_day: { utilization: 2, resets_at: null },
+        },
+      },
+      now,
+    );
+    expect(u.windows.map((w) => windowShort(w))).toEqual(["5h", "wk"]);
+    expect(windowShort(undefined, "5h")).toBe("5h");
+    expect(windowShort({ id: "x", label: "x", percent: 1, minutes: 1440 })).toBe("day");
   });
 });
