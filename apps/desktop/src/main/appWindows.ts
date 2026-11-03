@@ -63,8 +63,21 @@ export function focusJig(): void {
   window.moveTop();
 }
 
-/** When the last app window closes, the helpers go too, so the app can quit. */
+/**
+ * Windows that may wait hidden in the background (the meeting window listening for Teams calls):
+ * they are Jig's windows, but don't keep Jig running on their own while `idle()` says so.
+ */
+const background = new WeakMap<BrowserWindow, () => boolean>();
+
+export function markBackgroundWindow(window: BrowserWindow, idle: () => boolean): void {
+  background.set(window, idle);
+}
+
+/** When the last app window closes, the helpers (and idle background windows) go too, so the app can quit. */
 export function closeHelpersIfAlone(): void {
-  if (appWindows().length > 0) return;
+  const left = appWindows();
+  const idle = (w: BrowserWindow) => !w.isVisible() && Boolean(background.get(w)?.());
+  if (!left.every(idle)) return;
+  for (const w of left) w.destroy();
   for (const w of BrowserWindow.getAllWindows()) if (helpers.has(w) && !w.isDestroyed()) w.destroy();
 }

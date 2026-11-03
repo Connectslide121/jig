@@ -19,6 +19,8 @@ import { FakeCloud } from "./fakeCloud";
 import { contextFrom, patchText } from "./normalize";
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 import {
+  type Completer,
+  type CompleterOptions,
   type Engine,
   type EngineSession,
   type OneShotOptions,
@@ -223,7 +225,7 @@ export class FakeEngine implements Engine {
           });
           const output = outputText(await options.toolHandlers.jig_meeting_read({ id, through }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
-          if (text.includes("Write meeting notes:") && options.toolHandlers.jig_meeting_save_notes) {
+          if (/Write (concise )?meeting notes/.test(text) && options.toolHandlers.jig_meeting_save_notes) {
             const projects = JSON.parse(
               /optional projectId from (\[.*?\])\./.exec(text)?.[1] ?? "[]",
             ) as Array<{ id: string }>;
@@ -260,6 +262,29 @@ export class FakeEngine implements Engine {
               `Meeting answer using this chat's project and the captured transcript.\n\n${output.slice(0, 1000)}`,
               signal,
             );
+        } else if (
+          options.toolHandlers?.jig_meeting_read &&
+          /with jig_meeting_read, id "([a-f\d-]{36})"/.test(sent)
+        ) {
+          // A message that mentions a meeting (`@meeting:…`, D-250): Jig's context names it; read it.
+          const id = /with jig_meeting_read, id "([a-f\d-]{36})"/.exec(sent)![1]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_meeting_read", input: { id } });
+          const output = outputText(await options.toolHandlers.jig_meeting_read({ id }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          await stream(`${msg}:text:0`, `From the mentioned meeting:\n\n${output.slice(0, 500)}`, signal);
+        } else if (
+          options.toolHandlers?.jig_knowledge_read &&
+          /knowledge/i.test(text) &&
+          /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
+        ) {
+          // Jig's context lists the project's knowledge (D-256): read the first document.
+          const name = /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.exec(sent)![1]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_knowledge_read", input: { name } });
+          const output = outputText(await options.toolHandlers.jig_knowledge_read({ name }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          await stream(`${msg}:text:0`, `From the project's knowledge:\n\n${output.slice(0, 500)}`, signal);
         } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (/^\/\S/.test(text.trim())) {
@@ -326,16 +351,36 @@ export class FakeEngine implements Engine {
             name: "mcp__jig__addon_tasks_add",
             input,
           });
-          const output = outputText(
-            await options.toolHandlers.addon_tasks_add(input).catch((e: Error) => `Error: ${e.message}`),
-          );
-          onEvent({
-            type: "tool_result",
-            toolUseId: toolId,
-            output,
-            isError: output.startsWith("Error"),
-          });
-          await stream(`${msg}:text:0`, "Queued two tasks.", signal);
+          // Like Claude Code, it asks first (the Tasks add-on draws the request as an editable list).
+          const decision =
+            permissionMode === "bypassPermissions"
+              ? { behavior: "allow" as const, updatedInput: undefined }
+              : await options.askPermission(
+                  { requestId: toolId, toolName: "mcp__jig__addon_tasks_add", input, canAlwaysAllow: false },
+                  signal,
+                );
+          if (decision.behavior !== "allow") {
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: decision.message ?? "Denied",
+              isError: true,
+            });
+            await stream(`${msg}:text:0`, "OK, I didn't queue them.", signal);
+          } else {
+            const output = outputText(
+              await options.toolHandlers
+                .addon_tasks_add(decision.updatedInput ?? input)
+                .catch((e: Error) => `Error: ${e.message}`),
+            );
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output,
+              isError: output.startsWith("Error"),
+            });
+            await stream(`${msg}:text:0`, output.startsWith("Error") ? output : "Queued the tasks.", signal);
+          }
         } else if (isTestChat) {
           // Tools → Test something…: a short report that says which model and helpers ran it.
           const agents = Object.keys(options.agents ?? {}).join(", ") || "none";
@@ -505,6 +550,9 @@ export class FakeEngine implements Engine {
             await sleep(this.delayMs * 60, signal);
             onEvent({ type: "tool_result", toolUseId: toolId, output: call.output, isError: false });
           }
+          // A pause between the last tool and the answer, as while Claude writes: the steps line shows
+          // it's still working then.
+          await sleep(this.delayMs * 30, signal);
           await stream(
             `${msg}:text:0`,
             "The total is worked out in cart.ts. Shall the discount go there?",
@@ -1353,6 +1401,18 @@ export class FakeEngine implements Engine {
   async callTool(request: ToolCallRequest): Promise<ToolCallResult> {
     await new Promise((r) => setTimeout(r, this.delayMs));
     return this.cloud.call(request);
+  }
+
+  /** Completions: `return ` gets `total;`, anything else a short comment, after a short pause. */
+  completer(_options: CompleterOptions): Completer {
+    return {
+      ask: async (prompt, signal) => {
+        await new Promise((resolve) => setTimeout(resolve, this.delayMs * 4));
+        if (signal?.aborted) throw new Error("Cancelled");
+        return /return <CURSOR>/.test(prompt) ? "total;" : "// suggested by the fake engine";
+      },
+      close: () => {},
+    };
   }
 
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {

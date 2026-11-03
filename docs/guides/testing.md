@@ -70,15 +70,16 @@ in this order:
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
+| a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |
 | a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups" |
-| "queue tasks for" | Claude queues two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` |
+| "queue tasks for" | Claude asks to queue two tasks (Contoso spec, Fabrikam spec) with the Tasks add-on's `addon_tasks_add` (an approval drawn by the add-on as an editable list; queues what you approved, unless the chat bypasses permissions) |
 | starts with "Test this in Claude's browser" (Search → Test something…) | a short report naming the chat's model and its subagents ("Test report (model haiku; subagents: jig-tester, jig-search)"); its PASS/FAIL wording doesn't end the turn with an error |
 | contains "routine" | Claude creates the routine "Daily standup notes" (RemoteTrigger, after the permission card) |
 | "publish an artifact" | writes `release-notes.html` and publishes it (Artifact tool, a fake claude.ai link) |
 | "use a skill" | Skill `explain-code`, Read `README.md`, the MCP tool `mcp__github__list_issues`, the Releases add-on's tool `mcp__jig__addon_releases_overview`, then a short answer (the chat overview test) |
 | "todo list" | three TodoWrite updates, all done at the end |
 | "make a plan" (or a message starting "go ahead") | a plan to approve (ExitPlanMode); the reply says the mode after approval |
-| "look at the code" | searches (Grep) and reads `cart.ts` (Read), slowly, then asks a question: Claude looking at the code while you talk (D-210) |
+| "look at the code" | searches (Grep) and reads `cart.ts` (Read), slowly, pauses (the steps line says Working), then asks a question: Claude looking at the code while you talk (D-210) |
 | "subagent" | a Task with a nested Grep and progress (tool uses, tokens, time) |
 | "background job" | a Bash command that keeps running in the background (Stop ends it) |
 | "edit <file>" | edits the file's first line; the card shows the diff |
@@ -135,6 +136,10 @@ More behaviour:
 write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
 
+Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
+suggests `total;`, anywhere else `// suggested by the fake engine`. The meetings test service rings for
+a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254).
+
 ## Screenshots
 
 `e2e/screenshots.spec.ts` regenerates the pictures of the "What Jig can do" page and the README
@@ -167,4 +172,4 @@ media origin checks and idempotent reviewed task addition. The room screenshot i
 | Fake-engine trigger | Behaviour |
 |---|---|
 | Question about meeting …, captured through … | Calls jig_meeting_read with the immutable cutoff and answers with the transcript |
-| Same trigger containing Write meeting notes: | Reads the snapshot, calls jig_meeting_save_notes with two owner/project actions; queues nothing |
+| Same trigger containing "Write meeting notes" or "Write concise meeting notes" | Reads the snapshot, calls jig_meeting_save_notes with two owner/project actions; queues nothing |

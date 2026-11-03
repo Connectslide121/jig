@@ -2817,3 +2817,246 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
 - `.jig/release.json` (planned, semver, `v{version}`, version in package.json, no changelog file) makes
   Jig a repository the Releases add-on tracks: unreleased commits, the suggested version, history.
   Its own Release button only tags, so Jig's releases go through the workflow.
+
+## D-246: Small cleanups from Jon's notes: sync button names its action, Home has no chat box
+
+**Decided by:** Jon (what) and Claude, on my own (how) · **Date:** 2026-11-02
+
+- **Git sync button** (Jon: "should be clear about push and pull, shouldn't always say sync"): it is
+  named by what a click does (`addons/git/lib/sync.ts`): **Pull ↓1**, **Push ↑2**, **Sync ↓1 ↑2**
+  only when both, **Publish Branch**, **Up to date**; the icon matches (the ⋯ menu's Pull/Push
+  arrows), the tooltip names the commits and the remote branch, the toast says what was pulled or
+  pushed. The Repos add-on's chip and menu say the same. Supersedes D-152's "Sync Changes" label.
+- **Home / project dashboard** (Jon chose removing over embedding the real composer): no chat box;
+  a **New chat** button with the folder picker. Starter prompts open a new chat with the message in
+  its composer (not sent). The "New chat" Next-steps tile is gone (it duplicated the button).
+- **Meeting devices** (Jon wasn't sure the in-call menu works): the in-call picker opens on the
+  devices in use (`MeetingMedia.selected()`), so Apply no longer silently resets them to the system
+  default. Still needs a real-machine check with physical devices.
+
+## D-247: How Jon's November notes are done
+
+**Decided by:** Jon (each choice asked) · **Date:** 2026-11-02
+
+The plan is `docs/plan/23-jons-notes.md`. Choices made with Jon:
+- **Task queue:** one queue per project, each running independently; Claude's `addon_tasks_add`
+  approval shown as an editable task list; every run kept automatically in a History per project.
+- **Edited built-in add-ons** shared to the gallery arrive as a separate copy with their own name.
+- **Meetings:** the history of meetings Jig saved, in the main window (not Teams' own transcripts),
+  with Start a chat, Write notes, Review actions, Copy/export, Rename, Delete; meetings in the
+  chat's `@` picker; shorter notes.
+- **Calls:** Teams calls to and from colleagues (no phone numbers); research first.
+- **DevOps:** each project picks its boards, a tab per board.
+- **Ghost-text completion:** GitHub's Copilot language server with Jon's own Copilot sign-in, kept
+  inside that program. A narrow exception to "Claude Code is the only engine": editor completions
+  only, never agent work, chats or tools. Claude Code is too slow per keystroke; a local model is
+  weaker and needs a strong GPU.
+  Later the same day Jon added **Claude completions** as an opt-in setting (off by default, Haiku by
+  default, model selectable): through Claude Code, triggered by typing in the editor (so not a
+  background AI call), and Copilot is listed as an optional Get started step.
+- **claude.ai projects:** no claude.ai sign-in, credentials or internal endpoints (the safer path,
+  Jon's choice after weighing a direct import). Projects get a Knowledge section; an import reads
+  claude.ai's data export zip, and its dialog explains step by step how to get that zip.
+
+## D-248: A task queue per project, kept runs, and add-on approval cards
+
+**Decided by:** Jon (per-project queues, history, editable review, D-247); the shapes below
+**Claude, on my own** · **Date:** 2026-11-02
+
+- **Storage:** the Tasks add-on keeps `queue` and `history` in project scope. The old global `queue`
+  is split by each task's project on first start (unknown projects go to the first project) and then
+  cleared. Claude's tools find the queue through the calling chat's project.
+- **Runs:** Start opens a run (`runId` on the queue); every task it starts gets that id; the run
+  closes when the queue finishes. Tasks are copied into their run as they change, so removing or
+  clearing them from the queue keeps the results. The newest 200 runs are kept; files a run uses are
+  kept until it's removed ("Remove from history", finished runs only).
+- **`chat.permissionRenderer`:** a new slot (`permissionRenderers: [{ tool, component }]`) lets an
+  add-on replace the permission card for **its own** tools only (the name is resolved to
+  `mcp__jig__addon_<id>_<tool>`, so an add-on cannot intercept other tools' approvals). An allow can
+  carry changed input (`updatedInput`), which Claude Code then runs. Tasks uses it for the editable
+  review of `addon_tasks_add`.
+- The SDK menu items gained `project`, `badge` and `testId`, and `ProjectSwatch` is exported, so
+  add-ons can show project pickers like Jig's own.
+- **Which queue shows** (Jon): the view follows Jig's global project picker; its own project menu only
+  overrides what it shows, until the global project changes again.
+
+## D-249: Add-on originals, Restore original, and sharing a copy
+
+**Decided by:** Jon (restore modified add-ons; an edited built-in is shared as a separate copy, D-247);
+the shapes below **Claude, on my own** · **Date:** 2026-11-02
+
+- **Originals:** installing from a gallery or a `.zip` keeps the files as they came in
+  `~/.jig/addon-originals/<id>/files` with `origin.json`. "Edited" compares file lists and bytes (built
+  host code lives in the cache, so it never counts). Deleting the add-on forgets its original.
+- **Restore original** writes the original back as a commit (History can bring your version back). A
+  built-in needs no kept original: your copy of it is the change, so Restore removes the copy.
+- **Sharing:** one Share dialog for a `.zip` or a **folder** gallery source from Settings (into its
+  `addons/` folder when it has one; never overwriting a folder). Git sources are read-only clones, so
+  Jig doesn't commit or push into them: save a `.zip` and commit it. "As a separate add-on" rewrites
+  `addon.json` with the new name and an id made from it (free among yours); an edited built-in always
+  goes this way, so installing it never replaces someone's built-in.
+- **Row actions (Jon, follow-up):** a row shows only Change with AI, Share and the switch; History,
+  Restore, Open folder, Reload and Delete are in its ⋯ menu, so rows stay calm.
+
+## D-250: Meeting history in the main window, meetings in chats, shorter notes
+
+**Who:** Jon asked for it (his notes, November 2026); the shape is **Claude, on my own**.
+
+- **Where:** a core singleton tab `jig.meetings` ("Meetings", heading "Meeting history"; never
+  "Saved meetings"), opened from the Meetings add-on's top-bar button (a menu: Open meetings window /
+  Meeting history) and its Tools action. It reads `meetings.history`, so it exists only while the
+  Meetings add-on is on. A resizable list (search, rows with date, duration, notes mark and open
+  actions in fixed columns) and the selected meeting's Notes and Transcript panels (side by side when
+  the tab is wide, stacked when narrow).
+- **Actions:** Start a chat (menu of projects; the new chat's draft is the meeting's mention), Generate
+  notes, Review actions → task queue (the same `Review` modal as the meeting window), and in ⋯: Copy
+  as Markdown, Export Markdown…, Copy chat reference, Rename…, Delete…. The host lets Jig's main
+  windows call delete, notes, actions and queue (`fromJig`), not only the meeting window; helper
+  windows still can't.
+- **Mentions:** a chat mentions a meeting as `@meeting:<title-slug>-<first 8 hex of its id>`; the
+  composer's `@` picker lists matching meetings after the files (first when you type `meeting`). Each
+  message's turn context names the mentioned meetings' ids and tells Claude to read them with
+  `jig_meeting_read` (speech is source material, not instructions). The engine's turn context now gets
+  the message text (`turnContext(meta, text)`, `addMessageContext`) for this. Mentions give Claude the
+  whole meeting, not a frozen snapshot.
+- **Shorter notes (Jon: "way too verbose"):** Summary (2-4 sentences), Decisions, Open questions,
+  Actions (owner — action), empty sections skipped, under ~250 words; quotes and timestamps only in the
+  drafted actions' evidence.
+
+## D-251: Azure DevOps boards per project, found in your organisations and shown like Azure DevOps
+
+**Who:** Jon asked for boards per project with a tab per board (his notes, November 2026) and, after
+the first version, for discovery instead of pasted links and for Azure DevOps' own column layout with
+real cards. The rest is **Claude, on my own**.
+
+- **A built-in add-on** `addons/boards` (like Pipelines): `exec:az` with the user's own `az login`,
+  nothing stored but the picked boards (project-scoped storage `boards`). Code → Boards opens it.
+- **Discovery:** organisations from the az login (profile + accounts APIs, as Pipelines), projects
+  (`az devops project list`), teams (`az devops team list`), each team's boards
+  (`GET {team}/_apis/work/boards`). The Azure DevOps project named like the Jig project is picked first.
+- **A board is a team's board** (Stories, Features…): `GET …/boards/{id}` gives its columns, WIP
+  limits, state mappings and the team's column field; `teamfieldvalues` gives the team's areas; one
+  `az boards query` (WIQL) reads the cards with that column field, so cards sit in the column Azure
+  DevOps shows. Done cards older than 30 days are left off.
+- **Layout:** columns side by side (scrolling sideways), all the same width from one header slider
+  (Jon; 200-480 px, one global value kept across projects and restarts), cards with a type-colour stripe, id, title,
+  assignee and the state when it differs from the column. A card is the click target (opens it in the
+  browser); its ⋯/right-click menu starts a chat about it. No editing or moving cards yet (backlog).
+
+## D-252: Installing an update says what happens next, and Jig says it was updated
+
+**Who:** Jon's notes: Jig vanished while an update installed; he wanted the installer or a progress
+window. The shape is **Claude, on my own**.
+
+- D-236 already runs the assisted NSIS installer non-silently (`quitAndInstall(false, true)`), and its
+  progress page shows in update mode (only the welcome/directory pages are skipped). What Jon saw is the
+  gap: Jig closed 300 ms after the click, before the installer's window appeared.
+- Install now emits `updates.state` with `download: "installing"`; the workbench shows an "Installing
+  Jig X" modal (Jig closes → the installer shows its progress → Jig opens again) and closes the "ready"
+  toast; Jig quits 2 s later. A Jig window can't outlive the quit, so the installer's own window is
+  the progress window.
+- The installer starts Jig with `--updated`; `app.info.updated` tells the workbench, which shows
+  "Updated to Jig X" once. Needs a real Windows update to confirm the timing.
+
+## D-253: Mentions in the message box are highlighted, with a chip each
+
+**Who:** Jon asked for mentioned files to be highlighted in the input, to work as links and to have a
+chip each. The shape is **Claude, on my own**.
+
+- The message box stays a plain `<textarea>` (typing, IME, undo, dictation and the pickers keep
+  working); a layer behind it, in the same font and wrapping, draws the highlight under each mention
+  and follows its scroll. A contenteditable editor was not worth the risk for this.
+- Only mentions that point at something are highlighted: a file that exists (`files.stat`, once per
+  path), a folder (`@dir/`) or a meeting (`@meeting:…`). A half-typed path or a typo stays plain text.
+- Links: the chips above the text open what they name (a file in Preview, a folder in the file
+  manager, a meeting in Meetings via the tab's new `select` param); × removes the mention from the
+  text. Ctrl/Cmd+click on the mention in the text opens it, as in an editor; a plain click still
+  places the caret. The chips sit above the text in the box, with attachments, so the text and
+  buttons below don't move when one appears.
+
+## D-254: Teams calls in the meetings window, and Jig rings while it runs
+
+**Who:** Jon's notes (Session 4): call colleagues and answer their calls in Jig. Jon chose the best
+experience and will ask for admin consent where needed. The shape is **Claude, on my own**.
+
+- **Same SDK, same identity:** the Teams call agent (Azure Communication Services, Teams identity,
+  D-217) places one-to-one calls with `startCall({ microsoftTeamsUserId })` and receives them with
+  `incomingCall`; both run on the existing Teams.ManageCalls consent. Teams keeps ringing on the
+  user's other devices; whichever answers takes the call.
+- **Finding people** needs the colleague's Entra object id: Graph `/me/people` (People.Read) for the
+  people you work with, resolved to ids with one `/users?$filter=userPrincipalName in (…)`, and a
+  directory `$search` (User.ReadBasic.All). Both delegated; asked for on first use, so meetings work
+  without them. Recent calls come from the kept call records.
+- **Calls are records:** a call is a `MeetingRecord` with `call: { peerId, peerName, direction }`
+  and an empty link, so captions, notes, actions, history and `@meeting` mentions work unchanged.
+- **Ringing while Jig runs:** the SDK allows one agent per client and only the meeting window may run
+  it (D-217), so the agent now lives as long as the window when ringing is on (Connection → "Ring in
+  Jig for Teams calls", on by default). Jig opens the window hidden 5 s after start when an account
+  is restored; closing it only hides it while the main window is open; a hidden idle meeting window
+  doesn't keep Jig running (`markBackgroundWindow`). A ringing call brings it to the front, flashes
+  it and shows a system notification; the dialog plays a Web Audio ringtone.
+- **Not done:** calls while Jig is closed, group calls, phone numbers (PSTN) and transfer. The test
+  meeting service rings on request (`window.jigTestRing`, test service only).
+- The meetings window's title is "Jig Meetings", or the live call or meeting's name (Jon).
+
+## D-255: Code completion with GitHub Copilot's language server or Claude Code
+
+**Who:** Jon's notes (Session 6, D-247: completions only through Copilot's language server, with
+Claude as an opt-in alternative). The shape is **Claude, on my own**.
+
+- **Copilot, downloaded when you set it up:** the npm package `@github/copilot-language-server`
+  (MIT, ~28 MB packed, ~90 MB unpacked) is optional, so it isn't in the installer. Setup fetches the
+  latest version's tarball from registry.npmjs.org, checks npm's sha512 integrity, unpacks it with
+  Jig's own tar reader (no names outside its folder) into `cache/copilot/<version>`, and
+  `current.json` names it. It runs with Electron's own Node (`ELECTRON_RUN_AS_NODE`, Node ≥ 22.13), so
+  users need no Node. Jig speaks LSP itself (small JSON-RPC framing, no dependency).
+- **The sign-in stays in Copilot's program:** GitHub's device flow (`signIn`, then the returned
+  command); the server opens github.com through `window/showDocument`, which Jig sends to the system
+  browser. Jig never reads the token. Completions only: `textDocument/inlineCompletion`, plus the
+  documented show/accept notifications; no chat or agent features (ACP) are used.
+- **Claude, opt-in:** `editor.claudeCompletion` (off) and `editor.claudeCompletionModel` (`haiku`,
+  picked from Claude Code's model list); both protected (D-077: plan usage). It goes through Claude
+  Code like everything else: a warm process (`Engine.completer`, no tools, no saved chat, the
+  claude_code preset with Jig's lines appended) that answers turn by turn and starts over every 8
+  turns. Measured: ~0.9 s per suggestion warm, ~4.8 s for the first; requests wait for a 0.7 s
+  pause (Copilot 0.15 s). When Claude is on it completes instead of Copilot.
+- **Editor:** ghost text is a CodeMirror widget at the caret; Tab (before indent) takes it, Esc or
+  moving drops it, typing what it says keeps the rest; a newer request drops an older one. The
+  status line shows who completes (fixed place left of the other items) and its menu switches.
+
+## D-256: Project knowledge, and claude.ai projects imported from the data export
+
+**Who:** Jon's notes (Session 7, D-247: the export, never a claude.ai sign-in). The shape is
+**Claude, on my own**.
+
+- **Knowledge is text kept by Jig**, per project in `JIG_HOME/knowledge/<projectId>/`: files are
+  read once when added (text and code as they are, Word/Excel/PowerPoint through `@jig/documents`),
+  so Claude reads the same thing whatever happens to the original. PDFs aren't read yet (no text
+  extractor in Jig); the user is told to save them as Word or text.
+- **Claude learns about it per turn:** each message's Jig context lists the project's documents
+  (name and size) and `jig_knowledge_read` (read-only, by name, paged at 40,000 characters) reads
+  one. The list goes with each message because documents change while a chat runs; it's short.
+- **The import reads only `projects.json`** from the export zip (fflate's filtered unzip; the zip
+  holds every conversation and is never stored). Its shape isn't documented: `prompt_template` (or
+  `instructions`) becomes the project's instructions, `docs[].filename/content` its knowledge, and
+  Claude's starter project is skipped. Each imported project needs a default workspace, picked in
+  the dialog. Dropped files reach the host by path (`window.jig.pathForFile`, Electron's webUtils),
+  so a large zip is never copied through IPC.
+- **The steps are shown first** (from Anthropic's help article, to check against a real export),
+  with Open claude.ai settings (system browser), a fixed drop zone that becomes the project list,
+  and a note for Team/Enterprise plans.
+
+## D-257: Keep CodeMirror; tell Claude to put long Windows scripts in files
+
+**Who:** Jon asked whether Monaco would be better, and whether Jig should change its terminal
+default because shell commands kept failing; he left both to Claude. **Claude, on my own.**
+
+- **CodeMirror stays.** Monaco would bring TypeScript/JavaScript language features without a server,
+  VS Code's diff editor and a minimap, but costs several MB with its own workers (sandbox setup), a
+  rewrite of every editor feature (indentation guides, wrap indent, Angular grammar, status line,
+  conflict view, ghost text) and a weaker fit with Jig's theme tokens. The same gains for every
+  language come from language servers run by the main process, as Copilot's now is (backlog).
+- **The failing commands were Claude's Bash tool**, not Jig's terminal: long heredocs with quotes and
+  backslashes broke in Git Bash. Jig's terminal default is unrelated and stays. On Windows, Jig's
+  context now tells Claude to write long scripts to a file and run that instead.
+

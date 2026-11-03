@@ -4,7 +4,7 @@ import { useHostEvent } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { registerAction, registerTabType } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
-import { notify } from "../../workbench/toasts";
+import { dismiss, notify } from "../../workbench/toasts";
 import { applyUpdate, SetupTab } from "./SetupTab";
 
 export function registerSetup(): void {
@@ -37,14 +37,19 @@ export function registerSetup(): void {
 const announced = new Set<string>();
 /** Each update notice shows once per run. */
 const announce = (key: string) => !announced.has(key) && Boolean(announced.add(key));
+/** The "ready" toast, closed once installing starts (the installing modal takes over). */
+let readyToast: number | undefined;
 
 /** An installed Jig opens Get started on its first start, and tells about updates with a toast. */
 export function useFirstRun(ready: boolean): void {
   useHostEvent("updates.state", (state) => {
     if (state.mode !== "release" || !state.latest) return;
-    if (state.download === "ready") {
+    if (state.download === "installing" && readyToast !== undefined) {
+      dismiss(readyToast);
+      readyToast = undefined;
+    } else if (state.download === "ready") {
       if (!announce(`ready:${state.latest}`)) return;
-      notify({
+      readyToast = notify({
         title: `Jig ${state.latest} is ready`,
         message: "Install the update when you're ready to restart. The installer shows its progress.",
         tone: "success",
@@ -68,6 +73,11 @@ export function useFirstRun(ready: boolean): void {
   });
   const info = useConfig((s) => s.info);
   const done = useConfig((s) => s.config?.setup.firstRunDone);
+  useEffect(() => {
+    // The installer started Jig again: close the loop the "Installing…" notice opened.
+    if (ready && info?.updated && announce(`updated:${info.version}`))
+      notify({ title: `Updated to Jig ${info.version}`, tone: "success" });
+  }, [ready, info]);
   useEffect(() => {
     if (ready && info?.packaged && done === false) workbench.openTab("jig.setup");
   }, [ready, info, done]);

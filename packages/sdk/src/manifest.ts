@@ -77,6 +77,10 @@ export const ManifestSchema = z.object({
         .default([]),
       chatToolbar: z.array(z.object({ id: Id, component: ExportName })).default([]),
       toolRenderers: z.array(z.object({ tool: z.string(), component: ExportName })).default([]),
+      /** Approval cards for this add-on's own tools (`tool` is the tool's id in `tools`). */
+      permissionRenderers: z
+        .array(z.object({ tool: z.string().regex(/^[a-z][a-z0-9_]*$/), component: ExportName }))
+        .default([]),
       prompts: z
         .array(z.object({ id: Id, label: z.string(), text: z.string(), send: z.boolean().default(false) }))
         .default([]),
@@ -225,6 +229,7 @@ export function uiExports(m: AddonManifest): string[] {
     ...c.menus.map((a) => a.run),
     ...c.chatToolbar.map((t) => t.component),
     ...c.toolRenderers.map((t) => t.component),
+    ...c.permissionRenderers.map((t) => t.component),
     ...(c.settings ? [c.settings.component] : []),
   ];
 }

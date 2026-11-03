@@ -291,14 +291,21 @@ function StepsRow({
   open,
   onToggle,
   pending,
+  live,
 }: {
   row: Extract<Row, { kind: "steps" }>;
   sessionId: string;
   open: boolean;
   onToggle: () => void;
   pending: Set<string>;
+  /**
+   * The chat is working and these are its latest steps: the line shows it's the one in progress even
+   * between tools, while Claude writes its next step.
+   */
+  live?: boolean;
 }) {
   const summary = stepsSummary(row.entries);
+  const working = summary.running ?? (live ? "Working" : undefined);
   return (
     <div className="flex flex-col" data-testid="steps-row">
       <button
@@ -307,10 +314,11 @@ function StepsRow({
         aria-expanded={open}
         className="-ml-1 flex h-6 max-w-full min-w-0 items-center gap-1.5 self-start rounded-md px-1 text-xs text-muted hover:bg-hover hover:text-fg"
         data-testid="steps-toggle"
+        data-working={working ? "true" : undefined}
       >
         {/* One slot for the spinner and the chevron, so the text never moves. */}
         <span className="flex size-4 shrink-0 items-center justify-center">
-          {summary.running ? (
+          {working ? (
             <Spinner size="sm" />
           ) : open ? (
             <ChevronDown className="block size-3.5" />
@@ -319,9 +327,9 @@ function StepsRow({
           )}
         </span>
         {/* While a step runs the whole line glows, the running tool's name included. */}
-        <span className={cn("flex min-w-0 items-center gap-1.5", summary.running && "jig-working-text")}>
+        <span className={cn("flex min-w-0 items-center gap-1.5", working && "jig-working-text")}>
           <span className="truncate">{summary.text}</span>
-          {summary.running && <span className="shrink-0">· {summary.running}</span>}
+          {working && <span className="shrink-0">· {working}</span>}
         </span>
         {(summary.added > 0 || summary.removed > 0) && (
           <span className="shrink-0 font-mono text-2xs">
@@ -329,9 +337,7 @@ function StepsRow({
             {summary.removed > 0 && <span className="ml-1 text-danger">−{summary.removed}</span>}
           </span>
         )}
-        {summary.detail && !summary.running && (
-          <span className="min-w-0 truncate text-hint">· {summary.detail}</span>
-        )}
+        {summary.detail && !working && <span className="min-w-0 truncate text-hint">· {summary.detail}</span>}
         {summary.failed > 0 && <span className="shrink-0 text-danger">· {summary.failed} failed</span>}
       </button>
       {open && (
@@ -380,10 +386,13 @@ export function Transcript({
   sessionId,
   active,
   highlight,
+  working = false,
 }: {
   items: ChatItem[];
   sessionId: string;
   active: boolean;
+  /** Claude is working on this chat now: its latest steps line shows it. */
+  working?: boolean;
   /** An item to show and mark (a match of Find in chat). */
   highlight?: string;
 }) {
@@ -436,12 +445,13 @@ export function Transcript({
         data-testid="transcript"
       >
         <div className="mx-auto flex max-w-[var(--jig-chat-width)] min-w-0 flex-col gap-3 px-6 py-4 wrap-anywhere">
-          {rowsOf(groupItems(items), compact, pending).map((row) =>
+          {rowsOf(groupItems(items), compact, pending).map((row, index, rows) =>
             row.kind === "steps" ? (
               <StepsRow
                 key={row.id}
                 row={row}
                 sessionId={sessionId}
+                live={working && index === rows.length - 1}
                 // A match of Find in chat inside opens its row.
                 open={opened.has(row.id) || row.entries.some((e) => e.item.id === highlight)}
                 onToggle={() =>

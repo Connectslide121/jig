@@ -9,10 +9,13 @@ export interface PickerItem {
   description?: string;
   hint?: string;
   icon?: ReactNode;
+  /** A name, not a path or command: the label is in the normal font (a meeting). */
+  plain?: boolean;
 }
 
 /**
- * The list above the message box for `/` (Claude Code's commands and skills) and `@` (files): ↑/↓
+ * The list above the message box for `/` (Claude Code's commands and skills) and `@` (files and
+ * meetings): ↑/↓
  * choose, Enter or Tab takes it, Esc closes. The message box keeps the focus.
  */
 export function ComposerPicker({
@@ -70,7 +73,7 @@ export function ComposerPicker({
             )}
           >
             {item.icon && <span className="flex shrink-0 items-center text-muted">{item.icon}</span>}
-            <span className="shrink-0 font-mono text-xs">{item.label}</span>
+            <span className={cn("shrink-0", item.plain ? "text-sm" : "font-mono text-xs")}>{item.label}</span>
             {item.hint && <span className="shrink-0 font-mono text-xs text-hint">{item.hint}</span>}
             {item.description && (
               <span className="min-w-0 flex-1 truncate text-xs text-muted">{item.description}</span>

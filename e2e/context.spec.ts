@@ -17,6 +17,11 @@ test("the chat header shows the context window; Compact frees it", async ({ page
   await meter.hover();
   await expect(page.getByTestId("context-card")).toContainText("27k of 200k tokens");
   await expect(page.getByTestId("context-card")).toContainText("Messages");
+  // The card stays while the pointer moves onto it, so its Compact button can be clicked.
+  await page.getByTestId("context-card").hover();
+  await expect(page.getByTestId("context-compact-now")).toBeVisible();
+  await page.mouse.move(0, 0);
+  await expect(page.getByTestId("context-card")).toHaveCount(0);
 
   // Filling up shows the Compact button.
   await input.fill("now read the big file");

@@ -4,6 +4,7 @@ import {
   FileUp,
   FolderOpen,
   History,
+  MoreHorizontal,
   Puzzle,
   RefreshCw,
   RotateCcw,
@@ -11,15 +12,29 @@ import {
   Store,
   Trash2,
   TriangleAlert,
+  Undo2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { AddonCommit, AddonInfo } from "../../../shared/addons";
+import type { AddonCommit, AddonInfo, AddonOriginInfo } from "../../../shared/addons";
 import { requestBuild } from "../../addons/buildRequests";
 import { iconByName, unknownIcons } from "../../addons/icons";
 import { useAddons } from "../../addons/loader";
 import { call, errorMessage } from "../../lib/host";
 import { useConfig } from "../../stores/config";
-import { Badge, Button, confirmDialog, Dialog, Empty, IconButton, Spinner, Switch } from "../../ui";
+import {
+  Badge,
+  Button,
+  confirmDialog,
+  Dialog,
+  Empty,
+  IconButton,
+  Input,
+  type MenuEntry,
+  openMenuAt,
+  Select,
+  Spinner,
+  Switch,
+} from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { openGallery } from "../gallery";
@@ -80,17 +95,139 @@ function HistoryDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => vo
   );
 }
 
-async function exportAddon(addon: AddonInfo) {
-  try {
-    const file = await call("addons.export", { id: addon.id });
-    if (file)
-      notify({
-        title: `Saved ${addon.name}`,
-        message: `${file} — send it to a colleague; they use Import add-on….`,
-        tone: "success",
+/** A git gallery is read from its clone: share into it by committing a .zip (D-249). */
+const isGitSource = (source: string) => /^(https:\/\/|ssh:\/\/|git@[\w.-]+:)/i.test(source.trim());
+
+/**
+ * Share an add-on (D-249): as a .zip or into a folder gallery from Settings, as itself or as a copy
+ * with its own name. An edited built-in always goes as a copy, so it never replaces someone's built-in.
+ */
+function ShareDialog({ addon, onClose }: { addon: AddonInfo; onClose: () => void }) {
+  const sources = useConfig((s) => s.config?.addonGallery.sources ?? []);
+  const mustCopy = Boolean(addon.overridesBuiltin);
+  const [asCopy, setAsCopy] = useState(mustCopy);
+  const [name, setName] = useState(mustCopy ? `${addon.name} (edited)` : addon.name);
+  const [target, setTarget] = useState("zip");
+  const [busy, setBusy] = useState(false);
+  const git = target !== "zip" && isGitSource(target);
+  const share = async () => {
+    setBusy(true);
+    try {
+      const copy = asCopy ? { name: name.trim() } : undefined;
+      const written = await call("addons.export", {
+        id: addon.id,
+        copy,
+        gallerySource: target === "zip" ? undefined : target,
       });
+      if (written) {
+        notify({
+          title:
+            target === "zip"
+              ? `Saved ${copy?.name ?? addon.name}`
+              : `Added ${copy?.name ?? addon.name} to the gallery`,
+          message:
+            target === "zip"
+              ? `${written} — send it to a colleague; they use Import add-on….`
+              : `${written} — whoever uses this gallery can install it from Add-on gallery.`,
+          tone: "success",
+        });
+        onClose();
+      }
+    } catch (error) {
+      notify({ title: "Couldn't share", message: errorMessage(error), tone: "danger" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={`Share ${addon.name}`}
+      testId="addon-share"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            icon={FileDown}
+            disabled={busy || git || (asCopy && !name.trim())}
+            onClick={() => void share()}
+            data-testid="addon-share-go"
+          >
+            {target === "zip" ? "Save .zip…" : "Add to gallery"}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the Select inside. */}
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Where</span>
+          <Select value={target} onChange={(e) => setTarget(e.target.value)} data-testid="addon-share-target">
+            <option value="zip">A .zip file to send</option>
+            {sources.map((source) => (
+              <option key={source} value={source}>
+                Gallery: {source}
+              </option>
+            ))}
+          </Select>
+          <span className="h-8 text-xs text-muted">
+            {git
+              ? "Git galleries are shared through git: save a .zip, unzip it into the gallery and commit it."
+              : target === "zip"
+                ? "Your colleague installs it with Import add-on…."
+                : "Written into this folder; whoever uses it installs it from Add-on gallery."}
+          </span>
+        </label>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <span className="text-sm">Share as a separate add-on</span>
+            <span className="text-xs text-muted">
+              {mustCopy
+                ? "Your edited copy of a built-in add-on goes out under its own name, so it never replaces theirs."
+                : "With its own name and id, beside the original rather than replacing it."}
+            </span>
+          </div>
+          <Switch
+            label="Share as a separate add-on"
+            checked={asCopy}
+            disabled={mustCopy}
+            onChange={setAsCopy}
+          />
+        </div>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the Input inside. */}
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Name</span>
+          <Input
+            value={asCopy ? name : addon.name}
+            disabled={!asCopy}
+            onChange={(e) => setName(e.target.value)}
+            data-testid="addon-share-name"
+          />
+        </label>
+      </div>
+    </Dialog>
+  );
+}
+
+async function restoreAddon(addon: AddonInfo, origin: AddonOriginInfo | undefined) {
+  const ok = await confirmDialog({
+    title: `Restore ${addon.name} to the original?`,
+    message: origin
+      ? `Your changes are undone and it is put back as it came from ${origin.kind === "gallery" ? "the gallery" : "the .zip"}. This is recorded as a change, so History can bring your version back.`
+      : "Your copy is removed and the built-in add-on comes back. Your copy stays in the add-ons' git history.",
+    confirmLabel: "Restore",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await call("addons.restoreOriginal", { id: addon.id });
+    notify({ title: `${addon.name} restored`, tone: "success" });
   } catch (error) {
-    notify({ title: "Couldn't export", message: errorMessage(error), tone: "danger" });
+    notify({ title: "Couldn't restore", message: errorMessage(error), tone: "danger" });
   }
 }
 
@@ -153,10 +290,14 @@ export async function importAddon(path?: string) {
   }
 }
 
-function AddonRow({ addon }: { addon: AddonInfo }) {
+function AddonRow({ addon, origin }: { addon: AddonInfo; origin?: AddonOriginInfo }) {
   const loadError = useAddons((s) => s.loadErrors[addon.id]);
   const canBuild = useRegistry((s) => Boolean(s.actions["jig.build"]));
   const [history, setHistory] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const yours = addon.source === "user" && !addon.preview;
+  // An edited built-in, or an installed add-on you changed since it came: Restore puts it back.
+  const restorable = yours && (origin ? origin.modified : Boolean(addon.overridesBuiltin));
   const Icon = iconByName(addon.manifest?.icon) ?? Puzzle;
   const errors = [...addon.errors, ...(loadError ? [loadError] : [])];
   const warnings = [
@@ -166,13 +307,52 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
     ),
     ...(addon.warnings ?? []),
   ];
+  // Rare actions live in the ⋯ menu so the row keeps a few buttons (Jon).
+  const menu: MenuEntry[] = [
+    ...(addon.source === "user"
+      ? [
+          { label: "History…", icon: History, onSelect: () => setHistory(true) },
+          {
+            label:
+              addon.overridesBuiltin && !origin ? "Restore the built-in add-on…" : "Restore the original…",
+            icon: Undo2,
+            disabled: !restorable,
+            testId: `addon-restore-${addon.id}`,
+            onSelect: () => void restoreAddon(addon, origin),
+          },
+        ]
+      : []),
+    {
+      label: "Open folder",
+      icon: FolderOpen,
+      onSelect: () => void call("app.openPath", { path: addon.dir }),
+    },
+    { label: "Reload", icon: RefreshCw, onSelect: () => void call("addons.reload", { id: addon.id }) },
+    ...(yours
+      ? [
+          { separator: true as const },
+          {
+            label: addon.overridesBuiltin ? "Delete your copy…" : "Delete…",
+            icon: Trash2,
+            danger: true,
+            testId: `addon-delete-${addon.id}`,
+            onSelect: () => void deleteAddon(addon),
+          },
+        ]
+      : []),
+  ];
   return (
     <div className="flex flex-col gap-2 px-4 py-3" data-testid={`addon-${addon.id}`}>
       <div className="flex items-center gap-3">
         <Icon className="size-5 shrink-0 text-muted" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{addon.name}</span>
+          <div className="flex h-5 min-w-0 flex-wrap content-start items-center gap-x-2 overflow-hidden">
+            <span className="max-w-full truncate text-sm font-medium">{addon.name}</span>
+            {origin?.modified && (
+              <span data-testid={`addon-edited-${addon.id}`}>
+                <Badge tone="warning">edited</Badge>
+              </span>
+            )}
             <Badge>
               {addon.source === "builtin" ? "built in" : addon.overridesBuiltin ? "your copy" : "yours"}
             </Badge>
@@ -183,39 +363,26 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
           </div>
           {addon.description && <div className="text-xs text-muted">{addon.description}</div>}
         </div>
-        {canBuild && (
-          <IconButton
-            icon={Sparkles}
-            label="Change this with AI"
-            onClick={() => requestBuild({ goal: "", addonId: addon.id, origin: "settings" })}
-          />
-        )}
-        {addon.source === "user" && (
-          <IconButton icon={History} label="History" onClick={() => setHistory(true)} />
-        )}
-        {addon.source === "user" && !addon.preview && (
-          <IconButton
-            icon={Trash2}
-            label={addon.overridesBuiltin ? `Delete your copy of ${addon.name}` : `Delete ${addon.name}`}
-            data-testid={`addon-delete-${addon.id}`}
-            onClick={() => void deleteAddon(addon)}
-          />
-        )}
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          {canBuild && (
+            <IconButton
+              icon={Sparkles}
+              label="Change this with AI"
+              onClick={() => requestBuild({ goal: "", addonId: addon.id, origin: "settings" })}
+            />
+          )}
+        </span>
         <IconButton
           icon={FileDown}
-          label={`Export ${addon.name} to share`}
+          label={`Share ${addon.name}`}
           data-testid={`addon-export-${addon.id}`}
-          onClick={() => void exportAddon(addon)}
+          onClick={() => setSharing(true)}
         />
         <IconButton
-          icon={FolderOpen}
-          label="Open folder"
-          onClick={() => void call("app.openPath", { path: addon.dir })}
-        />
-        <IconButton
-          icon={RefreshCw}
-          label="Reload"
-          onClick={() => void call("addons.reload", { id: addon.id })}
+          icon={MoreHorizontal}
+          label={`More for ${addon.name}`}
+          data-testid={`addon-more-${addon.id}`}
+          onClick={(e) => openMenuAt(e.currentTarget, menu, true)}
         />
         <Switch
           label={addon.enabled ? `Turn off ${addon.name}` : `Turn on ${addon.name}`}
@@ -251,6 +418,7 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
         </details>
       ) : null}
       {history && <HistoryDialog addon={addon} onClose={() => setHistory(false)} />}
+      {sharing && <ShareDialog addon={addon} onClose={() => setSharing(false)} />}
     </div>
   );
 }
@@ -258,6 +426,14 @@ function AddonRow({ addon }: { addon: AddonInfo }) {
 export function AddonsSettings() {
   const addons = useAddons((s) => s.addons);
   const info = useConfig((s) => s.info);
+  const [origins, setOrigins] = useState<Record<string, AddonOriginInfo>>({});
+  // Re-read on every add-on change (an edit, a restore, an install).
+  useEffect(() => {
+    if (!addons) return;
+    void call("addons.originals")
+      .then(setOrigins)
+      .catch(() => undefined);
+  }, [addons]);
   const builtin = addons.filter((a) => a.source === "builtin");
   const user = addons.filter((a) => a.source === "user");
   return (
@@ -271,7 +447,7 @@ export function AddonsSettings() {
             None yet. Use Tools → Build something… to make one.
           </div>
         ) : (
-          user.map((a) => <AddonRow key={`${a.id}:${a.dir}`} addon={a} />)
+          user.map((a) => <AddonRow key={`${a.id}:${a.dir}`} addon={a} origin={origins[a.id]} />)
         )}
         <div className="flex gap-2 px-4 py-3">
           <Button

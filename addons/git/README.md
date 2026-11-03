@@ -3,11 +3,11 @@
 Jig's own Git tab (D-022): what matters is **history per branch, diffs, and clicking things to see the
 detail in the main window**. Rebase, graph and blame are out of scope.
 
-- **Git view** (left sidebar): the active project's current branch, a **Sync** button like VS Code's
-  (D-152: its ↓/↑ counts, primary when there is something to sync; pull with your settings, then
-  push; **Publish** for a branch without an upstream; host `sync`), Fetch, Pull/Push in `⋯`. With
-  nothing to commit, the commit box makes way for a full-width **Sync Changes ↓1 ↑2** / **Publish
-  Branch**. Each repository row of a workspace has its ↓/↑ counts as a sync pill. Then the
+- **Git view** (left sidebar): the active project's current branch, a sync button named by what it
+  does (D-152, D-246: **Pull ↓1**, **Push ↑2**, **Sync ↓1 ↑2** only when both, **Publish** for a
+  branch without an upstream; the tooltip names the commits and the remote branch; `lib/sync.ts`,
+  host `sync`), Fetch, Pull/Push in `⋯`. With nothing to commit, the commit box makes way for the
+  same action full width. Each repository row of a workspace has its ↓/↑ counts as a sync pill. Then the
   working changes (staged, changes, untracked) with stage/unstage/discard and a commit box, and all
   local and remote branches (click → history; right-click → switch, compare, copy).
 - **A workspace** (a folder of repositories) lists the repository you work in, not all of them

@@ -10,7 +10,7 @@
 
 import type { AddonSearchQuery, AddonSearchResult, AddonTarget, JigEventName } from "@jig/sdk";
 import type { SkillInfo } from "./about";
-import type { AddonCommit, AddonInfo, GallerySource } from "./addons";
+import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type {
@@ -88,6 +88,8 @@ export interface AppInfo {
   startedAfterFailure: boolean;
   /** An installed build (not running from source). */
   packaged: boolean;
+  /** Started again by the installer after an in-app update (`--updated`). */
+  updated: boolean;
 }
 
 /** Method name → argument and result types. */
@@ -98,11 +100,57 @@ export interface HostMethods {
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
   "meetings.delete": { args: { id: string }; result: void };
+  /** Past meetings, newest first, without the one in progress (the meeting history tab, D-250). */
+  "meetings.history": { args: void; result: import("./meetings").MeetingRecord[] };
+  /** Meetings for the chat's `@` picker, matching `query`; `mention` goes in the message. */
+  "meetings.mentions": {
+    args: { query: string };
+    result: Array<{ id: string; title: string; startedAt: string; mention: string }>;
+  };
+  /** Renames a meeting in the history (from the meeting window or the main window, D-250). */
+  "meetings.rename": { args: { id: string; title: string }; result: void };
+  /** A meeting as Markdown: notes, actions, the transcript by speaker. */
+  "meetings.markdown": { args: { id: string }; result: string };
+  /** Saves a meeting as Markdown (a save dialog); the file, or nothing if cancelled. */
+  "meetings.export": { args: { id: string }; result: string | undefined };
   "meetings.layout": { args: import("./meetingLayout").MeetingLayout; result: void };
   "meetings.signIn": { args: void; result: string };
   "meetings.signOut": { args: void; result: void };
   "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
   "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "knowledge.list": { args: { projectId: string }; result: import("./knowledge").KnowledgeDoc[] };
+  "knowledge.read": { args: { projectId: string; id: string }; result: { name: string; text: string } };
+  "knowledge.remove": { args: { projectId: string; id: string }; result: void };
+  "knowledge.addFiles": {
+    args: { projectId: string; paths?: string[] };
+    result: { added: import("./knowledge").KnowledgeDoc[]; skipped: string[] };
+  };
+  "claudeImport.open": {
+    args: { path?: string };
+    result: import("./knowledge").ClaudeExportSummary | undefined;
+  };
+  "claudeImport.apply": {
+    args: { token: string; uuids: string[]; path: string };
+    result: { projectIds: string[] };
+  };
+  "claudeImport.openSettings": { args: void; result: void };
+  "completion.state": { args: void; result: import("./completion").CompletionState };
+  "completion.request": {
+    args: import("./completion").CompletionRequest;
+    result: import("./completion").CompletionSuggestion | null;
+  };
+  "completion.accepted": { args: { id: string }; result: void };
+  "completion.closeFile": { args: { path: string }; result: void };
+  "completion.copilotSetup": { args: void; result: void };
+  "completion.copilotSignIn": { args: void; result: { userCode: string; url: string } };
+  "completion.copilotSignOut": { args: void; result: void };
+  "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
+  "meetings.startCall": {
+    args: import("./meetings").MeetingCall;
+    result: import("./meetings").MeetingRecord;
+  };
+  "meetings.setRinging": { args: { on: boolean }; result: void };
+  "meetings.incoming": { args: { name?: string }; result: void };
   "meetings.credential": { args: { id?: string }; result: { token: string } };
   "meetings.caption": { args: { id: string; caption: import("./meetings").MeetingCaption }; result: void };
   "meetings.status": {
@@ -447,8 +495,22 @@ export interface HostMethods {
   "addons.rollback": { args: { id: string; commit: string }; result: void };
   /** Deletes one of your add-ons (its folder, as a commit); a built-in it replaced comes back. */
   "addons.remove": { args: { id: string }; result: void };
-  /** Saves an add-on as a `.zip` to share (a save dialog); the chosen file, or nothing if cancelled. */
-  "addons.export": { args: { id: string }; result: string | undefined };
+  /**
+   * Shares an add-on: as a `.zip` (a save dialog), or into a folder gallery source from Settings
+   * (`gallerySource`). With `copy` it goes out as a separate add-on with that name and a new id (D-249);
+   * an edited built-in always does. The written file or folder, or nothing if cancelled.
+   */
+  "addons.export": {
+    args: { id: string; copy?: { name: string }; gallerySource?: string };
+    result: string | undefined;
+  };
+  /** Where your installed add-ons came from (a gallery or a `.zip`) and whether you changed them since. */
+  "addons.originals": { args: void; result: Record<string, AddonOriginInfo> };
+  /**
+   * Puts an add-on back as it came: an installed one from its kept original, an edited built-in by
+   * removing your copy (both as a commit, so it can be rolled back).
+   */
+  "addons.restoreOriginal": { args: { id: string }; result: void };
   /** Reads an add-on package (an open dialog when no `path`) without installing it. */
   "addons.inspectPackage": {
     args: { path?: string };
@@ -539,6 +601,8 @@ export interface HostMethods {
 /** Event topic → payload type. */
 export interface HostEvents {
   "meetings.changed": void;
+  "completion.changed": import("./completion").CompletionState;
+  "knowledge.changed": { projectId: string };
   "meetings.leaveRequested": void;
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;
@@ -627,6 +691,8 @@ export type CallArgs<M extends MethodName> = MethodArgs<M> extends void ? [] : [
  */
 export interface JigBridge {
   invoke(method: string, args: unknown): Promise<CallResponse<unknown>>;
+  /** The path of a file dropped on the page (Electron's webUtils), so the host can read it. */
+  pathForFile(file: File): string;
   on<T extends EventTopic>(topic: T, listener: (payload: HostEvents[T]) => void): () => void;
 }
 

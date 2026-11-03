@@ -130,3 +130,48 @@ test("Wrapped long lines keep their indentation", async ({ page, jigHome }) => {
   const first = (await editor.locator(".cm-line").first().boundingBox())!;
   expect(box.height).toBeGreaterThan(first.height * 1.5);
 });
+
+test("Code completion: Claude suggests ghost text after a pause and Tab takes it", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "cart.ts"), "export function total() {\n  \n}\n");
+  await hostCall(page, "projects.add", { path: dir });
+  await hostCall(page, "config.update", { editor: { claudeCompletion: true } });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.keyboard.press("Control+Shift+E");
+  await page.getByTestId("files-view").getByTestId("files-entry-cart.ts").click();
+  const tab = page.locator("[data-tab-id]:not(.hidden)");
+  const editor = tab.getByTestId("code-editor");
+  await expect(tab.getByTestId("editor-completion")).toContainText("Claude Haiku");
+
+  // Type on the empty line; after the pause the fake engine suggests `total;`.
+  await editor.locator(".cm-line").nth(1).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("return ");
+  const ghost = editor.getByTestId("ghost-text");
+  await expect(ghost).toHaveText("total;", { timeout: 10000 });
+  await tab.screenshot({ path: test.info().outputPath("ghost.png") });
+  await page.keyboard.press("Tab");
+  await expect(ghost).toHaveCount(0);
+  await expect(editor).toContainText("return total;");
+
+  // Esc drops a suggestion; the status line's menu switches completion off again.
+  await page.keyboard.type(" ");
+  await expect(ghost).toHaveCount(1, { timeout: 10000 });
+  await page.keyboard.press("Escape");
+  await expect(ghost).toHaveCount(0);
+  await tab.getByTestId("editor-completion").click();
+  await page.getByTestId("completion-claude").click();
+  await expect(tab.getByTestId("editor-completion")).toContainText("No completion");
+
+  // Copilot is optional: its setup dialog downloads the server and then signs in to GitHub.
+  await tab.getByTestId("editor-completion").click();
+  await page.getByTestId("completion-copilot").click();
+  const dialog = page.getByTestId("copilot-dialog");
+  await expect(dialog).toContainText("Download (about 28 MB)");
+  await page.screenshot({ path: test.info().outputPath("copilot.png") });
+  await dialog.getByRole("button", { name: "Close", exact: true }).last().click();
+});

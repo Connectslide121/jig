@@ -84,7 +84,8 @@ export interface SessionManagerOptions {
   plugins?: (meta: SessionMeta) => Array<{ type: "local"; path: string }>;
 
   /** Text that goes with each message to Claude, not shown in the transcript (add-ons' context). */
-  turnContext?: (meta: SessionMeta) => Promise<string>;
+  /** Context for one message (`text` is what you wrote). */
+  turnContext?: (meta: SessionMeta, text: string) => Promise<string>;
   mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   agents?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   toolHandlers?: (
@@ -487,7 +488,7 @@ export class SessionManager {
       this.emit(live, [{ op: "upsert", item: sent }]);
     }
     const withShell = shells.length ? `${shells.map(shellContext).join("\n")}\n\n${text}` : text;
-    const context = (await this.options.turnContext?.(live.state.meta).catch(() => "")) ?? "";
+    const context = (await this.options.turnContext?.(live.state.meta, text).catch(() => "")) ?? "";
     const message = context
       ? `<jig-context>\nWhat Jig's add-ons tell you for this message (not written by the user):\n${context}\n</jig-context>\n\n${withShell}`
       : withShell;

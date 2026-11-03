@@ -1,4 +1,4 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, hostCall, test } from "./fixtures";
 
@@ -35,6 +35,9 @@ test("an add-on is exported to a zip and imported back after showing its permiss
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-addons").click();
   await page.getByTestId("addon-export-greeter").click();
+  await expect(page.getByTestId("addon-share")).toBeVisible();
+  await page.getByTestId("addon-share-go").click();
+  await expect(page.getByTestId("addon-share")).toHaveCount(0);
   await expect
     .poll(() =>
       stat(zip)
@@ -44,6 +47,7 @@ test("an add-on is exported to a zip and imported back after showing its permiss
     .toBeGreaterThan(100);
 
   // Deleted (after asking), then imported back: the dialog says what it is and what it may do.
+  await page.getByTestId("addon-more-greeter").click();
   await page.getByTestId("addon-delete-greeter").click();
   await expect(page.getByRole("dialog")).toContainText("Delete Greeter?");
   await page.getByTestId("dialog-confirm").click();
@@ -61,4 +65,53 @@ test("an add-on is exported to a zip and imported back after showing its permiss
   await page.getByTestId("addon-import").click();
   await expect(page.getByRole("dialog")).toContainText('You already have "greeter"');
   await expect(page.getByTestId("dialog-confirm")).toHaveText("Replace");
+});
+
+/** D-249: an installed add-on keeps its original, shows "edited" once changed, and restores. */
+test("an installed add-on you changed is marked edited and restores to the original", async ({
+  page,
+  jigHome,
+}) => {
+  const gallery = join(jigHome, "..", `gallery-${Date.now()}`);
+  const source = join(gallery, "addons", "hello");
+  await mkdir(source, { recursive: true });
+  const view = 'export function View() { return <div data-testid="hello">hi</div>; }\n';
+  await writeFile(
+    join(source, "addon.json"),
+    JSON.stringify({
+      id: "hello",
+      name: "Hello",
+      version: "1.0.0",
+      contributes: { views: [{ id: "main", title: "Hello", region: "right", component: "View" }] },
+    }),
+  );
+  await writeFile(join(source, "ui.tsx"), view);
+  await hostCall(page, "config.update", { addonGallery: { sources: [gallery] } });
+  expect(await hostCall(page, "addons.galleryInstall", { source: gallery, id: "hello" })).toMatchObject({
+    ok: true,
+  });
+
+  // Changed after installing (as the builder or an editor would): marked edited, then restored.
+  const mine = join(jigHome, "addons", "hello", "ui.tsx");
+  await writeFile(mine, view.replace("hi", "changed"));
+  await hostCall(page, "addons.reload", { id: "hello" });
+  await page.getByTestId("settings-button").click();
+  await page.getByTestId("settings-nav-addons").click();
+  await expect(page.getByTestId("addon-edited-hello")).toBeVisible();
+  await page.getByTestId("addon-more-hello").click();
+  await page.getByTestId("addon-restore-hello").click();
+  await expect(page.getByRole("dialog")).toContainText("Restore Hello to the original?");
+  await page.getByTestId("dialog-confirm").click();
+  await expect(page.getByTestId("addon-edited-hello")).toHaveCount(0);
+  expect(await readFile(mine, "utf8")).toBe(view);
+
+  // Shared into the folder gallery as a separate copy: a new id and name beside the original.
+  await page.getByTestId("addon-export-hello").click();
+  await page.getByTestId("addon-share-target").selectOption(gallery);
+  await page.getByRole("switch", { name: "Share as a separate add-on" }).click();
+  await page.getByTestId("addon-share-name").fill("Hello Again");
+  await page.getByTestId("addon-share-go").click();
+  await expect(page.getByTestId("addon-share")).toHaveCount(0);
+  const copy = JSON.parse(await readFile(join(gallery, "addons", "hello-again", "addon.json"), "utf8"));
+  expect(copy).toMatchObject({ id: "hello-again", name: "Hello Again" });
 });

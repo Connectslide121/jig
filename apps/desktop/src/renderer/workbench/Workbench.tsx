@@ -5,8 +5,11 @@ import { AttemptsDialogHost } from "../features/attempts";
 import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
+import { CopilotDialogHost } from "../features/completion/CopilotDialog";
 import { StandupHost } from "../features/digest";
 import { GoToHost } from "../features/goto";
+import { ClaudeImportDialogHost } from "../features/knowledge/ClaudeImportDialog";
+import { KnowledgeReaderHost } from "../features/knowledge/KnowledgeCard";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
@@ -14,6 +17,7 @@ import { useSessionsSync } from "../features/sessions";
 import { SavedChatsDialogHost } from "../features/sessions/SavedChatsDialog";
 import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
+import { UpdateInstallingHost } from "../features/setup/UpdateInstalling";
 import { VoiceDialogHost } from "../features/speech/VoiceDialog";
 import { useTerminalsSync } from "../features/terminals";
 import { useWorktreesSync } from "../features/worktrees";
@@ -117,6 +121,9 @@ export function Workbench() {
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />
+        <CopilotDialogHost />
+        <ClaudeImportDialogHost />
+        <KnowledgeReaderHost />
         <ProjectDialogHost />
         <LinkDialogHost />
         <SessionDialogsHost />
@@ -124,6 +131,7 @@ export function Workbench() {
         <VoiceDialogHost />
         <StandupHost />
         <DialogHost />
+        <UpdateInstallingHost />
       </ErrorBoundary>
       <ErrorBoundary label="Notifications">
         <ToastHost />

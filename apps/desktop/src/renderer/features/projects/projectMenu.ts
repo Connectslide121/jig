@@ -1,4 +1,13 @@
-import { FolderOpen, FolderSearch, LayoutDashboard, Palette, Pencil, Settings2, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  FolderOpen,
+  FolderSearch,
+  LayoutDashboard,
+  Palette,
+  Pencil,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { closeTabsWhere } from "../../../shared/layout";
 import { PROJECT_COLORS, type ProjectInfo } from "../../../shared/projects";
 import { call } from "../../lib/host";
@@ -33,6 +42,11 @@ export function projectMenu(project: ProjectInfo): MenuEntry[] {
       icon: Settings2,
       onSelect: () => openProjectDialog(project.id),
       testId: "project-settings",
+    },
+    {
+      label: "Knowledge…",
+      icon: BookOpen,
+      onSelect: () => workbench.openTab("jig.project", { projectId: project.id }),
     },
     {
       label: "Open dashboard",

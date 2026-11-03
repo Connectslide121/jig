@@ -612,6 +612,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Restore files to before any of your messages, and fork a chat to try another approach",
                 "Open a chat you had in Claude Code (terminal, desktop app, IDE) and continue it here as a copy",
                 "/ for Claude Code's commands and skills, @ for files, ! for shell commands, # to remember in CLAUDE.md",
+                "Mentioned files are highlighted in the message box, with a chip each to open them (or Ctrl+click)",
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
                 "Edit and send again: rewind the chat (and the files) to before any message",
@@ -620,7 +621,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Claude Code's models with effort levels, MCP servers, extra folders, Find (Ctrl+F) and Export",
                 "Chat overview: a small card in each chat counts tool calls, files, skills, subagents, add-ons, MCP calls and tokens; Show details for the full breakdown",
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
-                "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Claude does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Claude can queue tasks too",
+                "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Claude does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Claude can queue tasks too (you review and edit them first); one queue per project, and every run kept in History with its results",
               ]}
             />
           </Section>
@@ -637,6 +638,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Drag chats between projects; pin the ones you keep coming back to and put them in your order; group the list by project, status or day",
                 "Instructions per project, added to what Claude reads in its chats",
+                "Knowledge per project: documents every chat in it can read (drop files on the project's Home)",
+                "Import your claude.ai projects (instructions and knowledge) from claude.ai's data export",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",
                 "Files: the project's tree with git colours, a filter and Preview on click",
@@ -710,7 +713,10 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           >
             <Bullets
               items={[
-                "Meetings → Meetings: a two-week calendar agenda, Join from link, and saved meetings",
+                "Meetings → Meetings: a two-week calendar agenda, Join from link, and the meeting history",
+                "Teams calls: call someone in your organisation, and calls ring in Jig while it runs",
+                "Meeting history in the main window: start a chat about a meeting, notes, actions, Markdown export",
+                "Mention a meeting in any chat with @ — Claude reads its transcript",
                 "Remembers Agenda/Week and restores your Microsoft sign-in using protected storage",
                 "Microsoft sign-in and an Azure Communication Services resource are required; calling incurs Azure usage charges",
                 "Captions arrive live; no raw audio recording or full-meeting diarization job",
@@ -755,6 +761,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Two tabs side by side: right-click a tab → Open to the side, or drag it to the right edge",
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
+                "Code completion as you type, Tab to take it: GitHub Copilot (optional, set up from Get started) or Claude",
                 "Markdown previews render safe embedded HTML, including centered headings and sized local images",
                 "Search → Preview a file… for anything else",
               ]}
@@ -829,7 +836,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="addons"
             title="Your add-ons"
-            lead="What is installed now, and which slots each one uses. Share an add-on as a file, or install from the add-on gallery: a git repository or folder of add-ons your team keeps."
+            lead="What is installed now, and which slots each one uses. Share an add-on as a file or into a gallery folder (an edited one as a copy with its own name), or install from the add-on gallery: a git repository or folder of add-ons your team keeps. Installed add-ons you changed show as edited and restore to the original."
           >
             <AddonList />
             <div className="mt-3 flex gap-2">
@@ -891,6 +898,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Boards per project (Code → Boards): pick team boards found in your organisations; a tab per board with its columns and cards, like Azure DevOps",
                 "Project notes shared across chats: important decisions, constraints, dependencies and links — you and Claude keep project knowledge current, separate from task plans",
               ]}
             />

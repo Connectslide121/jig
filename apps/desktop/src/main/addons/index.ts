@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { addonToolName } from "@jig/sdk";
 import { slugify } from "@jig/themes";
 import { app, dialog, Notification, protocol, utilityProcess } from "electron";
-import type { AddonInfo } from "../../shared/addons";
+import type { AddonInfo, AddonOriginInfo } from "../../shared/addons";
 import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { appWindows, focusJig, hiddenMode } from "../appWindows";
@@ -32,13 +32,25 @@ import { Badges, ownViewId } from "./badges";
 import { addonChats } from "./chats";
 import { addonContext, addonDataTools, addonTools } from "./claudeTools";
 import { setTokensFile } from "./css";
-import { galleryRecords, readGallery, sourceFolder } from "./gallery";
+import { galleryRecords, isGitSource, readGallery, sourceFolder } from "./gallery";
 import type { HostChannel } from "./hostProcess";
 import type { FromHost } from "./hostRuntime";
 import { chatEventFor, type Dispatch, GitEvents } from "./jigEvents";
+import { forgetOriginal, isModified, readOrigin, restoreOriginal, saveOriginal } from "./originals";
 import { commitAll } from "./repo";
 import { AddonService } from "./service";
-import { inspectPackage, installPackage, packAddon, readPackage } from "./share";
+import {
+  addonContents,
+  copyContents,
+  freeId,
+  idFromName,
+  inspectPackage,
+  installPackage,
+  packAddon,
+  packCopy,
+  readPackage,
+  writeContents,
+} from "./share";
 
 const log = logger("addons");
 const here = dirname(fileURLToPath(import.meta.url));
@@ -352,22 +364,70 @@ export async function startAddons(): Promise<void> {
   });
   handle("addons.history", ({ id }) => s.history(id));
   handle("addons.rollback", ({ id, commit }) => s.rollback(id, commit));
-  handle("addons.remove", ({ id }) => s.remove(id));
+  handle("addons.remove", async ({ id }) => {
+    await s.remove(id);
+    await forgetOriginal(paths.addonOriginals(), id).catch(() => undefined);
+  });
+
+  // Originals (D-249): what an installed add-on looked like when it came, to show edits and restore.
+  handle("addons.originals", async () => {
+    const out: Record<string, AddonOriginInfo> = {};
+    for (const a of s.list()) {
+      if (a.source !== "user" || a.preview) continue;
+      const origin = await readOrigin(paths.addonOriginals(), a.id);
+      if (!origin) continue;
+      const modified = await isModified(paths.addonOriginals(), a.id, a.dir).catch(() => false);
+      out[a.id] = { kind: origin.kind, source: origin.source, version: origin.version, modified };
+    }
+    return out;
+  });
+  handle("addons.restoreOriginal", async ({ id }) => {
+    const addon = s.list().find((a) => a.id === id && !a.preview);
+    if (addon?.source !== "user") throw new JigError("not_found", "Only your own add-ons can be restored");
+    // An edited built-in: your copy is the change, so removing it brings the built-in back.
+    if (addon.overridesBuiltin && !(await readOrigin(paths.addonOriginals(), id))) return s.remove(id);
+    await restoreOriginal(paths.addonOriginals(), id, addon.dir);
+    await s.commit(id, `Restore ${addon.name} to the original`).catch(() => undefined);
+    await s.reload(id);
+  });
 
   // Sharing: an add-on as a .zip, and a .zip back in (after you've seen what it is).
   const window = () => appWindows().find((w) => w.isFocused()) ?? appWindows()[0];
-  handle("addons.export", async ({ id }) => {
+  handle("addons.export", async ({ id, copy: asCopy, gallerySource }) => {
     const addon = s.list().find((a) => a.id === id);
     if (!addon) throw new JigError("not_found", "No such add-on");
+    // An edited built-in shared as itself would replace the receiver's built-in: it goes as a copy.
+    if (addon.overridesBuiltin && !asCopy)
+      throw new JigError("invalid_args", "An edited built-in add-on is shared as a copy with its own name");
+    const name = asCopy?.name.trim() ?? addon.name;
+    const ids = new Set(s.list().map((a) => a.id));
+    const copy = asCopy ? { id: freeId(idFromName(name), (x) => ids.has(x)), name } : undefined;
+    const shareId = copy?.id ?? id;
+    if (gallerySource !== undefined) {
+      // Only into a folder source you added in Settings; a git gallery is shared by committing a .zip.
+      if (!getConfig().addonGallery.sources.some((x) => x.trim() === gallerySource.trim()))
+        throw new JigError("invalid_args", "Not a gallery source in Settings");
+      if (isGitSource(gallerySource))
+        throw new JigError("invalid_args", "A git gallery can't be written to: save a .zip and commit it");
+      const folder = gallerySource.trim();
+      const inner = join(folder, "addons");
+      const parent = existsSync(inner) ? inner : folder;
+      const entries = copy ? await copyContents(addon.dir, copy) : await addonContents(addon.dir, id);
+      try {
+        return await writeContents(parent, entries);
+      } catch (e) {
+        throw new JigError("exists", e instanceof Error ? e.message : String(e));
+      }
+    }
     const options = {
-      title: `Save ${addon.name} to share`,
-      defaultPath: `${id}-${addon.version ?? "1.0.0"}.jig-addon.zip`,
+      title: `Save ${name} to share`,
+      defaultPath: `${shareId}-${addon.version ?? "1.0.0"}.jig-addon.zip`,
       filters: [{ name: "Jig add-on", extensions: ["zip"] }],
     };
     const w = window();
     const result = w ? await dialog.showSaveDialog(w, options) : await dialog.showSaveDialog(options);
     if (result.canceled || !result.filePath) return undefined;
-    await writeFile(result.filePath, await packAddon(addon.dir, id));
+    await writeFile(result.filePath, copy ? await packCopy(addon.dir, copy) : await packAddon(addon.dir, id));
     return result.filePath;
   });
   handle("addons.inspectPackage", async ({ path }) => {
@@ -397,6 +457,10 @@ export async function startAddons(): Promise<void> {
   });
   handle("addons.importPackage", async ({ path, replace }) => {
     const pkg = await installPackage(await readPackage(path), paths.addons(), { replace });
+    await saveOriginal(paths.addonOriginals(), pkg.id, join(paths.addons(), pkg.id), {
+      kind: "import",
+      version: pkg.version,
+    }).catch((e) => log.warn("Couldn't keep the original", e));
     await commitAll(
       paths.addons(),
       `Import ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""}`,
@@ -421,6 +485,11 @@ export async function startAddons(): Promise<void> {
     const record = records.find((r) => r.id === id);
     if (!record) throw new JigError("not_found", "That add-on isn't in this gallery");
     const pkg = await installPackage(await packAddon(record.dir, id), paths.addons(), { replace });
+    await saveOriginal(paths.addonOriginals(), pkg.id, join(paths.addons(), pkg.id), {
+      kind: "gallery",
+      source,
+      version: pkg.version,
+    }).catch((e) => log.warn("Couldn't keep the original", e));
     await commitAll(
       paths.addons(),
       `Install ${pkg.name}${pkg.version ? ` ${pkg.version}` : ""} from the gallery`,

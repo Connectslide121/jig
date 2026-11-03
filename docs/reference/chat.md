@@ -17,7 +17,7 @@ resolved active model is recorded separately and never replaces the selected ali
 | --- | --- |
 | `/` commands and skills | `/` in the message box opens a picker of Claude Code's own commands and skills (`sessions.commands`, from the running Claude Code, cached per folder). The **+** button → Commands and skills does the same |
 | `/model`, `/permissions`, `/mcp`, `/add-dir`, `/export`, `/clear`, `/rewind` | the same names in the picker open Jig's menus and dialogs (model and effort menu, permission menu, MCP servers dialog, folders dialog, export, new chat, the message menu). Commands that only make sense in a terminal (`/login`, `/config`, `/vim`, `/exit`…) are left out |
-| `@` file mentions | `@` opens a fuzzy file and folder picker (`files.search`: git's file list inside repositories, a walk elsewhere that skips `node_modules`, build output and caches). Folders keep the picker open to go deeper |
+| `@` file mentions | `@` opens a fuzzy file and folder picker (`files.search`: git's file list inside repositories, a walk elsewhere that skips `node_modules`, build output and caches). Folders keep the picker open to go deeper. Mentions that point at something (a file that exists, a folder, a meeting) are highlighted in the box (a layer drawn behind the textarea) and get a chip above it: click opens it (Preview, the file manager, Meetings), × takes it out; Ctrl/Cmd+click on the mention in the text opens it too (D-253) |
 | `!` bash mode | `! command` runs in the chat's folder (PowerShell on Windows, `$SHELL` elsewhere, 2 minutes at most). The output shows as a card and goes to Claude with your next message as `<bash-input>`/`<bash-stdout>`, like Claude Code |
 | `#` memory | `# text` → Enter asks which CLAUDE.md: the chat folder's or `~/.claude/CLAUDE.md`; a line `- text` is appended |
 | ↑ / ↓ history | your earlier messages of this chat (↑ on the first line of an empty box; a recalled `/command` doesn't open the picker) |
@@ -52,7 +52,7 @@ resolved active model is recorded separately and never replaces the selected ali
   default, shows what you and Claude say, with each run of steps between (commands, reads, edits,
   searches, agents, thinking) folded into one line — "Ran 3 commands, read a file, edited cart.ts
   +4 −1", a single command's description, failures counted, a spinner and the current step while
-  it runs; click it for the cards. Subagents' hand-backs in chats opened from Claude Code are a
+  it runs (the latest line keeps its spinner and says Working between steps while the chat works); click it for the cards. Subagents' hand-backs in chats opened from Claude Code are a
   step too ("Message from subagent"). Questions,
   permission prompts, plans, results and notices stay in view. The whole-chat changes row stays
   above the input. Detailed shows every step as its card. Find in chat opens the line that holds a match.

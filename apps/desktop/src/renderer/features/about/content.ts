@@ -83,6 +83,10 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "A nicer card for an MCP tool's result",
     snippet: '"toolRenderers": [{ "tool": "mcp__ado__get_run", "component": "RunCard" }]',
   },
+  "chat.permissionRenderer": {
+    idea: "Review and edit the tasks Claude wants to queue before allowing it",
+    snippet: '"permissionRenderers": [{ "tool": "add", "component": "ReviewTasks" }]',
+  },
   prompt: {
     idea: "“Review my changes”, “Write tests for this”",
     snippet: '"prompts": [{ "id": "review", "label": "Review", "text": "Review my uncommitted changes." }]',

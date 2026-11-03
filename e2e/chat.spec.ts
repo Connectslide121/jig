@@ -387,3 +387,20 @@ test("chat: unsent drafts are not saved or restored, sent prompts are", async ({
   await expect(page3.getByTestId("session-Saved prompt")).toBeVisible();
   await third.close();
 });
+
+test("chat: the latest steps line shows it's working between tools, until Claude answers", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("chat-view-compact").click();
+  await say(page, "look at the code");
+  const toggle = page.locator("[data-testid=transcript]:visible").getByTestId("steps-toggle");
+  // While a tool runs the line names it; after the last one, before the answer, it says Working.
+  await expect(toggle).toContainText("Working", { timeout: 15000 });
+  await expect(toggle).toHaveAttribute("data-working", "true");
+  await page.getByTestId("chat").screenshot({ path: test.info().outputPath("working.png") });
+  await expect(page.getByTestId("turn-result")).toBeVisible({ timeout: 15000 });
+  await expect(toggle).not.toHaveAttribute("data-working");
+});

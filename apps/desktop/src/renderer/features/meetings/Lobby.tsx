@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FileText,
   Link2,
+  Phone,
   Plug,
   RefreshCw,
   Sparkles,
@@ -37,7 +38,7 @@ const ongoing = (e: MeetingEvent, now: number) =>
 
 /**
  * Before a call: the next meeting as a large card, the rest of the next 14 days as cards by day,
- * and saved meetings as cards. A whole card is the button.
+ * and the meeting history as cards. A whole card is the button.
  */
 export function Lobby({
   events,
@@ -173,12 +174,12 @@ export function Lobby({
           </section>
         )}
         <section className="space-y-3">
-          <SectionHeading title="Saved meetings" />
+          <SectionHeading title="Meeting history" />
           {!records.length ? (
             <div className="h-28">
               <Placeholder
                 icon={FileText}
-                title="No saved meetings yet"
+                title="No meetings yet"
                 text="Captions and notes from meetings you join are kept here."
               />
             </div>
@@ -351,6 +352,11 @@ function SavedCard({
     >
       <div className="w-full space-y-0.5">
         <div className="flex w-full items-center gap-2">
+          {record.call ? (
+            <Phone className="size-3.5 shrink-0 text-muted" aria-label="Teams call" />
+          ) : (
+            <Video className="size-3.5 shrink-0 text-muted" aria-label="Teams meeting" />
+          )}
           <span className="min-w-0 flex-1 truncate text-sm font-medium" title={record.title}>
             {record.title}
           </span>

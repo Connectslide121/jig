@@ -140,16 +140,26 @@
         "apps/desktop/src/main/meetings/**",
         "apps/desktop/src/shared/meetings.ts",
         "apps/desktop/src/shared/meetingLayout.ts",
-        "addons/meetings/**"
+        "addons/meetings/**",
+        "apps/desktop/src/renderer/features/sessions/Composer.tsx"
       ],
-      "specs": ["meetings.spec.ts"]
+      "specs": ["meetings.spec.ts", "meeting-history.spec.ts"]
     },
     { "files": ["addons/notes/**"], "specs": ["notes.spec.ts"] },
     { "files": ["addons/pipelines/**"], "specs": ["pipelines.spec.ts"] },
+    { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts"] },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/knowledge/**",
+        "apps/desktop/src/main/knowledge/**",
+        "apps/desktop/src/shared/knowledge.ts"
+      ],
+      "specs": ["knowledge.spec.ts"]
+    },
     {
       "files": ["apps/desktop/src/renderer/features/projects/**", "apps/desktop/src/main/projects/**"],
       "specs": ["projects.spec.ts", "navigation.spec.ts", "ux.spec.ts"]

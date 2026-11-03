@@ -103,6 +103,24 @@ export interface OneShotOptions {
   claudePath: string;
 }
 
+/**
+ * A warm Claude Code process for short answers one after another (code completion, D-255): no tools,
+ * no saved chat, the claude_code preset with Jig's lines appended. Answers come in turn order.
+ */
+export interface Completer {
+  /** One answer; rejects when `signal` aborts or Claude Code fails. */
+  ask(prompt: string, signal?: AbortSignal): Promise<string>;
+  close(): void;
+}
+
+export interface CompleterOptions {
+  cwd: string;
+  model: string;
+  appendSystemPrompt: string;
+  env: Record<string, string | undefined>;
+  claudePath: string;
+}
+
 export interface ToolCallOptions {
   cwd: string;
   env: Record<string, string | undefined>;
@@ -115,6 +133,8 @@ export interface Engine {
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession;
   /** A single non-interactive query with no tools (pattern reflection, phase 9). Returns the text. */
   oneShot(prompt: string, options: OneShotOptions): Promise<string>;
+  /** A warm process for many short answers in a row (code completion, D-255). */
+  completer(options: CompleterOptions): Completer;
   /**
    * Has Claude Code call one of its own tools (routines, artifacts) with an exact input, in a hidden
    * session where only that call is allowed (D-092). Claude Code uses its own sign-in.

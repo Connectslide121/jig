@@ -18,6 +18,33 @@ async function openChat(page: Page, jigHome: string) {
 const turnDone = async (page: Page, count: number) =>
   expect(page.getByTestId("turn-result")).toHaveCount(count, { timeout: 15000 });
 
+test("composer: mentioned files are highlighted, shown as chips and open like links", async ({
+  page,
+  jigHome,
+}) => {
+  const { input } = await openChat(page, jigHome);
+  await input.fill("look at @src/cart.ts and @nope.ts please");
+  // Only the file that exists is a mention: one highlight, one chip.
+  const chips = page.getByTestId("composer-mention");
+  await expect(chips).toHaveCount(1);
+  await expect(chips.first()).toContainText("cart.ts");
+  await expect(page.getByTestId("composer-highlights").locator("mark")).toHaveCount(1);
+  await page.getByTestId("composer").screenshot({ path: test.info().outputPath("mentions.png") });
+
+  // The chip opens the file in Preview.
+  await chips.first().getByRole("button").first().click();
+  await expect(page.getByTestId("tab-jig.preview")).toContainText("cart.ts");
+  await page.getByTestId("tab-jig.chat").first().click();
+
+  // × takes the mention out of the message.
+  await chips
+    .first()
+    .getByRole("button", { name: /Remove the mention/ })
+    .click();
+  await expect(input).toHaveValue("look at and @nope.ts please");
+  await expect(chips).toHaveCount(0);
+});
+
 test("composer: / commands, @ files, ! shell, # memory, history, Shift+Tab", async ({ page, jigHome }) => {
   const { dir, input, chat } = await openChat(page, jigHome);
 

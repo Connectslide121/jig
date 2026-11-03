@@ -22,3 +22,39 @@ export function registerToolRenderer(renderer: ToolRenderer): () => void {
 }
 
 export const useToolRenderers = () => useStore((s) => s.renderers);
+
+/**
+ * Approval cards for add-ons' own tools (`chat.permissionRenderer` slot), keyed by the tool's full
+ * name (`mcp__jig__addon_<addon>_<tool>`): drawn instead of the usual permission card.
+ */
+export interface PermissionRenderer {
+  tool: string;
+  owner?: string;
+  render: (props: {
+    request: { toolName: string; input: Record<string, unknown>; title?: string };
+    status: "pending" | "allowed" | "always" | "denied" | "cancelled";
+    sessionId: string;
+    projectId?: string;
+    respond: (
+      decision:
+        | { behavior: "allow"; input?: Record<string, unknown> }
+        | { behavior: "deny"; message?: string },
+    ) => Promise<void>;
+  }) => ReactNode;
+}
+
+const usePermissionStore = create<{ renderers: Record<string, PermissionRenderer> }>(() => ({
+  renderers: {},
+}));
+
+export function registerPermissionRenderer(renderer: PermissionRenderer): () => void {
+  usePermissionStore.setState((s) => ({ renderers: { ...s.renderers, [renderer.tool]: renderer } }));
+  return () =>
+    usePermissionStore.setState((s) => {
+      const next = { ...s.renderers };
+      if (next[renderer.tool] === renderer) delete next[renderer.tool];
+      return { renderers: next };
+    });
+}
+
+export const usePermissionRenderer = (tool: string) => usePermissionStore((s) => s.renderers[tool]);

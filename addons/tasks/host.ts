@@ -3,20 +3,27 @@ import {
   addTasks,
   chatFinished,
   chatToContinue,
+  closeRun,
   emptyQueue,
   finishTask,
+  historyFiles,
   isActive,
+  joinQueues,
   listing,
   moveTask,
   type NewTask,
   nextTask,
+  openRun,
   type PermissionMode,
   parseNewTasks,
   parseReport,
   type Queue,
+  type Run,
+  recordRuns,
   requeue,
   STATUS_LABEL,
   shouldPause,
+  splitQueue,
   type Task,
   type TaskFile,
   taskContext,
@@ -25,45 +32,112 @@ import {
 } from "./lib/tasks";
 
 /**
- * The task queue runs here, in the add-on's host, so it goes on whether its view is open or not. One
- * queue (global storage, key `queue`). Changes go one at a time (`change`) and are announced
- * (`changed`) so the view follows. Main tells us when a chat we started changes status
- * (`chatChanged`); a watcher (`tick`) catches up after a restart. A task's files stay as long as the
- * task does (so they open from its results); `change` deletes the ones no task uses any more.
+ * The task queues run here, in the add-on's host, so they go on whether the view is open or not. One
+ * queue per project (project-scoped storage, key `queue`), each running on its own (D-248), and each
+ * project's run history (key `history`): every run from Start until the queue finishes, kept as its
+ * tasks ended. Changes go one at a time (`change`) and are announced (`changed`) so the view follows.
+ * Main tells us when a chat we started changes status (`chatChanged`); a watcher (`tick`) catches up
+ * after a restart. A task's files stay as long as the task or its run in the history does; `change`
+ * deletes the ones nothing uses any more.
  */
 
 const KEY = "queue";
+const HISTORY = "history";
 let chain: Promise<unknown> = Promise.resolve();
+let migrated = false;
 
-async function load(api: AddonHostApi): Promise<Queue> {
-  return { ...emptyQueue(), ...((await api.storage.get<Queue>(KEY)) ?? {}) };
+const scope = (projectId: string) => ({ scope: "project" as const, id: projectId });
+
+async function load(api: AddonHostApi, projectId: string): Promise<Queue> {
+  return { ...emptyQueue(), ...((await api.storage.get<Queue>(KEY, scope(projectId))) ?? {}) };
 }
 
-/** Runs `fn` on the queue after earlier changes, saves what it returns and tells the view. */
-function change<T>(api: AddonHostApi, fn: (q: Queue) => Promise<[Queue, T]> | [Queue, T]): Promise<T> {
-  const run = async () => {
-    const before = await load(api);
+async function loadHistory(api: AddonHostApi, projectId: string): Promise<Run[]> {
+  const runs = await api.storage.get<Run[]>(HISTORY, scope(projectId));
+  return Array.isArray(runs) ? runs : [];
+}
+
+/** Runs `fn` after the changes before it (every queue's changes go one at a time). */
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const result = chain.then(fn, fn);
+  chain = result.catch(() => undefined);
+  return result;
+}
+
+/** Before queues were per project there was one (global `queue`): split it once into the projects'. */
+async function migrate(api: AddonHostApi): Promise<void> {
+  if (migrated) return;
+  const old = await api.storage.get<Queue>(KEY);
+  if (old?.tasks?.length) {
+    const projects = await api.projects();
+    if (!projects.length) return;
+    const known = new Set(projects.map((p) => p.id));
+    const fallback = projects[0]!.id;
+    const fixed = { ...emptyQueue(), ...old };
+    fixed.tasks = fixed.tasks.map((t) =>
+      t.projectId && known.has(t.projectId) ? t : { ...t, projectId: fallback },
+    );
+    for (const [projectId, queue] of Object.entries(splitQueue(fixed, fallback)))
+      await api.storage.set(KEY, joinQueues(await load(api, projectId), queue), scope(projectId));
+  }
+  if (old) await api.storage.set(KEY, null);
+  migrated = true;
+}
+
+/** Runs `fn` on a project's queue after earlier changes, saves what it returns and tells the view. */
+function change<T>(
+  api: AddonHostApi,
+  projectId: string,
+  fn: (q: Queue) => Promise<[Queue, T]> | [Queue, T],
+): Promise<T> {
+  return serial(async () => {
+    await migrate(api);
+    const before = await load(api, projectId);
     const json = JSON.stringify(before);
     const [next, result] = await fn(before);
     // Saved (and the view told) only when something changed: the view's own reload calls list.
-    if (JSON.stringify(next) !== json || JSON.stringify(await load(api)) !== json) {
-      await api.storage.set(KEY, next);
-      api.emit("changed");
-      showWaiting(api, next);
-      const unused = unusedFiles(before, next);
+    if (JSON.stringify(next) !== json || JSON.stringify(await load(api, projectId)) !== json) {
+      await api.storage.set(KEY, next, scope(projectId));
+      const history = await loadHistory(api, projectId);
+      const recorded = recordRuns(history, before, next);
+      if (recorded !== history) await api.storage.set(HISTORY, recorded, scope(projectId));
+      api.emit("changed", { projectId });
+      void showWaiting(api);
+      const unused = unusedFiles(before, next, historyFiles(recorded));
       if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
     }
     return result;
-  };
-  const result = chain.then(run, run);
-  chain = result.catch(() => undefined);
-  return result;
+  });
+}
+
+/** The project whose queue has a task running in this chat (session ids are remembered). */
+const chatProjects = new Map<string, string>();
+
+async function projectOfChat(
+  api: AddonHostApi,
+  sessionId: string,
+  hint?: string,
+): Promise<string | undefined> {
+  const has = async (projectId: string) =>
+    (await load(api, projectId)).tasks.some((t) => t.sessionId === sessionId && isActive(t));
+  const known = chatProjects.get(sessionId) ?? hint;
+  if (known && (await has(known))) return known;
+  for (const p of await api.projects())
+    if (p.id !== known && (await has(p.id))) {
+      chatProjects.set(sessionId, p.id);
+      return p.id;
+    }
+  return undefined;
 }
 
 const replace = (q: Queue, task: Task): Queue => ({
   ...q,
   tasks: q.tasks.map((t) => (t.id === task.id ? task : t)),
 });
+
+const ready = (api: AddonHostApi) => (migrated ? Promise.resolve() : serial(() => migrate(api)));
+
+const OPEN = [{ label: "Open Tasks", view: "tasks" }];
 
 /** A task's chat finished: record it, and pause or announce the end as needed. */
 function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Queue {
@@ -76,26 +150,27 @@ function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Q
       message: done.title,
       tone: "warning",
       system: true,
-      actions: [{ label: "Open Tasks", view: "tasks" }],
+      actions: OPEN,
     });
   }
   return next;
 }
 
-/** Starts the next queued task when the queue runs and nothing else does. */
+/** Starts the next queued task when the queue runs and nothing else does; the run ends with the queue. */
 async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
   while (q.running) {
     const task = nextTask(q);
     if (!task) {
       if (!q.tasks.some(isActive)) {
-        q = { ...q, running: false };
-        const done = q.tasks.filter((t) => t.status === "done").length;
+        const ran = q.tasks.filter((t) => t.runId && t.runId === q.runId);
+        q = closeRun({ ...q, running: false });
+        const project = (await api.projects()).find((p) => p.id === ran[0]?.projectId);
         api.notify({
-          title: "Task queue finished",
-          message: `${done} of ${q.tasks.length} done`,
+          title: project ? `Task queue finished in ${project.name}` : "Task queue finished",
+          message: `${ran.filter((t) => t.status === "done").length} of ${ran.length} done`,
           tone: "success",
           system: true,
-          actions: [{ label: "Open Tasks", view: "tasks" }],
+          actions: OPEN,
         });
       }
       return q;
@@ -112,6 +187,7 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
             permissionMode: task.permissionMode,
           })
         ).sessionId;
+      if (task.projectId) chatProjects.set(sessionId, task.projectId);
       // Saved as running before the message goes, so the chat's first turn gets the task's instructions.
       q = replace(q, {
         ...task,
@@ -120,8 +196,9 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         sentAt: new Date().toISOString(),
         costAtStart: before?.costUsd ?? 0,
         sawBusy: false,
+        ...(q.runId ? { runId: q.runId } : {}),
       });
-      await api.storage.set(KEY, q);
+      if (task.projectId) await api.storage.set(KEY, q, scope(task.projectId));
       await api.chats.send({ text: task.prompt, sessionId, attachments: task.attachments });
       return q;
     } catch (error) {
@@ -130,6 +207,7 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         status: "error",
         error: (error as Error).message,
         finishedAt: new Date().toISOString(),
+        ...(q.runId ? { runId: q.runId } : {}),
       };
       q = replace(q, failed);
       if (shouldPause(q, failed)) {
@@ -138,7 +216,7 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
           message: failed.error,
           tone: "warning",
           system: true,
-          actions: [{ label: "Open Tasks", view: "tasks" }],
+          actions: OPEN,
         });
         return { ...q, running: false };
       }
@@ -174,12 +252,83 @@ async function reconcile(api: AddonHostApi, q: Queue): Promise<Queue> {
   return q;
 }
 
+/** The project a view call is about (it must still exist). */
+async function projectArg(api: AddonHostApi, projectId: unknown): Promise<string> {
+  if (typeof projectId !== "string" || !projectId) throw new Error("Say which project's queue");
+  if (!(await api.projects()).some((p) => p.id === projectId))
+    throw new Error("That project no longer exists");
+  return projectId;
+}
+
 // Called from the view.
 
-export async function list(_args: unknown, api: AddonHostApi): Promise<Queue> {
-  return change(api, async (q) => {
+type ProjectArgs = { projectId: string };
+
+export async function list(args: ProjectArgs, api: AddonHostApi): Promise<Queue> {
+  const projectId = await projectArg(api, args?.projectId);
+  return change(api, projectId, async (q) => {
     const next = await reconcile(api, q);
     return [next, next];
+  });
+}
+
+/** Every project's queue at a glance (the view's project menu). */
+export async function overview(
+  _args: unknown,
+  api: AddonHostApi,
+): Promise<
+  Array<{
+    projectId: string;
+    queued: number;
+    active: number;
+    needsYou: number;
+    running: boolean;
+    runs: number;
+  }>
+> {
+  await ready(api);
+  const out = [];
+  for (const p of await api.projects()) {
+    const q = await load(api, p.id);
+    out.push({
+      projectId: p.id,
+      queued: q.tasks.filter((t) => t.status === "queued").length,
+      active: q.tasks.filter(isActive).length,
+      needsYou: q.tasks.filter((t) => t.status === "needs_you").length,
+      running: q.running,
+      runs: (await loadHistory(api, p.id)).length,
+    });
+  }
+  return out;
+}
+
+/** A project's past runs, newest first. */
+export async function history(args: ProjectArgs, api: AddonHostApi): Promise<Run[]> {
+  const projectId = await projectArg(api, args?.projectId);
+  await ready(api);
+  return loadHistory(api, projectId);
+}
+
+/** Removes a finished run from the history (its files go when nothing else uses them). */
+export async function forgetRun(args: ProjectArgs & { runId: string }, api: AddonHostApi): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  await serial(async () => {
+    await migrate(api);
+    const runs = await loadHistory(api, projectId);
+    const run = runs.find((r) => r.id === args.runId);
+    if (!run) return;
+    if (!run.finishedAt)
+      throw new Error("This run is still going; it can be removed once the queue finishes");
+    const left = runs.filter((r) => r !== run);
+    await api.storage.set(HISTORY, left, scope(projectId));
+    const queue = await load(api, projectId);
+    const used = new Set([
+      ...historyFiles(left),
+      ...queue.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)),
+    ]);
+    const unused = [...new Set(historyFiles([run]))].filter((path) => !used.has(path));
+    if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
+    api.emit("changed", { projectId });
   });
 }
 
@@ -198,7 +347,7 @@ export async function addReviewed(
     throw new Error("Invalid reviewed task");
   if (!(await api.projects()).some((p) => p.id === args.projectId))
     throw new Error("Task project no longer exists");
-  await change(api, (q) => {
+  await change(api, args.projectId, (q) => {
     if (q.tasks.some((t) => t.from === args.source)) return [q, undefined];
     return [
       addTasks({ ...q, running: false }, [{ title: args.title, prompt: args.prompt }], {
@@ -216,21 +365,22 @@ export async function add(
   args: {
     /** Prompts, or tasks that say whether they start a new chat (the Add tasks dialog's chats). */
     prompts: Array<string | NewTask>;
-    projectId?: string;
+    projectId: string;
     newChat: boolean;
     permissionMode?: PermissionMode;
     from?: string;
   },
   api: AddonHostApi,
 ): Promise<Queue> {
-  return change(api, async (q) => {
-    const next = await advance(api, addTasks(q, args.prompts, args));
+  const projectId = await projectArg(api, args?.projectId);
+  return change(api, projectId, async (q) => {
+    const next = await advance(api, addTasks(q, args.prompts, { ...args, projectId }));
     return [next, next];
   });
 }
 
 export async function update(
-  args: {
+  args: ProjectArgs & {
     id: string;
     prompt?: string;
     title?: string;
@@ -240,7 +390,7 @@ export async function update(
   },
   api: AddonHostApi,
 ): Promise<void> {
-  await change(api, (q) => {
+  await change(api, await projectArg(api, args?.projectId), (q) => {
     const task = q.tasks.find((t) => t.id === args.id);
     if (task?.status !== "queued") throw new Error("Only a queued task can be changed");
     const attachments = args.attachments ?? task.attachments ?? [];
@@ -260,51 +410,99 @@ export async function update(
   });
 }
 
-export async function remove({ id }: { id: string }, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => {
-    const task = q.tasks.find((t) => t.id === id);
+export async function remove(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => {
+    const task = q.tasks.find((t) => t.id === args.id);
     if (task && isActive(task)) throw new Error("A running task can't be removed; skip it in its chat first");
-    return [{ ...q, tasks: q.tasks.filter((t) => t.id !== id) }, undefined];
+    return [{ ...q, tasks: q.tasks.filter((t) => t.id !== args.id) }, undefined];
   });
 }
 
 /** Deletes files the view kept but no task took (a cancelled dialog, a removed file). */
 export async function discard({ paths }: { paths: string[] }, api: AddonHostApi): Promise<void> {
-  const used = new Set((await load(api)).tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)));
+  await ready(api);
+  const used = new Set<string>();
+  for (const p of await api.projects()) {
+    for (const t of (await load(api, p.id)).tasks) for (const a of t.attachments ?? []) used.add(a.path);
+    for (const path of historyFiles(await loadHistory(api, p.id))) used.add(path);
+  }
   const unused = (paths ?? []).filter((p) => typeof p === "string" && !used.has(p));
   if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
 }
 
-export async function move({ id, delta }: { id: string; delta: -1 | 1 }, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => [moveTask(q, id, delta), undefined]);
+export async function move(
+  args: ProjectArgs & { id: string; delta: -1 | 1 },
+  api: AddonHostApi,
+): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    moveTask(q, args.id, args.delta),
+    undefined,
+  ]);
 }
 
-export async function skip({ id }: { id: string }, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => {
-    const task = q.tasks.find((t) => t.id === id);
+export async function skip(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => {
+    const task = q.tasks.find((t) => t.id === args.id);
     if (task?.status !== "queued") return [q, undefined];
     return [replace(q, { ...task, status: "skipped" }), undefined];
   });
 }
 
-export async function runAgain({ id }: { id: string }, api: AddonHostApi): Promise<void> {
-  await change(api, async (q) => [await advance(api, requeue(q, id)), undefined]);
+export async function runAgain(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), async (q) => [
+    await advance(api, requeue(q, args.id)),
+    undefined,
+  ]);
 }
 
-export async function start(_args: unknown, api: AddonHostApi): Promise<void> {
-  await change(api, async (q) => [await advance(api, { ...q, running: true }), undefined]);
+/** A task from a past run back in the queue: a new queued copy, with its files. */
+export async function runFromHistory(
+  args: ProjectArgs & { runId: string; id: string },
+  api: AddonHostApi,
+): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  await ready(api);
+  const task = (await loadHistory(api, projectId))
+    .find((r) => r.id === args.runId)
+    ?.tasks.find((t) => t.id === args.id);
+  if (!task) throw new Error("That task is no longer in the history");
+  await change(api, projectId, async (q) => [
+    await advance(
+      api,
+      addTasks(q, [{ prompt: task.prompt, title: task.title, attachments: task.attachments }], {
+        projectId,
+        newChat: true,
+        permissionMode: task.permissionMode,
+      }),
+    ),
+    undefined,
+  ]);
 }
 
-export async function pause(_args: unknown, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => [{ ...q, running: false }, undefined]);
+export async function start(args: ProjectArgs, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), async (q) => [
+    await advance(api, openRun({ ...q, running: true })),
+    undefined,
+  ]);
 }
 
-export async function setStopOnFailure({ on }: { on: boolean }, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => [{ ...q, stopOnFailure: on }, undefined]);
+export async function pause(args: ProjectArgs, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => [{ ...q, running: false }, undefined]);
 }
 
-export async function clearFinished(_args: unknown, api: AddonHostApi): Promise<void> {
-  await change(api, (q) => [
+export async function setStopOnFailure(
+  args: ProjectArgs & { on: boolean },
+  api: AddonHostApi,
+): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => [
+    { ...q, stopOnFailure: args.on },
+    undefined,
+  ]);
+}
+
+/** Clears finished tasks from the queue; their runs stay in the history. */
+export async function clearFinished(args: ProjectArgs, api: AddonHostApi): Promise<void> {
+  await change(api, await projectArg(api, args?.projectId), (q) => [
     { ...q, tasks: q.tasks.filter((t) => t.status === "queued" || isActive(t)) },
     undefined,
   ]);
@@ -316,7 +514,10 @@ export async function chatChanged(
   { sessionId, status }: { sessionId: string; status: AddonChatInfo["status"] },
   api: AddonHostApi,
 ): Promise<void> {
-  await change(api, async (q) => {
+  await ready(api);
+  const projectId = await projectOfChat(api, sessionId);
+  if (!projectId) return;
+  await change(api, projectId, async (q) => {
     const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
     if (!task) return [q, undefined];
     if (status === "working" || status === "starting")
@@ -327,7 +528,7 @@ export async function chatChanged(
         message: task.title,
         tone: "warning",
         system: true,
-        actions: [{ label: "Open Tasks", view: "tasks" }],
+        actions: OPEN,
       });
       return [replace(q, { ...task, status: "needs_you", sawBusy: true }), undefined];
     }
@@ -337,17 +538,26 @@ export async function chatChanged(
   });
 }
 
-/** Every minute: catches up on chats that finished while nobody told us (a restart), and goes on. */
-/** The Tasks view's badge: how many tasks wait for you (badges are kept in memory, so `tick` sets it again). */
-function showWaiting(api: AddonHostApi, q: Queue): void {
-  api.setBadge("tasks", q.tasks.filter((t) => t.status === "needs_you").length);
+/** The Tasks view's badge: how many tasks wait for you in all projects (badges are kept in memory, so `tick` sets it again). */
+async function showWaiting(api: AddonHostApi): Promise<void> {
+  let waiting = 0;
+  for (const p of await api.projects())
+    waiting += (await load(api, p.id)).tasks.filter((t) => t.status === "needs_you").length;
+  api.setBadge("tasks", waiting);
 }
 
+/** Every minute: catches up on chats that finished while nobody told us (a restart), and goes on. */
 export async function tick(_args: unknown, api: AddonHostApi): Promise<void> {
-  const q = await load(api);
-  showWaiting(api, q);
-  if (!q.running && !q.tasks.some(isActive)) return;
-  await change(api, async (current) => [await advance(api, await reconcile(api, current)), undefined]);
+  await ready(api);
+  await showWaiting(api);
+  for (const p of await api.projects()) {
+    const q = await load(api, p.id);
+    if (!q.running && !q.tasks.some(isActive)) continue;
+    await change(api, p.id, async (current) => [
+      await advance(api, await reconcile(api, current)),
+      undefined,
+    ]);
+  }
 }
 
 // Claude's side: what the chat running a task is told, and its tools.
@@ -356,7 +566,10 @@ type ChatArgs = { chat?: { sessionId?: string; projectId?: string } };
 
 export async function context(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const sessionId = args.chat?.sessionId;
-  return sessionId ? taskContext(await load(api), sessionId) : "";
+  if (!sessionId) return "";
+  await ready(api);
+  const projectId = await projectOfChat(api, sessionId, args.chat?.projectId);
+  return projectId ? taskContext(await load(api, projectId), sessionId) : "";
 }
 
 export async function toolReport(
@@ -365,7 +578,11 @@ export async function toolReport(
 ): Promise<string> {
   const sessionId = args.chat?.sessionId;
   const report = parseReport(args);
-  return change(api, (q) => {
+  await ready(api);
+  const projectId = sessionId ? await projectOfChat(api, sessionId, args.chat?.projectId) : undefined;
+  if (!projectId)
+    throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
+  return change(api, projectId, (q) => {
     const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
     if (!task)
       throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
@@ -391,9 +608,9 @@ export async function toolAdd(
     projectId = found.id;
   }
   if (!projectId) throw new Error("Say which project the tasks are for (this chat has none)");
-  return change(api, async (q) => {
+  return change(api, projectId, async (q) => {
     let next = addTasks(q, tasks, { projectId, newChat: !args.sameChat, addedBy: args.chat?.sessionId });
-    if (args.start) next = await advance(api, { ...next, running: true });
+    if (args.start) next = await advance(api, openRun({ ...next, running: true }));
     return [
       next,
       `Queued ${tasks.length} task${tasks.length === 1 ? "" : "s"}${
@@ -403,6 +620,16 @@ export async function toolAdd(
   });
 }
 
-export async function toolList(_args: ChatArgs, api: AddonHostApi): Promise<string> {
-  return listing(await load(api));
+/** The chat's project's queue, or every project's that has tasks when the chat has none. */
+export async function toolList(args: ChatArgs, api: AddonHostApi): Promise<string> {
+  await ready(api);
+  const projects = await api.projects();
+  const own = args?.chat?.projectId;
+  const shown = own ? projects.filter((p) => p.id === own) : projects;
+  const parts: string[] = [];
+  for (const p of shown) {
+    const q = await load(api, p.id);
+    if (own || q.tasks.length) parts.push(`${p.name}: ${listing(q)}`);
+  }
+  return parts.join("\n\n") || "Every task queue is empty.";
 }

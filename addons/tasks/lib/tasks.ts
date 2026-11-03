@@ -50,6 +50,8 @@ export interface Task {
   from?: string;
   /** Queued by Claude from a chat (its session id), not by you. */
   addedBy?: string;
+  /** The run it ran in (set when it starts), so the run's history keeps it. */
+  runId?: string;
 }
 
 export interface Queue {
@@ -57,7 +59,21 @@ export interface Queue {
   running: boolean;
   stopOnFailure: boolean;
   seq: number;
+  /** The open run: from Start until the queue finishes (pausing keeps it open). */
+  runId?: string;
 }
+
+/** A run kept in the history: the tasks that ran in it, as they ended (or are now, while it runs). */
+export interface Run {
+  id: string;
+  startedAt: string;
+  /** Set when the queue finished; a run still open has none. */
+  finishedAt?: string;
+  tasks: Task[];
+}
+
+/** Runs kept per project; the oldest go first. */
+export const HISTORY_LIMIT = 200;
 
 export interface ChatState {
   id: string;
@@ -280,9 +296,100 @@ export function requeue(queue: Queue, id: string): Queue {
   });
 }
 
+/** Opens a run (Start) unless one is open. */
+export function openRun(queue: Queue, at = new Date()): Queue {
+  return queue.runId ? queue : { ...queue, runId: `r${at.getTime().toString(36)}` };
+}
+
+/** Closes the open run (the queue finished). */
+export function closeRun(queue: Queue): Queue {
+  if (!queue.runId) return queue;
+  const { runId: _closed, ...rest } = queue;
+  return rest;
+}
+
+/**
+ * The history after a change of the queue: each run open before or after it gets the current state of
+ * its tasks (tasks removed from the queue stay in the run as they were), newest run first. A run that
+ * was open and isn't any more is finished at `at`. Runs without tasks aren't kept.
+ */
+export function recordRuns(
+  history: Run[],
+  before: Queue,
+  after: Queue,
+  at = new Date().toISOString(),
+): Run[] {
+  const ids = [...new Set([before.runId, after.runId].filter((id): id is string => !!id))];
+  let next = history;
+  for (const id of ids) {
+    const tasks = after.tasks.filter((t) => t.runId === id);
+    const old = next.find((r) => r.id === id);
+    const merged = [...(old?.tasks ?? [])];
+    for (const task of tasks) {
+      const i = merged.findIndex((t) => t.id === task.id);
+      if (i < 0) merged.push(task);
+      else merged[i] = task;
+    }
+    if (!merged.length) continue;
+    const startedAt =
+      old?.startedAt ??
+      tasks
+        .map((t) => t.sentAt)
+        .filter((s): s is string => !!s)
+        .sort()[0] ??
+      at;
+    const finishedAt = after.runId === id ? undefined : (old?.finishedAt ?? at);
+    const run: Run = { id, startedAt, ...(finishedAt ? { finishedAt } : {}), tasks: merged };
+    if (old && JSON.stringify(old) === JSON.stringify(run)) continue;
+    next = [run, ...next.filter((r) => r.id !== id)];
+  }
+  return next === history ? history : next.slice(0, HISTORY_LIMIT);
+}
+
+/**
+ * The one queue Jig kept before queues were per project, split by project (D-248): each project's
+ * tasks with the settings; tasks without a project go to `fallback`. Running state is not carried over.
+ */
+export function splitQueue(queue: Queue, fallback: string): Record<string, Queue> {
+  const out: Record<string, Queue> = {};
+  for (const task of queue.tasks) {
+    const id = task.projectId ?? fallback;
+    out[id] ??= { ...emptyQueue(), stopOnFailure: queue.stopOnFailure, seq: queue.seq };
+    out[id].tasks.push({ ...task, projectId: id });
+  }
+  return out;
+}
+
+/** Joins a migrated queue into a project's: its tasks after the project's own, renumbered after them. */
+export function joinQueues(into: Queue, from: Queue): Queue {
+  if (!into.tasks.length) return { ...from, running: into.running, runId: into.runId };
+  const shift = (id: string) => `t${Number(id.slice(1)) + into.seq}`;
+  const ids = new Set(from.tasks.map((t) => t.id));
+  const tasks = from.tasks.map((t) => ({
+    ...t,
+    id: shift(t.id),
+    ...(t.from && ids.has(t.from) ? { from: shift(t.from) } : {}),
+  }));
+  return { ...into, seq: into.seq + from.seq, tasks: [...into.tasks, ...tasks] };
+}
+
+/** Every file the history's tasks use (kept as long as their run is). */
+export function historyFiles(history: Run[]): string[] {
+  return history.flatMap((r) => r.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path)));
+}
+
+/** How a run went: tasks done, failed (failed, blocked or error) and in all. */
+export function runOutcome(run: Run): { done: number; failed: number; total: number } {
+  return {
+    done: run.tasks.filter((t) => t.status === "done").length,
+    failed: run.tasks.filter((t) => ["failed", "blocked", "error"].includes(t.status)).length,
+    total: run.tasks.length,
+  };
+}
+
 /**
  * Files no task uses any more (after tasks were removed or changed): `before`'s files that are not in
- * `after` and not in `keep` (files still in the Add tasks dialog, say). To delete.
+ * `after` and not in `keep` (files still in the Add tasks dialog, or kept by the history). To delete.
  */
 export function unusedFiles(before: Queue, after: Queue, keep: string[] = []): string[] {
   const used = new Set([...keep, ...after.tasks.flatMap((t) => (t.attachments ?? []).map((a) => a.path))]);

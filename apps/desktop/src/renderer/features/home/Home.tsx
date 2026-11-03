@@ -1,5 +1,4 @@
 import {
-  ArrowUp,
   BookOpen,
   CalendarClock,
   FileText,
@@ -16,18 +15,18 @@ import {
   SquareTerminal,
   Wand2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ProjectInfo } from "../../../shared/projects";
-import { call, errorMessage } from "../../lib/host";
+import { call } from "../../lib/host";
 import { timeAgo } from "../../lib/time";
-import { Badge, Button, cn, IconButton, Kbd, openMenuAt, Select } from "../../ui";
+import { Badge, Button, cn, IconButton, openMenuAt, Select } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { runAction, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
-import { notify } from "../../workbench/toasts";
 import { openAbout } from "../about";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
+import { KnowledgeCard } from "../knowledge/KnowledgeCard";
 import { LinksCard } from "../links/LinksView";
 import { projectTextClass } from "../projects/colors";
 import { openProjectDialog } from "../projects/ProjectDialog";
@@ -37,24 +36,13 @@ import { newSession } from "../sessions/actions";
 import { STATUS_LABEL, StatusDot } from "../sessions/status";
 import { useSessions } from "../sessions/store";
 
-/** First things people ask Claude in a project; a click puts it in the box. */
+/** First things people ask Claude in a project; a click opens a new chat with it ready to send. */
 const STARTERS = [
   "Explain how this project is organised",
   "Review my uncommitted changes for bugs",
   "Write tests for the code I changed",
   "Create a CLAUDE.md for this project",
 ];
-
-/** Starts a chat in the project and sends the message right away. */
-async function startChat(projectId: string, text: string, cwd?: string): Promise<void> {
-  const id = await newSession(projectId, cwd);
-  if (!id) return;
-  try {
-    await call("sessions.send", { id, text });
-  } catch (error) {
-    notify({ title: "Not sent", message: errorMessage(error), tone: "danger" });
-  }
-}
 
 function QuickAction({
   icon: Icon,
@@ -84,17 +72,16 @@ function QuickAction({
 }
 
 /**
- * Home of a project: what you see when no tab is open (and the project dashboard). Starting work is
- * one box away; recent chats, the usual next steps and the add-ons' widgets are below it.
+ * Home of a project: what you see when no tab is open (and the project dashboard). A New chat button
+ * (no second chat box: the chat's own composer is the one place to write); recent chats, the usual
+ * next steps and the add-ons' widgets are below it.
  */
 export function Home({ project }: { project: ProjectInfo }) {
-  const [text, setText] = useState("");
   // The folder the chat starts in: the project's default workspace unless you pick another.
   const [cwd, setCwd] = useState(project.path);
   useEffect(() => setCwd(project.path), [project.path]);
   const workspaces = useProjects((s) => s.workspaces);
   const starters = project.starters?.length ? project.starters : STARTERS;
-  const box = useRef<HTMLTextAreaElement>(null);
   const widgets = useDashboardWidgets();
   const hasGit = useRegistry((s) => Boolean(s.views["addon.git.git"]));
   const metas = useSessions((s) => s.metas);
@@ -102,12 +89,8 @@ export function Home({ project }: { project: ProjectInfo }) {
     .filter((m) => m.projectId === project.id && m.kind !== "builder" && !m.archived)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 6);
-  const send = () => {
-    const value = text.trim();
-    if (!value) return;
-    setText("");
-    void startChat(project.id, value, cwd === project.path ? undefined : cwd);
-  };
+  /** Opens a new chat in the chosen folder, with an optional message ready in its composer. */
+  const open = (draft?: string) => newSession(project.id, cwd === project.path ? undefined : cwd, draft);
   const repoCount = project.repos.length;
   return (
     <div className="h-full overflow-y-auto" data-testid="home">
@@ -146,77 +129,53 @@ export function Home({ project }: { project: ProjectInfo }) {
         </header>
 
         <section className="flex flex-col gap-2">
-          <div className="flex flex-col gap-2 rounded-xl border border-line-strong bg-raised p-3 focus-within:border-focus">
-            <textarea
-              ref={box}
-              rows={3}
-              value={text}
-              autoFocus
-              data-testid="home-input"
-              placeholder={`What should Claude do in ${project.name}?`}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              className="min-h-16 w-full resize-none bg-transparent text-base text-fg outline-none placeholder:text-hint"
-            />
-            <div className="flex items-center gap-2">
-              <Select
-                aria-label="Folder the chat starts in"
-                title="Folder the chat starts in"
-                className="h-7 max-w-56 text-xs"
-                value={cwd}
-                onChange={(e) => setCwd(e.target.value)}
-                data-testid="home-folder"
-              >
-                {workspaces.map((w) => (
-                  <optgroup key={w.id} label={w.path === project.path ? `${w.name} (default)` : w.name}>
-                    <option value={w.path}>{w.name}</option>
-                    {w.repos.map((r) => (
-                      <option key={r.path} value={r.path}>
-                        {w.name}/{r.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </Select>
-              <span className="hidden text-2xs text-hint lg:inline">
-                <Kbd>Enter</Kbd> starts a chat · <Kbd>Shift</Kbd>+<Kbd>Enter</Kbd> new line
-              </span>
-              <div className="flex-1" />
-              <Button
-                size="sm"
-                variant="ghost"
-                icon={Split}
-                title="The same task in 2–4 parallel chats, each in its own copy of the repository"
-                onClick={() => openAttemptsDialog({ task: text, projectId: project.id })}
-              >
-                Try several ways…
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                icon={ArrowUp}
-                disabled={!text.trim()}
-                onClick={send}
-                data-testid="home-send"
-              >
-                Start chat
-              </Button>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-strong bg-raised p-3">
+            <Button
+              variant="primary"
+              icon={MessageSquare}
+              onClick={() => void open()}
+              title={`New chat in ${project.name} (${formatShortcut("Mod+N")})`}
+              data-testid="home-new-chat"
+            >
+              New chat
+            </Button>
+            <Select
+              aria-label="Folder the chat starts in"
+              title="Folder the chat starts in"
+              className="h-8 max-w-56 text-xs"
+              value={cwd}
+              onChange={(e) => setCwd(e.target.value)}
+              data-testid="home-folder"
+            >
+              {workspaces.map((w) => (
+                <optgroup key={w.id} label={w.path === project.path ? `${w.name} (default)` : w.name}>
+                  <option value={w.path}>{w.name}</option>
+                  {w.repos.map((r) => (
+                    <option key={r.path} value={r.path}>
+                      {w.name}/{r.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={Split}
+              title="The same task in 2–4 parallel chats, each in its own copy of the repository"
+              onClick={() => openAttemptsDialog({ task: "", projectId: project.id })}
+            >
+              Try several ways…
+            </Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {starters.map((s) => (
               <button
                 key={s}
                 type="button"
-                onClick={() => {
-                  setText(s);
-                  box.current?.focus();
-                }}
+                title="Open a new chat with this message ready to send"
+                onClick={() => void open(s)}
                 className="flex h-7 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted hover:border-accent hover:text-fg"
               >
                 <Sparkles className="size-3 text-accent" />
@@ -225,6 +184,8 @@ export function Home({ project }: { project: ProjectInfo }) {
             ))}
           </div>
         </section>
+
+        <KnowledgeCard project={project} />
 
         <LinksCard project={project} />
 
@@ -263,13 +224,6 @@ export function Home({ project }: { project: ProjectInfo }) {
         <section className="flex flex-col gap-2">
           <div className="text-2xs font-semibold tracking-wide text-hint uppercase">Next steps</div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <QuickAction
-              icon={MessageSquare}
-              label="New chat"
-              hint={formatShortcut("Mod+N")}
-              onClick={() => void newSession(project.id)}
-              testId="home-new-chat"
-            />
             {hasGit && (
               <QuickAction
                 icon={GitBranch}

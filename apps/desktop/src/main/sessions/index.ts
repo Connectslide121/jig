@@ -140,10 +140,10 @@ export function startSessions(): void {
     },
     plugins: (meta) => selectedSkillPlugins(meta.projectId),
     configurationKey: (meta) => JSON.stringify([meta.projectId, selectedSkillPlugins(meta.projectId)]),
-    turnContext: async (meta) =>
+    turnContext: async (meta, text) =>
       [
         skillLibrary().context(getConfig(), meta.projectId),
-        ...(kindHooks.has(meta.kind ?? "") ? [] : [await turnContext(meta)]),
+        ...(kindHooks.has(meta.kind ?? "") ? [] : [await turnContext(meta, text)]),
         meta.voice ? VOICE_GUIDANCE : "",
       ]
         .filter(Boolean)

@@ -21,6 +21,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `attachments/addon-<id>/<uuid>.<ext>` | files | files an add-on kept for messages it sends later (`ctx.attachments`; the Tasks add-on's task files), copied into the chat when sent; the add-on deletes them (`api.attachments.remove`) |
 | `scripts.json` | JSON `{ groups: { <projectId>: [{ id, name, scriptIds }] } }` | script groups per project |
 | `addons/` | git repository | your add-ons, one folder each; every accepted change is a commit |
+| `addon-originals/<id>/` | `files/`, `origin.json` | how an add-on installed from a gallery or `.zip` came (`{ kind, source?, version?, savedAt }`), to show "edited" and Restore original (D-249); removed with the add-on |
 | `addons-state.json` | JSON `{ disabled: [ids] }` | add-ons you switched off |
 | `addon-data/<id>.json`, `addon-data/<id>/` | JSON / files | per-add-on storage and data folder |
 | `cache/addons/` | bundles | bundled add-on host code (safe to delete) |
@@ -78,6 +79,8 @@ A new state file is documented here in the same commit that adds it.
 | `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
 | `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
+| `editor.claudeCompletion` | `false` | code completion with Claude instead of GitHub Copilot (D-255); protected, it spends plan usage |
+| `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
@@ -148,3 +151,10 @@ memory; az retains its own login.
 Source builds may import ignored .azure-local/meetings.json once when normal default-home settings are
 empty. The script's setup metadata contains no secret. Connection settings are edited in Meetings →
 Connection, and are not exposed as AI-editable ConfigSchema fields because they govern paid calling.
+
+## Project knowledge (D-256)
+
+`knowledge/<projectId>/index.json` lists a project's documents (`id`, `name`, `chars`, `addedAt`,
+`source`); `knowledge/<projectId>/docs/<id>.txt` holds each one's text (cut at 1,000,000 characters).
+Removing the project removes its folder. `cache/copilot/<version>/` holds Copilot's language server
+(D-255) and `cache/copilot/current.json` names the version in use.

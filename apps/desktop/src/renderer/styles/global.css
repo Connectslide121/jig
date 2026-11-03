@@ -348,3 +348,36 @@ html[data-platform="darwin"] .topbar-insets {
     transition: none;
   }
 }
+
+/* A minimal slider: a hairline track and a small upright thumb with soft corners. */
+.jig-range {
+  appearance: none;
+  height: 1rem;
+  background: transparent;
+}
+.jig-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--jig-line-strong);
+}
+.jig-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 6px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 2px;
+  background: var(--jig-muted);
+  transition: background-color 120ms;
+}
+.jig-range:hover:not(:disabled)::-webkit-slider-thumb {
+  background: var(--jig-fg);
+}
+.jig-range:focus-visible {
+  outline: none;
+}
+.jig-range:focus-visible::-webkit-slider-thumb {
+  background: var(--jig-accent);
+}
+.jig-range:disabled {
+  opacity: 0.4;
+}

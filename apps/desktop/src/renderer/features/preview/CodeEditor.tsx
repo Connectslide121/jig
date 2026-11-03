@@ -34,16 +34,21 @@ import {
   rectangularSelection,
 } from "@codemirror/view";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
-import { ChevronDown, MoreHorizontal, Pilcrow, WrapText } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Pilcrow, Sparkles, WrapText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { JigConfig } from "../../../shared/config";
 import { detectIndent, type Indent } from "../../../shared/indent";
 import { isAngularTemplate } from "../../../shared/preview";
+import { call } from "../../lib/host";
 import { useAppearance } from "../../stores/appearance";
 import { updateConfig, useConfig } from "../../stores/config";
-import { cn, IconButton, openMenuAt } from "../../ui";
+import { cn, IconButton, openMenuAt, Spinner } from "../../ui";
+import { openSettings } from "../../workbench/actions";
 import { formatShortcut } from "../../workbench/shortcuts";
+import { openCopilotDialog } from "../completion/CopilotDialog";
+import { useCompletion, watchCompletion } from "../completion/store";
 import { editorSyntax } from "./editorSyntax";
+import { ghostText } from "./ghostText";
 import { wrapIndent } from "./wrapIndent";
 
 /**
@@ -199,6 +204,12 @@ export function CodeEditor({
   const detected = useRef(false);
   // An Angular template gets Angular's grammar and its control-flow blocks (D-155).
   const angular = useRef(false);
+  // Inline completions (D-255): who completes, read by the editor extension on each pause.
+  const completion = useCompletion((s) => s.state);
+  const [suggesting, setSuggesting] = useState(false);
+  const live = useRef({ completion, indent });
+  live.current = { completion, indent };
+  useEffect(() => watchCompletion(), []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the editor is made once per file; the rest updates below.
   useEffect(() => {
@@ -238,6 +249,21 @@ export function CodeEditor({
           ),
           p.brackets.of(settings?.closeBrackets === false ? [] : closeBrackets()),
           p.indent.of(indentExtension(first)),
+          ghostText({
+            path,
+            // Copilot answers quickly; Claude Code waits for a longer pause (each ask is a model call).
+            pause: () => {
+              const provider = live.current.completion?.provider;
+              return provider === "copilot" ? 150 : provider === "claude" ? 700 : undefined;
+            },
+            request: (request) => call("completion.request", request),
+            accepted: (id) => void call("completion.accepted", { id }).catch(() => {}),
+            busy: setSuggesting,
+            indent: () => {
+              const i = live.current.indent;
+              return { tabSize: i.size, insertSpaces: i.kind === "spaces" };
+            },
+          }),
           frame,
           keymap.of([
             {
@@ -278,6 +304,7 @@ export function CodeEditor({
     return () => {
       v.destroy();
       view.current = undefined;
+      void call("completion.closeFile", { path }).catch(() => {});
     };
   }, [path]);
 
@@ -352,6 +379,47 @@ export function CodeEditor({
       true,
     );
 
+  const provider = completion?.provider ?? "off";
+  const completionLabel =
+    provider === "copilot"
+      ? "Copilot"
+      : provider === "claude"
+        ? `Claude ${modelName(completion?.claudeModel)}`
+        : "No completion";
+  const completionMenu = (anchor: HTMLElement) => {
+    const copilot = completion?.copilot;
+    const claudeOn = provider === "claude";
+    openMenuAt(
+      anchor,
+      [
+        { heading: "Code completion · Tab takes a suggestion" },
+        {
+          label: copilot?.signedIn
+            ? `GitHub Copilot${copilot.user ? ` (${copilot.user})` : ""}`
+            : "Set up GitHub Copilot…",
+          checked: provider === "copilot",
+          onSelect: () => {
+            if (claudeOn) void updateConfig({ editor: { claudeCompletion: false } });
+            if (!copilot?.signedIn) openCopilotDialog();
+          },
+          testId: "completion-copilot",
+        },
+        {
+          label: "Claude (uses your Claude plan)",
+          checked: claudeOn,
+          onSelect: () => void updateConfig({ editor: { claudeCompletion: !claudeOn } }),
+          testId: "completion-claude",
+        },
+        { separator: true },
+        ...(copilot?.signedIn
+          ? [{ label: "Sign out of Copilot", onSelect: () => void call("completion.copilotSignOut") }]
+          : []),
+        { label: "Completion settings…", onSelect: () => openSettings("editor") },
+      ],
+      true,
+    );
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div ref={host} className="min-h-0 flex-1 overflow-hidden" data-testid="code-editor" />
@@ -374,6 +442,23 @@ export function CodeEditor({
               : ""}
         </button>
         <span className="flex-1" />
+        {/* Left of the fixed items, so a longer label never moves them. */}
+        <button
+          type="button"
+          className={cn("flex items-center gap-1 hover:text-fg", provider !== "off" && "text-fg")}
+          title="Code completion: who suggests code as you type"
+          onClick={(e) => completionMenu(e.currentTarget)}
+          data-testid="editor-completion"
+        >
+          <span className="flex size-3.5 items-center justify-center">
+            {suggesting ? (
+              <Spinner size="sm" />
+            ) : (
+              <Sparkles className={cn("size-3", provider !== "off" ? "text-accent" : "text-hint")} />
+            )}
+          </span>
+          {completionLabel}
+        </button>
         <button
           type="button"
           className="flex items-center gap-0.5 hover:text-fg"
@@ -411,4 +496,12 @@ export function CodeEditor({
       </div>
     </div>
   );
+}
+
+/** "haiku" → "Haiku", "claude-sonnet-5-5" → "Sonnet 5.5": a short name for the status line. */
+function modelName(model = "haiku"): string {
+  const m = /(haiku|sonnet|opus|fable)(?:-(\d+)(?:-(\d+))?)?/i.exec(model);
+  if (!m) return model;
+  const name = m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase();
+  return m[2] ? `${name} ${m[2]}${m[3] ? `.${m[3]}` : ""}` : name;
 }

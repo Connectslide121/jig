@@ -4,14 +4,17 @@ import { addReviewed } from "./host";
 import { emptyQueue, type Queue } from "./lib/tasks";
 
 it("queues reviewed cross-project work once, pauses an existing queue and never starts a chat", async () => {
-  let queue: Queue = { ...emptyQueue(), running: true };
+  // Storage per key and project, like the host's scoped storage.
+  const data = new Map<string, unknown>([["queue@shop", { ...emptyQueue(), running: true }]]);
+  const at = (key: string, opts?: { id?: string }) => `${key}@${opts?.id ?? ""}`;
+  const queue = (projectId: string) => data.get(at("queue", { id: projectId })) as Queue;
   const create = vi.fn();
   const send = vi.fn();
   const api = {
     storage: {
-      get: async () => queue,
-      set: async (_key: string, value: Queue) => {
-        queue = value;
+      get: async (key: string, opts?: { id?: string }) => data.get(at(key, opts)),
+      set: async (key: string, value: unknown, opts?: { id?: string }) => {
+        data.set(at(key, opts), value);
       },
     },
     projects: async () => [{ id: "shop" }, { id: "portal" }],
@@ -30,9 +33,12 @@ it("queues reviewed cross-project work once, pauses an existing queue and never 
   await addReviewed(first, api);
   await addReviewed(first, api);
   await addReviewed({ ...first, projectId: "portal", source: "meeting:one:action-two" }, api);
-  expect(queue.running).toBe(false);
-  expect(queue.tasks.map((t) => t.projectId)).toEqual(["shop", "portal"]);
-  expect(queue.tasks.every((t) => t.status === "queued" && t.permissionMode === "plan")).toBe(true);
+  // Each project's queue gets its own task; the running one is paused.
+  expect(queue("shop").running).toBe(false);
+  expect(queue("shop").tasks.map((t) => t.title)).toEqual(["Review API"]);
+  expect(queue("portal").tasks.map((t) => t.projectId)).toEqual(["portal"]);
+  const tasks = [...queue("shop").tasks, ...queue("portal").tasks];
+  expect(tasks.every((t) => t.status === "queued" && t.permissionMode === "plan")).toBe(true);
   expect(create).not.toHaveBeenCalled();
   expect(send).not.toHaveBeenCalled();
   await expect(addReviewed({ ...first, projectId: "deleted" }, api)).rejects.toThrow("no longer exists");

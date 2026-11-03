@@ -7,6 +7,33 @@ Restart a script (2026-11-02): in the Scripts view a running script shows ↻ on
 ⋯ / right-click menu); a group with running scripts gets ↻ beside Stop to restart them. Uses the existing
 `scripts.restart` (stop, then start in a fresh terminal).
 
+Update progress (2026-11-02, D-252): Install and restart now shows an "Installing Jig X" modal (Jig
+closes in a moment → the installer shows its progress → Jig opens again) for 2 s before Jig closes, and
+the "ready" toast goes away. When the installer starts Jig again (`--updated`), a toast says "Updated to
+Jig X". **Needs testing on Windows** with a real update: the gap between Jig closing and the installer's
+window appearing, and that the installer's progress page shows in update mode.
+
+Azure DevOps boards per project (2026-11-02, D-251): Code → Boards opens the active project's boards,
+one tab per board. **+** finds the team boards of your Azure DevOps organisations (organisation and
+project pickers, the project named like the Jig one first; tick several). A board shows its real
+columns side by side (WIP limits, over-limit in amber, one width for all set by the header slider) with a card per work item: type colour, id,
+title, who has it, its state when it differs from the column. Click a card to open it in the browser;
+right-click or ⋯ for Start a chat about it, Copy link. Uses your own `az login`; Done cards older than
+30 days stay off, like Azure DevOps. Needs a real-machine check against a real organisation (fake `az`
+in the tests).
+
+Add-ons: restore and share (2026-11-02, D-249): add-ons installed from a gallery or a `.zip` keep their
+original; once changed they show **edited** in Settings → Add-ons, and ↶ restores them (an edited
+built-in: ↶ removes your copy). ⤓ opens Share: a `.zip` or a folder gallery source, as itself or as a
+separate copy with its own name (always, for an edited built-in). Git gallery sources aren't written to.
+
+Task queue per project with history (2026-11-02, D-248): each project has its own queue (the view's
+project menu at the top right switches, with a count of queued tasks); queues run independently.
+Every run is kept: History lists the runs (started, tasks, done, failed, time, cost) and opens one
+read-only, with Run again / Queue every task again and Remove from history. When Claude queues tasks
+(`addon_tasks_add`) the approval is an editable list (titles, prompts, project, start now). The old
+single queue moves to its projects on first start. Needs a try with a real Claude Code chat.
+
 Icon/text alignment (2026-11-02, D-237): Inter's vertical metrics are tuned so text in icon rows sits
 centred on its icons (they looked ~1px low everywhere: chat steps line, Files, Git…). Upgrading
 @fontsource-variable/inter means updating `styles/inter.css`.
@@ -121,6 +148,55 @@ device setup. The workbench keeps its normal origin and meeting IPC remains rest
 stops the spinner after device failure and offers Retry devices. The pre-join checkbox and notice are removed at Jon's request; a reserved status area shows device
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
+
+Project knowledge (2026-11-03, D-256): a project's Home has **Knowledge**: drop files on it or
+Add files… (text, Markdown, code, Word, Excel, PowerPoint; PDFs not yet), click one to read it, ×
+removes it. Every chat in the project is told which documents there are and Claude reads them with
+`jig_knowledge_read`. **Import from claude.ai…** (Projects view ⋯, the Knowledge card, or Go to)
+shows the steps to export your data on claude.ai, then reads the zip you drop and makes Jig projects
+with each project's instructions and knowledge. Needs a real claude.ai export to confirm its shape.
+
+Code completion (2026-11-03, D-255): the file editor suggests code as you type, as faint text at
+the caret; Tab takes it, Esc drops it, typing what it says keeps the rest. Who completes shows in the
+editor's status line (click it to switch): **GitHub Copilot** (optional: Get started → GitHub Copilot
+→ Set up…, or the status line; Jig downloads Copilot's language server, ~28 MB, and you sign in to
+GitHub with a code; Copilot keeps the sign-in) or **Claude** (Settings → Editor → Code completion
+with Claude, off by default; Haiku by default, about 1 s after a typing pause, the first about 5 s).
+Needs testing with a real Copilot account.
+
+Chat (2026-11-03): the context window card (hover the % in a chat's top bar) stays open while you
+move onto it and has Compact now and With instructions….
+
+Chat (2026-11-03): in the Compact view the latest steps line keeps its spinner and glow while the
+chat works, also between steps ("· Working" while Claude writes its next step), not only while a
+tool runs.
+
+Teams calls (2026-11-03, D-254): in the meetings window, **Call…** finds people (recent calls,
+the people you work with, or a search of your organisation) and a whole row calls them (Camera on
+for video). While Jig runs, Teams calls ring in Jig too: the meetings window comes to the front with
+the caller, a ringtone and a system notification; Decline, Video or Answer. Calls are kept in the
+meeting history like meetings (captions when Teams gives them, notes, actions) with **Call back**.
+Connection → "Ring in Jig for Teams calls" turns ringing off. The first call asks Microsoft for the
+User.ReadBasic.All and People.Read permissions (your administrator may need to approve them).
+Needs a real call: consent, captions in one-to-one calls, ringing next to the Teams app.
+
+Composer mentions (2026-11-03, D-253): `@` mentions that point at something (a file that exists, a
+folder, a meeting) are highlighted in the message box, and each gets a chip above the text: click it to
+open the file in Preview (a folder in the file manager, a meeting in Meetings), × to take it out of the
+message. Ctrl/Cmd+click on the mention in the text opens it too. Try: type `@` in a chat, pick a file.
+
+Meeting history (2026-11-02, D-250): past meetings open in Jig's main window — the top-bar video
+button → **Meeting history** (or Tools → Meeting history). Search on the left; notes and transcript of
+the selected meeting on the right. **Start a chat** opens a chat in a project you pick with the
+meeting mentioned; **Generate notes** and **Review actions** work as in the meeting window; ⋯ copies or
+exports Markdown, copies the chat reference, renames or deletes. In any chat, `@` + a meeting's name
+lists meetings after files; sending `@meeting:…` makes Claude read it. Notes are now much shorter.
+The meeting window's "Saved meetings" is now "Meeting history". To try: join a meeting with
+`JIG_MEETINGS=fake`, leave, then open the history. Needs real-machine testing: Export Markdown's save
+dialog and how concise real notes come out.
+
+Add-on rows (2026-11-02, Jon): Settings → Add-ons rows show Change with AI, Share and the switch;
+History, Restore, Open folder, Reload and Delete are in the row's ⋯ menu.
 
 Top bar (2026-11-02, Jon): New chat sits beside the search in the centre; Meetings is a video icon
 button among the icons on the right (the Meetings add-on's `topbar` item), and still in Chats → Meetings.
@@ -297,7 +373,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    Preview, projects you manage, arranging panels, split view, project links, Releases, Learning 2
    with Workflows). What's left of it is in `docs/plan/99-backlog.md`. Next: try phase 18 on Windows
    ("Needs testing on your machine" below) and ask Jon what comes next.
-5. Run `npm run check` before every commit; keep plan, docs and decisions true.
+5. Next work: `docs/plan/23-jons-notes.md`, session by session (agreed with Jon, D-247).
+6. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
 
@@ -573,8 +650,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     on top, and drag pinned chats to reorder them; the chat's menu has Pin and Move to project.
     Removing a project moves its chats to "No project". The filter button in the header groups the list
     by project, status, day, or as one list (D-170).
-  - **Home** uses the project's starter prompts. Its chat box has a folder picker (any workspace or
-    one of its repositories; the project's default workspace first).
+  - **Home** uses the project's starter prompts (a click opens a new chat with it in the composer).
+    Its **New chat** button has a folder picker (any workspace or one of its repositories; the
+    project's default workspace first). No separate chat box there (D-246).
   - **Claude** can create projects, change their settings and move or pin chats from a chat (with
     Undo).
 - **Project links** (section below Projects, and a card on Home): the project's places in groups you
@@ -686,7 +764,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     "start a background job", "edit README.md", "! ls".
 - **Easier to reach (UI/UX sweep, D-094):**
   - **Starting and finding chats:**
-    - **Home:** with no tab open, a project shows a box that starts a chat, starter prompts, recent
+    - **Home:** with no tab open, a project shows a New chat button, starter prompts, recent
       chats with their status, and "Next steps" tiles. It is also the project dashboard.
     - **New chat** is a button in the top bar.
     - **Ctrl+K** focuses the top-bar search field.

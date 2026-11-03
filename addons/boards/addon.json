@@ -1,0 +1,33 @@
+{
+  "$schema": "../../packages/sdk/addon.schema.json",
+  "id": "boards",
+  "name": "Boards",
+  "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board, its columns side by side with a card per work item. Open a card in the browser or start a chat about it. Uses your own az login.",
+  "version": "1.0.0",
+  "icon": "kanban",
+  "permissions": ["exec:az", "chat"],
+  "storage": {
+    "scope": "project"
+  },
+  "contributes": {
+    "views": [
+      {
+        "id": "boards",
+        "title": "Boards",
+        "icon": "kanban",
+        "region": "left",
+        "hidden": true,
+        "component": "BoardsView"
+      }
+    ],
+    "actions": [
+      {
+        "id": "show",
+        "title": "Boards",
+        "group": "Boards",
+        "icon": "kanban",
+        "run": "showBoards"
+      }
+    ]
+  }
+}

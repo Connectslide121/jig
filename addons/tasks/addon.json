@@ -2,13 +2,13 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "tasks",
   "name": "Tasks",
-  "description": "A queue of prompts Claude does one after another, each in its own chat or continuing the one before. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Claude can queue tasks too.",
+  "description": "A queue of prompts Claude does one after another, each in its own chat or continuing the one before. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them.",
   "version": "1.0.0",
   "icon": "list-todo",
   "permissions": ["chat"],
   "exports": ["addReviewed"],
   "storage": {
-    "scope": "global"
+    "scope": "project"
   },
   "contributes": {
     "views": [
@@ -28,6 +28,12 @@
         "group": "Chats",
         "icon": "list-todo",
         "run": "showTasks"
+      }
+    ],
+    "permissionRenderers": [
+      {
+        "tool": "add",
+        "component": "ReviewTasks"
       }
     ],
     "watchers": [

@@ -265,6 +265,8 @@ And more:
     and then (Releases, Workflows, Links, Suggestions) open as tabs from the menus.
   - A scripts runner with groups, and Azure DevOps pipelines as compact rows (details in a dialog) —
     hide, reorder and group them.
+  - Azure DevOps boards per project: pick team boards from your organisations, each a tab with its
+    columns and cards, like Azure DevOps.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
   - A grouped menus with keyboard shortcuts.
 
@@ -299,12 +301,13 @@ They can plug into 20 places:
 | `statusbar.item` | the status bar | `context.message` | menu of a chat message |
 | `dashboard.widget` | the project dashboard | `chat.toolbar` | a button above the composer |
 | `tools.action` | the grouped menus, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
+|  |  | `chat.permissionRenderer` | an editable approval card for an add-on's own tool |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 | `jig.event` | host code when a chat finishes, a commit lands… | `search.provider` | results in Jig's search (Ctrl+P) |
 
-Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** (Azure DevOps), **Releases**, **Project notes** (decisions, constraints and dependencies shared across chats),
+Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** and **Boards** (Azure DevOps), **Releases**, **Project notes** (decisions, constraints and dependencies shared across chats),
 **Workflows** and **Tasks** are add-ons too, written against the same API. Add-ons can also stream a
 program's output live, watch files, show toasts with buttons and system notifications, badge their
 views and call each other's shared functions. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·

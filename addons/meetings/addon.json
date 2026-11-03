@@ -10,7 +10,14 @@
   "contributes": {
     "topbar": [{ "id": "open", "component": "MeetingsButton" }],
     "actions": [
-      { "id": "open", "title": "Meetings", "group": "Meetings", "icon": "video", "run": "openMeetings" }
+      { "id": "open", "title": "Meetings", "group": "Meetings", "icon": "video", "run": "openMeetings" },
+      {
+        "id": "history",
+        "title": "Meeting history",
+        "group": "Meetings",
+        "icon": "history",
+        "run": "openHistory"
+      }
     ]
   }
 }

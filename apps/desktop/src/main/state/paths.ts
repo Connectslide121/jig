@@ -17,6 +17,8 @@ export const paths = {
   themes: () => join(jigHome(), "themes"),
   addons: () => join(jigHome(), "addons"),
   addonData: () => join(jigHome(), "addon-data"),
+  /** The version each gallery or imported add-on came as, to show edits and restore it (D-249). */
+  addonOriginals: () => join(jigHome(), "addon-originals"),
   addonsState: () => join(jigHome(), "addons-state.json"),
   work: () => join(jigHome(), "work"),
   cache: () => join(jigHome(), "cache"),

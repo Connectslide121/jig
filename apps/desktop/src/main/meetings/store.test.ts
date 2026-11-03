@@ -98,4 +98,21 @@ describe("global meeting persistence", () => {
     }
     expect(() => store.get("missing")).toThrow("not found");
   });
+  it("keeps one-to-one calls like meetings, with who they were with, and remembers ringing", async () => {
+    const { store, file } = await setup();
+    expect(store.ringing()).toBe(true);
+    const call = {
+      peerId: "00000000-0000-4000-8000-000000000001",
+      peerName: "Alex",
+      direction: "outgoing" as const,
+    };
+    const record = await store.createCall(call);
+    expect(record).toMatchObject({ title: "Call with Alex", joinUrl: "", status: "joining", call });
+    await expect(store.createCall(call)).rejects.toThrow("Leave the current meeting first");
+    await store.setRinging(false);
+    const again = new MeetingStore(file);
+    await again.load();
+    expect(again.ringing()).toBe(false);
+    expect(again.get(record.id).call).toEqual(call);
+  });
 });

@@ -238,8 +238,8 @@ References: `docs/reference/routines.md`, `docs/reference/artifacts.md`.
 **Context window.** After each turn Jig asks Claude Code for its `/context` data and shows it in the
 chat header; Compact sends Claude Code's own `/compact`. Reference: `docs/reference/engine.md`.
 
-**Home.** With no tab open, the main area is the active project's Home: a box that starts a chat,
-recent chats, next steps and the add-ons' widgets (also the project dashboard tab). Chat tabs show a
+**Home.** With no tab open, the main area is the active project's Home: a New chat button (with a folder
+picker and starter prompts that open a chat with the message ready; D-246), recent chats, next steps and the add-ons' widgets (also the project dashboard tab). Chat tabs show a
 dot when the chat works, needs you or finished unseen. Reference: `docs/reference/layout.md`.
 
 **What Jig can do.** A core tab (the main area's welcome screen until you add a project, and in the "Jig" menu) explains Jig with bundled screenshots and live data: the slots from
@@ -362,7 +362,7 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 |---|---|
 | Places | `view` (sidebar or bottom panel view; the layout decides where), `workbench.tab`, `topbar.item`, `statusbar.item`, `dashboard.widget` |
 | Menus & actions | `tools.action` (grouped menus), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
-| Chat | `chat.toolRenderer` (custom card for a tool result), `prompt` (a reusable prompt shown as a button) |
+| Chat | `chat.toolRenderer` (custom card for a tool result), `chat.permissionRenderer` (an add-on's own approval card for its tool, which can change the input), `prompt` (a reusable prompt shown as a button) |
 | Background | `watcher` (host-side job on an interval or schedule), `jig.event` (host code when a chat finishes, a commit lands, the project changes; D-215) |
 | Claude | `claude.tool`, `claude.context` |
 | Other | `search.provider` (results in Go to), `settings.page`, `theme` |
@@ -563,7 +563,7 @@ back to its own mode once it is idle.
 ## Global meeting room (D-217)
 
 The built-in Meetings add-on (global scope, addons/meetings) opens the host's dedicated media window
-through ctx.meetings.open(). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
+through ctx.meetings.open() (and ctx.meetings.history(), the core `jig.meetings` history tab, D-250). main/meetings owns an atomic MeetingStore, public-desktop MSAL sign-in,
 Graph calendar reads and keyless ACS credential exchange using AzureCliCredential. It also owns
 a temporary loopback server for its bundled media page: ACS rejects the workbench's custom
 scheme. Its localhost URL binds only 127.0.0.1 on an ephemeral port, checks Host/method/path, serves with CSP and

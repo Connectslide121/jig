@@ -3,7 +3,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
-import { inspectPackage, installPackage, packAddon } from "./share";
+import {
+  copyContents,
+  freeId,
+  idFromName,
+  inspectPackage,
+  installPackage,
+  packAddon,
+  packCopy,
+  writeContents,
+} from "./share";
 
 const manifest = {
   id: "hello",
@@ -52,5 +61,41 @@ describe("sharing add-ons", () => {
     // A small zip that unpacks to a lot.
     const bomb = zipSync({ "big.txt": new Uint8Array(101 * 1024 * 1024) }, { level: 9 });
     expect(() => inspectPackage(bomb)).toThrow(/100 MB/);
+  });
+});
+
+describe("sharing a copy (D-249)", () => {
+  it("makes ids from names and finds a free one", () => {
+    expect(idFromName("My Tasks!")).toBe("my-tasks");
+    expect(idFromName("  2 Fast Ünïcode  ")).toBe("fast-unicode");
+    expect(idFromName("!!!")).toBe("addon");
+    const taken = new Set(["tasks", "tasks-2"]);
+    expect(freeId("tasks", (id) => taken.has(id))).toBe("tasks-3");
+    expect(freeId("notes", (id) => taken.has(id))).toBe("notes");
+  });
+
+  it("packs a copy under its new id and name, and writes it into a gallery folder once", async () => {
+    const home = await mkdtemp(join(tmpdir(), "jig-copy-"));
+    const dir = join(home, "tasks");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, "addon.json"),
+      JSON.stringify({ id: "tasks", name: "Tasks", version: "1.0.0" }),
+    );
+    await writeFile(join(dir, "ui.tsx"), "export const x = 1;\n");
+    const { pkg } = inspectPackage(await packCopy(dir, { id: "my-tasks", name: "My tasks" }));
+    expect(pkg).toMatchObject({ id: "my-tasks", name: "My tasks", version: "1.0.0", errors: [] });
+    expect(pkg.files).toEqual(["addon.json", "ui.tsx"]);
+
+    const gallery = join(home, "gallery");
+    const target = await writeContents(
+      gallery,
+      await copyContents(dir, { id: "my-tasks", name: "My tasks" }),
+    );
+    expect(target).toBe(join(gallery, "my-tasks"));
+    expect(JSON.parse(await readFile(join(target, "addon.json"), "utf8"))).toMatchObject({ id: "my-tasks" });
+    await expect(
+      writeContents(gallery, await copyContents(dir, { id: "my-tasks", name: "My tasks" })),
+    ).rejects.toThrow("already has");
   });
 });

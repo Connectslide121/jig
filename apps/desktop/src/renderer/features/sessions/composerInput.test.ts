@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { historyStep, inputMode, nextPermissionMode, replaceToken, tokenAt } from "./composerInput";
+import {
+  historyStep,
+  inputMode,
+  mentionsIn,
+  nextPermissionMode,
+  removeMention,
+  replaceToken,
+  tokenAt,
+} from "./composerInput";
 
 describe("tokenAt", () => {
   it("finds a command at the start and a file mention anywhere", () => {
@@ -55,5 +63,26 @@ describe("historyStep", () => {
     expect(historyStep(history, 1, "up", "draft")).toBeUndefined();
     expect(historyStep(history, 0, "down", "draft")).toEqual({ index: -1, text: "draft" });
     expect(historyStep(history, -1, "down", "draft")).toBeUndefined();
+  });
+});
+
+describe("mentionsIn", () => {
+  it("finds files, folders and meetings, not e-mail addresses or trailing punctuation", () => {
+    const text = "see @src/cart.ts, @docs/ and @meeting:weekly-sync-1a2b3c4d; mail me@example.com";
+    expect(mentionsIn(text)).toEqual([
+      { kind: "file", value: "src/cart.ts", start: 4, end: 16 },
+      { kind: "folder", value: "docs/", start: 18, end: 24 },
+      { kind: "meeting", value: "1a2b3c4d", start: 29, end: 58 },
+    ]);
+    expect(mentionsIn("@a.md")).toEqual([{ kind: "file", value: "a.md", start: 0, end: 5 }]);
+    expect(mentionsIn("just @ and @meeting:nope")).toEqual([]);
+  });
+});
+
+describe("removeMention", () => {
+  it("removes the mention and one space after it", () => {
+    const text = "look at @a.ts please";
+    const [m] = mentionsIn(text);
+    expect(removeMention(text, m!)).toEqual({ text: "look at please", caret: 8 });
   });
 });

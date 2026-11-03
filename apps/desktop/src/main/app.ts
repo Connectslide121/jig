@@ -18,6 +18,7 @@ export function registerAppHandlers(): void {
     dev: Boolean(process.env.JIG_DEV),
     engine: engineKind(),
     packaged: app.isPackaged,
+    updated: process.argv.includes("--updated"),
     safeMode: process.env.JIG_SAFE_MODE === "1",
     startedAfterFailure: process.env.JIG_STARTED_AFTER_FAILURE === "1",
   }));

@@ -10,12 +10,14 @@ import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
 import { startBrowser, stopBrowser } from "./browser";
 import { startBuilder } from "./builder";
+import { startCompletion, stopCompletion } from "./completion";
 import { loadConfig, registerConfigHandlers } from "./config";
 import { startConfigure } from "./configure";
 import { startDevRequests } from "./devRequests";
 import { registerDigestHandlers } from "./digest";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
+import { startKnowledge } from "./knowledge";
 import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
 import { registerLinkHandlers } from "./links";
@@ -94,6 +96,8 @@ async function start() {
   await startThemes(addonThemes);
   await startAddons();
   await startMeetings();
+  await startCompletion();
+  startKnowledge();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
   startDevRequests();
@@ -118,6 +122,7 @@ app.on("will-quit", () => {
   stopTerminals();
   stopBrowser();
   stopUsage();
+  stopCompletion();
 });
 
 app.on("window-all-closed", () => {

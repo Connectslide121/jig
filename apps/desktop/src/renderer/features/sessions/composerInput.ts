@@ -63,3 +63,39 @@ export function historyStep(
   if (next < -1 || next >= history.length) return undefined;
   return { index: next, text: next === -1 ? draft : history[history.length - 1 - next]! };
 }
+
+/** An `@…` mention in a message: a file or folder of the project, or a meeting Jig kept (D-250). */
+export interface Mention {
+  kind: "file" | "folder" | "meeting";
+  /** The path as typed (relative to the chat's folder), or the meeting's short id. */
+  value: string;
+  /** Where the mention starts (its `@`) and ends, in the text. */
+  start: number;
+  end: number;
+}
+
+/**
+ * Every `@…` mention in the text, in order. A mention starts the text or follows white space (so
+ * `me@example.com` isn't one); punctuation right after it (`@src/a.ts,`) is not part of it.
+ */
+export function mentionsIn(text: string): Mention[] {
+  const out: Mention[] = [];
+  for (const m of text.matchAll(/(^|\s)@([^\s@]+)/g)) {
+    const raw = m[2]!.replace(/[.,;:!?)\]}'"]+$/, "");
+    if (!raw) continue;
+    const start = m.index! + m[1]!.length;
+    const end = start + 1 + raw.length;
+    const meeting = /^meeting:(?:[a-z0-9-]*-)?([0-9a-f]{8})$/i.exec(raw);
+    if (meeting) out.push({ kind: "meeting", value: meeting[1]!.toLowerCase(), start, end });
+    else if (!raw.startsWith("meeting:"))
+      out.push({ kind: raw.endsWith("/") ? "folder" : "file", value: raw, start, end });
+  }
+  return out;
+}
+
+/** Takes a mention out of the text, with the space after it; returns the text and where the caret goes. */
+export function removeMention(text: string, mention: Mention): { text: string; caret: number } {
+  const after = text.slice(mention.end).replace(/^ /, "");
+  const before = text.slice(0, mention.start);
+  return { text: before + after, caret: before.length };
+}

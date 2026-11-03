@@ -6,12 +6,20 @@ import { AzureCliCredential } from "@azure/identity";
 import { type AccountInfo, PublicClientApplication, type TokenCacheContext } from "@azure/msal-node";
 import { safeStorage } from "electron";
 import { JigError } from "../../shared/ipc";
-import type { MeetingEvent, MeetingSettings } from "../../shared/meetings";
+import type { MeetingEvent, MeetingPerson, MeetingSettings } from "../../shared/meetings";
 import { openExternal } from "../appWindows";
 import { logger } from "../log";
-
 import { writeText } from "../state/jsonStore";
 import { paths } from "../state/paths";
+import {
+  type GraphUser,
+  PEOPLE_SCOPES,
+  peopleSearchUrl,
+  SUGGESTED_URL,
+  suggestedNames,
+  toPeople,
+  usersByNameUrl,
+} from "./people";
 
 const log = logger("meetings");
 
@@ -150,7 +158,7 @@ export class MeetingAuth {
       } catch {
         throw new JigError(
           "meeting_signin",
-          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats and Calendars.ReadBasic permissions, then try again.",
+          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All and People.Read permissions, then try again.",
         );
       } finally {
         this.interactive = undefined;
@@ -181,6 +189,35 @@ export class MeetingAuth {
         "Could not issue the calling credential. Check your Azure CLI sign-in and the Communication Services identity role on this resource. No resource keys are required.",
       );
     }
+  }
+  /**
+   * People in your organisation to call: the ones you work with most (empty query), or a directory
+   * search by name or e-mail. Asks for the people permissions the first time.
+   */
+  async people(query: string): Promise<MeetingPerson[]> {
+    const token = await this.access(PEOPLE_SCOPES, true);
+    const self = this.account?.localAccountId;
+    const get = async <T>(url: string): Promise<T> => {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" },
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!response.ok)
+        throw new JigError(
+          "meeting_people",
+          `Looking up people failed (${response.status}). Reconnect Microsoft, or ask your administrator to approve User.ReadBasic.All and People.Read.`,
+        );
+      return (await response.json()) as T;
+    };
+    if (query.trim()) {
+      const found = await get<{ value: GraphUser[] }>(peopleSearchUrl(query));
+      return toPeople(found.value, self);
+    }
+    const suggested = await get<{ value: Parameters<typeof suggestedNames>[0] }>(SUGGESTED_URL);
+    const names = suggestedNames(suggested.value);
+    if (!names.length) return [];
+    const users = await get<{ value: GraphUser[] }>(usersByNameUrl(names));
+    return toPeople(users.value, self, names);
   }
   async calendar(): Promise<MeetingEvent[]> {
     const token = await this.access(["https://graph.microsoft.com/Calendars.ReadBasic"], true);

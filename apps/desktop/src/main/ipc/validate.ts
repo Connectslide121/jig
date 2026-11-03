@@ -74,6 +74,34 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .strict(),
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
+  "meetings.people": z.object({ query: z.string().max(200) }).strict(),
+  "completion.request": z
+    .object({
+      path,
+      text: z.string().max(5_000_000),
+      offset: z.number().int().min(0),
+      tabSize: z.number().int().min(1).max(16),
+      insertSpaces: z.boolean(),
+    })
+    .strict(),
+  "completion.accepted": z.object({ id: z.string().max(10_000) }).strict(),
+  "knowledge.list": z.object({ projectId: id }).strict(),
+  "knowledge.read": z.object({ projectId: id, id }).strict(),
+  "knowledge.remove": z.object({ projectId: id, id }).strict(),
+  "knowledge.addFiles": z.object({ projectId: id, paths: z.array(path).max(100).optional() }).strict(),
+  "claudeImport.open": z.object({ path: path.optional() }).strict(),
+  "claudeImport.apply": z.object({ token: id, uuids: z.array(id).max(500), path }).strict(),
+  "completion.closeFile": z.object({ path }).strict(),
+  "meetings.startCall": z
+    .object({
+      // Empty when the caller isn't a Teams user Jig can call back.
+      peerId: z.uuid().or(z.literal("")),
+      peerName: z.string().min(1).max(500),
+      direction: z.enum(["outgoing", "incoming"]),
+    })
+    .strict(),
+  "meetings.setRinging": z.object({ on: z.boolean() }).strict(),
+  "meetings.incoming": z.object({ name: z.string().max(500).optional() }).strict(),
   "meetings.credential": z.object({ id: id.optional() }).strict(),
   "meetings.caption": z
     .object({
@@ -108,6 +136,10 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .strict(),
   "meetings.notes": z.object({ id }).strict(),
   "meetings.delete": z.object({ id }).strict(),
+  "meetings.mentions": z.object({ query: z.string().max(500) }).strict(),
+  "meetings.rename": z.object({ id, title: z.string().min(1).max(500) }).strict(),
+  "meetings.markdown": z.object({ id }).strict(),
+  "meetings.export": z.object({ id }).strict(),
   "meetings.actions": z.object({ id, actions: z.array(meetingAction).max(200) }).strict(),
   "meetings.queue": z.object({ id, actionIds: z.array(id).min(1).max(200) }).strict(),
   "meetings.selectShare": z.object({ sourceId: id }).strict(),
@@ -304,6 +336,12 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "addons.setEnabled": z.object({ id: addonId, enabled: z.boolean() }),
   "addons.rollback": z.object({ id: addonId, commit: z.string().regex(/^[0-9a-f]{7,40}$/) }),
   "addons.remove": z.object({ id: addonId }),
+  "addons.restoreOriginal": z.object({ id: addonId }),
+  "addons.export": z.object({
+    id: addonId,
+    copy: z.object({ name: z.string().trim().min(1).max(100) }).optional(),
+    gallerySource: z.string().min(1).max(2000).optional(),
+  }),
   "scripts.run": z.object({ projectId: id, scriptId: z.string().max(2000) }),
   "scripts.restart": z.object({ projectId: id, scriptId: z.string().max(2000) }),
 };

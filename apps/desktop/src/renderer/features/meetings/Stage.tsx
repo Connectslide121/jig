@@ -34,6 +34,7 @@ export function Stage({
   onDevices,
   onRetryCaptions,
   onLeave,
+  leaveLabel = "Leave",
 }: {
   active?: MeetingRecord;
   media: MediaState;
@@ -48,6 +49,8 @@ export function Stage({
   onDevices(): void;
   onRetryCaptions(): void;
   onLeave(): void;
+  /** "Hang up" for a one-to-one call. */
+  leaveLabel?: string;
 }) {
   const people = media.people;
   const presenter = people.find((p) => p.screen);
@@ -140,7 +143,7 @@ export function Stage({
               />
               <span className="mx-1 h-6 w-px bg-line" />
               <Button icon={PhoneOff} variant="danger" className="h-9 px-4" onClick={onLeave}>
-                Leave
+                {leaveLabel}
               </Button>
             </div>
           </div>

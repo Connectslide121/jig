@@ -13,6 +13,7 @@ import {
   SHOW_FORMAT,
   type Status,
 } from "./lib/parse";
+import { syncResult } from "./lib/sync";
 import {
   type AutoFetchSettings,
   canWatchTree,
@@ -370,17 +371,11 @@ export async function sync({ cwd }: Cwd, api: AddonHostApi): Promise<string> {
     await push({ cwd }, api);
     return `Published ${head}`;
   }
-  const did: string[] = [];
-  if (before.branch.behind > 0) {
-    await pull({ cwd }, api);
-    did.push(`pulled ${before.branch.behind}`);
-  }
-  const after = await status({ cwd }, api);
-  if (after.branch.ahead > 0) {
-    await push({ cwd }, api);
-    did.push(`pushed ${after.branch.ahead}`);
-  }
-  return did.length ? `Synced ${head}: ${did.join(", ")}` : `${head} is up to date`;
+  const pulled = before.branch.behind;
+  if (pulled > 0) await pull({ cwd }, api);
+  const pushed = pulled > 0 ? (await status({ cwd }, api)).branch.ahead : before.branch.ahead;
+  if (pushed > 0) await push({ cwd }, api);
+  return syncResult(head, before.branch.upstream, pulled, pushed);
 }
 
 /** Commits on `branch` that the current branch doesn't have, and the other way round. */

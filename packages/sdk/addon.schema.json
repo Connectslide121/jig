@@ -269,6 +269,24 @@
             "required": ["tool", "component"]
           }
         },
+        "permissionRenderers": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tool": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "component": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["tool", "component"]
+          }
+        },
         "prompts": {
           "default": [],
           "type": "array",

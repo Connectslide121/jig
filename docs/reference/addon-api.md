@@ -109,10 +109,10 @@ are add-ons':
 | `notify({ title, message?, tone?, timeout?, system?, actions? })` | toast (`timeout` ms, 0 = until closed); `actions: [{ label, run }]` adds up to 3 buttons; `system: true` also shows a system notification when Jig isn't in front (if notifications are on in Settings), and the toast then waits until closed. Returns a function that closes it |
 | `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
-| `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added |
+| `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added. An item may have `project` (shows its `ProjectSwatch` in front), `badge` (text at the right edge) and `testId` |
 | `confirm({…})`, `prompt({…})` | Jig dialogs |
 
-`@jig/sdk/ui` exports: `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
+`@jig/sdk/ui` exports: `ProjectSwatch` (a project's square, `color` from `AddonProject.color`), `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,
 `CountBadge`, `Kbd`, `Empty`, `SectionTitle`, `ListRow`, `Tabs`, `Dialog`, `Collapse`, `Tooltip`, `Spinner`,
 `Markdown`, `CodeBlock` (theme-highlighted), `ErrorBoundary`, `cn`, `iconByName`, and the hooks
 `useAddon()`, `useActiveProject()`, `useActiveChat()` (the chat in front, or the last one: `{ sessionId, title, projectId }`), `useProjectList()`, `useRunningScripts()`, `useHostCall(method, args, { skip? })`
@@ -229,6 +229,7 @@ of the folder (images) at `jig-addon://<id>/<path>`.
 ## Meetings window
 
 ctx.meetings.open(): Promise<void> opens/focuses the built-in Meetings media window (D-217).
+ctx.meetings.history(): void opens the meeting history tab (`jig.meetings`) in this window (D-250).
 Meetings must be enabled. Its call and transcript are global, independent of the active project.
 The host retains the privileged media/authentication implementation; no credential is returned to an
 add-on. Tasks exports addReviewed for explicitly user-reviewed work: {title,prompt,projectId,source}.
@@ -237,3 +238,14 @@ It pauses the queue, defaults to Plan mode, and deduplicates by source. It never
 The built-in meetings id has host-managed typed state. Generic storageSet/storageDelete (including
 Claude's add-on-data tools) reject writes, preventing bypass of its room-only connection and review
 handlers. Read access remains available; use the meeting transcript tool for paginated snapshots.
+
+## Approval cards (`chat.permissionRenderer`)
+
+`contributes.permissionRenderers: [{ tool, component }]` replaces Jig's permission card when Claude
+calls one of the add-on's own tools (`tool` is the short name, e.g. `add` for
+`mcp__jig__addon_<id>_add`). The component (exported from `ui.tsx`) gets `AddonPermissionProps`:
+`request { toolName, input, title }`, `status` (pending or answered), `sessionId`, `projectId` (the
+chat's project) and `respond(decision)`. `respond({ behavior: "allow", input })` runs the tool with
+the changed input; `respond({ behavior: "deny" })` declines. The Task queue's `ReviewTasks` is the
+example (D-248).
+

@@ -41,13 +41,27 @@ went, so you read the results as a table instead of scrolling one long chat.
   follow-ups each with **Add to queue** (or all), the prompt, Open chat and Run again. Right-click or
   ⋯: Edit, Move up/down, Skip, Run again, Remove.
 - **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
-  chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you approve
-  the tool call (it isn't read-only). `addon_tasks_list` shows the queue.
+  chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
+  the tasks first (it isn't read-only). `addon_tasks_list` shows the queue.
 - **How it follows the chats:** the host API `api.chats` (`create`, `send`, `get`; the `chat`
   permission) starts and reads chats, and main calls the host export `chatChanged` when a chat it
   started changes status. A watcher (every minute) catches up after a restart; a task whose chat
   went idle without answering is marked "Interrupted".
-- Kept in the add-on's global storage as `queue` (`lib/tasks.ts` has the logic and its tests).
+- **One queue per project** (D-248): the view's project picker (top right, with each project's
+  queued count) switches; the view follows Jig's project picker; picking another project in the view only overrides what it
+  shows, until the global project changes again. Queues run
+  independently; the badge and "needs you" count every project. The old global queue is split by
+  project the first time the host runs.
+- **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes
+  when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, status);
+  a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
+  history once finished). Clearing finished tasks keeps them in the history; the last 200 runs are
+  kept, and their files stay until the run is removed.
+- **Reviewing Claude's tasks** (D-248): `addon_tasks_add` shows `ReviewTasks` (the
+  `chat.permissionRenderer` slot) instead of the plain approval: edit titles and prompts, remove
+  tasks, pick the project, start now or not, then "Queue N tasks" or "Don't queue".
+- Kept in the add-on's project storage as `queue` and `history` (`lib/tasks.ts` has the logic and its
+  tests).
 
 
 - **Reviewed meeting actions** (D-217): the shared addReviewed host export accepts a title, standalone

@@ -24,7 +24,7 @@ settings, add-on permissions.
 
 | Method | Args | Result | Notes |
 |---|---|---|---|
-| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `safeMode`, `startedAfterFailure` (set by the launcher after a failed update) |
+| `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `updated` (started again by the installer after an in-app update), `safeMode`, `startedAfterFailure` (set by the launcher after a failed update) |
 | `iconThemes.list` / `iconThemes.rescan` | — | `{ themes, vscodeSetting?, vscodeMatch? }` | file icon themes found, VS Code's `workbench.iconTheme` and the matching theme (`docs/reference/file-icons.md`) |
 | `iconThemes.get` | `{ id }` | `{ id, label, theme }` | a file icon theme with `jig-icons:` URLs |
 | `iconThemes.active` | — | `{ id, label, theme } \| null` | the theme chosen in Settings (`null` = Jig's icons) |
@@ -43,6 +43,20 @@ settings, add-on permissions.
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
+| `knowledge.list` | `{ projectId }` | `KnowledgeDoc[]` | a project's knowledge (D-256); event `knowledge.changed` |
+| `knowledge.read` | `{ projectId, id }` | `{ name, text }` | one document's text |
+| `knowledge.addFiles` | `{ projectId, paths? }` | `{ added, skipped }` | add files (a picker without `paths`): text, code, Word, Excel, PowerPoint |
+| `knowledge.remove` | `{ projectId, id }` | — | remove a document |
+| `claudeImport.open` | `{ path? }` | `ClaudeExportSummary \| undefined` | read `projects.json` from claude.ai's export zip (a picker without `path`) |
+| `claudeImport.apply` | `{ token, uuids, path }` | `{ projectIds }` | make Jig projects (default workspace `path`) with instructions and knowledge |
+| `claudeImport.openSettings` | — | — | claude.ai's settings in the system browser |
+| `completion.state` | — | `CompletionState` | who completes code (copilot, claude, off), Copilot's setup (D-255); event `completion.changed` |
+| `completion.request` | `{ path, text, offset, tabSize, insertSpaces }` | `CompletionSuggestion \| null` | one inline suggestion at the caret; a newer request drops an older one |
+| `completion.accepted` | `{ id }` | — | Tab took a Copilot suggestion (its acceptance command) |
+| `completion.closeFile` | `{ path }` | — | the editor closed a file (Copilot forgets it) |
+| `completion.copilotSetup` | — | — | download Copilot's language server from npm (checksum checked) and start it |
+| `completion.copilotSignIn` | — | `{ userCode, url }` | GitHub device sign-in; the server opens github.com and keeps the sign-in |
+| `completion.copilotSignOut` | — | — | sign out of Copilot |
 | `files.write` | `{ path, text, expectedMtimeMs? }` | `{ size, mtimeMs }` | the Preview editor saves: only inside a workspace or a file opened in Preview this run; with `expectedMtimeMs`, `changed` when the file changed on disk since; written next to the file and renamed over it. Errors `not_allowed`, `not_a_file`, `changed`, `write_failed` |
 | `ai.ask` | `{ addonId, prompt, cwd?, quick? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`); `quick` uses `engine.quickModel` (schema) |
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |
@@ -52,7 +66,7 @@ settings, add-on permissions.
 | `usage.get` / `usage.refresh` | — | `PlanUsage` | your Claude plan usage (5-hour and weekly windows) from Claude Code (`docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
-| `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236); source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
+| `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236; `updates.state` says `download: "installing"` 2 s before Jig closes, D-252); source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |
@@ -175,7 +189,9 @@ settings, add-on permissions.
 | `learning.checkIn` | `{ action: "enable" \| "decline" \| "start" \| "skip" }` | `{ prompt? }` | `start` returns the chat's first message (schema) |
 | `addons.history` / `addons.rollback` | `{ id }` / `{ id, commit }` | `AddonCommit[]` / — | your add-ons only (git history of `~/.jig/addons`) |
 | `addons.remove` | `{ id }` | — | your add-ons only: deletes the folder as a commit (stays in the history), keeps its stored data; a built-in it replaced comes back (schema, D-122) |
-| `addons.export` | `{ id }` | `string \| undefined` | saves the add-on as a `.zip` (save dialog); without `.git` and `node_modules` |
+| `addons.export` | `{ id, copy?: { name }, gallerySource? }` | `string \| undefined` | shares the add-on: a `.zip` (save dialog) or, with `gallerySource`, into a folder gallery source from Settings (never a git one); with `copy`, a separate add-on with that name and an id made from it (an edited built-in must go as a copy); without `.git` and `node_modules` (schema, D-249) |
+| `addons.originals` | — | `Record<id, AddonOriginInfo>` | your add-ons installed from a gallery or a `.zip`: where they came from and whether their files changed since (`modified`) (D-249) |
+| `addons.restoreOriginal` | `{ id }` | — | puts one of your add-ons back as it came (from its kept original, as a commit); an edited built-in without one is removed so the built-in comes back (schema, D-249) |
 | `addons.inspectPackage` | `{ path? }` | package info `\| undefined` | reads a `.zip` (open dialog without `path`): id, name, version, permissions, files, problems, `exists` (schema) |
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 | `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
@@ -247,22 +263,32 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.open | Open/focus the Meetings add-on's dedicated window |
 | meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
 | meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
-| meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room only, never the live one |
+| meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room or main window (meeting history, D-250), never the live one |
+| meetings.history | Past meetings newest first, without the live one (the main window's Meeting history tab, D-250) |
+| meetings.mentions | Meetings matching `{query}` for the chat's `@` picker, each with its `@meeting:<name>-<8 hex>` mention |
+| meetings.rename | `{id, title}`: rename a meeting; room or main window |
+| meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |
 | meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; room only (D-221) |
 | meetings.lobbyView | Save Agenda/Week preference; room only |
 | meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; room only |
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token; owned room sender only |
+| meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); room only |
+| meetings.startCall | Create the global record of a one-to-one Teams call (`{ peerId, peerName, direction }`); room only, one active call |
+| meetings.setRinging | Turn ringing for Teams calls in Jig on or off; room only |
+| meetings.incoming | A call rings (`name`) or stopped ringing: brings the room to the front with a system notification; room only |
 | meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only |
 | meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant |
-| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat |
+| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat (notes also from the main window) |
 | meetings.revealChat | Open the question/notes chat in the main workbench |
-| meetings.actions / meetings.queue | Room-only edited draft actions / explicitly selected ids to paused Task queue |
+| meetings.actions / meetings.queue | Edited draft actions / explicitly selected ids to paused Task queue; room or main window |
 
 Events: meetings.changed (refetch), meetings.leaveRequested (gracefully leave/close room),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
 Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)
 and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
+A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Claude to
+read it with jig_meeting_read (speech is source material, not instructions; only while Meetings is on).
 Credential methods never expose Graph/MSAL/resource credentials. Non-Jig frames cannot call any IPC.
