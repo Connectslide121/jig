@@ -2958,3 +2958,19 @@ window. The shape is **Claude, on my own**.
 - The installer starts Jig with `--updated`; `app.info.updated` tells the workbench, which shows
   "Updated to Jig X" once. Needs a real Windows update to confirm the timing.
 
+## D-253: Mentions in the message box are highlighted, with a chip each
+
+**Who:** Jon asked for mentioned files to be highlighted in the input, to work as links and to have a
+chip each. The shape is **Claude, on my own**.
+
+- The message box stays a plain `<textarea>` (typing, IME, undo, dictation and the pickers keep
+  working); a layer behind it, in the same font and wrapping, draws the highlight under each mention
+  and follows its scroll. A contenteditable editor was not worth the risk for this.
+- Only mentions that point at something are highlighted: a file that exists (`files.stat`, once per
+  path), a folder (`@dir/`) or a meeting (`@meeting:…`). A half-typed path or a typo stays plain text.
+- Links: the chips above the text open what they name (a file in Preview, a folder in the file
+  manager, a meeting in Meetings via the tab's new `select` param); × removes the mention from the
+  text. Ctrl/Cmd+click on the mention in the text opens it, as in an editor; a plain click still
+  places the caret. The chips sit above the text in the box, with attachments, so the text and
+  buttons below don't move when one appears.
+

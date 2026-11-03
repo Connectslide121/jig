@@ -47,9 +47,18 @@ import { VoiceButton } from "../speech/VoiceButton";
 import { toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
 import { newSession } from "./actions";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
+import { MentionChips, MentionHighlights, openMention, useLiveMentions } from "./ComposerMentions";
 import { ComposerPicker, type PickerItem } from "./ComposerPicker";
 import { chatCommands, TERMINAL_ONLY } from "./commands";
-import { historyStep, inputMode, nextPermissionMode, replaceToken, tokenAt } from "./composerInput";
+import {
+  historyStep,
+  inputMode,
+  mentionsIn,
+  nextPermissionMode,
+  removeMention,
+  replaceToken,
+  tokenAt,
+} from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
 import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
 import { usePrompts } from "./prompts";
@@ -146,6 +155,7 @@ export function Composer({
   const [found, setFound] = useState<{ query: string; files: string[] }>();
   const [meetings, setMeetings] = useState<{ query: string; list: MethodResult<"meetings.mentions"> }>();
   const [history, setHistory] = useState<{ index: number; draft: string }>({ index: -1, draft: "" });
+  const [scrollTop, setScrollTop] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const prompts = Object.values(usePrompts());
@@ -154,6 +164,9 @@ export function Composer({
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
   const suggestion = busy ? undefined : meta.suggestion;
   const mode = inputMode(text);
+  // Mentioned files, folders and meetings: highlighted in the text and shown as chips above it.
+  const allMentions = useMemo(() => (mode ? [] : mentionsIn(text)), [text, mode]);
+  const mentions = useLiveMentions(meta.cwd, allMentions);
   const dictating = useDictation((s) => s.target === meta.id && s.phase === "recording");
   const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
 
@@ -601,97 +614,117 @@ export function Composer({
             className="px-1 pt-1"
             onRemove={(file) => setFiles((list) => list.filter((f) => f !== file))}
           />
-          <textarea
-            ref={ref}
-            rows={1}
-            value={text}
-            data-testid="composer-input"
-            placeholder={
-              busy
-                ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
-                : suggestion
-                  ? `${suggestion}  (Tab to use)`
-                  : "Message Claude…  / commands · @ files · ! shell · # remember"
-            }
-            onChange={(e) => {
-              setTextState(e.target.value);
-              setCaret(e.target.selectionStart);
-              setClosedAt(undefined);
+          <MentionChips
+            cwd={meta.cwd}
+            mentions={mentions}
+            onRemove={(m) => {
+              const next = removeMention(text, m);
+              setText(next.text, next.caret);
+              ref.current?.focus();
             }}
-            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-            onPaste={(e) => {
-              if (takeFiles(e.clipboardData.files)) e.preventDefault();
-            }}
-            onKeyDown={(e) => {
-              const el = e.currentTarget;
-              if (e.code === "Space" && e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey) {
-                e.preventDefault();
-                if (!e.repeat) toggleDictation(meta.id, speechHooks.onText);
-                return;
-              }
-              if (e.key === "Escape" && dictating) {
-                e.preventDefault();
-                cancelDictation();
-                return;
-              }
-              if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                  e.preventDefault();
-                  const step = e.key === "ArrowDown" ? 1 : -1;
-                  setSelected((i) => (i + step + items.length) % Math.max(items.length, 1));
-                  return;
-                }
-                if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey)) {
-                  e.preventDefault();
-                  const item = items[selected];
-                  if (item) pick(item);
-                  return;
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setClosedAt(tokenKey);
-                  return;
-                }
-              }
-              if (e.key === "Tab" && e.shiftKey) {
-                e.preventDefault();
-                void call("sessions.setPermissionMode", {
-                  id: meta.id,
-                  mode: nextPermissionMode(meta.permissionMode),
-                });
-              } else if (e.key === "Tab" && !text && suggestion) {
-                e.preventDefault();
-                setText(suggestion);
-              } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                submit(busy && (e.ctrlKey || e.metaKey));
-              } else if (e.key === "Escape" && busy) {
-                e.preventDefault();
-                void call("sessions.interrupt", { id: meta.id });
-              } else if (
-                (e.key === "ArrowUp" || e.key === "ArrowDown") &&
-                !e.shiftKey &&
-                (e.key === "ArrowUp"
-                  ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
-                  : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
-              ) {
-                const step = historyStep(
-                  userHistory,
-                  history.index,
-                  e.key === "ArrowUp" ? "up" : "down",
-                  history.index === -1 ? text : history.draft,
-                );
-                if (!step) return;
-                e.preventDefault();
-                setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
-                setText(step.text);
-                // A recalled "/command" doesn't open the picker; typing does.
-                const recalled = tokenAt(step.text, step.text.length);
-                setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
-              }
-            }}
-            className="max-h-80 min-h-7 w-full resize-none bg-transparent px-1.5 py-1 text-sm text-fg outline-none placeholder:text-hint"
           />
+          <div className="relative">
+            <MentionHighlights text={text} mentions={mentions} scrollTop={scrollTop} />
+            <textarea
+              ref={ref}
+              rows={1}
+              value={text}
+              data-testid="composer-input"
+              placeholder={
+                busy
+                  ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
+                  : suggestion
+                    ? `${suggestion}  (Tab to use)`
+                    : "Message Claude…  / commands · @ files · ! shell · # remember"
+              }
+              onChange={(e) => {
+                setTextState(e.target.value);
+                setCaret(e.target.selectionStart);
+                setClosedAt(undefined);
+              }}
+              onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+              onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+              onClick={(e) => {
+                // Ctrl/Cmd+click on a mention opens it, like a link in an editor.
+                if (!(e.ctrlKey || e.metaKey)) return;
+                const at = e.currentTarget.selectionStart;
+                const hit = mentions.find((m) => at >= m.start && at <= m.end);
+                if (hit) openMention(meta.cwd, hit);
+              }}
+              onPaste={(e) => {
+                if (takeFiles(e.clipboardData.files)) e.preventDefault();
+              }}
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (e.code === "Space" && e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey) {
+                  e.preventDefault();
+                  if (!e.repeat) toggleDictation(meta.id, speechHooks.onText);
+                  return;
+                }
+                if (e.key === "Escape" && dictating) {
+                  e.preventDefault();
+                  cancelDictation();
+                  return;
+                }
+                if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const step = e.key === "ArrowDown" ? 1 : -1;
+                    setSelected((i) => (i + step + items.length) % Math.max(items.length, 1));
+                    return;
+                  }
+                  if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey)) {
+                    e.preventDefault();
+                    const item = items[selected];
+                    if (item) pick(item);
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setClosedAt(tokenKey);
+                    return;
+                  }
+                }
+                if (e.key === "Tab" && e.shiftKey) {
+                  e.preventDefault();
+                  void call("sessions.setPermissionMode", {
+                    id: meta.id,
+                    mode: nextPermissionMode(meta.permissionMode),
+                  });
+                } else if (e.key === "Tab" && !text && suggestion) {
+                  e.preventDefault();
+                  setText(suggestion);
+                } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  submit(busy && (e.ctrlKey || e.metaKey));
+                } else if (e.key === "Escape" && busy) {
+                  e.preventDefault();
+                  void call("sessions.interrupt", { id: meta.id });
+                } else if (
+                  (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+                  !e.shiftKey &&
+                  (e.key === "ArrowUp"
+                    ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
+                    : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
+                ) {
+                  const step = historyStep(
+                    userHistory,
+                    history.index,
+                    e.key === "ArrowUp" ? "up" : "down",
+                    history.index === -1 ? text : history.draft,
+                  );
+                  if (!step) return;
+                  e.preventDefault();
+                  setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
+                  setText(step.text);
+                  // A recalled "/command" doesn't open the picker; typing does.
+                  const recalled = tokenAt(step.text, step.text.length);
+                  setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
+                }
+              }}
+              className="relative block max-h-80 min-h-7 w-full resize-none bg-transparent px-1.5 py-1 text-sm text-fg outline-none placeholder:text-hint"
+            />
+          </div>
           <div className="flex min-w-0 items-center gap-1" data-testid="composer-toolbar">
             <IconButton
               icon={Plus}

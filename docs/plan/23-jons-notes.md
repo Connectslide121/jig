@@ -14,6 +14,11 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       starters open a new chat with the message ready.
 - [x] Meetings: the in-call device picker opens on the devices in use. Needs a check with real devices.
 
+## Composer mentions (Jon, 2026-11-03, D-253)
+
+- [x] Mentioned files in the message box are highlighted and open like links (Ctrl/Cmd+click), with a
+      chip per mentioned file, folder or meeting above the text (click opens, × removes).
+
 ## Session 1 — Task queue: a queue per project, plan review, run history
 
 - [x] **One queue per project**, each running independently, so agents in different projects

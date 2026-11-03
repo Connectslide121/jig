@@ -29,7 +29,7 @@ import {
 } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
-import { registerTabType } from "../../workbench/registry";
+import { registerTabType, type TabProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { ProjectSwatch } from "../projects/colors";
@@ -56,10 +56,16 @@ export function registerMeetingHistory(): void {
 
 const openChat = (sessionId: string) => workbench.openTab("jig.chat", { sessionId });
 
-function MeetingHistory() {
+function MeetingHistory({ params }: TabProps) {
   const [records, setRecords] = useState<MeetingRecord[] | undefined>();
   const [failed, setFailed] = useState<string>();
   const [selected, setSelected] = useState<string>();
+  // A mention's chip in a chat opens this tab on its meeting (`select`: the id's first 8 hex digits).
+  const select = typeof params.select === "string" ? params.select : undefined;
+  useEffect(() => {
+    const found = select && records?.find((r) => r.id.replace(/-/g, "").toLowerCase().startsWith(select));
+    if (found) setSelected(found.id);
+  }, [select, records]);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"notes" | "queue">();
   const [review, setReview] = useState(false);

@@ -142,6 +142,11 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Composer mentions (2026-11-03, D-253): `@` mentions that point at something (a file that exists, a
+folder, a meeting) are highlighted in the message box, and each gets a chip above the text: click it to
+open the file in Preview (a folder in the file manager, a meeting in Meetings), × to take it out of the
+message. Ctrl/Cmd+click on the mention in the text opens it too. Try: type `@` in a chat, pick a file.
+
 Meeting history (2026-11-02, D-250): past meetings open in Jig's main window — the top-bar video
 button → **Meeting history** (or Tools → Meeting history). Search on the left; notes and transcript of
 the selected meeting on the right. **Start a chat** opens a chat in a project you pick with the

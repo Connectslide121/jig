@@ -123,7 +123,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | tab type | `jig.view` | | a view opened in the main area (`params.viewId`, D-174) |
 | tab type | `jig.project` | | project dashboard: the project's Home (`params.projectId`) |
 | tab type | `jig.chat` | | a chat (`params.sessionId`) |
-| tab type | `jig.meetings` | | the meeting history (singleton; opened from the Meetings add-on, D-250) |
+| tab type | `jig.meetings` | | the meeting history (singleton; opened from the Meetings add-on, D-250; param `select`: a meeting id prefix to show, from a mention chip, D-253) |
 | tab type | `jig.settings` | | Settings (`params.section`: appearance, layout, engine, terminal, learning, workspaces, about, or an add-on's page) |
 | tab type | `jig.preview` / `jig.image` | | a file in Preview (editable for code and text) / an image |
 | tab type | `jig.skills` | | Skills library, opened from Chats → Skills library; details/project selection in modals |
