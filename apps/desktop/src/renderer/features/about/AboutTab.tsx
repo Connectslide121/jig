@@ -614,7 +614,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
-                "Your plan usage as bars in the status bar, always visible",
+                "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in",
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
                 "Restore files to before any of your messages, and fork a chat to try another approach",
@@ -950,7 +950,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
           <Section
             id="usage"
             title="Plan usage"
-            lead="Your 5-hour session and weekly limits, as Claude Code reports them. Bars in the status bar; hover them for every window."
+            lead="Your 5-hour session and weekly limits, Claude's as Claude Code reports them and ChatGPT's as OpenAI's Codex CLI reports them, side by side behind each one's mark. Bars in the status bar; hover them for every window."
             shot={{ src: usage, alt: "The plan usage card" }}
           />
           <Section

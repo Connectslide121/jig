@@ -75,7 +75,7 @@ settings, add-on permissions.
 | `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code saved on this computer, newest first; `chatId` when one is already a Jig chat (D-150) |
 | `sessions.openSaved` | `{ sessionId }` | `SessionMeta` | opens one as a chat in No project with its history; its first message continues it as a copy (validated id; folder and title from Claude Code's list) |
 | `sessions.rewindFiles` | `{ id, itemId, dryRun }` | `RewindResult` | restore files Claude changed since a user message (file checkpoints); `dryRun` only reports |
-| `usage.get` / `usage.refresh` | — | `PlanUsage` | your Claude plan usage (5-hour and weekly windows) from Claude Code (`docs/reference/usage.md`) |
+| `usage.get` / `usage.refresh` | — | `UsageByProvider` | your plans' usage per provider: `claude` (5-hour and weekly windows from Claude Code) and `chatgpt` (from the Codex CLI's app-server, D-298; `docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
 | `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236; `updates.state` says `download: "installing"` 2 s before Jig closes, D-252); source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
@@ -254,7 +254,7 @@ settings, add-on permissions.
 | `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project, Azure tenant; D-215) |
 | `azure.tenantChanged` | `TenantsState` | a tenant was added, checked, renamed or removed, or another became active (then add-ons also get `azure.tenant`, D-282) |
 | `azure.signInProgress` | `{ key, text, done? }` | a line of `az login`'s output (WARNING lines left out; never tokens: `--output none`), then `done` |
-| `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
+| `usage.changed` | `UsageByProvider` | either provider's usage refreshed, or Claude Code reported a rate limit |
 | `speech.progress` | `{ model, loaded, total }` | a dictation model, or the natural voice (`model: "voice"`), is downloading (bytes; at most every 150 ms) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |
 | `worktrees.changed` | `WorktreeChat[]` | a worktree chat was started or removed |

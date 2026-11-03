@@ -3830,3 +3830,34 @@ tab and in the lobby.
   `hidden` beats Jig's own `@xl:` container variant on the same property. Properties that change with
   the container are set only through `@max-*:` / `@*:` variants (AGENTS.md).
 
+## D-298: ChatGPT's plan usage in the footer next to Claude's; usage per provider
+
+- Status: accepted. Asked for by Jon, 2026-11-03 (follows D-294, D-297): he uses ChatGPT for the small
+  AI features and Claude for coding, and wants both plans' usage at a glance.
+- **Source** (Claude, on my own, checked against Codex 0.166): `codex app-server` answers
+  `account/rateLimits/read` with `rateLimits.primary` / `.secondary` = `{ usedPercent,
+  windowDurationMins, resetsAt }` (unix seconds), plus `planType` and `rateLimitReachedType`. `codex
+  exec --json` only reports token counts (no rate limits), so Jig asks the app-server: a short-lived
+  process, initialize, the read (without reset-credit details), then it is stopped. Signed out it
+  answers "authentication required", and the group is hidden. Only the windows, plan type and
+  limit-reached flag are kept; the account id in the answer is dropped, and no token is read.
+- **Shape change:** `usage.get` / `usage.refresh` / `usage.changed` now carry `UsageByProvider =
+  { claude, chatgpt }` (two `PlanUsage`). Codex's windows map onto the same `UsageWindow` (`minutes`
+  added: 300 / 10080, which gives `5h` / `wk`), so `formatResetIn`, `formatResetShort` and
+  `usageTone` serve both. One `UsageService` per provider (`read`, `source`).
+- **When:** ChatGPT's is asked 4 s after start, every 5 minutes, after every ChatGPT call the provider
+  layer makes (at most every 15 s: `onChatGptCall`), after the Codex sign-in, on `usage.get` when
+  older than 2 minutes, and on click.
+- **Footer** (Jon's design, details Claude's): Claude, then ChatGPT after a thin divider. Each group
+  starts with a provider mark (an icon and "Claude" / "ChatGPT" in `provider-claude` /
+  `provider-chatgpt`, new theme tokens). The bars stay green/amber/red for room/near/limit for both,
+  so identity comes only from the mark. Fixed slots and tabular numbers. Narrow status bar (a
+  container query on it): mark + highest share. ChatGPT's group shows only while Codex is signed in;
+  the renderer remembers whether it showed (localStorage), so it reserves its space from the start.
+- **Card:** a section per provider, always both (mark, plan badge, windows, resets, "From Claude
+  Code" / "From Codex · updated …"), one refresh for both; signed out, ChatGPT's section offers Get
+  started.
+- **Tooltip fix found on the way:** `Tooltip` added `max-w-xs` and callers passed `max-w-none`; with
+  two max-width classes the stylesheet's order decides, and the default won. A caller's own max-width
+  now replaces the default.
+

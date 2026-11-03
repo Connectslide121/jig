@@ -176,3 +176,7 @@ Connection, and are not exposed as AI-editable ConfigSchema fields because they 
 `source`); `knowledge/<projectId>/docs/<id>.txt` holds each one's text (cut at 1,000,000 characters).
 `knowledge/<projectId>/notes.json` holds its notes (above). Removing the project removes its folder. `cache/copilot/<version>/` holds Copilot's language server
 (D-255) and `cache/copilot/current.json` names the version in use.
+
+**Renderer-only:** the footer remembers in `localStorage` whether it showed ChatGPT's usage last time
+(`jig.usage.chatgptShown`, `"1"` / `"0"`), so it reserves that group's space at startup (D-298).
+Plan usage itself is never stored: it is asked again each run (`docs/reference/usage.md`).

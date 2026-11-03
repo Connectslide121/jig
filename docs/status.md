@@ -1,5 +1,15 @@
 # Status
 
+ChatGPT usage in the footer (2026-11-03, D-298): the status bar shows Claude's plan usage, then
+ChatGPT's after a thin divider, each behind its own mark (an icon and the name, in its own colour).
+The bars keep green/amber/red for room/near/limit for both. Hover for a card with both plans (plan
+badge, every window, when it resets, when it was updated) and one refresh button. ChatGPT's numbers
+come from OpenAI's Codex CLI, refreshed after every ChatGPT answer and every 5 minutes; without a
+Codex sign-in only Claude's shows. When the status bar is narrow each group shrinks to its name and
+highest share. Checked on Windows with real numbers from Codex (signed in and out) in Jig Dark, Jig
+Light and an imported VS Code theme. Needs testing on your machine: the numbers moving after a few
+ChatGPT answers, and a ChatGPT plan that reaches its limit (the "Limit reached" warning).
+
 AI features per provider (2026-11-03, D-297): **Settings → AI features** lists Jig's one-shot AI
 features (commit message, check before committing, release notes, tour, compare attempts, standup,
 chat names, weekly patterns, caption translation, add-ons' questions) in one table: pick Claude or

@@ -142,7 +142,8 @@ More behaviour:
 
 `JIG_MAIL_OUT=<folder>` makes **Email to developers** save the zip there (instead of Downloads) and
 write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
-`JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
+`JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON), `JIG_FAKE_CHATGPT_USAGE` ChatGPT's
+(`signedout` or JSON; default a Plus plan at 27 % / 64 %).
 
 Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
 suggests `total;`, anywhere else `// suggested by the fake engine`. A caption to translate (D-277)
