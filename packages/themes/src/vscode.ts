@@ -306,6 +306,9 @@ export function mapVsCodeTheme(theme: VsCodeTheme, options: MapOptions): JigThem
     danger: toHex(danger),
     onDanger: toHex(readableOn(danger)),
     info: toHex(info),
+    // Provider marks keep Jig's hues (Claude's clay, ChatGPT's teal), made readable on the status bar.
+    providerClaude: toHex(ensureContrast(baseColor("providerClaude"), statusbar, 3)),
+    providerChatgpt: toHex(ensureContrast(baseColor("providerChatgpt"), statusbar, 3)),
     shadow: toHex(shadow),
   };
 

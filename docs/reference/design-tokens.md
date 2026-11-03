@@ -31,6 +31,7 @@ CSS variable `--jig-<token>`; Tailwind colour name in brackets (use as `bg-…`,
 | `focus` | `focus` | focus ring |
 | `code` | `code` | code block background (also the Shiki background) |
 | `success` `warning` `danger` `info` | same | status colours; `on-danger` for text on danger |
+| `provider-claude` `provider-chatgpt` | `providerClaude` `providerChatgpt` | marks which AI provider something is about (the usage meter's labels): identity only, never a status, so a bar stays green/amber/red. Imported VS Code themes keep Jig's hues, adjusted to stay readable on the status bar (D-298) |
 | `shadow` | — | used by `shadow-popover`, `shadow-card` |
 
 `scrim` is derived, not themed: the canvas pushed towards black at 72 %, the backdrop of every modal

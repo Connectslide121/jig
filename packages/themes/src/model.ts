@@ -30,6 +30,8 @@ export const COLOR_TOKENS = [
   "danger",
   "onDanger",
   "info",
+  "providerClaude", // marks Claude (the usage meter's provider label), never a status
+  "providerChatgpt", // marks ChatGPT, likewise
   "shadow", // shadow colour (usually translucent black)
 ] as const;
 

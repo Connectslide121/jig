@@ -127,6 +127,8 @@ export const jigDark: JigTheme = {
     danger: "#ef6b6b",
     onDanger: "#1e1f22",
     info: "#6cb6ff",
+    providerClaude: "#e08a66",
+    providerChatgpt: "#5ec4cf",
     shadow: "#00000059",
   },
   terminal: {
@@ -185,6 +187,8 @@ export const jigLight: JigTheme = {
     danger: "#c43c3c",
     onDanger: "#ffffff",
     info: "#2468b3",
+    providerClaude: "#b3522c",
+    providerChatgpt: "#1a7884",
     shadow: "#0000001f",
   },
   terminal: {
