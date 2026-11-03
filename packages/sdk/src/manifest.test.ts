@@ -107,6 +107,7 @@ describe("parseManifest", () => {
       }).errors.length,
     ).toBeGreaterThan(0);
     expect(JIG_EVENT_NAMES).toContain("project.active");
+    expect(JIG_EVENT_NAMES).toContain("azure.tenant");
     expect(isJigEvent("git.branch")).toBe(true);
     expect(isJigEvent("nope")).toBe(false);
   });

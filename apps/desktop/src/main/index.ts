@@ -8,6 +8,7 @@ import { registerAppHandlers } from "./app";
 import { appWindows, focusJig } from "./appWindows";
 import { registerArtifactHandlers } from "./artifacts";
 import { startAttempts } from "./attempts";
+import { startAzure } from "./azure";
 import { startBrowser, stopBrowser } from "./browser";
 import { startBuilder } from "./builder";
 import { startCompletion, stopCompletion } from "./completion";
@@ -72,6 +73,7 @@ async function start() {
   installRouter();
   registerAppHandlers();
   registerConfigHandlers();
+  await startAzure();
   registerLayoutHandlers(
     async () => new Set((await sessionManager().list()).filter((m) => !m.draft).map((m) => m.id)),
   );

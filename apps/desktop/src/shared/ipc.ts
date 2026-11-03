@@ -13,6 +13,7 @@ import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./addons";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
+import type { TenantsState } from "./azure";
 import type {
   BrowserBounds,
   BrowserInput,
@@ -339,6 +340,28 @@ export interface HostMethods {
     args: { group?: string; subscription?: string };
     result: { items: AzureItem[]; problems: string[] };
   };
+  /**
+   * Azure tenants (D-282): your own az login first, then the tenants added in Jig (each its own Azure
+   * CLI folder), and which one every `az` Jig runs uses. `check` asks the Azure CLI of each whether
+   * its sign-in still works (no prompt, no browser) and records signed out / expired.
+   */
+  "azure.tenants": { args: { check?: boolean }; result: TenantsState };
+  /**
+   * Adds a tenant: `az login --tenant <tenant> --allow-no-subscriptions` in a new folder (the system
+   * browser opens; an empty `tenant` lets you pick in the browser). Progress as `azure.signInProgress`;
+   * `azure.cancelSignIn` stops it. Resolves when signed in. Errors: `busy`, `cancelled`,
+   * `az_missing`, `az_login_failed`, `invalid_args`.
+   */
+  "azure.addTenant": { args: { tenant: string; label?: string }; result: TenantsState };
+  /** Signs in to a tenant again (`default`: your own az login, without `--tenant`). Same errors. */
+  "azure.signInAgain": { args: { key: string }; result: TenantsState };
+  /** Stops the sign-in that is running (nothing when none is). */
+  "azure.cancelSignIn": { args: void; result: void };
+  "azure.renameTenant": { args: { key: string; label: string }; result: TenantsState };
+  /** Removes a tenant and deletes its Azure CLI folder (its sign-in); your az login can't be removed. */
+  "azure.removeTenant": { args: { key: string }; result: TenantsState };
+  /** Makes a tenant the one `az` uses (`default` = your own az login); the `azure.activeTenant` setting. */
+  "azure.setActiveTenant": { args: { key: string }; result: TenantsState };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /** Pinned chats stay at the top of their project. */
@@ -668,6 +691,10 @@ export interface HostEvents {
   "learning.changed": LearningState;
   /** The profile or the notes from chats changed. */
   "learning.knowledgeChanged": void;
+  /** The tenants or the active tenant changed (added, checked, renamed, removed, switched; D-282). */
+  "azure.tenantChanged": TenantsState;
+  /** A line of `az login`'s output while a tenant signs in (`done` once it ended). */
+  "azure.signInProgress": { key: string; text: string; done?: boolean };
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** The add-on views' badges changed (all of them, by full view id). */

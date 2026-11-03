@@ -10,6 +10,8 @@ export const JIG_EVENTS = {
   "git.commit": "A commit was made in a repository of a project (in Jig, a terminal or another app).",
   "git.branch": "A repository of a project switched branch.",
   "project.active": "You switched the active project.",
+  "azure.tenant":
+    "You switched the Azure tenant: every az Jig runs now uses it; drop Azure/DevOps caches and reload.",
 } as const;
 
 export type JigEventName = keyof typeof JIG_EVENTS;
@@ -30,6 +32,18 @@ export interface JigEventPayloads {
   "git.commit": { repo: string; branch?: string; sha: string; message: string };
   "git.branch": { repo: string; from?: string; to?: string };
   "project.active": { projectId?: string; name?: string; path?: string };
+  /**
+   * The tenant now in use (D-282): its key (`default` = your own az login), label, the signed-in
+   * user and the Entra tenant, as far as they are known.
+   */
+  "azure.tenant": {
+    key: string;
+    label: string;
+    isDefault: boolean;
+    user?: string;
+    tenantId?: string;
+    domain?: string;
+  };
 }
 
 export const JIG_EVENT_NAMES = Object.keys(JIG_EVENTS) as JigEventName[];

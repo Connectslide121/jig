@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { SetupCheck } from "../../shared/setup";
 import { resolveCommand } from "../addons/winCommand";
+import { azureEnv } from "../azure/env";
 import { parseSignIn, signInText } from "./signIn";
 
 export type Exec = (
@@ -8,14 +9,23 @@ export type Exec = (
   args: string[],
 ) => Promise<{ code: number; stdout: string; stderr: string }>;
 
-/** Runs a program without a shell (`.cmd` files on Windows through cmd.exe, safely quoted). */
+/**
+ * Runs a program without a shell (`.cmd` files on Windows through cmd.exe, safely quoted), `az` with
+ * the active tenant's folder (D-282).
+ */
 export const execTool: Exec = (command, args) =>
   new Promise((resolve) => {
     const r = resolveCommand(command, args, process.platform, process.env);
     execFile(
       r.file,
       r.args,
-      { timeout: 20_000, windowsHide: true, windowsVerbatimArguments: r.verbatim, maxBuffer: 1024 * 1024 },
+      {
+        timeout: 20_000,
+        windowsHide: true,
+        windowsVerbatimArguments: r.verbatim,
+        maxBuffer: 1024 * 1024,
+        env: { ...process.env, ...azureEnv() },
+      },
       (error, stdout, stderr) => {
         const code = error ? (typeof error.code === "number" ? error.code : 127) : 0;
         resolve({

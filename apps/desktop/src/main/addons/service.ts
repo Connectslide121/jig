@@ -281,6 +281,11 @@ export class AddonService {
     }
   }
 
+  /** Gives every running host process the active Azure tenant's environment (D-282). */
+  setHostEnv(env: Record<string, string>): void {
+    for (const l of this.loaded.values()) l.host?.setEnv(env);
+  }
+
   /** Runs the host code of every add-on that listens to this event (`contributes.events`, D-215). */
   dispatchEvent(name: JigEventName, payload: unknown): void {
     for (const l of this.loaded.values()) {

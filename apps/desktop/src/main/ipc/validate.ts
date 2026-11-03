@@ -1,3 +1,4 @@
+import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
 import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
@@ -30,6 +31,9 @@ const addonId = z
   .regex(/^[a-z0-9][a-z0-9.-]*$/)
   .max(100);
 const int = z.number().int();
+/** An Azure tenant's key (`default` = your own az login) and what may be passed to `az login --tenant`. */
+const tenantKey = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
+const tenantInput = z.string().max(253).refine(isTenantInput, "a tenant id (GUID) or a domain");
 const meetingAction = z.object({
   id,
   title: z.string().min(1).max(500),
@@ -362,6 +366,12 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     copy: z.object({ name: z.string().trim().min(1).max(100) }).optional(),
     gallerySource: z.string().min(1).max(2000).optional(),
   }),
+  "azure.tenants": z.object({ check: z.boolean().optional() }).strict(),
+  "azure.addTenant": z.object({ tenant: tenantInput, label: z.string().max(80).optional() }).strict(),
+  "azure.signInAgain": z.object({ key: tenantKey }).strict(),
+  "azure.renameTenant": z.object({ key: tenantKey, label: z.string().trim().min(1).max(80) }).strict(),
+  "azure.removeTenant": z.object({ key: tenantKey }).strict(),
+  "azure.setActiveTenant": z.object({ key: tenantKey }).strict(),
   "scripts.run": z.object({ projectId: id, scriptId: z.string().max(2000) }),
   "scripts.restart": z.object({ projectId: id, scriptId: z.string().max(2000) }),
 };

@@ -189,6 +189,7 @@ with no view open), a UI with `ctx.onJigEvent` / `useJigEvent`. The list is `JIG
 | `git.commit` | `{ repo, branch?, sha, message }` | a commit in one of the projects' repositories, made anywhere (Jig, a terminal, an editor) |
 | `git.branch` | `{ repo, from?, to? }` | a branch switch there |
 | `project.active` | `{ projectId?, name?, path? }` | another project became active |
+| `azure.tenant` | `{ key, label, isDefault, user?, tenantId?, domain? }` | another Azure tenant became the active one (D-282): every `az` Jig runs, `api.exec("az", …)` included, now uses it; drop Azure/DevOps caches and reload |
 
 Builder chats don't send chat events. Git events come from watching each repository's `.git` folder
 (up to 50 repositories; worktrees follow their `gitdir`).

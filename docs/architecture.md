@@ -68,6 +68,7 @@ jig/
 │   ├── sdk/                       @jig/sdk — add-on manifest schema, slot ids, add-on API types
 │   ├── themes/                    @jig/themes — theme model, built-in themes, VS Code mapping
 │   ├── learning/                  @jig/learning — command normalisation, pattern mining
+│   ├── azure/                     @jig/azure — Azure tenants: keys, tenants file, sign-in checks, azEnv
 │   └── documents/                 @jig/documents — attachment types, text from .docx/.xlsx/.pptx
 ├── addons/                        built-in add-ons (same format as user add-ons)
 ├── scripts/                       repo checks (design-token check, …)
@@ -386,6 +387,8 @@ views, live program output (`spawn`), file watching, and calling each other's sh
 - **Host part.** `host.ts` is bundled to a Node module and runs in an Electron `utilityProcess` per
   add-on, talking to the host over a message port. It receives a host API (`exec`, `spawn`, `fs` with `watch`, `fetch`,
   `storage`, `notify`, `setBadge`, `emit`, `addons`, `projects`, `chats`) limited by the manifest's `permissions`.
+  Every program it runs gets the active Azure tenant's environment (`init.env`, then `env` messages
+  when it changes; §11.1).
 - **Hot reload.** The host watches add-on folders, rebuilds on change and tells the renderer to reload
   that add-on only.
 - **Built-in vs yours.** Built-in add-ons ship in `addons/`; a folder in `~/.jig/addons` with the same
@@ -469,6 +472,27 @@ deploys per repository from its `.jig/release.json` policy, D-110; its Claude to
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
 lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are
 also examples for the builder.
+
+### 11.1 Azure tenants (D-282)
+
+Everything Azure and Azure DevOps is an `az` subprocess. A **tenant** is one Azure CLI sign-in in its
+own folder, `~/.jig/azure/<key>/`; Jig runs `az` with `AZURE_CONFIG_DIR` pointing at the active one
+(and `AZURE_EXTENSION_DIR` on your own extensions, so `azure-devops` is there in every tenant). The
+Azure CLI keeps and refreshes its tokens in that folder; Jig never reads, copies or logs them, nor
+`az` output. **Your az login** (no override) is always the first entry: without extra tenants nothing
+changes.
+
+- Pure logic: `packages/azure` (`tenantKey`, `parseTenantsFile`, `mergeSignIn` of `az account show`
+  and ARM `/tenants`, `signInStatusFromError`, `azEnv`).
+- Host: `main/azure/index.ts` keeps `azure/tenants.json` (through the state module), runs `az login`
+  for adding and signing in again (one at a time, output as `azure.signInProgress`, cancellable),
+  checks sign-ins on request (`signedOut` / `expired`, never a prompt) and follows the protected
+  setting `azure.activeTenant`. `main/azure/env.ts` holds the active tenant's environment.
+- One way to run `az`: project links (`main/links`), setup checks and add-on host processes
+  (`exec`/`spawn`, any program, so scripts that call `az` follow too) add that environment. An
+  explicit `options.env` from an add-on still wins.
+- Switching emits `azure.tenantChanged` to the renderer and the add-on event `azure.tenant`
+  (`JIG_EVENTS`). Chats, terminals and scripts follow in phase 24 session 4.
 
 ## 12. Packaging, first run and updates
 

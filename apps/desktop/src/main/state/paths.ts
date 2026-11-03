@@ -39,6 +39,9 @@ export const paths = {
   worktreeChats: () => join(jigHome(), "worktree-chats.json"),
   /** Development requests: one folder per build (its files and the zip). */
   devRequests: () => join(jigHome(), "dev-requests"),
+  /** Azure tenants (D-282): one Azure CLI folder per added tenant, and `tenants.json`. */
+  azure: () => join(jigHome(), "azure"),
+  azureTenants: () => join(jigHome(), "azure", "tenants.json"),
   /** The build that ran before the last update from source (launcher fallback). */
   appBuilds: () => join(jigHome(), "app-builds"),
 };

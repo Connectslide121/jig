@@ -3397,3 +3397,36 @@ timers and kept waiting after it had finished. The design: Claude, on my own.
   transcript it is one line (`from` on the `user` item) with "Jig told Claude", never a bubble you
   could edit or rewind, and it stays out of the composer's ↑ history.
 - No opt-out per terminal: a dev server that crashes is worth knowing about too.
+
+## D-282: Azure tenants: one Azure CLI folder per sign-in, one way to run `az`
+
+**Who:** Jon asked for a tenant switch in the top bar that every Azure and DevOps view, and every `az`,
+follows (2026-11-03, phase 24). The design: Claude, on my own (the plan's design, unchanged).
+
+- A tenant is one Azure CLI sign-in in its own folder, `~/.jig/azure/<key>/`; Jig runs `az` with
+  `AZURE_CONFIG_DIR` pointing there. The Azure CLI keeps and refreshes its tokens; Jig never reads,
+  copies or logs them (D-018 and "the user's own tools and credentials" still hold). No PATs, no MSAL,
+  no stored tokens; `az` output is parsed, never logged.
+- "Your az login" (no override, key `default`) is always the first entry. Without extra tenants the
+  environment is empty, so nothing changes and nothing is migrated.
+- `AZURE_EXTENSION_DIR` stays on your own extensions folder (your `AZURE_EXTENSION_DIR`, else
+  `<your config dir>/cliextensions`): extensions live in the config folder by default, and a new tenant
+  would otherwise have no `azure-devops`. Each tenant keeps its own `az devops configure` defaults.
+- What is kept (`azure/tenants.json`, through the state module): key, label, what was asked for, the
+  signed-in user, the Entra tenant id, display name and default domain, the last check's status
+  (`ok`, `signedOut`, `expired`, `unknown`) and problem. Checking runs `az account show` and ARM
+  `/tenants` (`az rest`): neither prompts nor opens a browser.
+- The active tenant is the setting `azure.activeTenant` (empty = your az login; a key that's gone falls
+  back to it), protected (D-077) because it decides which credentials programs run with.
+- Adding runs `az login --tenant <id or domain> --allow-no-subscriptions --output none` (empty: pick in
+  the browser) with the newer login's terminal subscription picker off. One sign-in at a time, its
+  output streamed (`azure.signInProgress`), cancellable (`azure.cancelSignIn` ends the process tree); a
+  sign-in that didn't finish leaves no folder. Removing deletes the folder, which signs that tenant out
+  on this computer. Signing in again for your own login runs plain `az login`.
+- One way to run `az`: `main/azure/env.ts` holds the active environment; project links, setup checks
+  and add-on host processes add it. Add-on hosts get it at start (`init.env`) and on change (`env`
+  message) and add it to every program they run, not only `az`, so a script that calls `az` follows
+  too; an add-on's explicit `options.env` still wins. Chats, terminals and scripts follow in session 4.
+- Switching emits `azure.tenantChanged` (renderer) and the add-on event `azure.tenant` (`JIG_EVENTS`)
+  with the tenant's key, label, user, tenant id and domain.
+- Kept apart: Meetings' own Microsoft sign-in (D-232).

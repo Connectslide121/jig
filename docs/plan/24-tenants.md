@@ -18,7 +18,7 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 - Org and project lists are cached in memory for an hour, per add-on, not keyed by identity.
 - Add-ons are not told about anything identity-related (`JIG_EVENTS` has no such event).
 
-## Design (Claude, on my own — to confirm with Jon before session 1)
+## Design (Claude, on my own; recorded as D-282 in session 1)
 
 - **A tenant is one `az` sign-in in its own folder.** Jig keeps one Azure CLI config folder per tenant
   under `~/.jig/azure/<tenantKey>/` and runs `az` with `AZURE_CONFIG_DIR` pointing at it. The Azure CLI
@@ -45,16 +45,22 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 1 — Host: tenants, isolated `az` sign-ins, one way to run `az`
 
-- [ ] Pure logic in `packages/*`: tenant keys, the tenants file shape, merging `az account show` and
-      ARM tenant output, and an `azEnv(tenant)` helper; unit tests.
-- [ ] State file + `azure.activeTenant` setting (`ConfigSchema`, `SETTINGS_GUIDE`, `PROTECTED_SETTINGS`,
+- [x] Pure logic in `packages/*`: tenant keys, the tenants file shape, merging `az account show` and
+      ARM tenant output, and an `azEnv(tenant)` helper; unit tests. (`packages/azure`)
+- [x] State file + `azure.activeTenant` setting (`ConfigSchema`, `SETTINGS_GUIDE`, `PROTECTED_SETTINGS`,
       `docs/reference/state.md`).
-- [ ] IPC `azure.tenants`, `azure.addTenant`, `azure.signInAgain`, `azure.renameTenant`,
+- [x] IPC `azure.tenants`, `azure.addTenant`, `azure.signInAgain`, `azure.renameTenant`,
       `azure.removeTenant`, `azure.setActiveTenant`, event `azure.tenantChanged` (`shared/ipc.ts`,
-      validation, `docs/reference/ipc.md`). Adding streams the `az login` progress and can be cancelled.
-- [ ] Inject `AZURE_CONFIG_DIR` for the active tenant into every `az` the host runs (add-on host
-      runtime `exec`/`spawn`, links, setup checks). Add `azure.tenant` to `JIG_EVENTS`.
-- [ ] A "signed out / expired" state per tenant (from the `az login` error mapping) without prompting.
+      validation, `docs/reference/ipc.md`). Adding streams the `az login` progress and can be cancelled
+      (`azure.signInProgress`, `azure.cancelSignIn`).
+- [x] Inject `AZURE_CONFIG_DIR` for the active tenant into every `az` the host runs (add-on host
+      runtime `exec`/`spawn`, links, setup checks). Add `azure.tenant` to `JIG_EVENTS`. `AZURE_EXTENSION_DIR`
+      stays on your own extensions, or `azure-devops` would be missing in a new folder.
+- [x] A "signed out / expired" state per tenant (from the `az login` error mapping) without prompting
+      (`azure.tenants { check: true }`: `az account show` + ARM `/tenants`).
+- [ ] Needs a real machine: add a second tenant (`az login` in the browser), sign in again, cancel,
+      remove; Pipelines and links with a tenant active (they get the environment, their caches don't
+      follow yet: session 3).
 
 ## Session 2 — Top bar tenant switch and the manage dialog
 

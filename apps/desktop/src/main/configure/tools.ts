@@ -79,7 +79,7 @@ browser.showWhenUsed: true|false, open the browser view when Claude starts using
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it; checkIn: off|weekly|biweekly, a short check-in chat about how the user works (off by default).
 setup.firstRunDone: true|false.
-Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), updates.*, addonGallery.sources (git URLs or folders add-ons are installed from; the user adds them in Add-on gallery).`;
+Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), azure.activeTenant (the Azure tenant every az Jig runs uses: a key of a tenant added in Jig, "" = the user's own az login; it decides which credentials programs run with, so the user switches it), updates.*, addonGallery.sources (git URLs or folders add-ons are installed from; the user adds them in Add-on gallery).`;
 
 const show = (v: unknown) => (typeof v === "string" ? `"${v}"` : JSON.stringify(v));
 

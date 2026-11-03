@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { JigError } from "../../shared/ipc";
 import { type AzureItem, azureItems, azureSubscriptions } from "../../shared/links";
 import { resolveCommand } from "../addons/winCommand";
+import { azureEnv } from "../azure/env";
 import { handle } from "../ipc/router";
 
 /** Runs the user's `az` (no shell; `.cmd` through cmd.exe on Windows), JSON out. */
@@ -21,6 +22,8 @@ function az(args: string[]): Promise<unknown> {
         windowsHide: true,
         windowsVerbatimArguments: r.verbatim,
         maxBuffer: 32 * 1024 * 1024,
+        // The active tenant's Azure CLI folder (D-282); nothing for your own az login.
+        env: { ...process.env, ...azureEnv() },
       },
       (error, stdout, stderr) => {
         if (error) {

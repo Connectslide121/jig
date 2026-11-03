@@ -462,7 +462,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Phase 23 (`docs/plan/23-jons-notes.md`) is done. Next: try its features on a real machine (a real Teams
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
-6. Run `npm run check` before every commit; keep plan, docs and decisions true.
+6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): session 1 (host side, D-282) is done; there is
+   no UI yet (session 2: the top bar switch). Next: session 2.
+7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
 

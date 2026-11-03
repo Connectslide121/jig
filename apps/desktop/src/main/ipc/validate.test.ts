@@ -38,6 +38,14 @@ describe("IPC checks", () => {
     ).toBeUndefined();
   });
 
+  it("lets only tenant ids and domains reach az login", () => {
+    expect(invalidArgs("azure.addTenant", { tenant: "contoso.onmicrosoft.com" })).toBeUndefined();
+    expect(invalidArgs("azure.addTenant", { tenant: "" })).toBeUndefined();
+    expect(invalidArgs("azure.addTenant", { tenant: "--use-device-code" })).toMatch(/^tenant:/);
+    expect(invalidArgs("azure.signInAgain", { key: "../x" })).toMatch(/^key:/);
+    expect(invalidArgs("azure.renameTenant", { key: "contoso", label: " " })).toMatch(/^label:/);
+  });
+
   it("knows which files would run when opened", () => {
     expect(EXECUTABLE.test("C:\\\\tools\\\\setup.EXE")).toBe(true);
     expect(EXECUTABLE.test("deploy.ps1")).toBe(true);

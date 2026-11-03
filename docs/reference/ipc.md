@@ -202,6 +202,13 @@ settings, add-on permissions.
 | `addons.importPackage` | `{ path, replace? }` | `{ id, name }` | installs into `~/.jig/addons/<id>`, records it in the history, reloads (schema) |
 | `addons.gallery` | `{ refresh? }` | `GallerySource[]` | the add-on gallery (D-179): each source in `addonGallery.sources` with its add-ons (id, name, version, permissions, problems, the one you have) or its error; `refresh` fetches git sources again |
 | `addons.galleryInstall` | `{ source, id, replace? }` | `{ id, name }` | installs an add-on from a source in Settings (no other), like `addons.importPackage` (schema) |
+| `azure.tenants` | `{ check? }` | `TenantsState` | your az login first, then the tenants added in Jig, and `active` (D-282). `check`: asks each tenant's Azure CLI (`az account show`, ARM `/tenants`) who is signed in, without a prompt, and records `signedOut` / `expired` (schema) |
+| `azure.addTenant` | `{ tenant, label? }` | `TenantsState` | `az login --tenant <tenant> --allow-no-subscriptions` with `AZURE_CONFIG_DIR=~/.jig/azure/<key>` (the system browser opens; empty `tenant` = pick in the browser), then a check. Output as `azure.signInProgress`; one sign-in at a time. `busy`, `cancelled`, `az_missing`, `az_login_failed`; a sign-in that didn't finish leaves no folder (schema: a GUID or a domain) |
+| `azure.signInAgain` | `{ key }` | `TenantsState` | `az login` again in that tenant's folder (`default`: your own az login, without `--tenant`); same errors (schema) |
+| `azure.cancelSignIn` | — | — | stops the running `az login` (its process tree); the waiting call rejects with `cancelled` |
+| `azure.renameTenant` | `{ key, label }` | `TenantsState` | your az login keeps its name (schema) |
+| `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
+| `azure.setActiveTenant` | `{ key }` | `TenantsState` | sets `azure.activeTenant` (`default` → empty); the renderer may also change the setting directly (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |
 | `speech.voiceModel` | — | `VoiceModelStatus` | the natural voice's model: `downloaded`, bytes on disk (D-243) |
@@ -236,7 +243,9 @@ settings, add-on permissions.
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
-| `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project; D-215) |
+| `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project, Azure tenant; D-215) |
+| `azure.tenantChanged` | `TenantsState` | a tenant was added, checked, renamed or removed, or another became active (then add-ons also get `azure.tenant`, D-282) |
+| `azure.signInProgress` | `{ key, text, done? }` | a line of `az login`'s output (WARNING lines left out; never tokens: `--output none`), then `done` |
 | `usage.changed` | `PlanUsage` | plan usage refreshed, or Claude Code reported a rate limit |
 | `speech.progress` | `{ model, loaded, total }` | a dictation model, or the natural voice (`model: "voice"`), is downloading (bytes; at most every 150 ms) |
 | `builds.changed` | `BuildJob[]` | a build started, changed status or was accepted/discarded |

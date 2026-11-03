@@ -155,6 +155,16 @@ export const ConfigSchema = z.object({
       translationModel: z.string().max(100).default("haiku"),
     })
     .prefault({}),
+  /** Azure tenants (D-282). */
+  azure: z
+    .object({
+      /**
+       * The tenant every `az` Jig runs uses: a key from `~/.jig/azure/tenants.json`, or empty for
+       * your own az login (no override).
+       */
+      activeTenant: z.string().max(40).default(""),
+    })
+    .prefault({}),
   /** The Chats list: how it groups chats, and the order you gave pinned chats. */
   chatList: z
     .object({
@@ -260,8 +270,8 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
 
 /**
  * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
- * program runs as Claude Code, shell commands Jig runs (updates), and where add-on code comes from
- * (the gallery's sources). D-077.
+ * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
+ * commands Jig runs (updates), and where add-on code comes from (the gallery's sources). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "engine.claudePath",
@@ -270,6 +280,7 @@ export const PROTECTED_SETTINGS = [
   "editor.claudeCompletionModel",
   "meetings.aiTranslation",
   "meetings.translationModel",
+  "azure.activeTenant",
   "speech.wake",
   "terminal.shell",
   "updates",

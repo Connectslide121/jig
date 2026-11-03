@@ -53,7 +53,7 @@ export function runCommand(
 }
 
 /** Ends a command and everything it started (npm runs node, which runs the build…). */
-function killTree(pid: number | undefined): void {
+export function killTree(pid: number | undefined): void {
   if (!pid) return;
   try {
     if (process.platform === "win32")

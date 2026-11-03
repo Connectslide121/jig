@@ -423,7 +423,8 @@
                   "chat.failed",
                   "git.commit",
                   "git.branch",
-                  "project.active"
+                  "project.active",
+                  "azure.tenant"
                 ]
               },
               "run": {

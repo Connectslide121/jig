@@ -14,7 +14,18 @@ import { resolveCommand } from "./winCommand";
  * Messages, main → here: init, call, rpcResult. Here → main: ready, result, rpc.
  */
 export type ToHost =
-  | { t: "init"; addonId: string; dir: string; dataDir: string; bundle: string; permissions: string[] }
+  | {
+      t: "init";
+      addonId: string;
+      dir: string;
+      dataDir: string;
+      bundle: string;
+      permissions: string[];
+      /** Added to every program the add-on runs: the active Azure tenant's folder (D-282). */
+      env?: Record<string, string>;
+    }
+  /** The active Azure tenant changed: programs started from now on get this environment. */
+  | { t: "env"; env: Record<string, string> }
   | { t: "call"; id: number; method: string; args: unknown }
   | { t: "rpcResult"; id: number; ok: boolean; value?: unknown; error?: string };
 
@@ -49,6 +60,8 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   let module: Record<string, unknown> = {};
   let api: AddonHostApi | undefined;
   let rpcId = 0;
+  /** The active Azure tenant's `AZURE_CONFIG_DIR` (empty for your own az login), D-282. */
+  let hostEnv: Record<string, string> = {};
   /** Open file watchers (they end with the process, which stops when the add-on reloads). */
   const watchers = new Set<FSWatcher>();
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
@@ -83,7 +96,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
               timeout: options.timeoutMs ?? 120_000,
               maxBuffer: 64 * 1024 * 1024,
               windowsHide: true,
-              env: { ...process.env, ...options.env },
+              env: { ...process.env, ...hostEnv, ...options.env },
               encoding: "buffer",
             },
             (error, stdout, stderr) => {
@@ -162,7 +175,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
           windowsVerbatimArguments: resolved.verbatim,
           cwd: options.cwd,
           windowsHide: true,
-          env: { ...process.env, ...options.env },
+          env: { ...process.env, ...hostEnv, ...options.env },
         });
         child.stdout?.setEncoding("utf8");
         child.stderr?.setEncoding("utf8");
@@ -230,7 +243,10 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   }
 
   async function handle(message: ToHost): Promise<void> {
-    if (message.t === "init") {
+    if (message.t === "env") {
+      hostEnv = message.env;
+    } else if (message.t === "init") {
+      hostEnv = message.env ?? {};
       try {
         api = makeApi(message);
         module = (await import(`${pathToFileURL(message.bundle).href}?t=${Date.now()}`)) as Record<

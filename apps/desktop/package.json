@@ -22,6 +22,7 @@
     "@codemirror/lint": "6.9.7",
     "@codemirror/lsp-client": "6.3.0",
     "@huggingface/transformers": "4.3.2",
+    "@jig/azure": "*",
     "@jig/documents": "*",
     "@jig/learning": "*",
     "@jig/sdk": "*",

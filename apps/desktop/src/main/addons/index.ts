@@ -9,6 +9,8 @@ import type { AddonInfo, AddonOriginInfo } from "../../shared/addons";
 import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { appWindows, focusJig, hiddenMode, mainWindow } from "../appWindows";
+import { onActiveTenantChange } from "../azure";
+import { onAzureEnvChange } from "../azure/env";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -329,6 +331,20 @@ export async function startAddons(): Promise<void> {
     if (event) dispatch(event.name, event.payload);
   });
   const git = new GitEvents(dispatch);
+  // Another Azure tenant (D-282): running host processes run their next az with it, and add-ons hear.
+  onAzureEnvChange((env) => s.setHostEnv(env));
+  onActiveTenantChange((state) => {
+    const t = state.tenants.find((x) => x.key === state.active);
+    if (!t) return;
+    dispatch("azure.tenant", {
+      key: t.key,
+      label: t.label,
+      isDefault: t.isDefault,
+      user: t.user,
+      tenantId: t.tenantId,
+      domain: t.domain,
+    });
+  });
   let activeId: string | undefined;
   const followProjects = (state: Awaited<ReturnType<ReturnType<typeof projectStore>["state"]>>) => {
     const repos = new Set<string>();
