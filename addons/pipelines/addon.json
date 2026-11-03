@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "icon": "rocket",
   "permissions": ["exec:az", "exec:git", "fs:read"],
+  "exports": ["pipelines"],
   "contributes": {
     "views": [
       {

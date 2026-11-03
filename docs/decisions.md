@@ -3179,3 +3179,14 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   macOS/Linux frame screens only (Electron can't read other apps' window bounds).
 - The frame goes when sharing stops (the room reports it with `meetings.shareStopped`), the meeting
   ends or the meeting window closes.
+
+## D-267: A workflow's pipeline is picked from your pipelines
+
+**Who:** Jon wanted a dropdown of his pipelines instead of typing organisation, project and id.
+
+- The pipeline step and the "after a pipeline" trigger show one dropdown, in the row the three fields
+  used: the pipelines the Pipelines add-on finds in your checked-out repositories, grouped by
+  repository. The Pipelines add-on exports `pipelines` for this (D-215).
+- "Another pipeline (type it in)…" swaps the dropdown for the three fields in the same row; a saved
+  pipeline that isn't found stays selected as "org / project · pipeline N". With the Pipelines add-on
+  off, or no pipelines found, the fields show as before. **Claude, on my own:** those fallbacks.

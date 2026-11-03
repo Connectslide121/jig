@@ -163,3 +163,33 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   await expect(cardAgain.getByTestId("pipeline-time")).toHaveText("12m", { timeout: 1000 });
   await expect(cardAgain.getByTestId("pipeline-loading")).toHaveCount(0);
 });
+
+test("Workflows: a pipeline step is picked from your pipelines", async ({ page, jigHome }) => {
+  const bin = join(jigHome, "fake-bin");
+  await writeFile(join(bin, "az-signed-out.cjs"), fakeAz(jigHome));
+  await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${fakeAz(jigHome)}`);
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  git(dir, "init", "-q", "-b", "main");
+  git(dir, "remote", "add", "origin", "https://dev.azure.com/contoso/Shop/_git/shop");
+  await writeFile(join(dir, "azure-pipelines.yml"), YAML);
+  await hostCall(page, "projects.add", { path: dir });
+
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show workflows");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("workflow-new").click();
+  const editor = page.getByTestId("workflow-editor");
+  await editor.getByTestId("workflow-name").fill("Deploy");
+  await editor.getByTestId("workflow-add-step").click();
+  const step = editor.getByTestId("workflow-edit-step").first();
+  await step.getByLabel("Kind").selectOption("pipeline");
+  await step.getByTestId("step-title").fill("Deploy the shop");
+  // The Pipelines add-on's pipelines, grouped by repository; a retired one isn't there.
+  const picker = step.getByTestId("step-pipeline");
+  await expect(picker.locator("optgroup[label=shop] option")).toHaveText(["Shop CI"], { timeout: 20000 });
+  await page.screenshot({ path: test.info().outputPath("pipeline-step.png") });
+  await picker.selectOption({ label: "Shop CI" });
+  await editor.getByTestId("workflow-save").click();
+  await expect(page.getByTestId("workflow-steps").getByTestId("step-detail")).toContainText("12");
+});

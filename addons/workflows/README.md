@@ -9,8 +9,8 @@ Lists of steps you repeat, per project: a release, a deploy, a morning routine (
   - **Ask me first:** Run it / Skip;
   - **Jig does it:** runs by itself when it's next.
   Step kinds: a check you do, a command (run in the platform shell in the project folder; output
-  shown), a script Jig found in the project (runs in a terminal), an Azure DevOps pipeline (`az
-  pipelines run`), a message to Claude (a new chat), or waiting for your OK. **Edit** changes the name,
+  shown), a script Jig found in the project (runs in a terminal), an Azure DevOps pipeline (picked from the
+  pipelines the Pipelines add-on finds, or typed in; `az pipelines run`), a message to Claude (a new chat), or waiting for your OK. **Edit** changes the name,
   goal, steps (kind, who does it, order) and when it runs.
 - **Schedules** (every day, weekdays, once a week, at a time) fire **while Jig is open** (watcher
   `schedules`, every minute). A workflow whose steps are all automatic commands or pipelines runs by

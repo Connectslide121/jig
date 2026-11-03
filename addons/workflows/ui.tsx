@@ -983,38 +983,129 @@ function Editor({
   );
 }
 
-/** An Azure DevOps pipeline: its organisation, project and id (a step to start, or a trigger to wait for). */
+/** A pipeline the Pipelines add-on found in a checked-out repository (its `pipelines` export). */
+interface FoundPipeline {
+  key: string;
+  org: string;
+  project: string;
+  id: number;
+  name: string;
+  repoName: string;
+}
+type StepPipeline = { org: string; project: string; id: number };
+
+/** The organisation's name, from a name or a URL (`https://dev.azure.com/org`, `org.visualstudio.com`). */
+function orgName(org: string): string {
+  const t = org.trim().replace(/\/+$/, "");
+  return (
+    /dev\.azure\.com\/([^/]+)/i.exec(t)?.[1] ??
+    /^https?:\/\/([^./]+)\.visualstudio\.com/i.exec(t)?.[1] ??
+    t
+  ).toLowerCase();
+}
+const samePipeline = (a: StepPipeline, b: StepPipeline) =>
+  a.id === b.id && orgName(a.org) === orgName(b.org) && a.project.toLowerCase() === b.project.toLowerCase();
+const OTHER = "__other__";
+
+/**
+ * An Azure DevOps pipeline (a step to start, or a trigger to wait for): picked from your pipelines,
+ * the ones the Pipelines add-on finds in your checked-out repositories, grouped by repository. One
+ * that isn't there is typed in (organisation, project, id) in the same row; so is every pipeline
+ * when the Pipelines add-on is off.
+ */
 function PipelineFields({
   value,
   onChange,
 }: {
-  value?: { org: string; project: string; id: number };
-  onChange: (pipeline: { org: string; project: string; id: number }) => void;
+  value?: StepPipeline;
+  onChange: (pipeline: StepPipeline) => void;
 }) {
+  const ctx = useAddon();
   const v = { org: value?.org ?? "", project: value?.project ?? "", id: value?.id ?? 0 };
+  const [found, setFound] = useState<FoundPipeline[] | null>();
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    let live = true;
+    ctx.addons
+      .call<{ pipelines: FoundPipeline[] }>("pipelines", "pipelines", {})
+      .then((r) => live && setFound(r.pipelines))
+      .catch(() => live && setFound(null));
+    return () => {
+      live = false;
+    };
+  }, [ctx]);
+  const current = v.id ? found?.find((p) => samePipeline(p, v)) : undefined;
+  if (found === null || typing || (found?.length === 0 && !v.id))
+    return (
+      <div className="flex gap-2">
+        <Input
+          className="flex-1"
+          placeholder="https://dev.azure.com/org"
+          value={v.org}
+          onChange={(e) => onChange({ ...v, org: e.target.value })}
+          aria-label="Organisation"
+        />
+        <Input
+          className="w-40"
+          placeholder="Project"
+          value={v.project}
+          onChange={(e) => onChange({ ...v, project: e.target.value })}
+          aria-label="Azure DevOps project"
+        />
+        <Input
+          className="w-24"
+          placeholder="Id"
+          value={v.id ? String(v.id) : ""}
+          onChange={(e) => onChange({ ...v, id: Number(e.target.value) || 0 })}
+          aria-label="Pipeline id"
+        />
+        {found && found.length > 0 && (
+          <IconButton icon={ListChecks} label="Pick from your pipelines" onClick={() => setTyping(false)} />
+        )}
+      </div>
+    );
+  const repos = [...new Set((found ?? []).map((p) => p.repoName))];
   return (
-    <div className="flex gap-2">
-      <Input
-        className="flex-1"
-        placeholder="https://dev.azure.com/org"
-        value={v.org}
-        onChange={(e) => onChange({ ...v, org: e.target.value })}
-        aria-label="Organisation"
-      />
-      <Input
-        className="w-40"
-        placeholder="Project"
-        value={v.project}
-        onChange={(e) => onChange({ ...v, project: e.target.value })}
-        aria-label="Azure DevOps project"
-      />
-      <Input
-        className="w-24"
-        placeholder="Id"
-        value={v.id ? String(v.id) : ""}
-        onChange={(e) => onChange({ ...v, id: Number(e.target.value) || 0 })}
-        aria-label="Pipeline id"
-      />
-    </div>
+    <Select
+      value={current?.key ?? (v.id ? "saved" : "")}
+      disabled={found === undefined}
+      aria-label="Pipeline"
+      data-testid="step-pipeline"
+      onChange={(e) => {
+        if (e.target.value === OTHER) return setTyping(true);
+        const p = found?.find((x) => x.key === e.target.value);
+        if (p)
+          onChange({
+            org: p.org.startsWith("http") ? p.org : `https://dev.azure.com/${p.org}`,
+            project: p.project,
+            id: p.id,
+          });
+      }}
+    >
+      {found === undefined ? (
+        <option value="">Finding your pipelines…</option>
+      ) : (
+        <>
+          {!current && !v.id && <option value="">Pick a pipeline…</option>}
+          {!current && v.id > 0 && (
+            <option value="saved">
+              {orgName(v.org)} / {v.project} · pipeline {v.id}
+            </option>
+          )}
+          {repos.map((repo) => (
+            <optgroup key={repo} label={repo}>
+              {found
+                .filter((p) => p.repoName === repo)
+                .map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.name}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+          <option value={OTHER}>Another pipeline (type it in)…</option>
+        </>
+      )}
+    </Select>
   );
 }
