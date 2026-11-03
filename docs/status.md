@@ -63,7 +63,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.3.0 being prepared (2026-11-03): Jig 0.3.0: Teams calls and translated captions, code completion (Copilot or Claude) and language servers in the editor, project knowledge with claude.ai import, per-project task queues with history, meeting history and Azure DevOps boards. Publication not yet verified.
+Jig 0.3.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.3.0),
+source/tag `8d041765232c2dacc5d42d3ef83ec64aa5d4ff04`. Installer: 371,216,992 bytes;
+SHA-256 `9fc35d6fdbda062d8a6ae5e10fac9c41a7d43501ce0ecb10c08cb23914afb058`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.3.0 with its feed and installer. In 0.3.0: Jig 0.3.0: Teams calls and translated captions, code completion (Copilot or Claude) and language servers in the editor, project knowledge with claude.ai import, per-project task queues with history, meeting history and Azure DevOps boards.
 
 Jig 0.2.0 published (2026-11-02): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.2.0),
 source/tag `5f286d05f57fdd650e0037ca1331d11166d9b858`. Installer: 369,632,053 bytes;
