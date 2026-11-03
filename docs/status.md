@@ -149,6 +149,14 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Language servers (2026-11-03, D-259): in the file editor, the language servers you install give
+errors and warnings as you type (wavy underlines, message on hover), hover information, go to
+definition (F12; another file opens in Preview), find references (Shift+F12), rename (F2), signature
+help and Format document (Shift+Alt+F). The status line names the server (click for these and
+Restart); "No language server" offers to install one. Settings → Editor → Language servers lists
+TypeScript/JavaScript, Python, C#, JSON, CSS, HTML, Go and Rust with where each was found, or Install…
+(runs the install command in a terminal). Needs a try with real servers (`typescript-language-server`).
+
 Project knowledge (2026-11-03, D-256): a project's Home has **Knowledge**: drop files on it or
 Add files… (text, Markdown, code, PDF, Word, Excel, PowerPoint), click one to read it, ×
 removes it. Every chat in the project is told which documents there are and Claude reads them with

@@ -43,6 +43,11 @@ settings, add-on permissions.
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
+| `lsp.open` | `{ path }` | `LanguageServerStatus` | the language server for a file (D-259): ready (id, root, language id), missing (install command), none or off |
+| `lsp.send` | `{ id, message }` | — | a JSON-RPC message (string) to that server; answers come as event `lsp.message`, `lsp.exited` when it stops |
+| `lsp.release` | `{ id }` | — | an editor closed; the server stops 3 minutes after its last one |
+| `lsp.restart` | `{ id }` | — | stop it (the next editor starts it again) |
+| `lsp.servers` | — | `LanguageServerInfo[]` | the known servers, found on PATH or not (Settings → Editor) |
 | `knowledge.list` | `{ projectId }` | `KnowledgeDoc[]` | a project's knowledge (D-256); event `knowledge.changed` |
 | `knowledge.read` | `{ projectId, id }` | `{ name, text }` | one document's text |
 | `knowledge.addFiles` | `{ projectId, paths? }` | `{ added, skipped }` | add files (a picker without `paths`): text, code, Word, Excel, PowerPoint |

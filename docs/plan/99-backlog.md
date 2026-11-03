@@ -10,8 +10,3 @@ Ideas and deferred work. Each entry says why it is here.
   in git history (commit "Builder level 3: …").
 - **Git live refresh on Linux by watching folders** (D-098): needs a folder walker that follows
   `.gitignore` (Node's recursive watch can't leave `node_modules` out); until then Linux polls.
-- **Language-server features in the editor** (Jon asked about Monaco, 2026-11-03): stay on CodeMirror
-  (D-255 notes) and add errors, hover, go to definition and completion lists from language servers
-  (typescript-language-server, C#, Python) run by the main process, like Copilot's. Monaco would bring
-  TypeScript help without a server and VS Code's diff editor, but costs several MB, its own workers, a
-  rewrite of every editor feature and weaker theme-token fit.

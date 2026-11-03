@@ -762,6 +762,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Code and text files are editable right there: Ctrl+S saves, and Jig asks if Claude changed the file meanwhile",
                 "A real editor: your theme's code colours, indentation guides, closing brackets, several cursors, folding, find and replace, go to line (Ctrl+G), word wrap and a status line (Settings → Editor)",
                 "Code completion as you type, Tab to take it: GitHub Copilot (optional, set up from Get started) or Claude",
+                "Language servers you install (TypeScript, Python, C#, Go…): errors as you type, hover, go to definition (F12), rename (F2), format",
                 "Markdown previews render safe embedded HTML, including centered headings and sized local images",
                 "Search → Preview a file… for anything else",
               ]}

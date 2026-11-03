@@ -84,6 +84,11 @@ export const ConfigSchema = z.object({
       claudeCompletion: z.boolean().default(false),
       /** The model Claude completes with (a value from Claude Code's model list); Haiku is quickest. */
       claudeCompletionModel: z.string().default("haiku"),
+      /**
+       * Language servers you installed (TypeScript, Python, C#…) give the editor errors, hover, go to
+       * definition, references, rename and formatting (D-259). On by default; Jig only runs ones on PATH.
+       */
+      languageServers: z.boolean().default(true),
     })
     .prefault({}),
   chat: z

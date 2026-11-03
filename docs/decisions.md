@@ -3072,3 +3072,23 @@ for test runs. Supersedes the per-change part of D-242.
   fixed then. Jon can ask for a test run at any time.
 - UI work is still looked at (a screenshot) before it's called done.
 
+## D-259: Language servers in the editor, through CodeMirror's LSP client
+
+**Who:** Jon asked for the language-server features after D-257 (keep CodeMirror). The shape is
+**Claude, on my own**.
+
+- **The user's own servers:** like git, gh and az, Jig uses language servers installed on the
+  machine: a catalogue (`shared/lsp.ts`: TypeScript/JavaScript, Python, C#, JSON, CSS, HTML, Go,
+  Rust) with each command and its install line. Jig doesn't bundle or download them; Settings →
+  Editor shows which are found on PATH and runs an install command in a visible terminal.
+- **Main runs them, the editor talks:** the main process starts one server per server and project
+  root (nearest marker file, else git root), frames LSP over stdio and relays each message as a
+  string (`lsp.send` / `lsp.message`). The renderer uses `@codemirror/lsp-client` (MIT, by
+  CodeMirror's author) for completion lists, hover, diagnostics, go to definition, references,
+  rename, signature help and formatting, so Jig writes no protocol features itself. A server stops 3
+  minutes after its last editor closes.
+- **Jig's workspace:** definitions in another file open it in Preview (`displayFile`), URIs are
+  compared loosely (servers write `c%3A`), a file in two editors talks through the first, and hover
+  Markdown is sanitised (DOMPurify). Diagnostics and tooltips use Jig's tokens.
+- `npm` `.cmd` launchers on Windows run through a shell with Jig's own resolved path, never input.
+

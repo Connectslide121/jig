@@ -22,6 +22,7 @@ import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
 import { registerLinkHandlers } from "./links";
 import { logger } from "./log";
+import { startLanguageServers, stopLanguageServers } from "./lsp";
 import { startMeetings } from "./meetings";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
@@ -98,6 +99,7 @@ async function start() {
   await startMeetings();
   await startCompletion();
   startKnowledge();
+  startLanguageServers();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
   startDevRequests();
@@ -123,6 +125,7 @@ app.on("will-quit", () => {
   stopBrowser();
   stopUsage();
   stopCompletion();
+  stopLanguageServers();
 });
 
 app.on("window-all-closed", () => {

@@ -11,6 +11,7 @@ import {
   unfoldAll,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
+import { findReferences, formatDocument, jumpToDefinition, renameSymbol } from "@codemirror/lsp-client";
 import {
   gotoLine,
   highlightSelectionMatches,
@@ -34,10 +35,11 @@ import {
   rectangularSelection,
 } from "@codemirror/view";
 import { indentationMarkers } from "@replit/codemirror-indentation-markers";
-import { ChevronDown, MoreHorizontal, Pilcrow, Sparkles, WrapText } from "lucide-react";
+import { Braces, ChevronDown, MoreHorizontal, Pilcrow, Sparkles, WrapText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { JigConfig } from "../../../shared/config";
 import { detectIndent, type Indent } from "../../../shared/indent";
+import type { LanguageServerStatus } from "../../../shared/lsp";
 import { isAngularTemplate } from "../../../shared/preview";
 import { call } from "../../lib/host";
 import { useAppearance } from "../../stores/appearance";
@@ -47,8 +49,10 @@ import { openSettings } from "../../workbench/actions";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { openCopilotDialog } from "../completion/CopilotDialog";
 import { useCompletion, watchCompletion } from "../completion/store";
+import { newTerminal } from "../terminals/actions";
 import { editorSyntax } from "./editorSyntax";
 import { ghostText } from "./ghostText";
+import { languageServerFor } from "./languageServer";
 import { wrapIndent } from "./wrapIndent";
 
 /**
@@ -192,6 +196,7 @@ export function CodeEditor({
     whitespace: new Compartment(),
     brackets: new Compartment(),
     indent: new Compartment(),
+    lsp: new Compartment(),
   });
   const handlers = useRef({ onChange, onSave });
   handlers.current = { onChange, onSave };
@@ -207,6 +212,7 @@ export function CodeEditor({
   // Inline completions (D-255): who completes, read by the editor extension on each pause.
   const completion = useCompletion((s) => s.state);
   const [suggesting, setSuggesting] = useState(false);
+  const [server, setServer] = useState<LanguageServerStatus>();
   const live = useRef({ completion, indent });
   live.current = { completion, indent };
   useEffect(() => watchCompletion(), []);
@@ -249,6 +255,7 @@ export function CodeEditor({
           ),
           p.brackets.of(settings?.closeBrackets === false ? [] : closeBrackets()),
           p.indent.of(indentExtension(first)),
+          p.lsp.of([]),
           ghostText({
             path,
             // Copilot answers quickly; Claude Code waits for a longer pause (each ask is a model call).
@@ -301,9 +308,24 @@ export function CodeEditor({
       void lang.load().then((support) => {
         if (view.current === v) v.dispatch({ effects: p.language.reconfigure(support) });
       });
+    // The language server for this file, if you have one installed (D-259).
+    let release = () => {};
+    setServer(undefined);
+    void languageServerFor(path)
+      .then((found) => {
+        release = found.release;
+        if (view.current !== v) {
+          found.release();
+          return;
+        }
+        setServer(found.status);
+        if (found.extension) v.dispatch({ effects: p.lsp.reconfigure(found.extension) });
+      })
+      .catch(() => setServer({ status: "none" }));
     return () => {
       v.destroy();
       view.current = undefined;
+      release();
       void call("completion.closeFile", { path }).catch(() => {});
     };
   }, [path]);
@@ -379,6 +401,52 @@ export function CodeEditor({
       true,
     );
 
+  const serverMenu = (anchor: HTMLElement) => {
+    const ready = server?.status === "ready" ? server : undefined;
+    const missing = server?.status === "missing" ? server : undefined;
+    openMenuAt(
+      anchor,
+      [
+        {
+          heading: ready
+            ? `${ready.name} language server`
+            : missing
+              ? `${missing.name}: no language server installed`
+              : "Language server",
+        },
+        ...(ready
+          ? [
+              { label: "Go to definition (F12)", onSelect: () => run(jumpToDefinition) },
+              { label: "Find references (Shift+F12)", onSelect: () => run(findReferences) },
+              { label: "Rename symbol (F2)", onSelect: () => run(renameSymbol) },
+              { label: "Format document (Shift+Alt+F)", onSelect: () => run(formatDocument) },
+              { separator: true } as const,
+              {
+                label: "Restart the language server",
+                onSelect: () => void call("lsp.restart", { id: ready.id }),
+              },
+            ]
+          : missing
+            ? [
+                {
+                  label: `Install it… (${missing.install})`,
+                  onSelect: () => void newTerminal(missing.install, `Install ${missing.name}`),
+                  testId: "lsp-install",
+                },
+              ]
+            : []),
+        { label: "Language servers…", onSelect: () => openSettings("editor") },
+      ],
+      true,
+    );
+  };
+  const serverLabel =
+    server?.status === "ready"
+      ? server.name.split(" ")[0]
+      : server?.status === "missing"
+        ? "No language server"
+        : undefined;
+
   const provider = completion?.provider ?? "off";
   const completionLabel =
     provider === "copilot"
@@ -443,6 +511,25 @@ export function CodeEditor({
         </button>
         <span className="flex-1" />
         {/* Left of the fixed items, so a longer label never moves them. */}
+        {serverLabel && (
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-1 hover:text-fg",
+              server?.status === "ready" ? "text-fg" : "text-hint",
+            )}
+            title={
+              server?.status === "ready"
+                ? "Language server: errors, hover, go to definition (F12), rename (F2), format"
+                : "No language server for this file is installed: click to install one"
+            }
+            onClick={(e) => serverMenu(e.currentTarget)}
+            data-testid="editor-lsp"
+          >
+            <Braces className={cn("size-3", server?.status === "ready" ? "text-success" : "text-hint")} />
+            {serverLabel}
+          </button>
+        )}
         <button
           type="button"
           className={cn("flex items-center gap-1 hover:text-fg", provider !== "off" && "text-fg")}

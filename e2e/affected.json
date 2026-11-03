@@ -154,6 +154,15 @@
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {
       "files": [
+        "apps/desktop/src/main/lsp/**",
+        "apps/desktop/src/shared/lsp.ts",
+        "apps/desktop/src/renderer/features/preview/languageServer.ts",
+        "e2e/fake-lsp.mjs"
+      ],
+      "specs": ["language-servers.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/renderer/features/knowledge/**",
         "apps/desktop/src/main/knowledge/**",
         "apps/desktop/src/shared/knowledge.ts"

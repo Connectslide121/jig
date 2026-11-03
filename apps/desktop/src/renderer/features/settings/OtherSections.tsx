@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
+import type { LanguageServerInfo } from "../../../shared/lsp";
 import { modelOptions } from "../../../shared/models";
 import { shellName } from "../../../shared/shellNames";
 import { call, errorMessage } from "../../lib/host";
@@ -19,6 +20,7 @@ import { updateConfig, useConfig } from "../../stores/config";
 import {
   Badge,
   Button,
+  cn,
   confirmDialog,
   IconButton,
   Input,
@@ -37,6 +39,7 @@ import { notify } from "../../workbench/toasts";
 import { openCopilotDialog } from "../completion/CopilotDialog";
 import { useCompletion, watchCompletion } from "../completion/store";
 import { lookForPatterns, useLearning } from "../learning/store";
+import { newTerminal } from "../terminals/actions";
 import { shellEntries } from "../terminals/shellEntries";
 import { useShellChoices } from "../terminals/shells";
 import { SettingRow, SettingsSection } from "./parts";
@@ -416,6 +419,75 @@ export function EngineSettings() {
     </SettingsSection>
   );
 }
+/**
+ * Language servers (D-259): the switch, and each server Jig knows with where it was found, or an
+ * Install button that runs its install command in a terminal you can watch.
+ */
+function LanguageServerRows({ enabled }: { enabled: boolean }) {
+  const [servers, setServers] = useState<LanguageServerInfo[]>();
+  const [version, setVersion] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Check again re-reads PATH.
+  useEffect(() => {
+    void call("lsp.servers").then(setServers, () => setServers([]));
+  }, [version]);
+  return (
+    <>
+      <SettingRow
+        label="Language servers"
+        description="Errors and warnings as you type, hover, go to definition (F12), references, rename (F2) and formatting, from the language servers you install. Jig runs them for the files you open."
+      >
+        <Switch
+          label="Language servers"
+          checked={enabled}
+          onChange={(languageServers) => void updateConfig({ editor: { languageServers } })}
+        />
+      </SettingRow>
+      {/* A fixed height while it looks on PATH, so the rows below don't move. */}
+      <div className="relative min-h-32 rounded-md border border-line" data-testid="settings-lsp">
+        {!servers ? (
+          <Spinner center />
+        ) : (
+          <>
+            {servers.map((s) => (
+              <div
+                key={s.id}
+                className="flex h-10 items-center gap-3 border-b border-line px-3 text-sm last:border-b-0"
+                data-testid="settings-lsp-row"
+              >
+                <span className={cn("size-2 shrink-0 rounded-full", s.path ? "bg-success" : "bg-hint")} />
+                <span className="w-48 shrink-0 truncate">{s.name}</span>
+                <span
+                  className="min-w-0 flex-1 truncate font-mono text-2xs text-hint"
+                  title={s.path ?? s.install}
+                >
+                  {s.path ?? s.install}
+                </span>
+                <span className="flex w-28 shrink-0 justify-end">
+                  {s.path ? (
+                    <span className="text-xs text-muted">
+                      {s.running ? `Running (${s.running})` : "Installed"}
+                    </span>
+                  ) : (
+                    <Button size="sm" onClick={() => void newTerminal(s.install, `Install ${s.name}`)}>
+                      Install…
+                    </Button>
+                  )}
+                </span>
+              </div>
+            ))}
+            <div className="flex h-9 items-center px-3">
+              <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => setVersion((n) => n + 1)}>
+                Check again
+              </Button>
+              <span className="ml-2 text-2xs text-hint">after installing one</span>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function EditorSettings() {
   const config = useConfig((s) => s.config);
   const completion = useCompletion((s) => s.state);
@@ -511,6 +583,7 @@ export function EditorSettings() {
           onChange={(claudeCompletion) => void updateConfig({ editor: { claudeCompletion } })}
         />
       </SettingRow>
+      <LanguageServerRows enabled={e.languageServers} />
       <ModelSetting
         label="Model for completion"
         description="For completion with Claude. Haiku is the quickest; larger models are slower and use more of your plan."

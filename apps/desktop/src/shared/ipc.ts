@@ -118,6 +118,11 @@ export interface HostMethods {
   "meetings.signOut": { args: void; result: void };
   "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
   "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "lsp.open": { args: { path: string }; result: import("./lsp").LanguageServerStatus };
+  "lsp.send": { args: { id: string; message: string }; result: void };
+  "lsp.release": { args: { id: string }; result: void };
+  "lsp.restart": { args: { id: string }; result: void };
+  "lsp.servers": { args: void; result: import("./lsp").LanguageServerInfo[] };
   "knowledge.list": { args: { projectId: string }; result: import("./knowledge").KnowledgeDoc[] };
   "knowledge.read": { args: { projectId: string; id: string }; result: { name: string; text: string } };
   "knowledge.remove": { args: { projectId: string; id: string }; result: void };
@@ -603,6 +608,8 @@ export interface HostEvents {
   "meetings.changed": void;
   "completion.changed": import("./completion").CompletionState;
   "knowledge.changed": { projectId: string };
+  "lsp.message": { id: string; message: string };
+  "lsp.exited": { id: string };
   "meetings.leaveRequested": void;
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;

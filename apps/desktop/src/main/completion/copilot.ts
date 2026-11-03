@@ -13,6 +13,7 @@ import {
   offsetAt,
   positionAt,
 } from "../../shared/completion";
+import { languageId } from "../../shared/lsp";
 import { openExternal } from "../appWindows";
 import { logger } from "../log";
 import { writeJson } from "../state/jsonStore";
@@ -323,30 +324,4 @@ export class Copilot {
     this.docs.clear();
     this.focused = undefined;
   }
-}
-
-/** LSP language ids for common files (the server uses them to pick its prompt). */
-export function languageId(path: string): string {
-  const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase() ?? "";
-  const ids: Record<string, string> = {
-    ts: "typescript",
-    mts: "typescript",
-    cts: "typescript",
-    tsx: "typescriptreact",
-    js: "javascript",
-    mjs: "javascript",
-    cjs: "javascript",
-    jsx: "javascriptreact",
-    py: "python",
-    cs: "csharp",
-    md: "markdown",
-    yml: "yaml",
-    rs: "rust",
-    rb: "ruby",
-    sh: "shellscript",
-    ps1: "powershell",
-    kt: "kotlin",
-    htm: "html",
-  };
-  return ids[ext] ?? (ext || "plaintext");
 }
