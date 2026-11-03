@@ -361,15 +361,3 @@ export function newestPerPipeline(
   }
   return newest;
 }
-
-/**
- * az's output as text: UTF-8 when it is, else Windows-1252 (the ANSI code page az on Windows prints in,
- * where a build number's "·" would otherwise come out as "�").
- */
-export function decodeAzOutput(bytes: Uint8Array): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder("windows-1252").decode(bytes);
-  }
-}

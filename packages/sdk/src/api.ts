@@ -171,6 +171,17 @@ export interface AddonUiContext {
    */
   onJigEvent<N extends JigEventName>(name: N, listener: (payload: JigEventPayloads[N]) => void): () => void;
   /**
+   * The Azure tenant picked in the top bar (D-282), which every `az` the host code runs uses:
+   * `tenant()` the active one, `tenants()` all of them (your az login first), `switchTo(key)` makes
+   * another one active (a view's "Switch" for something that lives in another tenant). Follow changes
+   * with the `azure.tenant` event.
+   */
+  azure: {
+    tenant(): AddonAzureTenant;
+    tenants(): AddonAzureTenant[];
+    switchTo(key: string): Promise<void>;
+  };
+  /**
    * A badge on one of this add-on's views (its icon in the sidebar and as a tab): a count such as
    * "3 cards assigned to you", or a short text. 0 or undefined clears it.
    */
@@ -388,8 +399,22 @@ export interface AddonChatInfo {
   error?: string;
 }
 
+/** The Azure tenant every `az` Jig runs uses (D-282): `default` is your own az login. */
+export type AddonAzureTenant = JigEventPayloads["azure.tenant"];
+
 export interface AddonHostApi {
   addon: { id: string; dir: string; dataDir: string };
+  /**
+   * Azure through the user's own `az` (D-284), with the tenant picked in Jig's top bar (D-282).
+   * `tenant()` is the active one now: key caches by its `key` and reload on the `azure.tenant` event.
+   * `az(args)` runs `az <args> -o json --only-show-errors` (needs `exec:az`) and resolves with the
+   * parsed JSON; a failure rejects with a message for the user that names the tenant (not signed in,
+   * sign-in expired, az or the azure-devops extension missing, or what az said).
+   */
+  azure: {
+    tenant(): AddonAzureTenant;
+    az<T = unknown>(args: string[], options?: { timeoutMs?: number }): Promise<T>;
+  };
   /** Runs a program with arguments (no shell). Needs `exec` or `exec:<name>`. */
   exec(
     command: string,

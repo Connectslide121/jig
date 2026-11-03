@@ -163,6 +163,19 @@ export function azureSubscriptions(json: unknown): AzureSubscription[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * The subscriptions of one Entra tenant (a tenant added in Jig, D-282): only those whose `tenantId`
+ * is that tenant's. Without a tenant id (your own az login, or one not checked yet) all of them.
+ */
+export function tenantSubscriptions(
+  list: AzureSubscription[],
+  tenantId: string | undefined,
+): AzureSubscription[] {
+  if (!tenantId) return list;
+  const id = tenantId.toLowerCase();
+  return list.filter((s) => s.tenantId.toLowerCase() === id);
+}
+
 /** `az group list` / `az resource list` output → items to pick (pure). */
 export function azureItems(json: unknown): AzureItem[] {
   if (!Array.isArray(json)) return [];

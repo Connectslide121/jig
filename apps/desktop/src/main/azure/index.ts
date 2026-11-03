@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   activeKey,
+  activeTenantRef,
   azEnv,
   DEFAULT_TENANT,
   defaultLabel,
@@ -31,7 +32,7 @@ import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
 import { killTree } from "../updates/run";
-import { setAzureEnv } from "./env";
+import { setAzureContext } from "./env";
 
 /**
  * Azure tenants (D-282). A tenant is one Azure CLI sign-in in its own folder (`~/.jig/azure/<key>`);
@@ -67,7 +68,7 @@ function changed(): TenantsState {
   const s = state();
   const previous = active;
   active = s.active;
-  setAzureEnv(envFor(active));
+  setAzureContext({ env: envFor(active), tenant: activeTenantRef(s) });
   emit("azure.tenantChanged", s);
   if (previous !== active) for (const listener of listeners) listener(s);
   return s;
@@ -264,7 +265,7 @@ async function setActiveTenant(key: string): Promise<TenantsState> {
 export async function startAzure(): Promise<void> {
   file = await readJson(paths.azureTenants(), FileSchema).catch(() => emptyTenantsFile());
   active = activeKey(file, getConfig().azure.activeTenant);
-  setAzureEnv(envFor(active));
+  setAzureContext({ env: envFor(active), tenant: activeTenantRef(state()) });
   onConfigChange((config) => {
     if (activeKey(file, config.azure.activeTenant) !== active) changed();
   });

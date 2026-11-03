@@ -3,6 +3,7 @@ import {
   areaClause,
   type BoardColumn,
   boardQuery,
+  boardTenant,
   boardTitle,
   boardUrl,
   chatDraft,
@@ -134,5 +135,12 @@ describe("small helpers", () => {
     expect(chatDraft({ id: 7, title: "Checkout", type: "Bug", state: "Active", url: "u" })).toContain(
       "Bug #7: Checkout",
     );
+  });
+});
+
+describe("boardTenant", () => {
+  it("is the tenant a board was followed in, your own az login for older boards", () => {
+    expect(boardTenant({ tenant: "contoso" })).toBe("contoso");
+    expect(boardTenant({})).toBe("default");
   });
 });

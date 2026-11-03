@@ -32,6 +32,7 @@ import {
 } from "../../ui";
 import { useActiveProject } from "../../workbench/projects";
 import { notify } from "../../workbench/toasts";
+import { useTenants } from "../azure/store";
 import { addLinks, moveLink, removeGroup, removeLink, renameGroup, shiftGroup, updateLink } from "./model";
 
 const DRAG = "application/x-jig-link";
@@ -194,7 +195,7 @@ function LinkDialog({
   );
 }
 
-/** Pick resource groups, or one group's resources, from your own `az` login. */
+/** Pick resource groups, or one group's resources, from the active tenant's `az` sign-in (D-282). */
 function AzureDialog({
   project,
   group,
@@ -226,8 +227,14 @@ function AzureDialog({
       })
       .catch((e) => setError(errorMessage(e)));
   };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load once when the dialog opens.
-  useEffect(() => load(), []);
+  // Another tenant picked in the top bar: its resource groups (what was picked was the other's).
+  const activeTenant = useTenants((s) => s.state?.active);
+  const tenant = useTenants((s) => s.state?.tenants.find((t) => t.key === s.state?.active));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load when the dialog opens and per tenant.
+  useEffect(() => {
+    setPicked(new Set());
+    load();
+  }, [activeTenant]);
   const shown = (items ?? []).filter((i) =>
     `${i.name} ${i.subscription ?? ""}`.toLowerCase().includes(filter.toLowerCase()),
   );
@@ -275,10 +282,19 @@ function AzureDialog({
       }
     >
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-muted">
-          Through your own Azure CLI login (`az`); Jig stores no tokens. Every subscription of the directories
-          you're signed in to; for another directory, run <code>az login --tenant &lt;directory&gt;</code>{" "}
-          once.
+        <p className="text-xs text-muted" data-testid="azure-tenant-note">
+          {tenant && !tenant.isDefault ? (
+            <>
+              The subscriptions of tenant <span className="font-medium text-fg">{tenant.label}</span>, through
+              its Azure CLI sign-in; Jig stores no tokens. Switch tenants with the avatar at the top right.
+            </>
+          ) : (
+            <>
+              Through your own Azure CLI login (`az`); Jig stores no tokens. Every subscription of the
+              directories you're signed in to; for another directory, add it as a tenant with the avatar at
+              the top right.
+            </>
+          )}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {/* biome-ignore lint/a11y/noLabelWithoutControl: Input is the labelled control. */}
@@ -293,15 +309,16 @@ function AzureDialog({
           </label>
           <GroupField project={project} value={groupTitle} onChange={setGroupTitle} />
         </div>
-        {error && <div className="text-xs text-danger">{error}</div>}
-        {problems.length > 0 && (
-          <div className="text-xs text-warning" data-testid="azure-problems">
-            Couldn't read {problems.length === 1 ? "one subscription" : `${problems.length} subscriptions`}:{" "}
-            {problems.join(" · ")}
-          </div>
-        )}
-        {!items && !error && <Spinner center />}
-        <div className="flex max-h-80 flex-col overflow-y-auto">
+        {/* One fixed-height slot: the spinner, an error and the list take turns in it, nothing moves. */}
+        <div className="flex h-80 flex-col overflow-y-auto">
+          {error && <div className="text-xs text-danger">{error}</div>}
+          {!items && !error && <Spinner center />}
+          {problems.length > 0 && (
+            <div className="pb-1 text-xs text-warning" data-testid="azure-problems">
+              Couldn't read {problems.length === 1 ? "one subscription" : `${problems.length} subscriptions`}:{" "}
+              {problems.join(" · ")}
+            </div>
+          )}
           {shown.map((i, n) => (
             <Fragment key={i.id}>
               {bySubscription && i.subscription !== shown[n - 1]?.subscription && (

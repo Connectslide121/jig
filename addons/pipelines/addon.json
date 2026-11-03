@@ -46,6 +46,7 @@
         "atStart": true
       }
     ],
+    "events": [{ "on": "azure.tenant", "run": "tenantChanged" }],
     "settings": {
       "title": "Pipelines",
       "component": "PipelinesSettings"

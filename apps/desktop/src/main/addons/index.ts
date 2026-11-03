@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { activeTenantRef } from "@jig/azure";
 import { addonToolName } from "@jig/sdk";
 import { slugify } from "@jig/themes";
 import { app, dialog, Notification, protocol, utilityProcess } from "electron";
@@ -10,7 +11,7 @@ import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { appWindows, focusJig, hiddenMode, mainWindow } from "../appWindows";
 import { onActiveTenantChange } from "../azure";
-import { onAzureEnvChange } from "../azure/env";
+import { onAzureContextChange } from "../azure/env";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -332,19 +333,8 @@ export async function startAddons(): Promise<void> {
   });
   const git = new GitEvents(dispatch);
   // Another Azure tenant (D-282): running host processes run their next az with it, and add-ons hear.
-  onAzureEnvChange((env) => s.setHostEnv(env));
-  onActiveTenantChange((state) => {
-    const t = state.tenants.find((x) => x.key === state.active);
-    if (!t) return;
-    dispatch("azure.tenant", {
-      key: t.key,
-      label: t.label,
-      isDefault: t.isDefault,
-      user: t.user,
-      tenantId: t.tenantId,
-      domain: t.domain,
-    });
-  });
+  onAzureContextChange((azure) => s.setHostAzure(azure));
+  onActiveTenantChange((state) => dispatch("azure.tenant", activeTenantRef(state)));
   let activeId: string | undefined;
   const followProjects = (state: Awaited<ReturnType<ReturnType<typeof projectStore>["state"]>>) => {
     const repos = new Set<string>();

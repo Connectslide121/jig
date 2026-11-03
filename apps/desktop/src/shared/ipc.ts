@@ -332,13 +332,13 @@ export interface HostMethods {
     result: SessionMeta;
   };
   /**
-   * Azure resource groups, or the resources of one group (`group`), through the user's own `az` login,
-   * to pick project links from. Errors: `az_missing`, `az_login`, `az_failed`.
+   * Azure resource groups of the active tenant's subscriptions (D-282), or the resources of one group
+   * (`group`), through the user's own `az`, to pick project links from; subscriptions that couldn't be
+   * read, and which tenant it was. Errors: `az_missing`, `az_login`, `az_failed` (naming the tenant).
    */
-  /** Resource groups of every subscription (or one group's resources), and subscriptions that couldn't be read. */
   "links.azure": {
     args: { group?: string; subscription?: string };
-    result: { items: AzureItem[]; problems: string[] };
+    result: { items: AzureItem[]; problems: string[]; tenant: { label: string; isDefault: boolean } };
   };
   /**
    * Azure tenants (D-282): your own az login first, then the tenants added in Jig (each its own Azure

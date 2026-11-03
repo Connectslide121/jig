@@ -13,6 +13,13 @@ export interface Board {
   /** The board's id in Azure DevOps and its name ("Stories"). */
   boardId: string;
   boardName: string;
+  /**
+   * The Azure tenant it was followed in (D-282): its key (`default` or missing: your own az login) and
+   * its label then. Another tenant's sign-in may not see the organisation, so the board shows only
+   * while that tenant is active.
+   */
+  tenant?: string;
+  tenantLabel?: string;
 }
 
 /** A board found in Azure DevOps, for the Add boards dialog. */
@@ -52,7 +59,12 @@ export interface BoardData {
   columnField?: string;
   /** The team's default area: new cards go there, so they show on this board. */
   area?: string;
+  /** Set instead of columns and cards when the board belongs to another tenant than the active one. */
+  elsewhere?: { tenant: string };
 }
+
+/** The tenant a followed board belongs to (`default` for boards followed before tenants). */
+export const boardTenant = (b: Pick<Board, "tenant">): string => b.tenant || "default";
 
 /** The organisation's URL for `--org`. */
 export function orgUrl(org: string): string {

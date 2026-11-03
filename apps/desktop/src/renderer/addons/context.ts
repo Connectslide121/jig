@@ -1,3 +1,4 @@
+import { activeTenantRef, DEFAULT_TENANT_REF } from "@jig/azure";
 import {
   type AddonAttachment,
   type AddonProject,
@@ -14,6 +15,7 @@ import {
 import { createContext, createElement, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { updateTabParams } from "../../shared/layout";
+import { switchTenant, useTenants } from "../features/azure/store";
 import { ProjectSwatch } from "../features/projects/colors";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
@@ -127,6 +129,19 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
       onJigEvent((n, payload) => {
         if (n === name) listener(payload as never);
       }),
+    azure: {
+      tenant: () => {
+        const state = useTenants.getState().state;
+        return state ? activeTenantRef(state) : DEFAULT_TENANT_REF;
+      },
+      tenants: () =>
+        (useTenants.getState().state?.tenants ?? []).map((t) =>
+          activeTenantRef({ active: t.key, tenants: [t] }),
+        ),
+      switchTo: async (key) => {
+        await switchTenant(key);
+      },
+    },
     setBadge: (viewId, value) =>
       void call("addons.setBadge", { id, view: viewId, value }).catch((e) =>
         console.warn(`[${id}] setBadge: ${errorMessage(e)}`),

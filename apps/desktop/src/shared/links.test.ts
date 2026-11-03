@@ -6,6 +6,7 @@ import {
   defaultLinkLabel,
   guessLinkType,
   linkLabel,
+  tenantSubscriptions,
 } from "./links";
 
 const rg = "/subscriptions/abc/resourceGroups/shop-stage";
@@ -80,5 +81,16 @@ describe("azureSubscriptions", () => {
       { id: "b", name: "Fabrikam", tenantId: "t2" },
     ]);
     expect(azureSubscriptions(null)).toEqual([]);
+  });
+});
+
+describe("tenantSubscriptions", () => {
+  const list = [
+    { id: "a", name: "Contoso", tenantId: "T1" },
+    { id: "b", name: "Fabrikam", tenantId: "t2" },
+  ];
+  it("keeps the tenant's subscriptions, or all without a tenant id", () => {
+    expect(tenantSubscriptions(list, "t1").map((s) => s.id)).toEqual(["a"]);
+    expect(tenantSubscriptions(list, undefined)).toEqual(list);
   });
 });

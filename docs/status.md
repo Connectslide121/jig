@@ -462,9 +462,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Phase 23 (`docs/plan/23-jons-notes.md`) is done. Next: try its features on a real machine (a real Teams
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
-6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–2 are done (host side, D-282; the
-   top bar avatar switch with add/manage modals and Claude's tools, D-283). Views don't reload on a
-   switch yet. Next: session 3 (Pipelines, Boards, Releases, links follow the tenant).
+6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–3 are done (host side, D-282; the
+   top bar avatar switch with add/manage modals and Claude's tools, D-283; the views follow the
+   tenant, D-284). Next: session 4 (chats, terminals and scripts get the tenant).
 7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
@@ -476,8 +476,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   domain, Sign in opens the browser through `az login`, progress and errors in the modal, Cancel)
   and Manage tenants… (switch, rename, sign in again, remove). Also in Settings → Azure. Claude can
   list tenants and, with your approval, switch (`jig_azure_tenants`, `jig_azure_switch_tenant`).
-  Pipelines/Boards don't reload on a switch yet (session 3); chats and terminals don't follow yet
-  (session 4). Needs a real machine: a real second tenant through the modal.
+  On a switch (D-284) Pipelines shows a spinner in its list's place and then that tenant's
+  pipelines (its organisations setting is per tenant), Boards reloads and a board followed in another
+  tenant shows a card "In tenant X" that switches to it, Releases' and Workflows' pipeline runs use the
+  tenant and name it when they fail, and Project links → Add from Azure lists the tenant's
+  subscriptions. Add-ons use the same `az` (`api.azure.az`). Chats and terminals don't follow yet
+  (session 4). Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
+  links, a release pipeline and a workflow pipeline step with it.
 
 - Speech (D-208): the mic button in the composer (or Ctrl/Cmd+Shift+Space) records; click again
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks

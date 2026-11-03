@@ -397,34 +397,29 @@ export async function release(
   let pipeline: string | undefined;
   if (runPipeline && pushed && policy.releasePipeline) {
     const p = policy.releasePipeline;
-    const r = await api.exec(
-      "az",
-      [
-        "pipelines",
-        "run",
-        "--id",
-        String(p.id),
-        "--org",
-        p.org,
-        "--project",
-        p.project,
-        "--branch",
-        `refs/tags/${tag}`,
-        "-o",
-        "json",
-        "--only-show-errors",
-      ],
-      { timeoutMs: 120_000, env: { AZURE_CORE_NO_COLOR: "1" } },
-    );
-    if (r.code === 0) {
-      try {
-        pipeline =
-          `Started run ${(JSON.parse(r.stdout) as { buildNumber?: string }).buildNumber ?? ""}`.trim();
-      } catch {
-        pipeline = "Started.";
-      }
-    } else
-      pipeline = `Not started: ${r.stderr.trim().split("\n").slice(-2).join(" ") || "az pipelines run failed"}`;
+    // With the tenant picked in Jig's top bar (D-282); a failure names it.
+    const tenant = api.azure.tenant();
+    try {
+      const run = await api.azure.az<{ buildNumber?: string }>(
+        [
+          "pipelines",
+          "run",
+          "--id",
+          String(p.id),
+          "--org",
+          p.org,
+          "--project",
+          p.project,
+          "--branch",
+          `refs/tags/${tag}`,
+        ],
+        { timeoutMs: 120_000 },
+      );
+      const where = tenant.isDefault ? "" : ` in tenant ${tenant.label}`;
+      pipeline = run?.buildNumber ? `Started run ${run.buildNumber}${where}` : `Started${where}.`;
+    } catch (error) {
+      pipeline = `Not started: ${(error as Error).message.split("\n").slice(-2).join(" ")}`;
+    }
   }
   api.emit("changed", { path });
   return { tag, committed: changed.length > 0, pushed, pushError, pipeline };
@@ -500,9 +495,9 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
       const key = `seen:${item.path}:${env.name}`;
       // `done`: every run up to it is handled; `handled`: later runs that finished before an older one.
       const seen = await api.storage.get<{ done: number; warned: number[]; handled?: number[] }>(key);
-      const r = await api.exec(
-        "az",
-        [
+      let listed: Json[] | undefined;
+      try {
+        listed = await api.azure.az<Json[]>([
           "pipelines",
           "runs",
           "list",
@@ -514,19 +509,13 @@ export async function checkDeploys(_: unknown, api: AddonHostApi) {
           env.pipeline.project,
           "--top",
           "5",
-          "-o",
-          "json",
-          "--only-show-errors",
-        ],
-        { timeoutMs: 60_000, env: { AZURE_CORE_NO_COLOR: "1" } },
-      );
-      if (r.code !== 0) {
-        api.log(`Could not list runs for ${item.name} ${env.name}`, r.stderr.trim());
+        ]);
+      } catch (error) {
+        // Signed out, or a pipeline the active tenant can't see: looked at again on the next check.
+        api.log(`Could not list runs for ${item.name} ${env.name}`, (error as Error).message);
         continue;
       }
-      const runs = ((JSON.parse(r.stdout || "[]") as Json[]) ?? []).sort(
-        (a, b) => Number(a.id) - Number(b.id),
-      );
+      const runs = (listed ?? []).sort((a, b) => Number(a.id) - Number(b.id));
       const maxId = Math.max(0, ...runs.map((x) => Number(x.id)));
       if (!seen) {
         await api.storage.set(key, { done: maxId, warned: [] });

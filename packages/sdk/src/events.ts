@@ -42,6 +42,7 @@ export interface JigEventPayloads {
     isDefault: boolean;
     user?: string;
     tenantId?: string;
+    displayName?: string;
     domain?: string;
   };
 }

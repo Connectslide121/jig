@@ -648,7 +648,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "A default repo per project for the Git view, others shown next to it when needed",
                 "Files: the project's tree with git colours, a filter and Preview on click",
                 "Links per project in your groups (Stage, Prod…): Azure resources, sites, Azure DevOps — or pick them from Azure",
-                "Azure tenants: the avatar at the top right switches the Azure / Azure DevOps sign-in Jig uses; add other accounts or tenants (each signs in with the Azure CLI in its own folder), rename, sign in again or remove them",
+                "Azure tenants: the avatar at the top right switches the Azure / Azure DevOps sign-in Jig uses; add other accounts or tenants (each signs in with the Azure CLI in its own folder), rename, sign in again or remove them; Pipelines, Boards, Releases, Workflows and Azure links follow the one in use",
                 "Start a chat in any repo from its menu",
                 "Repos overview with branch (switch it from the row) and changes",
               ]}

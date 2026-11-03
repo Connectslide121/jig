@@ -1,64 +1,40 @@
-import { execFile } from "node:child_process";
+import { AzError } from "@jig/azure";
 import { JigError } from "../../shared/ipc";
-import { type AzureItem, azureItems, azureSubscriptions } from "../../shared/links";
-import { resolveCommand } from "../addons/winCommand";
-import { azureEnv } from "../azure/env";
+import { type AzureItem, azureItems, azureSubscriptions, tenantSubscriptions } from "../../shared/links";
+import { azureContext } from "../azure/env";
+import { runAz } from "../azure/run";
 import { handle } from "../ipc/router";
 
-/** Runs the user's `az` (no shell; `.cmd` through cmd.exe on Windows), JSON out. */
-function az(args: string[]): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const r = resolveCommand(
-      "az",
-      [...args, "-o", "json", "--only-show-errors"],
-      process.platform,
-      process.env,
-    );
-    execFile(
-      r.file,
-      r.args,
-      {
-        timeout: 90_000,
-        windowsHide: true,
-        windowsVerbatimArguments: r.verbatim,
-        maxBuffer: 32 * 1024 * 1024,
-        // The active tenant's Azure CLI folder (D-282); nothing for your own az login.
-        env: { ...process.env, ...azureEnv() },
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          const text = String(stderr || error.message);
-          if ((error as NodeJS.ErrnoException).code === "ENOENT" || /not recognized|not found/i.test(text))
-            return reject(new JigError("az_missing", "The Azure CLI (az) is not installed or not on PATH."));
-          if (/az login/i.test(text))
-            return reject(
-              new JigError(
-                "az_login",
-                "You're not signed in to the Azure CLI. Run `az login` in a terminal.",
-              ),
-            );
-          return reject(new JigError("az_failed", text.trim().split("\n").slice(-3).join("\n")));
-        }
-        try {
-          resolve(JSON.parse(String(stdout) || "[]"));
-        } catch {
-          reject(new JigError("az_failed", "The Azure CLI's answer wasn't JSON"));
-        }
-      },
-    );
-  });
+/** `az` with the active tenant (D-284); its failures become `az_missing`, `az_login` or `az_failed`. */
+async function az(args: string[]): Promise<unknown> {
+  const { env, tenant } = azureContext();
+  try {
+    return await runAz(args, { env, tenant, timeoutMs: 90_000 });
+  } catch (error) {
+    if (!(error instanceof AzError)) throw error;
+    const code =
+      error.problem === "missing"
+        ? "az_missing"
+        : error.problem === "signedOut" || error.problem === "expired"
+          ? "az_login"
+          : "az_failed";
+    throw new JigError(code, error.message);
+  }
 }
 
 /**
  * Project links from Azure through your `az` login (Jig stores no tokens): the resource groups of
- * every enabled subscription you can see, in every tenant, each marked with its subscription; or
- * one group's resources. A subscription that can't be read (a tenant that needs its own sign-in)
- * is named in `problems` instead of failing the rest.
+ * every enabled subscription of the active tenant (D-282), each marked with its subscription; or one
+ * group's resources. Your own az login keeps every directory it is signed in to. A subscription that
+ * can't be read (a directory that needs its own sign-in) is named in `problems` instead of failing the
+ * rest. `tenant` says which tenant, for the dialog to say where the list comes from.
  */
 export async function azureLinks(
   group?: string,
   subscription?: string,
-): Promise<{ items: AzureItem[]; problems: string[] }> {
+): Promise<{ items: AzureItem[]; problems: string[]; tenant: { label: string; isDefault: boolean } }> {
+  const { tenant } = azureContext();
+  const label = { label: tenant.label, isDefault: tenant.isDefault };
   if (group)
     return {
       items: azureItems(
@@ -71,9 +47,14 @@ export async function azureLinks(
         ]),
       ),
       problems: [],
+      tenant: label,
     };
-  const subscriptions = azureSubscriptions(await az(["account", "list", "--all"]));
-  if (subscriptions.length === 0) return { items: azureItems(await az(["group", "list"])), problems: [] };
+  const subscriptions = tenantSubscriptions(
+    azureSubscriptions(await az(["account", "list", "--all"])),
+    tenant.isDefault ? undefined : tenant.tenantId,
+  );
+  if (subscriptions.length === 0)
+    return { items: azureItems(await az(["group", "list"])), problems: [], tenant: label };
   const problems: string[] = [];
   const lists: AzureItem[][] = new Array(subscriptions.length);
   let next = 0;
@@ -95,7 +76,7 @@ export async function azureLinks(
       }
     }),
   );
-  return { items: lists.flat(), problems };
+  return { items: lists.flat(), problems, tenant: label };
 }
 
 export function registerLinkHandlers(): void {

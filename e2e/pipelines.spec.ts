@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, settledBox, test } from "./fixtures";
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
 
@@ -43,6 +43,11 @@ const say = (value) => {
   process.exit(0);
 };
 const ago = (m) => new Date(Date.now() - m * 60000).toISOString();
+// Tenants (D-282): signing in works; Northwind's folder sees no pipelines.
+const northwind = require("node:path").basename(process.env.AZURE_CONFIG_DIR || "").startsWith("northwind");
+if (args[0] === "login") process.exit(0);
+if (has("account", "show")) say({ tenantId: "22222222-2222-4222-8222-222222222222", tenantDisplayName: "Northwind", user: { name: "ann@northwind.example.com" } });
+if (northwind && has("pipelines", "list")) say([]);
 if (has("pipelines", "list") && !has("runs")) say([
   { id: 12, name: "Shop CI", queueStatus: "enabled" },
   { id: 13, name: "(old) Shop", queueStatus: "enabled" },
@@ -162,6 +167,38 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   const cardAgain = again.getByTestId("pipeline-Shop CI");
   await expect(cardAgain.getByTestId("pipeline-time")).toHaveText("12m", { timeout: 1000 });
   await expect(cardAgain.getByTestId("pipeline-loading")).toHaveCount(0);
+});
+
+test("Pipelines: another tenant's pipelines replace these, the toolbar stays put", async ({
+  page,
+  jigHome,
+}) => {
+  const bin = join(jigHome, "fake-bin");
+  await writeFile(join(bin, "az-signed-out.cjs"), fakeAz(jigHome));
+  await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${fakeAz(jigHome)}`);
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  git(dir, "init", "-q", "-b", "main");
+  git(dir, "remote", "add", "origin", "https://dev.azure.com/contoso/Shop/_git/shop");
+  await writeFile(join(dir, "azure-pipelines.yml"), YAML);
+  await hostCall(page, "projects.add", { path: dir });
+  await page.getByTestId("goto-button").click();
+  await page.getByTestId("goto-input").fill("show pipelines");
+  await page.keyboard.press("Enter");
+  const view = page.getByTestId("pipelines-view");
+  await expect(view.getByTestId("pipeline-Shop CI")).toBeVisible({ timeout: 20000 });
+  const toolbar = await settledBox(view.getByTestId("pipelines-find"));
+
+  // Northwind sees no pipelines: they go, its (empty) list comes; the toolbar doesn't move.
+  await hostCall(page, "azure.addTenant", { tenant: "northwind.example.com" });
+  await hostCall(page, "azure.setActiveTenant", { key: "northwind" });
+  await expect(view.getByTestId("pipeline-Shop CI")).toHaveCount(0);
+  await expect(view.getByText("No pipelines found")).toBeVisible({ timeout: 20000 });
+  expect(await settledBox(view.getByTestId("pipelines-find"))).toEqual(toolbar);
+
+  // Back on your own az login, its pipelines come back.
+  await hostCall(page, "azure.setActiveTenant", { key: "default" });
+  await expect(view.getByTestId("pipeline-Shop CI")).toBeVisible({ timeout: 20000 });
 });
 
 test("Workflows: a pipeline step is picked from your pipelines", async ({ page, jigHome }) => {

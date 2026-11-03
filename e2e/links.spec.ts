@@ -60,7 +60,14 @@ test("project links: add from Azure through your az login", async () => {
     `#!/usr/bin/env node
 const a = process.argv.slice(2);
 const sub = a[a.indexOf("--subscription") + 1];
-if (a[0] === "account") console.log(JSON.stringify([
+// A tenant added in Jig (D-282): its folder signs in to Fabrikam (t2).
+const fabrikamFolder = require("node:path").basename(process.env.AZURE_CONFIG_DIR || "").startsWith("fabrikam");
+if (a[0] === "login") process.exit(0);
+else if (a[0] === "rest") { console.error("no ARM here"); process.exit(1); }
+else if (a[0] === "account" && a[1] === "show") console.log(JSON.stringify(fabrikamFolder
+  ? { tenantId: "t2", tenantDisplayName: "Fabrikam", user: { name: "ann@fabrikam.example.com" } }
+  : { tenantId: "t1", tenantDisplayName: "Contoso", user: { name: "ann@contoso.example.com" } }));
+else if (a[0] === "account") console.log(JSON.stringify([
   { id: "${contoso}", name: "Contoso Dev", tenantId: "t1", state: "Enabled" },
   { id: "${fabrikam}", name: "Fabrikam Prod", tenantId: "t2", state: "Enabled" },
   { id: "${locked}", name: "Fabrikam Old", tenantId: "t3", state: "Enabled" },
@@ -108,6 +115,15 @@ else console.log(JSON.stringify([
   await dialog.getByTestId("azure-add").click();
   await expect(links.getByTestId("link-group-Stage")).toContainText("shop-web");
   await expect(links.getByTestId("link-group-Stage")).toContainText("shopdb");
+
+  // With a tenant picked in the top bar, only that tenant's subscriptions are listed.
+  await hostCall(page, "azure.addTenant", { tenant: "fabrikam.example.com" });
+  await hostCall(page, "azure.setActiveTenant", { key: "fabrikam" });
+  await links.getByTestId("links-azure").click();
+  await expect(dialog.getByTestId("azure-tenant-note")).toContainText("tenant Fabrikam");
+  await expect(dialog.getByTestId("azure-item")).toHaveCount(1);
+  await expect(dialog.getByTestId("azure-item")).toContainText("fabrikam-prod");
+  await expect(dialog.getByTestId("azure-problems")).toHaveCount(0);
   await app.close();
 });
 

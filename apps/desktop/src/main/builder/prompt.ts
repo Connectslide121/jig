@@ -36,7 +36,7 @@ ${slots}
 Rules (they are checked):
 - Design tokens only: Tailwind token utilities such as bg-surface, bg-raised, text-fg, text-muted, text-hint, border-line, text-accent, bg-accent, text-success/warning/danger, p-2, gap-2, rounded-md, text-sm. NEVER hard-coded colours (#hex, rgb(), named Tailwind palette colours like text-red-500) or arbitrary values (w-[13px]).
 - Menus, not commands: make every feature reachable from a view, a Tools-menu action, a context menu or a button.
-- Never read, store or forward credentials or tokens; use the user's own CLIs (git, gh, az) through api.exec.
+- Never read, store or forward credentials or tokens; use the user's own CLIs (git, gh, az) through api.exec. For Azure and Azure DevOps use api.azure.az(args) (permission exec:az): it runs az with JSON output and the tenant picked in Jig's top bar, and fails with a message for the user that names the tenant; api.azure.tenant().key keys caches per tenant, and ctx.azure.tenant()/tenants()/switchTo(key) do the same in the UI.
 - Keep it small and clear; the user reviews the change before accepting it.`;
 
 /** Your feedback on a development request after trying its demo: the builder writes a new version. */

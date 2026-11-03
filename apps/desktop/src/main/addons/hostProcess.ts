@@ -1,4 +1,4 @@
-import { azureEnv } from "../azure/env";
+import { type AzureContext, azureContext } from "../azure/env";
 import { logger } from "../log";
 import type { FromHost, ToHost } from "./hostRuntime";
 
@@ -94,7 +94,7 @@ export class AddonHostProcess {
           this.crashes = [...this.crashes.filter((t) => Date.now() - t < 60_000), Date.now()];
         }
       });
-      channel.send({ t: "init", ...this.init, env: azureEnv() });
+      channel.send({ t: "init", ...this.init, azure: azureContext() });
     });
     this.ready.catch(() => {
       this.ready = undefined;
@@ -120,8 +120,8 @@ export class AddonHostProcess {
   }
 
   /** The active Azure tenant changed (D-282): the running host's next programs use it. */
-  setEnv(env: Record<string, string>): void {
-    this.channel?.send({ t: "env", env });
+  setAzure(azure: AzureContext): void {
+    this.channel?.send({ t: "azure", azure });
   }
 
   /** Ends the host process; calls still waiting (or waiting for it to start) fail right away. */

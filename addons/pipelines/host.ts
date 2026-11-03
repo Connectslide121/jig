@@ -4,7 +4,6 @@ import { basename, join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
   branchList,
-  decodeAzOutput,
   fromBuild,
   isRetired,
   newestPerPipeline,
@@ -29,14 +28,18 @@ import { latestRuns, type Pipeline, type Run, runState, runUrl, toPipeline, toRu
 export type { OrgSettings, PipelineInfo, PipelineRun, Settings };
 
 /**
- * Azure DevOps through the user's `az` CLI (az login + azure-devops extension). No tokens stored.
- * Every organisation the login belongs to by default, or the ones you list (D-125).
+ * Azure DevOps through the user's `az` CLI (az login + azure-devops extension), with the tenant picked
+ * in Jig's top bar (D-282). No tokens stored. Every organisation the sign-in belongs to by default, or
+ * the ones you list (D-125); those settings, the pipelines found and their newest runs are kept per
+ * tenant, and what is remembered in memory is keyed by it.
  */
 interface Tracked {
   org: string;
   project: string;
   runId: number;
   name: string;
+  /** The tenant it was started in (`default` when missing): checked only while that one is active. */
+  tenant?: string;
   /** Checks in a row that failed (az signed out, run deleted…): given up after MAX_FAILS. */
   fails?: number;
 }
@@ -50,24 +53,20 @@ const HOUR = 60 * 60_000;
 /** Pipelines change rarely: listed again every 10 minutes; their latest runs on every refresh. */
 const PIPELINES_FOR = 10 * 60_000;
 
-async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> {
-  const raw = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
-    timeoutMs,
-    env: { AZURE_CORE_NO_COLOR: "1", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
-    encoding: "base64",
-  });
-  // Windows' az.cmd runs Python isolated (-I), which ignores the env above and prints in the ANSI code page.
-  const r = { ...raw, stdout: decodeAzOutput(Buffer.from(raw.stdout, "base64")) };
-  if (r.code === 127) throw new Error("The Azure CLI (az) is not installed or not on PATH.");
-  if (r.code !== 0) {
-    const err = r.stderr.trim();
-    if (/az login/i.test(err))
-      throw new Error("You're not signed in to the Azure CLI. Run `az login` in a terminal.");
-    if (/extension.*azure-devops|is misspelled or not recognized/i.test(err))
-      throw new Error("The azure-devops extension is missing. Run `az extension add --name azure-devops`.");
-    throw new Error(err.split("\n").slice(-4).join("\n") || `az ${args.slice(0, 2).join(" ")} failed`);
-  }
-  return (r.stdout.trim() ? JSON.parse(r.stdout) : undefined) as T;
+/** Jig's shared `az` (D-284): the active tenant, JSON out, errors that name the tenant. */
+const az = <T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> =>
+  api.azure.az<T>(args, { timeoutMs });
+
+/** The active tenant's key (`default`: your own az login). */
+const tenantOf = (api: AddonHostApi) => api.azure.tenant().key;
+
+/**
+ * A storage key of the active tenant: your own az login keeps the plain key (what was stored before
+ * tenants), another tenant gets `key@tenant`.
+ */
+function perTenant(api: AddonHostApi, key: string): string {
+  const t = api.azure.tenant();
+  return t.isDefault ? key : `${key}@${t.key}`;
 }
 
 /**
@@ -86,10 +85,14 @@ async function azSaved<T>(api: AddonHostApi, args: string[], accept = "applicati
   }
 }
 
-/** Remembers an answer for a while (in this process only); a failed answer is asked again. */
+/**
+ * Remembers an answer for a while (in this process only), per tenant: the same organisation can look
+ * different, or not be there, with another sign-in. A failed answer is asked again.
+ */
 function remembered<T>(ms: number) {
   const values = new Map<string, { at: number; value: Promise<T> }>();
-  return (key: string, load: () => Promise<T>): Promise<T> => {
+  return (api: AddonHostApi, k: string, load: () => Promise<T>): Promise<T> => {
+    const key = `${tenantOf(api)}|${k}`;
     const hit = values.get(key);
     if (hit && Date.now() - hit.at < ms) return hit.value;
     const value = load();
@@ -102,12 +105,17 @@ const orgsCache = remembered<string[]>(HOUR);
 const projectsCache = remembered<string[]>(HOUR);
 const pipelinesCache = remembered<Pipeline[]>(PIPELINES_FOR);
 
-export async function settings(_: unknown, api: AddonHostApi): Promise<Settings> {
-  return readSettings(await api.storage.get("settings"));
+/** The organisations to show with the active tenant (each tenant has its own), and its label. */
+export async function settings(_: unknown, api: AddonHostApi): Promise<Settings & { tenant?: string }> {
+  const t = api.azure.tenant();
+  return {
+    ...readSettings(await api.storage.get(perTenant(api, "settings"))),
+    tenant: t.isDefault ? undefined : t.label,
+  };
 }
 
 export async function saveSettings(next: Settings, api: AddonHostApi) {
-  await api.storage.set("settings", readSettings(next));
+  await api.storage.set(perTenant(api, "settings"), readSettings(next));
 }
 
 /** Is everything needed there? Each check with a hint. */
@@ -123,14 +131,21 @@ export async function check(_: unknown, api: AddonHostApi) {
       ok: false,
       message: "The azure-devops extension is missing: az extension add --name azure-devops",
     };
-  const account = await api.exec("az", ["account", "show", "-o", "json"], { timeoutMs: 30_000 });
-  if (account.code !== 0) return { ok: false, message: "Not signed in: run az login in a terminal." };
-  return { ok: true, message: "The Azure CLI is ready." };
+  try {
+    await az(api, ["account", "show"], 30_000);
+  } catch (error) {
+    return { ok: false, message: (error as Error).message };
+  }
+  const t = api.azure.tenant();
+  return {
+    ok: true,
+    message: t.isDefault ? "The Azure CLI is ready." : `The Azure CLI is ready, in tenant ${t.label}.`,
+  };
 }
 
 /** The organisations your az login belongs to (Azure DevOps' profile and accounts APIs). */
 export async function listOrgs(_: unknown, api: AddonHostApi): Promise<string[]> {
-  return orgsCache("me", async () => {
+  return orgsCache(api, "me", async () => {
     const rest = (uri: string, params: string[]) =>
       az<{ id?: string; value?: Array<{ accountName: string }> }>(api, [
         "rest",
@@ -156,7 +171,7 @@ export async function listOrgs(_: unknown, api: AddonHostApi): Promise<string[]>
 }
 
 export async function listProjects({ org }: { org: string }, api: AddonHostApi): Promise<string[]> {
-  return projectsCache(orgUrl(org).toLowerCase(), async () => {
+  return projectsCache(api, orgUrl(org).toLowerCase(), async () => {
     const result = await az<{ value?: Array<{ name: string }> }>(api, [
       "devops",
       "project",
@@ -208,7 +223,7 @@ export async function overview(
   const loaded = await inBatches(pairs, PARALLEL, async ({ org, project }): Promise<ProjectPipelines> => {
     try {
       const common = ["--org", org, "--project", project];
-      const pipelines = await pipelinesCache(`${org}|${project}`.toLowerCase(), async () =>
+      const pipelines = await pipelinesCache(api, `${org}|${project}`.toLowerCase(), async () =>
         ((await az<unknown[]>(api, ["pipelines", "list", ...common])) ?? []).map(toPipeline),
       );
       // A project without pipelines has no runs to ask for.
@@ -239,7 +254,11 @@ export async function overview(
 
 /** Watcher: notifies when a run started from Jig finishes. */
 export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
-  const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
+  const tenant = tenantOf(api);
+  // A run started in another tenant waits until that one is active again (this sign-in can't see it).
+  const tracked = ((await api.storage.get<Tracked[]>("tracked")) ?? []).filter(
+    (t) => (t.tenant ?? "default") === tenant,
+  );
   if (tracked.length === 0) return;
   const finished = new Set<number>();
   const failing = new Map<number, number>();
@@ -304,6 +323,8 @@ const FIND_AGAIN = 4 * 60_000;
 
 export interface Found {
   at: number;
+  /** The tenant they were found with (set when returned; the view drops another tenant's). */
+  tenant?: string;
   pipelines: PipelineInfo[];
   /** Repositories whose pipelines couldn't be listed, with why. */
   errors: string[];
@@ -330,8 +351,11 @@ async function checkouts(api: AddonHostApi): Promise<Array<{ path: string; name:
  * A repository checked out twice (worktrees) counts once.
  */
 export async function pipelines({ force }: { force?: boolean } = {}, api: AddonHostApi): Promise<Found> {
-  const kept = await api.storage.get<Found>("found");
-  if (kept && !force && Date.now() - kept.at < FIND_AGAIN) return kept;
+  // Kept under the tenant it started with, even if another one becomes active meanwhile.
+  const tenant = tenantOf(api);
+  const foundKey = perTenant(api, "found");
+  const kept = await api.storage.get<Found>(foundKey);
+  if (kept && !force && Date.now() - kept.at < FIND_AGAIN) return { ...kept, tenant };
   const remotes = new Map<
     string,
     { path: string; name: string; org: string; project: string; repo: string }
@@ -402,14 +426,15 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
   });
   const result: Found = {
     at: Date.now(),
+    tenant,
     pipelines: found
       .flat()
       .sort((a, b) => a.repoName.localeCompare(b.repoName) || a.name.localeCompare(b.name)),
     errors,
   };
   // A failed search (signed out…) doesn't replace pipelines found before.
-  if (result.pipelines.length || !kept?.pipelines.length) await api.storage.set("found", result);
-  return result.pipelines.length || !kept ? result : { ...kept, errors };
+  if (result.pipelines.length || !kept?.pipelines.length) await api.storage.set(foundKey, result);
+  return result.pipelines.length || !kept ? result : { ...kept, tenant, errors };
 }
 
 /** A finished run's stages don't change: asked for once. */
@@ -422,7 +447,9 @@ const finishedStages = new Map<string, PipelineRun["stages"]>();
 export async function latest(
   { keys }: { keys: string[] },
   api: AddonHostApi,
-): Promise<{ runs: Record<string, PipelineRun | null>; error?: string }> {
+): Promise<{ runs: Record<string, PipelineRun | null>; error?: string; tenant: string }> {
+  const tenant = tenantOf(api);
+  const latestKey = perTenant(api, "latest");
   const byProject = new Map<string, { org: string; project: string; ids: number[] }>();
   for (const key of keys) {
     const [org, project, id] = key.split("/");
@@ -486,8 +513,8 @@ export async function latest(
     }
   });
   // Kept so the view shows the last runs at once when it opens; a failed read doesn't replace them.
-  if (!error) await api.storage.set("latest", { at: Date.now(), runs } satisfies SavedLatest);
-  return { runs, error };
+  if (!error) await api.storage.set(latestKey, { at: Date.now(), runs } satisfies SavedLatest);
+  return { runs, error, tenant };
 }
 
 /** The newest runs saved by `latest`, for the view to show while it asks again. */
@@ -504,7 +531,7 @@ export async function refresh(_: unknown, api: AddonHostApi) {
   const found = await pipelines({}, api);
   if (!found.pipelines.length) return;
   const result = await latest({ keys: found.pipelines.map((p) => p.key) }, api);
-  api.emit("refreshed", { found, latest: result });
+  api.emit("refreshed", { tenant: found.tenant, found, latest: result });
 }
 
 /** A pipeline's coordinates out of a key (`<org>/<project>/<id>`). */
@@ -555,7 +582,7 @@ export async function describe(
   api: AddonHostApi,
 ): Promise<PipelineInfo> {
   const key = `${orgName(org)}/${project}/${id}`;
-  return describeCache(key.toLowerCase(), async () => {
+  return describeCache(api, key.toLowerCase(), async () => {
     // biome-ignore lint/suspicious/noExplicitAny: az JSON.
     const shown = await az<any>(api, [
       "pipelines",
@@ -591,7 +618,7 @@ export async function describe(
 
 /** The pipeline as Jig knows it: found in a checkout, or described from Azure DevOps. */
 async function resolve(key: string, api: AddonHostApi): Promise<PipelineInfo> {
-  const found = (await api.storage.get<Found>("found"))?.pipelines.find((x) => x.key === key);
+  const found = (await api.storage.get<Found>(perTenant(api, "found")))?.pipelines.find((x) => x.key === key);
   return found ?? describe(fromKey(key), api);
 }
 
@@ -698,7 +725,13 @@ export async function queue(
       ...(params.length ? ["--parameters", ...params] : []),
     ]),
   );
-  await track(api, { org: orgUrl(p.org), project: p.project, runId: started.id, name: p.name });
+  await track(api, {
+    org: orgUrl(p.org),
+    project: p.project,
+    runId: started.id,
+    name: p.name,
+    tenant: tenantOf(api),
+  });
   return { number: started.buildNumber, url: runUrl(orgUrl(p.org), p.project, started.id) };
 }
 
@@ -706,6 +739,28 @@ async function track(api: AddonHostApi, run: Tracked) {
   const tracked = (await api.storage.get<Tracked[]>("tracked")) ?? [];
   await api.storage.set("tracked", [...tracked, run]);
   api.emit("runs-changed");
+}
+
+/**
+ * Another tenant became active (the Jig event `azure.tenant`): what is remembered in memory is keyed by
+ * tenant already, so this finds that tenant's pipelines and their newest runs and tells an open view
+ * (`refreshed`); the view shows a spinner in their place until then.
+ */
+export async function tenantChanged(_: unknown, api: AddonHostApi) {
+  const found = await pipelines({}, api);
+  const result = found.pipelines.length
+    ? await latest({ keys: found.pipelines.map((p) => p.key) }, api)
+    : { runs: {}, tenant: found.tenant };
+  api.emit("refreshed", { tenant: found.tenant, found, latest: result });
+}
+
+/** What the view shows at once when it opens: the active tenant's saved pipelines and newest runs. */
+export async function saved(_: unknown, api: AddonHostApi) {
+  return {
+    tenant: tenantOf(api),
+    found: await api.storage.get<Found>(perTenant(api, "found")),
+    latest: await api.storage.get<SavedLatest>(perTenant(api, "latest")),
+  };
 }
 
 /** Tools → Run a pipeline…: the view opens that pipeline's Run form. */

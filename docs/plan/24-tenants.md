@@ -83,13 +83,20 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 3 — Azure and DevOps views follow the tenant
 
-- [ ] One shared `az` helper for add-ons (error mapping included) instead of the three copies.
-- [ ] Pipelines: caches keyed by tenant, reload on `azure.tenant`, org settings (`allOrgs`/`orgs`) kept
-      per tenant; a short reserved-space loading state, not an empty flash.
-- [ ] Boards: reload on switch; a followed board whose org isn't in this tenant shows a placeholder in
-      its own space ("In tenant X — Switch") instead of an error.
-- [ ] Releases and Workflows' pipeline steps run with the active tenant; failures name the tenant.
-- [ ] Project links → Azure resources list the active tenant's subscriptions.
+- [x] One shared `az` helper for add-ons (error mapping included) instead of the three copies:
+      `runAz` (`main/azure/run.ts`) with `azFailure` in `@jig/azure`, used by links and by add-ons as
+      `api.azure.az`; `api.azure.tenant()` and `ctx.azure` say which tenant (D-284).
+- [x] Pipelines: caches keyed by tenant, reload on `azure.tenant` (`tenantChanged`), org settings
+      (`allOrgs`/`orgs`), found pipelines and newest runs kept per tenant; the toolbar stays and the
+      list's space shows `<Spinner center />` until the new tenant's pipelines come, never an empty list.
+- [x] Boards: reload on switch; a followed board of another tenant shows one card in its own space
+      ("In tenant X", the whole card switches) instead of an error. A board remembers its tenant.
+- [x] Releases and Workflows' pipeline steps run with the active tenant; failures name the tenant.
+- [x] Project links → Azure resources list the active tenant's subscriptions.
+- [x] Looked at Pipelines (loading, other tenant), Boards (placeholder, hover) and the Azure links
+      dialog in Jig Dark and Light: the toolbars and tabs don't move, the list keeps one slot.
+- [ ] Needs a real machine: switch with real tenants and see Pipelines, Boards and links follow; a
+      board of another tenant; a release pipeline and a workflow pipeline step in an added tenant.
 
 ## Session 4 — Chats, terminals and scripts
 

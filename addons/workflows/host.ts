@@ -98,30 +98,30 @@ export async function runPipeline(
   { pipeline }: { pipeline: NonNullable<Step["pipeline"]> },
   api: AddonHostApi,
 ): Promise<{ ok: boolean; output: string }> {
-  const r = await api.exec(
-    "az",
-    [
-      "pipelines",
-      "run",
-      "--id",
-      String(pipeline.id),
-      "--org",
-      pipeline.org,
-      "--project",
-      pipeline.project,
-      ...(pipeline.branch ? ["--branch", pipeline.branch] : []),
-      "-o",
-      "json",
-      "--only-show-errors",
-    ],
-    { timeoutMs: 120_000, env: { AZURE_CORE_NO_COLOR: "1" } },
-  );
-  if (r.code !== 0) return { ok: false, output: r.stderr.trim().slice(-2000) || "az pipelines run failed" };
+  // With the tenant picked in Jig's top bar (D-282): the output says which one, a failure names it.
+  const tenant = api.azure.tenant();
+  const where = tenant.isDefault ? "" : ` in tenant ${tenant.label}`;
   try {
-    const run = JSON.parse(r.stdout) as { buildNumber?: string; id?: number };
-    return { ok: true, output: `Started run ${run.buildNumber ?? run.id}.` };
-  } catch {
-    return { ok: true, output: "Started." };
+    const run = await api.azure.az<{ buildNumber?: string; id?: number }>(
+      [
+        "pipelines",
+        "run",
+        "--id",
+        String(pipeline.id),
+        "--org",
+        pipeline.org,
+        "--project",
+        pipeline.project,
+        ...(pipeline.branch ? ["--branch", pipeline.branch] : []),
+      ],
+      { timeoutMs: 120_000 },
+    );
+    return {
+      ok: true,
+      output: run ? `Started run ${run.buildNumber ?? run.id}${where}.` : `Started${where}.`,
+    };
+  } catch (error) {
+    return { ok: false, output: (error as Error).message.slice(-2000) };
   }
 }
 
@@ -205,33 +205,26 @@ async function eventMark(
   }
   const { org, project, id } = trigger.pipeline;
   if (!org || !project || !id) return {};
-  const r = await api.exec(
-    "az",
-    [
-      "pipelines",
-      "runs",
-      "list",
-      "--pipeline-ids",
-      String(id),
-      "--org",
-      org,
-      "--project",
-      project,
-      "--status",
-      "completed",
-      "--top",
-      "1",
-      "-o",
-      "json",
-      "--only-show-errors",
-    ],
-    { timeoutMs: 60_000, env: { AZURE_CORE_NO_COLOR: "1" } },
-  );
-  if (r.code !== 0) return {};
   try {
-    const [run] = JSON.parse(r.stdout) as Array<{ id?: number; result?: string }>;
+    const [run] =
+      (await api.azure.az<Array<{ id?: number; result?: string }>>([
+        "pipelines",
+        "runs",
+        "list",
+        "--pipeline-ids",
+        String(id),
+        "--org",
+        org,
+        "--project",
+        project,
+        "--status",
+        "completed",
+        "--top",
+        "1",
+      ])) ?? [];
     return run?.id ? { mark: String(run.id), result: run.result ?? "" } : {};
   } catch {
+    // Signed out, or a pipeline the active tenant can't see: no mark, so nothing fires.
     return {};
   }
 }

@@ -18,6 +18,7 @@ import { z } from "zod";
 import type { AddonCommit, AddonInfo } from "../../shared/addons";
 import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
+import type { AzureContext } from "../azure/env";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
 import { bundleHost, bundleUi } from "./bundle";
@@ -281,9 +282,9 @@ export class AddonService {
     }
   }
 
-  /** Gives every running host process the active Azure tenant's environment (D-282). */
-  setHostEnv(env: Record<string, string>): void {
-    for (const l of this.loaded.values()) l.host?.setEnv(env);
+  /** Gives every running host process the active Azure tenant and its environment (D-282). */
+  setHostAzure(azure: AzureContext): void {
+    for (const l of this.loaded.values()) l.host?.setAzure(azure);
   }
 
   /** Runs the host code of every add-on that listens to this event (`contributes.events`, D-215). */

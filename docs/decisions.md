@@ -3431,6 +3431,44 @@ follows (2026-11-03, phase 24). The design: Claude, on my own (the plan's design
   with the tenant's key, label, user, tenant id and domain.
 - Kept apart: Meetings' own Microsoft sign-in (D-232).
 
+## D-284: One `az` for Jig and its add-ons; Azure and DevOps views follow the tenant
+
+**Who:** Jon asked for it (phase 24, session 3: "replace the three copies of the az helper", caches
+keyed by tenant, a reserved-space spinner, a Boards placeholder "In tenant X — Switch"). How: Claude,
+on my own.
+
+- **One runner.** `main/azure/run.ts` `runAz(args, { env, tenant })` is the only way Jig runs `az` for
+  an answer: no shell, `-o json --only-show-errors`, plain-output environment, decoded from the ANSI
+  code page az on Windows prints in (`decodeAzOutput`, moved from Pipelines to `@jig/azure`), and the
+  error mapping `azFailure` in `@jig/azure` (missing, extension, signedOut, expired, failed) into an
+  `AzError`. Project links use it in main; add-ons get it as `api.azure.az` (it runs in their host
+  process with the environment main sent). Pipelines, Boards, Releases and Workflows dropped their own
+  copies. `exec("az", …)` still works and still gets the tenant's environment.
+- **Messages name the tenant, but only an added one.** With a tenant added in Jig every message says
+  "tenant X" and sends an expired or missing sign-in to the tenant avatar; with your own az login the
+  messages stay what they were ("run `az login`"), so nothing changes for someone without tenants.
+- **Host processes know the tenant.** The `env` message became `azure` (`{ env, tenant }`), sent at
+  start and whenever the active tenant or its label changes, before the `azure.tenant` event, so a
+  handler's `api.azure.tenant()` already says the new one. Add-on UIs get `ctx.azure` (`tenant`,
+  `tenants`, `switchTo`) from the renderer's tenant store.
+- **Pipelines** keys its in-memory caches (orgs, projects, pipelines, describe) by tenant key; its
+  settings (`allOrgs`/`orgs`), found pipelines and newest runs are stored per tenant (`key` for your az
+  login, so nothing is migrated; `key@<tenant>` for others). A tracked run remembers its tenant and is
+  checked only while that tenant is active. On `azure.tenant` the host (`tenantChanged`) finds that
+  tenant's pipelines and emits `refreshed`; the view keeps its toolbar and shows `<Spinner center />` in
+  the list's space until they arrive, and drops answers that belong to another tenant. Its settings page
+  reloads per tenant and says which one.
+- **Boards** records the tenant a board was followed in (`tenant`, `tenantLabel`; boards from before are
+  your az login's). A board of another tenant isn't asked for: the host answers `elsewhere` and the view
+  shows one card in the board's space, "In tenant X", whose whole surface switches to it (a removed
+  tenant says so instead). Claude's board tools refuse with the same explanation. Boards reload on a
+  switch (the board body is keyed by tenant).
+- **Releases and Workflows** run their `az pipelines` calls through `api.azure.az`: a failure names the
+  tenant, a started run says "in tenant X" when it isn't your own login.
+- **Project links → Azure** lists the subscriptions of the active tenant's Entra id (your own az login:
+  every directory, as before); the dialog says which tenant, reloads on a switch and keeps its list in
+  one fixed-height slot (spinner, error and list take turns there).
+
 ## D-283: The tenant switch is an avatar at the far right of the top bar
 
 **Who:** Jon (2026-11-03): after seeing a chip with the tenant's name, "just like a user avatar, and on

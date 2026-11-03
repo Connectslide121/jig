@@ -4,6 +4,7 @@ import {
   type Board,
   type BoardData,
   boardQuery,
+  boardTenant,
   columnField,
   defaultArea,
   type FoundBoard,
@@ -28,28 +29,16 @@ export type { Board, BoardData, FoundBoard, WorkItem, WorkItemDetail, WorkItemPa
 
 /**
  * Azure DevOps team boards through the user's `az` CLI (az login + the azure-devops extension), like
- * the Pipelines add-on. Jig stores no tokens (D-018); the boards a project follows are in its storage.
+ * the Pipelines add-on, with the tenant picked in Jig's top bar (D-282). Jig stores no tokens (D-018);
+ * the boards a project follows are in its storage, each with the tenant it was followed in.
  */
 const DEVOPS = "499b84ac-1321-427f-aa17-267ca6975798";
 const HOUR = 60 * 60_000;
 const PARALLEL = 4;
 
-async function az<T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> {
-  const r = await api.exec("az", [...args, "-o", "json", "--only-show-errors"], {
-    timeoutMs,
-    env: { AZURE_CORE_NO_COLOR: "1", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8" },
-  });
-  if (r.code === 127) throw new Error("The Azure CLI (az) is not installed or not on PATH.");
-  if (r.code !== 0) {
-    const err = r.stderr.trim();
-    if (/az login/i.test(err))
-      throw new Error("You're not signed in to the Azure CLI. Run `az login` in a terminal.");
-    if (/extension.*azure-devops|is misspelled or not recognized/i.test(err))
-      throw new Error("The azure-devops extension is missing. Run `az extension add --name azure-devops`.");
-    throw new Error(err.split("\n").slice(-4).join("\n") || `az ${args.slice(0, 2).join(" ")} failed`);
-  }
-  return (r.stdout.trim() ? JSON.parse(r.stdout) : undefined) as T;
-}
+/** Jig's shared `az` (D-284): the active tenant, JSON out, errors that name the tenant. */
+const az = <T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> =>
+  api.azure.az<T>(args, { timeoutMs });
 
 /** `az rest` GET on Azure DevOps with your az login. */
 function rest<T>(api: AddonHostApi, uri: string, params: string[] = [], version = "7.1"): Promise<T> {
@@ -67,10 +56,14 @@ function rest<T>(api: AddonHostApi, uri: string, params: string[] = [], version 
   ]);
 }
 
-/** Remembers an answer for a while (in this process only); a failed answer is asked again. */
+/**
+ * Remembers an answer for a while (in this process only), per tenant: another sign-in sees other
+ * organisations. A failed answer is asked again.
+ */
 function remembered<T>(ms: number) {
   const values = new Map<string, { at: number; value: Promise<T> }>();
-  return (key: string, load: () => Promise<T>): Promise<T> => {
+  return (api: AddonHostApi, k: string, load: () => Promise<T>): Promise<T> => {
+    const key = `${api.azure.tenant().key}|${k}`;
     const hit = values.get(key);
     if (hit && Date.now() - hit.at < ms) return hit.value;
     const value = load();
@@ -92,7 +85,7 @@ async function inBatches<T, R>(list: T[], size: number, run: (item: T) => Promis
 
 /** The organisations your az login belongs to (names, sorted). */
 export async function orgs(_: unknown, api: AddonHostApi): Promise<string[]> {
-  return orgsCache("me", async () => {
+  return orgsCache(api, "me", async () => {
     const me = await rest<{ id?: string }>(
       api,
       "https://app.vssps.visualstudio.com/_apis/profile/profiles/me",
@@ -109,7 +102,7 @@ export async function orgs(_: unknown, api: AddonHostApi): Promise<string[]> {
 
 /** An organisation's projects (sorted). */
 export async function projects({ org }: { org: string }, api: AddonHostApi): Promise<string[]> {
-  return projectsCache(org.toLowerCase(), async () => {
+  return projectsCache(api, org.toLowerCase(), async () => {
     const r = await az<{ value?: Array<{ name: string }> }>(api, [
       "devops",
       "project",
@@ -152,11 +145,14 @@ export async function boards(
     });
     return perTeam.flat();
   };
-  return force ? load() : boardsCache(key, load);
+  return force ? load() : boardsCache(api, key, load);
 }
 
 /** A board as Azure DevOps shows it: its columns, and its cards with the column each is in. */
 export async function board({ board: b }: { board: Board }, api: AddonHostApi): Promise<BoardData> {
+  // Another tenant's board: the view shows where it is (and a Switch) instead of an az error.
+  if (boardTenant(b) !== api.azure.tenant().key)
+    return { columns: [], items: [], elsewhere: { tenant: boardTenant(b) } };
   const base = teamApi(b);
   const [raw, areas] = await Promise.all([
     rest<unknown>(api, `${base}/boards/${encodeURIComponent(b.boardId)}`),
@@ -335,13 +331,23 @@ async function chatBoard(args: ChatArgs, api: AddonHostApi): Promise<Board> {
     throw new Error(
       `No board named ${JSON.stringify(args.board)}. Boards: ${boards.map(tabName).join(", ")}`,
     );
+  const active = api.azure.tenant();
+  if (boardTenant(found) !== active.key)
+    throw new Error(
+      `${tabName(found)} is in Azure tenant ${found.tenantLabel ?? boardTenant(found)}, but Jig is using ${active.label}. Switch tenants in Jig's top bar (or with jig_azure_switch_tenant, if the user agrees), then try again.`,
+    );
   return found;
 }
 
 export async function toolBoards(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const boards = await followed(args, api);
   if (!boards.length) return "This project follows no Azure DevOps boards yet (Code → Boards → +).";
-  return boards.map((b) => `- ${tabName(b)} (team ${b.team}, ${b.org}/${b.project})`).join("\n");
+  return boards
+    .map(
+      (b) =>
+        `- ${tabName(b)} (team ${b.team}, ${b.org}/${b.project}${b.tenant && b.tenant !== "default" ? `, tenant ${b.tenantLabel ?? b.tenant}` : ""})`,
+    )
+    .join("\n");
 }
 
 export async function toolCards(

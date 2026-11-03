@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   branchList,
   changedParams,
-  decodeAzOutput,
   fromBuild,
   isRetired,
   mergeValues,
@@ -236,11 +235,4 @@ it("shows execution duration separately from finish age, handling active and inc
   expect(runDuration({ ...run!, finished: 500 }, 6000)).toBe("Not reported");
   expect(runDuration({ ...run!, finished: 1000 + 3_723_000 })).toBe("1h 2m 3s");
   expect(runDuration(undefined)).toBe("Not reported");
-});
-
-describe("decodeAzOutput", () => {
-  it("reads UTF-8, and the Windows code page az prints in", () => {
-    expect(decodeAzOutput(new TextEncoder().encode("1.4 · main · Malmö"))).toBe("1.4 · main · Malmö");
-    expect(decodeAzOutput(Uint8Array.from([0x31, 0x20, 0xb7, 0x20, 0x6d, 0xf6]))).toBe("1 · mö");
-  });
 });

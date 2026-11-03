@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, settledBox, test } from "./fixtures";
 
 /**
  * An `az` that answers like Azure DevOps: one organisation (contoso), projects Shop and Portal, two
@@ -56,6 +56,9 @@ if (has("boards", "query")) {
     card(104, "Show delivery dates", "User Story", "Active", "Doing"),
   ]);
 }
+// Adding a tenant (D-282): the browser sign-in and who it is.
+if (args[0] === "login") process.exit(0);
+if (has("account", "show")) say({ tenantId: "22222222-2222-4222-8222-222222222222", tenantDisplayName: "Northwind", user: { name: "ann@northwind.example.com" } });
 console.error("ERROR: Please run 'az login' to setup account.");
 process.exit(1);
 `;
@@ -186,4 +189,33 @@ test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude
   })) as { value: string };
   expect(listed.value).toContain("## Doing");
   expect(listed.value).toContain("#101 Bug");
+});
+
+test("Boards: a board followed in another tenant keeps its space and switches to it", async ({
+  page,
+  jigHome,
+}) => {
+  const view = await setUp(page, jigHome, true);
+  await view.getByTestId("boards-add-first").click();
+  const dialog = page.getByTestId("boards-dialog");
+  await dialog.getByTestId("boards-pick-Web-Stories").click();
+  await dialog.getByTestId("boards-add-picked").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  const tabs = await settledBox(view.getByTestId("board-tab-Web · Stories"));
+
+  // Another tenant: the board (followed with your own az login) says where it is, not an az error.
+  await hostCall(page, "azure.addTenant", { tenant: "northwind.example.com" });
+  await hostCall(page, "azure.setActiveTenant", { key: "northwind" });
+  const elsewhere = view.getByTestId("board-elsewhere");
+  await expect(elsewhere).toContainText("In your own az login");
+  await expect(view.getByTestId("board-error")).toBeHidden();
+  expect(await settledBox(view.getByTestId("board-tab-Web · Stories"))).toEqual(tabs);
+
+  // The whole card switches back, and the board loads again.
+  await elsewhere.click();
+  await expect(page.getByTestId("tenant-switcher")).toHaveAttribute(
+    "aria-label",
+    "Azure tenant: Your az login",
+  );
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
 });

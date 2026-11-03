@@ -10,13 +10,16 @@ import {
   Spinner,
   Tabs,
   useActiveProject,
+  useAddon,
   useAddonEvent,
   useHostCall,
+  useJigEvent,
   useStorage,
 } from "@jig/sdk/ui";
 import {
   BookOpen,
   Bug,
+  Building2,
   Check,
   CircleDot,
   Crown,
@@ -346,6 +349,7 @@ function BoardBody({
           .catch((e: unknown) => fail(`Couldn't delete #${item.id}`, e));
     },
   };
+  if (data?.elsewhere) return <InOtherTenant ctx={ctx} board={board} tenant={data.elsewhere.tenant} />;
   if (error && !data)
     return (
       <Empty icon={TriangleAlert} title="Couldn't load this board" className="h-full">
@@ -394,6 +398,67 @@ function BoardBody({
   );
 }
 
+/**
+ * A board followed in another Azure tenant than the active one (D-282): in the board's own space, one
+ * card that says which tenant and switches to it (the whole card is the button). A tenant that was
+ * removed since can't be switched to: it says so instead.
+ */
+function InOtherTenant({ ctx, board, tenant }: { ctx: AddonUiContext; board: Board; tenant: string }) {
+  const [switching, setSwitching] = useState(false);
+  const tenants = ctx.azure.tenants();
+  // Before Jig has read its tenants (just started), the board's own record speaks for it.
+  const known =
+    tenants.find((t) => t.key === tenant) ??
+    (tenants.length
+      ? undefined
+      : { key: tenant, label: board.tenantLabel ?? tenant, isDefault: tenant === "default" });
+  const label = known?.label ?? board.tenantLabel ?? tenant;
+  const where = known?.isDefault ? "your own az login" : `tenant ${label}`;
+  if (!known)
+    return (
+      <Empty icon={Building2} title={`In tenant ${label}`} className="h-full">
+        <p className="max-w-xs text-xs text-muted" data-testid="board-elsewhere">
+          That tenant was removed from Jig. Add it again with the tenant avatar at the top right, or remove
+          this board.
+        </p>
+      </Empty>
+    );
+  return (
+    <div className="flex h-full items-center justify-center p-4">
+      <button
+        type="button"
+        disabled={switching}
+        data-testid="board-elsewhere"
+        onClick={() => {
+          setSwitching(true);
+          ctx.azure.switchTo(tenant).catch((e: unknown) => {
+            setSwitching(false);
+            ctx.notify({
+              title: "Couldn't switch tenants",
+              message: e instanceof Error ? e.message : String(e),
+              tone: "danger",
+            });
+          });
+        }}
+        className="flex w-full max-w-sm items-center gap-3 rounded-lg border border-line bg-raised p-4 text-left hover:border-line-strong hover:bg-hover disabled:cursor-default"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <Building2 className="size-4" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-sm font-medium text-fg">In {where}</span>
+          <span className="text-xs text-muted">
+            {board.org} belongs to another Azure sign-in than the one Jig is using.
+          </span>
+        </span>
+        <span className="flex w-16 shrink-0 justify-end text-sm font-medium text-accent">
+          {switching ? <Spinner size="sm" /> : "Switch"}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 /** Pick boards from your Azure DevOps organisations: organisation, project, then teams' boards. */
 function AddBoards({
   followed,
@@ -407,7 +472,9 @@ function AddBoards({
   onClose: () => void;
   onAdd: (picked: Array<FoundBoard & { org: string; project: string }>) => void;
 }) {
-  const last = followed[followed.length - 1];
+  const ctx = useAddon();
+  const tenant = ctx.azure.tenant();
+  const last = followed.filter((b) => (b.tenant || "default") === tenant.key).at(-1);
   const orgs = useHostCall<string[]>("orgs");
   const [org, setOrg] = useState(last?.org ?? "");
   const projects = useHostCall<string[]>("projects", { org }, { skip: !org });
@@ -516,7 +583,8 @@ function AddBoards({
       footer={
         <>
           <span className="mr-auto text-xs text-hint">
-            Uses your own az login. Nothing changes in Azure DevOps.
+            {tenant.isDefault ? "Uses your own az login." : `Uses tenant ${tenant.label}.`} Nothing changes in
+            Azure DevOps.
           </span>
           <Button variant="ghost" onClick={onClose}>
             Cancel
@@ -595,12 +663,19 @@ export function BoardsView({ ctx }: AddonComponentProps) {
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const board = boards.find((b) => b.id === selected) ?? boards[0];
+  // Another Azure tenant (D-282): the board loads again with it (a spinner in its space meanwhile).
+  const [tenant, setTenant] = useState(() => ctx.azure.tenant().key);
+  useJigEvent("azure.tenant", (t) => {
+    setTenant(t.key);
+    setAdding(false);
+  });
 
   const add = (picked: Array<FoundBoard & { org: string; project: string }>) => {
     const all = [...boards];
+    const t = ctx.azure.tenant();
     for (const p of picked) {
       const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      all.push({ id, name: "", ...p });
+      all.push({ id, name: "", ...p, ...(t.isDefault ? {} : { tenant: t.key, tenantLabel: t.label }) });
     }
     const named = all.map((b) => ({ ...b, name: b.name || boardTitle(b) }));
     void setBoards(named);
@@ -736,7 +811,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
           </Empty>
         ) : board ? (
           <BoardBody
-            key={`${board.org}/${board.project}/${board.team}/${board.boardId}`}
+            key={`${tenant}/${board.org}/${board.project}/${board.team}/${board.boardId}`}
             ctx={ctx}
             board={board}
             projectId={project.id}

@@ -3,6 +3,13 @@
 Azure DevOps pipelines through your own `az` CLI (`az login` + the `azure-devops` extension), like
 the pipelines plugin (D-148). Jig stores no tokens (D-018).
 
+- **Tenants (D-282, D-284):** every `az` runs through `api.azure.az` with the tenant picked in the top
+  bar. In-memory caches are keyed by tenant; the organisations setting, the pipelines found and their
+  newest runs are stored per tenant (`settings`, `found`, `latest` for your own az login,
+  `<key>@<tenant>` for another). On a switch (`azure.tenant` → `tenantChanged`) the view keeps its
+  toolbar, shows a spinner in the list's place and then that tenant's pipelines. A run started from
+  Jig is watched while its tenant is active.
+
 - **Your repositories' pipelines:** every repository in your workspaces whose `origin` is on Azure
   DevOps (a repository with worktrees once) → `az pipelines list --repository … --repository-type
   tfsgit` → `az pipelines show` for the YAML file and default branch → the YAML's run-time

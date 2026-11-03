@@ -3,7 +3,10 @@ import { type FSWatcher, watch } from "node:fs";
 import { access, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { DEFAULT_TENANT_REF } from "@jig/azure";
 import { type AddonHostApi, allowsExec, scopedKey } from "@jig/sdk";
+import type { AzureContext } from "../azure/env";
+import { runAz } from "../azure/run";
 import { resolveCommand } from "./winCommand";
 
 /**
@@ -21,11 +24,14 @@ export type ToHost =
       dataDir: string;
       bundle: string;
       permissions: string[];
-      /** Added to every program the add-on runs: the active Azure tenant's folder (D-282). */
-      env?: Record<string, string>;
+      /**
+       * The active Azure tenant (D-282): its environment is added to every program the add-on runs,
+       * and `api.azure` names it.
+       */
+      azure?: AzureContext;
     }
-  /** The active Azure tenant changed: programs started from now on get this environment. */
-  | { t: "env"; env: Record<string, string> }
+  /** The active Azure tenant changed: programs started from now on use it. */
+  | { t: "azure"; azure: AzureContext }
   | { t: "call"; id: number; method: string; args: unknown }
   | { t: "rpcResult"; id: number; ok: boolean; value?: unknown; error?: string };
 
@@ -60,8 +66,8 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   let module: Record<string, unknown> = {};
   let api: AddonHostApi | undefined;
   let rpcId = 0;
-  /** The active Azure tenant's `AZURE_CONFIG_DIR` (empty for your own az login), D-282. */
-  let hostEnv: Record<string, string> = {};
+  /** The active Azure tenant and its `AZURE_CONFIG_DIR` (empty for your own az login), D-282. */
+  let azure: AzureContext = { env: {}, tenant: DEFAULT_TENANT_REF };
   /** Open file watchers (they end with the process, which stops when the add-on reloads). */
   const watchers = new Set<FSWatcher>();
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
@@ -96,7 +102,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
               timeout: options.timeoutMs ?? 120_000,
               maxBuffer: 64 * 1024 * 1024,
               windowsHide: true,
-              env: { ...process.env, ...hostEnv, ...options.env },
+              env: { ...process.env, ...azure.env, ...options.env },
               encoding: "buffer",
             },
             (error, stdout, stderr) => {
@@ -121,6 +127,16 @@ export function createHostRuntime(send: (message: FromHost) => void) {
             child.stdin?.end(options.input);
           }
         });
+      },
+      azure: {
+        tenant: () => azure.tenant,
+        az(args, options = {}) {
+          if (!allowsExec(init.permissions, "az"))
+            return Promise.reject(
+              new PermissionError('This add-on needs "exec:az" (or "exec") in addon.json'),
+            );
+          return runAz(args, { env: azure.env, tenant: azure.tenant, timeoutMs: options.timeoutMs });
+        },
       },
       fs: {
         readFile: async (path, encoding = "utf8") => {
@@ -175,7 +191,7 @@ export function createHostRuntime(send: (message: FromHost) => void) {
           windowsVerbatimArguments: resolved.verbatim,
           cwd: options.cwd,
           windowsHide: true,
-          env: { ...process.env, ...hostEnv, ...options.env },
+          env: { ...process.env, ...azure.env, ...options.env },
         });
         child.stdout?.setEncoding("utf8");
         child.stderr?.setEncoding("utf8");
@@ -243,10 +259,10 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   }
 
   async function handle(message: ToHost): Promise<void> {
-    if (message.t === "env") {
-      hostEnv = message.env;
+    if (message.t === "azure") {
+      azure = message.azure;
     } else if (message.t === "init") {
-      hostEnv = message.env ?? {};
+      azure = message.azure ?? azure;
       try {
         api = makeApi(message);
         module = (await import(`${pathToFileURL(message.bundle).href}?t=${Date.now()}`)) as Record<

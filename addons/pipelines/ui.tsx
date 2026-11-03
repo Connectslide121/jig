@@ -14,6 +14,7 @@ import {
   Switch,
   useAddonEvent,
   useHostCall,
+  useJigEvent,
 } from "@jig/sdk/ui";
 import {
   Check,
@@ -37,7 +38,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Found, OrgPipelines } from "./host";
 import {
   changedParams,
@@ -673,19 +674,23 @@ function StateIcon({ kind, run }: { kind: RunKind; run?: PipelineRun | null }) {
   );
 }
 
-type Latest = { runs: Record<string, PipelineRun | null>; error?: string };
+type Latest = { runs: Record<string, PipelineRun | null>; error?: string; tenant?: string };
 
 /**
  * What the view showed last (in memory, while Jig runs), so opening it again shows the pipelines and
  * their runs at once and only refreshes them in the background. The first time, the host's saved copy
- * (warmed when Jig starts) fills it.
+ * (warmed when Jig starts) fills it. It belongs to one Azure tenant (D-282): another one starts over.
  */
-const shown: { found?: Found; latest?: Latest } = {};
+const shown: { tenant?: string; found?: Found; latest?: Latest } = {};
+
+/** Another tenant's answer (it arrived after a switch): dropped. */
+const otherTenant = (ctx: AddonUiContext, tenant: string | undefined) =>
+  tenant !== undefined && tenant !== ctx.azure.tenant().key;
 
 /** The newest runs, every 20 s while one runs and Jig is in front, else every minute. */
 function useLatest(ctx: AddonUiContext, keys: string[]) {
   const [latest, setLatestState] = useState<Latest | undefined>(shown.latest);
-  const setLatest = useCallback((next: Latest | ((l: Latest | undefined) => Latest)) => {
+  const setLatest = useCallback((next: Latest | undefined | ((l: Latest | undefined) => Latest)) => {
     setLatestState((l) => {
       const value = typeof next === "function" ? next(l) : next;
       shown.latest = value;
@@ -699,7 +704,8 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
     if (!joined) return;
     setLoading(true);
     try {
-      setLatest(await ctx.host.call<Latest>("latest", { keys: joined.split("|") }));
+      const next = await ctx.host.call<Latest>("latest", { keys: joined.split("|") });
+      if (!otherTenant(ctx, next.tenant)) setLatest(next);
     } catch (error) {
       setLatest((l) => ({ runs: l?.runs ?? {}, error: (error as Error).message }));
     } finally {
@@ -707,17 +713,11 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
     }
   }, [ctx, joined, setLatest]);
   useEffect(() => {
-    if (!shown.latest)
-      void ctx.storage.get<Latest>("latest").then((saved) => {
-        if (saved && !shown.latest) setLatest({ runs: saved.runs });
-      });
-  }, [ctx, setLatest]);
-  useEffect(() => {
     void reload();
   }, [reload]);
   useAddonEvent("refreshed", (payload) => {
-    const r = (payload as { latest?: Latest } | undefined)?.latest;
-    if (r) setLatest(r);
+    const p = payload as { tenant?: string; latest?: Latest } | undefined;
+    if (p?.latest && !otherTenant(ctx, p.tenant)) setLatest(p.latest);
   });
   const busy = Object.values(latest?.runs ?? {}).some(isActive);
   useEffect(() => {
@@ -728,23 +728,32 @@ function useLatest(ctx: AddonUiContext, keys: string[]) {
     return () => clearInterval(t);
   }, [reload, busy]);
   useAddonEvent("runs-changed", () => void reload());
-  return { latest, loading, reload };
+  return { latest, loading, reload, setLatest };
 }
 
 export function PipelinesView({ ctx }: AddonComponentProps) {
+  // What was shown last belongs to the tenant it was loaded with; another tenant starts with a spinner.
+  if (shown.tenant !== ctx.azure.tenant().key) {
+    shown.tenant = ctx.azure.tenant().key;
+    shown.found = undefined;
+    shown.latest = undefined;
+  }
+  const [tenant, setTenant] = useState(shown.tenant);
   const [found, setFoundState] = useState<Found | undefined>(shown.found);
-  const setFound = useCallback((next: Found) => {
+  const setFound = useCallback((next: Found | undefined) => {
     shown.found = next;
     setFoundState(next);
   }, []);
   const [finding, setFinding] = useState(false);
   const [findError, setFindError] = useState<string>();
+  const setLatestRef = useRef<(next: Latest | undefined) => void>(() => undefined);
   const find = useCallback(
     async (force = false) => {
       setFinding(true);
       setFindError(undefined);
       try {
-        setFound(await ctx.host.call<Found>("pipelines", { force }));
+        const next = await ctx.host.call<Found>("pipelines", { force });
+        if (!otherTenant(ctx, next.tenant)) setFound(next);
       } catch (error) {
         setFindError((error as Error).message);
       } finally {
@@ -754,31 +763,48 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
     [ctx, setFound],
   );
   useAddonEvent("refreshed", (payload) => {
-    const f = (payload as { found?: Found } | undefined)?.found;
-    if (f) setFound(f);
+    const p = payload as { tenant?: string; found?: Found } | undefined;
+    if (p?.found && !otherTenant(ctx, p.tenant)) setFound(p.found);
   });
   useEffect(() => {
-    // The saved list shows at once (no host process needed); the host then checks it again.
+    // The tenant's saved list shows at once; the host then checks it again.
     if (!shown.found)
-      void ctx.storage.get<Found>("found").then((saved) => {
-        if (saved && !shown.found) setFound(saved);
-      });
+      void ctx.host
+        .call<{ tenant: string; found?: Found; latest?: Latest }>("saved")
+        .then((saved) => {
+          if (otherTenant(ctx, saved.tenant)) return;
+          if (saved.found && !shown.found) setFound(saved.found);
+          if (saved.latest && !shown.latest) setLatestRef.current({ runs: saved.latest.runs });
+        })
+        .catch(() => undefined);
     void find();
     // Pipelines created in Azure DevOps join their repository on their own.
     const t = setInterval(() => document.visibilityState === "visible" && void find(), 5 * 60_000);
     return () => clearInterval(t);
   }, [find]);
   const list = found?.pipelines ?? [];
-  const { latest, loading, reload } = useLatest(
+  const { latest, loading, reload, setLatest } = useLatest(
     ctx,
     list.map((p) => p.key),
   );
+  setLatestRef.current = setLatest;
+  // Another tenant (D-282): its pipelines replace these. A spinner holds their place meanwhile (never an
+  // empty list) and the toolbar stays where it is; the host's `refreshed` or `find` fills it.
+  useJigEvent("azure.tenant", (t) => {
+    if (t.key === shown.tenant) return;
+    shown.tenant = t.key;
+    setTenant(t.key);
+    setFound(undefined);
+    setLatest(undefined);
+    setFindError(undefined);
+    setMore(false);
+    void find();
+  });
   const [arrangements, setArrangement] = useArrangements(ctx);
   const [arranging, setArranging] = useState(false);
   const [openForm, setOpenForm] = useState<string>();
   const [more, setMore] = useState(false);
   useAddonEvent("open-run", (key) => setOpenForm(String(key)));
-  if (!found && !findError) return <Spinner center />;
   const repos = [...new Set(list.map((p) => p.repoPath))];
   const running = Object.values(latest?.runs ?? {}).filter(isActive).length;
   return (
@@ -786,11 +812,15 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
       <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-2 text-xs text-muted">
         <Rocket className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate" data-testid="pipelines-counts">
-          {list.length} pipeline{list.length === 1 ? "" : "s"}
-          {repos.length > 0 && ` · ${repos.length} repo${repos.length === 1 ? "" : "s"}`}
-          {running > 0 && <span className="text-info"> · {running} running</span>}
+          {found && (
+            <>
+              {list.length} pipeline{list.length === 1 ? "" : "s"}
+              {repos.length > 0 && ` · ${repos.length} repo${repos.length === 1 ? "" : "s"}`}
+              {running > 0 && <span className="text-info"> · {running} running</span>}
+            </>
+          )}
         </span>
-        {(loading || finding) && <Spinner size="sm" />}
+        {found && (loading || finding) && <Spinner size="sm" />}
         <Button
           size="sm"
           variant={arranging ? "primary" : "ghost"}
@@ -811,102 +841,109 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
         />
         <IconButton icon={Settings} size="sm" label="Pipelines settings" onClick={() => ctx.openSettings()} />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-        {findError && <div className="px-2 py-1 text-xs text-danger">{findError}</div>}
-        {latest?.error && <div className="px-2 py-1 text-xs text-warning">{latest.error}</div>}
-        {found?.errors.map((e) => (
-          <div key={e} className="px-2 py-1 text-xs text-warning">
-            {e}
-          </div>
-        ))}
-        {found && list.length === 0 && (
-          <Empty icon={Rocket} title="No pipelines found">
-            <p>
-              Pipelines lists the Azure DevOps pipelines of the repositories in your workspaces, through your
-              own az CLI.
-            </p>
-            <Button
-              size="sm"
-              className="mt-2"
-              icon={SearchCheck}
-              busy={finding}
-              onClick={() => void find(true)}
-            >
-              Find pipelines again
-            </Button>
-          </Empty>
-        )}
-        <ArrangeList
-          items={repos}
-          keyOf={(path) => path}
-          arrangement={arrangements?.repos ?? EMPTY_ARRANGEMENT}
-          onChange={(next) => setArrangement("repos", next)}
-          arranging={arranging}
-          dragType="application/x-jig-arrange-repos"
-          testId="pipelines-repos"
-          renderItem={(path) => {
-            const items = list.filter((p) => p.repoPath === path);
-            const first = items[0]!;
-            const key = `repo:${first.repoName}`;
-            return (
-              <section
-                className="mb-2 rounded-lg border border-line bg-raised p-1"
-                data-testid={`pipelines-repo-${first.repoName}`}
+      {!found && !findError ? (
+        <div className="relative min-h-0 flex-1" data-testid="pipelines-loading">
+          <Spinner center />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
+          {findError && <div className="px-2 py-1 text-xs text-danger">{findError}</div>}
+          {latest?.error && <div className="px-2 py-1 text-xs text-warning">{latest.error}</div>}
+          {found?.errors.map((e) => (
+            <div key={e} className="px-2 py-1 text-xs text-warning">
+              {e}
+            </div>
+          ))}
+          {found && list.length === 0 && (
+            <Empty icon={Rocket} title="No pipelines found">
+              <p>
+                Pipelines lists the Azure DevOps pipelines of the repositories in your workspaces, through
+                your own az CLI.
+              </p>
+              <Button
+                size="sm"
+                className="mt-2"
+                icon={SearchCheck}
+                busy={finding}
+                onClick={() => void find(true)}
               >
-                <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5">
-                  <FolderGit2 className="size-3.5 shrink-0 text-muted" />
-                  <span className="truncate text-xs font-semibold text-fg">{first.repoName}</span>
-                  <span className="truncate text-2xs text-hint">
-                    {first.org}/{first.project}
-                  </span>
-                </div>
-                <ArrangeList
-                  items={items}
-                  keyOf={(p) => String(p.id)}
-                  arrangement={arrangements?.[key] ?? EMPTY_ARRANGEMENT}
-                  onChange={(next) => setArrangement(key, next)}
-                  arranging={arranging}
-                  testId={`pipelines-list-${first.repoName}`}
-                  showFooter={false}
-                  renderItem={(p) => (
-                    <PipelineCard
-                      ctx={ctx}
-                      pipeline={p}
-                      run={latest?.runs[p.key]}
-                      loading={!latest}
-                      open={openForm === p.key}
-                      onOpen={(o) => setOpenForm(o ? p.key : undefined)}
-                      arranging={arranging}
-                    />
-                  )}
-                />
-              </section>
-            );
-          }}
-        />
-        <button
-          type="button"
-          className="mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
-          onClick={() => {
-            // A pipeline of a checked-out repository belongs with its repository, not down here.
-            if (!more) void find(true);
-            setMore(!more);
-          }}
-          data-testid="pipelines-more"
-        >
-          {more ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          More pipelines in your organisations
-        </button>
-        {more && (
-          <MorePipelines
-            ctx={ctx}
-            known={new Set(list.map((p) => p.key.toLowerCase()))}
-            arrangements={arrangements}
-            setArrangement={setArrangement}
+                Find pipelines again
+              </Button>
+            </Empty>
+          )}
+          <ArrangeList
+            items={repos}
+            keyOf={(path) => path}
+            arrangement={arrangements?.repos ?? EMPTY_ARRANGEMENT}
+            onChange={(next) => setArrangement("repos", next)}
             arranging={arranging}
+            dragType="application/x-jig-arrange-repos"
+            testId="pipelines-repos"
+            renderItem={(path) => {
+              const items = list.filter((p) => p.repoPath === path);
+              const first = items[0]!;
+              const key = `repo:${first.repoName}`;
+              return (
+                <section
+                  className="mb-2 rounded-lg border border-line bg-raised p-1"
+                  data-testid={`pipelines-repo-${first.repoName}`}
+                >
+                  <div className="flex items-center gap-1.5 px-2 pt-1 pb-0.5">
+                    <FolderGit2 className="size-3.5 shrink-0 text-muted" />
+                    <span className="truncate text-xs font-semibold text-fg">{first.repoName}</span>
+                    <span className="truncate text-2xs text-hint">
+                      {first.org}/{first.project}
+                    </span>
+                  </div>
+                  <ArrangeList
+                    items={items}
+                    keyOf={(p) => String(p.id)}
+                    arrangement={arrangements?.[key] ?? EMPTY_ARRANGEMENT}
+                    onChange={(next) => setArrangement(key, next)}
+                    arranging={arranging}
+                    testId={`pipelines-list-${first.repoName}`}
+                    showFooter={false}
+                    renderItem={(p) => (
+                      <PipelineCard
+                        ctx={ctx}
+                        pipeline={p}
+                        run={latest?.runs[p.key]}
+                        loading={!latest}
+                        open={openForm === p.key}
+                        onOpen={(o) => setOpenForm(o ? p.key : undefined)}
+                        arranging={arranging}
+                      />
+                    )}
+                  />
+                </section>
+              );
+            }}
           />
-        )}
-      </div>
+          <button
+            type="button"
+            className="mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
+            onClick={() => {
+              // A pipeline of a checked-out repository belongs with its repository, not down here.
+              if (!more) void find(true);
+              setMore(!more);
+            }}
+            data-testid="pipelines-more"
+          >
+            {more ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+            More pipelines in your organisations
+          </button>
+          {more && (
+            <MorePipelines
+              key={tenant}
+              ctx={ctx}
+              known={new Set(list.map((p) => p.key.toLowerCase()))}
+              arrangements={arrangements}
+              setArrangement={setArrangement}
+              arranging={arranging}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1116,8 +1153,15 @@ function OrgSettingsRow({
   );
 }
 
+/** The settings of the active tenant (each has its own organisations); another tenant loads its own. */
 export function PipelinesSettings({ ctx }: AddonComponentProps) {
-  const { data, error } = useHostCall<PipelineSettings>("settings");
+  const [tenant, setTenant] = useState(() => ctx.azure.tenant().key);
+  useJigEvent("azure.tenant", (t) => setTenant(t.key));
+  return <TenantSettings key={tenant} ctx={ctx} />;
+}
+
+function TenantSettings({ ctx }: AddonComponentProps) {
+  const { data, error } = useHostCall<PipelineSettings & { tenant?: string }>("settings");
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<PipelineSettings>();
@@ -1166,7 +1210,17 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
     <div className="flex flex-col gap-6" data-testid="pipelines-settings">
       <div>
         <h2 className="text-lg font-semibold">Pipelines</h2>
-        <p className="text-sm text-muted">Azure DevOps through your own Azure CLI. Jig stores no tokens.</p>
+        <p className="text-sm text-muted">
+          {data?.tenant ? (
+            <>
+              Azure DevOps through your own Azure CLI, in tenant{" "}
+              <span className="font-medium text-fg">{data.tenant}</span>: each tenant keeps its own
+              organisations. Jig stores no tokens.
+            </>
+          ) : (
+            "Azure DevOps through your own Azure CLI. Jig stores no tokens."
+          )}
+        </p>
       </div>
       <Card className="flex flex-col gap-3 p-4">
         <div className="flex items-center gap-2">
@@ -1198,7 +1252,7 @@ export function PipelinesSettings({ ctx }: AddonComponentProps) {
             checked={form.allOrgs}
             onChange={(allOrgs) => setForm({ ...form, allOrgs })}
           />
-          Every organisation your az login belongs to
+          Every organisation this sign-in belongs to
         </div>
         {form.allOrgs && found.error && <div className="text-xs text-warning">{found.error}</div>}
         {form.allOrgs && !found.orgs && !found.error && <Spinner size="sm" />}
