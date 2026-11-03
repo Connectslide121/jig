@@ -7,10 +7,21 @@ import "./styles/global.css";
 const MeetingRoom = lazy(async () => ({
   default: (await import("./features/meetings/MeetingRoom")).MeetingRoom,
 }));
+const MeetingLobby = lazy(async () => ({
+  default: (await import("./features/meetings/MeetingLobby")).MeetingLobby,
+}));
+const params = new URLSearchParams(window.location.search);
+/** The Meetings windows (D-292): the call window (`meetingRoom`) and the lobby (`meetingLobby`). */
+const Meetings =
+  params.get("meetingRoom") === "1"
+    ? MeetingRoom
+    : params.get("meetingLobby") === "1"
+      ? MeetingLobby
+      : undefined;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {new URLSearchParams(window.location.search).get("meetingRoom") === "1" ? (
+    {Meetings ? (
       <Suspense
         fallback={
           <div className="h-screen bg-base text-fg">
@@ -18,7 +29,7 @@ createRoot(document.getElementById("root")!).render(
           </div>
         }
       >
-        <MeetingRoom />
+        <Meetings />
       </Suspense>
     ) : (
       <App />

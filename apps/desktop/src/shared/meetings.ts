@@ -70,6 +70,15 @@ export interface MeetingRecord {
   /** Why Claude's last translation failed (cleared when one works again or the language changes). */
   translationError?: string;
 }
+/**
+ * What the lobby asks the call window to do (D-292): check devices and join a meeting (an empty link
+ * asks for one), place a call to someone, or only come to the front.
+ */
+export type MeetingStart =
+  | { kind: "join"; url: string; title: string }
+  | { kind: "call"; peerId: string; peerName: string; camera: boolean }
+  | { kind: "show" };
+
 /** Who a Teams call was with: their Microsoft Entra object id, so Jig can call them back. */
 export interface MeetingCall {
   peerId: string;

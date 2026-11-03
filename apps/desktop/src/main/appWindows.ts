@@ -44,12 +44,26 @@ export function appWindows(): BrowserWindow[] {
 }
 
 /**
- * Jig's main window: the first of its windows that isn't one waiting in the background (the meeting
- * window opens hidden at start to ring for calls, so it can come first in the list).
+ * Jig's windows that are not the workbench (the Meetings lobby, D-292): ordinary windows that keep
+ * Jig running and get its events, but never count as "the main window".
+ */
+const secondary = new WeakSet<BrowserWindow>();
+
+export function markSecondaryWindow(window: BrowserWindow): void {
+  secondary.add(window);
+}
+
+/**
+ * Jig's main window: the first workbench window, not one waiting in the background (the call window
+ * opens hidden at start to ring for calls, so it can come first in the list) nor the Meetings lobby.
  */
 export function mainWindow(): BrowserWindow | undefined {
   const windows = appWindows();
-  return windows.find((w) => !background.has(w)) ?? windows[0];
+  return (
+    windows.find((w) => !background.has(w) && !secondary.has(w)) ??
+    windows.find((w) => !background.has(w)) ??
+    windows[0]
+  );
 }
 
 /**

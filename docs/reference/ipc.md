@@ -279,17 +279,20 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 
 | Method | Purpose |
 |---|---|
-| meetings.open | Open/focus the Meetings add-on's dedicated window |
+| meetings.open | Open/focus the Meetings lobby window, with the call window waiting hidden beside it (D-292) |
+| meetings.start | Lobby or call window: `{kind: "join", url, title}` (empty url asks for a link) / `{kind: "call", peerId, peerName, camera}` / `{kind: "show"}`: reveal the call window and have it check devices and join, place the call, or only come forward (D-292) |
+| meetings.takeStart | Call window only: what `meetings.start` asked for, once (null when nothing) |
+| meetings.callIdle | Call window only: nothing to show (no call, prejoin or ringing); main hides it unless a call is active or a start waits |
 | meetings.overview | Global nonsecret settings/account, active id and saved meeting records |
-| meetings.configure | Save tenant/client/ACS endpoint; room only, no active call |
+| meetings.configure | Save tenant/client/ACS endpoint; lobby or room, no active call |
 | meetings.delete | Delete a saved meeting and its frozen question/notes snapshots; room or main window (meeting history, D-250), never the live one |
 | meetings.history | Past meetings newest first, without the live one (the main window's Meeting history tab, D-250) |
 | meetings.mentions | Meetings matching `{query}` for the chat's `@` picker, each with its `@meeting:<name>-<8 hex>` mention |
 | meetings.rename | `{id, title}`: rename a meeting; room or main window |
 | meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |
-| meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; room only (D-221) |
-| meetings.lobbyView | Save Agenda/Week preference; room only |
-| meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; room only |
+| meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; lobby or room (D-221, D-292) |
+| meetings.lobbyView | Save Agenda/Week preference; lobby or room |
+| meetings.signIn / meetings.signOut | External browser sign-in / clear protected MSAL cache; lobby or room |
 | meetings.calendar | Next 14 days of default calendar; separate delegated consent |
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token; owned room sender only |
@@ -300,18 +303,23 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.chatConnect | Room only: asks Microsoft for the chat permissions (browser sign-in) |
 | meetings.photo | Someone's Microsoft profile picture (48×48 data URL) or null, by Teams id, object id or `local`; silent sign-in only, cached per run (D-263) |
 | people.photo | The same by e-mail / user principal name `{ email }`, for add-ons (`ctx.people.photo`, `PersonAvatar`; D-291); null without Meetings on or its sign-in (no request then), after a refused people token for 10 minutes, or for anything not e-mail-shaped; cached per run |
-| meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); room only |
+| meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); lobby or room |
 | meetings.startCall | Create the global record of a one-to-one Teams call (`{ peerId, peerName, direction }`); room only, one active call |
-| meetings.setRinging | Turn ringing for Teams calls in Jig on or off; room only |
+| meetings.setRinging | Turn ringing for Teams calls in Jig on or off; lobby or room |
 | meetings.incoming | A call rings (`name`) or stopped ringing: brings the room to the front with a system notification; room only |
 | meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only |
 | meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant; the granted source gets a frame (D-266) |
 | meetings.shareStopped | Room-only: sharing ended, remove the frame around the shared screen/window |
-| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat (notes also from the main window) |
-| meetings.revealChat | Open the question/notes chat in the main workbench |
+| meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat; ask from the lobby or room, notes also from the main window |
+| meetings.revealChat | Lobby or room: open the question/notes chat in the main workbench |
 | meetings.actions / meetings.queue | Edited draft actions / explicitly selected ids to paused Task queue; room or main window |
 
+"Room" is the call window (D-217); "lobby" the Meetings lobby window (D-292), which never gets the
+calling credential.
+
 Events: meetings.changed (refetch), meetings.leaveRequested (gracefully leave/close room),
+meetings.startRequested (the call window takes the request with `meetings.takeStart`),
+meetings.review ({id}: a call ended, the lobby opens its review),
 meetings.chatOpen ({sessionId}: main workbench reveals the normal chat).
 
 Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-character pages with nextOffset)

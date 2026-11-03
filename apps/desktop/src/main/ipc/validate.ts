@@ -140,6 +140,20 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
       direction: z.enum(["outgoing", "incoming"]),
     })
     .strict(),
+  "meetings.start": z.discriminatedUnion("kind", [
+    z
+      .object({ kind: z.literal("join"), url: z.string().max(8192), title: z.string().min(1).max(500) })
+      .strict(),
+    z
+      .object({
+        kind: z.literal("call"),
+        peerId: z.uuid(),
+        peerName: z.string().min(1).max(500),
+        camera: z.boolean(),
+      })
+      .strict(),
+    z.object({ kind: z.literal("show") }).strict(),
+  ]),
   "meetings.setRinging": z.object({ on: z.boolean() }).strict(),
   "meetings.incoming": z.object({ name: z.string().max(500).optional() }).strict(),
   "meetings.credential": z.object({ id: id.optional() }).strict(),

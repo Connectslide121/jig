@@ -95,7 +95,14 @@ export interface AppInfo {
 
 /** Method name → argument and result types. */
 export interface HostMethods {
+  /** Opens the Meetings lobby window (D-292). */
   "meetings.open": { args: void; result: void };
+  /** From the lobby: reveals the call window and has it join, call or just come to the front. */
+  "meetings.start": { args: import("./meetings").MeetingStart; result: void };
+  /** The call window takes what the lobby asked it to start (once), if anything. */
+  "meetings.takeStart": { args: void; result: import("./meetings").MeetingStart | null };
+  /** The call window has nothing to show (no call, prejoin or ringing): main hides it. */
+  "meetings.callIdle": { args: void; result: void };
   "meetings.revealChat": { args: { sessionId: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
@@ -668,6 +675,10 @@ export interface HostEvents {
   "lsp.message": { id: string; message: string };
   "lsp.exited": { id: string };
   "meetings.leaveRequested": void;
+  /** The lobby asked the call window to start something; it calls `meetings.takeStart`. */
+  "meetings.startRequested": void;
+  /** A call ended: the lobby opens that meeting's review. */
+  "meetings.review": { id: string };
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;
   /** The theme list or a theme file changed; refetch the list and the active theme. */

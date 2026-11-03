@@ -720,6 +720,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Meetings → Meetings: a two-week calendar agenda, Join from link, and the meeting history",
+                "Calls in their own window, like Teams: the meetings lobby stays usable beside a running call",
                 "Teams calls: call someone in your organisation, and calls ring in Jig while it runs",
                 "Profile pictures of the people in your meetings and calls",
                 "The meeting's or call's Teams chat in its own panel: read it, write in it, and Claude's notes include it",

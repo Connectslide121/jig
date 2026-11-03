@@ -19,10 +19,18 @@ import {
   meetingChatId,
   mergeChat,
 } from "../../shared/meetingChat";
-import type { MeetingEvent, MeetingRecord } from "../../shared/meetings";
+import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
-import { appWindows, hiddenMode, markBackgroundWindow, revealWindow } from "../appWindows";
+import {
+  appWindows,
+  closeHelpersIfAlone,
+  hiddenMode,
+  mainWindow,
+  markBackgroundWindow,
+  markSecondaryWindow,
+  revealWindow,
+} from "../appWindows";
 import { getConfig } from "../config";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
@@ -53,7 +61,12 @@ const FAKE_PHOTOS: Record<string, string> = {
 const store = new MeetingStore();
 const auth = new MeetingAuth(() => store.settings());
 const fake = () => process.env.JIG_ENGINE === "fake" && process.env.JIG_MEETINGS === "fake";
+/** The call window (D-217, D-292): the calling SDK and its credential live only here. */
 let room: BrowserWindow | undefined;
+/** The lobby window (D-292): agenda, history and reviews; never sees the calling credential. */
+let lobby: BrowserWindow | undefined;
+/** What the lobby asked the call window to start, until the call window takes it. */
+let pendingStart: MeetingStart | undefined;
 let activeId: string | undefined;
 let quitting = false;
 /** Jig is quitting (not only the meeting window closing): a listening window may close then. */
@@ -92,9 +105,16 @@ const meetingsOn = () =>
 function enabled(): void {
   if (!meetingsOn()) throw new JigError("meeting_disabled", "Enable the Meetings add-on first");
 }
+/** The call window only: media, the calling credential, captions, the call's status and chat. */
 function own(context: CallContext): void {
   if (!room || context.sender.id !== room.webContents.id)
-    throw new JigError("forbidden", "This operation is only available in the meeting window");
+    throw new JigError("forbidden", "This operation is only available in the call window");
+}
+/** The lobby or the call window (D-292): what both show (overview, calendar, notes, questions…). */
+function lobbyOrCall(context: CallContext): void {
+  if (room && context.sender.id === room.webContents.id) return;
+  if (!lobby || context.sender.id !== lobby.webContents.id)
+    throw new JigError("forbidden", "This operation is only available in the Meetings windows");
 }
 /** The meeting window, or Jig's main window (the meeting history, D-250); never a helper window. */
 function fromJig(context: CallContext): void {
@@ -120,7 +140,8 @@ function listening(): boolean {
   return !fake() && store.ringing() && Boolean(auth.name);
 }
 
-async function open(options: { show?: boolean } = {}): Promise<void> {
+/** Opens the call window, hidden unless `show`; it stays hidden between calls (D-292). */
+async function openCall(options: { show?: boolean } = {}): Promise<void> {
   enabled();
   const show = options.show ?? true;
   if (room && !room.isDestroyed()) {
@@ -133,7 +154,7 @@ async function open(options: { show?: boolean } = {}): Promise<void> {
     height: 850,
     minWidth: 850,
     minHeight: 600,
-    title: "Jig — Meetings",
+    title: "Jig — Call",
     icon: APP_ICON,
     show: false,
     webPreferences: {
@@ -223,7 +244,8 @@ async function open(options: { show?: boolean } = {}): Promise<void> {
     }
   });
   window.on("closed", () => {
-    room = undefined;
+    if (room === window) room = undefined;
+    pendingStart = undefined;
     hideShareFrame();
     closeMeetingPage();
   });
@@ -231,6 +253,58 @@ async function open(options: { show?: boolean } = {}): Promise<void> {
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
   if (show && !hiddenMode()) window.show();
+}
+
+/**
+ * Opens the Meetings lobby (D-292), or brings it to the front: a normal Jig window beside the call
+ * window, usable during a call. `review` opens a saved meeting's review in it.
+ */
+async function openLobby(review?: string): Promise<void> {
+  enabled();
+  if (lobby && !lobby.isDestroyed()) {
+    if (review) emit("meetings.review", { id: review });
+    revealWindow(lobby);
+    return;
+  }
+  const here = fileURLToPath(new URL(".", import.meta.url));
+  lobby = new BrowserWindow({
+    width: 1180,
+    height: 820,
+    minWidth: 560,
+    minHeight: 420,
+    title: "Jig — Meetings",
+    icon: APP_ICON,
+    show: false,
+    webPreferences: {
+      preload: join(here, "../preload/index.cjs"),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  const window = lobby;
+  markSecondaryWindow(window);
+  window.setMenuBarVisibility(false);
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.on("closed", () => {
+    if (lobby === window) lobby = undefined;
+    // Between calls and not listening for Teams calls, the hidden call window goes with it.
+    if (room && !room.isDestroyed() && !activeId && !room.isVisible() && !listening()) room.close();
+    closeHelpersIfAlone();
+  });
+  const url = new URL(process.env.JIG_RENDERER_URL || "jig-app://app/index.html");
+  url.searchParams.set("meetingLobby", "1");
+  if (review) url.searchParams.set("review", review);
+  await window.loadURL(url.href);
+  if (!hiddenMode()) window.show();
+}
+
+/** A call ended: the call window hides again and the lobby shows the meeting's review (D-292). */
+function callEnded(id: string): void {
+  if (quitting || appQuitting) return;
+  if (room && !room.isDestroyed() && room.isVisible()) room.hide();
+  void openLobby(id).catch(() => undefined);
 }
 
 /** A Teams call is ringing (`name`), or stopped ringing: the meeting window comes to the front. */
@@ -335,7 +409,30 @@ export async function startMeetings(): Promise<void> {
   app.on("before-quit", (event) => {
     if (!event.defaultPrevented) appQuitting = true;
   });
-  handle("meetings.open", () => open());
+  // Meetings opens the lobby; the call window waits hidden beside it, ready to ring and to join (D-292).
+  handle("meetings.open", async () => {
+    await openLobby();
+    await openCall({ show: false });
+  });
+  handle("meetings.start", async (start, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    pendingStart = start.kind === "show" ? undefined : start;
+    await openCall({ show: true });
+    emit("meetings.startRequested", undefined);
+  });
+  handle("meetings.takeStart", async (_args, ctx) => {
+    own(ctx);
+    const start = pendingStart ?? null;
+    pendingStart = undefined;
+    return start;
+  });
+  handle("meetings.callIdle", async (_args, ctx) => {
+    own(ctx);
+    if (activeId || pendingStart || !room || room.isDestroyed()) return;
+    room.hide();
+    closeHelpersIfAlone();
+  });
   // Calls ring in Jig while it runs: the meeting window starts hidden once an account is restored.
   if (!fake() && !hiddenMode() && store.ringing() && store.settings().clientId)
     setTimeout(() => {
@@ -348,18 +445,18 @@ export async function startMeetings(): Promise<void> {
               .list()
               .some((a) => a.id === "meetings" && a.enabled)
           )
-            await open({ show: false });
+            await openCall({ show: false });
         })
         .catch(() => {
           /* Ringing is a convenience; Meetings still opens normally. */
         });
     }, 5000).unref();
   handle("meetings.revealChat", async ({ sessionId }, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     await sessionManager().snapshot(sessionId);
     emit("meetings.chatOpen", { sessionId });
-    const workbench = appWindows().find((w) => w !== room);
-    if (workbench) revealWindow(workbench);
+    const workbench = mainWindow();
+    if (workbench && workbench !== room && workbench !== lobby) revealWindow(workbench);
   });
   handle("meetings.overview", async () => {
     enabled();
@@ -437,30 +534,30 @@ export async function startMeetings(): Promise<void> {
     changed();
   });
   handle("meetings.lobbyView", async ({ view }, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     await store.setLobbyView(view);
     changed();
   });
   handle("meetings.layout", async (layout, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     await store.setLayout(layout);
   });
   handle("meetings.configure", async (settings, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     if (activeId) throw new JigError("meeting_active", "Leave the meeting before changing its connection");
     await auth.signOut();
     await store.configure(settings);
     changed();
   });
   handle("meetings.signIn", async (_args, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     enabled();
     const name = fake() ? "Test account" : await auth.signIn();
     changed();
     return name;
   });
   handle("meetings.signOut", async (_args, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     if (activeId) throw new JigError("meeting_active", "Leave the meeting before disconnecting");
     await auth.signOut();
     changed();
@@ -630,7 +727,7 @@ export async function startMeetings(): Promise<void> {
     return photo;
   });
   handle("meetings.people", async ({ query }, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     enabled();
     if (!fake()) return auth.people(query);
     const people = [
@@ -663,7 +760,7 @@ export async function startMeetings(): Promise<void> {
     return record;
   });
   handle("meetings.setRinging", async ({ on }, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     await store.setRinging(on);
     changed();
   });
@@ -720,11 +817,14 @@ export async function startMeetings(): Promise<void> {
       activeId = undefined;
       hideShareFrame();
       activity("leave");
+      changed();
+      callEnded(id);
+      return;
     }
     changed();
   });
   handle("meetings.ask", async ({ id, question, projectId, sessionId }, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     enabled();
     const record = store.get(id);
     let chat = sessionId ? (await sessionManager().snapshot(sessionId)).meta : undefined;

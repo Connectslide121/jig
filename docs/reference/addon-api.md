@@ -233,7 +233,7 @@ of the folder (images) at `jig-addon://<id>/<path>`.
 
 ## Meetings window
 
-ctx.meetings.open(): Promise<void> opens/focuses the built-in Meetings media window (D-217).
+ctx.meetings.open(): Promise<void> opens/focuses the built-in Meetings lobby window; calls run in its call window (D-217, D-292).
 ctx.meetings.history(): void opens the meeting history tab (`jig.meetings`) in this window (D-250).
 Meetings must be enabled. Its call and transcript are global, independent of the active project.
 The host retains the privileged media/authentication implementation; no credential is returned to an

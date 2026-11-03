@@ -26,3 +26,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [x] Bounded join wait and visible connection/call-end failures (D-234).
 - [x] Diagnose/fix camera-off join stuck at None: SDK rejects present empty video list (D-234).
 - [ ] Verify actual Teams participation with the corrected join options.
+- [x] Lobby and call in separate windows: the lobby stays usable during a call, the call window comes forward to join, call and ring (D-292).
+- [ ] Verify both windows with a real meeting and a real call on the target machine (D-292).

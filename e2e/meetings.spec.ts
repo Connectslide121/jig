@@ -1,19 +1,36 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ElectronApplication, Page } from "@playwright/test";
 import type { MeetingOverview } from "../apps/desktop/src/shared/meetings";
 import { expect, hostCall, launchJig, test } from "./fixtures";
+
+/**
+ * The two Meetings windows (D-292): the lobby `meetings.open` opens, and the call window waiting hidden
+ * beside it (joining, calls and the live meeting happen there).
+ */
+async function meetingWindows(app: ElectronApplication): Promise<{ lobby: Page; room: Page }> {
+  const find = (param: string) => app.windows().find((w) => w.url().includes(`${param}=1`));
+  await expect
+    .poll(() => Boolean(find("meetingLobby") && find("meetingRoom")), { timeout: 30_000 })
+    .toBe(true);
+  const lobby = find("meetingLobby")!;
+  const room = find("meetingRoom")!;
+  for (const page of [lobby, room]) await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(lobby.getByTestId("meeting-lobby")).toBeVisible();
+  await expect(room.getByTestId("meeting-room")).toBeAttached();
+  return { lobby, room };
+}
 
 test("Meetings: device setup failure is visible and retryable before joining", async ({ jigHome }) => {
   const app = await launchJig(jigHome, { JIG_MEETINGS: "" });
   try {
     const main = await app.firstWindow();
     await main.waitForSelector("[data-testid=app-root]");
-    const newWindow = app.waitForEvent("window");
     await hostCall(main, "meetings.open");
-    const room = await newWindow;
-    await room.emulateMedia({ reducedMotion: "reduce" });
-    await expect(room.getByTestId("meeting-room")).toBeVisible();
+    const { lobby, room } = await meetingWindows(app);
+    // Only the call window runs on the loopback page the calling SDK needs; the lobby is a Jig page.
     expect(new URL(room.url()).hostname).toBe("localhost");
+    expect(new URL(lobby.url()).hostname).not.toBe("localhost");
     // Exercise real SDK failure handling without giving a test access to physical devices.
     await app.evaluate(({ session }) => {
       session.defaultSession.setPermissionCheckHandler(() => false);
@@ -24,7 +41,8 @@ test("Meetings: device setup failure is visible and retryable before joining", a
         throw new DOMException("Test denied device access", "NotAllowedError");
       };
     });
-    await room.getByRole("button", { name: "Join from link…", exact: true }).first().click();
+    // Join in the lobby opens the device check in the call window.
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).first().click();
     const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
     await expect(prejoin.getByRole("alert")).not.toBeEmpty({ timeout: 30_000 });
     await expect(prejoin.getByRole("alert")).toContainText("Microphone access was denied");
@@ -56,38 +74,36 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     if (!projectResponse.ok) throw new Error("Missing projects");
     const projects = projectResponse.value as { projects: Array<{ id: string; name: string }> };
     const [first, second] = projects.projects;
-    const newWindow = app.waitForEvent("window");
     await main.getByTestId("goto-button").click();
     await main.getByTestId("goto-input").fill("Meetings");
     await main.keyboard.press("Enter");
-    const room = await newWindow;
-    await room.emulateMedia({ reducedMotion: "reduce" });
-    await expect(room.getByTestId("meeting-room")).toBeVisible();
-    await hostCall(room, "meetings.configure", {
+    const { lobby, room } = await meetingWindows(app);
+    await hostCall(lobby, "meetings.configure", {
       tenantId: "22222222-2222-4222-8222-222222222222",
       clientId: "11111111-1111-4111-8111-111111111111",
       endpoint: "https://example.europe.communication.azure.com",
     });
-    await room.getByRole("button", { name: "Connection", exact: true }).click();
-    await room.screenshot({
+    await lobby.getByRole("button", { name: "Connection", exact: true }).click();
+    await lobby.screenshot({
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/connection.png",
     });
-    await room
+    await lobby
       .getByRole("dialog", { name: "Microsoft meeting connection" })
       .getByRole("button", { name: "Close", exact: true })
       .click();
     // Credentials and caption injection cannot be requested by another Jig window.
-    const refused = await hostCall(main, "meetings.credential", {});
-    expect(refused.ok).toBe(false);
-    await room.getByRole("button", { name: "Refresh calendar" }).click();
-    await expect(room.getByText("Weekly products", { exact: true })).toBeVisible();
-    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/agenda.png" });
-    await room.getByRole("button", { name: "Week", exact: true }).click();
-    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/week.png" });
-    await room.getByRole("button", { name: "Agenda", exact: true }).click();
+    // Not even by the lobby (D-292): only the call window gets the calling credential.
+    for (const page of [main, lobby])
+      expect((await hostCall(page, "meetings.credential", {})).ok).toBe(false);
+    await lobby.getByRole("button", { name: "Refresh calendar" }).click();
+    await expect(lobby.getByText("Weekly products", { exact: true })).toBeVisible();
+    await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/agenda.png" });
+    await lobby.getByRole("button", { name: "Week", exact: true }).click();
+    await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/week.png" });
+    await lobby.getByRole("button", { name: "Agenda", exact: true }).click();
     // Joining by link needs no acknowledgement and keeps host errors inside the modal.
-    await room.getByRole("button", { name: "Join from link…", exact: true }).click();
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).click();
     const linkJoin = room.getByRole("dialog", { name: "Join Teams meeting" });
     await linkJoin.getByLabel("Teams join link").fill("https://example.com/not-a-meeting");
     await expect(linkJoin.getByRole("checkbox")).toHaveCount(0);
@@ -101,7 +117,7 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
       path: ".jig-test-home-meeting-screenshots/join-error.png",
     });
     await linkJoin.getByRole("button", { name: "Cancel", exact: true }).click();
-    await room.getByRole("button", { name: "Join Weekly products", exact: true }).click();
+    await lobby.getByRole("button", { name: "Join Weekly products", exact: true }).click();
     const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
     await prejoin.getByLabel("Speech language").selectOption("sv-se");
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/prejoin.png" });
@@ -123,6 +139,26 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await expect(chat.getByTestId("meeting-chat-input")).toHaveValue("");
     await expect.poll(async () => (await overview()).records[0]!.chat?.length).toBe(3);
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/chat.png" });
+    // The lobby stays usable beside the live meeting (D-292): it says what is live, and joining
+    // another meeting first offers to show the one you're in.
+    const liveCall = lobby.getByTestId("lobby-live-call");
+    await expect(liveCall).toContainText("Weekly products");
+    await lobby.getByRole("button", { name: "Week", exact: true }).click();
+    await lobby.getByRole("button", { name: "Agenda", exact: true }).click();
+    await lobby.getByRole("button", { name: "Join Weekly products", exact: true }).click();
+    const inMeeting = lobby.getByRole("dialog", { name: "You're in a meeting" });
+    await expect(inMeeting).toBeVisible();
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/lobby-during-call.png",
+    });
+    await inMeeting.getByRole("button", { name: "Cancel", exact: true }).click();
+    await lobby.getByRole("button", { name: "Connection", exact: true }).click();
+    await lobby
+      .getByRole("dialog", { name: "Microsoft meeting connection" })
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    expect((await overview()).activeId).toBeTruthy();
     // Panels move between slots from their menus, and the room remembers where they are.
     await room.getByRole("button", { name: "Notes options", exact: true }).click();
     await room.getByRole("menuitem", { name: "Left" }).click();
@@ -195,17 +231,20 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await room.getByRole("button", { name: "Stop sharing", exact: true }).click();
     await room.getByRole("button", { name: "Leave", exact: true }).click();
     await expect.poll(async () => (await overview()).activeId).toBeUndefined();
-    await room.getByRole("button", { name: "Generate notes", exact: true }).click();
+    // The call is over: the lobby shows the meeting's review, and says there is no call.
+    await expect(liveCall).toHaveCount(0);
+    await expect(lobby.getByRole("heading", { name: "Weekly products" })).toBeVisible();
+    await lobby.getByRole("button", { name: "Generate notes", exact: true }).click();
     await expect.poll(async () => (await overview()).records[0]!.actions.length, { timeout: 30_000 }).toBe(2);
-    await expect(room.getByRole("button", { name: "Review actions", exact: true })).toBeEnabled();
-    await room.getByRole("button", { name: "Review actions", exact: true }).click();
-    const review = room.getByRole("dialog", { name: "Review meeting actions" });
+    await expect(lobby.getByRole("button", { name: "Review actions", exact: true })).toBeEnabled();
+    await lobby.getByRole("button", { name: "Review actions", exact: true }).click();
+    const review = lobby.getByRole("dialog", { name: "Review meeting actions" });
     await expect(review).toContainText("Your action");
     await review.getByRole("checkbox", { name: "Select Review the Shop API" }).check();
     await review.getByRole("checkbox", { name: "Select Update documentation" }).check();
     await review.getByLabel("Project for Review the Shop API").selectOption(first!.id);
     await review.getByLabel("Project for Update documentation").selectOption(second!.id);
-    await room.screenshot({
+    await lobby.screenshot({
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/action-review.png",
     });
@@ -234,18 +273,18 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     };
     expect(saved.records[0]!.status).toBe("ended");
     expect(saved.records[0]!.captions.length).toBeGreaterThan(0);
-    await room.screenshot({
+    await lobby.screenshot({
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/meetings.png",
     });
     // Deleting asks first, then removes the meeting and returns to the lobby.
-    await room.getByRole("button", { name: "Meeting options", exact: true }).click();
-    await room.getByRole("menuitem", { name: "Delete meeting…" }).click();
-    const confirm = room.getByRole("dialog", { name: /Delete "Weekly products"/ });
-    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/delete.png" });
+    await lobby.getByRole("button", { name: "Meeting options", exact: true }).click();
+    await lobby.getByRole("menuitem", { name: "Delete meeting…" }).click();
+    const confirm = lobby.getByRole("dialog", { name: /Delete "Weekly products"/ });
+    await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/delete.png" });
     await confirm.getByRole("button", { name: "Delete meeting", exact: true }).click();
     await expect.poll(async () => (await overview()).records.length).toBe(0);
-    await expect(room.getByText("No meetings yet")).toBeVisible();
+    await expect(lobby.getByText("No meetings yet")).toBeVisible();
   } finally {
     await app.close();
   }
@@ -256,26 +295,26 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
   try {
     const main = await app.firstWindow();
     await main.waitForSelector("[data-testid=app-root]");
-    const newWindow = app.waitForEvent("window");
     await hostCall(main, "meetings.open");
-    const room = await newWindow;
-    await room.emulateMedia({ reducedMotion: "reduce" });
-    await expect(room.getByTestId("meeting-room")).toBeVisible();
-    await expect(room).toHaveTitle("Jig Meetings");
+    const { lobby, room } = await meetingWindows(app);
+    await expect(lobby).toHaveTitle("Jig Meetings");
+    await expect(room).toHaveTitle("Jig Call");
 
-    // Calling: the people you work with, a search, and a whole row places the call.
-    await room.getByRole("button", { name: "Call…", exact: true }).click();
-    const dialog = room.getByTestId("call-dialog");
+    // Calling: the people you work with, a search, and a whole row places the call in the call window.
+    await lobby.getByRole("button", { name: "Call…", exact: true }).click();
+    const dialog = lobby.getByTestId("call-dialog");
     await expect(dialog.getByTestId("call-person")).toHaveCount(3);
     await dialog.getByPlaceholder("Search people by name or e-mail").fill("alex");
     await expect(dialog.getByTestId("call-person")).toHaveCount(1);
-    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/call.png" });
+    await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/call.png" });
     await dialog.getByTestId("call-person").click();
     await expect(room.getByRole("heading", { name: "Call with Alex Contoso" })).toBeVisible();
     await expect(room).toHaveTitle("Call with Alex Contoso · Jig Meetings");
+    await expect(lobby.getByTestId("lobby-live-call")).toContainText("Call with Alex Contoso");
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
-    await expect(room.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
-    await room.getByRole("button", { name: "Back to meetings" }).click();
+    // Hung up: the lobby shows the call's review.
+    await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
+    await lobby.getByRole("button", { name: "Back to meetings" }).click();
 
     // A call rings: answer it; the call is kept like a meeting, and the last caller is a recent call.
     await room.evaluate(() =>
@@ -290,8 +329,9 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await incoming.getByRole("button", { name: "Answer", exact: true }).click();
     await expect(room.getByRole("heading", { name: "Call with Sam Fabrikam" })).toBeVisible();
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
-    await room.getByRole("button", { name: "Back to meetings" }).click();
-    await room.getByRole("button", { name: "Call…", exact: true }).click();
+    await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
+    await lobby.getByRole("button", { name: "Back to meetings" }).click();
+    await lobby.getByRole("button", { name: "Call…", exact: true }).click();
     await expect(dialog).toContainText("Recent calls");
     await expect(dialog.getByTestId("call-person").first()).toContainText("Sam Fabrikam");
 
@@ -312,11 +352,9 @@ test("Meetings: live captions in another language, with what was said under them
   try {
     const main = await app.firstWindow();
     await main.waitForSelector("[data-testid=app-root]");
-    const newWindow = app.waitForEvent("window");
     await hostCall(main, "meetings.open");
-    const room = await newWindow;
-    await room.emulateMedia({ reducedMotion: "reduce" });
-    await room.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const { lobby, room } = await meetingWindows(app);
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).click();
     const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
     await prejoin.getByLabel("Teams join link").fill("https://teams.microsoft.com/l/meetup-join/test");
     await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();

@@ -2501,7 +2501,8 @@ there (D-174 removed the menu entries: a split is made by drag and drop only). O
   link, Connection), the live room, and a saved meeting's review (transcript | resizable notes, Ask
   Claude, Open in Teams, back to the lobby). Leaving a call opens its review, so notes and actions
   are one step away. The lobby isn't reachable during a call: one call at a time, and it isn't
-  needed there.
+  needed there. **Amended by D-292:** the lobby and the call are now two windows, and the lobby
+  stays usable during a call.
 - Live room: the call is always the main area. Transcript and Notes each sit in the left, right or
   bottom slot (⋯ → Move to), two in one slot split it with a remembered divider, empty slots
   aren't drawn. Layout in the header shows/hides panels and resets. Default: both on the right,
@@ -3650,3 +3651,41 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
   in front of it to the far right; in the detail, while you type another assignee the avatar shows
   their initials, and their picture once it's an e-mail.)
 
+## D-292: Meetings in two windows: a lobby beside the call
+
+- Status: accepted. Asked for by Jon, 2026-11-03: "the lobby stays usable during a call; the call
+  pops out into its own window", the way Teams does it. Amends D-221 (three screens in one window).
+  The details are **Claude, on my own** unless said otherwise.
+- **Lobby window** (`?meetingLobby=1`, `MeetingLobby.tsx`): what `meetings.open` opens (Meetings →
+  Meetings, the meeting history's Open Meetings, `ctx.meetings.open()`). Agenda/Week, history,
+  Connection, Call…, Join from link…, a saved meeting's review (Ask Claude, Generate notes, Review
+  actions, Call back, Open in Teams, delete). A normal Jig page (`jig-app:`, the workbench CSP),
+  sandboxed with contextIsolation and no Node; it never receives the calling credential. It is a
+  normal Jig window (`appWindows()`, gets events, keeps Jig running) marked `markSecondaryWindow`, so
+  `mainWindow()`/`focusJig()` never pick it as the workbench.
+- **Call window** (`?meetingRoom=1`, `MeetingRoom.tsx`): the existing media window on the loopback
+  page (D-217, D-222). It shows only the device check (Prejoin), the live call with its panels and
+  slots, a ringing call, and "No call" when there is nothing (with Open Meetings). It opens hidden
+  beside the lobby and stays hidden between calls; Join / Call… / Call back in the lobby call
+  `meetings.start` ({join, url, title} | {call, peerId, peerName, camera} | {show}). Main keeps the
+  request, reveals the call window and emits `meetings.startRequested`; the call window takes it
+  with `meetings.takeStart` (also once on load, so a request made while it was still loading isn't
+  lost). When it has nothing left to show (no call, device check, ringing or error), it says
+  `meetings.callIdle` and main hides it.
+- **A call ends:** main hides the call window and opens the lobby on that meeting's review
+  (`meetings.review` event, or `?review=` when the lobby opens then). Not while Jig is quitting.
+- **One call at a time** (`activeId` as before). Join or Call… in the lobby during a call asks first
+  and offers to show the live one instead of leaving it. The lobby's status bar shows the live call
+  in the spot that otherwise says "No call"; a click brings the call window forward. (A status bar
+  line rather than a banner: nothing in the lobby moves when a call starts or ends.)
+- **Closing:** closing the lobby never ends a call. The keep/leave question stays on the call
+  window. A closed lobby takes the hidden, idle call window with it unless Jig listens for Teams
+  calls (D-254), and runs `closeHelpersIfAlone()`, so a hidden call window never keeps Jig running.
+- **Guards:** `own()` = call window only (credential, caption, status, aiTranslation,
+  captionLanguage, join, startCall, incoming, chat/chatSend/chatConnect, share, takeStart, callIdle);
+  `lobbyOrCall()` = either Meetings window (overview stays open to Jig's windows; start, lobbyView,
+  layout, configure, signIn/signOut, setRinging, people, ask, revealChat); `fromJig()` unchanged
+  (also the main window: notes, actions, queue, delete, rename, export, photo).
+- **Layout:** both windows save the one `meetings.layout`: the call window owns the panels and slot
+  sizes, the lobby the review's notes width; each starts from the saved layout when it saves, so
+  neither overwrites the other's part.

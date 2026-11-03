@@ -1,5 +1,14 @@
 # Status
 
+Meetings in two windows (2026-11-03, D-292): Meetings opens the **lobby** (agenda, week, history,
+reviews, notes, actions), and joining or calling brings up a separate **call window** (device check,
+the live call with its panels, ringing calls). The lobby stays usable during a call: its status bar
+shows the live meeting or call (click to bring it forward), and Join/Call… then offer to show it rather
+than start a second one. Hanging up hides the call window and opens the meeting's review in the lobby.
+Closing the lobby doesn't end a call. Needs testing on your machine: a real Teams meeting and a real
+call (both windows on screen, the call window coming forward to ring while the lobby is closed, and
+quitting Jig with only the hidden call window left).
+
 Board avatars (2026-11-03, D-291): Boards cards show who has them as an avatar at the far right
 (their Microsoft profile picture when Meetings' sign-in is connected, else initials; an empty slot when
 unassigned; hover for name and e-mail), and the card's detail shows it next to "Assigned to". Add-ons

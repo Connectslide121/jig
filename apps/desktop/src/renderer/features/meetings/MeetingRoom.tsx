@@ -1,22 +1,14 @@
 import {
-  ArrowLeft,
   EyeOff,
   LayoutPanelLeft,
-  Link2,
   MessageSquare,
-  MoreHorizontal,
   PanelBottom,
   PanelLeft,
   PanelRight,
-  Phone,
   RotateCcw,
-  Settings,
-  SquareArrowOutUpRight,
-  Trash2,
   Video,
-  X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_MEETING_LAYOUT,
   MEETING_PANELS,
@@ -35,32 +27,15 @@ import {
 import {
   AI_CAPTION_LANGUAGES,
   type MeetingCall,
-  type MeetingEvent,
-  type MeetingOverview,
   type MeetingRecord,
+  type MeetingStart,
 } from "../../../shared/meetings";
-import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { useThemeController } from "../../lib/theme";
-import {
-  Badge,
-  Button,
-  cn,
-  confirmDialog,
-  DialogHost,
-  ErrorBoundary,
-  IconButton,
-  type MenuEntry,
-  MenuHost,
-  openMenuAt,
-  Select,
-  Spinner,
-} from "../../ui";
-import { CallDialog, IncomingCall } from "./Calls";
+import { Button, cn, Empty, type MenuEntry, openMenuAt, Select, Spinner } from "../../ui";
+import { IncomingCall } from "./Calls";
 import { ChatPanel, type ChatStatus } from "./Chat";
-import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
-import { clock, dayAndTime, SPEECH_LANGUAGES } from "./format";
-import { Lobby, STATUS } from "./Lobby";
+import { Ask, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
+import { SPEECH_LANGUAGES } from "./format";
 import { INITIAL_MEDIA, type MediaState, MeetingMedia, type Ringing, selfPerson } from "./media";
 
 /** Captions of a call follow the system language when Teams supports it. */
@@ -68,10 +43,10 @@ const callLanguage = () =>
   SPEECH_LANGUAGES.find(([code]) => code === navigator.language.toLowerCase())?.[0] ?? "en-us";
 
 import { NotesPanel, PeoplePanel, TranscriptPanel } from "./Panels";
-import { SizedBox, Slot } from "./Slots";
+import { AccountLabel, MeetingsShell, StatusBar, useMeetingsData } from "./Shell";
+import { Slot } from "./Slots";
 import { Stage } from "./Stage";
 
-const EMPTY_PROJECTS: ProjectsState = { projects: [], workspaces: [], activeId: undefined };
 const SLOT_ICONS: Record<MeetingSlot, typeof PanelLeft> = {
   left: PanelLeft,
   right: PanelRight,
@@ -79,70 +54,33 @@ const SLOT_ICONS: Record<MeetingSlot, typeof PanelLeft> = {
 };
 
 export function MeetingRoom(): React.JSX.Element {
-  useThemeController();
   return (
-    <ErrorBoundary label="Meeting room">
+    <MeetingsShell label="Meeting room">
       <Room />
-      <MenuHost />
-      <DialogHost />
-    </ErrorBoundary>
+    </MeetingsShell>
   );
 }
 
-type Pending = "calendar" | "notes" | "join" | "ask" | "queue" | "connection" | "call";
-
 /**
- * Three screens in one window (D-221): the lobby (upcoming meetings and the history), the live room (the
- * call in the middle, Transcript and Notes in slots you arrange) and a saved meeting's review.
+ * The call window (D-217, D-292): device check before joining, the live call (in the middle,
+ * Transcript, Notes, Chat and People in slots you arrange) and calls ringing. The lobby lives in its
+ * own window; this one waits hidden between calls and is the only one with the calling SDK.
  */
 function Room() {
-  const [overview, setOverview] = useState<MeetingOverview>();
-  const [projects, setProjects] = useState<ProjectsState>(EMPTY_PROJECTS);
-  const [events, setEvents] = useState<MeetingEvent[]>();
-  const [opened, setOpened] = useState<string>();
+  const { overview, projects, error, setError, pending, setPending, reload, run, connected } =
+    useMeetingsData();
   const [layout, setLayout] = useState<MeetingLayout>();
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState<Pending>();
-  const [settings, setSettings] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [devicePicker, setDevicePicker] = useState(false);
   const [joining, setJoining] = useState<{ url: string; title: string }>();
   const [ask, setAsk] = useState(false);
   const [review, setReview] = useState(false);
   const [sharing, setSharing] = useState<Array<{ id: string; name: string; thumbnail: string }>>();
   const [mediaState, setMediaState] = useState<MediaState>(INITIAL_MEDIA);
-  const [calling, setCalling] = useState(false);
   const [ringing, setRinging] = useState<Ringing>();
   const media = useRef<MeetingMedia | null>(null);
   media.current ??= new MeetingMedia((e) => setError(errorMessage(e)));
-  const refreshed = useRef(0);
-  const reload = useCallback(async () => {
-    const version = ++refreshed.current;
-    const data = await call("meetings.overview");
-    if (version === refreshed.current) setOverview(data);
-  }, []);
-  const run = async (fn: () => Promise<unknown>, key: Pending = "call") => {
-    setPending(key);
-    setError("");
-    try {
-      await fn();
-      await reload();
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setPending(undefined);
-    }
-  };
-  useEffect(() => {
-    void reload().catch((e) => setError(errorMessage(e)));
-    void call("projects.list")
-      .then(setProjects)
-      .catch((e) => setError(errorMessage(e)));
-    return media.current!.subscribe(setMediaState);
-  }, [reload]);
-  useHostEvent("meetings.changed", () => {
-    void reload().catch((e) => setError(errorMessage(e)));
-  });
-  useHostEvent("projects.changed", setProjects);
+  useEffect(() => media.current!.subscribe(setMediaState), []);
   useHostEvent("meetings.leaveRequested", () => {
     void run(async () => {
       await media.current!.leave();
@@ -157,24 +95,19 @@ function Room() {
   const changeLayout = (next: MeetingLayout) => {
     setLayout(next);
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(
-      () => void call("meetings.layout", next).catch((e) => setError(errorMessage(e))),
-      300,
-    );
+    saveTimer.current = setTimeout(() => {
+      // The review's notes width belongs to the lobby window: keep what it saved meanwhile.
+      void call("meetings.overview")
+        .then((o) => {
+          const notes = normalizeMeetingLayout(o.layout).sizes["review.notes"];
+          const sizes = { ...next.sizes };
+          if (notes === undefined) delete sizes["review.notes"];
+          else sizes["review.notes"] = notes;
+          return call("meetings.layout", { ...next, sizes });
+        })
+        .catch((e) => setError(errorMessage(e)));
+    }, 300);
   };
-  const connected = Boolean(overview?.account || overview?.fake);
-  const refreshCalendar = () =>
-    run(async () => {
-      setEvents(await call("meetings.calendar"));
-    }, "calendar");
-  // Load the calendar once as soon as there is an account to read it with.
-  const loadedCalendar = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load once per connection.
-  useEffect(() => {
-    if (!connected || loadedCalendar.current) return;
-    loadedCalendar.current = true;
-    void refreshCalendar();
-  }, [connected]);
   // Teams calls ring here while Jig runs and ringing is on (D-254); the window may be hidden meanwhile.
   const listen = Boolean(overview && connected && overview.ringing);
   const fakeService = Boolean(overview?.fake);
@@ -193,7 +126,7 @@ function Room() {
     // The test meeting service rings on request, so the e2e tests can answer a call.
     if (fakeService)
       (window as { jigTestRing?: (name: string) => void }).jigTestRing = (name) => m.fakeRing(name);
-  }, [listen, fakeService]);
+  }, [listen, fakeService, setError]);
   // Your caption language from last time applies to the next call (D-260).
   const savedLanguage = overview?.captionLanguage;
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the saved choice changes.
@@ -204,11 +137,12 @@ function Room() {
   // The window's title says what it is (the page's own title would just say "Jig").
   const liveTitle = overview?.records.find((r) => r.id === overview.activeId)?.title;
   useEffect(() => {
-    document.title = liveTitle ? `${liveTitle} · Jig Meetings` : "Jig Meetings";
+    document.title = liveTitle ? `${liveTitle} · Jig Meetings` : "Jig Call";
   }, [liveTitle]);
   /** Places or answers a one-to-one call; a meeting or call in progress ends first. */
   const startCall = async (peer: MeetingCall, options: { camera: boolean }, answering = false) => {
     setError("");
+    setStarting(true);
     try {
       if (overview?.activeId) await media.current!.leave();
       const r = await call("meetings.startCall", peer);
@@ -223,8 +157,46 @@ function Room() {
     } catch (e) {
       setError(errorMessage(e));
     }
-    await reload();
+    await reload().catch(() => undefined);
+    setStarting(false);
   };
+  // What the lobby asked for (D-292): taken once the overview is here, at start and on each request.
+  const loaded = Boolean(overview);
+  const take = async () => {
+    let next: MeetingStart | null;
+    try {
+      next = await call("meetings.takeStart");
+    } catch (e) {
+      setError(errorMessage(e));
+      return;
+    }
+    if (next?.kind === "join") setJoining({ url: next.url, title: next.title });
+    else if (next?.kind === "call")
+      await startCall(
+        { peerId: next.peerId, peerName: next.peerName, direction: "outgoing" },
+        { camera: next.camera },
+      );
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once the overview has loaded.
+  useEffect(() => {
+    if (loaded) void take();
+  }, [loaded]);
+  useHostEvent("meetings.startRequested", () => {
+    if (loaded) void take();
+  });
+  // With nothing left to show (no call, device check or ringing), main hides the window again; an
+  // error stays on screen until it is dismissed.
+  const busy = Boolean(joining || ringing || starting || overview?.activeId);
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (busy) {
+      wasBusy.current = true;
+      return;
+    }
+    if (!wasBusy.current || error) return;
+    wasBusy.current = false;
+    void call("meetings.callIdle").catch(() => {});
+  }, [busy, error]);
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
   // The meeting's Teams chat (D-270): read every 5 seconds while you're in a meeting or call, also
   // with the Chat panel hidden, so the notes see it too.
@@ -252,8 +224,7 @@ function Room() {
       </div>
     );
   const active = overview.records.find((r) => r.id === overview.activeId);
-  const shown = overview.records.find((r) => r.id === opened);
-  const record = active ?? shown;
+  const record = active;
   const captionTrouble = active && /unavailable|stopped/i.test(active.capture);
   const resize = (key: MeetingSizeKey, size: number) => changeLayout(resizeSlot(layout, key, size));
   const panelMenu = (id: MeetingPanelId): MenuEntry[] => [
@@ -281,20 +252,6 @@ function Room() {
     { separator: true },
     { label: "Reset layout", icon: RotateCcw, onSelect: () => changeLayout(DEFAULT_MEETING_LAYOUT) },
   ];
-  const remove = async (r: MeetingRecord) => {
-    const ok = await confirmDialog({
-      title: `Delete "${r.title}"?`,
-      message:
-        "Deletes its transcript, notes and actions from this computer. Chats where you already asked Claude about it keep what Claude read there.",
-      confirmLabel: "Delete meeting",
-      danger: true,
-    });
-    if (!ok) return;
-    await run(async () => {
-      await call("meetings.delete", { id: r.id });
-      if (opened === r.id) setOpened(undefined);
-    });
-  };
   const generateNotes = (id: string) =>
     void run(async () => {
       const chat = await call("meetings.notes", { id });
@@ -358,14 +315,6 @@ function Room() {
       onReview={() => setReview(true)}
     />
   );
-  const account = (
-    <span className="flex max-w-64 items-center gap-2 text-xs text-muted">
-      <span className={cn("size-2 shrink-0 rounded-full", connected ? "bg-success" : "bg-hint")} />
-      <span className="truncate">
-        {overview.fake ? "Test meeting service" : (overview.account ?? "Microsoft not connected")}
-      </span>
-    </span>
-  );
   return (
     <div data-testid="meeting-room" className="flex h-screen flex-col bg-canvas text-fg">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-titlebar px-4">
@@ -376,77 +325,14 @@ function Room() {
             <Button icon={LayoutPanelLeft} onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true)}>
               Layout
             </Button>
-            {account}
-          </>
-        ) : shown ? (
-          <>
-            <IconButton icon={ArrowLeft} label="Back to meetings" onClick={() => setOpened(undefined)} />
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-semibold">{shown.title}</h1>
-              <div className="truncate text-xs text-muted">
-                {dayAndTime(shown.startedAt)}
-                {shown.endedAt ? ` – ${clock(shown.endedAt)}` : ""}
-              </div>
-            </div>
-            <Badge tone={STATUS[shown.status].tone}>{STATUS[shown.status].label}</Badge>
-            <Button icon={MessageSquare} onClick={() => setAsk(true)}>
-              Ask Claude
-            </Button>
-            {shown.call ? (
-              <Button
-                icon={Phone}
-                disabled={!shown.call.peerId || Boolean(overview.activeId)}
-                onClick={() => void startCall({ ...shown.call!, direction: "outgoing" }, { camera: false })}
-              >
-                Call back
-              </Button>
-            ) : (
-              <Button
-                icon={SquareArrowOutUpRight}
-                onClick={() => void run(() => call("app.openExternal", { url: shown.joinUrl }))}
-              >
-                Open in Teams
-              </Button>
-            )}
-            <IconButton
-              icon={MoreHorizontal}
-              label="Meeting options"
-              onClick={(e) =>
-                openMenuAt(
-                  e.currentTarget,
-                  [
-                    {
-                      label: "Delete meeting…",
-                      icon: Trash2,
-                      danger: true,
-                      onSelect: () => void remove(shown),
-                    },
-                  ],
-                  true,
-                )
-              }
-            />
           </>
         ) : (
           <>
             <Video className="size-4 shrink-0 text-accent" />
-            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Meetings</h1>
-            {account}
-            <Button icon={Settings} onClick={() => setSettings(true)}>
-              Connection
-            </Button>
-            <Button icon={Phone} disabled={!connected} onClick={() => setCalling(true)}>
-              Call…
-            </Button>
-            <Button
-              variant="primary"
-              icon={Link2}
-              onClick={() => setJoining({ title: "Teams meeting", url: "" })}
-            >
-              Join from link…
-            </Button>
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Call</h1>
           </>
         )}
+        <AccountLabel overview={overview} />
       </header>
       {active ? (
         <main className="flex min-h-0 flex-1">
@@ -473,7 +359,6 @@ function Room() {
                 onRetryCaptions={() => void run(() => media.current!.startCaptions())}
                 onLeave={() =>
                   void run(async () => {
-                    setOpened(active.id);
                     await media.current!.leave();
                   })
                 }
@@ -483,104 +368,53 @@ function Room() {
           </div>
           <Slot slot="right" layout={layout} onResize={resize} render={(id) => panel(id)} />
         </main>
-      ) : shown ? (
-        <main className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1">
-            <TranscriptPanel record={shown} live={false} />
-          </div>
-          <SizedBox
-            layout={layout}
-            sizeKey="review.notes"
-            edge="left"
-            min={280}
-            onResize={resize}
-            label="Resize notes"
-            className="border-l border-line bg-surface"
-          >
-            {notes(shown)}
-          </SizedBox>
-        </main>
       ) : (
-        <Lobby
-          view={overview.lobbyView}
-          onView={(view) => {
-            setOverview((current) => (current ? { ...current, lobbyView: view } : current));
-            void call("meetings.lobbyView", { view }).catch((e) => {
-              setError(errorMessage(e));
-              void reload();
-            });
-          }}
-          events={events}
-          records={overview.records}
-          loading={pending === "calendar"}
-          connected={connected}
-          onRefresh={() => void refreshCalendar()}
-          onConnect={() => setSettings(true)}
-          onJoin={(event) => setJoining({ title: event.title, url: event.joinUrl! })}
-          onJoinLink={() => setJoining({ title: "Teams meeting", url: "" })}
-          onOpen={setOpened}
-          onDelete={(id) => {
-            const r = overview.records.find((x) => x.id === id);
-            if (r) void remove(r);
-          }}
-        />
-      )}
-      <footer
-        role="status"
-        className="flex h-7 shrink-0 items-center gap-2 border-t border-line bg-surface px-3 text-xs"
-      >
-        {error ? (
-          <>
-            <span className="min-w-0 flex-1 truncate text-danger" title={error}>
-              {error}
-            </span>
-            <button
-              type="button"
-              aria-label="Dismiss error"
-              className="rounded-sm text-hint hover:text-fg"
-              onClick={() => setError("")}
-            >
-              <X className="size-3.5" />
-            </button>
-          </>
-        ) : (
-          <>
-            <span
-              className={cn(
-                "size-2 shrink-0 rounded-full",
-                active ? (mediaState.state === "Connected" ? "bg-success" : "bg-warning") : "bg-hint",
-              )}
-            />
-            <span className="min-w-0 truncate text-muted">
-              {active
-                ? `${mediaState.state} · ${active.capture}${mediaState.sharing ? " · Sharing your screen" : ""}`
-                : "No call"}
-            </span>
-            {captionTrouble && !overview.fake && (
-              <button
-                type="button"
-                className="shrink-0 text-accent hover:underline"
-                onClick={() => void run(() => media.current!.startCaptions())}
+        <main className="flex min-h-0 flex-1 items-center justify-center">
+          {starting || pending === "join" ? (
+            <Spinner center />
+          ) : (
+            <Empty icon={Video} title="No call">
+              <p>Join a meeting or call someone from the Meetings lobby.</p>
+              <Button
+                className="mt-3"
+                onClick={() =>
+                  void run(async () => {
+                    await call("meetings.open");
+                    await call("meetings.callIdle");
+                  })
+                }
               >
-                Retry captions
-              </button>
-            )}
-            <span className="ml-auto shrink-0 truncate text-hint">
-              Meetings are global · switching projects won't interrupt a call
-            </span>
-          </>
-        )}
-      </footer>
-      {calling && (
-        <CallDialog
-          records={overview.records}
-          onClose={() => setCalling(false)}
-          onCall={async (person, options) => {
-            setCalling(false);
-            await startCall({ peerId: person.id, peerName: person.name, direction: "outgoing" }, options);
-          }}
-        />
+                Open Meetings
+              </Button>
+            </Empty>
+          )}
+        </main>
       )}
+      <StatusBar error={error} onDismiss={() => setError("")}>
+        <span
+          className={cn(
+            "size-2 shrink-0 rounded-full",
+            active ? (mediaState.state === "Connected" ? "bg-success" : "bg-warning") : "bg-hint",
+          )}
+        />
+        <span className="min-w-0 truncate text-muted">
+          {active
+            ? `${mediaState.state} · ${active.capture}${mediaState.sharing ? " · Sharing your screen" : ""}`
+            : "No call"}
+        </span>
+        {captionTrouble && !overview.fake && (
+          <button
+            type="button"
+            className="shrink-0 text-accent hover:underline"
+            onClick={() => void run(() => media.current!.startCaptions())}
+          >
+            Retry captions
+          </button>
+        )}
+        <span className="ml-auto hidden shrink-0 truncate text-hint md:inline">
+          Meetings are global · switching projects won't interrupt a call
+        </span>
+      </StatusBar>
       {ringing && (
         <IncomingCall
           ringing={ringing}
@@ -596,38 +430,6 @@ function Room() {
               true,
             );
           }}
-        />
-      )}
-      {settings && (
-        <Connection
-          settings={overview.settings}
-          account={overview.account}
-          fake={overview.fake}
-          ringing={overview.ringing}
-          onRinging={(on) => void run(() => call("meetings.setRinging", { on }), "connection")}
-          busy={pending === "connection"}
-          onClose={() => setSettings(false)}
-          onSave={(next) =>
-            run(async () => {
-              await call("meetings.configure", next);
-              setSettings(false);
-            }, "connection")
-          }
-          onConnect={(next) =>
-            run(async () => {
-              await call("meetings.configure", next);
-              await call("meetings.signIn");
-              setSettings(false);
-              loadedCalendar.current = false;
-            }, "connection")
-          }
-          onDisconnect={() =>
-            run(async () => {
-              await call("meetings.signOut");
-              setEvents(undefined);
-              loadedCalendar.current = false;
-            }, "connection")
-          }
         />
       )}
       {devicePicker && (

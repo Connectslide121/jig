@@ -208,7 +208,9 @@ resizing do not trigger those animations (D-200).
 
 ## Meeting window (D-217)
 
-Meetings → Meetings (addon.meetings.open) opens a separate first-party window, not a project view.
+Meetings → Meetings (addon.meetings.open) opens a separate first-party window, not a project view:
+the lobby (agenda, history, reviews). Calls run in a second window, the call window, which waits
+hidden and comes forward to join, call or ring (D-292); the lobby stays usable beside it.
 Its agenda and notes use remembered Pane ids addon.meetings.agenda and addon.meetings.notes. Project
 changes do not unmount media or rewrite the meeting. Pre-join/settings/questions/action review/screen
 selection are modal; media, call controls and status have reserved slots. Dialog titles provide

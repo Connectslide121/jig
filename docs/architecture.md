@@ -624,6 +624,15 @@ their existing connect/media policy. No remote scripts are permitted. Microphone
 is limited to Jig's own origin/main frame; screen sharing requires an expiring one-use source selected
 in the meeting window. The window is an appWindows member, not a hidden browser helper.
 
+Two windows (D-292): `meetings.open` opens the **lobby** (`?meetingLobby=1` on the normal `jig-app:`
+page; agenda, history, reviews, notes, questions, the action queue), a sandboxed secondary Jig window
+(`markSecondaryWindow`: in `appWindows()`, never `mainWindow()`) that never gets the calling
+credential. The **call window** above (`?meetingRoom=1` on the loopback page) opens hidden beside it
+and shows only prejoin, the live call and ringing; the lobby asks main to bring it up with
+`meetings.start`, which it takes with `meetings.takeStart`. When a call ends main hides it again and
+the lobby opens that meeting's review. Main's guards: `own()` for the call window's media, credential,
+captions, status and chat, `lobbyOrCall()` for what both windows show.
+
 The window is independent of workbench mounts and project selection; CallClient, TeamsCallAgent and
 caption listeners live in its media owner. Closing/reloading/crashing and application quit have explicit
 lifecycle handling. Stored meeting records contain no projectId. Questions make immutable snapshots,
