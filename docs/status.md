@@ -157,6 +157,9 @@ GitHub with a code; Copilot keeps the sign-in) or **Claude** (Settings → Edito
 with Claude, off by default; Haiku by default, about 1 s after a typing pause, the first about 5 s).
 Needs testing with a real Copilot account.
 
+Chat (2026-11-03): the context window card (hover the % in a chat's top bar) stays open while you
+move onto it and has Compact now and With instructions….
+
 Chat (2026-11-03): in the Compact view the latest steps line keeps its spinner and glow while the
 chat works, also between steps ("· Working" while Claude writes its next step), not only while a
 tool runs.

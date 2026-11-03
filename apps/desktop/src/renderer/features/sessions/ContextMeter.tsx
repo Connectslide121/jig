@@ -45,7 +45,7 @@ const SEGMENT = ["bg-accent", "bg-info", "bg-success", "bg-warning", "bg-danger"
 const tone = (percent: number) =>
   percent >= 90 ? "text-danger" : percent >= COMPACT_HINT_PERCENT ? "text-warning" : "text-accent";
 
-function ContextCard({ context }: { context: ContextUsage }) {
+function ContextCard({ context, meta, busy }: { context: ContextUsage; meta: SessionMeta; busy: boolean }) {
   const used = context.categories.filter((c) => c.kind === "used");
   const buffer = context.categories.find((c) => c.kind === "buffer");
   const max = context.maxTokens || 1;
@@ -81,9 +81,28 @@ function ContextCard({ context }: { context: ContextUsage }) {
       </div>
       <div className="border-t border-line pt-1.5 text-2xs text-hint">
         {buffer
-          ? `Claude Code compacts on its own when the window is full (${formatTokens(buffer.tokens)} kept free for that). `
-          : "Claude Code compacts on its own when the window is full. "}
-        Click to compact now.
+          ? `Claude Code compacts on its own when the window is full (${formatTokens(buffer.tokens)} kept free for that).`
+          : "Claude Code compacts on its own when the window is full."}
+      </div>
+      {/* The card stays open while the pointer is on it, so these can be clicked. */}
+      <div className="flex items-center gap-1.5">
+        <Button
+          size="sm"
+          icon={Minimize2}
+          disabled={busy || meta.turns === 0}
+          onClick={() => compactSession(meta)}
+          data-testid="context-compact-now"
+        >
+          Compact now
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy || meta.turns === 0}
+          onClick={() => void compactWithInstructions(meta)}
+        >
+          With instructions…
+        </Button>
       </div>
     </div>
   );
@@ -109,7 +128,12 @@ export function ContextMeter({ meta }: { meta: SessionMeta }) {
           Compact
         </Button>
       )}
-      <Tooltip content={<ContextCard context={context} />} delay={150} className="max-w-none p-2">
+      <Tooltip
+        content={<ContextCard context={context} meta={meta} busy={busy} />}
+        delay={150}
+        interactive
+        className="max-w-none p-2"
+      >
         <button
           type="button"
           onClick={(e) => openMenuAt(e.currentTarget, compactMenu(meta), true)}
