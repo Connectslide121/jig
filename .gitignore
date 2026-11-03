@@ -10,4 +10,4 @@ playwright-report/
 .jig-e2e-passed.json
 .DS_Store
 .azure-local/
-.tmp/browser-screenshot/
+.tmp/
