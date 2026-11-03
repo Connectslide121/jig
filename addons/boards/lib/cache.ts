@@ -86,11 +86,13 @@ const ITEM_FIELDS = [
   "assignedTo",
   "assignedEmail",
   "changed",
+  "iteration",
+  "area",
   "url",
 ] as const satisfies ReadonlyArray<keyof WorkItem>;
 
 function sameItem(a: WorkItem, b: WorkItem): boolean {
-  return ITEM_FIELDS.every((f) => a[f] === b[f]);
+  return ITEM_FIELDS.every((f) => a[f] === b[f]) && (a.tags ?? []).join(";") === (b.tags ?? []).join(";");
 }
 
 /** `next`, but reusing `prev`'s objects where nothing changed; `prev` itself when the arrays match. */

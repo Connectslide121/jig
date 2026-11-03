@@ -32,6 +32,7 @@ import {
   Plus,
   RefreshCw,
   SquareCheck,
+  SquarePlus,
   TriangleAlert,
   Trophy,
   Users,
@@ -51,6 +52,8 @@ import {
   type WorkItem,
 } from "./lib/boards";
 import { type BoardState, cacheKey, mergeBoard, updatedAgo } from "./lib/cache";
+import { type BoardFilter, facets, isFiltering, matches, readFilter } from "./lib/filter";
+import { FilterBar } from "./toolbar";
 
 /** A work item type's icon and colour, the same on every board (like Azure DevOps' own colours). */
 function typeLook(type: string) {
@@ -208,7 +211,8 @@ const COLUMN_WIDTH = { min: 200, max: 480, step: 8, initial: 288 };
 
 /**
  * The board: its columns side by side (scrolls sideways), each with its cards (scrolls down). Cards
- * drag between columns; + in a column's header adds a card there.
+ * drag between columns; + in a column's header adds a card there. The toolbar's search and filters
+ * only hide cards (D-304): every column stays, at its width, and counts "shown/total".
  */
 function BoardColumns({
   ctx,
@@ -217,6 +221,8 @@ function BoardColumns({
   width,
   actions,
   moving,
+  filter,
+  me,
   onNew,
 }: {
   ctx: AddonUiContext;
@@ -226,16 +232,23 @@ function BoardColumns({
   actions: CardActions;
   /** Cards being moved: id → the column they go to (shown there until the board reloads). */
   moving: Record<number, string>;
+  filter: BoardFilter;
+  /** Your e-mail, for the @Me filter. */
+  me?: string;
   onNew: (column: BoardColumn) => void;
 }) {
   const [target, setTarget] = useState<string>();
+  const filtering = isFiltering(filter);
   const lanes = placeCards({
     ...data,
     items: data.items.map((i) => (moving[i.id] ? { ...i, column: moving[i.id] } : i)),
-  });
+  }).map((lane) => ({
+    ...lane,
+    shown: filtering ? lane.items.filter((i) => matches(i, filter, me)) : lane.items,
+  }));
   return (
     <div className="flex h-full gap-3 overflow-x-auto p-3">
-      {lanes.map(({ column, items }) => {
+      {lanes.map(({ column, items, shown }) => {
         const over = column.itemLimit > 0 && items.length > column.itemLimit;
         return (
           <section
@@ -266,8 +279,20 @@ function BoardColumns({
           >
             <header className="flex h-10 shrink-0 items-center gap-2 pr-1.5 pl-3">
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">{column.name}</span>
-              <span className={cn("shrink-0 text-xs tabular-nums", over ? "text-warning" : "text-hint")}>
-                {column.itemLimit > 0 ? `${items.length}/${column.itemLimit}` : items.length}
+              <span
+                className={cn("shrink-0 text-xs tabular-nums", over ? "text-warning" : "text-hint")}
+                title={
+                  filtering
+                    ? `${shown.length} of ${items.length} cards match${column.itemLimit > 0 ? ` (WIP limit ${column.itemLimit})` : ""}`
+                    : undefined
+                }
+                data-testid={`board-count-${column.name}`}
+              >
+                {filtering
+                  ? `${shown.length}/${items.length}`
+                  : column.itemLimit > 0
+                    ? `${items.length}/${column.itemLimit}`
+                    : items.length}
               </span>
               <IconButton
                 icon={Plus}
@@ -278,7 +303,10 @@ function BoardColumns({
               />
             </header>
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-              {items.map((item) => (
+              {filtering && shown.length === 0 && items.length > 0 ? (
+                <p className="px-1 py-3 text-center text-xs text-hint">No cards match the filters</p>
+              ) : null}
+              {shown.map((item) => (
                 <Card
                   key={item.id}
                   ctx={ctx}
@@ -304,6 +332,8 @@ interface BoardStatus {
   at?: number;
   /** The last refresh failed (the cards on screen are older). */
   error?: string;
+  /** The cards on screen: what the toolbar's filters offer. */
+  data?: BoardData;
 }
 
 /** Cards moved here and not yet seen in their new column (`savedAt`: when Azure DevOps had the move). */
@@ -320,12 +350,16 @@ function BoardBody({
   projectId,
   onStatus,
   width,
+  filter,
+  me,
 }: {
   ctx: AddonUiContext;
   board: Board;
   projectId?: string;
   onStatus: (status: BoardStatus) => void;
   width: number;
+  filter: BoardFilter;
+  me?: string;
 }) {
   const key = cacheKey(board);
   const [view, setView] = useState<BoardState>({});
@@ -379,6 +413,15 @@ function BoardBody({
     window.addEventListener("jig-boards-refresh", again);
     return () => window.removeEventListener("jig-boards-refresh", again);
   }, [load]);
+  // The toolbar's New card: in the board's first column.
+  useEffect(() => {
+    const add = () => {
+      const first = view.data?.columns[0];
+      if (first && !view.data?.elsewhere) setAdding(first);
+    };
+    window.addEventListener("jig-boards-new-card", add);
+    return () => window.removeEventListener("jig-boards-new-card", add);
+  }, [view.data]);
   // Every refresh of this board, whoever started it: the background, a change here or from a chat.
   useAddonEvent("board", (payload) => {
     const e = payload as BoardState & { key?: string; refreshing?: boolean };
@@ -404,8 +447,8 @@ function BoardBody({
   const refreshing = own > 0 || hostRefreshing;
   const shownError = view.data && !view.signIn ? view.error : undefined;
   useEffect(
-    () => onStatus({ refreshing, at: view.at, error: shownError }),
-    [refreshing, view.at, shownError, onStatus],
+    () => onStatus({ refreshing, at: view.at, error: shownError, data: view.data }),
+    [refreshing, view.at, shownError, view.data, onStatus],
   );
 
   const fail = (title: string, e: unknown) =>
@@ -478,6 +521,8 @@ function BoardBody({
         width={width}
         actions={actions}
         moving={Object.fromEntries(Object.entries(moving).map(([id, m]) => [id, m.column]))}
+        filter={filter}
+        me={me}
         onNew={setAdding}
       />
       {open !== undefined ? (
@@ -788,6 +833,40 @@ export function BoardsView({ ctx }: AddonComponentProps) {
     setTenant(t.key);
     setAdding(false);
   });
+  const me = useMemo(() => {
+    const user = ctx.azure.tenants().find((t) => t.key === tenant)?.user ?? ctx.azure.tenant().user;
+    return user?.includes("@") ? user : undefined;
+  }, [ctx, tenant]);
+
+  // Search and filters, per board (D-304): kept in storage; the text is saved a moment after typing.
+  const [filters, setFilters] = useStorage<Record<string, unknown>>("filters", {});
+  const boardId = board?.id;
+  const stored = useMemo(() => readFilter(boardId ? filters[boardId] : undefined), [filters, boardId]);
+  const [text, setText] = useState(stored.text);
+  useEffect(() => setText(stored.text), [boardId]);
+  const latest = useRef({ filters, stored });
+  latest.current = { filters, stored };
+  const saveFilter = useCallback(
+    (next: BoardFilter) => {
+      if (!boardId) return;
+      const all = { ...latest.current.filters, [boardId]: next };
+      latest.current = { filters: all, stored: next };
+      void setFilters(all);
+    },
+    [boardId, setFilters],
+  );
+  useEffect(() => {
+    if (text === latest.current.stored.text) return;
+    const timer = setTimeout(() => saveFilter({ ...latest.current.stored, text }), 300);
+    return () => clearTimeout(timer);
+  }, [text, saveFilter]);
+  const filter = useMemo(() => ({ ...stored, text }), [stored, text]);
+  const boardFacets = useMemo(
+    () => (status.data ? facets(status.data.items, status.data.columns, stored) : undefined),
+    [status.data, stored],
+  );
+  const searchRef = useRef<HTMLInputElement>(null);
+  const hasCards = !!board && !!status.data && !status.data.elsewhere;
 
   const add = (picked: Array<FoundBoard & { org: string; project: string }>) => {
     const all = [...boards];
@@ -861,7 +940,20 @@ export function BoardsView({ ctx }: AddonComponentProps) {
   };
 
   return (
-    <div className="@container flex h-full flex-col" data-testid="boards-view">
+    <div
+      className="@container flex h-full flex-col outline-none"
+      data-testid="boards-view"
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        const typing = (e.target as HTMLElement).closest("input, textarea, select, [contenteditable]");
+        const find = (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "f";
+        if (!hasCards || !(find || (e.key === "/" && !typing))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }}
+    >
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line pr-1">
         <div className="min-w-0 flex-1 overflow-x-auto">
           {board ? (
@@ -882,7 +974,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             <span className="px-3 text-sm text-muted">Boards</span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 px-1" title="Column width">
+        <div className="shrink-0 items-center gap-1.5 px-1 @max-xl:hidden @xl:flex" title="Column width">
           <MoveHorizontal className="size-3.5 text-hint" aria-hidden />
           <input
             type="range"
@@ -897,9 +989,30 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             className="jig-range w-24"
           />
         </div>
+        <IconButton
+          icon={Plus}
+          label="Add boards"
+          size="sm"
+          disabled={!project}
+          data-testid="boards-add"
+          onClick={() => setAdding(true)}
+        />
+      </div>
+      {/* The board's toolbar (D-304): search and filters on the left, its actions on the right. */}
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-line pr-1 pl-2">
+        <FilterBar
+          ctx={ctx}
+          filter={filter}
+          facets={boardFacets}
+          disabled={!hasCards}
+          me={me}
+          searchRef={searchRef}
+          onText={setText}
+          onChange={(change) => saveFilter(change({ ...latest.current.stored, text }))}
+        />
         {/* When the cards were fetched, in a fixed slot (empty until known; hidden when narrow). */}
         <span
-          className="w-32 shrink-0 truncate text-right text-xs text-hint @max-2xl:hidden @2xl:block"
+          className="w-28 shrink-0 truncate text-right text-xs text-hint @max-6xl:hidden @6xl:block"
           data-testid="board-updated"
         >
           {board && !status.refreshing && status.error
@@ -928,12 +1041,12 @@ export function BoardsView({ ctx }: AddonComponentProps) {
           onClick={() => window.dispatchEvent(new Event("jig-boards-refresh"))}
         />
         <IconButton
-          icon={Plus}
-          label="Add boards"
+          icon={SquarePlus}
+          label="New card"
           size="sm"
-          disabled={!project}
-          data-testid="boards-add"
-          onClick={() => setAdding(true)}
+          disabled={!hasCards || !status.data?.columns.length}
+          data-testid="board-new-card"
+          onClick={() => window.dispatchEvent(new Event("jig-boards-new-card"))}
         />
         <IconButton
           icon={MoreHorizontal}
@@ -957,6 +1070,8 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             projectId={project.id}
             onStatus={setStatus}
             width={width}
+            filter={filter}
+            me={me}
           />
         ) : (
           <Empty icon={Kanban} title="No boards yet" className="h-full">

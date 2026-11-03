@@ -3951,3 +3951,32 @@ more, so every step failed with "Add-ons need git".
   any more" (`no_worktree`) instead of asking you to install git.
 - **Claude, on my own:** the Build tab's request text says the add-on below does the rest when there is
   one.
+
+## D-304: Boards' search and filters, client-side and per board; multi-select menus
+
+Jon, 2026-11-04: "a proper board toolbar like Azure DevOps': a search field and filters".
+
+- A toolbar row (`h-10`) under the tab row, in every state (disabled without cards): `SearchInput`,
+  then pickers Type, Assigned to, State, Tags, and Iteration and Area only when the cards have them
+  (last, so nothing before them moves), Clear filters in a slot that's always there (invisible when
+  off). Right side: "updated N min ago", Refresh, New card, ⋯. **Claude, on my own:** the column
+  width slider and Add boards (+) moved to the tab row (a slider isn't an action, and + beside the
+  tabs reads as "add a tab"); New card is a new toolbar action (opens New card in the first column)
+  with the `square-plus` icon so it isn't confused with Add boards' `+`.
+- Container breakpoints (Jig's rem is 13 px): below `@5xl` the pickers fold into one Filter button
+  whose menu leads to each picker; the "updated" hint shows from `@6xl`, the slider from `@xl`.
+- Filtering runs on the cached cards (`lib/filter.ts`): every word of the search in id, title, tags
+  or person; OR within a picker, AND across pickers, as in Azure DevOps. People match by e-mail
+  (`uniqueName`), else name; @Me is the active tenant's signed-in user. Columns are placed from all
+  cards and then filtered, so every column stays at its width; counts read "shown/total" (WIP
+  colouring still uses the total) and an empty column says "No cards match the filters".
+- Stored per board in the project-scoped key `filters` (board id → filter); the search text is saved
+  300 ms after typing. Values picked that no card has any more stay listed with count 0, so they can
+  be unticked. Cards now also carry `tags`, `iteration` and `area` (three more fields in the query).
+- Ctrl+F (and / outside a text field) on the board focuses the search; Esc in it clears.
+- Menus (`ui/Menu.tsx`, and add-ons through `MenuItemInput`) gained `keepOpen`: a multi-select row
+  with a checkbox that toggles in place and runs `onSelect` without closing (role
+  `menuitemcheckbox`), and add-on items gained `person` (`{ name, email }` → a `PersonAvatar`). Kept
+  generic so other views can use multi-select menus.
+- The filter mark is in the toolbar: the funnel before the pickers turns accent and every active
+  picker shows its count; the tabs carry no mark (it would change their width).

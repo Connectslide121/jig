@@ -49,6 +49,15 @@ Closing the lobby doesn't end a call. Needs testing on your machine: a real Team
 call (both windows on screen, the call window coming forward to ring while the lobby is closed, and
 quitting Jig with only the hidden call window left).
 
+Board search and filters (2026-11-04, D-304): Boards has a toolbar under its tabs like Azure DevOps':
+a search field (id, title, tags, person; Esc clears; Ctrl+F or / on the board focuses it) and pickers
+for Type, Assigned to (@Me, Unassigned, people with avatars), State, Tags, Iteration and Area, each a
+menu with checkboxes that stays open, showing a count. Filtering is instant on the loaded cards;
+columns keep their place and width and count "shown/total"; Clear filters has a reserved slot. Kept
+per board. Narrow sidebars get one Filter button instead of the row of pickers. How to try it: open
+Code → Boards, type in the search, tick a few values, switch tabs and back. Needs testing on your
+machine: @Me with your real az sign-in (it matches your e-mail), and a board with many people and tags.
+
 Boards load at startup (2026-11-04, D-302): Jig fetches every followed board of every project a few
 seconds after it starts (two at a time, in the active tenant) and keeps the cards, also across
 restarts. Opening or switching to a board tab shows its cards at once and refreshes them behind the

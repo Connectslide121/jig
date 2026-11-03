@@ -17,6 +17,11 @@ export interface MenuItem {
   disabled?: boolean;
   danger?: boolean;
   checked?: boolean;
+  /**
+   * A multi-select row (a filter's values): it shows a checkbox, and choosing it toggles the box and
+   * runs `onSelect` without closing the menu, so several can be ticked in one go.
+   */
+  keepOpen?: boolean;
   /** Shown before the label, after the icon or check (a project's colour). */
   leading?: ReactNode;
   /**
@@ -119,6 +124,9 @@ function MenuList({
   const [place, setPlace] = useState<{ left: number; top: number }>({ left: -9999, top: -9999 });
   const [active, setActive] = useState(-1);
   const [sub, setSub] = useState<{ index: number; position: MenuPosition } | undefined>();
+  /** Multi-select rows ticked or unticked while the menu is open (`keepOpen`). */
+  const [toggled, setToggled] = useState<Record<number, boolean>>({});
+  const isChecked = (entry: MenuItem, index: number) => toggled[index] ?? !!entry.checked;
   const items = entries.map((e, i) => ({ e, i })).filter(({ e }) => isItem(e) && !e.disabled);
 
   useLayoutEffect(() => {
@@ -154,6 +162,11 @@ function MenuList({
       if (el) openSub(index, el);
       return;
     }
+    if (entry.keepOpen) {
+      setToggled((t) => ({ ...t, [index]: !isChecked(entry, index) }));
+      entry.onSelect?.();
+      return;
+    }
     onClose();
     entry.onSelect?.();
   };
@@ -179,6 +192,8 @@ function MenuList({
   const hasAvatar = entries.some((e) => isItem(e) && e.avatar);
   const columnCount = Math.max(0, ...entries.map((e) => (isItem(e) ? (e.columns?.length ?? 0) : 0)));
   const hasMark = entries.some((e) => isItem(e) && e.mark);
+  // Multi-select rows keep an icon slot after their checkbox only when one of them has an icon.
+  const multiIcons = entries.some((e) => isItem(e) && e.keepOpen && (e.icon || e.avatar));
   return (
     <>
       <div
@@ -207,7 +222,9 @@ function MenuList({
           return (
             <div
               key={index}
-              role="menuitem"
+              {...(entry.keepOpen
+                ? { role: "menuitemcheckbox", "aria-checked": isChecked(entry, index) }
+                : { role: "menuitem" })}
               tabIndex={-1}
               data-index={index}
               data-testid={entry.testId}
@@ -225,20 +242,33 @@ function MenuList({
                 entry.danger && "text-danger",
               )}
             >
-              <span
-                className={cn(
-                  "flex shrink-0 items-center justify-center text-muted",
-                  hasAvatar ? "size-5" : "size-4",
-                )}
-              >
-                {entry.checked ? (
-                  <Check className="size-3.5 text-accent" />
-                ) : entry.avatar ? (
-                  entry.avatar
-                ) : Icon ? (
-                  <Icon className="size-4" />
-                ) : null}
-              </span>
+              {entry.keepOpen ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-4 shrink-0 items-center justify-center rounded-sm border",
+                    isChecked(entry, index) ? "border-accent bg-accent text-on-accent" : "border-line-strong",
+                  )}
+                >
+                  {isChecked(entry, index) ? <Check className="size-3" /> : null}
+                </span>
+              ) : null}
+              {entry.keepOpen && !multiIcons ? null : (
+                <span
+                  className={cn(
+                    "flex shrink-0 items-center justify-center text-muted",
+                    hasAvatar ? "size-5" : "size-4",
+                  )}
+                >
+                  {entry.checked && !entry.keepOpen ? (
+                    <Check className="size-3.5 text-accent" />
+                  ) : entry.avatar ? (
+                    entry.avatar
+                  ) : Icon ? (
+                    <Icon className="size-4" />
+                  ) : null}
+                </span>
+              )}
               {entry.leading}
               <span className="min-w-0 flex-1 truncate">{entry.label}</span>
               {entry.detail && (

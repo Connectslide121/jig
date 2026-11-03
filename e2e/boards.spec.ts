@@ -16,6 +16,7 @@ const card = (id, title, type, state, column, who) => ({ id, fields: {
   "System.Id": id, "System.Title": title, "System.WorkItemType": type, "System.State": state,
   "WEF_1_Kanban.Column": column, ...(who ? { "System.AssignedTo": { displayName: who, uniqueName: who.toLowerCase().replace(" ", ".") + "@contoso.com" } } : {}),
 }});
+const tagged = (c, tags) => { c.fields["System.Tags"] = tags; return c; };
 if (uri.endsWith("/profiles/me")) say({ id: "me-1" });
 if (uri.endsWith("/_apis/accounts")) say({ value: [{ accountName: "contoso" }] });
 if (has("devops", "project", "list")) say({ value: [{ name: "Portal" }, { name: "Shop" }] });
@@ -50,7 +51,7 @@ if (has("boards", "query")) {
   const wiql = args[args.indexOf("--wiql") + 1];
   if (!wiql.includes("UNDER 'Shop\\\\Web'") || !wiql.includes("[WEF_1_Kanban.Column]")) { console.error("unexpected query " + wiql); process.exit(1); }
   say([
-    card(101, "Checkout fails with a saved card", "Bug", "Active", "Doing", "Ann Demo"),
+    tagged(card(101, "Checkout fails with a saved card", "Bug", "Active", "Doing", "Ann Demo"), "checkout; payments"),
     card(102, "Add a wish list", "User Story", "New", "New"),
     card(103, "Write the release notes", "User Story", "Closed", "Closed", "Ben Sample"),
     card(104, "Show delivery dates", "User Story", "Active", "Doing"),
@@ -240,6 +241,60 @@ test("Boards: cards stay on screen while the board refreshes in the background (
     args: { chat: { projectId: projects.value.projects[0]!.id } },
   })) as { value: string };
   expect(listed.value).toContain("#104");
+});
+
+test("Boards: search and filters hide cards, keep the columns and are remembered per board (D-304)", async ({
+  page,
+  jigHome,
+}) => {
+  const view = await setUp(page, jigHome, true);
+  await view.getByTestId("boards-add-first").click();
+  const dialog = page.getByTestId("boards-dialog");
+  await dialog.getByTestId("boards-pick-Web-Stories").click();
+  await dialog.getByTestId("boards-add-picked").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  const doing = await settledBox(view.getByTestId("board-column-Doing"));
+
+  // Search as you type: matching cards only; every column stays, counting shown/total.
+  await view.getByTestId("board-search").fill("wish");
+  await expect(view.getByTestId("board-item-101")).toBeHidden();
+  await expect(view.getByTestId("board-item-102")).toBeVisible();
+  await expect(view.getByTestId("board-count-New")).toHaveText("1/1");
+  await expect(view.getByTestId("board-count-Doing")).toHaveText("0/2");
+  await expect(view.getByTestId("board-column-Doing")).toContainText("No cards match the filters");
+  expect(await view.getByTestId("board-column-Doing").boundingBox()).toEqual(doing);
+  // Esc clears the search.
+  await view.getByTestId("board-search").press("Escape");
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+
+  // A picker: a menu with checkboxes that stays open; the count and Clear filters show.
+  const openPicker = async (field: string) => {
+    if (await view.getByTestId(`board-filter-${field}`).isVisible())
+      await view.getByTestId(`board-filter-${field}`).click();
+    else {
+      await view.getByTestId("board-filter-all").click();
+      await page.getByTestId(`board-filter-menu-${field}`).click();
+    }
+  };
+  await openPicker("tags");
+  await page.getByTestId("board-filter-tags-checkout").click();
+  await page.keyboard.press("Escape");
+  await expect(view.getByTestId("board-item-102")).toBeHidden();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  await expect(view.getByTestId("board-filter-clear")).toBeVisible();
+
+  // Remembered for the board: back after a reload.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.getByTestId("board-item-101")).toBeVisible();
+  await expect(page.getByTestId("board-item-102")).toBeHidden();
+  await page.getByTestId("board-filter-clear").click();
+  await expect(page.getByTestId("board-item-102")).toBeVisible();
+
+  // Ctrl+F on the board focuses the search.
+  await page.getByTestId("board-column-New").click({ position: { x: 20, y: 300 } });
+  await page.keyboard.press("Control+f");
+  await expect(page.getByTestId("board-search")).toBeFocused();
 });
 
 test("Boards: a board followed in another tenant keeps its space and switches to it", async ({

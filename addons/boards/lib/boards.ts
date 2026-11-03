@@ -51,6 +51,10 @@ export interface WorkItem {
   /** Who has it, by e-mail / user principal name (`uniqueName`): their picture is found by it. */
   assignedEmail?: string;
   changed?: string;
+  /** Its tags (`System.Tags`, "a; b"), iteration and area paths: what the board's filters offer. */
+  tags?: string[];
+  iteration?: string;
+  area?: string;
   url: string;
 }
 
@@ -178,6 +182,9 @@ export function boardQuery(
     "System.AssignedTo",
     "System.ChangedDate",
     "System.BoardColumn",
+    "System.Tags",
+    "System.IterationPath",
+    "System.AreaPath",
     ...(field ? [field] : []),
   ];
   return `SELECT ${select.map((f) => `[${f}]`).join(", ")} FROM WorkItems WHERE ${where.join(" AND ")} ORDER BY [Microsoft.VSTS.Common.StackRank] ASC, [System.ChangedDate] DESC`;
@@ -214,6 +221,10 @@ export function toWorkItem(
   if (!Number.isFinite(id) || !r.fields) return undefined;
   const f = r.fields;
   const column = (field && f[field]) ?? f["System.BoardColumn"];
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const tags = splitTags(f["System.Tags"]);
+  const iteration = text(f["System.IterationPath"]);
+  const area = text(f["System.AreaPath"]);
   return {
     id,
     title: String(f["System.Title"] ?? `#${id}`),
@@ -223,8 +234,21 @@ export function toWorkItem(
     assignedTo: person(f["System.AssignedTo"]),
     assignedEmail: personEmail(f["System.AssignedTo"]),
     changed: typeof f["System.ChangedDate"] === "string" ? f["System.ChangedDate"] : undefined,
+    ...(tags.length ? { tags } : {}),
+    ...(iteration ? { iteration } : {}),
+    ...(area ? { area } : {}),
     url: `${orgUrl(b.org)}/${encodeURIComponent(b.project)}/_workitems/edit/${id}`,
   };
+}
+
+/** `System.Tags` ("checkout; payments") as a list. */
+export function splitTags(value: unknown): string[] {
+  return typeof value === "string"
+    ? value
+        .split(";")
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
 }
 
 /**

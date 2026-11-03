@@ -24,6 +24,17 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 - **A board:** its real columns side by side with WIP limits, a card per work item (type colour, id,
   title, who has it, its state when it differs from the column). Done cards older than 30 days are
   left off.
+- **Search and filters (D-304):** a toolbar under the tabs, like Azure DevOps' filter bar: a search
+  field (id, title, tags, who has it; every word must match; Esc clears; Ctrl+F or / on the board
+  jumps to it), then pickers for Type, Assigned to (@Me, Unassigned and the board's people with their
+  avatars), State, Tags, and Iteration and Area when the cards have them. Each picker is a menu with
+  checkboxes (several at once, it stays open) and shows how many are picked; any value of one picker
+  matches, all pickers must. Clear filters sits in a reserved slot. Filtering only hides cards: every
+  column stays at its width, empty ones say "No cards match the filters", and counts read
+  "shown/total". The funnel turns accent while filters are on. Remembered per board. In a narrow
+  sidebar the pickers fold into one Filter button. The toolbar's right side: "updated N min ago",
+  Refresh, New card (in the first column) and ⋯; the column width slider and Add boards (+) sit on
+  the tab row.
 - **Who has it (D-291):** each card shows its assignee as a round avatar at the far right of its
   last line, in a fixed slot (empty when unassigned), so nothing moves while pictures load: their
   Microsoft profile picture when the meeting sign-in can get it, otherwise initials; hover for name
@@ -44,4 +55,4 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
   deleting (`az boards work-item delete` answers in plain text) through `az rest`. Titles,
   descriptions and comments reach az as written, quotes and non-ASCII included (D-290).
 
-Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px; `cache`, each board's last cards keyed `tenant|org|project|team|boardId` (written by the host). The cache and merge logic is in `lib/cache.ts` (unit-tested). Tested by `e2e/boards.spec.ts` with a fake `az`.
+Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px; `filters` (project scope), each board's search and filters by board id; `cache`, each board's last cards keyed `tenant|org|project|team|boardId` (written by the host). The cache and merge logic is in `lib/cache.ts`, the filter logic in `lib/filter.ts` (both unit-tested). Cards also carry their tags, iteration and area (from the board query) for the filters. Tested by `e2e/boards.spec.ts` with a fake `az`.

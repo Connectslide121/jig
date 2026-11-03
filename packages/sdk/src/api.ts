@@ -143,6 +143,13 @@ export interface MenuItemInput {
   danger?: boolean;
   disabled?: boolean;
   checked?: boolean;
+  /**
+   * A multi-select row (a filter's values): a checkbox, and choosing it toggles the box and runs
+   * `onSelect` without closing the menu.
+   */
+  keepOpen?: boolean;
+  /** A person: their avatar (profile picture or initials, like `PersonAvatar`) before the label. */
+  person?: { name?: string; email?: string };
   /** A project id: its colour square before the label (a menu of projects). */
   project?: string;
   /** A small marker at the far right, in a column shared by the whole menu (a count). */

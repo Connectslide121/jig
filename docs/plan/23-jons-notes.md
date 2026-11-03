@@ -72,6 +72,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       board is fetched a few seconds after Jig starts and kept in the host (and in storage, for the
       next start); a tab shows its cached cards at once and refreshes behind them, with the refresh
       button turning and "updated N min ago" in fixed toolbar slots.
+- [x] **Board search and filters (Jon, 2026-11-04, D-304):** a toolbar like Azure DevOps': search,
+      Type / Assigned to / State / Tags / Iteration / Area pickers (multi-select menus), Clear filters;
+      client-side, columns never move, remembered per board.
 - [x] **Update progress:** while an update installs, show the installer or a progress window
       instead of Jig vanishing (D-252): an "Installing Jig X" modal says what happens next for 2 s,
       then the assisted installer shows its progress and starts Jig, which says "Updated to Jig X".

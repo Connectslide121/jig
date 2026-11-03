@@ -16,7 +16,7 @@ import { createContext, createElement, useContext } from "react";
 import type { AddonInfo } from "../../shared/addons";
 import { updateTabParams } from "../../shared/layout";
 import { switchTenant, useTenants } from "../features/azure/store";
-import { personPhoto } from "../features/people/PersonAvatar";
+import { PersonAvatar, personPhoto } from "../features/people/PersonAvatar";
 import { ProjectSwatch } from "../features/projects/colors";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
@@ -64,6 +64,8 @@ function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry
           danger: item.danger,
           disabled: item.disabled,
           checked: item.checked,
+          keepOpen: item.keepOpen,
+          avatar: item.person ? createElement(PersonAvatar, item.person) : undefined,
           badge: item.badge,
           testId: item.testId,
           leading: projectLeading(item.project),
