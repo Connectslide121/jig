@@ -1,6 +1,6 @@
 # Phase 25 — "Hey Jig" voice commands
 
-Status: in progress (D-277). Asked for by Jon: "control Jig with voice commands … like Siri … say
+Status: in progress (D-278). Asked for by Jon: "control Jig with voice commands … like Siri … say
 hey Jig and Jig should wake up", for cooking or being around the house without looking at the
 screen; "talking to Jig more than talking to Claude"; commands "should not use my Claude
 subscription"; "somewhere where we can see all the voice commands that we support".

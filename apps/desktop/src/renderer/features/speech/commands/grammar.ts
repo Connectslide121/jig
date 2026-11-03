@@ -1,5 +1,5 @@
 /**
- * "Hey Jig" voice commands (D-277): what Jig understands on its own, without Claude. The same list
+ * "Hey Jig" voice commands (D-278): what Jig understands on its own, without Claude. The same list
  * drives the matcher, the Voice commands page and "what can I say", so they never disagree.
  */
 

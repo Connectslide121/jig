@@ -3325,7 +3325,7 @@ use a small model (Haiku) instead. Details: Claude, on my own.
   translation arrives.
 - The picker offers Teams' languages plus `AI_CAPTION_LANGUAGES` (shared/meetings.ts).
 
-## D-277: "Hey Jig" voice commands run on this computer, from one command list
+## D-278: "Hey Jig" voice commands run on this computer, from one command list
 
 **Who:** Jon: control Jig by voice like Siri ("hey Jig, open a new chat … in speech mode"), from
 anywhere in the house, without using the Claude subscription; commands are global (names come

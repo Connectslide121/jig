@@ -30,7 +30,7 @@ function Phrase({ text }: { text: string }) {
   );
 }
 
-/** Every "Hey Jig" command, by group, as Jig understands them (the matcher's own list, D-277). */
+/** Every "Hey Jig" command, by group, as Jig understands them (the matcher's own list, D-278). */
 export function VoiceCommandsList() {
   return (
     <div className="flex flex-col gap-6" data-testid="voice-commands">

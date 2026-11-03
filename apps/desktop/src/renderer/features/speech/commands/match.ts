@@ -1,6 +1,6 @@
 import { VOICE_COMMANDS, type VoiceCommand, type VoiceSlot } from "./grammar";
 
-/** Understanding "Hey Jig …" on this computer, without Claude (D-277). */
+/** Understanding "Hey Jig …" on this computer, without Claude (D-278). */
 
 const CONTRACTIONS: Array<[RegExp, string]> = [
   [/\bwhat'?s\b/g, "what is"],
