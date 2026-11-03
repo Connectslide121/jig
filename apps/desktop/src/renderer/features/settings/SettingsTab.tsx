@@ -1,5 +1,6 @@
 import {
   Bot,
+  BrainCircuit,
   Cloud,
   Download,
   FileCode,
@@ -22,6 +23,7 @@ import { updateLayout } from "../../workbench/store";
 import { AzureSettings } from "../azure/AzureSettings";
 import { SpeechSettings } from "../speech/SpeechSettings";
 import { AddonsSettings } from "./AddonsSettings";
+import { AiFeaturesSettings } from "./AiFeatures";
 import { AppearanceSettings } from "./Appearance";
 import {
   AboutSettings,
@@ -62,6 +64,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       order: 1.5,
     },
     engine: { id: "engine", title: "Claude Code", icon: Bot, component: EngineSettings, order: 2 },
+    ai: { id: "ai", title: "AI features", icon: BrainCircuit, component: AiFeaturesSettings, order: 2.2 },
     editor: { id: "editor", title: "Editor", icon: FileCode, component: EditorSettings, order: 2.5 },
     terminal: {
       id: "terminal",

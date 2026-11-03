@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   ChevronDown,
   Eye,
   FolderOpen,
@@ -32,7 +33,7 @@ import {
   Switch,
   Textarea,
 } from "../../ui";
-import { addWorkspace, hiddenViews, resetLayout, saveLayoutAs } from "../../workbench/actions";
+import { addWorkspace, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "../../workbench/actions";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -211,6 +212,17 @@ function ModelSetting({
   );
 }
 
+/** Points to Settings → AI features, where one-shot features pick their provider and model (D-297). */
+function AiFeaturesLink({ description }: { description: string }) {
+  return (
+    <SettingRow label="Models for AI features" description={description}>
+      <Button size="sm" icon={BrainCircuit} onClick={() => openSettings("ai")}>
+        AI features
+      </Button>
+    </SettingRow>
+  );
+}
+
 export function EngineSettings() {
   const config = useConfig((s) => s.config);
   const info = useConfig((s) => s.info);
@@ -298,20 +310,7 @@ export function EngineSettings() {
         hybrid
         onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
       />
-      <ModelSetting
-        label="Helper model"
-        description="For add-on questions that need thought, such as reviews."
-        value={e.helperModel}
-        models={models}
-        onSave={(helperModel) => void updateConfig({ engine: { helperModel } })}
-      />
-      <ModelSetting
-        label="Quick model"
-        description="For short, simple answers, such as commit messages."
-        value={e.quickModel}
-        models={models}
-        onSave={(quickModel) => void updateConfig({ engine: { quickModel } })}
-      />
+      <AiFeaturesLink description="Commit messages, checks, tours, chat names and add-ons' questions each pick Claude or ChatGPT and a model there." />
       <ModelSetting
         label="Subagent fallback model"
         description="For subagents without an explicit model choice."
@@ -378,7 +377,7 @@ export function EngineSettings() {
       </SettingRow>
       <SettingRow
         label="Name new chats"
-        description="The quick model gives each new chat a short name from its first message. Until it answers, the chat is called by the message's first words; renaming a chat yourself always wins."
+        description="An AI model gives each new chat a short name from its first message (pick which in AI features → Chat names). Until it answers, the chat is called by the message's first words; renaming a chat yourself always wins."
       >
         <Switch
           label="Name new chats"
@@ -804,12 +803,7 @@ export function LearningSettings() {
           ))}
         </Select>
       </SettingRow>
-      <TextSetting
-        label="Model for pattern runs"
-        description="A small model keeps quota use low."
-        value={l.model}
-        onSave={(model) => void updateConfig({ learning: { model } })}
-      />
+      <AiFeaturesLink description="Who looks for patterns, and on which model: AI features → Weekly patterns. A small model keeps quota use low." />
       <LearningActions />
       <div className="flex flex-col gap-2 px-4 py-3">
         <div className="text-sm">Never record activity containing</div>

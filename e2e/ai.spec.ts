@@ -249,3 +249,31 @@ test("Turn a chat into a tool: the builder gets what happened, in order", async 
     /I asked: please write notes\.txt\n- Claude changed .*notes\.txt/,
   );
 });
+
+test("Settings → AI features: each feature picks a provider and a model from that provider", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+Comma");
+  await page.getByTestId("settings-nav-ai").click();
+  const row = page.getByTestId("ai-feature-commitMessage");
+  // Nothing changes for existing users: Claude, on the model the feature used before.
+  await expect(row.getByLabel("Commit message: provider")).toHaveValue("claude");
+  await expect(row.getByLabel("Commit message: model")).toContainText("Default (Haiku)");
+  // The fake engine counts as signed in to ChatGPT, so its option is enabled.
+  await expect(page.getByTestId("ai-chatgpt-status")).toContainText("ChatGPT: the fake engine");
+  const before = await row.boundingBox();
+  await row.getByLabel("Commit message: provider").selectOption("chatgpt");
+  // Only ChatGPT's models now, starting with Codex's own default.
+  await expect(row.getByLabel("Commit message: model").locator("option").first()).toHaveText(
+    "Codex's default",
+  );
+  await expect(row.getByLabel("Commit message: model")).not.toContainText("Haiku");
+  // Switching moves nothing.
+  expect(await row.boundingBox()).toEqual(before);
+  await expect
+    .poll(async () => {
+      const r = await hostCall(page, "config.get");
+      return r.ok ? (r.value as { ai: Record<string, unknown> }).ai.commitMessage : undefined;
+    })
+    .toEqual({ provider: "chatgpt", model: "" });
+});
