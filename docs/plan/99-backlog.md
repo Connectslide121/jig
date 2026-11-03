@@ -15,3 +15,5 @@ Ideas and deferred work. Each entry says why it is here.
   (typescript-language-server, C#, Python) run by the main process, like Copilot's. Monaco would bring
   TypeScript help without a server and VS Code's diff editor, but costs several MB, its own workers, a
   rewrite of every editor feature and weaker theme-token fit.
+- **PDFs as project knowledge** (D-256): Jig has no PDF text extractor; PDFs are refused with a hint to
+  save them as Word or text. Add one (pdf.js in the main process) when it's needed.

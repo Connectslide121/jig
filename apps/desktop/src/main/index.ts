@@ -17,6 +17,7 @@ import { startDevRequests } from "./devRequests";
 import { registerDigestHandlers } from "./digest";
 import { registerFileHandlers } from "./files";
 import { installRouter } from "./ipc/router";
+import { startKnowledge } from "./knowledge";
 import { registerLayoutHandlers } from "./layout";
 import { startLearning } from "./learning";
 import { registerLinkHandlers } from "./links";
@@ -96,6 +97,7 @@ async function start() {
   await startAddons();
   await startMeetings();
   await startCompletion();
+  startKnowledge();
   onAddonsChange(() => themeService().refresh());
   await startBuilder(addonNodePaths());
   startDevRequests();

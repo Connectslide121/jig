@@ -1,10 +1,28 @@
-import { FolderGit2, LayoutDashboard } from "lucide-react";
+import { Download, FolderGit2, LayoutDashboard, Sparkles } from "lucide-react";
 import { useProjects } from "../../workbench/projects";
-import { registerTabType, registerView } from "../../workbench/registry";
+import { registerAction, registerTabType, registerView } from "../../workbench/registry";
+import { openCopilotDialog } from "../completion/CopilotDialog";
+import { openClaudeImportDialog } from "../knowledge/ClaudeImportDialog";
 import { ProjectDashboard } from "./ProjectDashboard";
 import { ProjectsHeaderActions, ProjectsView } from "./ProjectsView";
 
 export function registerProjects(): void {
+  registerAction({
+    id: "jig.importClaude",
+    title: "Import from claude.ai…",
+    group: "Projects",
+    icon: Download,
+    keywords: ["claude.ai", "export", "knowledge", "projects"],
+    run: openClaudeImportDialog,
+  });
+  registerAction({
+    id: "jig.copilot",
+    title: "Set up GitHub Copilot…",
+    group: "Jig",
+    icon: Sparkles,
+    keywords: ["completion", "copilot", "editor", "ghost text"],
+    run: openCopilotDialog,
+  });
   registerView({
     id: "jig.projects",
     title: "Projects",
@@ -12,6 +30,14 @@ export function registerProjects(): void {
     defaultRegion: "left",
     component: ProjectsView,
     headerActions: ProjectsHeaderActions,
+    headerMenu: () => [
+      {
+        label: "Import from claude.ai…",
+        icon: Download,
+        onSelect: openClaudeImportDialog,
+        testId: "projects-import-claude",
+      },
+    ],
     owner: "core",
   });
   registerTabType({

@@ -151,3 +151,10 @@ memory; az retains its own login.
 Source builds may import ignored .azure-local/meetings.json once when normal default-home settings are
 empty. The script's setup metadata contains no secret. Connection settings are edited in Meetings →
 Connection, and are not exposed as AI-editable ConfigSchema fields because they govern paid calling.
+
+## Project knowledge (D-256)
+
+`knowledge/<projectId>/index.json` lists a project's documents (`id`, `name`, `chars`, `addedAt`,
+`source`); `knowledge/<projectId>/docs/<id>.txt` holds each one's text (cut at 1,000,000 characters).
+Removing the project removes its folder. `cache/copilot/<version>/` holds Copilot's language server
+(D-255) and `cache/copilot/current.json` names the version in use.

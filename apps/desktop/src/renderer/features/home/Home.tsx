@@ -26,6 +26,7 @@ import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
 import { openAbout } from "../about";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
+import { KnowledgeCard } from "../knowledge/KnowledgeCard";
 import { LinksCard } from "../links/LinksView";
 import { projectTextClass } from "../projects/colors";
 import { openProjectDialog } from "../projects/ProjectDialog";
@@ -183,6 +184,8 @@ export function Home({ project }: { project: ProjectInfo }) {
             ))}
           </div>
         </section>
+
+        <KnowledgeCard project={project} />
 
         <LinksCard project={project} />
 

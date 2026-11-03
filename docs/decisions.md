@@ -3024,3 +3024,39 @@ Claude as an opt-in alternative). The shape is **Claude, on my own**.
   moving drops it, typing what it says keeps the rest; a newer request drops an older one. The
   status line shows who completes (fixed place left of the other items) and its menu switches.
 
+## D-256: Project knowledge, and claude.ai projects imported from the data export
+
+**Who:** Jon's notes (Session 7, D-247: the export, never a claude.ai sign-in). The shape is
+**Claude, on my own**.
+
+- **Knowledge is text kept by Jig**, per project in `JIG_HOME/knowledge/<projectId>/`: files are
+  read once when added (text and code as they are, Word/Excel/PowerPoint through `@jig/documents`),
+  so Claude reads the same thing whatever happens to the original. PDFs aren't read yet (no text
+  extractor in Jig); the user is told to save them as Word or text.
+- **Claude learns about it per turn:** each message's Jig context lists the project's documents
+  (name and size) and `jig_knowledge_read` (read-only, by name, paged at 40,000 characters) reads
+  one. The list goes with each message because documents change while a chat runs; it's short.
+- **The import reads only `projects.json`** from the export zip (fflate's filtered unzip; the zip
+  holds every conversation and is never stored). Its shape isn't documented: `prompt_template` (or
+  `instructions`) becomes the project's instructions, `docs[].filename/content` its knowledge, and
+  Claude's starter project is skipped. Each imported project needs a default workspace, picked in
+  the dialog. Dropped files reach the host by path (`window.jig.pathForFile`, Electron's webUtils),
+  so a large zip is never copied through IPC.
+- **The steps are shown first** (from Anthropic's help article, to check against a real export),
+  with Open claude.ai settings (system browser), a fixed drop zone that becomes the project list,
+  and a note for Team/Enterprise plans.
+
+## D-257: Keep CodeMirror; tell Claude to put long Windows scripts in files
+
+**Who:** Jon asked whether Monaco would be better, and whether Jig should change its terminal
+default because shell commands kept failing; he left both to Claude. **Claude, on my own.**
+
+- **CodeMirror stays.** Monaco would bring TypeScript/JavaScript language features without a server,
+  VS Code's diff editor and a minimap, but costs several MB with its own workers (sandbox setup), a
+  rewrite of every editor feature (indentation guides, wrap indent, Angular grammar, status line,
+  conflict view, ghost text) and a weaker fit with Jig's theme tokens. The same gains for every
+  language come from language servers run by the main process, as Copilot's now is (backlog).
+- **The failing commands were Claude's Bash tool**, not Jig's terminal: long heredocs with quotes and
+  backslashes broke in Git Bash. Jig's terminal default is unrelated and stays. On Windows, Jig's
+  context now tells Claude to write long scripts to a file and run that instead.
+

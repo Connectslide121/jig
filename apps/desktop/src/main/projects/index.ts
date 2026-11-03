@@ -2,6 +2,7 @@ import { BrowserWindow, dialog } from "electron";
 import { publishActivity } from "../activity/bus";
 import { getConfig, onConfigChange } from "../config";
 import { emit, handle } from "../ipc/router";
+import { removeProjectKnowledge } from "../knowledge";
 import { paths } from "../state/paths";
 import { ProjectStore } from "./store";
 
@@ -34,7 +35,12 @@ export function startProjects(): void {
     return folder ? (await projectStore().addWorkspace(folder)).workspace : undefined;
   });
   handle("workspaces.remove", ({ id }) => projectStore().removeWorkspace(id));
-  handle("projects.remove", ({ id }) => projectStore().remove(id));
+  handle("projects.remove", async ({ id }) => {
+    const state = await projectStore().remove(id);
+    // Its knowledge goes with it (D-256).
+    await removeProjectKnowledge(id).catch(() => undefined);
+    return state;
+  });
   handle("projects.setActive", async ({ id }) => {
     const state = await projectStore().setActive(id);
     const project = state.projects.find((p) => p.id === id);

@@ -96,12 +96,14 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 7 — Project knowledge and claude.ai import
 
-- [ ] **Knowledge in Jig projects:** documents kept with a project; every chat in it is told they
-      exist and can read them with a tool.
-- [ ] **Import from claude.ai's data export:** drop the export zip, pick projects, get Jig projects
+- [x] **Knowledge in Jig projects:** documents kept with a project; every chat in it is told they
+      exist and can read them with a tool. Done (D-256): Knowledge on the project's Home (drop or
+      Add files…: text, code, Word, Excel, PowerPoint), `jig_knowledge_read`, listed in each turn.
+- [x] **Import from claude.ai's data export:** drop the export zip, pick projects, get Jig projects
       with their instructions and knowledge. First confirm the export contains knowledge documents.
-      No claude.ai sign-in or internal endpoints (Jon chose the safe path, D-247).
-- [ ] **Clear steps in the UI:** Projects → ⋯ → "Import from claude.ai…" opens a dialog (`Dialog`)
+      No claude.ai sign-in or internal endpoints (Jon chose the safe path, D-247). Built against the
+      known `projects.json` shape (read leniently); **still to confirm with a real export.**
+- [x] **Clear steps in the UI:** Projects → ⋯ → "Import from claude.ai…" opens a dialog (`Dialog`)
       that shows the numbered steps below as the first thing you see:
       - each step on its own line with its number, the exact menu names in bold (Settings,
         Privacy, Export data), and a short note on the email and the expiring link;

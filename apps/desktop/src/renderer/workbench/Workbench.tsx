@@ -8,6 +8,8 @@ import { BuildDialogHost } from "../features/builder/BuildDialog";
 import { CopilotDialogHost } from "../features/completion/CopilotDialog";
 import { StandupHost } from "../features/digest";
 import { GoToHost } from "../features/goto";
+import { ClaudeImportDialogHost } from "../features/knowledge/ClaudeImportDialog";
+import { KnowledgeReaderHost } from "../features/knowledge/KnowledgeCard";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
@@ -120,6 +122,8 @@ export function Workbench() {
         <BuildDialogHost />
         <AttemptsDialogHost />
         <CopilotDialogHost />
+        <ClaudeImportDialogHost />
+        <KnowledgeReaderHost />
         <ProjectDialogHost />
         <LinkDialogHost />
         <SessionDialogsHost />

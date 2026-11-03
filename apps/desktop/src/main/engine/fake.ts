@@ -273,6 +273,18 @@ export class FakeEngine implements Engine {
           const output = outputText(await options.toolHandlers.jig_meeting_read({ id }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
           await stream(`${msg}:text:0`, `From the mentioned meeting:\n\n${output.slice(0, 500)}`, signal);
+        } else if (
+          options.toolHandlers?.jig_knowledge_read &&
+          /knowledge/i.test(text) &&
+          /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
+        ) {
+          // Jig's context lists the project's knowledge (D-256): read the first document.
+          const name = /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.exec(sent)![1]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_knowledge_read", input: { name } });
+          const output = outputText(await options.toolHandlers.jig_knowledge_read({ name }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          await stream(`${msg}:text:0`, `From the project's knowledge:\n\n${output.slice(0, 500)}`, signal);
         } else if (options.toolHandlers?.catalog) {
           await runFakeBuilder(text, options.toolHandlers, onEvent);
         } else if (/^\/\S/.test(text.trim())) {

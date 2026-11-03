@@ -638,6 +638,8 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Drag chats between projects; pin the ones you keep coming back to and put them in your order; group the list by project, status or day",
                 "Instructions per project, added to what Claude reads in its chats",
+                "Knowledge per project: documents every chat in it can read (drop files on the project's Home)",
+                "Import your claude.ai projects (instructions and knowledge) from claude.ai's data export",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",
                 "Files: the project's tree with git colours, a filter and Preview on click",

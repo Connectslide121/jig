@@ -43,6 +43,13 @@ settings, add-on permissions.
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
+| `knowledge.list` | `{ projectId }` | `KnowledgeDoc[]` | a project's knowledge (D-256); event `knowledge.changed` |
+| `knowledge.read` | `{ projectId, id }` | `{ name, text }` | one document's text |
+| `knowledge.addFiles` | `{ projectId, paths? }` | `{ added, skipped }` | add files (a picker without `paths`): text, code, Word, Excel, PowerPoint |
+| `knowledge.remove` | `{ projectId, id }` | — | remove a document |
+| `claudeImport.open` | `{ path? }` | `ClaudeExportSummary \| undefined` | read `projects.json` from claude.ai's export zip (a picker without `path`) |
+| `claudeImport.apply` | `{ token, uuids, path }` | `{ projectIds }` | make Jig projects (default workspace `path`) with instructions and knowledge |
+| `claudeImport.openSettings` | — | — | claude.ai's settings in the system browser |
 | `completion.state` | — | `CompletionState` | who completes code (copilot, claude, off), Copilot's setup (D-255); event `completion.changed` |
 | `completion.request` | `{ path, text, offset, tabSize, insertSpaces }` | `CompletionSuggestion \| null` | one inline suggestion at the caret; a newer request drops an older one |
 | `completion.accepted` | `{ id }` | — | Tab took a Copilot suggestion (its acceptance command) |

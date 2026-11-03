@@ -118,6 +118,22 @@ export interface HostMethods {
   "meetings.signOut": { args: void; result: void };
   "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
   "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "knowledge.list": { args: { projectId: string }; result: import("./knowledge").KnowledgeDoc[] };
+  "knowledge.read": { args: { projectId: string; id: string }; result: { name: string; text: string } };
+  "knowledge.remove": { args: { projectId: string; id: string }; result: void };
+  "knowledge.addFiles": {
+    args: { projectId: string; paths?: string[] };
+    result: { added: import("./knowledge").KnowledgeDoc[]; skipped: string[] };
+  };
+  "claudeImport.open": {
+    args: { path?: string };
+    result: import("./knowledge").ClaudeExportSummary | undefined;
+  };
+  "claudeImport.apply": {
+    args: { token: string; uuids: string[]; path: string };
+    result: { projectIds: string[] };
+  };
+  "claudeImport.openSettings": { args: void; result: void };
   "completion.state": { args: void; result: import("./completion").CompletionState };
   "completion.request": {
     args: import("./completion").CompletionRequest;
@@ -586,6 +602,7 @@ export interface HostMethods {
 export interface HostEvents {
   "meetings.changed": void;
   "completion.changed": import("./completion").CompletionState;
+  "knowledge.changed": { projectId: string };
   "meetings.leaveRequested": void;
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;
@@ -674,6 +691,8 @@ export type CallArgs<M extends MethodName> = MethodArgs<M> extends void ? [] : [
  */
 export interface JigBridge {
   invoke(method: string, args: unknown): Promise<CallResponse<unknown>>;
+  /** The path of a file dropped on the page (Electron's webUtils), so the host can read it. */
+  pathForFile(file: File): string;
   on<T extends EventTopic>(topic: T, listener: (payload: HostEvents[T]) => void): () => void;
 }
 

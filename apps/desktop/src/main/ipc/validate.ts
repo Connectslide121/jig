@@ -85,6 +85,12 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     })
     .strict(),
   "completion.accepted": z.object({ id: z.string().max(10_000) }).strict(),
+  "knowledge.list": z.object({ projectId: id }).strict(),
+  "knowledge.read": z.object({ projectId: id, id }).strict(),
+  "knowledge.remove": z.object({ projectId: id, id }).strict(),
+  "knowledge.addFiles": z.object({ projectId: id, paths: z.array(path).max(100).optional() }).strict(),
+  "claudeImport.open": z.object({ path: path.optional() }).strict(),
+  "claudeImport.apply": z.object({ token: id, uuids: z.array(id).max(500), path }).strict(),
   "completion.closeFile": z.object({ path }).strict(),
   "meetings.startCall": z
     .object({
