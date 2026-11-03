@@ -28,8 +28,10 @@ import { toggleReadAloud, useReading } from "../speech/speak";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
+import { chatInlineCode } from "./FileLink";
 import { PermissionCard } from "./PermissionCard";
 import { restoreFiles, rewindChat } from "./restore";
+import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
 
 /** A message's menu: Copy, plus entries add-ons contribute (`context.message`). */
@@ -164,6 +166,9 @@ const Item = memo(function Item({
   /** A tool call waiting for your permission. */
   waiting?: boolean;
 }) {
+  // Paths Claude writes in inline code are links to the files, from the chat's folder (D-261).
+  const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
+  const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
       return (
@@ -196,7 +201,7 @@ const Item = memo(function Item({
     case "assistant":
       return (
         <div data-testid="assistant-message" className="group/message relative">
-          <Markdown text={item.text} />
+          <Markdown text={item.text} inlineCode={inlineCode} />
           {item.streaming && !item.text && <Spinner size="sm" />}
           {!item.streaming && item.text && (
             <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-hover/message:flex has-aria-pressed:flex">

@@ -3105,3 +3105,16 @@ for test runs. Supersedes the per-change part of D-242.
   both. The choice ("" = as spoken) is remembered in the meetings store and applied when captions
   start in the next meeting.
 
+## D-261: Paths Claude writes are links to the files
+
+**Who:** Jon asked for the file paths in Claude's answers to be links. The shape is **Claude, on my own**.
+
+- Inline code that reads as a path (`shared/filePaths.ts`: absolute Windows/POSIX/`~`, or relative
+  with a folder or a file extension, optional `:line`) is resolved by the host from the chat's folder
+  (`files.locate`); only what exists becomes a link, so code like `npm run verify` stays code.
+  Answers are cached per chat folder and path.
+- Click: a file opens in Preview, a folder in the file manager; Ctrl/Cmd+click opens it with its own
+  app (an HTML report in the browser). The line number isn't used yet (Preview can't jump to a line).
+- `Markdown` (shared with add-ons) only gains an `inlineCode` hook; the chat supplies the link, so
+  the UI library still never calls the host itself.
+

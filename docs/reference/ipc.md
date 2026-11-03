@@ -42,6 +42,7 @@ settings, add-on permissions.
 | `attempts.judge` | `{ id }` | `AttemptVerdict` | Claude compares the attempts (one-shot, no tools) |
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
+| `files.locate` | `{ cwd, path }` | `{ path, kind } \| null` | a path Claude wrote, resolved from the chat's folder (`~` = home): file, folder or nothing (D-261) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
 | `lsp.open` | `{ path }` | `LanguageServerStatus` | the language server for a file (D-259): ready (id, root, language id), missing (install command), none or off |
 | `lsp.send` | `{ id, message }` | — | a JSON-RPC message (string) to that server; answers come as event `lsp.message`, `lsp.exited` when it stops |

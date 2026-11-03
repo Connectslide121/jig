@@ -612,6 +612,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Restore files to before any of your messages, and fork a chat to try another approach",
                 "Open a chat you had in Claude Code (terminal, desktop app, IDE) and continue it here as a copy",
                 "/ for Claude Code's commands and skills, @ for files, ! for shell commands, # to remember in CLAUDE.md",
+                "File paths Claude writes are links: click opens the file in Preview, Ctrl+click with its own app",
                 "Mentioned files are highlighted in the message box, with a chip each to open them (or Ctrl+click)",
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",

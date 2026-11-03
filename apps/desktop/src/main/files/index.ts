@@ -1,6 +1,8 @@
 import { chmod, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { protocol } from "electron";
+import { resolvePath } from "../../shared/filePaths";
 import { type ImageData, imageMime, MAX_IMAGE_BYTES } from "../../shared/files";
 import { JigError } from "../../shared/ipc";
 import { handle } from "../ipc/router";
@@ -87,6 +89,12 @@ export function registerFileHandlers(): void {
     if (!projects.some((p) => isInside(root, p)))
       throw new JigError("invalid_args", "Search works inside your projects only");
     return searchFiles(root, query, Math.min(limit ?? 50, 200));
+  });
+  handle("files.locate", async ({ cwd, path: ref }) => {
+    const path = resolvePath(cwd, ref, homedir());
+    const info = await stat(path).catch(() => undefined);
+    if (!info) return null;
+    return { path, kind: info.isDirectory() ? ("folder" as const) : ("file" as const) };
   });
   handle("files.stat", async ({ path }) => {
     const info = await stat(path).catch(() => undefined);

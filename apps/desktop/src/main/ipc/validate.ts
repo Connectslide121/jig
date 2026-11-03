@@ -156,6 +156,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "files.image": z.object({ path }),
   "files.preview": z.object({ path }),
   "files.stat": z.object({ path }),
+  "files.locate": z.object({ cwd: path, path }).strict(),
   "files.write": z.object({ path, text: z.string().max(10_000_000), expectedMtimeMs: z.number().optional() }),
   "app.openExternal": z.object({ url: z.string().max(8192) }),
   "speech.removeModel": z.object({ model: z.enum(SPEECH_MODEL_IDS) }),

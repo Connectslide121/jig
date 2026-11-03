@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
@@ -403,4 +403,21 @@ test("chat: the latest steps line shows it's working between tools, until Claude
   await page.getByTestId("chat").screenshot({ path: test.info().outputPath("working.png") });
   await expect(page.getByTestId("turn-result")).toBeVisible({ timeout: 15000 });
   await expect(toggle).not.toHaveAttribute("data-working");
+});
+
+test("chat: paths Claude writes in code are links to the files, when they exist", async ({
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  await writeFile(join(jigHome, "demo", "README.md"), "# Demo\n");
+  await page.keyboard.press("Control+N");
+  await say(page, "see `README.md` and `missing.md`");
+  const chat = page.locator("[data-testid=transcript]:visible");
+  const links = chat.getByTestId("assistant-message").getByTestId("file-link");
+  await expect(links).toHaveCount(1, { timeout: 15000 });
+  await expect(links.first()).toHaveText("README.md");
+  await chat.getByTestId("assistant-message").screenshot({ path: test.info().outputPath("file-links.png") });
+  await links.first().click();
+  await expect(page.getByTestId("tab-jig.preview")).toContainText("README.md");
 });

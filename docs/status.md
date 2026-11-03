@@ -156,6 +156,11 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+File links in chats (2026-11-03, D-261): a file or folder path Claude writes in inline code
+(`docs/status.md`, `E:\repos\x\index.html`, `src/a.ts:42`) is a link when it exists: click opens a
+file in Preview and a folder in the file manager; Ctrl/Cmd+click opens it with its own app (an HTML
+page in the browser). Relative paths count from the chat's folder; a path that isn't there stays code.
+
 Translated captions (2026-11-03, D-260): in a live meeting the Transcript's language picker ("As
 spoken", or any language Teams offers) shows each caption in that language with what was said in
 small grey text under it; both are kept with the meeting and Claude reads both. The choice is

@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -17,11 +17,17 @@ function resolveRelative(href: string | undefined, baseUrl: string | undefined):
   }
 }
 
-function makeComponents(options: { baseUrl?: string; onLocalLink?: (url: string) => void }): Components {
+function makeComponents(options: {
+  baseUrl?: string;
+  onLocalLink?: (url: string) => void;
+  inlineCode?: (text: string) => ReactNode | undefined;
+}): Components {
   return {
     code({ className, children, ...rest }) {
       const lang = /language-([\w+#-]+)/.exec(className ?? "")?.[1];
       const text = String(children ?? "");
+      const custom = !lang && !text.includes("\n") ? options.inlineCode?.(text) : undefined;
+      if (custom) return custom;
       if (!lang && !text.includes("\n"))
         return (
           <code className="rounded-sm bg-code px-1 py-px font-mono text-xs" {...rest}>
@@ -112,17 +118,20 @@ export const Markdown = memo(function Markdown({
   baseUrl,
   onLocalLink,
   allowHtml = false,
+  inlineCode,
 }: {
   text: string;
   className?: string;
   baseUrl?: string;
   onLocalLink?: (url: string) => void;
+  /** Renders an inline-code span differently (a file path as a link in chats); undefined = as code. */
+  inlineCode?: (text: string) => ReactNode | undefined;
   /** Opt-in for file previews: parse HTML, then sanitize it before creating React elements. */
   allowHtml?: boolean;
 }) {
   const components = useMemo(
-    () => (baseUrl ? makeComponents({ baseUrl, onLocalLink }) : chatComponents),
-    [baseUrl, onLocalLink],
+    () => (baseUrl || inlineCode ? makeComponents({ baseUrl, onLocalLink, inlineCode }) : chatComponents),
+    [baseUrl, onLocalLink, inlineCode],
   );
   return (
     <div className={cn("jig-markdown selectable text-sm leading-relaxed text-fg", className)}>

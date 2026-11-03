@@ -185,6 +185,11 @@ export interface HostMethods {
   /** Files and folders of a project folder matching a fuzzy query (`@` mentions); folders end with `/`. */
   "files.search": { args: { root: string; query: string; limit?: number }; result: string[] };
   "files.stat": { args: { path: string }; result: { size: number; mtimeMs: number } | null };
+  /** A path Claude wrote, resolved from the chat's folder: what it is, or null when it doesn't exist (D-261). */
+  "files.locate": {
+    args: { cwd: string; path: string };
+    result: { path: string; kind: "file" | "folder" } | null;
+  };
   /**
    * Saves a text file (the Preview tab's editor): inside a workspace, or a file opened in Preview.
    * `expectedMtimeMs`: refuse with `changed` if the file changed on disk since. Errors: `not_allowed`,
