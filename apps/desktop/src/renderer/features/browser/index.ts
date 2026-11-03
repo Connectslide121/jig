@@ -39,7 +39,8 @@ export function registerBrowser(): void {
   registerAction({
     id: "jig.openBrowser",
     title: "Open Browser",
-    group: "Tools",
+    // Beside "Open Claude's browser" in the Chats menu (a "Tools" group was a one-item top bar menu).
+    group: "Claude",
     icon: Globe,
     keywords: ["browser", "web", "preview", "localhost"],
     run: () => workbench.openViewTab("jig.userBrowser"),
