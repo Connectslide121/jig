@@ -133,6 +133,53 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await expect(page.getByTestId("user-message").first().getByTestId("chat-attachment")).toHaveCount(2);
 });
 
+test("Tasks: leave tasks out, put a task back and start the queue over", async ({ page, jigHome }) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["fail this task please", "update the readme"], newChat: true },
+  });
+  // Every queued task is ticked; unticking one makes Start pass it by, and it stays queued.
+  await expect(view.getByTestId("task-tick-t1")).toBeChecked();
+  const rowBefore = await view.getByTestId("task-t1").boundingBox();
+  await view.getByTestId("task-tick-t1").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
+  expect(await view.getByTestId("task-t1").boundingBox()).toEqual(rowBefore);
+  await expect(view.getByTestId("tasks-tick-all")).not.toBeChecked();
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
+  await expect(view.getByTestId("tasks-start")).toBeDisabled();
+
+  // A finished task goes back in its place, as if it never ran; ticking all includes both.
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Put back in the queue" }).click();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+  await expect(view.getByTestId("task-tick-t2")).toBeChecked();
+  await view.getByTestId("tasks-tick-all").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
+
+  // The first fails and pauses the queue, its run still open. Start over: every task back to queued,
+  // and that run leaves the history (the finished first one stays).
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Failed", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+  await view.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Start over…" }).click();
+  await page.getByRole("button", { name: "Start over" }).click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
+  await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+  const runs = (await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "history",
+    args: { projectId: ids.shop },
+  })) as { value: unknown[] };
+  expect(runs.value).toHaveLength(1);
+});
+
 test("Tasks: every run is kept in the history, with its results", async ({ page, jigHome }) => {
   // Two tasks run one after the other: under the full parallel suite that can take a while.
   test.setTimeout(120_000);

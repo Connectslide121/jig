@@ -23,6 +23,12 @@ went, so you read the results as a table instead of scrolling one long chat.
   (one directly, several from a menu), so do ⋯ → Files and the details. Run again sends them again.
   They're kept in `~/.jig/attachments/addon-tasks/` (copied into the chat when sent) and deleted when
   no task uses them any more (`unusedFiles`) or the dialog is cancelled (the host's `discard`).
+- **Ticks, put back, start over** (D-279): every queued task has a tick, all ticked by default (a
+  chat's tick and the header's tick several); Start takes only ticked tasks, the others stay queued
+  as "Left out". ⋯ → **Put back in the queue** returns a finished, skipped or running task to queued
+  in its place, as if it never ran (a running one asks first, pauses the queue and only stops
+  following its chat). The view's ⋯ → **Start over…** puts every task back and takes the open run out
+  of History.
 - **Start / Pause:** the queue runs in the add-on's host, so it goes on with the view closed. A task
   that needs you (a permission or a question) shows "Needs you" and notifies; answer in its chat and
   the queue goes on. The Tasks view's icon counts the tasks waiting for you, and "needs you", "paused"

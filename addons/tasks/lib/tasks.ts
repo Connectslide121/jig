@@ -52,6 +52,8 @@ export interface Task {
   addedBy?: string;
   /** The run it ran in (set when it starts), so the run's history keeps it. */
   runId?: string;
+  /** Unticked: stays queued but Start passes it by, until it is ticked again. */
+  leftOut?: boolean;
 }
 
 export interface Queue {
@@ -180,10 +182,59 @@ export function addTasks(
   return { ...queue, seq, tasks: [...queue.tasks, ...added] };
 }
 
-/** The next task to run: the first queued one, unless one is still running. */
+/** A queued task Start will take (ticked). */
+export const isReady = (task: Task): boolean => task.status === "queued" && !task.leftOut;
+
+/** The next task to run: the first ticked queued one, unless one is still running. */
 export function nextTask(queue: Queue): Task | undefined {
   if (queue.tasks.some(isActive)) return undefined;
-  return queue.tasks.find((t) => t.status === "queued");
+  return queue.tasks.find(isReady);
+}
+
+/** Ticks or unticks queued tasks (`ids`, or every queued one). Ticked is the default. */
+export function setLeftOut(queue: Queue, leftOut: boolean, ids?: string[]): Queue {
+  const wanted = ids && new Set(ids);
+  return {
+    ...queue,
+    tasks: queue.tasks.map((t) => {
+      if (t.status !== "queued" || (wanted && !wanted.has(t.id))) return t;
+      const { leftOut: _was, ...rest } = t;
+      return leftOut ? { ...rest, leftOut: true } : rest;
+    }),
+  };
+}
+
+/** A task as if it never ran: queued again in its place, its chat, times, cost and report gone. */
+export function resetTask(task: Task): Task {
+  const {
+    sessionId: _s,
+    chatTitle: _c,
+    sentAt: _sent,
+    finishedAt: _f,
+    costAtStart: _ca,
+    costUsd: _cost,
+    sawBusy: _b,
+    report: _r,
+    answer: _a,
+    error: _e,
+    runId: _run,
+    ...rest
+  } = task;
+  return { ...rest, status: "queued" };
+}
+
+/**
+ * Tasks back in the queue as if they never ran, in their places (`ids`, or every task). With no ids the
+ * whole queue starts over: it is paused and its open run is closed (the host drops it from the history).
+ * A task that is running or needs you is put back too: its chat isn't stopped, only no longer followed.
+ */
+export function resetTasks(queue: Queue, ids?: string[]): Queue {
+  const wanted = ids && new Set(ids);
+  const tasks = queue.tasks.map((t) =>
+    t.status === "queued" || (wanted && !wanted.has(t.id)) ? t : resetTask(t),
+  );
+  const next = { ...queue, tasks };
+  return wanted ? next : closeRun({ ...next, running: false });
 }
 
 /**
@@ -412,9 +463,16 @@ export function taskContext(queue: Queue, sessionId: string): string {
   ].join("\n");
 }
 
-export function counts(queue: Queue): { queued: number; finished: number; total: number } {
+export function counts(queue: Queue): {
+  queued: number;
+  /** Queued and ticked: what Start takes. */
+  ready: number;
+  finished: number;
+  total: number;
+} {
   return {
     queued: queue.tasks.filter((t) => t.status === "queued").length,
+    ready: queue.tasks.filter(isReady).length,
     finished: queue.tasks.filter(isFinished).length,
     total: queue.tasks.length,
   };
@@ -495,7 +553,7 @@ export function listing(queue: Queue): string {
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}.`, ...lines].join("\n");

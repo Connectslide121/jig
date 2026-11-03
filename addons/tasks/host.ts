@@ -21,7 +21,9 @@ import {
   type Run,
   recordRuns,
   requeue,
+  resetTasks,
   STATUS_LABEL,
+  setLeftOut,
   shouldPause,
   splitQueue,
   type Task,
@@ -312,12 +314,17 @@ export async function history(args: ProjectArgs, api: AddonHostApi): Promise<Run
 /** Removes a finished run from the history (its files go when nothing else uses them). */
 export async function forgetRun(args: ProjectArgs & { runId: string }, api: AddonHostApi): Promise<void> {
   const projectId = await projectArg(api, args?.projectId);
-  await serial(async () => {
+  await dropRun(api, projectId, args.runId, true);
+}
+
+/** Takes a run out of the history and deletes the files only it used; `finishedOnly` keeps open runs. */
+function dropRun(api: AddonHostApi, projectId: string, runId: string, finishedOnly: boolean): Promise<void> {
+  return serial(async () => {
     await migrate(api);
     const runs = await loadHistory(api, projectId);
-    const run = runs.find((r) => r.id === args.runId);
+    const run = runs.find((r) => r.id === runId);
     if (!run) return;
-    if (!run.finishedAt)
+    if (finishedOnly && !run.finishedAt)
       throw new Error("This run is still going; it can be removed once the queue finishes");
     const left = runs.filter((r) => r !== run);
     await api.storage.set(HISTORY, left, scope(projectId));
@@ -477,6 +484,32 @@ export async function runFromHistory(
     ),
     undefined,
   ]);
+}
+
+/**
+ * Tasks back in the queue as if they never ran (`ids`), or the whole queue (no ids): then it is paused
+ * and its open run leaves the history too. A running task's chat isn't stopped, only no longer followed.
+ */
+export async function reset(args: ProjectArgs & { ids?: string[] }, api: AddonHostApi): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  const ids = Array.isArray(args.ids) ? args.ids.filter((id) => typeof id === "string") : undefined;
+  const dropped = await change(api, projectId, async (q) => {
+    const next = resetTasks(q, ids);
+    if (!ids) return [next, q.runId];
+    // A task taken back while its chat runs pauses the queue, so it isn't sent again at once.
+    const wasActive = q.tasks.some((t) => ids.includes(t.id) && isActive(t));
+    return [wasActive ? { ...next, running: false } : await advance(api, next), undefined];
+  });
+  if (dropped) await dropRun(api, projectId, dropped, false);
+}
+
+/** Ticks (`on`) or unticks queued tasks: unticked ones stay queued but Start passes them by. */
+export async function select(
+  args: ProjectArgs & { ids?: string[]; on: boolean },
+  api: AddonHostApi,
+): Promise<void> {
+  const ids = Array.isArray(args.ids) ? args.ids.filter((id) => typeof id === "string") : undefined;
+  await change(api, await projectArg(api, args?.projectId), (q) => [setLeftOut(q, !args.on, ids), undefined]);
 }
 
 export async function start(args: ProjectArgs, api: AddonHostApi): Promise<void> {

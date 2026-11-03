@@ -3342,3 +3342,20 @@ Claude, on my own.
   model to train or download, and "Hey Jig, new chat" can be said in one breath. A dedicated
   wake-word model can replace it later behind the same detector.
 - A chat opened by voice starts in Talk mode.
+
+## D-279: The task queue is fully in the user's hands: ticks, put back, start over
+
+**Who:** Jon: a queue started by mistake must be restartable, with full control, and tasks can be
+left out for now (all selected by default). Names, where the actions sit and the run handling:
+Claude, on my own.
+
+- A queued task has `leftOut` when unticked: it stays queued, Start (`nextTask`) passes it by, and the
+  status column shows "Left out". Ticks sit in one fixed column (empty slot for tasks that aren't
+  queued) on each task, each chat and the header, so nothing moves when they change. Not shown in
+  past runs.
+- **Put back in the queue** (`reset` with ids) is in place, unlike Run again (a copy at the end): the
+  task loses its chat, times, cost, report and run, keeps its prompt, files and settings. For a task
+  that is still running it asks first, pauses the queue and only stops following the chat (the host
+  can't stop a chat; the user stops it there).
+- **Start over** (`reset` without ids, ⋯ menu, confirmed) resets every task, pauses the queue and
+  drops the open run from History (as if it never started); finished runs stay.

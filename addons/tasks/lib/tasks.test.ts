@@ -23,7 +23,10 @@ import {
   type Run,
   recordRuns,
   requeue,
+  resetTask,
+  resetTasks,
   runOutcome,
+  setLeftOut,
   shouldPause,
   splitQueue,
   type Task,
@@ -96,6 +99,71 @@ describe("nextTask", () => {
     expect(nextTask(q)).toBeUndefined();
     q.tasks[0]!.status = "done";
     expect(nextTask(q)?.id).toBe("t2");
+  });
+  it("passes tasks that are left out by, and takes them again once ticked", () => {
+    let q = setLeftOut(queued(["a", "b", "c"]), false, ["t1"]);
+    expect(nextTask(q)?.id).toBe("t1");
+    q = setLeftOut(q, true, ["t1", "t2"]);
+    expect(nextTask(q)?.id).toBe("t3");
+    expect(counts(q)).toMatchObject({ queued: 3, ready: 1 });
+    q = setLeftOut(q, false);
+    expect(nextTask(q)?.id).toBe("t1");
+    expect(q.tasks.every((t) => !("leftOut" in t))).toBe(true);
+  });
+  it("only ticks or unticks queued tasks", () => {
+    const q = queued(["a", "b"]);
+    q.tasks[0]!.status = "done";
+    expect(setLeftOut(q, true).tasks.map((t) => !!t.leftOut)).toEqual([false, true]);
+  });
+});
+
+describe("resetTask and resetTasks", () => {
+  const ran = (q: Queue): Queue => ({
+    ...q,
+    running: true,
+    runId: "r1",
+    tasks: q.tasks.map((t, i) =>
+      i === 0
+        ? {
+            ...t,
+            status: "no_report",
+            sessionId: "s1",
+            chatTitle: "A chat",
+            sentAt: "2025-01-01T10:00:00Z",
+            finishedAt: "2025-01-01T10:01:00Z",
+            costAtStart: 0,
+            costUsd: 0.2,
+            sawBusy: true,
+            answer: "Half way",
+            runId: "r1",
+          }
+        : t,
+    ),
+  });
+  it("puts a task back as if it never ran, keeping what it is", () => {
+    const task = ran(queued(["a"])).tasks[0]!;
+    expect(resetTask({ ...task, leftOut: true })).toEqual({
+      id: "t1",
+      title: "a",
+      prompt: "a",
+      projectId: "p1",
+      newChat: true,
+      permissionMode: undefined,
+      status: "queued",
+      leftOut: true,
+    });
+  });
+  it("resets chosen tasks in place and keeps the run open", () => {
+    const q = resetTasks(ran(queued(["a", "b"])), ["t1"]);
+    expect(q.tasks.map((t) => t.status)).toEqual(["queued", "queued"]);
+    expect(q.running).toBe(true);
+    expect(q.runId).toBe("r1");
+  });
+  it("starts the whole queue over: paused, the run closed", () => {
+    const q = resetTasks(ran(queued(["a", "b"])));
+    expect(q.tasks.every((t) => t.status === "queued" && !t.sessionId)).toBe(true);
+    expect(q.running).toBe(false);
+    expect(q.runId).toBeUndefined();
   });
 });
 
@@ -237,7 +305,7 @@ describe("taskContext, counts, duration, listing", () => {
   it("counts and times", () => {
     const q = queued(["a", "b"]);
     q.tasks[0]!.status = "done";
-    expect(counts(q)).toEqual({ queued: 1, finished: 1, total: 2 });
+    expect(counts(q)).toEqual({ queued: 1, ready: 1, finished: 1, total: 2 });
     const t = { ...q.tasks[0]!, sentAt: "2025-01-01T10:00:00Z", finishedAt: "2025-01-01T10:00:42Z" };
     expect(duration(t)).toBe("42s");
     expect(duration({ ...t, finishedAt: "2025-01-01T11:05:00Z" })).toBe("1h 5m");

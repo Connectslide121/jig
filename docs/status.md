@@ -1,5 +1,12 @@
 # Status
 
+Task queue control (2026-11-03, D-279): every queued task has a tick (all ticked by default; one on
+each chat and in the header ticks all): Start takes only the ticked ones, the others stay queued as
+"Left out" until ticked again. A finished or skipped task's menu has **Put back in the queue** (in its
+place, as if it never ran; Run again still adds a copy at the end); a running task has it too, with a
+confirmation (the queue pauses and stops following its chat). ⋯ → **Start over…** puts every task
+back to queued and takes the open run out of History.
+
 Pipelines on Windows (2026-11-02): run names, build numbers and branches with "·", "ö" and the like show
 correctly (az printed them in the Windows code page; they came out as "�" in toasts and the view).
 

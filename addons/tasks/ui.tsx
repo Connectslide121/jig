@@ -46,7 +46,7 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   addFiles,
   addStep,
@@ -73,6 +73,7 @@ import {
   formatMs,
   isActive,
   isFinished,
+  isReady,
   type NewTask,
   type PermissionMode,
   type Queue,
@@ -117,6 +118,59 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   if (status === "no_report") return <CircleHelp className={cn(c, "text-muted")} />;
   if (status === "skipped") return <SkipForward className={cn(c, "text-hint")} />;
   return <CircleDashed className={cn(c, "text-hint")} />;
+}
+
+/**
+ * The tick that says whether Start takes a queued task (all ticked by default). `mixed` shows a group
+ * with some ticked; `hidden` keeps its slot empty so the columns stay aligned.
+ */
+function Tick({
+  checked,
+  mixed = false,
+  hidden = false,
+  label,
+  onChange,
+  testId,
+}: {
+  checked: boolean;
+  mixed?: boolean;
+  hidden?: boolean;
+  label: string;
+  onChange: (on: boolean) => void;
+  testId?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  }, [mixed]);
+  if (hidden) return <span className="w-4 shrink-0" />;
+  return (
+    <span className="flex w-4 shrink-0 items-center justify-center">
+      <input
+        ref={ref}
+        type="checkbox"
+        className="size-3.5 accent-accent"
+        checked={checked}
+        aria-label={label}
+        title={label}
+        data-testid={testId}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </span>
+  );
+}
+
+/** Ticked state of a set of tasks: only queued ones count; none queued hides the tick. */
+function tickState(tasks: Task[]): { ids: string[]; checked: boolean; mixed: boolean } {
+  const queued = tasks.filter((t) => t.status === "queued");
+  const ticked = queued.filter(isReady).length;
+  return {
+    ids: queued.map((t) => t.id),
+    checked: queued.length > 0 && ticked === queued.length,
+    mixed: ticked > 0 && ticked < queued.length,
+  };
 }
 
 /** A cost, $0.00 included; a dash when there's none yet (a task that hasn't finished). */
@@ -428,6 +482,26 @@ function QueuePanel({
   const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? "";
   const openTask = queue.tasks.find((t) => t.id === open);
 
+  const putBackActive = async (task: Task) => {
+    const ok = await ctx.confirm({
+      title: "Put this task back in the queue?",
+      message:
+        "The queue stops following its chat and pauses, and the task waits as if it never ran. Its chat isn't stopped: stop it there if it's still working.",
+      confirmLabel: "Put back",
+    });
+    if (ok) await call("reset", { ids: [task.id] });
+  };
+  const resetQueue = async () => {
+    const ok = await ctx.confirm({
+      title: "Start this queue over?",
+      message:
+        "Every task goes back to queued, as if it never ran: reports, times and costs are cleared and the open run leaves History. The chats that ran are kept. A chat still working isn't stopped.",
+      confirmLabel: "Start over",
+      danger: true,
+    });
+    if (ok) await call("reset");
+  };
+
   const menuFor = (task: Task, at: MouseEvent | HTMLElement) => {
     const i = queue.tasks.indexOf(task);
     const queued = task.status === "queued";
@@ -438,6 +512,17 @@ function QueuePanel({
         ...(queued
           ? [
               { label: "Edit…", icon: "pencil", onSelect: () => setEditing(task) },
+              task.leftOut
+                ? {
+                    label: "Include when starting",
+                    icon: "square-check",
+                    onSelect: () => call("select", { ids: [task.id], on: true }),
+                  }
+                : {
+                    label: "Leave out for now",
+                    icon: "square",
+                    onSelect: () => call("select", { ids: [task.id], on: false }),
+                  },
               {
                 label: "Move up",
                 icon: "arrow-up",
@@ -454,7 +539,23 @@ function QueuePanel({
             ]
           : []),
         ...(isFinished(task)
-          ? [{ label: "Run again", icon: "rotate-ccw", onSelect: () => call("runAgain", { id: task.id }) }]
+          ? [
+              {
+                label: "Put back in the queue",
+                icon: "undo-2",
+                onSelect: () => call("reset", { ids: [task.id] }),
+              },
+              { label: "Run again", icon: "rotate-ccw", onSelect: () => call("runAgain", { id: task.id }) },
+            ]
+          : []),
+        ...(isActive(task)
+          ? [
+              {
+                label: "Put back in the queue…",
+                icon: "undo-2",
+                onSelect: () => void putBackActive(task),
+              },
+            ]
           : []),
         ...(!isActive(task)
           ? [
@@ -504,7 +605,12 @@ function QueuePanel({
                 size="sm"
                 variant="primary"
                 icon={Play}
-                disabled={!n.queued}
+                disabled={!n.ready}
+                title={
+                  n.ready < n.queued
+                    ? `Starts the ${n.ready} ticked of ${n.queued} queued tasks`
+                    : "Starts the queued tasks, one after another"
+                }
                 onClick={() => void call("start")}
                 data-testid="tasks-start"
               >
@@ -524,6 +630,13 @@ function QueuePanel({
                       disabled: !n.finished,
                       onSelect: () => void call("clearFinished"),
                     },
+                    {
+                      label: "Start over…",
+                      icon: "undo-2",
+                      disabled: n.queued === n.total,
+                      onSelect: () => void resetQueue(),
+                    },
+                    { separator: true as const },
                     { label: "Past runs", icon: "history", onSelect: onHistory },
                   ],
                   e.currentTarget,
@@ -546,7 +659,14 @@ function QueuePanel({
         </Empty>
       ) : (
         <>
-          <TaskTable ctx={ctx} queue={queue} projectName={projectName} onOpen={setOpen} onMenu={menuFor} />
+          <TaskTable
+            ctx={ctx}
+            queue={queue}
+            projectName={projectName}
+            onOpen={setOpen}
+            onMenu={menuFor}
+            onTick={(ids, on) => void call("select", { ids, on })}
+          />
         </>
       )}
       {adding && (
@@ -613,17 +733,31 @@ function TaskTable({
   projectName,
   onOpen,
   onMenu,
+  onTick,
 }: {
   ctx: AddonUiContext;
   queue: Queue;
   projectName: (id?: string) => string;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  /** The queue (not a past run): ticks that include or leave out queued tasks. */
+  onTick?: (ids: string[], on: boolean) => void;
 }) {
+  const all = tickState(queue.tasks);
   return (
     // Narrow (a sidebar): the detail columns give way first, then time and cost; task and status stay.
     <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
+        {onTick && (
+          <Tick
+            hidden={!all.ids.length}
+            checked={all.checked}
+            mixed={all.mixed}
+            label={all.checked ? "Leave every queued task out" : "Include every queued task"}
+            onChange={(on) => onTick(all.ids, on)}
+            testId="tasks-tick-all"
+          />
+        )}
         <span className="w-6 shrink-0 text-right">#</span>
         <span className="min-w-0 flex-1">Task and how it went</span>
         <span className="hidden @3xl:block w-16 shrink-0 text-right">Started</span>
@@ -645,6 +779,7 @@ function TaskTable({
             projectName={projectName(group.projectId)}
             onOpen={onOpen}
             onMenu={onMenu}
+            onTick={onTick}
           />
         ))}
       </div>
@@ -973,6 +1108,7 @@ function ChatCard({
   projectName,
   onOpen,
   onMenu,
+  onTick,
 }: {
   ctx: AddonUiContext;
   group: ChatGroup;
@@ -980,15 +1116,28 @@ function ChatCard({
   projectName: string;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  /** In the queue (not a past run): ticks that include or leave out queued tasks. */
+  onTick?: (ids: string[], on: boolean) => void;
 }) {
   const tasks = group.tasks.map((t) => t.task);
   const t = tally(tasks);
+  const ticks = tickState(tasks);
   return (
     <div
       className="overflow-hidden rounded-lg border border-line bg-raised"
       data-testid={`task-group-${number - 1}`}
     >
       <div className="flex h-9 items-center gap-3 border-b border-line px-3">
+        {onTick && (
+          <Tick
+            hidden={!ticks.ids.length}
+            checked={ticks.checked}
+            mixed={ticks.mixed}
+            label={ticks.checked ? "Leave this chat's queued tasks out" : "Include this chat's queued tasks"}
+            onChange={(on) => onTick(ticks.ids, on)}
+            testId={`task-group-tick-${number - 1}`}
+          />
+        )}
         <MessageSquare className="ml-2 size-4 shrink-0 text-hint" />
         <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
           {group.sessionId ? (
@@ -1034,6 +1183,7 @@ function ChatCard({
           continues={task !== tasks[0]}
           onOpen={() => onOpen(task.id)}
           onMenu={(at) => onMenu(task, at)}
+          onTick={onTick && ((on) => onTick([task.id], on))}
         />
       ))}
     </div>
@@ -1050,6 +1200,7 @@ function TaskRow({
   continues,
   onOpen,
   onMenu,
+  onTick,
 }: {
   ctx: AddonUiContext;
   task: Task;
@@ -1057,7 +1208,10 @@ function TaskRow({
   continues: boolean;
   onOpen: () => void;
   onMenu: (at: MouseEvent | HTMLElement) => void;
+  /** In the queue (not a past run): the tick that includes or leaves out a queued task. */
+  onTick?: (on: boolean) => void;
 }) {
+  const leftOut = task.status === "queued" && !!task.leftOut;
   const detail = task.report?.summary ?? task.error ?? task.answer;
   const notes = task.report?.notes.length ?? 0;
   const followUps = task.report?.followUps.length ?? 0;
@@ -1085,8 +1239,17 @@ function TaskRow({
       }}
       className="group flex h-16 cursor-default items-center gap-3 border-b border-line px-3 last:border-b-0 hover:bg-hover"
     >
+      {onTick && (
+        <Tick
+          hidden={task.status !== "queued"}
+          checked={!leftOut}
+          label={leftOut ? "Include when starting" : "Leave out for now"}
+          onChange={onTick}
+          testId={`task-tick-${task.id}`}
+        />
+      )}
       <span className="w-6 shrink-0 text-right text-xs tabular-nums text-hint">{index + 1}</span>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={cn("flex min-w-0 flex-1 flex-col", leftOut && "opacity-60")}>
         <div className="flex min-w-0 items-center gap-2">
           {continues && (
             <CornerDownRight className="size-3.5 shrink-0 text-hint" aria-label="Continues the chat" />
@@ -1154,8 +1317,17 @@ function TaskRow({
         className="flex w-28 shrink-0 items-center justify-end gap-1.5"
         data-testid={`task-status-${task.id}`}
       >
-        <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
-        <StatusIcon status={task.status} />
+        {leftOut ? (
+          <>
+            <Badge tone="neutral">Left out</Badge>
+            <CircleMinus className="size-4 shrink-0 text-hint" />
+          </>
+        ) : (
+          <>
+            <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
+            <StatusIcon status={task.status} />
+          </>
+        )}
       </span>
     </div>
   );
