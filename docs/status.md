@@ -63,6 +63,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.4.0 being prepared (2026-11-03): Boards you manage in Jig (and Claude from chats), the Teams chat of meetings and calls, profile pictures, a frame around what you share, past meetings that stay joinable, a pipeline picker in workflows, file links in chats and a task queue that fits a sidebar. Publication not yet verified.
+
 Jig 0.3.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.3.0),
 source/tag `8d041765232c2dacc5d42d3ef83ec64aa5d4ff04`. Installer: 371,216,992 bytes;
 SHA-256 `9fc35d6fdbda062d8a6ae5e10fac9c41a7d43501ce0ecb10c08cb23914afb058`.
