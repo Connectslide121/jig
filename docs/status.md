@@ -580,6 +580,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   ends and Claude works as in any chat, with a soft note every 1.17 s and a chime when it finishes
   or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
   work goes on, and the chat returns to its own permission mode when idle.
+- **"Don't ask" never waits (D-293):** a safety check Claude Code still asks for in that mode
+  (`rm -rf` on a drive root…) is declined at once with a warning notice in the chat, and Claude
+  carries on another way. Questions still wait. Try it: a "Don't ask" chat, ask Claude to
+  `rm -rf` a new empty folder at a drive root.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or

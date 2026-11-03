@@ -79,6 +79,10 @@ resolved active model is recorded separately and never replaces the selected ali
   it can replace later edits. Review and commit the resulting diff to record a restoration.
 - **A tool waiting for your permission** says "waiting for you" instead of a spinner, and can't go to
   the background until it runs.
+- **"Don't ask" never waits (D-293):** Claude Code still asks for its own safety checks in that mode
+  (`rm -rf` on a drive root or the home folder…). Jig declines them at once (`askPermission` in
+  `main/sessions/manager.ts`), tells Claude to do it a safer way or skip it, and shows a warning
+  notice in the chat. Questions (`AskUserQuestion`, `ExitPlanMode`) still wait for you.
 
 - **Chat overview** (chart button in the header, setting `chat.overview`, D-184): a small card at the
   top right of the chat, in its own reserved column beside the conversation (D-189). The transcript,
@@ -101,7 +105,7 @@ resolved active model is recorded separately and never replaces the selected ali
 - Images from tools, previews of files Claude touched, next-message suggestions, fork, restore files,
   Try several ways, Claude's terminals and browser (`docs/reference/ai-features.md`).
 - Notices for Claude's API retries ("answered 529; retries in 4 s"), Claude Code's warnings,
-  permission-rule denials, and MCP servers that need you.
+  permission-rule denials, requests declined in "Don't ask" mode, and MCP servers that need you.
 
 ## Fake engine
 

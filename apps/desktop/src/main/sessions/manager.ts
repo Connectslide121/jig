@@ -42,6 +42,11 @@ const log = logger("sessions");
 const MAX_ITEMS = 3000;
 /** Longest time unsaved changes wait while a turn streams. */
 const SAVE_MAX_WAIT_MS = 2000;
+/** Requests that still wait for the user in "Don't ask" mode: they are questions, not checks. */
+const WAITS_IN_DONT_ASK = new Set(["AskUserQuestion", "ExitPlanMode"]);
+/** What Claude reads when Jig declines a request in "Don't ask" mode (D-293). */
+const DONT_ASK_DENIAL =
+  "Declined automatically: this chat runs in Don't ask mode, so nobody is there to approve it. Don't retry the same call; do it a safer way (for an rm -rf safety check, use a folder under the repository's .tmp/ or the system temp folder, never a drive root or the home folder) or skip it and say so in your reply.";
 
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
@@ -329,6 +334,20 @@ export class SessionManager {
         toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {
+            // "Don't ask" never waits: Claude Code's own safety checks (rm -rf on a drive root…)
+            // still ask, so Jig declines them and Claude carries on. Questions still wait (D-293).
+            if (
+              live.state.meta.permissionMode === "bypassPermissions" &&
+              !WAITS_IN_DONT_ASK.has(request.toolName)
+            ) {
+              this.handleEvent(live, {
+                type: "notice",
+                tone: "warning",
+                text: `Declined automatically in Don't ask mode: ${request.title ?? request.toolName}${request.description ? ` (${request.description})` : ""}.`,
+              });
+              resolve({ behavior: "deny", message: DONT_ASK_DENIAL });
+              return;
+            }
             live.permissions.set(request.requestId, { resolve, request });
             this.handleEvent(live, { type: "permission", request });
             signal.addEventListener("abort", () => {

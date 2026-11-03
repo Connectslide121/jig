@@ -3689,3 +3689,18 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
 - **Layout:** both windows save the one `meetings.layout`: the call window owns the panels and slot
   sizes, the lobby the review's notes width; each starts from the saved layout when it saves, so
   neither overwrites the other's part.
+
+## D-293: "Don't ask" chats never wait for a permission prompt
+
+- Status: accepted. Asked for by Jon, 2026-11-03: "I don't want a chat to stop because it's waiting
+  for me." Claude Code still asks for its own safety checks under `bypassPermissions` (here
+  `rm -rf /e/scratch-…`, a "critical path"), and the chat stopped until someone clicked.
+- In "Don't ask" mode `askPermission` declines such requests at once instead of showing the card.
+  **Deny, not allow** (Jon agreed): these checks guard against the most destructive commands. The
+  denial message tells Claude not to retry the same call and to use a safer way (the repository's
+  `.tmp/` or the system temp folder) or skip it and say so. A warning notice in the chat says what
+  was declined. The mode is read live (`live.state.meta.permissionMode`), so switching a running
+  chat to "Don't ask" applies at once.
+- `AskUserQuestion` and `ExitPlanMode` still wait: they are questions to the user, not safety
+  checks. **Claude, on my own.**
+- No `needs_you` status or notification is raised for a declined request.
