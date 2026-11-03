@@ -22,6 +22,7 @@ describe("meeting layout", () => {
         people: { slot: "right", hidden: true },
         transcript: { slot: "right" },
         notes: { slot: "left", hidden: true },
+        chat: { slot: "left" },
       },
       sizes: { left: 300 },
     });
@@ -35,7 +36,9 @@ describe("meeting layout", () => {
       "notes",
     ]);
     const moved = movePanel(DEFAULT_MEETING_LAYOUT, "transcript", "left");
-    expect(panelsIn(moved, "left")).toEqual(["transcript"]);
+    // Chat starts on the left, after Transcript in the fixed order (D-270).
+    expect(panelsIn(DEFAULT_MEETING_LAYOUT, "left")).toEqual(["chat"]);
+    expect(panelsIn(moved, "left")).toEqual(["transcript", "chat"]);
     expect(panelsIn(moved, "right")).toEqual(["notes"]);
     expect(panelsIn(setPanelHidden(moved, "notes", true), "right")).toEqual([]);
   });

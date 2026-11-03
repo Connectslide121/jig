@@ -47,6 +47,18 @@ const record = z.object({
       direction: z.enum(["outgoing", "incoming"]),
     })
     .optional(),
+  chat: z
+    .array(
+      z.object({
+        id: z.string(),
+        from: z.string(),
+        fromId: z.string().optional(),
+        at: z.iso.datetime(),
+        text: z.string(),
+        mine: z.boolean().optional(),
+      }),
+    )
+    .optional(),
 });
 const schema = z.object({
   settings: z

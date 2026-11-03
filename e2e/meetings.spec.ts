@@ -114,6 +114,15 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     const transcript = room.getByTestId("meeting-transcript");
     await expect(transcript).toContainText("We should review the Shop API");
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/live.png" });
+    // The meeting's Teams chat (D-270): on the left, readable and writable; kept with the meeting.
+    const chat = room.getByRole("region", { name: "Chat" });
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Here's the Shop API spec");
+    await chat.getByTestId("meeting-chat-input").fill("I'll review it today");
+    await chat.getByTestId("meeting-chat-send").click();
+    await expect(chat.getByTestId("meeting-chat")).toContainText("I'll review it today");
+    await expect(chat.getByTestId("meeting-chat-input")).toHaveValue("");
+    await expect.poll(async () => (await overview()).records[0]!.chat?.length).toBe(3);
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/chat.png" });
     // Panels move between slots from their menus, and the room remembers where they are.
     await room.getByRole("button", { name: "Notes options", exact: true }).click();
     await room.getByRole("menuitem", { name: "Left" }).click();

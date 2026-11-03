@@ -281,6 +281,9 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.join | Validate Teams link, create global record; room only, one active call |
 | meetings.credential | Memory-only renewable calling token; owned room sender only |
 | meetings.captionLanguage | The language live captions are shown in (`""` = as spoken), remembered; Teams translates (D-260); room only |
+| meetings.chat | Room only: reads the active meeting's or call's Teams chat (Graph Chat.Read) into its record; `{state: ok/consent/unavailable, error?}` (D-270) |
+| meetings.chatSend | Room only: writes in that chat as you (Graph ChatMessage.Send) |
+| meetings.chatConnect | Room only: asks Microsoft for the chat permissions (browser sign-in) |
 | meetings.photo | Someone's Microsoft profile picture (48×48 data URL) or null, by Teams id, object id or `local`; silent sign-in only, cached per run (D-263) |
 | meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); room only |
 | meetings.startCall | Create the global record of a one-to-one Teams call (`{ peerId, peerName, direction }`); room only, one active call |

@@ -74,7 +74,7 @@ export function Slot({
   if (!panels.length) return null;
   const across = slot === "bottom";
   const edge: ResizeEdge = slot === "left" ? "right" : slot === "right" ? "left" : "top";
-  const splits: MeetingSizeKey[] = [`${slot}.split`, `${slot}.split2`];
+  const splits: MeetingSizeKey[] = [`${slot}.split`, `${slot}.split2`, `${slot}.split3`];
   return (
     <SizedBox
       layout={layout}

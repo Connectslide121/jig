@@ -51,6 +51,7 @@ import {
   Spinner,
 } from "../../ui";
 import { CallDialog, IncomingCall } from "./Calls";
+import { ChatPanel, type ChatStatus } from "./Chat";
 import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
 import { clock, dayAndTime, SPEECH_LANGUAGES } from "./format";
 import { Lobby, STATUS } from "./Lobby";
@@ -219,6 +220,25 @@ function Room() {
     await reload();
   };
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
+  // The meeting's Teams chat (D-270): read every 5 seconds while you're in a meeting or call, also
+  // with the Chat panel hidden, so the notes see it too.
+  const [chatStatus, setChatStatus] = useState<ChatStatus>();
+  const activeId = overview?.activeId;
+  useEffect(() => {
+    setChatStatus(undefined);
+    if (!activeId) return;
+    let live = true;
+    const read = () =>
+      void call("meetings.chat", { id: activeId })
+        .then((s) => live && setChatStatus(s))
+        .catch((e) => live && setChatStatus({ state: "ok", error: errorMessage(e) }));
+    read();
+    const timer = setInterval(read, 5000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [activeId]);
   if (!overview || !layout)
     return (
       <div className="h-screen bg-canvas text-fg">
@@ -683,6 +703,30 @@ function Room() {
     const r = active!;
     if (id === "people")
       return <PeoplePanel people={mediaState.people} you={selfPerson(mediaState)} menu={panelMenu(id)} />;
+    if (id === "chat")
+      return (
+        <ChatPanel
+          record={r}
+          status={chatStatus}
+          menu={panelMenu(id)}
+          onConnect={async () => {
+            try {
+              await call("meetings.chatConnect");
+              setChatStatus(await call("meetings.chat", { id: r.id }));
+            } catch (e) {
+              setError(errorMessage(e));
+            }
+          }}
+          onSend={async (text) => {
+            try {
+              await call("meetings.chatSend", { id: r.id, text });
+            } catch (e) {
+              setError(errorMessage(e));
+              throw e;
+            }
+          }}
+        />
+      );
     return id === "transcript" ? (
       <TranscriptPanel record={r} live menu={panelMenu(id)} actions={askButton} />
     ) : (

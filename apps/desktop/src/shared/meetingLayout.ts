@@ -1,10 +1,10 @@
 /**
  * Where the live meeting room's panels sit (D-221). The call is always the main area; People,
- * Transcript and Notes go in the left, right or bottom slot; panels in one slot share it with splits. Pure, so the
+ * Transcript, Notes and Chat (D-270) go in the left, right or bottom slot; panels in one slot share it with splits. Pure, so the
  * host validates it and the room tests it.
  */
 
-export const MEETING_PANELS = ["people", "transcript", "notes"] as const;
+export const MEETING_PANELS = ["people", "transcript", "notes", "chat"] as const;
 export type MeetingPanelId = (typeof MEETING_PANELS)[number];
 export const MEETING_SLOTS = ["left", "right", "bottom"] as const;
 export type MeetingSlot = (typeof MEETING_SLOTS)[number];
@@ -19,6 +19,9 @@ export const MEETING_SIZES = [
   "left.split2",
   "right.split2",
   "bottom.split2",
+  "left.split3",
+  "right.split3",
+  "bottom.split3",
   "review.notes",
 ] as const;
 export type MeetingSizeKey = (typeof MEETING_SIZES)[number];
@@ -29,7 +32,7 @@ export interface MeetingLayout {
 }
 
 export const DEFAULT_SIZES: Record<MeetingSizeKey, number> = {
-  left: 380,
+  left: 320,
   right: 460,
   bottom: 260,
   "left.split": 360,
@@ -38,6 +41,9 @@ export const DEFAULT_SIZES: Record<MeetingSizeKey, number> = {
   "left.split2": 300,
   "right.split2": 300,
   "bottom.split2": 500,
+  "left.split3": 240,
+  "right.split3": 240,
+  "bottom.split3": 400,
   "review.notes": 420,
 };
 
@@ -46,6 +52,8 @@ export const DEFAULT_MEETING_LAYOUT: MeetingLayout = {
     people: { slot: "right", hidden: true },
     transcript: { slot: "right" },
     notes: { slot: "right" },
+    // The meeting's Teams chat: its own column on the left, like Teams puts it beside the call.
+    chat: { slot: "left" },
   },
   sizes: {},
 };
@@ -54,6 +62,7 @@ export const PANEL_TITLES: Record<MeetingPanelId, string> = {
   people: "People",
   transcript: "Transcript",
   notes: "Notes",
+  chat: "Chat",
 };
 export const SLOT_TITLES: Record<MeetingSlot, string> = { left: "Left", right: "Right", bottom: "Bottom" };
 

@@ -156,6 +156,14 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Teams chat in meetings and calls (2026-11-03, D-270): a Chat panel (on the left by default; move or
+hide it like the others) shows the meeting's or call's Teams chat, read every 5 seconds while you're in
+it, with a box to write in it. The chat is kept with the meeting, in Claude's transcript (so notes and
+actions see links and decisions posted there) and in the Markdown export. Needs Chat.Read and
+ChatMessage.Send: until your administrator approves them, the panel says so with Connect chat…. A
+call's chat is your one-to-one chat with that person (none until one of you starts it in Teams).
+Needs a real-tenant check: reading, sending, and the 1:1 chat id lookup.
+
 Profile pictures in meetings (2026-11-03, D-263): people's Microsoft profile pictures show on their
 tiles, in People, beside their captions in the transcript, in Call someone and on a ringing call;
 initials until (or unless) there is one. Needs the User.ReadBasic.All approval.

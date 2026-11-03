@@ -12,6 +12,13 @@ import {
   transcriptText,
 } from "../../../../../addons/meetings/lib/meeting";
 import { JigError } from "../../shared/ipc";
+import {
+  chatChanged,
+  type MeetingChatMessage,
+  type MeetingChatState,
+  meetingChatId,
+  mergeChat,
+} from "../../shared/meetingChat";
 import type { MeetingEvent, MeetingRecord } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
@@ -475,6 +482,94 @@ export async function startMeetings(): Promise<void> {
     activity("join");
     changed();
     return record;
+  });
+  // The Teams chat of a meeting or call (D-270): the room asks every few seconds while you're in it.
+  const chatIds = new Map<string, { chatId?: string; at: number }>();
+  async function chatIdFor(record: MeetingRecord): Promise<string | undefined> {
+    if (!record.call) return meetingChatId(record.joinUrl);
+    const kept = chatIds.get(record.id);
+    // A call's chat is looked up again a minute later when there was none (the first message makes it).
+    if (kept && (kept.chatId || Date.now() - kept.at < 60_000)) return kept.chatId;
+    const chatId = await auth.callChatId(record.call.peerId);
+    chatIds.set(record.id, { chatId, at: Date.now() });
+    return chatId;
+  }
+  async function keepChat(id: string, fresh: MeetingChatMessage[]): Promise<void> {
+    const before = store.get(id).chat ?? [];
+    const after = mergeChat(before, fresh);
+    if (!chatChanged(before, after)) return;
+    await store.update(id, (r) => {
+      r.chat = mergeChat(r.chat ?? [], fresh);
+    });
+    changed();
+  }
+  handle("meetings.chat", async ({ id }, ctx): Promise<{ state: MeetingChatState; error?: string }> => {
+    own(ctx);
+    enabled();
+    const record = store.get(id);
+    if (fake()) {
+      if (!record.chat?.length)
+        await keepChat(id, [
+          {
+            id: "fake-1",
+            from: "Alex",
+            fromId: "00000000-0000-4000-8000-00000000a1e5",
+            at: new Date(Date.now() - 60_000).toISOString(),
+            text: "Here's the Shop API spec: https://example.com/shop-api",
+          },
+          {
+            id: "fake-2",
+            from: "Sam",
+            fromId: "00000000-0000-4000-8000-0000000005a3",
+            at: new Date(Date.now() - 30_000).toISOString(),
+            text: "Thanks! I'll read it before Friday.",
+          },
+        ]);
+      return { state: "ok" };
+    }
+    if (!(await auth.chatReady())) return { state: "consent" };
+    const chatId = await chatIdFor(record);
+    if (!chatId)
+      return {
+        state: "unavailable",
+        error: record.call
+          ? `You and ${record.call.peerName} have no Teams chat yet. Start one in Teams; it shows here then.`
+          : "This meeting's link doesn't say which chat is its own.",
+      };
+    try {
+      await keepChat(id, await auth.chatMessages(chatId));
+      return { state: "ok" };
+    } catch (error) {
+      const code = (error as JigError).code;
+      if (code === "meeting_chat_consent") return { state: "consent" };
+      if (code === "meeting_chat_missing") return { state: "unavailable", error: (error as Error).message };
+      return { state: "ok", error: (error as Error).message };
+    }
+  });
+  handle("meetings.chatSend", async ({ id, text }, ctx) => {
+    own(ctx);
+    enabled();
+    const record = store.get(id);
+    if (fake()) {
+      await keepChat(id, [
+        {
+          id: `fake-${Date.now()}`,
+          from: "You",
+          at: new Date().toISOString(),
+          text: text.trim(),
+          mine: true,
+        },
+      ]);
+      return;
+    }
+    const chatId = await chatIdFor(record);
+    if (!chatId) throw new JigError("meeting_chat_missing", "This meeting has no chat Jig can write to.");
+    const sent = await auth.sendChat(chatId, text.trim());
+    if (sent) await keepChat(id, [sent]);
+  });
+  handle("meetings.chatConnect", async (_args, ctx) => {
+    own(ctx);
+    if (!fake()) await auth.connectChat();
   });
   // Profile pictures (D-263): from Microsoft once per person while Jig runs; null = initials.
   const photos = new Map<string, Promise<string | null>>();

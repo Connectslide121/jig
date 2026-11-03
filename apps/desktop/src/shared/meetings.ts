@@ -39,6 +39,8 @@ export interface MeetingRecord {
   actions: MeetingAction[];
   /** A one-to-one Teams call instead of a meeting (`joinUrl` is empty then). */
   call?: MeetingCall;
+  /** The meeting's or call's Teams chat, read while you were in it (D-270). */
+  chat?: import("./meetingChat").MeetingChatMessage[];
 }
 /** Who a Teams call was with: their Microsoft Entra object id, so Jig can call them back. */
 export interface MeetingCall {

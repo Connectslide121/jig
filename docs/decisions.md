@@ -3209,3 +3209,21 @@ the boards up to date from chats. The shape is **Claude, on my own**.
 - An ended meeting stays in the week view and, for today, under "Earlier today" at the top of the
   agenda (now headed "Agenda"): faded (full on hover/focus), with "Ended at … · you can still join";
   a click opens the usual join dialog. Next up still shows the next meeting that hasn't ended.
+
+## D-270: The Teams chat of a meeting or call, in the meeting room
+
+**Who:** Jon asked for the chat of a meeting or call ("go ahead", knowing it needs admin approval).
+
+- Read and sent through Microsoft Graph as you (delegated **Chat.Read** and **ChatMessage.Send**), like
+  the calendar and people. A meeting's chat thread comes from its join link; a call's chat is your
+  one-to-one chat with that person (`19:<a>_<b>@unq.gbl.spaces`, both orders tried, looked up again a
+  minute later while there is none). Graph has no push for a desktop app, so the room reads the newest
+  50 messages every 5 seconds while a meeting or call is active, also with the panel hidden.
+- Messages are kept in the meeting's record (`chat`), merged by id (edits replace), written only when
+  something changed. Claude's transcript (`transcriptText`) has them in time order as
+  "Name (in the chat): …", and the Markdown export has a Chat section. System notices and deleted
+  messages are left out; attachments and images read as "(attachment)" / "(image)".
+- A **Chat** panel joins the room's panels, on the left by default (the left slot is now 320 px, so the
+  call keeps its room). Until the permissions are approved it says "Needs your admin's approval" with
+  Connect chat…; the send box keeps its row and is disabled. **Claude, on my own:** the 5-second
+  interval, the left default and the fallbacks.

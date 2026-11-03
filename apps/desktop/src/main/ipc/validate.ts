@@ -71,7 +71,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .strict(),
   "meetings.layout": z
     .object({
-      panels: z.object({ people: meetingPanel, transcript: meetingPanel, notes: meetingPanel }).strict(),
+      panels: z
+        .object({ people: meetingPanel, transcript: meetingPanel, notes: meetingPanel, chat: meetingPanel })
+        .strict(),
       sizes: z.partialRecord(z.enum(MEETING_SIZES), z.number().min(0).max(10_000)),
     })
     .strict(),
@@ -79,6 +81,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
   "meetings.people": z.object({ query: z.string().max(200) }).strict(),
   "meetings.photo": z.object({ id: z.string().max(300) }).strict(),
+  "meetings.chat": z.object({ id }).strict(),
+  "meetings.chatSend": z.object({ id, text: z.string().trim().min(1).max(4000) }).strict(),
   "completion.request": z
     .object({
       path,

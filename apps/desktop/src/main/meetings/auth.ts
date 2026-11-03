@@ -6,6 +6,12 @@ import { AzureCliCredential } from "@azure/identity";
 import { type AccountInfo, PublicClientApplication, type TokenCacheContext } from "@azure/msal-node";
 import { safeStorage } from "electron";
 import { JigError } from "../../shared/ipc";
+import {
+  type GraphChatMessage,
+  type MeetingChatMessage,
+  oneOnOneChatIds,
+  toChatMessages,
+} from "../../shared/meetingChat";
 import type { MeetingEvent, MeetingPerson, MeetingSettings } from "../../shared/meetings";
 import { openExternal } from "../appWindows";
 import { logger } from "../log";
@@ -26,6 +32,12 @@ const log = logger("meetings");
 const callingScopes = [
   "https://auth.msft.communication.azure.com/Teams.ManageCalls",
   "https://auth.msft.communication.azure.com/Teams.ManageChats",
+];
+
+/** Reading and writing the Teams chat of a meeting or call (D-270): needs admin approval in some tenants. */
+export const CHAT_SCOPES = [
+  "https://graph.microsoft.com/Chat.Read",
+  "https://graph.microsoft.com/ChatMessage.Send",
 ];
 
 /** Microsoft sign-in persists only through OS-protected encryption; calling tokens stay in memory. */
@@ -158,7 +170,7 @@ export class MeetingAuth {
       } catch {
         throw new JigError(
           "meeting_signin",
-          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All and People.Read permissions, then try again.",
+          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All, People.Read, Chat.Read and ChatMessage.Send permissions, then try again.",
         );
       } finally {
         this.interactive = undefined;
@@ -239,6 +251,56 @@ export class MeetingAuth {
     const users = await get<{ value: GraphUser[] }>(usersByNameUrl(names));
     return toPeople(users.value, self, names);
   }
+  /**
+   * Asks Microsoft for the chat permissions (a browser page, once). Where the tenant needs an admin to
+   * approve them, Microsoft says so there and this fails.
+   */
+  async connectChat(): Promise<void> {
+    await this.access(CHAT_SCOPES, true);
+  }
+  /** Whether Jig has the chat permissions now, without asking. */
+  async chatReady(): Promise<boolean> {
+    return this.access(CHAT_SCOPES, false).then(
+      () => true,
+      () => false,
+    );
+  }
+  private async chatFetch(path: string, init?: RequestInit): Promise<Response> {
+    const token = await this.access(CHAT_SCOPES, false);
+    return fetch(`https://graph.microsoft.com/v1.0${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20_000),
+    });
+  }
+  /**
+   * The chat id of a call with someone: your one-to-one chat with them, whichever order Teams put
+   * the two ids in. Undefined when you've never chatted (Teams makes the chat on the first message).
+   */
+  async callChatId(peerId: string): Promise<string | undefined> {
+    const me = this.account?.localAccountId;
+    if (!me) return undefined;
+    for (const id of oneOnOneChatIds(me, peerId)) {
+      const r = await this.chatFetch(`/chats/${encodeURIComponent(id)}?$select=id`);
+      if (r.ok) return id;
+    }
+    return undefined;
+  }
+  /** The newest 50 messages of a chat you're in, oldest first. */
+  async chatMessages(chatId: string): Promise<MeetingChatMessage[]> {
+    const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}/messages?$top=50`);
+    if (!r.ok) throw chatError(r.status);
+    const data = (await r.json()) as { value: GraphChatMessage[] };
+    return toChatMessages(data.value, this.account?.localAccountId);
+  }
+  async sendChat(chatId: string, text: string): Promise<MeetingChatMessage | undefined> {
+    const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body: { contentType: "text", content: text } }),
+    });
+    if (!r.ok) throw chatError(r.status);
+    return toChatMessages([(await r.json()) as GraphChatMessage], this.account?.localAccountId)[0];
+  }
   async calendar(): Promise<MeetingEvent[]> {
     const token = await this.access(["https://graph.microsoft.com/Calendars.ReadBasic"], true);
     // From Monday of this week, so meetings that already took place stay in the week (joinable again).
@@ -296,4 +358,21 @@ export class MeetingAuth {
     }
     return events;
   }
+}
+
+function chatError(status: number): JigError {
+  if (status === 401 || status === 403)
+    return new JigError(
+      "meeting_chat_consent",
+      "Jig can't read this chat yet: ask your administrator to approve Chat.Read and ChatMessage.Send for Jig, then press Connect chat.",
+    );
+  if (status === 404)
+    return new JigError(
+      "meeting_chat_missing",
+      "This meeting's chat isn't open to you yet (join the meeting first).",
+    );
+  return new JigError(
+    "meeting_chat",
+    `The Teams chat didn't answer (${status}). Jig tries again in a moment.`,
+  );
 }

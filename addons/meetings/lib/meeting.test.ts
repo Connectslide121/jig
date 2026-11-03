@@ -68,6 +68,18 @@ describe("meeting source material", () => {
     expect(text).not.toContain("Later");
     expect(transcriptText(r)).toContain("unfinished");
   });
+  it("puts the meeting's chat in the transcript in time order, up to the cutoff (D-270)", () => {
+    const r = meeting();
+    r.chat = [
+      { id: "m1", from: "Sam", at: "2026-01-01T11:59:00.000Z", text: "Spec:\nhttps://example.com" },
+      { id: "m2", from: "Sam", at: "2026-01-01T13:00:00.000Z", text: "Later" },
+    ];
+    const lines = transcriptText(r, "2026-01-01T12:30:00.000Z").split("\n");
+    expect(lines.slice(2)).toEqual([
+      "[2026-01-01T11:59:00.000Z] Sam (in the chat): Spec: / https://example.com",
+      "[2026-01-01T12:00:00.000Z] Alex: Review the API",
+    ]);
+  });
   it("asks through the meeting tool without promoting speech to instructions", () => {
     const prompt = questionPrompt(meeting(), "Will this fit the repository?", "2026-01-01T12:30:00.000Z");
     expect(prompt).toContain("jig_meeting_read");

@@ -153,6 +153,14 @@ export interface HostMethods {
   "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
   /** Someone's Microsoft profile picture (a data URL), or null; `id` is a Teams id, an object id or "local" (D-263). */
   "meetings.photo": { args: { id: string }; result: string | null };
+  /** Reads the meeting's or call's Teams chat into its record (D-270); says why when it can't. */
+  "meetings.chat": {
+    args: { id: string };
+    result: { state: import("./meetingChat").MeetingChatState; error?: string };
+  };
+  "meetings.chatSend": { args: { id: string; text: string }; result: void };
+  /** Asks Microsoft for the chat permissions (opens the browser). */
+  "meetings.chatConnect": { args: void; result: void };
   "meetings.startCall": {
     args: import("./meetings").MeetingCall;
     result: import("./meetings").MeetingRecord;

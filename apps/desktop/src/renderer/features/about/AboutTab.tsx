@@ -717,6 +717,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Meetings → Meetings: a two-week calendar agenda, Join from link, and the meeting history",
                 "Teams calls: call someone in your organisation, and calls ring in Jig while it runs",
                 "Profile pictures of the people in your meetings and calls",
+                "The meeting's or call's Teams chat in its own panel: read it, write in it, and Claude's notes include it",
                 "Live captions in your language (Teams translates), with what was said under each line",
                 "Meeting history in the main window: start a chat about a meeting, notes, actions, Markdown export",
                 "Mention a meeting in any chat with @ — Claude reads its transcript",

@@ -34,7 +34,11 @@ export function transcriptText(record: MeetingRecord, through?: string): string 
   const gaps = record.gaps
     .filter((g) => !through || g.at <= through)
     .map((g) => `[${g.at}] CAPTURE GAP: ${g.reason}`);
-  return [`# ${record.title}`, `Meeting id: ${record.id}`, ...[...lines, ...gaps].sort()].join("\n");
+  // The meeting's Teams chat, in time order with what was said (D-270).
+  const chat = (record.chat ?? [])
+    .filter((m) => !through || m.at <= through)
+    .map((m) => `[${m.at}] ${m.from} (in the chat): ${m.text.replace(/\n/g, " / ")}`);
+  return [`# ${record.title}`, `Meeting id: ${record.id}`, ...[...lines, ...gaps, ...chat].sort()].join("\n");
 }
 
 /** Transcript content is evidence, never instructions. The cutoff freezes a question's context. */
@@ -125,6 +129,11 @@ export function meetingMarkdown(record: MeetingRecord): string {
     last = c.speaker;
   }
   if (!record.captions.some((c) => c.final)) out.push("No transcript was captured.");
+  if (record.chat?.length) {
+    out.push("", "## Chat", "");
+    for (const m of record.chat)
+      out.push(`**${m.from}** (${time(m.at)}): ${m.text.replace(/\n/g, "  \n")}`, "");
+  }
   return `${out
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
