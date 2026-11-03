@@ -34,6 +34,16 @@ export function useAddonName(id: string | undefined): string | undefined {
   });
 }
 
+/**
+ * A build's name for headings and tabs: the request's first sentence (or line), at most 90
+ * characters. The full request is shown on its own, at body size.
+ */
+export function buildTitle(goal: string): string {
+  const first = goal.trim().split(/\r?\n/)[0] ?? "";
+  const sentence = /^(.{12,}?[.!?])(\s|$)/.exec(first)?.[1] ?? first;
+  return sentence.length > 90 ? `${sentence.slice(0, 89).trimEnd()}…` : sentence || "Build";
+}
+
 export function kindText(job: Pick<BuildJob, "kind" | "addonId">, addonName?: string): string {
   if (!job.kind) return "";
   const name = addonName ?? job.addonId;

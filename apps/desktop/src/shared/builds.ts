@@ -68,6 +68,8 @@ export interface ExtensionProposal {
 export interface BuildJob {
   id: string;
   goal: string;
+  /** A short name the quick model wrote from the request (D-300); until then the request's start. */
+  title?: string;
   origin: BuildOrigin;
   /** The chat that asked (origin "chat"), where a progress card is shown. */
   originSessionId?: string;

@@ -3867,3 +3867,16 @@ tab and in the lobby.
 Jon, 2026-11-03: a builder chat started in *Accept edits* whatever you set (D-052). It now starts in
 Settings → default permission mode (`engine.defaultPermissionMode`), like every new chat; you can
 still change it in the chat. Amends D-052.
+
+## D-300: A build has an AI-written title; its page shows the request at body size
+
+Jon, 2026-11-04: the build page showed the whole request as its heading ("why such big font"), and
+the title should be written by the AI, not the request's first sentence.
+
+- When a build starts, the quick model (`engine.quickModel`, like chat names, D-288) writes a 2–6 word
+  title from the request; it is kept as `BuildJob.title` and the builder chat is renamed "Build:
+  <title>". Off with `engine.aiTitles`, and with the fake engine. Until it answers (or when it's off),
+  the request's first sentence, cut at 90 characters, stands in.
+- The build page: badges, the title (base size, one line), the actions, then the full request in a
+  "What you asked" card at body size that scrolls inside itself. The tab, the builds list and the
+  chat's build card use the same title.

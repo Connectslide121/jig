@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildJob } from "../../shared/builds";
 import { defaultConfig } from "../../shared/config";
 import type { ChatItem, SessionMeta } from "../../shared/engine";
@@ -36,6 +36,7 @@ let root: string;
 let layout: Layout;
 let configPatches: unknown[];
 let chatItems: ChatItem[];
+let renames: Array<[string, string]>;
 
 async function setup() {
   root = await mkdtemp(join(tmpdir(), "jig-builder-"));
@@ -65,6 +66,7 @@ async function setup() {
   ]);
   configPatches = [];
   chatItems = [];
+  renames = [];
   let n = 0;
   const service: BuildService = new BuildService({
     file: join(home, "builds.json"),
@@ -72,8 +74,12 @@ async function setup() {
     addonsRepo: join(home, "addons"),
     nodePaths: [],
     addons,
+    nameBuild: async (goal) => (goal.includes("terminals") ? '"Terminals on the right."' : undefined),
     sessions: {
       create: async ({ cwd, buildId }) => ({ id: `s${++n}`, cwd, buildId }) as unknown as SessionMeta,
+      rename: async (id, title) => {
+        renames.push([id, title]);
+      },
       send: async (_id, text) => {
         const job = service.list()[0]!;
         const handlers = Object.fromEntries(service.toolsFor(job.id).map((t) => [t.name, t.handler]));
@@ -171,6 +177,15 @@ describe("BuildService", () => {
     expect(layout.right.views).not.toContain("jig.terminals");
     await service.accept(job.id);
     expect(layout.right.views).toContain("jig.terminals");
+  });
+
+  it("names a build with the quick model's title, and its builder chat after it (D-300)", async () => {
+    const { service } = await setup();
+    const job = await service.start({ goal: "move the terminals", origin: "tools" });
+    await vi.waitFor(() => expect(service.list().find((j) => j.id === job.id)?.title).toBe("Terminals on the right"));
+    expect(renames).toEqual([[job.sessionId, "Build: Terminals on the right"]]);
+    const other = await service.start({ goal: "stage a setting", origin: "tools" });
+    expect(service.list().find((j) => j.id === other.id)?.title).toBeUndefined();
   });
 
   it("level 1: stages settings and applies them on Accept", async () => {

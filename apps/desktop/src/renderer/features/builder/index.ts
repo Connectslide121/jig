@@ -8,7 +8,7 @@ import { importAddon } from "../settings/AddonsSettings";
 import { openBuildDialog, startBuild } from "./BuildDialog";
 import { BuildsHeaderActions, BuildsView } from "./BuildsView";
 import { BuildTab } from "./BuildTab";
-import { useBuilds } from "./store";
+import { buildTitle, useBuilds } from "./store";
 
 export function registerBuilder(): void {
   registerView({
@@ -24,7 +24,10 @@ export function registerBuilder(): void {
     type: "jig.build",
     title: () => "Build",
     useTitle: (params) =>
-      useBuilds((s) => s.jobs.find((j) => j.id === params.buildId)?.goal.slice(0, 40) ?? ""),
+      useBuilds((s) => {
+        const job = s.jobs.find((j) => j.id === params.buildId);
+        return job ? job.title || buildTitle(job.goal) : "";
+      }),
     icon: Hammer,
     component: BuildTab,
     owner: "core",

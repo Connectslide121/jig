@@ -9,6 +9,7 @@ import type { ChatItem, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import type { Layout } from "../../shared/layout";
 import { logger } from "../log";
+import { cleanTitle } from "../sessions/manager";
 import { readJson, writeJson } from "../state/jsonStore";
 import { builderFirstMessage, builderReviseMessage } from "./prompt";
 import { allViews, applyLayoutOps, type BuilderTool, builderTools, folderExists } from "./tools";
@@ -39,8 +40,11 @@ export interface BuildServiceOptions {
     setPreview(id: string, preview: { dir: string; buildId: string } | undefined): Promise<void>;
     reloadAll(): Promise<void>;
   };
+  /** A short name for a request, from the quick model (D-300); undefined when AI titles are off. */
+  nameBuild?: (goal: string) => Promise<string | undefined>;
   sessions: {
     create(input: { cwd: string; title: string; buildId: string }): Promise<SessionMeta>;
+    rename?(id: string, title: string): Promise<void>;
     send(id: string, text: string): Promise<void>;
     addItem(id: string, item: ChatItem): Promise<void>;
     stop(id: string): Promise<void>;
@@ -128,6 +132,19 @@ export class BuildService {
     return tools;
   }
 
+  /** Names a new build with the quick model, and its builder chat after it (D-300). */
+  private async name(id: string): Promise<void> {
+    const job = this.get(id);
+    const answer = await this.options.nameBuild?.(job.goal).catch((error: Error) => {
+      log.warn("Couldn't name a build", error);
+      return undefined;
+    });
+    const title = answer ? cleanTitle(answer) : "";
+    if (!title || !this.jobs.some((j) => j.id === id)) return;
+    this.update(id, { title });
+    if (job.sessionId) await this.options.sessions.rename?.(job.sessionId, `Build: ${title}`).catch(() => {});
+  }
+
   async start(request: BuildRequestInput): Promise<BuildJob> {
     await this.load();
     const id = randomUUID().slice(0, 8);
@@ -166,6 +183,7 @@ export class BuildService {
       });
       job.sessionId = session.id;
       this.save();
+      void this.name(id);
       if (job.originSessionId)
         await this.options.sessions
           .addItem(job.originSessionId, { kind: "build", id: `build:${id}`, at, buildId: id })

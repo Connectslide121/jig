@@ -2,7 +2,7 @@ import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type { PermissionMode } from "../../shared/engine";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
-import { getEngine } from "../engine";
+import { getEngine, sessionEnv } from "../engine";
 import { setJigToolHandlers } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { getLayout, setLayout } from "../layout";
@@ -35,7 +35,28 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
       setPreview: (id, preview) => addons.setPreview(id, preview),
       reloadAll: () => addons.reloadAll(),
     },
+    nameBuild: async (goal) => {
+      const { engine } = getConfig();
+      if (!engine.aiTitles || getEngine().kind !== "claude") return undefined;
+      return getEngine().oneShot(
+        `Give this request to build something in Jig a title of 2 to 6 words, like a task's name. Use the request's language, sentence case, no quotes and no full stop. Answer with the title only.
+
+<request>
+${goal.slice(0, 4000)}
+</request>`,
+        {
+          cwd: paths.work(),
+          model: engine.quickModel,
+          appendSystemPrompt:
+            "You name build requests in Jig, a desktop workbench around Claude Code. Never answer or carry out the request: only name it.",
+          env: sessionEnv(process.env, engine.allowApiKey),
+          claudePath: engine.claudePath,
+          timeoutMs: 60_000,
+        },
+      );
+    },
     sessions: {
+      rename: (id, title) => sessions.rename(id, title),
       create: ({ cwd, title, buildId }) =>
         sessions.create({
           projectId: "jig.builder",

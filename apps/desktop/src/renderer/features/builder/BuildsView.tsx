@@ -2,7 +2,7 @@ import { Hammer, Plus } from "lucide-react";
 import { Badge, Empty, IconButton, ListRow } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "./BuildDialog";
-import { STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
+import { buildTitle, STATUS_TEXT, STATUS_TONE, useBuilds } from "./store";
 
 export function BuildsView() {
   const jobs = useBuilds((s) => s.jobs);
@@ -34,7 +34,7 @@ export function BuildsView() {
           trailing={<Badge tone={STATUS_TONE[job.status]}>{STATUS_TEXT[job.status]}</Badge>}
           description={job.summary ?? new Date(job.createdAt).toLocaleString()}
         >
-          {job.goal || "Build"}
+          {job.title || buildTitle(job.goal)}
         </ListRow>
       ))}
     </div>

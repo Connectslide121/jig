@@ -33,7 +33,7 @@ import type { TabProps } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { openPreview } from "../preview/actions";
 import { openBuilderChat } from "./BuildDialog";
-import { kindText, STATUS_TEXT, STATUS_TONE, useAddonName, useBuilds } from "./store";
+import { buildTitle, kindText, STATUS_TEXT, STATUS_TONE, useAddonName, useBuilds } from "./store";
 
 function describeOp(op: LayoutOp): string {
   const view = op.view?.replace(/^addon\.([^.]+)\./, "$1: ").replace(/^jig\./, "") ?? "";
@@ -433,22 +433,32 @@ export function BuildTab({ params }: TabProps) {
   return (
     <div className="h-full overflow-y-auto" data-testid="build-tab">
       <div className="mx-auto flex max-w-4xl flex-col gap-4 p-6">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <Badge tone={STATUS_TONE[job.status]}>{STATUS_TEXT[job.status]}</Badge>
-              {job.kind && (
-                <Badge tone={job.addonId ? "accent" : undefined}>
-                  <span data-testid="build-kind">{kindText(job, addonName)}</span>
-                </Badge>
-              )}
-              {job.level && <Badge>level {job.level}</Badge>}
-            </div>
-            <h1 className="selectable mt-2 text-lg font-semibold">{job.goal || "Build"}</h1>
+        <div className="flex flex-col gap-2">
+          <div className="flex h-6 min-w-0 items-center gap-2 overflow-hidden">
+            <Badge tone={STATUS_TONE[job.status]}>{STATUS_TEXT[job.status]}</Badge>
+            {job.kind && (
+              <Badge tone={job.addonId ? "accent" : undefined}>
+                <span data-testid="build-kind">{kindText(job, addonName)}</span>
+              </Badge>
+            )}
+            {job.level && <Badge>level {job.level}</Badge>}
+            <span className="ml-auto flex size-5 items-center justify-center">
+              {job.status === "working" && <Spinner size="sm" />}
+            </span>
           </div>
-          {job.status === "working" && <Spinner />}
+          <h1 className="selectable truncate text-base font-semibold" title={job.goal}>
+            {job.title || buildTitle(job.goal)}
+          </h1>
+          <BuildActions job={job} size="sm" />
         </div>
-        <BuildActions job={job} />
+        {job.goal && (
+          <Card className="flex flex-col gap-1 p-4" data-testid="build-goal-text">
+            <div className="text-2xs font-medium uppercase tracking-wide text-hint">What you asked</div>
+            <div className="selectable max-h-48 overflow-y-auto whitespace-pre-wrap text-sm text-muted">
+              {job.goal}
+            </div>
+          </Card>
+        )}
         {job.status === "needs_you" && job.kind !== "app" && (
           <Card className="p-3 text-sm text-warning">
             The builder is waiting. Open its chat to answer or ask it to continue.

@@ -59,3 +59,6 @@ the goal says "broken").
 
 `builds.list`, `builds.start { goal, origin, targetAddonId?, originSessionId? }`, `builds.accept`,
 `builds.discard`, `builds.diff { id, path }`; event `builds.changed` (`docs/reference/ipc.md`).
+
+A build's title (`BuildJob.title`, D-300) comes from the quick model when the build starts; the builder chat is
+renamed "Build: <title>". Until then, the request's first sentence stands in.
