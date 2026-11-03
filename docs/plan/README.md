@@ -35,6 +35,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 21 | [Speech](21-speech.md) | 🟡 | dictation with local Whisper (mic button, Ctrl+Shift+Space) with live text and WebGPU, Read aloud with a natural voice (Kokoro, on this computer), talking with Claude (voice turns, spoken replies, approve the plan by voice) in a talking window with sound waves, Claude reading the code while you plan, go-ahead hand-off with a working sound, Settings → Speech; real download, GPU and microphones need checking on a real machine |
 | 22 | [Teams meetings](22-meetings.md) | 🟡 | global meeting room, calendar, screen sharing, live captions, transcript-aware Claude questions and reviewed multi-project tasks; pre-join errors/retry visible; real account/device acceptance remains |
 | 23 | [Jon's notes (November 2026)](23-jons-notes.md) | ✅ | all seven sessions done (D-246–D-257): task queue per project with review and history, add-on restore/share, meeting history, Teams calls, DevOps boards and update progress, code completion (Copilot or Claude), project knowledge with claude.ai import; plus composer mentions. Real-machine checks listed in status.md |
+| 24 | [Tenants](24-tenants.md) | ⬜ | a tenant switch in the top bar: add Azure sign-ins (other accounts or tenants), switch, and Pipelines, Boards, Releases, Workflows, Azure links, chats and terminals follow it |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

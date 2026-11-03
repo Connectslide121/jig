@@ -1,0 +1,99 @@
+# Phase 24 — Tenants: switch the Azure / Azure DevOps sign-in from the top bar
+
+**Goal:** a tenant switch in the top-right corner of Jig. Everything Jig shows from Azure and Azure
+DevOps (Pipelines, Boards, Releases, Workflows' pipeline steps, project links to Azure resources) and
+every `az` that Claude or a terminal runs follows the signed-in user and tenant picked there (Jon,
+2026-11-03).
+
+**Done when:** you can add a second tenant (another Microsoft account, or another Entra tenant of the
+same account), switch between them from the top bar, and every Azure/DevOps view reloads with that
+tenant's organisations, projects, pipelines and boards, without restarting Jig.
+
+## Today
+
+- Every Azure and DevOps call is an `az` subprocess (`api.exec("az", …)` in add-ons,
+  `main/links/index.ts` in core). The identity is whatever `az login` last left behind; Jig never shows
+  or switches it (D-018). There is no account, user or tenant concept outside Meetings.
+- Each add-on has its own copy of the `az()` helper and error mapping (Pipelines, Boards, Links).
+- Org and project lists are cached in memory for an hour, per add-on, not keyed by identity.
+- Add-ons are not told about anything identity-related (`JIG_EVENTS` has no such event).
+
+## Design (Claude, on my own — to confirm with Jon before session 1)
+
+- **A tenant is one `az` sign-in in its own folder.** Jig keeps one Azure CLI config folder per tenant
+  under `~/.jig/azure/<tenantKey>/` and runs `az` with `AZURE_CONFIG_DIR` pointing at it. The Azure CLI
+  stores and refreshes its own tokens there; Jig never reads, copies or logs them (keeps D-018 and the
+  "user's own tools and credentials" rule). Adding a tenant runs
+  `az login --tenant <id-or-domain> --allow-no-subscriptions` in that folder (system browser).
+- **"Your az login" is always the first entry** and means no override: today's behaviour, no
+  migration. Nothing changes for someone who never adds a tenant.
+- **What we keep per tenant:** key, label (editable), signed-in user (`az account show` → `user.name`),
+  Entra tenant id, display name and default domain (ARM `/tenants`), and when it was last checked. The
+  list lives in a state file (`~/.jig/azure/tenants.json`, written through the state module); the
+  active one is a setting (`azure.activeTenant`) so chats can switch it too. It is protected (D-077)
+  because it decides which credentials programs run with.
+- **One place runs `az`.** The host injects `AZURE_CONFIG_DIR` for the active tenant wherever `az`
+  runs: add-on `exec`/`spawn` of `az`, core `links`, setup checks, Claude Code sessions, Jig terminals
+  and scripts. A running chat or terminal keeps the tenant it started with; the chat header and the
+  terminal tab say which one when it differs from the active tenant.
+- **Switching tells everyone.** A new add-on event `azure.tenant` (in `JIG_EVENTS`) and a renderer
+  event let views drop their caches and reload. Add-on caches are keyed by tenant.
+- **Per-project default (later session):** a Jig project can pin a tenant; switching to that project
+  switches the tenant. The top bar always shows the one in use.
+- **Out of scope:** Meetings keeps its own Microsoft sign-in (D-232); a later item may offer the
+  active tenant's id as its default. No PATs, no MSAL for DevOps, no stored tokens.
+
+## Session 1 — Host: tenants, isolated `az` sign-ins, one way to run `az`
+
+- [ ] Pure logic in `packages/*`: tenant keys, the tenants file shape, merging `az account show` and
+      ARM tenant output, and an `azEnv(tenant)` helper; unit tests.
+- [ ] State file + `azure.activeTenant` setting (`ConfigSchema`, `SETTINGS_GUIDE`, `PROTECTED_SETTINGS`,
+      `docs/reference/state.md`).
+- [ ] IPC `azure.tenants`, `azure.addTenant`, `azure.signInAgain`, `azure.renameTenant`,
+      `azure.removeTenant`, `azure.setActiveTenant`, event `azure.tenantChanged` (`shared/ipc.ts`,
+      validation, `docs/reference/ipc.md`). Adding streams the `az login` progress and can be cancelled.
+- [ ] Inject `AZURE_CONFIG_DIR` for the active tenant into every `az` the host runs (add-on host
+      runtime `exec`/`spawn`, links, setup checks). Add `azure.tenant` to `JIG_EVENTS`.
+- [ ] A "signed out / expired" state per tenant (from the `az login` error mapping) without prompting.
+
+## Session 2 — Top bar tenant switch and the manage dialog
+
+- [ ] A tenant chip in the top-right cell of `Topbar.tsx`, before the layout button: initials avatar +
+      tenant label, fixed width with ellipsis (no shift when switching or loading), tooltip with user
+      and domain. Hidden-but-reserved behaviour decided so the right cell never jumps.
+- [ ] Its menu: one row per tenant (avatar, label, user email, domain), the active one checked at the
+      far right, an expired mark in the same column; whole row clickable; "Add tenant…" and
+      "Manage tenants…".
+- [ ] "Add tenant" modal: tenant id or domain (optional), Sign in (opens the browser via `az login`),
+      progress and errors inside the modal, Cancel. "Manage" modal: rename, sign in again, remove
+      (with confirmation). Also reachable from Settings → Azure.
+- [ ] Jig tools for Claude: list tenants (readOnly) and switch tenant (approval), with `jigContext`
+      guidance; the fake engine can call them.
+- [ ] Screenshots in narrow and wide windows, light and dark.
+
+## Session 3 — Azure and DevOps views follow the tenant
+
+- [ ] One shared `az` helper for add-ons (error mapping included) instead of the three copies.
+- [ ] Pipelines: caches keyed by tenant, reload on `azure.tenant`, org settings (`allOrgs`/`orgs`) kept
+      per tenant; a short reserved-space loading state, not an empty flash.
+- [ ] Boards: reload on switch; a followed board whose org isn't in this tenant shows a placeholder in
+      its own space ("In tenant X — Switch") instead of an error.
+- [ ] Releases and Workflows' pipeline steps run with the active tenant; failures name the tenant.
+- [ ] Project links → Azure resources list the active tenant's subscriptions.
+
+## Session 4 — Chats, terminals and scripts
+
+- [ ] New Claude Code sessions, Jig terminals and scripts get the active tenant's `AZURE_CONFIG_DIR`.
+- [ ] `jigContext` tells Claude which tenant and user are active.
+- [ ] A chat or terminal started under another tenant shows it (a small label, fixed slot).
+
+## Session 5 — Tenant per project
+
+- [ ] A project setting "Azure tenant" (Default / a tenant), in the project dialog and `jig_update_project`.
+- [ ] Switching to a project with a pinned tenant switches the active tenant; the chip shows it.
+
+## Session 6 — Finish
+
+- [ ] Review all touched views for layout shifts and alignment; screenshots.
+- [ ] `docs/status.md` (how to try it, what needs a real second tenant), architecture, decisions,
+      this checklist and `README.md` agree.
