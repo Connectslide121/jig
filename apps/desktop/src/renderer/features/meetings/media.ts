@@ -286,6 +286,8 @@ export class MeetingMedia {
   private sync(): void {
     const c = this.active;
     if (!c) return;
+    // Sharing ended (from here, from Teams or the shared window closing): the frame goes too.
+    if (this.state.sharing && !c.isScreenSharingOn) void call("meetings.shareStopped").catch(() => {});
     this.update({
       state: c.state === "None" ? "Joining" : c.state,
       muted: c.isMuted,
@@ -702,7 +704,12 @@ export class MeetingMedia {
     }
     if (!sourceId) throw new Error("Choose a screen or application window");
     await call("meetings.selectShare", { sourceId });
-    await this.active.startScreenSharing();
+    try {
+      await this.active.startScreenSharing();
+    } catch (error) {
+      void call("meetings.shareStopped").catch(() => {});
+      throw error;
+    }
   }
   async leave(): Promise<void> {
     if (!this.record || this.leaving) return;

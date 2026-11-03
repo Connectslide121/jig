@@ -3165,3 +3165,17 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   Tabs saved with the old default (the board's name alone) show the new name too; a name you gave a
   tab yourself is kept. Claude's boards tools accept either name.
 
+
+## D-266: A frame around what you share in a meeting
+
+**Who:** Jon: the screen or window he shares wasn't highlighted. Built by Claude, on my own for the how.
+
+- When sharing starts, main draws a click-through, always-on-top, transparent border window (Jig's
+  accent, 4px) over the shared screen, or the shared window. `setContentProtection` keeps it out of
+  the capture, so the others don't see it.
+- A shared screen is framed from its display bounds. A shared window is followed on Windows by a
+  small PowerShell helper (`main/meetings/shareFrame.ts`) reading the window's DWM bounds every
+  120 ms; the frame hides while the window is minimised and goes when it closes. No native module.
+  macOS/Linux frame screens only (Electron can't read other apps' window bounds).
+- The frame goes when sharing stops (the room reports it with `meetings.shareStopped`), the meeting
+  ends or the meeting window closes.

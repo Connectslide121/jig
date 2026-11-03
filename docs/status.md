@@ -272,7 +272,9 @@ builds import ignored `.azure-local/meetings.json` on normal startup; custom-hom
 Connection. Reconnect Microsoft after a Jig restart (no disk token cache). Real Microsoft sign-in
 and keyless calling-credential issuance passed. Microsoft's calendar consent page confirms admin
 approval is required for Graph Calendars.ReadBasic on jig-meetings. Physical devices, caption attribution,
-screen sharing and long-call refresh still require target-machine acceptance. PowerPoint Live, Whiteboard
+screen sharing and long-call refresh still require target-machine acceptance. The screen or window you
+share gets an accent frame, hidden from the capture (D-266; check on a real machine that it follows a moved
+window and isn't visible to the others). PowerPoint Live, Whiteboard
 and breakouts aren't supported. The normal local Jig profile has the Azure connection settings saved.
 Production build and npm run check pass (699 tests, 8 skipped). Meetings and existing Task queue
 Electron regressions pass, including project independence, caption revisions, notes and cross-project

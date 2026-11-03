@@ -174,6 +174,7 @@ export interface HostMethods {
   "meetings.queue": { args: { id: string; actionIds: string[] }; result: void };
   "meetings.shareSources": { args: void; result: Array<{ id: string; name: string; thumbnail: string }> };
   "meetings.selectShare": { args: { sourceId: string }; result: void };
+  "meetings.shareStopped": { args: void; result: void };
   /** Jig's curated bundled skills. Controls are config.skills.overrides. */
   "skills.list": { args: void; result: LibrarySkill[] };
   "skills.details": { args: { id: string }; result: SkillDetails };

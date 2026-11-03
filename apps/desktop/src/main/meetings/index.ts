@@ -25,6 +25,7 @@ import { APP_ICON } from "../window";
 import { MeetingAuth } from "./auth";
 import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
 import { ownMediaUrl, ownPagePermission } from "./permissions";
+import { hideShareFrame, showShareFrame } from "./shareFrame";
 import { MeetingStore } from "./store";
 
 /** The test meeting service's people have pictures, so the avatars can be seen in tests. */
@@ -192,6 +193,7 @@ async function open(options: { show?: boolean } = {}): Promise<void> {
   });
   window.on("closed", () => {
     room = undefined;
+    hideShareFrame();
     closeMeetingPage();
   });
   const url = new URL(process.env.JIG_RENDERER_URL || (await meetingPage(window.webContents.id)));
@@ -277,6 +279,7 @@ export async function startMeetings(): Promise<void> {
       const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
       const source = sources.find((s) => s.id === selected.id);
       callback(source ? { video: source } : {});
+      if (source) showShareFrame(source);
     } catch {
       callback({});
     }
@@ -539,6 +542,7 @@ export async function startMeetings(): Promise<void> {
     await store.update(id, (r) => lifecycle(r, status, capture, gap));
     if (["ended", "interrupted"].includes(status)) {
       activeId = undefined;
+      hideShareFrame();
       activity("leave");
     }
     changed();
@@ -655,6 +659,10 @@ export async function startMeetings(): Promise<void> {
     own(ctx);
     if (!activeId) throw new JigError("meeting_inactive", "Join a meeting first");
     selectedShare = { id: sourceId, expires: Date.now() + 30_000 };
+  });
+  handle("meetings.shareStopped", (_args, ctx) => {
+    own(ctx);
+    hideShareFrame();
   });
 
   // A chat that mentions a meeting (`@meeting:…`, D-250) is told to read it.
