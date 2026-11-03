@@ -4,7 +4,7 @@
 go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm run check`,
 `npm run e2e:changed`, docs and a decision record.
 
-**Done when:** every session below is ticked, or moved to the backlog with a reason.
+**Done when:** every session below is ticked, or moved to the backlog with a reason. **Done 2026-11-03.**
 
 ## Cleanup (done, D-246)
 
