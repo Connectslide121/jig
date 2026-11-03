@@ -34,7 +34,7 @@ export interface JigEventPayloads {
   "project.active": { projectId?: string; name?: string; path?: string };
   /**
    * The tenant now in use (D-282): its key (`default` = your own az login), label, the signed-in
-   * user and the Entra tenant, as far as they are known.
+   * user and the Entra tenant, as far as they are known, and the initials Jig shows as its avatar.
    */
   "azure.tenant": {
     key: string;
@@ -44,6 +44,7 @@ export interface JigEventPayloads {
     tenantId?: string;
     displayName?: string;
     domain?: string;
+    initials?: string;
   };
 }
 

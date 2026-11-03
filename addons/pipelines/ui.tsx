@@ -764,7 +764,10 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
   );
   useAddonEvent("refreshed", (payload) => {
     const p = payload as { tenant?: string; found?: Found } | undefined;
-    if (p?.found && !otherTenant(ctx, p.tenant)) setFound(p.found);
+    if (p?.found && !otherTenant(ctx, p.tenant)) {
+      setFound(p.found);
+      setFindError(undefined);
+    }
   });
   useEffect(() => {
     // The tenant's saved list shows at once; the host then checks it again.
@@ -849,17 +852,30 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
         <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
           {findError && <div className="px-2 py-1 text-xs text-danger">{findError}</div>}
           {latest?.error && <div className="px-2 py-1 text-xs text-warning">{latest.error}</div>}
-          {found?.errors.map((e) => (
-            <div key={e} className="px-2 py-1 text-xs text-warning">
-              {e}
-            </div>
-          ))}
+          {list.length > 0 &&
+            found?.errors.map((e) => (
+              <div key={e} className="px-2 py-1 text-xs text-warning">
+                {e}
+              </div>
+            ))}
           {found && list.length === 0 && (
-            <Empty icon={Rocket} title="No pipelines found">
-              <p>
-                Pipelines lists the Azure DevOps pipelines of the repositories in your workspaces, through
-                your own az CLI.
-              </p>
+            // Nothing listed because az failed (a tenant's sign-in expired…): say why in the same place.
+            <Empty
+              icon={Rocket}
+              title={found.errors.length ? "Couldn't list pipelines" : "No pipelines found"}
+            >
+              {found.errors.length ? (
+                found.errors.map((e) => (
+                  <p key={e} className="text-warning" data-testid="pipelines-error">
+                    {e}
+                  </p>
+                ))
+              ) : (
+                <p>
+                  Pipelines lists the Azure DevOps pipelines of the repositories in your workspaces, through
+                  your own az CLI.
+                </p>
+              )}
               <Button
                 size="sm"
                 className="mt-2"

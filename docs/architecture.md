@@ -493,9 +493,11 @@ changes.
   run it as `api.azure.az`. Setup checks and add-on `exec`/`spawn` (any program, so scripts that call
   `az` follow too) add the same environment; an explicit `options.env` from an add-on still wins.
 - Switching emits `azure.tenantChanged` to the renderer and the add-on event `azure.tenant`
-  (`JIG_EVENTS`), after host processes got the new tenant. Add-on UIs read it from `ctx.azure`.
-  Pipelines and Boards key their caches and stored lists by tenant and reload; a board of another
-  tenant shows a Switch card; Releases and Workflows name the tenant in failures; Azure links list
+  (`JIG_EVENTS`), after host processes got the new tenant. Add-on UIs read it from `ctx.azure`
+  (with the tenant's `initials`, so an add-on shows a tenant as the same avatar as the top bar).
+  Pipelines and Boards key their caches and stored lists by tenant and reload (Pipelines shows a
+  failed listing, like an expired sign-in, in its empty state's place); a board of another
+  tenant shows a Switch card with the tenant's avatar; Releases and Workflows name the tenant in failures; Azure links list
   the tenant's subscriptions.
 - Chats, terminals and scripts (D-285): a Claude Code process, a terminal (scripts run in one) and a
   `!` command start with `withAzureEnv(sessionEnv(…))` (`main/azure/env.ts`: API keys stripped as

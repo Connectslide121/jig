@@ -462,10 +462,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Phase 23 (`docs/plan/23-jons-notes.md`) is done. Next: try its features on a real machine (a real Teams
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
-6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–3 are done (host side, D-282; the
-   top bar avatar switch with add/manage modals and Claude's tools, D-283; the views follow the
-   tenant, D-284; chats, terminals and scripts start with it, D-285; a project can pin a tenant,
-   D-286). Next: session 6 (the finishing review).
+6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants) is done in code (sessions 1–6, D-282–D-286):
+   the top bar tenant switch, add/manage modals, the views, chats, terminals and projects following
+   it, reviewed in Jig Dark and Light at narrow and wide sizes with a fake `az`. Next: Jon tries it
+   with a real second tenant ("Needs testing on your machine" → Azure tenants).
 7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
@@ -488,10 +488,16 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   header and the terminal tab. A project can pin a tenant (D-286): project settings → Azure tenant
   (Default keeps the tenant in use); switching to that project switches the tenant, and the avatar's
   tooltip says "Pinned by the project X". A project whose tenant was removed uses Default and its
-  settings say so. Claude can set it (`jig_update_project azureTenant`). Try it: add a tenant, pin it
-  to one project, switch between projects. Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
-  links, a release pipeline, a workflow pipeline step, and `az account show` in a new chat, a terminal
-  and a script with it.
+  settings say so. Claude can set it (`jig_update_project azureTenant`). When a tenant's sign-in
+  expired, Pipelines says so in its list's place ("Couldn't list pipelines", naming the tenant)
+  instead of "No pipelines found".
+
+  **Try it:** click the avatar at the top right → Add tenant…, type a tenant id or domain (or leave it
+  empty and pick in the browser), Sign in. Then switch between it and "Your az login" from the avatar
+  and watch Pipelines and Boards reload; start a chat and a terminal, switch, and look at the chat
+  header and the terminal tab; pin the tenant to one project (project settings → Azure tenant) and
+  switch projects. Nothing changes until you add a tenant: "Your az login" is the `az` as you left
+  it. What still needs a real second tenant is under "Needs testing on your machine" → Azure tenants.
 
 - Speech (D-208): the mic button in the composer (or Ctrl/Cmd+Shift+Space) records; click again
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks
@@ -1014,6 +1020,22 @@ npm run dev          # opens Jig
 ## Needs testing on your machine
 
 Things the cloud build environment couldn't verify:
+
+- **Azure tenants (phase 24, D-282–D-286)**, only tried with a fake `az`. With a real second tenant
+  (another account, or another Entra tenant of yours):
+  - Add it from the avatar's Add tenant…: the browser opens, the modal shows progress, and it lands
+    named after the tenant with your user and domain. Cancel one sign-in halfway; Sign in again and
+    Remove from Manage tenants…; `~/.jig/azure/<key>/` appears and goes with Remove, and your own
+    `az account show` in a normal terminal still says what it said before.
+  - Switch: Pipelines shows the other tenant's pipelines (and its own organisations setting), Boards
+    reloads, a board followed in the other tenant shows its "In tenant X" card and Switch works,
+    Project links → Add from Azure lists that tenant's subscriptions.
+  - A Releases pipeline run and a Workflows pipeline step with the added tenant active.
+  - `az account show` in a new chat (ask Claude), a new Jig terminal and a script shows the added
+    tenant; switch back, and the old chat and terminal keep theirs and show its initials.
+  - Pin it to a project and switch projects: the avatar follows, its tooltip says "Pinned by…".
+  - An expired sign-in (wait for one, or revoke the session in the Microsoft account page): the
+    avatar's warning dot, ⚠ in the menu, Pipelines' "Couldn't list pipelines", Sign in again fixes it.
 
 - **Speech (D-208):** Hugging Face was unreachable from the cloud environment, so the real model
   download is untested (the serving path is unit-tested; real Whisper inference was checked in the

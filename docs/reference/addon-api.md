@@ -150,7 +150,7 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 |---|---|---|
 | `exec(command, args, { cwd?, timeoutMs?, env?, input?, encoding? })` → `{ code, stdout, stderr }` (`encoding: "base64"` for binary output) | `exec` or `exec:<name>` | runs a program without a shell (default timeout 120 s; `code` 127 = not found). On Windows, PATH/PATHEXT are searched and `.cmd`/`.bat` programs (`az`, `code`, `npm`) run through `cmd.exe` with safe quoting |
 | `azure.az(args, { timeoutMs? })` → parsed JSON | `exec:az` (or `exec`) | Azure and Azure DevOps through the user's own `az` (D-284): runs `az <args> -o json --only-show-errors` with the tenant picked in the top bar (D-282), decodes what az on Windows prints in the ANSI code page, and resolves with the JSON (undefined for no output). A failure rejects with one message for the user that names a tenant added in Jig: az or the `azure-devops` extension missing, not signed in or sign-in expired (sign in again from the tenant avatar; your own az login keeps "run `az login`"), or what az said. Use it instead of `exec("az", …)` |
-| `azure.tenant()` → `{ key, label, isDefault, user?, tenantId?, displayName?, domain? }` | — | the tenant every `az` this add-on runs uses now (`default` = your own az login). Key in-memory caches and per-tenant storage by `key`; follow switches with the `azure.tenant` event |
+| `azure.tenant()` → `{ key, label, isDefault, user?, tenantId?, displayName?, domain?, initials? }` | — | the tenant every `az` this add-on runs uses now (`default` = your own az login; `initials` as its avatar in the top bar shows them). Key in-memory caches and per-tenant storage by `key`; follow switches with the `azure.tenant` event |
 | `fs.readFile(path, encoding?)` (`"base64"` for binary files), `fs.readdir/exists`, `fs.writeFile` | `fs:read`, `fs:write` | |
 | `fetch(url, init)` | `net` | |
 | `storage.get/set` | — | same store as the UI |
@@ -192,7 +192,7 @@ with no view open), a UI with `ctx.onJigEvent` / `useJigEvent`. The list is `JIG
 | `git.commit` | `{ repo, branch?, sha, message }` | a commit in one of the projects' repositories, made anywhere (Jig, a terminal, an editor) |
 | `git.branch` | `{ repo, from?, to? }` | a branch switch there |
 | `project.active` | `{ projectId?, name?, path? }` | another project became active |
-| `azure.tenant` | `{ key, label, isDefault, user?, tenantId?, displayName?, domain? }` | another Azure tenant became the active one (D-282): every `az` Jig runs, `api.exec("az", …)` and `api.azure.az` included, now uses it; drop Azure/DevOps caches and reload. Host code hears it after `api.azure.tenant()` already says the new one. Pipelines (`tenantChanged`) and Boards are the examples (D-284) |
+| `azure.tenant` | `{ key, label, isDefault, user?, tenantId?, displayName?, domain?, initials? }` | another Azure tenant became the active one (D-282): every `az` Jig runs, `api.exec("az", …)` and `api.azure.az` included, now uses it; drop Azure/DevOps caches and reload. Host code hears it after `api.azure.tenant()` already says the new one. Pipelines (`tenantChanged`) and Boards are the examples (D-284) |
 
 Builder chats don't send chat events. Git events come from watching each repository's `.git` folder
 (up to 50 repositories; worktrees follow their `gitdir`).

@@ -127,6 +127,18 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 6 — Finish
 
-- [ ] Review all touched views for layout shifts and alignment; screenshots.
-- [ ] `docs/status.md` (how to try it, what needs a real second tenant), architecture, decisions,
-      this checklist and `README.md` agree.
+- [x] Review all touched views for layout shifts and alignment: the avatar and its menu, the add
+      (idle, invalid, signing in) and manage modals, Settings → Azure, the project dialog, the chat
+      header and terminal tags, Pipelines (loading, other tenant, expired sign-in) and Boards (other
+      tenant), in Jig Dark and Light, 960×720 and 1680×1000, driven with a fake `az` (screenshots in
+      `.tmp/`, not committed). The avatar keeps its box on every switch; the add modal keeps its size
+      while signing in; menu and manage rows keep their columns with long names.
+- [x] Fixes from the review: the Boards "In tenant X" card shows the tenant's initials avatar instead
+      of a building icon (one meaning for a tenant everywhere; `initials` on `azure.tenant` /
+      `ctx.azure`); Pipelines with nothing listed because `az` failed (an expired sign-in) says
+      "Couldn't list pipelines" with the reason in the empty state's place, not an error line above
+      "No pipelines found"; a stale find error clears when the host's refreshed list arrives.
+- [x] `docs/status.md` (how to try it, what needs a real second tenant), architecture, decisions,
+      this checklist and `README.md` agree. The About page screenshots were not regenerated: the
+      only change on them is the small avatar at the top right.
+- [ ] Needs a real machine: everything under `docs/status.md` → Needs testing → Azure tenants.

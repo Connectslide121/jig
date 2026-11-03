@@ -62,7 +62,7 @@ describe("azFailure", () => {
 });
 
 describe("activeTenantRef", () => {
-  it("picks the active tenant, without its status", () => {
+  it("picks the active tenant, without its status, with its avatar's initials", () => {
     const ref = activeTenantRef({
       active: "contoso",
       tenants: [
@@ -77,7 +77,7 @@ describe("activeTenantRef", () => {
         },
       ],
     });
-    expect(ref).toEqual({ ...contoso, tenantId: "t1", domain: "contoso.com" });
+    expect(ref).toEqual({ ...contoso, tenantId: "t1", domain: "contoso.com", initials: "C" });
     expect(activeTenantRef({ active: "gone", tenants: [] })).toEqual(DEFAULT_TENANT_REF);
   });
 });

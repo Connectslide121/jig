@@ -442,8 +442,9 @@ function InOtherTenant({ ctx, board, tenant }: { ctx: AddonUiContext; board: Boa
         }}
         className="flex w-full max-w-sm items-center gap-3 rounded-lg border border-line bg-raised p-4 text-left hover:border-line-strong hover:bg-hover disabled:cursor-default"
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <Building2 className="size-4" />
+        {/* The tenant's avatar, as in the top bar (its initials). */}
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
+          {known.initials ?? <Building2 className="size-4" />}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate text-sm font-medium text-fg">In {where}</span>

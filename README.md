@@ -268,6 +268,8 @@ And more:
   - Azure DevOps boards per project: pick team boards from your organisations, each a tab with its
     columns and cards, like Azure DevOps.
   - Links per project (Azure resources, sites, boards), also picked from your `az` login.
+  - Azure tenants: add other Azure sign-ins (accounts or tenants) and switch from the avatar at the top
+    right, or pin one to a project; Pipelines, Boards, links, new chats and terminals follow it.
   - A grouped menus with keyboard shortcuts.
 
 ## Build your own tools
@@ -320,7 +322,8 @@ reference: [`docs/reference/slots.md`](docs/reference/slots.md),
   yourself (`claude`, then `/login`). **Jig never reads, stores or forwards your Claude login.**
 - By default `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` are removed from chat sessions, so usage goes
   to your Claude plan, not to pay-as-you-go API billing.
-- git, GitHub and Azure work with your own `git`, `gh` and `az`. Jig stores no tokens.
+- git, GitHub and Azure work with your own `git`, `gh` and `az`. Jig stores no tokens: an Azure tenant
+  you add is an `az login` in a folder of its own, kept by the Azure CLI.
 - Everything Jig keeps (settings, layout, chats, add-ons, the activity it learns from) is in `~/.jig`
   on your machine.
 

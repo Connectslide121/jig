@@ -1,4 +1,4 @@
-import { errorLine, signInStatusFromError, type TenantsState } from "./tenants";
+import { errorLine, signInStatusFromError, type TenantsState, tenantInitials } from "./tenants";
 
 /**
  * The tenant an `az` run used, as add-ons and error messages name it (the add-on event `azure.tenant`
@@ -13,6 +13,8 @@ export interface TenantRef {
   tenantId?: string;
   displayName?: string;
   domain?: string;
+  /** One or two letters for its avatar, as Jig's top bar shows it (`tenantInitials`). */
+  initials?: string;
 }
 
 export const DEFAULT_TENANT_REF: TenantRef = { key: "default", label: "Your az login", isDefault: true };
@@ -23,6 +25,7 @@ export function activeTenantRef(state: TenantsState): TenantRef {
   if (!t) return DEFAULT_TENANT_REF;
   const ref: TenantRef = { key: t.key, label: t.label, isDefault: t.isDefault };
   for (const k of ["user", "tenantId", "displayName", "domain"] as const) if (t[k]) ref[k] = t[k];
+  ref.initials = tenantInitials(t);
   return ref;
 }
 
