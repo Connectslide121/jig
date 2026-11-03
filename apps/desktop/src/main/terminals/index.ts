@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { spawn } from "@lydell/node-pty";
 import { JigError } from "../../shared/ipc";
 import { publishActivity } from "../activity/bus";
+import { azureTag, withAzureEnv } from "../azure/env";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { registerJigTools } from "../engine/jigTools";
@@ -31,8 +32,10 @@ export function startTerminals(): void {
   manager = new TerminalManager({
     spawn: spawn as never,
     shell: () => defaultShell(getConfig().terminal.shell, process.platform, process.env, which),
-    // Terminals get the same environment rule as sessions: no stray API keys unless allowed.
-    env: () => sessionEnv(process.env, getConfig().engine.allowApiKey),
+    // Terminals (and scripts, which run in them) get the same environment as chats: no stray API
+    // keys unless allowed, and the active Azure tenant's sign-in for az (D-285).
+    env: () => withAzureEnv(sessionEnv(process.env, getConfig().engine.allowApiKey)),
+    tenant: azureTag,
     onData: (id, data) => emit("terminals.data", { id, data }),
     onChange: (terminals) => emit("terminals.changed", terminals),
     onCommand: (terminal, command) =>

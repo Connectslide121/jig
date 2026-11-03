@@ -1,4 +1,6 @@
 /** Terminals and scripts as the renderer sees them. Documented in docs/reference/terminals.md. */
+import type { TenantTag } from "./azure";
+
 export interface TerminalInfo {
   id: string;
   projectId?: string;
@@ -15,6 +17,8 @@ export interface TerminalInfo {
   private?: boolean;
   /** Started by Claude from this chat (jig_terminal_run). */
   sessionId?: string;
+  /** The Azure tenant it started with (its `AZURE_CONFIG_DIR`). */
+  azureTenant?: TenantTag;
 }
 
 export type ScriptKind = "npm" | "ps1" | "sh" | "cmd" | "dotnet-run" | "dotnet-watch" | "func";

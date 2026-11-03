@@ -6,6 +6,7 @@ import { MOTION_MS } from "../../ui/motion";
 import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
+import { TenantTagLabel } from "../azure/TenantTag";
 import { ChatChanges } from "./ChatChanges";
 import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
@@ -120,7 +121,10 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <span className="text-xs text-hint" data-testid="chat-status">
           {STATUS_LABEL[meta.status]}
         </span>
-        <div className="flex-1" />
+        {/* The spacer is the tenant label's slot: it appears at its right end and nothing moves. */}
+        <div className="flex min-w-0 flex-1 justify-end">
+          <TenantTagLabel tag={meta.azureTenant} />
+        </div>
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
         {meta.turns > 0 && (

@@ -153,7 +153,13 @@
         "apps/desktop/src/renderer/features/azure/**",
         "packages/azure/**"
       ],
-      "specs": ["tenants.spec.ts", "pipelines.spec.ts", "boards.spec.ts", "links.spec.ts"]
+      "specs": [
+        "tenants.spec.ts",
+        "tenant-tags.spec.ts",
+        "pipelines.spec.ts",
+        "boards.spec.ts",
+        "links.spec.ts"
+      ]
     },
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },

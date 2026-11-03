@@ -6,6 +6,7 @@ import {
   DEFAULT_TENANT_REF,
   decodeAzOutput,
   parseAzJson,
+  tenantContext,
 } from "./az";
 
 const contoso = { key: "contoso", label: "Contoso", isDefault: false };
@@ -91,5 +92,29 @@ describe("az output", () => {
     expect(azJsonArgs(["account", "show"])).toEqual(["account", "show", "-o", "json", "--only-show-errors"]);
     expect(parseAzJson<{ a: number }>(' {"a":1}\n')).toEqual({ a: 1 });
     expect(parseAzJson("  ")).toBeUndefined();
+  });
+});
+
+describe("tenantContext", () => {
+  it("names your own az login and its user", () => {
+    expect(tenantContext({ ...DEFAULT_TENANT_REF, user: "ann@contoso.com" })).toBe(
+      "Every az in this chat runs with the user's own az login, signed in as ann@contoso.com.",
+    );
+    expect(tenantContext(DEFAULT_TENANT_REF)).toBe(
+      "Every az in this chat runs with the user's own az login.",
+    );
+  });
+
+  it("names an added tenant, its Entra details and user, on one line", () => {
+    const text = tenantContext({
+      ...contoso,
+      label: 'Contoso "prod"\nx',
+      displayName: "Contoso Ltd",
+      domain: "contoso.onmicrosoft.com",
+      user: "bo@contoso.com",
+    });
+    expect(text).toBe(
+      'Every az in this chat runs with the Azure tenant "Contoso prod x" (Entra tenant Contoso Ltd, contoso.onmicrosoft.com), signed in as bo@contoso.com.',
+    );
   });
 });

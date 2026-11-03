@@ -114,3 +114,18 @@ export function parseAzJson<T>(stdout: string): T {
   const text = stdout.trim();
   return (text ? JSON.parse(text) : undefined) as T;
 }
+
+/** A label or name from a tenant as one plain line inside Claude's context (no quotes or newlines). */
+const plain = (text: string) => text.replace(/["\s]+/g, " ").trim();
+
+/**
+ * What Claude is told about the tenant its `az` runs with: which tenant and who is signed in, never
+ * anything secret (Jig never has the tokens).
+ */
+export function tenantContext(tenant: TenantRef): string {
+  const who = tenant.user ? `, signed in as ${plain(tenant.user)}` : "";
+  if (tenant.isDefault) return `Every az in this chat runs with the user's own az login${who}.`;
+  const entra = [tenant.displayName, tenant.domain, tenant.tenantId].filter(Boolean).map((x) => plain(x!));
+  const where = entra.length ? ` (Entra tenant ${entra.join(", ")})` : "";
+  return `Every az in this chat runs with the Azure tenant "${plain(tenant.label)}"${where}${who}.`;
+}

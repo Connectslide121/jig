@@ -17,6 +17,7 @@ import { Pane } from "../../workbench/Pane";
 import { useActiveProject } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
+import { TenantTagMark } from "../azure/TenantTag";
 import { newTerminal } from "./actions";
 import { askClaudeAboutTerminal } from "./askClaude";
 import { loadShells, newTerminalInEntries } from "./shells";
@@ -154,6 +155,8 @@ export function TerminalsView(_props: ViewProps) {
                   void call("terminals.close", { id: t.id });
                 }}
               />
+              {/* Next to the shell (whose place never moves), so the marks line up in one column. */}
+              <TenantTagMark tag={t.azureTenant} />
               {/* A fixed slot at the far right, so the shells line up in one column. */}
               <span
                 className="w-12 shrink-0 truncate text-right font-mono text-2xs text-hint"

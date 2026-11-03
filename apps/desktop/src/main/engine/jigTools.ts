@@ -1,6 +1,8 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { tenantContext } from "@jig/azure";
 import { z } from "zod";
 import type { SessionMeta } from "../../shared/engine";
+import { azureContext } from "../azure/env";
 import type { ToolOutput } from "./types";
 
 /**
@@ -74,9 +76,21 @@ export function addMessageContext(fn: (text: string, meta: SessionMeta) => Promi
 export async function turnContext(meta: SessionMeta, text = ""): Promise<string> {
   const parts = await Promise.all([
     addonTurnContext(meta),
+    Promise.resolve(tenantSwitchedContext(meta)),
     ...messageContexts.map((fn) => fn(text, meta).catch(() => "")),
   ]);
   return parts.filter(Boolean).join("\n\n");
+}
+
+/**
+ * A chat keeps the tenant its Claude Code process started with (D-285). When the user has switched
+ * since, Claude hears it with each message, so it doesn't assume its az follows the top bar.
+ */
+function tenantSwitchedContext(meta: SessionMeta): string {
+  const started = meta.azureTenant;
+  const active = azureContext().tenant;
+  if (!started || started.key === active.key) return "";
+  return `The user has since switched Jig's Azure tenant to "${active.label}", but az in this chat still runs with "${started.label}", the tenant this chat started with. Say so when it matters for what they ask; Azure views and new chats use "${active.label}".`;
 }
 
 let handlers: JigToolHandlers = {
@@ -183,6 +197,8 @@ export function jigContext(
     "To check web UI you build, use Claude's browser (a real offscreen page with its own size; the user can watch it in Jig): jig_browser_open the dev server, jig_browser_read for the text and numbered elements, jig_browser_click / jig_browser_type / jig_browser_press to use it, jig_browser_screenshot to see it (sizes: phone, tablet, desktop checks responsive layouts in one call; fullPage for the whole page), jig_browser_console for errors, jig_browser_network for the requests it makes (status, headers, bodies — debug API calls there instead of asking the user to copy them from their browser). It runs headless: the user isn't interrupted.",
     'To test a page after a change (click through it, check it works, look for errors), hand it to the jig-tester subagent (Agent tool, subagent_type "jig-tester") instead of doing it yourself: it uses Claude\'s browser on a small, cheap model. Start the dev server first, then give it the URL and exact steps and checks; it answers PASS/FAIL per check with screenshots. Do it yourself only for a quick look or when the user asks you to.',
     "Azure and Azure DevOps in Jig use the tenant picked in the top bar (an Azure CLI sign-in of its own; the user's own az login is the default). jig_azure_tenants lists them (which is active, user, domain, expired); jig_azure_switch_tenant switches when the user asks for another tenant or a task clearly needs one (the user approves). Never run az login or az logout to change it; when a sign-in has expired, ask the user to sign in again from the tenant menu in the top bar.",
+    // The tenant this chat's Claude Code process starts with (its AZURE_CONFIG_DIR, D-285); no tokens.
+    tenantContext(azureContext().tenant),
     "For work that should run on a schedule, use Claude Code routines (the RemoteTrigger tool); the user sees and manages them in Jig's Routines tab. Pages you publish with the Artifact tool can be opened in Jig from the chat.",
     ...(addonSummary() ? [`The user's Jig add-ons (switched on):\n${addonSummary()}`] : []),
     "Recommend Jig's add-ons when they fit, in the chat, briefly: when the user asks you to do something step by step that they're likely to do again (check the code, write release notes, user stories, test cases, a release, a deploy), do it, then offer once in one sentence to save it as a workflow (addon_workflows_save) so next time it's one click or one message. When an installed add-on already does what they ask, say so and where to find it. When they keep doing something no add-on covers, offer to build one (jig_request_build). Don't repeat an offer they declined in this chat.",

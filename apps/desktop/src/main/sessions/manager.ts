@@ -3,6 +3,7 @@ import { readdir, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import type { TenantTag } from "../../shared/azure";
 import { type ChatState, reduceEvent } from "../../shared/chat";
 import type {
   ChatAttachment,
@@ -77,6 +78,8 @@ export interface SessionManagerOptions {
     env: Record<string, string | undefined>;
     promptSuggestions?: boolean;
     fileCheckpoints?: boolean;
+    /** The Azure tenant `env` points at (recorded on the chat while its process runs). */
+    azureTenant?: TenantTag;
   };
   appendSystemPrompt: (meta: SessionMeta) => string;
   /** Changes in selected skills restart an idle process before the next message, preserving resume. */
@@ -173,7 +176,10 @@ export class SessionManager {
           const status = data.meta.status === "error" ? "error" : "idle";
           this.sessions.set(data.meta.id, {
             // Nor do its background tasks.
-            state: { meta: { ...data.meta, status, backgroundTasks: undefined }, items: data.items },
+            state: {
+              meta: { ...data.meta, status, backgroundTasks: undefined, azureTenant: undefined },
+              items: data.items,
+            },
             queue: data.queue,
             permissions: new Map(),
             loaded: true,
@@ -291,6 +297,12 @@ export class SessionManager {
     const meta = live.state.meta;
     const settings = this.options.engineSettings();
     live.configurationKey = this.options.configurationKey?.(meta);
+    // Which tenant this process runs `az` with; not a change of the chat (its time stays).
+    const tenant = settings.azureTenant;
+    if (tenant?.key !== meta.azureTenant?.key || tenant?.label !== meta.azureTenant?.label) {
+      live.state.meta = { ...live.state.meta, azureTenant: tenant };
+      this.emit(live, [{ op: "meta", meta: live.state.meta }]);
+    }
     const session = this.options.engine.start(
       {
         cwd: meta.cwd,
@@ -361,6 +373,11 @@ export class SessionManager {
       live.engine = undefined;
       // Background tasks ran in that Claude Code process: they're gone with it.
       if (live.state.meta.backgroundTasks?.length) this.setMeta(live, { backgroundTasks: undefined });
+      // The next process starts with the tenant active then.
+      if (live.state.meta.azureTenant) {
+        live.state.meta = { ...live.state.meta, azureTenant: undefined };
+        this.emit(live, [{ op: "meta", meta: live.state.meta }]);
+      }
       for (const [requestId, pending] of live.permissions) {
         pending.resolve({ behavior: "deny", message: "Session ended" });
         live.permissions.delete(requestId);

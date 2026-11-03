@@ -80,7 +80,8 @@ interface EngineSession {
   background tasks): `docs/reference/chat.md`.
 
 - A session = one Claude Code conversation in a project: `SessionMeta` (title, project, cwd, model,
-  permission mode, status, auth source, usage, cost, Claude Code's session id) and a transcript cache of
+  permission mode, status, auth source, usage, cost, Claude Code's session id; `azureTenant`, the Azure
+  tenant its running process started with, D-285) and a transcript cache of
   `ChatItem`s in `~/.jig/sessions/<id>.json` (last 3000 items; Claude Code keeps the full history).
 - The Claude Code process starts on the first message and is **resumed** with Claude Code's session id
   after Jig restarts. "Stop Claude Code process" ends it; the next message resumes.

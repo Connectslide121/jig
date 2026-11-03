@@ -3490,3 +3490,28 @@ the far right". The rest: Claude, on my own.
 - Claude: `jig_azure_tenants` (reads; `check` runs the same check) and `jig_azure_switch_tenant`
   (needs approval: it decides which credentials Jig's programs use). `jigContext` tells Claude not to
   switch with `az login`/`az logout` and to send the user to the menu for an expired sign-in.
+
+## D-285: Chats, terminals and scripts run with the tenant active when they start
+
+**Who:** Jon asked for it (phase 24, session 4: the active tenant's `AZURE_CONFIG_DIR` for new chats,
+terminals and scripts, `jigContext` naming tenant and user, a small label in a fixed slot when a chat or
+terminal started under another tenant). How: Claude, on my own.
+
+- **At start, not live.** A Claude Code process, a Jig terminal (scripts run in terminals, so they
+  follow too) and a `!` command get `withAzureEnv(sessionEnv(…))`: the existing API-key stripping, then
+  the active tenant's `AZURE_CONFIG_DIR`/`AZURE_EXTENSION_DIR` (nothing for your az login). A running
+  process keeps its environment; switching doesn't restart anything, because restarting would cut off
+  Claude's work or a dev server. The next Claude Code process of that chat (after Stop, a restart of
+  Jig, a skills change) starts with the tenant active then.
+- **Recorded on the item.** `SessionMeta.azureTenant` and `TerminalInfo.azureTenant` (`TenantTag`:
+  key and label) say which tenant it started with. A chat's is set when its process starts and cleared
+  when it ends (and on load), without touching `updatedAt`, so it never names a tenant no process uses.
+- **Shown only when it differs.** The chat header shows initials and the tenant's name at the right
+  end of its spacer (the spacer is the slot: nothing moves when it appears); a terminal tab shows the
+  initials right before the shell column, so the marks form one column and don't move when the close
+  button appears on hover. Tooltips say the tenant it uses and which one the top bar is on.
+- **Claude is told, never given tokens.** `jigContext` (the system prompt, built when the process
+  starts) has one line from `tenantContext` (`@jig/azure`): which tenant, its Entra name, domain and id,
+  and the signed-in user. When the user switches while the process runs, each message's context says
+  that `az` in this chat still uses the tenant it started with.
+

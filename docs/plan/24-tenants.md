@@ -100,9 +100,16 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 4 — Chats, terminals and scripts
 
-- [ ] New Claude Code sessions, Jig terminals and scripts get the active tenant's `AZURE_CONFIG_DIR`.
-- [ ] `jigContext` tells Claude which tenant and user are active.
-- [ ] A chat or terminal started under another tenant shows it (a small label, fixed slot).
+- [x] New Claude Code sessions, Jig terminals and scripts get the active tenant's `AZURE_CONFIG_DIR`
+      (`withAzureEnv` after the API-key stripping; `!` commands too). A running one keeps its tenant;
+      the chat's next process starts with the active one (D-285).
+- [x] `jigContext` tells Claude which tenant and user are active (`tenantContext`, no tokens), and a
+      message's context says when the user switched since the chat started.
+- [x] A chat or terminal started under another tenant shows it (a small label, fixed slot): initials
+      and name at the end of the chat header's spacer, initials before the terminal tab's shell column
+      (`SessionMeta.azureTenant`, `TerminalInfo.azureTenant`); `e2e/tenant-tags.spec.ts`.
+- [ ] Needs a real machine: `az account show` in a new chat, a terminal and a script with an added
+      tenant active; switch and check the old chat and terminal keep theirs and show the label.
 
 ## Session 5 — Tenant per project
 

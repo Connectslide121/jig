@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IPty } from "@lydell/node-pty";
+import type { TenantTag } from "../../shared/azure";
 import { JigError } from "../../shared/ipc";
 import type { TerminalInfo } from "../../shared/terminals";
 import { logger } from "../log";
@@ -22,6 +23,8 @@ export interface TerminalManagerOptions {
   platform?: string;
   shell: () => string;
   env: () => Record<string, string | undefined>;
+  /** The Azure tenant `env` points at, recorded on the terminal. */
+  tenant?: () => TenantTag;
   onData: (id: string, data: string) => void;
   onChange: (terminals: TerminalInfo[]) => void;
   /** A command typed into an interactive (non-private) terminal, for the activity log. */
@@ -109,6 +112,7 @@ export class TerminalManager {
       createdAt: new Date().toISOString(),
       private: input.private || undefined,
       sessionId: input.sessionId,
+      azureTenant: this.options.tenant?.(),
     };
     const live: Live = { info, buffer: "", pending: "", recent: "", altScreen: false };
     this.terminals.set(info.id, live);

@@ -3,6 +3,8 @@
  * (main/engine/normalize.ts) and reduces them into `ChatItem`s (shared/chat.ts). Documented in
  * docs/reference/engine.md.
  */
+
+import type { TenantTag } from "./azure";
 export const PERMISSION_MODES = ["default", "acceptEdits", "plan", "bypassPermissions"] as const;
 export type PermissionMode = (typeof PERMISSION_MODES)[number];
 
@@ -190,6 +192,8 @@ export interface SessionMeta {
   voice?: boolean;
   /** Drafts the notes of this Jig meeting (its id): its plan saves notes for review, nothing runs (D-268). */
   meetingNotes?: string;
+  /** The Azure tenant its running Claude Code process started with (none while no process runs). */
+  azureTenant?: TenantTag;
 }
 
 /** What restoring files to before a message changes (Claude Code's file checkpoints). */

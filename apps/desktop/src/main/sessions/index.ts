@@ -13,6 +13,7 @@ import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
 import { appWindows, focusJig } from "../appWindows";
+import { azureTag, withAzureEnv } from "../azure/env";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { jigContext, jigMcpServer, jigToolHandlers, turnContext } from "../engine/jigTools";
@@ -130,14 +131,16 @@ export function startSessions(): void {
       return {
         claudePath: engine.claudePath,
         allowApiKey: engine.allowApiKey,
+        // Claude's az runs with the active tenant's sign-in (D-285); API keys stay stripped.
         env: {
-          ...sessionEnv(process.env, engine.allowApiKey),
+          ...withAzureEnv(sessionEnv(process.env, engine.allowApiKey)),
           ...(engine.subagentModel ? { CLAUDE_CODE_SUBAGENT_MODEL: engine.subagentModel } : {}),
           // Off: Claude Code doesn't load your claude.ai connectors into chats (D-160).
           ...(engine.claudeAiConnectors ? {} : { ENABLE_CLAUDEAI_MCP_SERVERS: "false" }),
         },
         promptSuggestions: engine.promptSuggestions,
         fileCheckpoints: engine.fileCheckpoints,
+        azureTenant: azureTag(),
       };
     },
     plugins: (meta) => selectedSkillPlugins(meta.projectId),
@@ -402,7 +405,7 @@ export function runShellCommand(cwd: string, command: string): Promise<{ output:
         timeout: 120_000,
         maxBuffer: 16 * 1024 * 1024,
         windowsHide: true,
-        env: sessionEnv(process.env, getConfig().engine.allowApiKey) as NodeJS.ProcessEnv,
+        env: withAzureEnv(sessionEnv(process.env, getConfig().engine.allowApiKey)) as NodeJS.ProcessEnv,
       },
       (error, stdout, stderr) => {
         let output = [stdout, stderr]

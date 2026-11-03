@@ -464,7 +464,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
 6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–3 are done (host side, D-282; the
    top bar avatar switch with add/manage modals and Claude's tools, D-283; the views follow the
-   tenant, D-284). Next: session 4 (chats, terminals and scripts get the tenant).
+   tenant, D-284; chats, terminals and scripts start with it, D-285). Next: session 5 (tenant per
+   project).
 7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
@@ -480,9 +481,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   pipelines (its organisations setting is per tenant), Boards reloads and a board followed in another
   tenant shows a card "In tenant X" that switches to it, Releases' and Workflows' pipeline runs use the
   tenant and name it when they fail, and Project links → Add from Azure lists the tenant's
-  subscriptions. Add-ons use the same `az` (`api.azure.az`). Chats and terminals don't follow yet
-  (session 4). Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
-  links, a release pipeline and a workflow pipeline step with it.
+  subscriptions. Add-ons use the same `az` (`api.azure.az`). New chats, terminals and scripts run
+  `az` with the active tenant (D-285), and Claude is told which tenant and user that is; a chat or
+  terminal that was running when you switched keeps its tenant and shows its initials (the chat header
+  also its name) until it ends. Try it: start a chat and a terminal, switch tenant, look at the chat
+  header and the terminal tab. Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
+  links, a release pipeline, a workflow pipeline step, and `az account show` in a new chat, a terminal
+  and a script with it.
 
 - Speech (D-208): the mic button in the composer (or Ctrl/Cmd+Shift+Space) records; click again
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks

@@ -15,7 +15,9 @@ Code: `apps/desktop/src/main/terminals/` (ptys), `apps/desktop/src/main/scripts/
   that exits with the program's own exit code (`POWERSHELL_EXIT`; on its own PowerShell says 1).
 - The environment is Jig's own, with `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` removed unless API keys
   are allowed (the same rule as sessions), plus `TERM=xterm-256color`, `COLORTERM=truecolor`,
-  `TERM_PROGRAM=Jig`.
+  `TERM_PROGRAM=Jig`, and the active Azure tenant's `AZURE_CONFIG_DIR`/`AZURE_EXTENSION_DIR` (none for
+  your own az login). A terminal keeps the tenant it started with (`TerminalInfo.azureTenant`); its tab
+  shows the tenant's initials before the shell column while that isn't the active one (D-285).
 - Output is batched (16 ms) to the renderer; the last 400 000 characters are kept so a reloaded window
   can redraw (`terminals.buffer`).
 - Commands typed into interactive terminals are reported to the activity log (`terminal.command`),

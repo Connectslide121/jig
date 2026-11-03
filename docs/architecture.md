@@ -496,7 +496,13 @@ changes.
   (`JIG_EVENTS`), after host processes got the new tenant. Add-on UIs read it from `ctx.azure`.
   Pipelines and Boards key their caches and stored lists by tenant and reload; a board of another
   tenant shows a Switch card; Releases and Workflows name the tenant in failures; Azure links list
-  the tenant's subscriptions. Chats, terminals and scripts follow in phase 24 session 4.
+  the tenant's subscriptions.
+- Chats, terminals and scripts (D-285): a Claude Code process, a terminal (scripts run in one) and a
+  `!` command start with `withAzureEnv(sessionEnv(…))` (`main/azure/env.ts`: API keys stripped as
+  before, then the active tenant's environment) and keep it. `SessionMeta.azureTenant` (while the
+  process runs) and `TerminalInfo.azureTenant` record it; `features/azure/TenantTag.tsx` shows it in the
+  chat header and terminal tab only when it differs from the active tenant. `jigContext` names the
+  tenant and user (`tenantContext`), and a message's context says so when the user switched since.
 - Renderer (D-283): `features/azure` — the tenant avatar at the far right of the top bar (its menu
   switches; the Add and Manage modals hang off it), Settings → Azure, a store fed by
   `azure.tenantChanged`. Claude: `jig_azure_tenants` (reads) and `jig_azure_switch_tenant` (approval).
