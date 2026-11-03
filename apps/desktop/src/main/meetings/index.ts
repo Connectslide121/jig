@@ -554,6 +554,7 @@ export async function startMeetings(): Promise<void> {
       activeId,
       ringing: store.ringing(),
       records: store.records(),
+      folders: store.folders(),
       layout: store.layout(),
       lobbyView: store.lobbyView(),
       captionLanguage: store.captionLanguage(),
@@ -573,6 +574,31 @@ export async function startMeetings(): Promise<void> {
   handle("meetings.history", async () => {
     enabled();
     return past();
+  });
+  handle("meetings.folders", async () => {
+    enabled();
+    return store.folders();
+  });
+  handle("meetings.saveFolder", async ({ id, name }, ctx) => {
+    fromJig(ctx);
+    enabled();
+    const saved = await store.saveFolder(name, id).catch((error: Error) => {
+      throw new JigError("invalid_args", error.message);
+    });
+    changed();
+    return saved;
+  });
+  handle("meetings.deleteFolder", async ({ id }, ctx) => {
+    fromJig(ctx);
+    enabled();
+    await store.deleteFolder(id);
+    changed();
+  });
+  handle("meetings.moveToFolder", async ({ ids, place }, ctx) => {
+    fromJig(ctx);
+    enabled();
+    await store.moveToFolder(ids, place);
+    changed();
   });
   handle("meetings.mentions", async ({ query }) => {
     enabled();

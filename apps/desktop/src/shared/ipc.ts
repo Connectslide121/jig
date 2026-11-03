@@ -114,6 +114,20 @@ export interface HostMethods {
   "meetings.delete": { args: { id: string }; result: void };
   /** Past meetings, newest first, without the one in progress (the meeting history tab, D-250). */
   "meetings.history": { args: void; result: import("./meetings").MeetingRecord[] };
+  /** Your folders in the meeting history (D-295); series folders are worked out from the meetings. */
+  "meetings.folders": { args: void; result: import("./meetingFolders").MeetingFolder[] };
+  /** Makes a history folder, or renames one (`id`). */
+  "meetings.saveFolder": {
+    args: { id?: string; name: string };
+    result: import("./meetingFolders").MeetingFolder;
+  };
+  /** Deletes a folder; its meetings go back to their series' folder or to no folder. */
+  "meetings.deleteFolder": { args: { id: string }; result: void };
+  /** Moves meetings into a folder, out of every folder (`none`), or back to their series (`auto`). */
+  "meetings.moveToFolder": {
+    args: { ids: string[]; place: import("./meetingFolders").MeetingPlace };
+    result: void;
+  };
   /** Meetings for the chat's `@` picker, matching `query`; `mention` goes in the message. */
   "meetings.mentions": {
     args: { query: string };

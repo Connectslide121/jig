@@ -69,6 +69,11 @@ export interface MeetingRecord {
   aiTranslation?: string;
   /** Why Claude's last translation failed (cleared when one works again or the language changes). */
   translationError?: string;
+  /**
+   * The history folder you put it in (D-295): a folder's id, `null` when you took it out of every
+   * folder, missing to let it go to its recurring meeting's folder (`meetingFolders.ts`).
+   */
+  folder?: string | null;
 }
 /**
  * What the lobby asks the call window to do (D-292): check devices and join a meeting (an empty link
@@ -113,6 +118,8 @@ export interface MeetingOverview {
   /** Jig rings for Teams calls while it runs (the meeting window listens hidden). */
   ringing: boolean;
   records: MeetingRecord[];
+  /** Your meeting history folders (D-295). */
+  folders: import("./meetingFolders").MeetingFolder[];
   /** Where the live room's panels sit; the room uses the defaults until one is saved. */
   layout?: import("./meetingLayout").MeetingLayout;
 }

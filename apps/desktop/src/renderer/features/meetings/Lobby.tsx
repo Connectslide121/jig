@@ -3,6 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Folder,
+  FolderPlus,
   Link2,
   Phone,
   Plug,
@@ -12,8 +14,20 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { MeetingFolder } from "../../../shared/meetingFolders";
 import type { MeetingEvent, MeetingRecord } from "../../../shared/meetings";
-import { Badge, type BadgeTone, Button, cn, contextMenu, IconButton, Spinner } from "../../ui";
+import {
+  Badge,
+  type BadgeTone,
+  Button,
+  Collapse,
+  cn,
+  contextMenu,
+  IconButton,
+  type MenuEntry,
+  Spinner,
+} from "../../ui";
+import { FolderRow, useMeetingFolders } from "./folders";
 import { clock, dayAndTime, dayLabel, duration, startsIn } from "./format";
 
 export const STATUS: Record<MeetingRecord["status"], { label: string; tone: BadgeTone }> = {
@@ -45,6 +59,7 @@ export function Lobby({
   view,
   onView,
   records,
+  folders,
   loading,
   connected,
   onRefresh,
@@ -53,11 +68,14 @@ export function Lobby({
   onJoinLink,
   onOpen,
   onDelete,
+  onError,
 }: {
   events?: MeetingEvent[];
   view: "agenda" | "week";
   onView(view: "agenda" | "week"): void;
   records: MeetingRecord[];
+  /** Your history folders (D-295); recurring meetings get theirs by themselves. */
+  folders: MeetingFolder[];
   loading: boolean;
   connected: boolean;
   onRefresh(): void;
@@ -66,8 +84,24 @@ export function Lobby({
   onJoinLink(): void;
   onOpen(id: string): void;
   onDelete(id: string): void;
+  onError(message: string): void;
 }) {
   const now = useMinute();
+  const history = useMeetingFolders({
+    records,
+    folders,
+    onError: (what, message) => onError(`${what}: ${message}`),
+  });
+  const savedCard = (r: MeetingRecord) => (
+    <SavedCard
+      key={r.id}
+      record={r}
+      onOpen={onOpen}
+      onDelete={onDelete}
+      moveMenu={history.moveMenu(r)}
+      drag={history.dragProps(r)}
+    />
+  );
   const [weekOffset, setWeekOffset] = useState(0);
   const ended = (e: MeetingEvent) => new Date(e.end).getTime() <= now;
   const joinable = (events ?? []).filter((e) => !ended(e));
@@ -180,7 +214,15 @@ export function Lobby({
           </section>
         )}
         <section className="space-y-3">
-          <SectionHeading title="Meeting history" />
+          <SectionHeading title="Meeting history">
+            <IconButton
+              icon={FolderPlus}
+              size="sm"
+              label="New folder"
+              data-testid="lobby-new-folder"
+              onClick={() => void history.newFolder()}
+            />
+          </SectionHeading>
           {!records.length ? (
             <div className="h-28">
               <Placeholder
@@ -190,10 +232,56 @@ export function Lobby({
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
-              {records.map((r) => (
-                <SavedCard key={r.id} record={r} onOpen={onOpen} onDelete={onDelete} />
-              ))}
+            <div className="space-y-2">
+              {history.grouped.groups.map((g) => {
+                const open = history.isOpen(g.key);
+                return (
+                  <div
+                    key={g.key}
+                    {...history.folderTarget(g)}
+                    className={cn(
+                      "rounded-md border border-line bg-surface",
+                      history.dropOn === g.key && "bg-accent-soft",
+                    )}
+                    data-testid="lobby-folder"
+                  >
+                    <FolderRow
+                      group={g}
+                      open={open}
+                      onToggle={() => history.toggle(g.key)}
+                      menu={g.kind === "folder" ? history.folderMenu(g) : undefined}
+                      className="rounded-md"
+                      countClassName="w-10"
+                      trailingClassName="ml-1 w-7"
+                    />
+                    <Collapse open={open}>
+                      {g.records.length ? (
+                        <div className="grid grid-cols-2 gap-3 px-3 pt-1 pb-3 lg:grid-cols-3 2xl:grid-cols-4">
+                          {g.records.map(savedCard)}
+                        </div>
+                      ) : (
+                        <div className="flex h-10 items-center px-10 pb-1 text-xs text-hint">
+                          Drag meetings here
+                        </div>
+                      )}
+                    </Collapse>
+                  </div>
+                );
+              })}
+              <div
+                {...history.looseTarget}
+                className={cn("min-h-28 rounded-md", history.dropOn === "none" && "bg-accent-soft")}
+                data-testid="lobby-no-folder"
+              >
+                {history.grouped.groups.length > 0 && (
+                  <div className="flex h-8 items-center text-2xs font-medium uppercase tracking-wide text-hint">
+                    Not in a folder
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-4">
+                  {history.grouped.loose.map(savedCard)}
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -344,10 +432,16 @@ function SavedCard({
   record,
   onOpen,
   onDelete,
+  moveMenu,
+  drag,
 }: {
   record: MeetingRecord;
   onOpen(id: string): void;
   onDelete(id: string): void;
+  /** Where it can go in the history's folders (D-295). */
+  moveMenu: MenuEntry[];
+  /** Dragging it onto a folder. */
+  drag: React.HTMLAttributes<HTMLButtonElement> & { draggable: boolean };
 }) {
   const open = record.actions.filter((a) => !a.queued).length;
   return (
@@ -355,8 +449,10 @@ function SavedCard({
       type="button"
       aria-label={`Open ${record.title}`}
       onClick={() => onOpen(record.id)}
+      {...drag}
       onContextMenu={contextMenu([
         { label: "Open", icon: FileText, onSelect: () => onOpen(record.id) },
+        { label: "Move to folder", icon: Folder, submenu: moveMenu },
         { separator: true },
         { label: "Delete meeting…", icon: Trash2, danger: true, onSelect: () => onDelete(record.id) },
       ])}
@@ -379,9 +475,9 @@ function SavedCard({
           {record.endedAt ? ` · ${duration(record.startedAt, record.endedAt)}` : ""}
         </div>
       </div>
-      <div className="flex w-full items-center gap-3 text-xs text-hint">
-        <span className="flex items-center gap-1">
-          <FileText className="size-3.5" />
+      <div className="flex w-full items-center gap-3 whitespace-nowrap text-xs text-hint">
+        <span className="flex min-w-0 items-center gap-1 truncate">
+          <FileText className="size-3.5 shrink-0" />
           {record.captions.length} captions
         </span>
         <span className={cn("flex items-center gap-1", !record.notes && "invisible")}>

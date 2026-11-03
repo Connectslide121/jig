@@ -351,6 +351,8 @@ function LobbyWindow() {
             }}
             events={events}
             records={overview.records}
+            folders={overview.folders}
+            onError={setError}
             loading={pending === "calendar"}
             connected={connected}
             onRefresh={() => void refreshCalendar()}

@@ -112,3 +112,74 @@ test("Meeting history: a chat started from a meeting mentions it, and Claude rea
     await app.close();
   }
 });
+
+test("Meeting history: a recurring meeting gets its own folder, and you make folders and drag meetings in", async ({
+  jigHome,
+}) => {
+  const thread =
+    "https://teams.microsoft.com/l/meetup-join/19%3ameeting_ShopDaily%40thread.v2/0?context=%7b%7d";
+  const meeting = (id: string, title: string, at: string, joinUrl: string) => ({
+    id,
+    title,
+    joinUrl,
+    startedAt: at,
+    endedAt: at,
+    status: "ended",
+    capture: "Captions",
+    captions: [],
+    gaps: [],
+    notes: "",
+    actions: [],
+  });
+  await mkdir(join(jigHome, "addon-data"), { recursive: true });
+  await writeFile(
+    join(jigHome, "addon-data", "meetings.json"),
+    JSON.stringify({
+      records: [
+        meeting("1a2b3c4d-0000-4000-8000-000000000011", "Shop daily", "2026-02-11T09:00:00.000Z", thread),
+        meeting("1a2b3c4d-0000-4000-8000-000000000012", "Shop daily", "2026-02-10T09:00:00.000Z", thread),
+        meeting(
+          NEW,
+          "Contoso review",
+          "2026-02-09T09:00:00.000Z",
+          "https://teams.microsoft.com/l/meetup-join/x",
+        ),
+      ],
+    }),
+  );
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.getByTestId("topbar-meetings").click();
+    await page.getByTestId("meetings-open-history").click();
+    const history = page.getByTestId("meeting-history");
+    // The two occurrences share a Teams meeting thread: one series folder, opened on the newest.
+    const series = history.getByTestId("meeting-folder").filter({ hasText: "Shop daily" });
+    await expect(series.getByTestId("meeting-row")).toHaveCount(2);
+    await expect(history.getByTestId("meeting-no-folder")).toBeVisible();
+
+    await history.getByTestId("meeting-new-folder").click();
+    await page.getByRole("dialog").getByRole("textbox").fill("Customers");
+    await page.getByTestId("dialog-confirm").click();
+    const customers = history.getByTestId("meeting-folder").filter({ hasText: "Customers" });
+    await expect(customers).toContainText("Drag meetings here");
+
+    await history
+      .getByTestId("meeting-row")
+      .filter({ hasText: "Contoso review" })
+      .dragTo(customers.getByTestId("meeting-folder-row"));
+    await expect(customers.getByTestId("meeting-row")).toHaveCount(1);
+    const folders = (await hostCall(page, "meetings.folders")) as {
+      value: Array<{ id: string; name: string }>;
+    };
+    expect(folders.value.map((f) => f.name)).toEqual(["Customers"]);
+    const records = (await hostCall(page, "meetings.history")) as {
+      value: Array<{ id: string; folder?: string }>;
+    };
+    expect(records.value.find((r) => r.id === NEW)?.folder).toBe(folders.value[0]!.id);
+  } finally {
+    await app.close();
+  }
+});

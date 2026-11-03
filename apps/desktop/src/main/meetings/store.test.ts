@@ -115,4 +115,33 @@ describe("global meeting persistence", () => {
     expect(again.ringing()).toBe(false);
     expect(again.get(record.id).call).toEqual(call);
   });
+  it("keeps history folders: unique names, moving meetings, and deleting a folder frees its meetings", async () => {
+    const { store, file } = await setup();
+    const a = await store.create("https://teams.microsoft.com/l/meetup-join/one", "Standup");
+    await store.update(a.id, (r) => {
+      r.status = "ended";
+    });
+    const folder = await store.saveFolder("  Customer   calls ");
+    expect(folder.name).toBe("Customer calls");
+    await expect(store.saveFolder("customer CALLS")).rejects.toThrow("already a folder");
+    await expect(store.saveFolder("   ")).rejects.toThrow("name");
+    await store.moveToFolder([a.id], folder.id);
+    expect(store.get(a.id).folder).toBe(folder.id);
+    await store.moveToFolder([a.id], "none");
+    expect(store.get(a.id).folder).toBeNull();
+    await store.moveToFolder([a.id], "auto");
+    expect(store.get(a.id)).not.toHaveProperty("folder");
+    await expect(store.moveToFolder([a.id], "00000000-0000-4000-8000-000000000000")).rejects.toThrow(
+      "Folder",
+    );
+    await store.saveFolder("Customers", folder.id);
+    await store.moveToFolder([a.id], folder.id);
+    const next = new MeetingStore(file);
+    await next.load();
+    expect(next.folders()).toEqual([{ id: folder.id, name: "Customers" }]);
+    expect(next.get(a.id).folder).toBe(folder.id);
+    await next.deleteFolder(folder.id);
+    expect(next.folders()).toEqual([]);
+    expect(next.get(a.id)).not.toHaveProperty("folder");
+  });
 });

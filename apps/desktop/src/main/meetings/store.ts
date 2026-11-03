@@ -3,6 +3,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
+import { folderName, type MeetingFolder, type MeetingPlace, placeFolder } from "../../shared/meetingFolders";
 import { type MeetingLayout, normalizeMeetingLayout } from "../../shared/meetingLayout";
 import type { MeetingCall, MeetingCaption, MeetingRecord, MeetingSettings } from "../../shared/meetings";
 import { readJson, writeJson } from "../state/jsonStore";
@@ -62,7 +63,9 @@ const record = z.object({
     .optional(),
   aiTranslation: z.string().optional(),
   translationError: z.string().optional(),
+  folder: z.string().nullable().optional(),
 });
+const folder = z.object({ id: z.uuid(), name: z.string().min(1).max(120) });
 const schema = z.object({
   settings: z
     .object({ tenantId: z.string(), clientId: z.string(), endpoint: z.string() })
@@ -71,6 +74,7 @@ const schema = z.object({
   ringing: z.boolean().default(true),
   captionLanguage: z.string().default(""),
   records: z.array(record).default([]),
+  folders: z.array(folder).default([]),
   layout: z.unknown().optional(),
 });
 
@@ -232,6 +236,52 @@ export class MeetingStore {
       };
       this.data.records.unshift(next);
       return structuredClone(next);
+    });
+  }
+  /** Your history folders (D-295), by name. */
+  folders(): MeetingFolder[] {
+    return structuredClone(this.data.folders);
+  }
+  /** Makes a folder, or renames one (`id`). Names are unique, ignoring case. */
+  saveFolder(name: string, id?: string): Promise<MeetingFolder> {
+    return this.change(() => {
+      const clean = folderName(name);
+      if (!clean) throw new Error("Give the folder a name");
+      const taken = this.data.folders.find(
+        (f) => f.id !== id && f.name.toLowerCase() === clean.toLowerCase(),
+      );
+      if (taken) throw new Error(`There is already a folder called ${taken.name}`);
+      if (id) {
+        const found = this.data.folders.find((f) => f.id === id);
+        if (!found) throw new Error("Folder not found");
+        found.name = clean;
+        return structuredClone(found);
+      }
+      const made = { id: randomUUID(), name: clean };
+      this.data.folders.push(made);
+      return structuredClone(made);
+    });
+  }
+  /** Deletes a folder; its meetings go back to where they'd be on their own (their series, or none). */
+  deleteFolder(id: string): Promise<void> {
+    return this.change(() => {
+      if (!this.data.folders.some((f) => f.id === id)) throw new Error("Folder not found");
+      this.data.folders = this.data.folders.filter((f) => f.id !== id);
+      for (const r of this.data.records) if (r.folder === id) delete r.folder;
+    });
+  }
+  /** Puts meetings in a folder, out of every folder, or back to their series (`MeetingPlace`). */
+  moveToFolder(ids: string[], place: MeetingPlace): Promise<void> {
+    return this.change(() => {
+      if (place !== "none" && place !== "auto" && !this.data.folders.some((f) => f.id === place))
+        throw new Error("Folder not found");
+      const next = placeFolder(place);
+      for (const id of ids) {
+        const r = this.data.records.find((x) => x.id === id);
+        if (!r) throw new Error("Meeting not found");
+        if (next === undefined) delete r.folder;
+        else r.folder = next;
+      }
     });
   }
   update(id: string, fn: (record: MeetingRecord) => void): Promise<void> {

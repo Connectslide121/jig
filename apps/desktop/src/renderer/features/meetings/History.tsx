@@ -2,6 +2,8 @@ import {
   Copy,
   Download,
   FileText,
+  Folder,
+  FolderPlus,
   History as HistoryIcon,
   MessageSquare,
   MoreHorizontal,
@@ -11,14 +13,17 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { meetingMention } from "../../../../../../addons/meetings/lib/meeting";
+import type { MeetingFolder } from "../../../shared/meetingFolders";
 import type { MeetingRecord } from "../../../shared/meetings";
 import { copyText } from "../../lib/clipboard";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import {
   Button,
+  Collapse,
   CountBadge,
   cn,
   confirmDialog,
+  contextMenu,
   Empty,
   IconButton,
   type MenuEntry,
@@ -35,6 +40,7 @@ import { notify } from "../../workbench/toasts";
 import { ProjectSwatch } from "../projects/colors";
 import { newSession } from "../sessions/actions";
 import { Review } from "./dialogs";
+import { FolderRow, useMeetingFolders } from "./folders";
 import { dayAndTime, duration } from "./format";
 import { NotesPanel, TranscriptPanel } from "./Panels";
 
@@ -84,12 +90,41 @@ function MeetingHistory({ params }: TabProps) {
   }, [load]);
   useHostEvent("meetings.changed", () => void load());
 
+  const [folders, setFolders] = useState<MeetingFolder[]>([]);
+  const loadFolders = useCallback(async () => {
+    setFolders(await call("meetings.folders").catch(() => []));
+  }, []);
+  useEffect(() => {
+    void loadFolders();
+  }, [loadFolders]);
+  useHostEvent("meetings.changed", () => void loadFolders());
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!records || !q) return records ?? [];
     return records.filter((r) => r.title.toLowerCase().includes(q) || r.notes.toLowerCase().includes(q));
   }, [records, query]);
+  const searching = query.trim() !== "";
   const record = records?.find((r) => r.id === selected) ?? shown[0];
+  const folderState = useMeetingFolders({
+    records: shown,
+    folders,
+    searching,
+    selectedId: record?.id,
+    onError: (title, message) => notify({ tone: "danger", title, message }),
+  });
+  const {
+    grouped,
+    isOpen,
+    toggle,
+    dropOn,
+    folderTarget,
+    looseTarget,
+    dragProps,
+    newFolder,
+    folderMenu,
+    moveMenu,
+  } = folderState;
 
   const run = async (what: string, work: () => Promise<void>, kind?: "notes" | "queue") => {
     setBusy(kind);
@@ -152,6 +187,7 @@ function MeetingHistory({ params }: TabProps) {
       icon: MessageSquare,
       onSelect: () => void copyText(meetingMention(r)),
     },
+    { label: "Move to folder", icon: Folder, testId: "meeting-move", submenu: moveMenu(r) },
     { separator: true },
     { label: "Rename…", icon: Pencil, testId: "meeting-rename", onSelect: () => void rename(r) },
     { label: "Delete…", icon: Trash2, danger: true, onSelect: () => void remove(r) },
@@ -180,26 +216,90 @@ function MeetingHistory({ params }: TabProps) {
         <div className="flex min-h-0 flex-1">
           <Pane id="jig.meetings.list" edge="right" defaultSize={300} min={220} max={520}>
             <div className="flex h-full min-h-0 flex-col border-r border-line">
-              <div className="flex h-11 shrink-0 items-center px-3">
-                <SearchInput
-                  placeholder="Search meetings"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onClear={() => setQuery("")}
+              <div className="flex h-11 shrink-0 items-center gap-1 pl-3 pr-2">
+                <div className="min-w-0 flex-1">
+                  <SearchInput
+                    placeholder="Search meetings"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onClear={() => setQuery("")}
+                  />
+                </div>
+                <IconButton
+                  icon={FolderPlus}
+                  size="sm"
+                  label="New folder"
+                  data-testid="meeting-new-folder"
+                  onClick={() => void newFolder()}
                 />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto" data-testid="meeting-list">
                 {!shown.length ? (
                   <div className="px-4 py-3 text-xs text-muted">No meeting matches.</div>
                 ) : (
-                  shown.map((r) => (
-                    <MeetingRow
-                      key={r.id}
-                      record={r}
-                      active={r.id === record?.id}
-                      onSelect={() => setSelected(r.id)}
-                    />
-                  ))
+                  <>
+                    {grouped.groups.map((g) => {
+                      const opened = isOpen(g.key);
+                      return (
+                        <div
+                          key={g.key}
+                          {...folderTarget(g)}
+                          className={cn(dropOn === g.key && "bg-accent-soft")}
+                          data-testid="meeting-folder"
+                        >
+                          <FolderRow
+                            group={g}
+                            open={opened}
+                            onToggle={() => toggle(g.key)}
+                            menu={g.kind === "folder" ? folderMenu(g) : undefined}
+                          />
+                          <Collapse open={opened}>
+                            {g.records.length ? (
+                              g.records.map((r) => (
+                                <MeetingRow
+                                  key={r.id}
+                                  record={r}
+                                  nested
+                                  active={r.id === record?.id}
+                                  onSelect={() => setSelected(r.id)}
+                                  menu={() => more(r)}
+                                  drag={dragProps(r)}
+                                />
+                              ))
+                            ) : (
+                              <div className="flex h-9 items-center pl-10 pr-3 text-xs text-hint">
+                                Drag meetings here
+                              </div>
+                            )}
+                          </Collapse>
+                        </div>
+                      );
+                    })}
+                    {grouped.groups.length > 0 && (
+                      <div
+                        {...looseTarget}
+                        className={cn(
+                          "flex h-8 items-center px-3 text-2xs font-medium uppercase tracking-wide text-hint",
+                          dropOn === "none" && "bg-accent-soft",
+                        )}
+                        data-testid="meeting-no-folder"
+                      >
+                        Not in a folder
+                      </div>
+                    )}
+                    <div {...looseTarget} className={cn("min-h-12", dropOn === "none" && "bg-accent-soft")}>
+                      {grouped.loose.map((r) => (
+                        <MeetingRow
+                          key={r.id}
+                          record={r}
+                          active={r.id === record?.id}
+                          onSelect={() => setSelected(r.id)}
+                          menu={() => more(r)}
+                          drag={dragProps(r)}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -287,21 +387,32 @@ const when = (r: MeetingRecord) =>
 function MeetingRow({
   record,
   active,
+  nested,
   onSelect,
+  menu,
+  drag,
 }: {
   record: MeetingRecord;
   active: boolean;
+  /** Inside a folder: indented past the folder's chevron. */
+  nested?: boolean;
   onSelect(): void;
+  /** Right-click: the meeting's menu (move to a folder, rename, …). */
+  menu?: () => MenuEntry[];
+  drag?: React.HTMLAttributes<HTMLButtonElement> & { draggable: boolean };
 }) {
   const open = record.actions.filter((a) => !a.queued).length;
   return (
     <button
       type="button"
       onClick={onSelect}
+      onContextMenu={menu ? contextMenu(menu) : undefined}
+      {...drag}
       data-testid="meeting-row"
       aria-current={active || undefined}
       className={cn(
-        "flex h-12 w-full items-center gap-2 px-3 text-left hover:bg-raised",
+        "flex h-12 w-full items-center gap-2 pr-3 text-left hover:bg-raised",
+        nested ? "pl-10" : "pl-3",
         active && "bg-raised",
       )}
     >
