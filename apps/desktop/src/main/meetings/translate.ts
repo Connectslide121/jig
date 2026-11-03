@@ -1,14 +1,18 @@
 import { homedir } from "node:os";
+import { aiChoice } from "../../shared/aiFeatures";
 import type { MeetingCaption } from "../../shared/meetings";
 import { getConfig } from "../config";
 import { getEngine } from "../engine";
 import { type Completer, sessionEnv } from "../engine/types";
+import { oneShot } from "../providers";
 
 /**
  * Claude translates live captions when Teams can't (D-277): Teams' own translation needs Teams
  * Premium. Each finished caption goes, in order, to one warm Claude Code process with no tools
  * (the code completion's `completer`), on a fast model. Only while you have picked a language, and
- * only for the meeting you're in; nothing else runs in the background.
+ * only for the meeting you're in; nothing else runs in the background. With ChatGPT picked in
+ * Settings → AI features (D-297) each caption is one `codex exec` call instead (Codex has no warm
+ * process), so translations come slower.
  */
 
 export const TRANSLATE_INSTRUCTIONS = `You translate live meeting captions for the person reading them.
@@ -67,7 +71,15 @@ export class CaptionTranslator {
     this.chain = this.chain
       .then(async () => {
         if (generation !== this.generation) return;
-        const answer = await this.claude().ask(translationPrompt(caption.text, language));
+        const { provider, model } = aiChoice(getConfig(), "meetingTranslation");
+        const prompt = translationPrompt(caption.text, language);
+        const answer =
+          provider === "claude"
+            ? await this.claude(model).ask(prompt)
+            : await oneShot(provider, model, prompt, 60_000, {
+                cwd: homedir(),
+                system: TRANSLATE_INSTRUCTIONS,
+              });
         if (generation !== this.generation) return;
         const text = cleanTranslation(answer);
         if (!text) return;
@@ -91,15 +103,15 @@ export class CaptionTranslator {
     this.completer = undefined;
   }
 
-  private claude(): Completer {
-    const { meetings, engine } = getConfig();
-    if (this.completer?.model !== meetings.translationModel) {
+  private claude(model: string): Completer {
+    const { engine } = getConfig();
+    if (this.completer?.model !== model) {
       this.completer?.value.close();
       this.completer = {
-        model: meetings.translationModel,
+        model,
         value: getEngine().completer({
           cwd: homedir(),
-          model: meetings.translationModel,
+          model,
           appendSystemPrompt: TRANSLATE_INSTRUCTIONS,
           env: sessionEnv(process.env, engine.allowApiKey),
           claudePath: engine.claudePath,

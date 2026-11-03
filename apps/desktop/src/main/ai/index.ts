@@ -1,8 +1,7 @@
 import { JigError } from "../../shared/ipc";
 import { addonService } from "../addons";
-import { getConfig } from "../config";
 import { handle } from "../ipc/router";
-import { oneShot } from "../providers";
+import { featureOneShot } from "../providers";
 import { jigHome } from "../state/paths";
 
 /** Longest prompt an add-on may send (about 50k tokens): diffs are cut before this. */
@@ -24,24 +23,18 @@ export function checkAiAccess(
  * turn: it can only answer, never change anything). Counts against the user's plan like a chat.
  */
 export function registerAiHandlers(): void {
-  handle("ai.ask", async ({ addonId, prompt, cwd, quick }) => {
+  handle("ai.ask", async ({ addonId, prompt, cwd, quick, feature }) => {
     const addon = addonService()
       .list()
       .find((a) => a.id === addonId);
     checkAiAccess(addon, addonId);
     if (!prompt.trim()) throw new JigError("invalid_args", "Empty prompt");
     if (prompt.length > MAX_AI_PROMPT) throw new JigError("invalid_args", "The prompt is too long");
-    const { engine } = getConfig();
-    const answer = await oneShot(
-      "claude",
-      quick ? engine.quickModel : engine.helperModel,
-      prompt,
-      undefined,
-      {
-        cwd: cwd || jigHome(),
-        system: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench around Claude Code). Answer with exactly what was asked, without preamble.`,
-      },
-    );
-    return answer.trim();
+    // The add-on's own row in Settings → AI features (built-in add-ons), else the add-ons' rows (D-297).
+    const answer = await featureOneShot(feature ?? (quick ? "addonQuick" : "addonHelper"), prompt, {
+      cwd: cwd || jigHome(),
+      system: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench). Answer with exactly what was asked, without preamble.`,
+    });
+    return answer.text.trim();
   });
 }

@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
+import { providerName } from "../../shared/aiFeatures";
 import { JigError } from "../../shared/ipc";
 import type { Tour } from "../../shared/tour";
 import { git } from "../addons/repo";
-import { getConfig } from "../config";
-import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
+import { featureOneShot } from "../providers";
 import { parseTour, splitDiff, TOUR_DIFF_LIMIT, tourPrompt } from "./tour";
 
 /** Tours of this run of Jig (they're cheap to make again). */
@@ -39,16 +39,17 @@ export function registerTourHandlers(): void {
     const { root, diff } = await changesOf(cwd);
     if (!diff) throw new JigError("invalid_args", "There are no uncommitted changes to walk through");
     const diffs = splitDiff(diff);
-    const { engine } = getConfig();
-    const answer = await getEngine().oneShot(tourPrompt(diff.slice(0, TOUR_DIFF_LIMIT), focus), {
+    const answer = await featureOneShot("tour", tourPrompt(diff.slice(0, TOUR_DIFF_LIMIT), focus), {
       cwd: root,
-      model: engine.defaultModel,
-      appendSystemPrompt: "You explain code changes clearly and briefly. Reply with only the JSON asked for.",
-      env: sessionEnv(process.env, engine.allowApiKey),
-      claudePath: engine.claudePath,
+      system: "You explain code changes clearly and briefly. Reply with only the JSON asked for.",
       timeoutMs: 300_000,
     });
-    const parsed = parseTour(answer, Object.keys(diffs));
+    let parsed: ReturnType<typeof parseTour>;
+    try {
+      parsed = parseTour(answer.text, Object.keys(diffs), providerName(answer.provider));
+    } catch (error) {
+      throw new JigError("bad_answer", (error as Error).message);
+    }
     const tour: Tour = {
       id: randomBytes(6).toString("hex"),
       cwd: root,

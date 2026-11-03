@@ -37,8 +37,16 @@ const VerdictSchema = z.object({
     .default([]),
 });
 
-/** Claude's answer as a verdict (the first JSON object in it); a plain-text answer becomes the summary. */
-export function parseVerdict(answer: string, count: number, at = new Date().toISOString()): AttemptVerdict {
+/**
+ * The model's answer as a verdict (the first JSON object in it). An answer that isn't that JSON picks no
+ * attempt and is shown as written, saying so (`who`: "Claude", "ChatGPT"), D-297.
+ */
+export function parseVerdict(
+  answer: string,
+  count: number,
+  at = new Date().toISOString(),
+  who = "Claude",
+): AttemptVerdict {
   const json = /\{[\s\S]*\}/.exec(answer)?.[0];
   try {
     const v = VerdictSchema.parse(JSON.parse(json ?? ""));
@@ -50,6 +58,13 @@ export function parseVerdict(answer: string, count: number, at = new Date().toIS
       at,
     };
   } catch {
-    return { summary: answer.trim() || "Claude didn't give a verdict.", notes: [], at };
+    const text = answer.trim();
+    return {
+      summary: text
+        ? `${who}'s answer wasn't in the form Jig asked for, so no attempt is picked. It said: ${text}`
+        : `${who} didn't give a verdict.`,
+      notes: [],
+      at,
+    };
   }
 }

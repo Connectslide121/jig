@@ -203,6 +203,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
           prompt,
           cwd: options.cwd,
           quick: options.quick,
+          feature: options.feature,
         }) as Promise<string>;
       },
       async tour(cwd, options = {}) {

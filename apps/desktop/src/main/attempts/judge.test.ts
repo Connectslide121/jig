@@ -50,9 +50,12 @@ describe("judging attempts", () => {
     });
     expect(parseVerdict('{"winner": 7, "summary": "s"}', 2, "t").winner).toBeUndefined();
     expect(parseVerdict("Attempt 1 is better.", 2, "t")).toEqual({
-      summary: "Attempt 1 is better.",
+      summary:
+        "Claude's answer wasn't in the form Jig asked for, so no attempt is picked. It said: Attempt 1 is better.",
       notes: [],
       at: "t",
     });
+    expect(parseVerdict("", 2, "t", "ChatGPT").summary).toBe("ChatGPT didn't give a verdict.");
+    expect(parseVerdict('{"winner": "two"}', 2, "t", "ChatGPT").summary).toMatch(/^ChatGPT's answer wasn't/);
   });
 });

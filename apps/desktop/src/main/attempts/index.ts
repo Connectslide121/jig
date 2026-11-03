@@ -1,6 +1,7 @@
+import { providerName } from "../../shared/aiFeatures";
 import { getConfig } from "../config";
-import { getEngine, sessionEnv } from "../engine";
 import { emit, handle } from "../ipc/router";
+import { featureOneShot } from "../providers";
 import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { AttemptService } from "./service";
@@ -29,16 +30,13 @@ export function startAttempts(): void {
       }),
     send: (id, text) => sessionManager().send(id, text),
     stop: (id) => sessionManager().stopProcess(id),
-    ask: (prompt, cwd) => {
-      const { engine } = getConfig();
-      return getEngine().oneShot(prompt, {
+    ask: async (prompt, cwd) => {
+      const r = await featureOneShot("attemptsJudge", prompt, {
         cwd,
-        model: engine.defaultModel,
-        appendSystemPrompt: JUDGE_INSTRUCTIONS,
-        env: sessionEnv(process.env, engine.allowApiKey),
-        claudePath: engine.claudePath,
+        system: JUDGE_INSTRUCTIONS,
         timeoutMs: 300_000,
       });
+      return { text: r.text, provider: providerName(r.provider) };
     },
     onChange: (run) => emit("attempts.changed", run),
   });

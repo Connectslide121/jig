@@ -1,5 +1,6 @@
 import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
+import { ADDON_AI_FEATURES } from "../../shared/aiFeatures";
 import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
@@ -254,6 +255,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     prompt: z.string().max(200_000),
     cwd: path.optional(),
     quick: z.boolean().optional(),
+    feature: z.enum(ADDON_AI_FEATURES).optional(),
   }),
   "attempts.start": z.object({
     projectId: id,

@@ -1,4 +1,18 @@
 import { z } from "zod";
+import { AI_FEATURE_IDS, type AiFeatureId } from "./aiFeatures";
+import { AI_PROVIDERS } from "./providers";
+
+/** One AI feature's provider and model (D-297). */
+const aiChoiceSchema = () =>
+  z
+    .object({
+      provider: z.enum(AI_PROVIDERS).default("claude"),
+      model: z.string().max(100).default(""),
+    })
+    .prefault({});
+const aiChoices = Object.fromEntries(AI_FEATURE_IDS.map((id) => [id, aiChoiceSchema()])) as {
+  [K in AiFeatureId]: ReturnType<typeof aiChoiceSchema>;
+};
 
 /**
  * User settings, stored in `~/.jig/config.json`. Every field has a default so a missing or partial
@@ -55,6 +69,12 @@ export const ConfigSchema = z.object({
       claudeAiConnectors: z.boolean().default(false),
     })
     .prefault({}),
+  /**
+   * Which provider and model each simple AI feature runs on (D-297; ids and labels in
+   * shared/aiFeatures.ts). `model: ""` = the model the feature used before (Claude), or Codex's
+   * default (ChatGPT). Protected: it decides which plan pays.
+   */
+  ai: z.object(aiChoices).prefault({}),
   skills: z
     .object({
       /** Jig's bundled skills only. Missing entries are enabled for every project. */
@@ -276,6 +296,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * commands Jig runs (updates), and where add-on code comes from (the gallery's sources). D-077.
  */
 export const PROTECTED_SETTINGS = [
+  "ai",
   "engine.claudePath",
   "engine.allowApiKey",
   "editor.claudeCompletion",

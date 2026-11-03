@@ -24,7 +24,8 @@ export interface AttemptDeps {
   send(sessionId: string, text: string): Promise<void>;
   stop(sessionId: string): Promise<void>;
   /** A one-shot question to Claude (no tools) through Claude Code. */
-  ask(prompt: string, cwd: string): Promise<string>;
+  /** One answer on the provider picked for Compare attempts; `provider` names it in messages. */
+  ask(prompt: string, cwd: string): Promise<string | { text: string; provider: string }>;
   onChange(run: AttemptRun): void;
 }
 
@@ -150,10 +151,11 @@ export class AttemptService {
     const run = await this.get(id);
     const changes = await this.changes(id);
     const diffs = await Promise.all(run.attempts.map((a) => attemptDiff(a.worktree, run.base)));
-    const verdict = parseVerdict(
-      await this.deps.ask(judgePrompt(run, changes, diffs), run.repo),
-      run.attempts.length,
-    );
+    const answer = await this.deps.ask(judgePrompt(run, changes, diffs), run.repo);
+    const verdict =
+      typeof answer === "string"
+        ? parseVerdict(answer, run.attempts.length)
+        : parseVerdict(answer.text, run.attempts.length, undefined, answer.provider);
     // Keep or Discard may have finished the run while Claude was judging: don't bring it back.
     const now = await this.get(id);
     if (now.status === "running") await this.save({ ...now, verdict });

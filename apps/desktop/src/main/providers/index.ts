@@ -1,16 +1,25 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { type AiFeatureId, aiChoice } from "../../shared/aiFeatures";
 import type { ModelInfo } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import { type AiProvider, CHATGPT_FALLBACK_MODELS } from "../../shared/providers";
+import { type AiProvider, CHATGPT_FALLBACK_MODELS, type ProviderStatus } from "../../shared/providers";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
+import { execTool } from "../setup/checks";
 import { jigHome } from "../state/paths";
 import { makeWhich } from "../terminals/shell";
-import { codexExecArgs, findCodex, parseCodexExec, parseCodexModels } from "./codex";
+import {
+  codexExecArgs,
+  codexSignInText,
+  findCodex,
+  parseCodexExec,
+  parseCodexLoginStatus,
+  parseCodexModels,
+} from "./codex";
 
 /**
  * Providers for Jig's non-chat AI calls (D-294): one text in, one text out, no tools. `claude` goes
@@ -168,6 +177,43 @@ export async function providerModels(provider: AiProvider): Promise<ModelInfo[]>
   return models.length ? models : CHATGPT_FALLBACK_MODELS;
 }
 
+/** Whether each provider can answer now: Claude always (Claude Code reports its own sign-in); ChatGPT
+ * when the Codex CLI is installed and signed in (`codex login status`; only yes/no is kept). */
+export async function providerStatus(): Promise<ProviderStatus[]> {
+  const claude: ProviderStatus = { provider: "claude", ready: true, detail: "Claude Code" };
+  if (getEngine().kind === "fake")
+    return [claude, { provider: "chatgpt", ready: true, detail: "the fake engine" }];
+  const binary = codexBinary();
+  if (!binary)
+    return [claude, { provider: "chatgpt", ready: false, detail: "The Codex CLI isn't installed." }];
+  const r = await execTool(binary, ["login", "status"]);
+  const signIn = parseCodexLoginStatus(`${r.stdout}
+${r.stderr}`);
+  return [
+    claude,
+    {
+      provider: "chatgpt",
+      ready: signIn?.loggedIn === true,
+      detail: codexSignInText(signIn),
+    },
+  ];
+}
+
+/**
+ * Runs one of Jig's AI features on the provider and model picked for it in Settings → AI features
+ * (D-297). Returns the answer and who gave it, for messages about it.
+ */
+export async function featureOneShot(
+  feature: AiFeatureId,
+  prompt: string,
+  extras: OneShotExtras & { timeoutMs?: number } = {},
+): Promise<{ text: string; provider: AiProvider }> {
+  const { provider, model } = aiChoice(getConfig(), feature);
+  const text = await oneShot(provider, model, prompt, extras.timeoutMs, extras);
+  return { text, provider };
+}
+
 export function registerProviderHandlers(): void {
   handle("ai.models", ({ provider }) => providerModels(provider));
+  handle("ai.providers", () => providerStatus());
 }

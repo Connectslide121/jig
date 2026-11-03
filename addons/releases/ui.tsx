@@ -505,10 +505,13 @@ function PrepareCard({
     try {
       const answer = await ctx.ai.ask(
         releasePrompt({ repo: name, current: data.latest?.version, version, policy, commits, date: today() }),
-        { cwd: data.path },
+        { cwd: data.path, feature: "releaseNotes" },
       );
       const d = parseDraft(answer);
-      if (!d) throw new Error("Claude's answer wasn't a draft. Try again.");
+      if (!d)
+        throw new Error(
+          "The answer wasn't a draft. Try again, or pick another model in Settings → AI features.",
+        );
       if (d.bump && d.bump !== suggestion.bump && policy.scheme === "semver" && !suggestion.baseline)
         setBump(d.bump);
       setReason(d.reason);

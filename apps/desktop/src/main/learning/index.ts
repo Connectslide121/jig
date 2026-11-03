@@ -7,10 +7,11 @@ import { addonService } from "../addons";
 import { buildService } from "../builder";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { card } from "../configure/tools";
-import { getEngine, sessionEnv } from "../engine";
+import { getEngine } from "../engine";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { featureOneShot } from "../providers";
 import { sessionManager } from "../sessions";
 import { jigHome, paths } from "../state/paths";
 import { ActivityLog, isExcluded } from "./activity";
@@ -91,16 +92,8 @@ export async function startLearning(): Promise<void> {
     recording: () => getConfig().learning.recording,
     catalog: (usage) => addonService().catalog(usage),
     features: featuresText,
-    reflect: (prompt) => {
-      const { engine, learning } = getConfig();
-      return getEngine().oneShot(prompt, {
-        cwd: jigHome(),
-        model: learning.model,
-        appendSystemPrompt: REFLECTION_INSTRUCTIONS,
-        env: sessionEnv(process.env, engine.allowApiKey),
-        claudePath: engine.claudePath,
-      });
-    },
+    reflect: async (prompt) =>
+      (await featureOneShot("learning", prompt, { cwd: jigHome(), system: REFLECTION_INSTRUCTIONS })).text,
     build: async (s) =>
       (await buildService().start({ goal: s.goal, origin: "suggestion", targetAddonId: s.addonId })).id,
     onChange: (state) => emit("learning.changed", state),

@@ -29,19 +29,30 @@ const TourSchema = z.object({
   ),
 });
 
-/** Claude's tour, keeping only steps about files that are in the diff. */
+/**
+ * The model's tour, keeping only steps about files that are in the diff. An answer that isn't the
+ * JSON asked for throws a plain message naming who gave it (`who`: "Claude", "ChatGPT"), D-297.
+ */
 export function parseTour(
   answer: string,
   files: string[],
+  who = "Claude",
 ): { title: string; overview: string; steps: TourStep[] } {
   const json = /\{[\s\S]*\}/.exec(answer)?.[0];
-  const parsed = TourSchema.parse(JSON.parse(json ?? "{}"));
+  let parsed: z.infer<typeof TourSchema>;
+  try {
+    parsed = TourSchema.parse(JSON.parse(json ?? ""));
+  } catch {
+    throw new Error(
+      `${who}'s answer wasn't the tour Jig asked for. Try again, or pick another model in Settings → AI features.`,
+    );
+  }
   const known = new Set(files);
   const steps = parsed.steps
     .map((s) => ({ ...s, file: s.file.replace(/^[ab]\//, "") }))
     .filter((s) => known.has(s.file))
     .map((s) => ({ title: s.title, file: s.file, line: s.line ?? undefined, explanation: s.explanation }));
-  if (steps.length === 0) throw new Error("Claude's tour didn't refer to any changed file");
+  if (steps.length === 0) throw new Error(`${who}'s tour didn't refer to any changed file`);
   return { title: parsed.title, overview: parsed.overview, steps };
 }
 

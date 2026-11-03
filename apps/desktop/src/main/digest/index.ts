@@ -1,9 +1,8 @@
 import { basename } from "node:path";
 import { git } from "../addons/repo";
-import { getConfig } from "../config";
-import { getEngine, sessionEnv } from "../engine";
 import { handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { featureOneShot } from "../providers";
 import { sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
 import { type ChatFacts, periodStart, type RepoFacts, standupPrompt } from "./digest";
@@ -55,13 +54,9 @@ export function registerDigestHandlers(): void {
         turns: m.turns,
         status: m.status,
       }));
-    const { engine } = getConfig();
-    const text = await getEngine().oneShot(standupPrompt(since, repos, chats), {
+    const { text } = await featureOneShot("standup", standupPrompt(since, repos, chats), {
       cwd: jigHome(),
-      model: engine.defaultModel,
-      appendSystemPrompt: "You write short, factual standup updates. Reply with only the update.",
-      env: sessionEnv(process.env, engine.allowApiKey),
-      claudePath: engine.claudePath,
+      system: "You write short, factual standup updates. Reply with only the update.",
     });
     return { text: text.trim(), since: since.toISOString(), repos: repos.length, chats: chats.length };
   });

@@ -11,6 +11,7 @@
 import type { AddonSearchQuery, AddonSearchResult, AddonTarget, JigEventName } from "@jig/sdk";
 import type { SkillInfo } from "./about";
 import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./addons";
+import type { AddonAiFeature } from "./aiFeatures";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
 import type { TenantsState } from "./azure";
@@ -52,7 +53,7 @@ import type {
 import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
-import type { AiProvider } from "./providers";
+import type { AiProvider, ProviderStatus } from "./providers";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
@@ -309,9 +310,14 @@ export interface HostMethods {
   "attempts.discard": { args: { id: string }; result: AttemptRun };
   "attempts.repoDirty": { args: { id: string }; result: boolean };
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
-  "ai.ask": { args: { addonId: string; prompt: string; cwd?: string; quick?: boolean }; result: string };
+  "ai.ask": {
+    args: { addonId: string; prompt: string; cwd?: string; quick?: boolean; feature?: AddonAiFeature };
+    result: string;
+  };
   /** The models an AI provider offers for one-shot features (D-294): Claude Code's, or Codex's list. */
   "ai.models": { args: { provider: AiProvider }; result: ModelInfo[] };
+  /** Whether Claude and ChatGPT (the Codex CLI, signed in) can answer now, D-297. */
+  "ai.providers": { args: void; result: ProviderStatus[] };
   "about.skills": { args: void; result: SkillInfo[] };
   /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "engine.models": { args: void; result: ModelInfo[] };

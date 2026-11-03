@@ -547,7 +547,11 @@ function CommitBox({
         });
         return;
       }
-      const answer = await ctx.ai.ask(commitMessagePrompt(c), { cwd: project.path, quick: true });
+      const answer = await ctx.ai.ask(commitMessagePrompt(c), {
+        cwd: project.path,
+        quick: true,
+        feature: "commitMessage",
+      });
       setMessage(cleanMessage(answer));
     } catch (error) {
       ctx.notify({ title: "Couldn't write the message", message: (error as Error).message, tone: "danger" });
@@ -564,7 +568,9 @@ function CommitBox({
         { cwd: project.path },
       );
       if (!c.diff) return;
-      setFindings(parseFindings(await ctx.ai.ask(checkPrompt(c), { cwd: project.path })));
+      setFindings(
+        parseFindings(await ctx.ai.ask(checkPrompt(c), { cwd: project.path, feature: "commitCheck" })),
+      );
     } catch (error) {
       ctx.notify({ title: "Couldn't check the changes", message: (error as Error).message, tone: "danger" });
     } finally {

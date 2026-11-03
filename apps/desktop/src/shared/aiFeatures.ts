@@ -1,0 +1,81 @@
+/**
+ * Jig's simple AI features (one text in, one text out) and which provider and model each runs on
+ * (D-297). Settings → AI features lists them in this order. A feature's `config.ai.<id>` holds the
+ * provider and the model; an empty model means the model the feature used before this setting
+ * existed (`fallback`), so nothing changes until you pick one. Documented in docs/reference/engine.md.
+ */
+import type { JigConfig } from "./config";
+import type { AiProvider } from "./providers";
+
+export interface AiFeature {
+  id: AiFeatureId;
+  label: string;
+  /** Where it shows, in a few words. */
+  where: string;
+  /** The model it uses with Claude when none is picked: the setting it used before. */
+  fallback: (config: JigConfig) => string;
+  /** It asks for JSON: Jig checks the answer and says so when it doesn't parse. */
+  json?: boolean;
+}
+
+export const AI_FEATURE_IDS = [
+  "commitMessage",
+  "commitCheck",
+  "releaseNotes",
+  "tour",
+  "attemptsJudge",
+  "standup",
+  "chatTitles",
+  "learning",
+  "meetingTranslation",
+  "addonQuick",
+  "addonHelper",
+] as const;
+export type AiFeatureId = (typeof AI_FEATURE_IDS)[number];
+
+const quick = (c: JigConfig) => c.engine.quickModel;
+const helper = (c: JigConfig) => c.engine.helperModel;
+const chat = (c: JigConfig) => c.engine.defaultModel;
+
+export const AI_FEATURES: AiFeature[] = [
+  { id: "commitMessage", label: "Commit message", where: "Git → Write message", fallback: quick },
+  { id: "commitCheck", label: "Check before committing", where: "Git → Check changes", fallback: helper },
+  { id: "releaseNotes", label: "Release notes draft", where: "Releases → Draft", fallback: helper },
+  { id: "tour", label: "Tour of changes", where: "Git → Walk me through", fallback: chat, json: true },
+  { id: "attemptsJudge", label: "Compare attempts", where: "Parallel attempts", fallback: chat, json: true },
+  { id: "standup", label: "Standup", where: "Tools → Standup", fallback: chat },
+  { id: "chatTitles", label: "Chat names", where: "New chats", fallback: quick },
+  { id: "learning", label: "Weekly patterns", where: "Learning", fallback: (c) => c.learning.model },
+  {
+    id: "meetingTranslation",
+    label: "Caption translation",
+    where: "Meetings",
+    fallback: (c) => c.meetings.translationModel,
+  },
+  { id: "addonQuick", label: "Add-ons: short answers", where: "Other add-ons", fallback: quick },
+  { id: "addonHelper", label: "Add-ons: other questions", where: "Other add-ons", fallback: helper },
+];
+
+/** Features an add-on may name in `ctx.ai.ask({ feature })`: the built-in add-ons' own rows. */
+export const ADDON_AI_FEATURES = ["commitMessage", "commitCheck", "releaseNotes"] as const;
+export type AddonAiFeature = (typeof ADDON_AI_FEATURES)[number];
+
+export function aiFeature(id: AiFeatureId): AiFeature {
+  return AI_FEATURES.find((f) => f.id === id)!;
+}
+
+/**
+ * The provider and model a feature runs on. Claude without a picked model: the feature's old
+ * setting. ChatGPT without one: "" (Codex's own default model).
+ */
+export function aiChoice(config: JigConfig, id: AiFeatureId): { provider: AiProvider; model: string } {
+  const choice = config.ai[id];
+  const provider = choice.provider;
+  const model = choice.model || (provider === "claude" ? aiFeature(id).fallback(config) : "");
+  return { provider, model };
+}
+
+/** "Claude" / "ChatGPT", for messages ("ChatGPT's answer wasn't…"). */
+export function providerName(provider: AiProvider): string {
+  return provider === "chatgpt" ? "ChatGPT" : "Claude";
+}

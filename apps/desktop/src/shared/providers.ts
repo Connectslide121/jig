@@ -22,3 +22,11 @@ export const CHATGPT_FALLBACK_MODELS: ModelInfo[] = [
   { value: "gpt-6.1-terra", displayName: "GPT-6.1 Terra", description: "Faster, lighter answers." },
   { value: "gpt-6-luna", displayName: "GPT-6-Luna", description: "Fastest and cheapest." },
 ];
+
+/** Whether a provider can answer now (Settings → AI features disables ChatGPT when it can't). */
+export interface ProviderStatus {
+  provider: AiProvider;
+  ready: boolean;
+  /** In words: "Signed in with your ChatGPT account.", "The Codex CLI isn't installed." */
+  detail: string;
+}

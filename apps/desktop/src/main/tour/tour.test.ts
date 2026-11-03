@@ -45,4 +45,14 @@ describe("change tours", () => {
     });
     expect(() => parseTour('{"steps": []}', ["a"])).toThrow(/didn't refer/);
   });
+
+  it("says who gave an answer that isn't the tour's JSON", () => {
+    expect(() => parseTour("Here is a tour: first look at cart.ts", ["cart.ts"], "ChatGPT")).toThrow(
+      /^ChatGPT's answer wasn't the tour Jig asked for/,
+    );
+    expect(() => parseTour('{"title": "x", "steps": [{"file": 3}]}', ["cart.ts"])).toThrow(
+      /^Claude's answer/,
+    );
+    expect(() => parseTour('{"steps": []}', ["a"], "ChatGPT")).toThrow(/^ChatGPT's tour didn't refer/);
+  });
 });

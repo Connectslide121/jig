@@ -11,6 +11,7 @@ import {
   questionPrompt,
   transcriptText,
 } from "../../../../../addons/meetings/lib/meeting";
+import { aiChoice, providerName } from "../../shared/aiFeatures";
 import { JigError } from "../../shared/ipc";
 import {
   chatChanged,
@@ -175,7 +176,8 @@ const translator = new CaptionTranslator(
     const message = error instanceof Error ? error.message : String(error);
     void store
       .update(id, (r) => {
-        r.translationError = `Claude couldn't translate: ${message}`.slice(0, 300);
+        const who = providerName(aiChoice(getConfig(), "meetingTranslation").provider);
+        r.translationError = `${who} couldn't translate: ${message}`.slice(0, 300);
       })
       .then(changed)
       .catch(() => undefined);
