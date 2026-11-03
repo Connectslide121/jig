@@ -1,5 +1,11 @@
 # Status
 
+Boards text and delete (2026-11-03, D-290): card titles, descriptions, comments and names with "–",
+"…", "›", quotes or "ö" show and save as written (az now runs without cmd.exe and answers in UTF-8),
+creating a card whose description has double quotes no longer fails, and deleting a card no longer
+reports a JSON error. Checked against a real board on Windows. Needs testing on a machine whose az is
+not the MSI/winget install (the `@file` fallback).
+
 Chats name themselves (2026-11-03, D-288): when you send a new chat's first message, the quick model
 (Haiku by default) gives it a short name of 2–5 words, in the message's language, a few seconds later.
 Until then it is called by the message's first words; renaming it yourself meanwhile wins. Turn it off

@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, test } from "./fixtures";
 
 test("Workflows: make one with a check and a command, run it step by step, export it as a skill", async ({
   page,
@@ -128,7 +128,7 @@ test("A workflow runs by itself after you push", async ({ page, jigHome }) => {
 test("A workflow tells you when a pipeline fails", async ({ page, jigHome }) => {
   // An az (first on PATH) whose newest finished run of pipeline 12 is in run.json.
   const run = join(jigHome, "run.json");
-  const az = `const args = process.argv.slice(2);
+  const az = `const args = ${AZ_ARGV};
 if (args.includes("runs") && args.includes("list")) {
   process.stdout.write(require("node:fs").readFileSync(${JSON.stringify(run)}, "utf8"));
   process.exit(0);

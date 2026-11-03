@@ -93,6 +93,9 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
       ("In tenant X", the whole card switches) instead of an error. A board remembers its tenant.
 - [x] Releases and Workflows' pipeline steps run with the active tenant; failures name the tenant.
 - [x] Project links → Azure resources list the active tenant's subscriptions.
+- [x] az starts without cmd.exe (Windows' installed az as its Python with `-X utf8`, others with
+      free text as `@file` arguments): non-ASCII reads and quoted descriptions work; Boards deletes
+      through the REST API (D-290).
 - [x] Looked at Pipelines (loading, other tenant), Boards (placeholder, hover) and the Azure links
       dialog in Jig Dark and Light: the toolbars and tabs don't move, the list keeps one slot.
 - [ ] Needs a real machine: switch with real tenants and see Pipelines, Boards and links follow; a

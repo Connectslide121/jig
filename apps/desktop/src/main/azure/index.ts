@@ -27,7 +27,6 @@ import {
 import { z } from "zod";
 import { JigError } from "../../shared/ipc";
 import type { ProjectsState } from "../../shared/projects";
-import { resolveCommand } from "../addons/winCommand";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { type JigTool, registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
@@ -36,6 +35,7 @@ import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
 import { killTree } from "../updates/run";
 import { setAzureContext } from "./env";
+import { azCommand } from "./run";
 
 /**
  * Azure tenants (D-282). A tenant is one Azure CLI sign-in in its own folder (`~/.jig/azure/<key>`);
@@ -90,18 +90,19 @@ function az(
   timeout = 30_000,
 ): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => {
-    const r = resolveCommand("az", [...args, "--only-show-errors"], process.platform, process.env);
+    const c = azCommand([...args, "--only-show-errors"]);
     execFile(
-      r.file,
-      r.args,
+      c.file,
+      c.args,
       {
         timeout,
         windowsHide: true,
-        windowsVerbatimArguments: r.verbatim,
+        windowsVerbatimArguments: c.verbatim,
         maxBuffer: 8 * 1024 * 1024,
-        env: { ...process.env, ...envFor(key) },
+        env: { ...process.env, ...envFor(key), ...c.env },
       },
-      (error, stdout, stderr) =>
+      (error, stdout, stderr) => {
+        c.done();
         resolve({
           ok: !error,
           out: String(stdout),
@@ -110,7 +111,8 @@ function az(
             ((error as NodeJS.ErrnoException | null)?.code === "ENOENT"
               ? "The Azure CLI (az) is not installed or not on PATH."
               : (error?.message ?? "")),
-        }),
+        });
+      },
     );
   });
 }
@@ -158,13 +160,13 @@ async function login(key: string, requested: string | undefined): Promise<void> 
   if (signingIn) throw new JigError("busy", "Another sign-in is running. Finish or cancel it first.");
   const dir = tenantConfigDir(paths.azure(), key, join);
   if (dir) await mkdir(dir, { recursive: true });
-  const r = resolveCommand("az", loginArgs(requested), process.platform, process.env);
-  const child = spawn(r.file, r.args, {
+  const c = azCommand(loginArgs(requested));
+  const child = spawn(c.file, c.args, {
     windowsHide: true,
-    windowsVerbatimArguments: r.verbatim,
+    windowsVerbatimArguments: c.verbatim,
     stdio: ["ignore", "pipe", "pipe"],
     // The newer login asks which subscription to use in the terminal; there is none here.
-    env: { ...process.env, ...envFor(key), AZURE_CORE_LOGIN_EXPERIENCE_V2: "off" },
+    env: { ...process.env, ...envFor(key), ...c.env, AZURE_CORE_LOGIN_EXPERIENCE_V2: "off" },
   });
   const run = { key, child, cancelled: false };
   signingIn = run;
@@ -184,6 +186,7 @@ async function login(key: string, requested: string | undefined): Promise<void> 
     child.on("close", (c) => resolve(c ?? 1));
   });
   clearTimeout(timer);
+  c.done();
   signingIn = undefined;
   emit("azure.signInProgress", { key, text: "", done: true });
   if (run.cancelled) throw new JigError("cancelled", "The sign-in was cancelled.");

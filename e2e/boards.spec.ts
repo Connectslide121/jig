@@ -1,14 +1,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, settledBox, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, settledBox, test } from "./fixtures";
 
 /**
  * An `az` that answers like Azure DevOps: one organisation (contoso), projects Shop and Portal, two
  * teams with their boards, and the Web team's Stories board with three columns and four cards.
  */
 const FAKE_AZ = `
-const args = process.argv.slice(2);
+const args = ${AZ_ARGV};
 const has = (...words) => words.every((w) => args.includes(w));
 const say = (value) => { process.stdout.write(JSON.stringify(value)); process.exit(0); };
 const uri = args.includes("--uri") ? args[args.indexOf("--uri") + 1] : "";
@@ -45,7 +45,7 @@ if (uri.endsWith("/comments")) say({ comments: [{ text: "<div>Seen on mobile too
 if (uri.includes("/workitemtypes/")) say({ value: [{ name: "New" }, { name: "Active" }, { name: "Closed" }] });
 if (has("boards", "work-item", "update")) { log("update " + args.join(" ")); say(card(Number(arg("--id")), "x", "Bug", "Active", "Doing")); }
 if (has("boards", "work-item", "create")) { log("create " + args.join(" ")); say(card(105, arg("--title"), arg("--type"), "New", "New")); }
-if (has("boards", "work-item", "delete")) { log("delete " + args.join(" ")); say({}); }
+if (has("rest", "delete") && /\\/_apis\\/wit\\/workitems\\/\\d+$/.test(uri)) { log("delete " + args.join(" ")); say({ id: Number(uri.split("/").pop()), code: 200 }); }
 if (has("boards", "query")) {
   const wiql = args[args.indexOf("--wiql") + 1];
   if (!wiql.includes("UNDER 'Shop\\\\Web'") || !wiql.includes("[WEF_1_Kanban.Column]")) { console.error("unexpected query " + wiql); process.exit(1); }
@@ -169,15 +169,18 @@ test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude
 
   // A new card in a column.
   await view.getByTestId("board-new-New").click();
-  await page.getByTestId("board-new-card-title").fill("Gift cards");
+  // Free text reaches az as written: quotes, %, and non-ASCII (D-290).
+  await page.getByTestId("board-new-card-title").fill('Gift cards – "10 % off" › Malmö…');
   await page.getByTestId("board-new-card-create").click();
-  await expect.poll(writes).toMatch(/create .*--title Gift cards .*--area Shop/);
+  await expect.poll(writes).toContain('--title Gift cards – "10 % off" › Malmö… ');
+  expect(await writes()).toMatch(/create .*--area Shop/);
 
   // Delete from the card menu, after asking.
   await view.getByTestId("board-item-103").click({ button: "right" });
   await page.getByTestId("board-item-delete").click();
   await page.getByTestId("dialog-confirm").click();
-  await expect.poll(writes).toMatch(/delete .*--id 103 /);
+  // Through the REST API: `az boards work-item delete` answers in plain text, not JSON.
+  await expect.poll(writes).toMatch(/delete .*\/_apis\/wit\/workitems\/103 /);
 
   // Claude's tools read the same board for the chat's project.
   const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };

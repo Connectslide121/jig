@@ -483,11 +483,13 @@ Azure CLI keeps and refreshes its tokens in that folder; Jig never reads, copies
 changes.
 
 - Pure logic: `packages/azure` (`tenantKey`, `parseTenantsFile`, `mergeSignIn` of `az account show`
-  and ARM `/tenants`, `signInStatusFromError`, `azEnv`; `azFailure`, `decodeAzOutput`, `activeTenantRef`).
+  and ARM `/tenants`, `signInStatusFromError`, `azEnv`; `azFailure`, `decodeAzOutput`, `activeTenantRef`; `azPythonFor`, `azArgsViaFiles`).
 - Host: `main/azure/index.ts` keeps `azure/tenants.json` (through the state module), runs `az login`
   for adding and signing in again (one at a time, output as `azure.signInProgress`, cancellable),
   checks sign-ins on request (`signedOut` / `expired`, never a prompt) and follows the protected
   setting `azure.activeTenant`. `main/azure/env.ts` holds the active tenant and its environment.
+- One way to start `az` (D-290): `main/azure/run.ts` `azCommand` (no shell; Windows' installed az as
+  its own Python with `-X utf8`, any other az with free text in `@file` arguments).
 - One way to run `az` (D-284): `main/azure/run.ts` `runAz` (JSON out, decoded, failures mapped by
   `azFailure` into an `AzError` naming an added tenant). Project links use it in main; add-on hosts
   run it as `api.azure.az`. Setup checks and add-on `exec`/`spawn` (any program, so scripts that call

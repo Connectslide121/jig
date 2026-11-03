@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, settledBox, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, settledBox, test } from "./fixtures";
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
 
@@ -30,7 +30,7 @@ steps:
 function fakeAz(jigHome: string) {
   const out = JSON.stringify(join(jigHome, "az-run.json"));
   return `
-const args = process.argv.slice(2);
+const args = ${AZ_ARGV};
 const has = (...words) => words.every((w) => args.includes(w));
 const say = (value) => {
   const file = args.includes("--out-file") ? args[args.indexOf("--out-file") + 1] : "";

@@ -1,7 +1,7 @@
 import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, launchJig, test } from "./fixtures";
 
 test("project links: grouped, typed, added by hand, shown on Home, and by Claude with Undo", async ({
   page,
@@ -58,7 +58,7 @@ test("project links: add from Azure through your az login", async () => {
   await writeFile(
     join(bin, "az"),
     `#!/usr/bin/env node
-const a = process.argv.slice(2);
+const a = ${AZ_ARGV};
 const sub = a[a.indexOf("--subscription") + 1];
 // A tenant added in Jig (D-282): its folder signs in to Fabrikam (t2).
 const fabrikamFolder = require("node:path").basename(process.env.AZURE_CONFIG_DIR || "").startsWith("fabrikam");

@@ -20,6 +20,13 @@ export interface JigFixtures {
 }
 
 /**
+ * A fake az's arguments, as the real az reads them: `@<file>` is the file's text. On Windows Jig hands
+ * free text to an az it can only start through cmd.exe that way (D-290), so fakes see the same values.
+ */
+export const AZ_ARGV =
+  'process.argv.slice(2).map((a) => (a.startsWith("@") && require("node:fs").existsSync(a.slice(1)) ? require("node:fs").readFileSync(a.slice(1), "utf8") : a))';
+
+/**
  * A folder with an `az` that says you're not signed in, first on PATH: tests never reach the real
  * Azure CLI and its login (Pipelines asks it for every organisation you belong to). Tests that need
  * az answers put their own fake first.

@@ -40,12 +40,18 @@ const PARALLEL = 4;
 const az = <T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> =>
   api.azure.az<T>(args, { timeoutMs });
 
-/** `az rest` GET on Azure DevOps with your az login. */
-function rest<T>(api: AddonHostApi, uri: string, params: string[] = [], version = "7.1"): Promise<T> {
+/** `az rest` on Azure DevOps with your az login (GET unless `method` says otherwise). */
+function rest<T>(
+  api: AddonHostApi,
+  uri: string,
+  params: string[] = [],
+  version = "7.1",
+  method: "get" | "delete" = "get",
+): Promise<T> {
   return az<T>(api, [
     "rest",
     "--method",
-    "get",
+    method,
     "--resource",
     DEVOPS,
     "--uri",
@@ -292,23 +298,15 @@ export async function create(input: NewCard, api: AddonHostApi): Promise<WorkIte
   return card;
 }
 
-/** Moves a card to Azure DevOps' recycle bin (it can be restored there). */
+/**
+ * Moves a card to Azure DevOps' recycle bin (it can be restored there). Through the REST API: `az
+ * boards work-item delete` prints plain text, not JSON.
+ */
 export async function remove(
   { board: b, id }: { board: Board; id: number },
   api: AddonHostApi,
 ): Promise<void> {
-  await az(api, [
-    "boards",
-    "work-item",
-    "delete",
-    "--id",
-    String(id),
-    "--org",
-    orgUrl(b.org),
-    "--project",
-    b.project,
-    "--yes",
-  ]);
+  await rest(api, `${projectUrl(b)}/_apis/wit/workitems/${id}`, [], "7.1", "delete");
   api.emit("changed", { boardId: b.id });
 }
 

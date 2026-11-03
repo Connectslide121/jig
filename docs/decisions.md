@@ -3604,3 +3604,29 @@ plan below, including keeping the sidebar view.
   sidebar view stays as `jig.notes` ("Project notes", left), and saved layouts keep where you had
   `addon.notes.notes` (`RENAMED_VIEWS` in `shared/layout.ts`). (Claude, on my own: a whole note row
   opens its editor; the hourglass clears a dependency; open and remove are on hover.)
+
+## D-290: az runs without cmd.exe; free text never goes through cmd quoting
+
+Jon, 2026-11-03, after creating cards on a board from a chat: titles with "–", "…", "›" and names like
+"ö" came back as "?" / "�", deleting a card reported a JSON error although it was deleted, and a
+description with double quotes and punctuation failed with cmd.exe's "… was unexpected at this time".
+Jon asked not to pass user text through cmd quoting.
+
+- **Windows' installed az runs as Python, directly.** az.cmd only starts `..\python.exe -IBm
+  azure.cli %*`. `azCommand` (`main/azure/run.ts`) finds that Python beside az.cmd (`azPythonFor`)
+  and starts it itself with `-X utf8 -IBm azure.cli` (`AZ_PYTHON_ARGS`) and `AZ_INSTALLER=MSI`: no
+  shell, arguments arrive exactly as written, and output is UTF-8 whatever the code page (-I ignores
+  `PYTHONUTF8`/`PYTHONIOENCODING`, not `-X utf8`; the cp1252 fallback of `decodeAzOutput` could
+  never show characters cp1252 lacks). `runAz`, the tenant checks and `az login` all start az this way.
+- **Any other az on Windows** (a pip install's batch file) still goes through cmd.exe, but every
+  argument cmd or the batch file's `%*` could break (quotes, `%`, `!`, `^`, `<>&|`, line breaks,
+  non-ASCII; `unsafeForCmd`) is written to a UTF-8 file in a temporary folder and passed as `@file`,
+  which az reads back as the value (`azArgsViaFiles`); the folder is removed when az ends. (Claude, on
+  my own: files rather than escaping, since cmd's double parse of `%*` has no safe escaping for
+  quotes and line breaks.) Other systems run `az` with its arguments as they are.
+- **Commands that print text instead of JSON go through the REST API.** Boards deletes a card with
+  `az rest --method delete …/_apis/wit/workitems/{id}`; `az boards work-item delete` prints
+  "Deleted work item …", which `runAz` (JSON only) rightly calls a failure. (Claude, on my own.)
+- **Tests' fake az reads `@file` like the real one** (`AZ_ARGV` in `e2e/fixtures.ts`): on Windows
+  the fakes are batch files, so they get the file arguments.
+

@@ -26,7 +26,8 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
   chat's project. Changes ask your permission like other edits. A slider in the header sets one width for every column (kept for all projects, across restarts).
 - **How:** `GET {team}/_apis/work/boards/{id}` (columns, state mappings, column field) and
   `teamsettings/teamfieldvalues` (the team's areas) through `az rest`, then one `az boards query`.
-  Cards: `az boards work-item show/update/create/delete` and `relation add`; comments and a type's
-  states through `az rest`.
+  Cards: `az boards work-item show/update/create` and `relation add`; comments, a type's states and
+  deleting (`az boards work-item delete` answers in plain text) through `az rest`. Titles,
+  descriptions and comments reach az as written, quotes and non-ASCII included (D-290).
 
 Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px. Tested by `e2e/boards.spec.ts` with a fake `az`.

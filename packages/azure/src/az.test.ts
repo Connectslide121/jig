@@ -1,13 +1,59 @@
 import { describe, expect, it } from "vitest";
 import {
+  AZ_PYTHON_ARGS,
   activeTenantRef,
+  azArgsViaFiles,
   azFailure,
   azJsonArgs,
+  azPythonFor,
   DEFAULT_TENANT_REF,
   decodeAzOutput,
   parseAzJson,
   tenantContext,
+  unsafeForCmd,
 } from "./az";
+
+describe("running az without cmd.exe", () => {
+  const az = "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\wbin\\az.cmd";
+  const python = "C:\\Program Files\\Microsoft SDKs\\Azure\\CLI2\\python.exe";
+
+  it("finds the Python an installed az.cmd starts", () => {
+    expect(azPythonFor(az, (p) => p === python)).toBe(python);
+    expect(azPythonFor(az, () => false)).toBeUndefined();
+    expect(azPythonFor("C:\\tools\\az.bat", () => true)).toBeUndefined();
+    expect(azPythonFor("az.cmd", () => true)).toBeUndefined();
+    expect(AZ_PYTHON_ARGS).toEqual(["-X", "utf8", "-IBm", "azure.cli"]);
+  });
+
+  it("knows which arguments cmd.exe would break", () => {
+    for (const ok of ["boards", "--title", "https://dev.azure.com/contoso", "Area\\Team", "System.Tags=a; b"])
+      expect(unsafeForCmd(ok)).toBe(false);
+    for (const bad of [
+      'say "hi"',
+      "50%",
+      "a & b",
+      "<div>x</div>",
+      "line\nbreak",
+      "TP-074–077",
+      "Malmö",
+      "wait…",
+    ])
+      expect(unsafeForCmd(bad)).toBe(true);
+  });
+
+  it("moves unsafe arguments into @files and keeps the rest", () => {
+    const texts: string[] = [];
+    const args = azArgsViaFiles(
+      ["--title", 'Fix "quotes" – ö', "--org", "https://dev.azure.com/contoso"],
+      (t) => {
+        texts.push(t);
+        return `C:\\tmp\\arg${texts.length}.txt`;
+      },
+    );
+    expect(args).toEqual(["--title", "@C:\\tmp\\arg1.txt", "--org", "https://dev.azure.com/contoso"]);
+    expect(texts).toEqual(['Fix "quotes" – ö']);
+  });
+});
 
 const contoso = { key: "contoso", label: "Contoso", isDefault: false };
 

@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, hostCall, test } from "./fixtures";
+import { AZ_ARGV, expect, hostCall, test } from "./fixtures";
 
 /** An `az` that signs in to Northwind in a folder named `northwind…`, else to Contoso (D-282). */
 const FAKE_AZ = `
-const args = process.argv.slice(2);
+const args = ${AZ_ARGV};
 const dir = require("node:path").basename(process.env.AZURE_CONFIG_DIR || "");
 const who = dir.startsWith("northwind")
   ? { id: "22222222-2222-4222-8222-222222222222", name: "Northwind", domain: "northwind.example.com", user: "ann@northwind.example.com" }

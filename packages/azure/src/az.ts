@@ -102,7 +102,8 @@ export const AZ_PLAIN_ENV: Record<string, string> = {
 
 /**
  * az's output as text. Windows' az.cmd runs Python isolated (-I), which ignores `AZ_PLAIN_ENV` and
- * prints in the ANSI code page: UTF-8 when it is, else Windows-1252.
+ * prints in the ANSI code page: UTF-8 when it is, else Windows-1252. Jig runs that Python itself with
+ * `-X utf8` where it can (`AZ_PYTHON_ARGS`); this is the fallback for an az it can't.
  */
 export function decodeAzOutput(bytes: Uint8Array): string {
   try {
@@ -110,6 +111,35 @@ export function decodeAzOutput(bytes: Uint8Array): string {
   } catch {
     return new TextDecoder("windows-1252").decode(bytes);
   }
+}
+
+/**
+ * How Windows' installed az (az.cmd beside `..\python.exe`, MSI and winget) runs without cmd.exe:
+ * Python started directly with az.cmd's own flags plus `-X utf8`, which -I doesn't ignore. Arguments
+ * reach az as written (no cmd quoting, D-290) and it prints UTF-8 whatever the code page.
+ */
+export const AZ_PYTHON_ARGS = ["-X", "utf8", "-IBm", "azure.cli"];
+
+/** The python.exe az.cmd starts (`<az.cmd folder>\..\python.exe`), when `azPath` is an az.cmd. */
+export function azPythonFor(azPath: string, exists: (path: string) => boolean): string | undefined {
+  const m = /^(.*)[\\/][^\\/]+[\\/]az\.cmd$/i.exec(azPath);
+  const python = m ? `${m[1]}\\python.exe` : undefined;
+  return python && exists(python) ? python : undefined;
+}
+
+/**
+ * Whether an argument can't safely go through cmd.exe and a batch file's `%*`: quotes, cmd's
+ * metacharacters, line breaks and anything outside printable ASCII. Free text always is.
+ */
+export const unsafeForCmd = (arg: string): boolean => !/^[\x20-\x7e]*$/.test(arg) || /["%!^<>&|]/.test(arg);
+
+/**
+ * For an az that only runs through cmd.exe: every unsafe argument goes in a UTF-8 file and az gets
+ * `@<file>`, which it reads back as the value (az's own `@file` arguments). `write` saves the text and
+ * returns the file's path.
+ */
+export function azArgsViaFiles(args: string[], write: (text: string) => string): string[] {
+  return args.map((a) => (unsafeForCmd(a) ? `@${write(a)}` : a));
 }
 
 /** az's JSON answer (undefined for an empty one). Throws when it isn't JSON. */
