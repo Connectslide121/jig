@@ -1,5 +1,16 @@
 # Status
 
+AI features per provider (2026-11-03, D-297): **Settings → AI features** lists Jig's one-shot AI
+features (commit message, check before committing, release notes, tour, compare attempts, standup,
+chat names, weekly patterns, caption translation, add-ons' questions) in one table: pick Claude or
+ChatGPT and a model from that provider for each. Everything starts on Claude with the model it used
+before, so nothing changes until you pick. ChatGPT is greyed out until OpenAI's Codex CLI is signed
+in (the footer links to Get started). Checked on Windows with Codex signed in: commit message, the
+check, release notes, an add-on question, the tour and the standup all answered on ChatGPT, and the
+table moves nothing when you switch. Needs testing on your machine: compare attempts, chat names, the
+weekly pattern run (it needs some recorded activity) and caption translation in a real meeting on
+ChatGPT.
+
 ChatGPT through Codex (2026-11-03, D-294): Get started has an optional **ChatGPT (Codex)** row. With
 OpenAI's Codex CLI installed (`npm install -g @openai/codex`) it shows the version and whether Codex is
 signed in; **Sign in…** runs `codex login` in a private terminal (Codex opens your browser), and when

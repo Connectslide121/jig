@@ -75,7 +75,12 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
   login` in a private terminal (`jig.codexLogin`); `codex login status` gives only yes/no and the
   method (`parseCodexLoginStatus`).
 - **Fake engine:** both providers answer from the fake engine's `oneShot`; Codex never runs in tests.
-- `ai.ask` (add-ons) uses `oneShot("claude", ...)`.
+- **Per feature (D-297):** features call `featureOneShot(feature, prompt, { cwd, system, timeoutMs })`,
+  which takes `aiChoice(config, feature)` (`shared/aiFeatures.ts`): the provider and model picked in
+  Settings → AI features, else Claude on the feature's old model. `ai.providers` says whether ChatGPT
+  is ready (installed and signed in). `ai.ask` (add-ons) uses its `feature` (Git, Releases) or the
+  add-ons' rows. JSON features (tour, compare attempts) name who answered when the reply doesn't
+  parse. Caption translation keeps Claude's warm completer; on ChatGPT it calls `oneShot` per caption.
 
 ## Events (`EngineEvent`)
 

@@ -3795,3 +3795,38 @@ tab and in the lobby.
   folders hide and folders with matches open. Which folders are open is kept in the renderer's
   localStorage, shared by both views. Both views use `useMeetingFolders` and the pure
   `shared/meetingFolders.ts`.
+
+## D-297: Each AI feature picks its provider (Claude or ChatGPT) and model in Settings
+
+- Status: accepted. Asked for by Jon, 2026-11-03 (follows D-294): in Settings the user picks, for each
+  simple AI feature, the provider and a model from that provider.
+- **Features** (`shared/aiFeatures.ts`, in Settings order): commit message, check before committing,
+  release notes draft, tour of changes, compare attempts, standup, chat names, weekly patterns,
+  caption translation, and two rows for other add-ons (`ctx.ai.ask` with `quick`, and without).
+  `config.ai.<id> = { provider, model }`.
+- **Nothing changes for existing users** (Claude, on my own): `model: ""` means the model the
+  feature used before: `engine.quickModel` (commit message, chat names, add-ons' short answers),
+  `engine.helperModel` (check, release notes, add-ons' other questions), `engine.defaultModel`
+  (tour, compare attempts, standup), `learning.model`, `meetings.translationModel`. Those keys stay
+  as the fallbacks. Settings shows "Default (Haiku)" etc. On ChatGPT, `""` is Codex's own default.
+- **Settings → AI features** is one table with fixed columns (feature · provider · model). The model
+  list is only the chosen provider's (Claude Code's list, or `codex debug models`); switching the
+  provider resets the model to the default. ChatGPT's option is disabled while the Codex CLI isn't
+  installed and signed in (`ai.providers`), with a fixed-height footer that says why and opens Get
+  started. Narrow, the two pickers go under the feature's name. The old helper/quick model rows
+  (Claude Code) and the pattern-run model (Learning) point to it instead of repeating it.
+- **Add-ons:** `ctx.ai.ask(prompt, { feature })` lets the built-in Git and Releases add-ons name
+  their own rows (`commitMessage`, `commitCheck`, `releaseNotes`); any other add-on uses the add-ons'
+  rows. Per add-on choices are not offered (Claude, on my own: two rows are enough for now).
+- **JSON answers:** the tour fails with "ChatGPT's answer wasn't the tour Jig asked for…" (or Claude's)
+  when the JSON doesn't parse; compare attempts shows the answer as written, says it wasn't a verdict
+  and picks no attempt. The pre-commit check and release draft already fall back.
+- **Caption translation** keeps Claude's warm process; on ChatGPT each caption is one `codex exec`
+  call (slower: a few seconds each), and its error names the provider.
+- `config.ai` is protected (D-077): it decides which plan pays.
+- **Code:** `featureOneShot(feature, prompt, { cwd, system, timeoutMs })` in `main/providers`.
+- **CSS gotcha found on the way:** add-on stylesheets (`jig-addon://…/ui.css`) are loaded after
+  Jig's and repeat plain Tailwind utilities in the same `utilities` layer, so a plain `w-32` or
+  `hidden` beats Jig's own `@xl:` container variant on the same property. Properties that change with
+  the container are set only through `@max-*:` / `@*:` variants (AGENTS.md).
+

@@ -32,6 +32,10 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   (D-294; `main/providers/`, unit tests in `codex.test.ts` and `setup/checks.test.ts`, e2e in
   `e2e/setup.spec.ts`).
 
+- [x] Settings → AI features: provider and model per one-shot feature, ChatGPT disabled until signed
+  in; JSON answers checked with a clear error (D-297; `shared/aiFeatures.ts`, `featureOneShot`, unit
+  tests in `aiFeatures.test.ts`, `tour.test.ts`, `judge.test.ts`, e2e in `e2e/ai.spec.ts`).
+
 ## Later
 
 - Browser: several tabs, recording a session as a GIF, network requests in the console pane.

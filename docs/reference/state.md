@@ -65,8 +65,9 @@ A new state file is documented here in the same commit that adds it.
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `"opus"` | new chats (D-207); `opusplan` = Opus only in Plan mode, Sonnet otherwise; empty follows Claude Code; an explicit project model overrides it |
 | `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |
-| `engine.helperModel` | `"sonnet"` | add-on one-turn AI questions that need thought (reviews, explanations) |
-| `engine.quickModel` | `"haiku"` | add-on questions asked with `quick` (commit messages): short, simple answers |
+| `engine.helperModel` | `"sonnet"` | the Claude model AI features that need thought fall back to (check, release notes, add-ons' other questions) when `ai.<feature>.model` is empty |
+| `engine.quickModel` | `"haiku"` | the Claude model short answers fall back to (commit message, chat names, add-ons' short answers) when `ai.<feature>.model` is empty |
+| `ai.<feature>` | `{ provider: "claude", model: "" }` | provider (`claude` \| `chatgpt`) and model for each one-shot AI feature (`shared/aiFeatures.ts`: commitMessage, commitCheck, releaseNotes, tour, attemptsJudge, standup, chatTitles, learning, meetingTranslation, addonQuick, addonHelper). `model: ""` = the model the feature used before (Claude) or Codex's default (ChatGPT). Protected; Settings → AI features (D-297) |
 | `engine.claudeAiConnectors` | `false` | load your claude.ai account's connectors (Asana, Notion, Linear…) into new chats; off sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, so none is flagged as needing sign-in; the MCP servers in your Claude Code settings are unaffected (D-160) |
 | `engine.defaultPermissionMode` | `plan` | `default`, `acceptEdits`, `plan`, `bypassPermissions` |
 | `engine.testerModel` | `"haiku"` | model for testing in the browser: the `jig-tester` subagent every chat gets, and Search → Test something… (D-124) |
@@ -110,7 +111,7 @@ A new state file is documented here in the same commit that adds it.
 | `learning.retentionDays` | `90` | delete activity older than this |
 | `learning.exclusions` | `[]` | activity containing any of these strings is not recorded |
 | `learning.schedule` | Monday 10:00, enabled | weekly pattern run (`day` 0=Sunday) |
-| `learning.model` | `haiku` | model for the reflection step |
+| `learning.model` | `haiku` | the Claude model the reflection step falls back to when `ai.learning.model` is empty |
 | `learning.checkIn` | `off` | weekly or biweekly check-in chat about how you work (offered once after two weeks) |
 | `appearance.fileIconTheme` | `"vscode"` | file icons: `vscode` (same as VS Code), `jig`, or a theme id (`docs/reference/file-icons.md`) |
 | `projects.repoScanDepth` | `3` | how many folder levels a workspace project is searched for repositories (1–5) |

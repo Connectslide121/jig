@@ -78,7 +78,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   Anthropic API directly for agent work, never assemble the system prompt yourself (only `append` to
   the `claude_code` preset). **OpenAI's Codex CLI** (signed in with ChatGPT) is a second provider only
   for non-chat, text-in/text-out AI calls, through `main/providers/` (`oneShot(provider, ...)`): no
-  tools, read-only sandbox. Never call the OpenAI API directly.
+  tools, read-only sandbox. Never call the OpenAI API directly. A new one-shot AI feature gets a row
+  in `shared/aiFeatures.ts` and calls `featureOneShot`, so the user picks its provider and model in
+  Settings → AI features (D-297).
 - **Follow Claude Code, don't reimplement it.**
   - New Claude Code behaviour reaches the UI through `main/engine/normalize.ts`, which turns SDK
     messages into `EngineEvent`s. Unknown messages are ignored, never a crash.
@@ -155,6 +157,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   times right-aligned. Status marks, badges and colour swatches go at the far right edge, so they form
   one straight line however long the text is. Never let one element's width push the next one
   sideways. Check this on every row-like view you touch or build.
+- **Container variants lose to plain utilities from add-on CSS.** Add-on stylesheets load after Jig's and
+  repeat plain Tailwind utilities in the same layer, so `w-32 @xl:w-40` stays `w-32`. Set a property
+  that changes with the container only through variants on both sides (`@max-xl:w-32 @xl:w-40`,
+  `@max-xl:hidden @xl:flex`) (D-297).
 - **Icons sit centred on text through the font, not per view (D-237).** Rows put icons and text on
   `items-center`; Inter's tuned metrics in `styles/inter.css` centre the capitals in the line box. Never
   nudge icons with margins or translate; when upgrading @fontsource-variable/inter, regenerate that file.
