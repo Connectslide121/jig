@@ -740,7 +740,7 @@ export class FakeEngine implements Engine {
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
         } else if (
           options.toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal)\b/.test(
             lower,
           )
         ) {
@@ -784,6 +784,10 @@ export class FakeEngine implements Engine {
           } else if (/since the last release/.test(lower)) {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
+          } else if (/in a jig terminal/.test(lower)) {
+            // A command in a terminal the user sees: when it exits, Jig tells this chat (a new turn).
+            await call("jig_terminal_run", { command: "echo build finished", title: "Build" });
+            await stream(`${msg}:text:0`, "It runs in a Jig terminal; I'll hear when it ends.", signal);
           } else if (/run the unit tests/.test(lower)) {
             // The Tests add-on's tools: list the suites, then run one and report what it says.
             await call("addon_tests_list", {});

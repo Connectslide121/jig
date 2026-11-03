@@ -465,7 +465,7 @@ export function Composer({
     { label: "New chat", icon: SquarePlus, onSelect: () => void newSession(meta.projectId, meta.cwd) },
     { label: "Open a Claude Code chat…", icon: MessageSquareShare, onSelect: openSavedChatsDialog },
   ];
-  const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text ? [i.text] : []));
+  const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text && !i.from ? [i.text] : []));
 
   return (
     <div

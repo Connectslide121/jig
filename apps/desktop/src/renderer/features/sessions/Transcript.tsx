@@ -171,6 +171,20 @@ const Item = memo(function Item({
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
+      // Sent by Jig, not typed by you (a terminal Claude started has finished): one line, what Claude got
+      // in its tooltip, no edit or rewind.
+      if (item.from)
+        return (
+          <div
+            className="flex items-center gap-2 rounded-md bg-surface px-3 py-2 text-xs text-muted"
+            title={item.text}
+            data-testid="jig-message"
+          >
+            <SquareTerminal className="size-3.5 shrink-0" />
+            <span className="selectable min-w-0 flex-1 truncate">{item.from}</span>
+            <span className="shrink-0 text-hint">Jig told Claude</span>
+          </div>
+        );
       return (
         <div className="group/message relative flex flex-col items-end gap-1.5" data-testid="user-message">
           <ChatAttachments files={item.attachments ?? item.images ?? []} className="justify-end" />

@@ -848,7 +848,9 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   the top bar's Jig menu and on the What Jig can do page, in the theme's colours.
 - **Claude's terminals:** when Claude starts a dev server or watcher it runs in a Jig terminal you can
   see ("Claude: …") and stop. Claude can read any terminal of the project, including yours, to check a
-  server's output.
+  server's output. When a command Claude started ends by itself, Jig tells the chat at once (exit
+  code and last lines, a "Terminal … finished" line in the transcript), so Claude carries on without
+  polling (D-281).
 - **The chat does what Claude Code does** (`docs/reference/chat.md`):
   - **Input:**
     - `/` for Claude Code's commands and skills, `@` for files and folders, `!` for shell commands,

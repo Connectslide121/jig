@@ -403,21 +403,21 @@ export class SessionManager {
   }
 
   /** Starts a turn; while it starts, `live.starting` lets a message sent "now" wait to join it. */
-  private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = []) {
+  private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = [], from?: string) {
     let started = () => {};
     const starting = new Promise<void>((resolve) => {
       started = resolve;
     });
     live.starting = starting;
     try {
-      await this.beginTurn(live, text, attachments);
+      await this.beginTurn(live, text, attachments, from);
     } finally {
       if (live.starting === starting) live.starting = undefined;
       started();
     }
   }
 
-  private async beginTurn(live: Live, text: string, attachments: ChatAttachment[]) {
+  private async beginTurn(live: Live, text: string, attachments: ChatAttachment[], from?: string) {
     // Never interrupt in-flight work for a library change. At a turn boundary, resume the same
     // conversation with the new plugins and prompt. Old process events are ignored by stop().
     if (live.engine && live.configurationKey !== this.options.configurationKey?.(live.state.meta)) {
@@ -454,6 +454,7 @@ export class SessionManager {
       text,
       at: new Date().toISOString(),
       ...(attachments.length ? { attachments } : {}),
+      ...(from ? { from } : {}),
     };
     const updates: ChatUpdate[] = [{ op: "upsert", item }];
     live.state.items.push(item);
@@ -551,6 +552,33 @@ export class SessionManager {
       return;
     }
     await this.startTurn(live, trimmed, attachments);
+  }
+
+  /**
+   * A message from Jig, not the user (a terminal Claude started has finished): it starts a turn in an
+   * idle chat, or goes into the running turn, so Claude reacts without polling. `from` is the line the
+   * transcript shows for it. A chat that no longer exists is skipped.
+   */
+  async notify(id: string, text: string, from: string): Promise<void> {
+    const live = await this.live(id).catch(() => undefined);
+    if (!live) return;
+    if (live.starting) await live.starting;
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status) && live.engine) {
+      const item: ChatItem = {
+        kind: "user",
+        id: `user-${randomUUID()}`,
+        text,
+        at: new Date().toISOString(),
+        from,
+      };
+      live.state.items.push(item);
+      this.emit(live, [{ op: "upsert", item }]);
+      const messageId = live.engine.send(text, [], "next");
+      live.state.items[live.state.items.indexOf(item)] = { ...item, messageId };
+      this.emit(live, [{ op: "upsert", item: { ...item, messageId } }]);
+      return;
+    }
+    await this.startTurn(live, text, [], from);
   }
 
   /**

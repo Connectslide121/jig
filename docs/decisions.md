@@ -3383,3 +3383,17 @@ Claude, on my own.
   subagents. When asked to read something aloud, Claude says it in its reply as spoken sentences, as
   long as needed, instead of calling a tool.
 
+## D-281: A terminal Claude started tells its chat when it ends
+
+**Who:** Jon asked for it after a release, when Claude could only follow `npm run release` with sleep
+timers and kept waiting after it had finished. The design: Claude, on my own.
+
+- Claude Code wakes a chat only for its own background work, so Jig does it: when a terminal with a
+  `sessionId` exits by itself, the terminals' `onExit` calls `SessionManager.notify(chat, text, from)`.
+  Stopped or closed terminals (`killed`) don't notify: the chat or the user ended them on purpose.
+- `notify` starts a turn in an idle chat, or goes into the running turn (`priority: "next"`) rather
+  than the queue, so Claude reacts at its next step; a chat that no longer exists is skipped.
+- The message says it is from Jig, not the user, with the exit code and the last 40 lines. In the
+  transcript it is one line (`from` on the `user` item) with "Jig told Claude", never a bubble you
+  could edit or rewind, and it stays out of the composer's ↑ history.
+- No opt-out per terminal: a dev server that crashes is worth knowing about too.

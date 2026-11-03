@@ -231,6 +231,8 @@ export type ChatItem =
       attachments?: ChatAttachment[];
       /** Older transcripts (images only). */
       images?: ChatAttachment[];
+      /** Sent by Jig, not typed by you (a terminal Claude started has finished): the line shown for it. */
+      from?: string;
     }
   | {
       kind: "assistant";

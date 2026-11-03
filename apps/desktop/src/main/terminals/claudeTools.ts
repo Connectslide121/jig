@@ -12,6 +12,20 @@ const describe = (t: TerminalInfo) =>
   }${t.sessionId ? " [started by Claude]" : ""}`;
 
 /**
+ * What a chat is told when a terminal it started finishes by itself (not stopped): the message Claude
+ * gets, with the end of the output, and the line the transcript shows for it.
+ */
+export function exitNotice(t: TerminalInfo, raw: string): { text: string; from: string } {
+  const title = t.title.replace(/^Claude: /, "");
+  const code = t.exitCode ?? 0;
+  const tail = outputTail(raw, 40, 6_000) || "(no output)";
+  return {
+    text: `(Sent by Jig, not by the user.) Terminal ${t.id} "${title}"${t.command ? ` (${t.command})` : ""}, which you started, has exited with code ${code}. Its last lines:\n\n${tail}\n\nCarry on with what you were doing; jig_terminal_read shows more of its output.`,
+    from: `Terminal "${title}" ${code === 0 ? "finished" : `failed with exit code ${code}`}`,
+  };
+}
+
+/**
  * Terminals for Claude: long-running commands (dev servers, watchers, test runners in watch mode) run
  * in Jig's own terminals, where the user sees them and can stop them, instead of hidden in Claude's
  * shell. Claude can read any terminal of the chat's project (except private ones such as the sign-in).
@@ -35,7 +49,7 @@ export function terminalTools(deps: {
     {
       name: "jig_terminal_run",
       description:
-        "Start a long-running command (dev server, watcher, `npm run dev`, a test runner in watch mode) in a terminal the user sees in Jig. Returns its id; read its output with jig_terminal_read. Use your own shell for commands that finish quickly.",
+        "Start a long-running command (dev server, watcher, `npm run dev`, a test runner in watch mode) in a terminal the user sees in Jig. Returns its id; read its output with jig_terminal_read. When it exits by itself, Jig sends this chat a message with its exit code and last lines, so don't poll it with sleep timers: end your turn and wait. Use your own shell for commands that finish quickly.",
       shape: {
         command: z.string().describe("The command, run by the user's shell"),
         title: z.string().optional().describe("Short name shown in the terminal list"),

@@ -172,7 +172,7 @@ export function jigContext(
     ...(project?.instructions
       ? [`The user's instructions for chats in the project "${project.name}":\n${project.instructions}`]
       : []),
-    "For long-running commands (dev servers, watchers, anything that keeps running) use jig_terminal_run, so the user sees them in a Jig terminal, then jig_terminal_read for their output; jig_terminal_list shows the project's terminals (including the user's own dev server). Use your own shell for commands that finish.",
+    "For long-running commands (dev servers, watchers, anything that keeps running) use jig_terminal_run, so the user sees them in a Jig terminal, then jig_terminal_read for their output; when one you started exits by itself, Jig sends you a message with its exit code and last lines, so end your turn instead of polling with sleep timers; jig_terminal_list shows the project's terminals (including the user's own dev server). Use your own shell for commands that finish.",
     // Long inline scripts with quotes break in Git Bash heredocs on Windows (seen in Jig's own work).
     ...(process.platform === "win32"
       ? [

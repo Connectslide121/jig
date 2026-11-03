@@ -4,8 +4,9 @@ import { join } from "node:path";
 import { spawn } from "@lydell/node-pty";
 import { describe, expect, it } from "vitest";
 import type { SessionMeta } from "../../shared/engine";
+import type { TerminalInfo } from "../../shared/terminals";
 import { outputText } from "../engine/types";
-import { terminalTools } from "./claudeTools";
+import { exitNotice, terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
 
 describe("terminal tools for Claude", () => {
@@ -58,4 +59,16 @@ describe("terminal tools for Claude", () => {
       expect(tools.jig_terminal_run!.readOnly).toBeUndefined();
     },
   );
+
+  it("tells the chat how a terminal it started ended, with the end of its output", () => {
+    const t = { id: "t1", title: "Claude: Build", command: "npm run build", exitCode: 0 } as TerminalInfo;
+    const ok = exitNotice(t, "\x1b[32mcompiled\x1b[0m\r\ndone\r\n");
+    expect(ok.from).toBe('Terminal "Build" finished');
+    expect(ok.text).toContain(
+      'Terminal t1 "Build" (npm run build), which you started, has exited with code 0',
+    );
+    expect(ok.text).toContain("compiled\ndone");
+    expect(ok.text).toMatch(/^\(Sent by Jig, not by the user\.\)/);
+    expect(exitNotice({ ...t, exitCode: 2 }, "").from).toBe('Terminal "Build" failed with exit code 2');
+  });
 });

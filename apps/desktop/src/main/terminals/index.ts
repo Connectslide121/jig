@@ -8,10 +8,11 @@ import { getEngine, sessionEnv } from "../engine";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { sessionManager } from "../sessions";
 import { execTool } from "../setup/checks";
 import { type ClaudeSignIn, parseSignIn } from "../setup/signIn";
 import { claudeBinary } from "./claudeBinary";
-import { terminalTools } from "./claudeTools";
+import { exitNotice, terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
 import { defaultShell, makeWhich } from "./shell";
 import { detectShells } from "./shells";
@@ -39,6 +40,13 @@ export function startTerminals(): void {
     // A script that fails by itself is friction for Learning (not one you stopped).
     onExit: (terminal) => {
       if (terminal.id === signInTerminal) void afterSignIn(terminal.id);
+      // A command Claude started has finished: tell its chat, so Claude reacts instead of polling.
+      if (terminal.sessionId) {
+        const notice = exitNotice(terminal, manager?.buffer(terminal.id) ?? "");
+        void Promise.resolve()
+          .then(() => sessionManager().notify(terminal.sessionId!, notice.text, notice.from))
+          .catch(() => {});
+      }
       if (terminal.scriptId && !terminal.private && terminal.exitCode && terminal.exitCode > 0)
         publishActivity({
           kind: "friction",

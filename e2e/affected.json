@@ -211,7 +211,7 @@
         "apps/desktop/src/shared/terminals.ts",
         "apps/desktop/src/shared/shellNames.ts"
       ],
-      "specs": ["terminals.spec.ts", "terminal-shells.spec.ts"]
+      "specs": ["terminals.spec.ts", "terminal-shells.spec.ts", "claude-terminals.spec.ts"]
     },
     {
       "files": [
