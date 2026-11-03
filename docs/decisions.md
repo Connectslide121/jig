@@ -2974,3 +2974,28 @@ chip each. The shape is **Claude, on my own**.
   places the caret. The chips sit above the text in the box, with attachments, so the text and
   buttons below don't move when one appears.
 
+## D-254: Teams calls in the meetings window, and Jig rings while it runs
+
+**Who:** Jon's notes (Session 4): call colleagues and answer their calls in Jig. Jon chose the best
+experience and will ask for admin consent where needed. The shape is **Claude, on my own**.
+
+- **Same SDK, same identity:** the Teams call agent (Azure Communication Services, Teams identity,
+  D-217) places one-to-one calls with `startCall({ microsoftTeamsUserId })` and receives them with
+  `incomingCall`; both run on the existing Teams.ManageCalls consent. Teams keeps ringing on the
+  user's other devices; whichever answers takes the call.
+- **Finding people** needs the colleague's Entra object id: Graph `/me/people` (People.Read) for the
+  people you work with, resolved to ids with one `/users?$filter=userPrincipalName in (…)`, and a
+  directory `$search` (User.ReadBasic.All). Both delegated; asked for on first use, so meetings work
+  without them. Recent calls come from the kept call records.
+- **Calls are records:** a call is a `MeetingRecord` with `call: { peerId, peerName, direction }`
+  and an empty link, so captions, notes, actions, history and `@meeting` mentions work unchanged.
+- **Ringing while Jig runs:** the SDK allows one agent per client and only the meeting window may run
+  it (D-217), so the agent now lives as long as the window when ringing is on (Connection → "Ring in
+  Jig for Teams calls", on by default). Jig opens the window hidden 5 s after start when an account
+  is restored; closing it only hides it while the main window is open; a hidden idle meeting window
+  doesn't keep Jig running (`markBackgroundWindow`). A ringing call brings it to the front, flashes
+  it and shows a system notification; the dialog plays a Web Audio ringtone.
+- **Not done:** calls while Jig is closed, group calls, phone numbers (PSTN) and transfer. The test
+  meeting service rings on request (`window.jigTestRing`, test service only).
+- The meetings window's title is "Jig Meetings", or the live call or meeting's name (Jon).
+

@@ -9,6 +9,7 @@ import {
   type TeamsCall,
   type TeamsCallAgent,
   type TeamsCaptions,
+  type TeamsIncomingCall,
   type VideoDeviceInfo,
   VideoStreamRenderer,
 } from "@azure/communication-calling";
@@ -55,6 +56,24 @@ export function selfPerson(media: MediaState): Person {
   };
 }
 
+/** A Teams call ringing in Jig: who calls, with their object id so the call is kept with them. */
+export interface Ringing {
+  id: string;
+  name: string;
+  peerId?: string;
+}
+
+type CallOptions = { muted: boolean; camera: boolean; language: string; fake: boolean };
+
+/** Why a one-to-one call ended before it was answered, from Teams' end-reason codes. */
+export function unanswered(name: string, code?: number): string {
+  if (code === 603) return `${name} declined the call.`;
+  if (code === 480 || code === 408 || code === 487) return `${name} didn't answer.`;
+  if (code === 404) return `Teams couldn't find ${name}.`;
+  if (code === 403) return `Teams didn't allow the call to ${name} (code 403).`;
+  return `The call to ${name} ended${code ? ` (code ${code})` : ""}.`;
+}
+
 /** Video slots: `video:<id>` a person's camera, `screen:<id>` what they share, `local` your camera. */
 type SlotKey = string;
 
@@ -86,6 +105,10 @@ export class MeetingMedia {
   private cancelJoin?: () => void;
   private leaving = false;
   private spokenLanguage = "en-us";
+  /** Listening for Teams calls (D-254): the agent stays between calls and rings through `listeningFor`. */
+  private listeningFor?: (ringing: Ringing | undefined) => void;
+  private incoming?: TeamsIncomingCall;
+  private agentStarting?: Promise<TeamsCallAgent>;
   private statusChain: Promise<unknown> = Promise.resolve();
   private captionChain: Promise<unknown> = Promise.resolve();
   constructor(private readonly error: (error: unknown) => void) {}
@@ -281,40 +304,163 @@ export class MeetingMedia {
     this.video?.dispose();
     this.video = undefined;
   }
-  async join(
+  /**
+   * The one Teams call agent of this window: made for the first call or for listening, and kept
+   * while Jig listens for calls (the SDK allows one agent per client).
+   */
+  private agentFor(): Promise<TeamsCallAgent> {
+    if (this.agent) return Promise.resolve(this.agent);
+    this.agentStarting ??= (async () => {
+      try {
+        this.client ??= new CallClient();
+        const credential = await call("meetings.credential", {});
+        this.credential = new AzureCommunicationTokenCredential({
+          token: credential.token,
+          tokenRefresher: async () => (await call("meetings.credential", {})).token,
+          refreshProactively: true,
+        });
+        const agent = await this.client.createTeamsCallAgent(this.credential);
+        agent.on("incomingCall", ({ incomingCall }) => this.ring(incomingCall));
+        this.agent = agent;
+        return agent;
+      } finally {
+        this.agentStarting = undefined;
+      }
+    })();
+    return this.agentStarting;
+  }
+  /** Rings for Teams calls while this window lives; `onRing` gets each call and `undefined` when it stops. */
+  async listen(onRing: (ringing: Ringing | undefined) => void, fake: boolean): Promise<void> {
+    this.listeningFor = onRing;
+    if (!fake) await this.agentFor();
+  }
+  /** Stops ringing for calls; the agent goes when no call uses it. */
+  async stopListening(): Promise<void> {
+    this.declineRinging();
+    this.listeningFor = undefined;
+    if (!this.active && !this.record) await this.disposeAgent();
+  }
+  private ring(incoming: TeamsIncomingCall): void {
+    if (!this.listeningFor || this.incoming) {
+      void incoming.reject().catch(() => {});
+      return;
+    }
+    this.incoming = incoming;
+    const id = incoming.callerInfo.identifier;
+    const peerId = id?.kind === "microsoftTeamsUser" ? id.microsoftTeamsUserId : undefined;
+    incoming.on("callEnded", () => {
+      if (this.incoming !== incoming) return;
+      this.incoming = undefined;
+      this.listeningFor?.(undefined);
+    });
+    this.listeningFor({ id: incoming.id, name: incoming.callerInfo.displayName || "Someone", peerId });
+  }
+  /** A test call ringing (test meeting service only). */
+  fakeRing(name: string): void {
+    this.listeningFor?.({ id: `fake-${Date.now()}`, name, peerId: "00000000-0000-4000-8000-00000000a1e5" });
+  }
+  /** Declines the ringing call (Teams' own apps stop ringing too). */
+  declineRinging(): void {
+    const incoming = this.incoming;
+    this.incoming = undefined;
+    void incoming?.reject().catch(() => {});
+    this.listeningFor?.(undefined);
+  }
+  /** Calls someone in your organisation, by their Microsoft Entra object id. */
+  async callPerson(record: MeetingRecord, peerId: string, options: CallOptions): Promise<void> {
+    await this.connect(record, options, async (agent) => {
+      const video = options.camera ? await this.cameraStream() : undefined;
+      return agent.startCall(
+        { microsoftTeamsUserId: peerId },
+        {
+          audioOptions: { muted: options.muted },
+          ...(video ? { videoOptions: { localVideoStreams: [video] } } : {}),
+        },
+      );
+    });
+  }
+  /** Answers the ringing call. */
+  async answer(record: MeetingRecord, options: CallOptions): Promise<void> {
+    const incoming = this.incoming;
+    this.incoming = undefined;
+    if (!incoming && !options.fake) throw new Error("The call stopped ringing");
+    await this.connect(record, options, async () => {
+      const video = options.camera ? await this.cameraStream() : undefined;
+      return incoming!.accept({
+        audioOptions: { muted: options.muted },
+        ...(video ? { videoOptions: { localVideoStreams: [video] } } : {}),
+      });
+    });
+  }
+  private async cameraStream(): Promise<LocalVideoStream | undefined> {
+    if (this.video) return this.video;
+    const cameras = await this.deviceManager!.getCameras();
+    const camera = this.cameraDevice ?? cameras[0];
+    if (!camera) return undefined;
+    this.video = new LocalVideoStream(camera);
+    return this.video;
+  }
+  async join(record: MeetingRecord, options: CallOptions): Promise<void> {
+    await this.connect(record, options, async (agent) =>
+      agent.join(
+        { meetingLink: record.joinUrl },
+        {
+          audioOptions: { muted: options.muted },
+          // ACS requires exactly one stream if this list is present; [] silently stalls at None.
+          ...(options.camera && this.video ? { videoOptions: { localVideoStreams: [this.video] } } : {}),
+        },
+      ),
+    );
+  }
+  /** Joins a meeting, places a call or answers one, then follows it until it connects. */
+  private async connect(
     record: MeetingRecord,
-    options: { muted: boolean; camera: boolean; language: string; fake: boolean },
+    options: CallOptions,
+    start: (agent: TeamsCallAgent) => Promise<TeamsCall>,
   ): Promise<void> {
     if (this.active || this.record) throw new Error("A meeting is already open");
     this.record = record;
     this.leaving = false;
-    this.update({ state: "Joining" });
+    this.update({ state: record.call?.direction === "outgoing" ? "Calling" : "Joining" });
     try {
       if (options.fake) {
+        const peer = record.call;
         this.update({
           state: "Connected",
           muted: options.muted,
           camera: false,
-          people: [
-            {
-              id: "alex",
-              name: "Alex",
-              state: "Connected",
-              camera: true,
-              screen: false,
-              muted: false,
-              speaking: false,
-            },
-            {
-              id: "sam",
-              name: "Sam",
-              state: "Connected",
-              camera: false,
-              screen: false,
-              muted: true,
-              speaking: false,
-            },
-          ],
+          people: peer
+            ? [
+                {
+                  id: "alex",
+                  name: peer.peerName,
+                  state: "Connected",
+                  camera: false,
+                  screen: false,
+                  muted: false,
+                  speaking: false,
+                },
+              ]
+            : [
+                {
+                  id: "alex",
+                  name: "Alex",
+                  state: "Connected",
+                  camera: true,
+                  screen: false,
+                  muted: false,
+                  speaking: false,
+                },
+                {
+                  id: "sam",
+                  name: "Sam",
+                  state: "Connected",
+                  camera: false,
+                  screen: false,
+                  muted: true,
+                  speaking: false,
+                },
+              ],
         });
         this.status("connected", "Capturing live captions (test)");
         const texts = [
@@ -347,22 +493,9 @@ export class MeetingMedia {
         return;
       }
       await this.prepare();
-      const credential = await call("meetings.credential", { id: record.id });
-      this.credential = new AzureCommunicationTokenCredential({
-        token: credential.token,
-        tokenRefresher: async () => (await call("meetings.credential", { id: record.id })).token,
-        refreshProactively: true,
-      });
-      this.agent = await this.client!.createTeamsCallAgent(this.credential);
+      const agent = await this.agentFor();
       let joining = true;
-      this.active = this.agent.join(
-        { meetingLink: record.joinUrl },
-        {
-          audioOptions: { muted: options.muted },
-          // ACS requires exactly one stream if this list is present; [] silently stalls at None.
-          ...(options.camera && this.video ? { videoOptions: { localVideoStreams: [this.video] } } : {}),
-        },
-      );
+      this.active = await start(agent);
       const c = this.active;
       const state = () => {
         this.sync();
@@ -399,7 +532,12 @@ export class MeetingMedia {
           };
           const check = () => {
             if (c.state === "Connected" || c.state === "InLobby") finish();
-            else if (c.state === "Disconnected") finish(this.disconnected(c));
+            else if (c.state === "Disconnected")
+              finish(
+                record.call?.direction === "outgoing"
+                  ? new Error(unanswered(record.call.peerName, c.callEndReason?.code))
+                  : this.disconnected(c),
+              );
           };
           const connection = ({ newValue, reason }: { newValue: string; reason?: string }) => {
             if (newValue === "Disconnected")
@@ -415,7 +553,9 @@ export class MeetingMedia {
             () =>
               finish(
                 new Error(
-                  `Jig could not join the meeting (call state: ${c.state}; Microsoft connection: ${this.agent?.connectionState ?? "unknown"}). No meeting audio was connected. Try joining again or use Teams.`,
+                  record.call
+                    ? unanswered(record.call.peerName, 480)
+                    : `Jig could not join the meeting (call state: ${c.state}; Microsoft connection: ${this.agent?.connectionState ?? "unknown"}). No meeting audio was connected. Try joining again or use Teams.`,
                 ),
               ),
             90_000,
@@ -433,7 +573,7 @@ export class MeetingMedia {
       this.status("interrupted", "Could not join", error instanceof Error ? error.message : "Joining failed");
       await this.active?.hangUp().catch(() => {});
       await this.dispose();
-      this.update({ ...initial, state: "Could not join" });
+      this.update({ ...initial, state: record.call ? "Call ended" : "Could not join" });
       throw error;
     }
   }
@@ -536,10 +676,22 @@ export class MeetingMedia {
       await this.captionChain;
       this.status("ended", "Capture finished");
       await this.statusChain;
+      const wasCall = Boolean(this.record?.call);
       await this.dispose();
-      this.update({ ...initial, state: "Meeting ended" });
+      this.update({ ...initial, state: wasCall ? "Call ended" : "Meeting ended" });
     }
   }
+  private async disposeAgent(): Promise<void> {
+    await this.agentStarting?.catch(() => undefined);
+    await this.agent?.dispose().catch(this.error);
+    this.agent = undefined;
+    this.credential?.dispose();
+    this.credential = undefined;
+    await this.client?.dispose().catch(this.error);
+    this.client = undefined;
+    this.deviceManager = undefined;
+  }
+  /** Ends what belongs to the call; the agent and client stay while Jig listens for calls. */
   private async dispose(): Promise<void> {
     clearInterval(this.fakeTimer);
     this.fakeTimer = undefined;
@@ -551,16 +703,10 @@ export class MeetingMedia {
     this.preview = undefined;
     this.video?.dispose();
     this.video = undefined;
-    await this.agent?.dispose().catch(this.error);
-    this.agent = undefined;
-    this.credential?.dispose();
-    this.credential = undefined;
     this.active = undefined;
     this.record = undefined;
     this.captions = undefined;
-    await this.client?.dispose().catch(this.error);
-    this.client = undefined;
-    this.deviceManager = undefined;
+    if (!this.listeningFor) await this.disposeAgent();
     for (const slot of this.slots.values()) slot.replaceChildren();
   }
 }

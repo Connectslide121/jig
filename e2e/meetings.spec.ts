@@ -241,3 +241,59 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await app.close();
   }
 });
+
+test("Meetings: call someone, hang up, and answer a call that rings in Jig", async ({ jigHome }) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    const newWindow = app.waitForEvent("window");
+    await hostCall(main, "meetings.open");
+    const room = await newWindow;
+    await room.emulateMedia({ reducedMotion: "reduce" });
+    await expect(room.getByTestId("meeting-room")).toBeVisible();
+    await expect(room).toHaveTitle("Jig Meetings");
+
+    // Calling: the people you work with, a search, and a whole row places the call.
+    await room.getByRole("button", { name: "Call…", exact: true }).click();
+    const dialog = room.getByTestId("call-dialog");
+    await expect(dialog.getByTestId("call-person")).toHaveCount(3);
+    await dialog.getByPlaceholder("Search people by name or e-mail").fill("alex");
+    await expect(dialog.getByTestId("call-person")).toHaveCount(1);
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/call.png" });
+    await dialog.getByTestId("call-person").click();
+    await expect(room.getByRole("heading", { name: "Call with Alex Contoso" })).toBeVisible();
+    await expect(room).toHaveTitle("Call with Alex Contoso · Jig Meetings");
+    await room.getByRole("button", { name: "Hang up", exact: true }).click();
+    await expect(room.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
+    await room.getByRole("button", { name: "Back to meetings" }).click();
+
+    // A call rings: answer it; the call is kept like a meeting, and the last caller is a recent call.
+    await room.evaluate(() =>
+      (window as { jigTestRing?: (name: string) => void }).jigTestRing?.("Sam Fabrikam"),
+    );
+    const incoming = room.getByTestId("incoming-call");
+    await expect(incoming).toContainText("Sam Fabrikam");
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/incoming.png",
+    });
+    await incoming.getByRole("button", { name: "Answer", exact: true }).click();
+    await expect(room.getByRole("heading", { name: "Call with Sam Fabrikam" })).toBeVisible();
+    await room.getByRole("button", { name: "Hang up", exact: true }).click();
+    await room.getByRole("button", { name: "Back to meetings" }).click();
+    await room.getByRole("button", { name: "Call…", exact: true }).click();
+    await expect(dialog).toContainText("Recent calls");
+    await expect(dialog.getByTestId("call-person").first()).toContainText("Sam Fabrikam");
+
+    // Declining stops the ringing.
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await room.evaluate(() =>
+      (window as { jigTestRing?: (name: string) => void }).jigTestRing?.("Robin Shop"),
+    );
+    await incoming.getByRole("button", { name: "Decline", exact: true }).click();
+    await expect(incoming).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});

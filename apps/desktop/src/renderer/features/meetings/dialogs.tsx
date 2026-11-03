@@ -1,4 +1,4 @@
-import { AppWindow, Info, Mic, Monitor, PlugZap, Video, VideoOff } from "lucide-react";
+import { AppWindow, Info, Mic, Monitor, Phone, PlugZap, Video, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { MeetingAction, MeetingRecord, MeetingSettings } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
@@ -154,6 +154,8 @@ export function Connection({
   settings,
   account,
   fake,
+  ringing,
+  onRinging,
   busy,
   onClose,
   onSave,
@@ -163,6 +165,8 @@ export function Connection({
   settings: MeetingSettings;
   account?: string;
   fake: boolean;
+  ringing: boolean;
+  onRinging(on: boolean): void;
   busy: boolean;
   onClose(): void;
   onSave(value: MeetingSettings): Promise<void>;
@@ -204,6 +208,21 @@ export function Connection({
             </Button>
           )}
         </Card>
+        <Card className="flex h-14 items-center gap-3 px-3 shadow-none">
+          <Phone className="size-4 shrink-0 text-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm">Ring in Jig for Teams calls</span>
+            <span className="block truncate text-xs text-hint">
+              While Jig runs; Teams rings on your other devices too
+            </span>
+          </span>
+          <Switch
+            label="Ring in Jig for Teams calls"
+            checked={ringing}
+            disabled={busy}
+            onChange={onRinging}
+          />
+        </Card>
         {fields.map(([key, label, hint]) => (
           <Field key={key} id={`meeting-${key}`} label={label} hint={hint}>
             <Input
@@ -224,8 +243,10 @@ export function Connection({
             <p>
               If your organisation requires approval, ask an administrator to grant the delegated permissions{" "}
               <code className="font-mono text-fg">Teams.ManageCalls</code>,{" "}
-              <code className="font-mono text-fg">Teams.ManageChats</code> and{" "}
-              <code className="font-mono text-fg">Calendars.ReadBasic</code>.
+              <code className="font-mono text-fg">Teams.ManageChats</code>,{" "}
+              <code className="font-mono text-fg">Calendars.ReadBasic</code>, and for calling people{" "}
+              <code className="font-mono text-fg">User.ReadBasic.All</code> and{" "}
+              <code className="font-mono text-fg">People.Read</code>.
             </p>
           </div>
         </div>

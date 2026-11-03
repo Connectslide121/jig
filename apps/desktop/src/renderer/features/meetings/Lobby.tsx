@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FileText,
   Link2,
+  Phone,
   Plug,
   RefreshCw,
   Sparkles,
@@ -351,6 +352,11 @@ function SavedCard({
     >
       <div className="w-full space-y-0.5">
         <div className="flex w-full items-center gap-2">
+          {record.call ? (
+            <Phone className="size-3.5 shrink-0 text-muted" aria-label="Teams call" />
+          ) : (
+            <Video className="size-3.5 shrink-0 text-muted" aria-label="Teams meeting" />
+          )}
           <span className="min-w-0 flex-1 truncate text-sm font-medium" title={record.title}>
             {record.title}
           </span>

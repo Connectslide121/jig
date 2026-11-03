@@ -142,6 +142,15 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Teams calls (2026-11-03, D-254): in the meetings window, **Call…** finds people (recent calls,
+the people you work with, or a search of your organisation) and a whole row calls them (Camera on
+for video). While Jig runs, Teams calls ring in Jig too: the meetings window comes to the front with
+the caller, a ringtone and a system notification; Decline, Video or Answer. Calls are kept in the
+meeting history like meetings (captions when Teams gives them, notes, actions) with **Call back**.
+Connection → "Ring in Jig for Teams calls" turns ringing off. The first call asks Microsoft for the
+User.ReadBasic.All and People.Read permissions (your administrator may need to approve them).
+Needs a real call: consent, captions in one-to-one calls, ringing next to the Teams app.
+
 Composer mentions (2026-11-03, D-253): `@` mentions that point at something (a file that exists, a
 folder, a meeting) are highlighted in the message box, and each gets a chip above the text: click it to
 open the file in Preview (a folder in the file manager, a meeting in Meetings), × to take it out of the

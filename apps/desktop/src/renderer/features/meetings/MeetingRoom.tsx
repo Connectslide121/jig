@@ -8,6 +8,7 @@ import {
   PanelBottom,
   PanelLeft,
   PanelRight,
+  Phone,
   RotateCcw,
   Settings,
   SquareArrowOutUpRight,
@@ -31,7 +32,7 @@ import {
   SLOT_TITLES,
   setPanelHidden,
 } from "../../../shared/meetingLayout";
-import type { MeetingEvent, MeetingOverview, MeetingRecord } from "../../../shared/meetings";
+import type { MeetingCall, MeetingEvent, MeetingOverview, MeetingRecord } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useThemeController } from "../../lib/theme";
@@ -48,10 +49,16 @@ import {
   openMenuAt,
   Spinner,
 } from "../../ui";
+import { CallDialog, IncomingCall } from "./Calls";
 import { Ask, Connection, DevicePicker, Prejoin, Review, ShareSources } from "./dialogs";
-import { clock, dayAndTime } from "./format";
+import { clock, dayAndTime, SPEECH_LANGUAGES } from "./format";
 import { Lobby, STATUS } from "./Lobby";
-import { INITIAL_MEDIA, type MediaState, MeetingMedia, selfPerson } from "./media";
+import { INITIAL_MEDIA, type MediaState, MeetingMedia, type Ringing, selfPerson } from "./media";
+
+/** Captions of a call follow the system language when Teams supports it. */
+const callLanguage = () =>
+  SPEECH_LANGUAGES.find(([code]) => code === navigator.language.toLowerCase())?.[0] ?? "en-us";
+
 import { NotesPanel, PeoplePanel, TranscriptPanel } from "./Panels";
 import { SizedBox, Slot } from "./Slots";
 import { Stage } from "./Stage";
@@ -95,6 +102,8 @@ function Room() {
   const [review, setReview] = useState(false);
   const [sharing, setSharing] = useState<Array<{ id: string; name: string; thumbnail: string }>>();
   const [mediaState, setMediaState] = useState<MediaState>(INITIAL_MEDIA);
+  const [calling, setCalling] = useState(false);
+  const [ringing, setRinging] = useState<Ringing>();
   const media = useRef<MeetingMedia | null>(null);
   media.current ??= new MeetingMedia((e) => setError(errorMessage(e)));
   const refreshed = useRef(0);
@@ -158,6 +167,49 @@ function Room() {
     loadedCalendar.current = true;
     void refreshCalendar();
   }, [connected]);
+  // Teams calls ring here while Jig runs and ringing is on (D-254); the window may be hidden meanwhile.
+  const listen = Boolean(overview && connected && overview.ringing);
+  const fakeService = Boolean(overview?.fake);
+  useEffect(() => {
+    const m = media.current!;
+    if (!listen) {
+      void m.stopListening();
+      return;
+    }
+    void m
+      .listen((r) => {
+        setRinging(r);
+        void call("meetings.incoming", { name: r?.name }).catch(() => {});
+      }, fakeService)
+      .catch((e) => setError(`Jig can't ring for Teams calls: ${errorMessage(e)}`));
+    // The test meeting service rings on request, so the e2e tests can answer a call.
+    if (fakeService)
+      (window as { jigTestRing?: (name: string) => void }).jigTestRing = (name) => m.fakeRing(name);
+  }, [listen, fakeService]);
+  // The window's title says what it is (the page's own title would just say "Jig").
+  const liveTitle = overview?.records.find((r) => r.id === overview.activeId)?.title;
+  useEffect(() => {
+    document.title = liveTitle ? `${liveTitle} · Jig Meetings` : "Jig Meetings";
+  }, [liveTitle]);
+  /** Places or answers a one-to-one call; a meeting or call in progress ends first. */
+  const startCall = async (peer: MeetingCall, options: { camera: boolean }, answering = false) => {
+    setError("");
+    try {
+      if (overview?.activeId) await media.current!.leave();
+      const r = await call("meetings.startCall", peer);
+      const callOptions = {
+        muted: false,
+        camera: options.camera,
+        language: callLanguage(),
+        fake: fakeService,
+      };
+      if (answering) await media.current!.answer(r, callOptions);
+      else await media.current!.callPerson(r, peer.peerId, callOptions);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+    await reload();
+  };
   const openChat = (sessionId: string) => call("meetings.revealChat", { sessionId });
   if (!overview || !layout)
     return (
@@ -262,12 +314,22 @@ function Room() {
             <Button icon={MessageSquare} onClick={() => setAsk(true)}>
               Ask Claude
             </Button>
-            <Button
-              icon={SquareArrowOutUpRight}
-              onClick={() => void run(() => call("app.openExternal", { url: shown.joinUrl }))}
-            >
-              Open in Teams
-            </Button>
+            {shown.call ? (
+              <Button
+                icon={Phone}
+                disabled={!shown.call.peerId || Boolean(overview.activeId)}
+                onClick={() => void startCall({ ...shown.call!, direction: "outgoing" }, { camera: false })}
+              >
+                Call back
+              </Button>
+            ) : (
+              <Button
+                icon={SquareArrowOutUpRight}
+                onClick={() => void run(() => call("app.openExternal", { url: shown.joinUrl }))}
+              >
+                Open in Teams
+              </Button>
+            )}
             <IconButton
               icon={MoreHorizontal}
               label="Meeting options"
@@ -294,6 +356,9 @@ function Room() {
             {account}
             <Button icon={Settings} onClick={() => setSettings(true)}>
               Connection
+            </Button>
+            <Button icon={Phone} disabled={!connected} onClick={() => setCalling(true)}>
+              Call…
             </Button>
             <Button
               variant="primary"
@@ -326,6 +391,7 @@ function Room() {
                   })
                 }
                 onDevices={() => setDevicePicker(true)}
+                leaveLabel={active.call ? "Hang up" : "Leave"}
                 onRetryCaptions={() => void run(() => media.current!.startCaptions())}
                 onLeave={() =>
                   void run(async () => {
@@ -427,11 +493,40 @@ function Room() {
           </>
         )}
       </footer>
+      {calling && (
+        <CallDialog
+          records={overview.records}
+          onClose={() => setCalling(false)}
+          onCall={async (person, options) => {
+            setCalling(false);
+            await startCall({ peerId: person.id, peerName: person.name, direction: "outgoing" }, options);
+          }}
+        />
+      )}
+      {ringing && (
+        <IncomingCall
+          ringing={ringing}
+          inCall={Boolean(overview.activeId)}
+          onDecline={() => media.current!.declineRinging()}
+          onAnswer={(options) => {
+            const r = ringing;
+            setRinging(undefined);
+            void call("meetings.incoming", {}).catch(() => {});
+            void startCall(
+              { peerId: r.peerId ?? "", peerName: r.name, direction: "incoming" },
+              options,
+              true,
+            );
+          }}
+        />
+      )}
       {settings && (
         <Connection
           settings={overview.settings}
           account={overview.account}
           fake={overview.fake}
+          ringing={overview.ringing}
+          onRinging={(on) => void run(() => call("meetings.setRinging", { on }), "connection")}
           busy={pending === "connection"}
           onClose={() => setSettings(false)}
           onSave={(next) =>

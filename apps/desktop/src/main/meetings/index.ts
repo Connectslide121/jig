@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { app, BrowserWindow, desktopCapturer, dialog, session } from "electron";
+import { app, BrowserWindow, desktopCapturer, dialog, Notification, session } from "electron";
 import { z } from "zod";
 import {
   meetingMarkdown,
@@ -15,7 +15,7 @@ import { JigError } from "../../shared/ipc";
 import type { MeetingEvent, MeetingRecord } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
-import { appWindows, hiddenMode, revealWindow } from "../appWindows";
+import { appWindows, hiddenMode, markBackgroundWindow, revealWindow } from "../appWindows";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
@@ -33,6 +33,10 @@ const fake = () => process.env.JIG_ENGINE === "fake" && process.env.JIG_MEETINGS
 let room: BrowserWindow | undefined;
 let activeId: string | undefined;
 let quitting = false;
+/** Jig is quitting (not only the meeting window closing): a listening window may close then. */
+let appQuitting = false;
+/** The system notification of a ringing Teams call, kept so a click reaches it and it can be closed. */
+let ringNote: Notification | undefined;
 let selectedShare: { id: string; expires: number } | undefined;
 let queueChain: Promise<unknown> = Promise.resolve();
 const noteChats = new Map<string, string>();
@@ -68,10 +72,19 @@ function lifecycle(r: MeetingRecord, status: MeetingRecord["status"], capture: s
   if (["ended", "interrupted"].includes(status)) r.endedAt = new Date().toISOString();
 }
 
-async function open(): Promise<void> {
+/**
+ * Whether the meeting window listens for Teams calls: ringing is on and there is an account. Then
+ * closing it only hides it, and Jig opens it hidden at start, so calls ring while Jig runs.
+ */
+function listening(): boolean {
+  return !fake() && store.ringing() && Boolean(auth.name);
+}
+
+async function open(options: { show?: boolean } = {}): Promise<void> {
   enabled();
+  const show = options.show ?? true;
   if (room && !room.isDestroyed()) {
-    revealWindow(room);
+    if (show) revealWindow(room);
     return;
   }
   const here = fileURLToPath(new URL(".", import.meta.url));
@@ -92,6 +105,8 @@ async function open(): Promise<void> {
     },
   });
   const window = room;
+  // Hidden and between calls, it doesn't keep Jig running once the main window is gone.
+  markBackgroundWindow(window, () => !activeId);
   window.setMenuBarVisibility(false);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event) => event.preventDefault());
@@ -127,6 +142,12 @@ async function open(): Promise<void> {
     }
   });
   window.on("close", (event) => {
+    if (!activeId && !appQuitting && listening() && appWindows().some((w) => w !== window)) {
+      // Closing only hides it, so Teams calls still ring in Jig.
+      event.preventDefault();
+      window.hide();
+      return;
+    }
     if (activeId && !quitting) {
       event.preventDefault();
       const choice = dialog.showMessageBoxSync(window, {
@@ -165,7 +186,35 @@ async function open(): Promise<void> {
   const url = new URL(process.env.JIG_RENDERER_URL || (await meetingPage(window.webContents.id)));
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
-  if (!hiddenMode()) window.show();
+  if (show && !hiddenMode()) window.show();
+}
+
+/** A Teams call is ringing (`name`), or stopped ringing: the meeting window comes to the front. */
+function ring(name: string | undefined): void {
+  ringNote?.close();
+  ringNote = undefined;
+  if (!room || room.isDestroyed()) return;
+  room.flashFrame(Boolean(name));
+  if (!name || hiddenMode()) return;
+  const window = room;
+  if (window.isMinimized()) window.restore();
+  window.show();
+  // Windows refuses focus to a background process, so the window is briefly put on top to take it.
+  window.setAlwaysOnTop(true);
+  window.focus();
+  window.setAlwaysOnTop(false);
+  if (!Notification.isSupported()) return;
+  const note = new Notification({
+    title: `${name} is calling`,
+    body: "Teams call · answer in Jig",
+    icon: APP_ICON,
+  });
+  note.on("click", () => revealWindow(window));
+  note.on("close", () => {
+    if (ringNote === note) ringNote = undefined;
+  });
+  ringNote = note;
+  note.show();
 }
 
 export function hasActiveMeeting(): boolean {
@@ -233,7 +282,28 @@ export async function startMeetings(): Promise<void> {
     if (choice === 0) event.preventDefault();
     else quitting = true;
   });
-  handle("meetings.open", open);
+  app.on("before-quit", (event) => {
+    if (!event.defaultPrevented) appQuitting = true;
+  });
+  handle("meetings.open", () => open());
+  // Calls ring in Jig while it runs: the meeting window starts hidden once an account is restored.
+  if (!fake() && !hiddenMode() && store.ringing() && store.settings().clientId)
+    setTimeout(() => {
+      void auth
+        .restore()
+        .then(async () => {
+          if (
+            listening() &&
+            addonService()
+              .list()
+              .some((a) => a.id === "meetings" && a.enabled)
+          )
+            await open({ show: false });
+        })
+        .catch(() => {
+          /* Ringing is a convenience; Meetings still opens normally. */
+        });
+    }, 5000).unref();
   handle("meetings.revealChat", async ({ sessionId }, ctx) => {
     own(ctx);
     await sessionManager().snapshot(sessionId);
@@ -249,6 +319,7 @@ export async function startMeetings(): Promise<void> {
       account: fake() ? "Test account" : auth.name,
       fake: fake(),
       activeId,
+      ringing: store.ringing(),
       records: store.records(),
       layout: store.layout(),
       lobbyView: store.lobbyView(),
@@ -375,6 +446,48 @@ export async function startMeetings(): Promise<void> {
     activity("join");
     changed();
     return record;
+  });
+  handle("meetings.people", async ({ query }, ctx) => {
+    own(ctx);
+    enabled();
+    if (!fake()) return auth.people(query);
+    const people = [
+      {
+        id: "00000000-0000-4000-8000-00000000a1e5",
+        name: "Alex Contoso",
+        email: "alex@contoso.com",
+        title: "Developer",
+      },
+      {
+        id: "00000000-0000-4000-8000-0000000005a3",
+        name: "Sam Fabrikam",
+        email: "sam@fabrikam.com",
+        title: "Designer",
+      },
+      { id: "00000000-0000-4000-8000-00000000c0de", name: "Robin Shop", email: "robin@shop.example" },
+    ];
+    const q = query.trim().toLowerCase();
+    return q ? people.filter((p) => `${p.name} ${p.email}`.toLowerCase().includes(q)) : people;
+  });
+  handle("meetings.startCall", async (call, ctx) => {
+    own(ctx);
+    enabled();
+    if (activeId) throw new JigError("meeting_active", "Leave the active call first");
+    const record = await store.createCall(call);
+    activeId = record.id;
+    ring(undefined);
+    activity(call.direction === "incoming" ? "answer" : "call");
+    changed();
+    return record;
+  });
+  handle("meetings.setRinging", async ({ on }, ctx) => {
+    own(ctx);
+    await store.setRinging(on);
+    changed();
+  });
+  handle("meetings.incoming", async ({ name }, ctx) => {
+    own(ctx);
+    ring(name);
   });
   handle("meetings.credential", async ({ id }, ctx) => {
     own(ctx);

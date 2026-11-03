@@ -53,10 +53,15 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 4 — Teams calls (research first)
 
-- [ ] Research with the ACS calling SDK Jig already uses: 1:1 Teams calls to colleagues and
-      answering their calls; permissions or admin approval needed; ringing only while Jig runs;
-      the Teams app ringing at the same time.
-- [ ] Then build: call a contact, answer/decline incoming calls, in the existing meeting window.
+- [x] Research with the ACS calling SDK Jig already uses (D-254): the Teams call agent places 1:1
+      calls (`startCall` with the colleague's Entra object id) and receives them (`incomingCall`)
+      with the existing Teams.ManageCalls consent; finding colleagues needs Graph User.ReadBasic.All
+      and People.Read (Jon will ask for admin consent if needed). Teams rings on other devices too.
+- [x] Then build: **Call…** in the meetings window (recent calls, people you work with, directory
+      search), an incoming-call dialog with ringtone, system notification and Decline / Video /
+      Answer, Hang up, Call back; calls are kept like meetings (captions, notes, actions). Jig rings
+      while it runs: the meeting window starts hidden and closing it only hides it. Needs a real
+      call to test (sign-in consent, captions in 1:1 calls, ringing at the same time as Teams).
 
 ## Session 5 — Azure DevOps boards per project, update progress
 

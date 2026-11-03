@@ -118,6 +118,13 @@ export interface HostMethods {
   "meetings.signOut": { args: void; result: void };
   "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
   "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
+  "meetings.startCall": {
+    args: import("./meetings").MeetingCall;
+    result: import("./meetings").MeetingRecord;
+  };
+  "meetings.setRinging": { args: { on: boolean }; result: void };
+  "meetings.incoming": { args: { name?: string }; result: void };
   "meetings.credential": { args: { id?: string }; result: { token: string } };
   "meetings.caption": { args: { id: string; caption: import("./meetings").MeetingCaption }; result: void };
   "meetings.status": {

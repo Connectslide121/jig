@@ -34,6 +34,21 @@ export interface MeetingRecord {
   gaps: Array<{ at: string; reason: string }>;
   notes: string;
   actions: MeetingAction[];
+  /** A one-to-one Teams call instead of a meeting (`joinUrl` is empty then). */
+  call?: MeetingCall;
+}
+/** Who a Teams call was with: their Microsoft Entra object id, so Jig can call them back. */
+export interface MeetingCall {
+  peerId: string;
+  peerName: string;
+  direction: "outgoing" | "incoming";
+}
+/** Someone in your organisation you can call. */
+export interface MeetingPerson {
+  id: string;
+  name: string;
+  email: string;
+  title?: string;
 }
 export interface MeetingEvent {
   id: string;
@@ -51,6 +66,8 @@ export interface MeetingOverview {
   account?: string;
   fake: boolean;
   activeId?: string;
+  /** Jig rings for Teams calls while it runs (the meeting window listens hidden). */
+  ringing: boolean;
   records: MeetingRecord[];
   /** Where the live room's panels sit; the room uses the defaults until one is saved. */
   layout?: import("./meetingLayout").MeetingLayout;

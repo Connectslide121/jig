@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
 import { type MeetingLayout, normalizeMeetingLayout } from "../../shared/meetingLayout";
-import type { MeetingCaption, MeetingRecord, MeetingSettings } from "../../shared/meetings";
+import type { MeetingCall, MeetingCaption, MeetingRecord, MeetingSettings } from "../../shared/meetings";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
 
@@ -38,12 +38,20 @@ const record = z.object({
   gaps: z.array(z.object({ at: z.iso.datetime(), reason: z.string() })),
   notes: z.string(),
   actions: z.array(action),
+  call: z
+    .object({
+      peerId: z.string(),
+      peerName: z.string(),
+      direction: z.enum(["outgoing", "incoming"]),
+    })
+    .optional(),
 });
 const schema = z.object({
   settings: z
     .object({ tenantId: z.string(), clientId: z.string(), endpoint: z.string() })
     .default({ tenantId: "", clientId: "", endpoint: "" }),
   lobbyView: z.enum(["agenda", "week"]).default("agenda"),
+  ringing: z.boolean().default(true),
   records: z.array(record).default([]),
   layout: z.unknown().optional(),
 });
@@ -75,6 +83,15 @@ export class MeetingStore {
   setLobbyView(view: "agenda" | "week"): Promise<void> {
     return this.change(() => {
       this.data.lobbyView = view;
+    });
+  }
+  /** Whether Jig rings for Teams calls while it runs (on until you turn it off). */
+  ringing(): boolean {
+    return this.data.ringing;
+  }
+  setRinging(on: boolean): Promise<void> {
+    return this.change(() => {
+      this.data.ringing = on;
     });
   }
   layout(): MeetingLayout | undefined {
@@ -164,7 +181,13 @@ export class MeetingStore {
     });
   }
   create(url: string, title: string): Promise<MeetingRecord> {
-    const joinUrl = meetingLink(url);
+    return this.add(meetingLink(url), title);
+  }
+  /** A one-to-one Teams call, kept like a meeting: captions, notes and actions work the same. */
+  createCall(call: MeetingCall): Promise<MeetingRecord> {
+    return this.add("", `Call with ${call.peerName}`, call);
+  }
+  private add(joinUrl: string, title: string, call?: MeetingCall): Promise<MeetingRecord> {
     return this.change(() => {
       if (this.data.records.some((r) => ["joining", "connected"].includes(r.status)))
         throw new Error("Leave the current meeting first");
@@ -179,6 +202,7 @@ export class MeetingStore {
         gaps: [],
         notes: "",
         actions: [],
+        ...(call ? { call } : {}),
       };
       this.data.records.unshift(next);
       return structuredClone(next);

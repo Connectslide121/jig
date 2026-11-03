@@ -43,6 +43,10 @@ project's context, and review actions for the task queue. Meetings are global (D
   history) opens every past meeting in a tab of Jig's main window, with search, notes and transcript.
   From there: Start a chat (pick a project; the chat's draft mentions the meeting), Generate notes,
   Review actions, and ⋯ → Copy as Markdown, Export Markdown…, Copy chat reference, Rename…, Delete….
+- **Teams calls (D-254):** Call… in the meetings window calls someone in your organisation (recent
+  calls, people you work with, or a search); calls ring in Jig while it runs (Connection → Ring in
+  Jig for Teams calls). Calls are kept with meetings, with Call back. Finding people needs Graph
+  User.ReadBasic.All and People.Read.
 - **Mention a meeting in a chat:** type `@` and a meeting's name (or `@meeting`) in any chat; the
   picker lists meetings after files. `@meeting:<name>-<id>` tells Claude to read that meeting with
   `jig_meeting_read`.
