@@ -4,6 +4,7 @@ import { type AiFeatureId, aiChoice } from "../../shared/aiFeatures";
 import type { ModelInfo } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { type AiProvider, CHATGPT_FALLBACK_MODELS, type ProviderStatus } from "../../shared/providers";
+import type { RawCodexRateLimits } from "../../shared/usage";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
@@ -14,11 +15,13 @@ import { jigHome } from "../state/paths";
 import { makeWhich } from "../terminals/shell";
 import {
   codexExecArgs,
+  codexRateLimitRequests,
   codexSignInText,
   findCodex,
   parseCodexExec,
   parseCodexLoginStatus,
   parseCodexModels,
+  parseCodexRateLimits,
 } from "./codex";
 
 /**
@@ -132,13 +135,18 @@ export async function oneShot(
   const binary = codexBinary();
   if (!binary)
     throw new JigError("codex_missing", "The Codex CLI isn't installed. See Get started → ChatGPT (Codex).");
-  return codexOneShot(
-    binary,
-    model,
-    extras.system ? `${extras.system}\n\n${prompt}` : prompt,
-    timeoutMs,
-    cwd,
-  );
+  try {
+    return await codexOneShot(
+      binary,
+      model,
+      extras.system ? `${extras.system}\n\n${prompt}` : prompt,
+      timeoutMs,
+      cwd,
+    );
+  } finally {
+    // Every ChatGPT answer uses the plan: the footer's ChatGPT usage refreshes (D-298).
+    for (const listener of chatGptCallListeners) listener();
+  }
 }
 
 /** `codex debug models` (about 1 MB of JSON with every model's instructions), read once per run. */
@@ -216,4 +224,67 @@ export async function featureOneShot(
 export function registerProviderHandlers(): void {
   handle("ai.models", ({ provider }) => providerModels(provider));
   handle("ai.providers", () => providerStatus());
+}
+
+const chatGptCallListeners = new Set<() => void>();
+
+/** Called after every ChatGPT call the provider layer makes (the usage meter refreshes, D-298). */
+export function onChatGptCall(listener: () => void): () => void {
+  chatGptCallListeners.add(listener);
+  return () => chatGptCallListeners.delete(listener);
+}
+
+/**
+ * The ChatGPT plan's rate limits, from `codex app-server` (`account/rateLimits/read`; D-298).
+ * Undefined when Codex isn't installed or isn't signed in with ChatGPT. Codex reads its own login;
+ * Jig keeps only the windows and the plan type. The fake engine answers from `JIG_FAKE_CHATGPT_USAGE`
+ * (`signedout`, or a `RawCodexRateLimits` JSON) or with sample numbers.
+ */
+export async function readChatGptUsage(version = "0"): Promise<RawCodexRateLimits | undefined> {
+  if (getEngine().kind === "fake") {
+    const scripted = process.env.JIG_FAKE_CHATGPT_USAGE;
+    if (scripted === "signedout") return undefined;
+    if (scripted) return JSON.parse(scripted) as RawCodexRateLimits;
+    const at = (ms: number) => Math.round((Date.now() + ms) / 1000);
+    return {
+      planType: "plus",
+      primary: { usedPercent: 27, windowDurationMins: 300, resetsAt: at((3 * 60 + 5) * 60_000) },
+      secondary: { usedPercent: 64, windowDurationMins: 10080, resetsAt: at(2 * 24 * 3_600_000) },
+    };
+  }
+  const binary = codexBinary();
+  if (!binary) return undefined;
+  return new Promise((resolve, reject) => {
+    const r = resolveCommand(binary, ["app-server"], process.platform, process.env);
+    const child = spawn(r.file, r.args, {
+      env: codexEnv(process.env),
+      windowsHide: true,
+      windowsVerbatimArguments: r.verbatim,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    let stdout = "";
+    let done = false;
+    const finish = (error: Error | undefined, value?: RawCodexRateLimits) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      child.kill();
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const timer = setTimeout(() => finish(new Error("Codex didn't answer in time")), 20_000);
+    child.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString("utf8");
+      try {
+        const answer = parseCodexRateLimits(stdout);
+        if (answer) finish(undefined, "limits" in answer ? answer.limits : undefined);
+      } catch (error) {
+        finish(error as Error);
+      }
+    });
+    child.on("error", (error) => finish(new Error(`Couldn't start Codex: ${error.message}`)));
+    child.on("close", () => finish(new Error("Codex closed before it answered")));
+    child.stdin.on("error", () => {});
+    child.stdin.write(codexRateLimitRequests(version));
+  });
 }

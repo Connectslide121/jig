@@ -73,7 +73,7 @@ import type {
   ThemeSummary,
 } from "./themes";
 import type { Tour } from "./tour";
-import type { PlanUsage } from "./usage";
+import type { UsageByProvider } from "./usage";
 import type { WorktreeChat } from "./worktrees";
 
 export const CHANNEL_CALL = "jig:call";
@@ -319,11 +319,11 @@ export interface HostMethods {
   /** Whether Claude and ChatGPT (the Codex CLI, signed in) can answer now, D-297. */
   "ai.providers": { args: void; result: ProviderStatus[] };
   "about.skills": { args: void; result: SkillInfo[] };
-  /** Your Claude plan usage (5-hour and weekly windows), as Claude Code reports it; refreshes when old. */
   "engine.models": { args: void; result: ModelInfo[] };
-  "usage.get": { args: void; result: PlanUsage };
-  /** Asks Claude Code again now. */
-  "usage.refresh": { args: void; result: PlanUsage };
+  /** Your plans' usage: Claude's from Claude Code, ChatGPT's from the Codex CLI (D-298); refreshes when old. */
+  "usage.get": { args: void; result: UsageByProvider };
+  /** Asks Claude Code and Codex again now. */
+  "usage.refresh": { args: void; result: UsageByProvider };
   /** First-run checks: Claude Code, git, gh, az + Azure DevOps extension, VS Code (versions only). */
   "setup.check": { args: void; result: SetupCheck[] };
   "updates.check": { args: void; result: UpdateInfo };
@@ -765,7 +765,7 @@ export interface HostEvents {
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];
   "builds.changed": BuildJob[];
-  "usage.changed": PlanUsage;
+  "usage.changed": UsageByProvider;
   /** Dictation's model is downloading: bytes so far and in all (total grows as files start). */
   "speech.progress": { model: SpeechDownload; loaded: number; total: number };
   "learning.changed": LearningState;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RawUsage } from "../../shared/usage";
+import { planUsageFrom, type RawUsage } from "../../shared/usage";
 import { UsageService } from "./service";
 
 const raw = (five: number): RawUsage => ({
@@ -15,10 +15,10 @@ describe("UsageService", () => {
     const changes: number[] = [];
     let now = new Date("2026-10-28T10:00:00Z");
     const service = new UsageService({
-      fetch: async () => {
+      read: async () => {
         calls++;
         if (fail) throw new Error("offline");
-        return raw(10 * calls);
+        return planUsageFrom(raw(10 * calls), now);
       },
       onChange: (u) => changes.push(u.windows[0]?.percent ?? -1),
       now: () => now,
@@ -61,9 +61,31 @@ describe("UsageService", () => {
 
   it("reports an error state when the first question fails", async () => {
     const service = new UsageService({
-      fetch: async () => Promise.reject(new Error("no claude")),
+      read: async () => Promise.reject(new Error("no claude")),
       onChange: () => {},
     });
     expect((await service.refresh()).state).toBe("error");
+  });
+
+  it("takes a read's own warning (Codex) and names its source in errors", async () => {
+    let reached: string | undefined = "rate_limit_reached";
+    let fail = false;
+    const service = new UsageService({
+      source: "Codex",
+      read: async () => {
+        if (fail) throw new Error("offline");
+        return {
+          state: "ok",
+          windows: [{ id: "primary", label: "Current session (5 h)", percent: 100, minutes: 300 }],
+          warning: reached ? { window: reached, status: "rejected" } : undefined,
+        };
+      },
+      onChange: () => {},
+    });
+    expect((await service.refresh()).warning?.status).toBe("rejected");
+    reached = undefined;
+    expect((await service.refresh()).warning).toBeUndefined();
+    fail = true;
+    expect((await service.refresh()).message).toBe("Couldn't ask Codex: offline");
   });
 });

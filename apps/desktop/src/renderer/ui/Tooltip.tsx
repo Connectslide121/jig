@@ -65,7 +65,9 @@ export function Tooltip({
             onMouseLeave={interactive ? hide : undefined}
             style={{ left: at.x, top: at.y }}
             className={cn(
-              "fixed z-50 max-w-xs -translate-x-1/2 rounded-md border border-line bg-elevated px-2 py-1 text-xs text-fg shadow-popover",
+              "fixed z-50 -translate-x-1/2 rounded-md border border-line bg-elevated px-2 py-1 text-xs text-fg shadow-popover",
+              // A caller's own max-width replaces the default (two max-w classes: the stylesheet's order wins).
+              !/(^|\s)max-w-/.test(className ?? "") && "max-w-xs",
               !interactive && "pointer-events-none",
               side === "above" && "-translate-y-full",
               className,

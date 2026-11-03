@@ -14,6 +14,7 @@ import { type CodexSignIn, parseCodexLoginStatus } from "../providers/codex";
 import { sessionManager } from "../sessions";
 import { execTool } from "../setup/checks";
 import { type ClaudeSignIn, parseSignIn } from "../setup/signIn";
+import { refreshChatGptUsage } from "../usage";
 import { claudeBinary } from "./claudeBinary";
 import { exitNotice, terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
@@ -194,6 +195,7 @@ export function startTerminals(): void {
             })
           : { loggedIn: false };
     emit("codex.signIn", signIn);
+    refreshChatGptUsage();
     if (signIn.loggedIn) m.close(id);
   }
 

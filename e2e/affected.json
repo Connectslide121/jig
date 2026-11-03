@@ -206,7 +206,10 @@
       ],
       "specs": ["setup.spec.ts", "updates.spec.ts"]
     },
-    { "files": ["apps/desktop/src/main/providers/**"], "specs": ["setup.spec.ts", "ai.spec.ts"] },
+    {
+      "files": ["apps/desktop/src/main/providers/**"],
+      "specs": ["setup.spec.ts", "ai.spec.ts", "usage.spec.ts"]
+    },
     {
       "files": [
         "apps/desktop/src/renderer/features/settings/AiFeatures.tsx",

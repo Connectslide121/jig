@@ -21,7 +21,7 @@ export function StatusBar() {
   return (
     <footer
       data-testid="statusbar"
-      className="flex h-6 shrink-0 items-center gap-3 border-t border-line bg-statusbar px-2 text-xs text-on-statusbar"
+      className="@container/statusbar flex h-6 shrink-0 items-center gap-3 border-t border-line bg-statusbar px-2 text-xs text-on-statusbar"
     >
       {project && (
         <span className="flex items-center gap-1 truncate" title={project.path}>

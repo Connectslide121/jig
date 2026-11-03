@@ -36,7 +36,7 @@ test("plan usage is always in the status bar and on the chat header, with a card
 
 test("usage says so when plan limits don't apply, and warns near the limit", async () => {
   for (const [env, expected] of [
-    [{ JIG_FAKE_USAGE: "unavailable" }, "usage n/a"],
+    [{ JIG_FAKE_USAGE: "unavailable" }, "n/a"],
     [
       {
         JIG_FAKE_USAGE: JSON.stringify({
@@ -48,7 +48,7 @@ test("usage says so when plan limits don't apply, and warns near the limit", asy
           },
         }),
       },
-      "5h93%wk60%",
+      "93%",
     ],
   ] as const) {
     const home = await mkdtemp(join(tmpdir(), "jig-e2e-"));
@@ -56,9 +56,12 @@ test("usage says so when plan limits don't apply, and warns near the limit", asy
     try {
       const page = await app.firstWindow();
       const status = page.getByTestId("usage-status");
-      await expect(status).toHaveText(expected, { timeout: 15000 });
-      if (expected.startsWith("5h")) await expect(status).toHaveClass(/text-danger/);
-      else {
+      const five = status.getByTestId("usage-mini-five_hour");
+      await expect(five).toContainText(expected, { timeout: 15000 });
+      if (expected === "93%") {
+        await expect(five.getByText("93%")).toHaveClass(/text-danger/);
+        await expect(status.getByTestId("usage-mini-seven_day")).toContainText("60%");
+      } else {
         await status.hover();
         await expect(page.getByTestId("usage-card")).toContainText("isn't signed in with one");
       }
@@ -66,5 +69,43 @@ test("usage says so when plan limits don't apply, and warns near the limit", asy
       await app.close();
       await rm(home, { recursive: true, force: true });
     }
+  }
+});
+
+test("ChatGPT's usage sits after Claude's, behind its own mark, and leaves when Codex isn't signed in", async ({
+  page,
+}) => {
+  // The fake engine reports a ChatGPT Plus plan: 27 % of the 5-hour window, 64 % of the week.
+  const status = page.getByTestId("usage-status");
+  const chatgpt = status.getByTestId("usage-group-chatgpt");
+  await expect(status.getByTestId("usage-group-claude")).toContainText("Claude");
+  await expect(chatgpt).toContainText("ChatGPT", { timeout: 15000 });
+  await expect(chatgpt.getByTestId("usage-mini-chatgpt-primary")).toContainText(/5h\s*27%/);
+  await expect(chatgpt.getByTestId("usage-mini-chatgpt-secondary")).toContainText(/wk\s*64%/);
+  // Amber from 60 %: the bar's colour is about room, the same for both providers.
+  await expect(chatgpt.getByTestId("usage-mini-chatgpt-secondary").getByText("64%")).toHaveClass(
+    /text-warning/,
+  );
+  await status.hover();
+  const card = page.getByTestId("usage-card");
+  await expect(card.getByTestId("usage-card-claude")).toContainText("Max");
+  await expect(card.getByTestId("usage-card-chatgpt")).toContainText("Plus");
+  await expect(card.getByTestId("usage-window-chatgpt-secondary")).toContainText("This week");
+  await expect(card.getByTestId("usage-source-chatgpt")).toContainText("From Codex · updated");
+});
+
+test("without a ChatGPT sign-in only Claude's usage shows; the card still has both sections", async () => {
+  const home = await mkdtemp(join(tmpdir(), "jig-e2e-"));
+  const app = await launchJig(home, { JIG_FAKE_CHATGPT_USAGE: "signedout" });
+  try {
+    const page = await app.firstWindow();
+    const status = page.getByTestId("usage-status");
+    await expect(status.getByTestId("usage-mini-five_hour")).toContainText("42%", { timeout: 15000 });
+    await expect(status.getByTestId("usage-group-chatgpt")).toHaveCount(0);
+    await status.hover();
+    await expect(page.getByTestId("usage-card-chatgpt")).toContainText("Get started");
+  } finally {
+    await app.close();
+    await rm(home, { recursive: true, force: true });
   }
 });

@@ -1,12 +1,14 @@
 import type { EngineEvent } from "../../shared/engine";
-import { EMPTY_USAGE, type PlanUsage, planUsageFrom, type RawUsage } from "../../shared/usage";
+import { EMPTY_USAGE, type PlanUsage } from "../../shared/usage";
 import { logger } from "../log";
 
 const log = logger("usage");
 
 export interface UsageServiceOptions {
-  /** Asks Claude Code for the data behind `/usage`. */
-  fetch: () => Promise<RawUsage>;
+  /** Asks the provider's program (Claude Code's `/usage`, Codex's rate limits) and maps the answer. */
+  read: () => Promise<PlanUsage>;
+  /** Who is asked, for messages: "Claude Code", "Codex". */
+  source?: string;
   onChange: (usage: PlanUsage) => void;
   /** Background refresh interval (default 5 min). */
   intervalMs?: number;
@@ -14,8 +16,9 @@ export interface UsageServiceOptions {
 }
 
 /**
- * Keeps your plan usage current: asks Claude Code every few minutes, after chats (at most once a minute)
- * and soon after Claude Code reports a rate-limit warning. One question at a time.
+ * Keeps one plan's usage current (one service per provider, D-298): asks every few minutes, after use
+ * (chats for Claude, each ChatGPT call; at most once a minute) and soon after a rate-limit warning.
+ * One question at a time.
  */
 export class UsageService {
   private usage: PlanUsage = EMPTY_USAGE;
@@ -27,6 +30,10 @@ export class UsageService {
 
   current(): PlanUsage {
     return this.usage;
+  }
+
+  private source() {
+    return this.options.source ?? "Claude Code";
   }
 
   private now() {
@@ -43,15 +50,17 @@ export class UsageService {
     if (this.inflight) return this.inflight;
     this.inflight = (async () => {
       try {
-        const next = planUsageFrom(await this.options.fetch(), this.now());
-        this.set({ ...next, warning: this.usage.warning });
+        const next = await this.options.read();
+        // Claude's warnings come from chats (rateLimit), not from the read: keep them unless the read
+        // reports its own (Codex's answer always says, even "none").
+        this.set({ ...next, warning: "warning" in next ? next.warning : this.usage.warning });
       } catch (error) {
-        log.warn("Asking Claude Code for usage failed", error);
+        log.warn(`Asking ${this.source()} for usage failed`, error);
         // Keep the last numbers; say they couldn't be refreshed.
         this.set({
           ...this.usage,
           state: this.usage.windows.length ? this.usage.state : "error",
-          message: `Couldn't ask Claude Code: ${(error as Error).message}`,
+          message: `Couldn't ask ${this.source()}: ${(error as Error).message}`,
         });
       } finally {
         this.inflight = undefined;
@@ -77,8 +86,8 @@ export class UsageService {
     this.soon = setTimeout(() => void this.refresh(), 5_000);
   }
 
-  start(): void {
-    this.soon = setTimeout(() => void this.refresh(), 3_000);
+  start(firstAfterMs = 3_000): void {
+    this.soon = setTimeout(() => void this.refresh(), firstAfterMs);
     this.timer = setInterval(() => void this.refresh(), this.options.intervalMs ?? 5 * 60_000);
   }
 
