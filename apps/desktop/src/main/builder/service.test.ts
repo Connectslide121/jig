@@ -182,7 +182,9 @@ describe("BuildService", () => {
   it("names a build with the quick model's title, and its builder chat after it (D-300)", async () => {
     const { service } = await setup();
     const job = await service.start({ goal: "move the terminals", origin: "tools" });
-    await vi.waitFor(() => expect(service.list().find((j) => j.id === job.id)?.title).toBe("Terminals on the right"));
+    await vi.waitFor(() =>
+      expect(service.list().find((j) => j.id === job.id)?.title).toBe("Terminals on the right"),
+    );
     expect(renames).toEqual([[job.sessionId, "Build: Terminals on the right"]]);
     const other = await service.start({ goal: "stage a setting", origin: "tools" });
     expect(service.list().find((j) => j.id === other.id)?.title).toBeUndefined();
