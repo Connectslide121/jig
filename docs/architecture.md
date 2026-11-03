@@ -503,6 +503,11 @@ changes.
   process runs) and `TerminalInfo.azureTenant` record it; `features/azure/TenantTag.tsx` shows it in the
   chat header and terminal tab only when it differs from the active tenant. `jigContext` names the
   tenant and user (`tenantContext`), and a message's context says so when the user switched since.
+- Tenant per project (D-286): `Project.azureTenant` pins a tenant key. `followProjectTenants`
+  (`main/azure/index.ts`, started by `startProjects`) watches the project store: when the active
+  project (or its pin) changes and the pin names an existing tenant, it calls the same
+  `setActiveTenant` as the top bar. No pin or a removed tenant = Default (nothing switches); the
+  project dialog shows a note for a removed one (`pinnedTenant` in `@jig/azure`).
 - Renderer (D-283): `features/azure` — the tenant avatar at the far right of the top bar (its menu
   switches; the Add and Manage modals hang off it), Settings → Azure, a store fed by
   `azure.tenantChanged`. Claude: `jig_azure_tenants` (reads) and `jig_azure_switch_tenant` (approval).

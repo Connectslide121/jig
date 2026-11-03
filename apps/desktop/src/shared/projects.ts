@@ -41,12 +41,18 @@ export const ProjectSchema = z.object({
   starters: z.array(z.string().max(500)).max(12).optional(),
   /** Its links in groups (Stage, Prod…): Azure resources, sites, Azure DevOps, docs. */
   links: z.array(LinkGroupSchema).max(50).optional(),
+  /**
+   * The Azure tenant this project pins (a tenant key, `default` = your own az login; D-286): making
+   * the project active switches to it. Missing = Default (the tenant in use stays). A key whose tenant
+   * was removed counts as Default; the project dialog says so.
+   */
+  azureTenant: z.string().max(40).optional(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
 /** What `projects.update` can change; an empty string or list clears a preference. */
 export type ProjectPatch = Partial<
-  Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters" | "links">
+  Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters" | "links" | "azureTenant">
 > & { effort?: EffortLevel | ""; permissionMode?: PermissionMode | "" };
 
 export const ProjectsFileSchema = z.object({

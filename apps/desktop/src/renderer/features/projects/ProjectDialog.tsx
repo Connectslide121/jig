@@ -1,5 +1,6 @@
+import { pinnedTenant } from "@jig/azure";
 import { FolderPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import {
   EFFORT_LEVELS,
@@ -13,6 +14,7 @@ import { call, errorMessage } from "../../lib/host";
 import { Button, cn, Dialog, Input, Select, Textarea } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
+import { startTenants, useTenants } from "../azure/store";
 import { modelChoices } from "../sessions/menus";
 import { projectColorLabel, projectDotClass } from "./colors";
 
@@ -58,6 +60,11 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
   const [mode, setMode] = useState<PermissionMode | "">(project?.permissionMode ?? "");
   const [instructions, setInstructions] = useState(project?.instructions ?? "");
   const [starters, setStarters] = useState((project?.starters ?? []).join("\n"));
+  const tenants = useTenants((s) => s.state);
+  useEffect(startTenants, []);
+  // A pin whose tenant was removed counts as Default (D-286): the select shows Default, a note says why.
+  const removedPin = Boolean(tenants && pinnedTenant(tenants, project?.azureTenant).removed);
+  const [tenant, setTenant] = useState(removedPin ? "" : (project?.azureTenant ?? ""));
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const workspace = workspaces.find((w) => w.path === path);
@@ -88,6 +95,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
         model,
         effort,
         permissionMode: mode,
+        azureTenant: tenant,
         instructions,
         starters: starters.split("\n"),
         ...(color ? { color } : {}),
@@ -196,6 +204,28 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
             </Select>
           </Field>
         )}
+        <Field label="Azure tenant">
+          <Select value={tenant} onChange={(e) => setTenant(e.target.value)} data-testid="project-tenant">
+            <option value="">Default (the tenant in use stays)</option>
+            {(tenants?.tenants ?? []).map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.user && !t.isDefault ? `${t.label} — ${t.user}` : t.label}
+              </option>
+            ))}
+            {!tenants && tenant && <option value={tenant}>{tenant}</option>}
+          </Select>
+          {removedPin ? (
+            <span className="text-2xs text-warning" data-testid="project-tenant-removed">
+              The tenant this project was pinned to was removed from Jig, so it uses Default. Pick another
+              one, or save to keep Default.
+            </span>
+          ) : (
+            <span className="text-2xs text-hint">
+              Switching to this project switches Azure, Azure DevOps and az to this tenant. Add tenants from
+              the avatar at the top right.
+            </span>
+          )}
+        </Field>
         <div className="grid grid-cols-3 gap-2">
           <Field label="Model">
             <Select value={model} onChange={(e) => setModel(e.target.value)} data-testid="project-model">

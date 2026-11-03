@@ -1,3 +1,4 @@
+import { parseTenantsFile, tenantsState } from "@jig/azure";
 import { describe, expect, it } from "vitest";
 import type { AddonInfo } from "../../shared/addons";
 import { type DeepPartial, deepMerge, defaultConfig, type JigConfig } from "../../shared/config";
@@ -105,6 +106,13 @@ function setup() {
     addCard: async (_id, item) => {
       cards.push(item);
     },
+    tenants: () =>
+      tenantsState(
+        parseTenantsFile({
+          tenants: [{ key: "fabrikam", label: "Fabrikam", domain: "fabrikam.com", addedAt: "x" }],
+        }),
+        "",
+      ),
   };
   const tools = Object.fromEntries(configureTools(deps).map((t) => [t.name, t]));
   const meta = { id: "s1", projectId: "p1" } as SessionMeta;
@@ -216,6 +224,21 @@ describe("configure tools", () => {
     expect(get().projects.projects.map((p) => p.name)).toEqual(["shop"]);
     expect(get().projects.projects[0]?.instructions).toBeUndefined();
     expect(get().projects.projects[0]?.permissionMode).toBeUndefined();
+  });
+
+  it("pins a project's Azure tenant by name, lists it and undoes it", async () => {
+    const { call, cards, deps, get } = setup();
+    expect(await call("jig_update_project", { azureTenant: "fabrikam.com" })).toContain(
+      "Azure tenant: Fabrikam",
+    );
+    expect(get().projects.projects[0]?.azureTenant).toBe("fabrikam");
+    expect(await call("jig_list_projects")).toContain("Azure tenant Fabrikam");
+    await expect(call("jig_update_project", { azureTenant: "contoso" })).rejects.toThrow(
+      /Jig has: Your az login/,
+    );
+    for (const c of [...cards].reverse())
+      await applyUndo(deps, (c as Extract<ChatItem, { kind: "change" }>).undo!);
+    expect(get().projects.projects[0]?.azureTenant).toBeUndefined();
   });
 
   it("adds and replaces project links, undoable", async () => {

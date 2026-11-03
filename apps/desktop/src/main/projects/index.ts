@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog } from "electron";
 import { publishActivity } from "../activity/bus";
+import { followProjectTenants } from "../azure";
 import { getConfig, onConfigChange } from "../config";
 import { emit, handle } from "../ipc/router";
 import { removeProjectKnowledge } from "../knowledge";
@@ -16,6 +17,8 @@ export function projectStore(): ProjectStore {
 export function startProjects(): void {
   store = new ProjectStore(paths.projects(), () => getConfig().projects.repoScanDepth);
   store.onChange((state) => emit("projects.changed", state));
+  // A project's pinned Azure tenant becomes the active one when you switch to it (D-286).
+  followProjectTenants(store);
   let depth = getConfig().projects.repoScanDepth;
   onConfigChange((config) => {
     if (config.projects.repoScanDepth === depth) return;

@@ -11,9 +11,11 @@ import {
   emptyTenantsFile,
   errorLine,
   failedCheck,
+  findTenant,
   loginArgs,
   mergeSignIn,
   parseTenantsFile,
+  pinnedTenant,
   type Tenant,
   type TenantInfo,
   type TenantsFile,
@@ -24,6 +26,7 @@ import {
 } from "@jig/azure";
 import { z } from "zod";
 import { JigError } from "../../shared/ipc";
+import type { ProjectsState } from "../../shared/projects";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { type JigTool, registerJigTools } from "../engine/jigTools";
@@ -261,6 +264,41 @@ async function setActiveTenant(key: string): Promise<TenantsState> {
   return state();
 }
 
+/** The tenants and which one is active (Claude's project tools resolve a pinned tenant with it). */
+export const azureTenants = (): TenantsState => state();
+
+/**
+ * A project can pin a tenant (D-286): when it becomes the active project, or the active project's pin
+ * changes, Jig switches to that tenant the way the top bar does. "Default" (no pin) and a pin whose
+ * tenant was removed leave the tenant in use. What was active at startup is not switched (you may
+ * have picked another tenant since).
+ */
+export function followProjectTenants(projects: {
+  state(): Promise<ProjectsState>;
+  onChange(listener: (state: ProjectsState) => void): unknown;
+}): void {
+  const pin = (s: ProjectsState) => {
+    const project = s.projects.find((p) => p.id === s.activeId);
+    return project ? `${project.id}:${project.azureTenant ?? ""}` : "";
+  };
+  let seen: string | undefined;
+  void projects.state().then((s) => {
+    seen ??= pin(s);
+  });
+  projects.onChange((s) => {
+    const now = pin(s);
+    if (now === seen) return;
+    seen = now;
+    const project = s.projects.find((p) => p.id === s.activeId);
+    const { key } = pinnedTenant(state(), project?.azureTenant);
+    if (!key || key === active) return;
+    log.info(`Project ${project?.id} pins Azure tenant ${key}`);
+    void setActiveTenant(key).catch((error: Error) =>
+      log.warn(`Couldn't switch to the project's Azure tenant ${key}: ${error.message}`),
+    );
+  });
+}
+
 /** Loads the tenants (before add-ons start, so their first `az` already uses the right one). */
 export async function startAzure(): Promise<void> {
   file = await readJson(paths.azureTenants(), FileSchema).catch(() => emptyTenantsFile());
@@ -304,18 +342,6 @@ const describe = (s: TenantsState) =>
       ...(t.problem ? { problem: t.problem } : {}),
     })),
   );
-
-/** Picks a tenant by key, label, domain, tenant id or user (case-insensitive). */
-function findTenant(s: TenantsState, wanted: string) {
-  const w = wanted.trim().toLowerCase();
-  return (
-    s.tenants.find((t) => t.key === w) ??
-    s.tenants.find((t) =>
-      [t.label, t.domain, t.tenantId, t.displayName].some((v) => v?.toLowerCase() === w),
-    ) ??
-    s.tenants.find((t) => t.user?.toLowerCase() === w)
-  );
-}
 
 /** Claude's tools for tenants (D-283): list them (reads) and switch (the user approves). */
 function azureTools(): JigTool[] {

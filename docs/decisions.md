@@ -3515,3 +3515,29 @@ terminal started under another tenant). How: Claude, on my own.
   and the signed-in user. When the user switches while the process runs, each message's context says
   that `az` in this chat still uses the tenant it started with.
 
+## D-286: A project can pin an Azure tenant; switching to it switches the tenant
+
+**Who:** Jon asked for it (phase 24, session 5: a project setting "Azure tenant", Default or a tenant;
+switching to the project switches through the top bar's path; a removed tenant falls back to Default
+with a note). How: Claude, on my own.
+
+- **Stored on the project.** `Project.azureTenant` is a tenant key (`default` = your own az login).
+  Missing means **Default: the tenant in use stays**, so projects without a pin never switch anything
+  and you can still switch from the top bar inside any project. "Your az login" is a real choice in
+  the list, distinct from Default.
+- **One path.** The host watches the project store (`followProjectTenants`): when the active project
+  changes, or the active project's pin changes (saving the dialog), and the pin names an existing
+  tenant, it calls the same `setActiveTenant` the top bar and `jig_azure_switch_tenant` use, so the
+  setting, `azure.tenantChanged`, the add-on event and the avatar all follow. The project that is
+  active when Jig starts is not re-applied: you may have switched by hand since.
+- **A removed tenant is Default, not an error.** Removing a tenant leaves the key on projects; it
+  counts as Default (`pinnedTenant`). The project dialog shows Default with a warning in the hint's
+  slot (same height as the hint, so nothing moves) and saving clears the key. `jig_list_projects`
+  says "removed, so Default".
+- **Claude names it like a person would.** `jig_create_project`/`jig_update_project` take
+  `azureTenant` as a key, name, domain or tenant id (resolved with `findTenant`, now in `@jig/azure`
+  and shared with `jig_azure_switch_tenant`); the change card shows the tenant's name and Undo puts
+  the previous pin back. Pinning needs no extra approval beyond the tool's own: it only picks among
+  tenants the user already added.
+- **The avatar says why.** Its tooltip adds "Pinned by the project X" when the active project's pin is
+  the tenant in use.

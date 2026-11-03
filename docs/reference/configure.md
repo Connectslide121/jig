@@ -16,8 +16,8 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_change_layout { ops }` | move / hide / show / resize / collapse / expand / below (a view in the lower half of another view's sidebar) / save / use (a named layout, D-175); regions left, left2, right, right2, bottom | yes |
 | `jig_set_addon_enabled { id, enabled }` | switches an add-on on or off | yes |
 | `jig_list_projects` | projects with their settings, workspaces with their repositories, recent chats and their project | no (read-only) |
-| `jig_create_project { name, path, color?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | a new project (Undo removes it) | yes |
-| `jig_update_project { projectId?, name?, color?, path?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | changes a project (default: the chat's project); `""`/`[]` clears a preference; Undo puts back the previous values | yes |
+| `jig_create_project { name, path, color?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters?, azureTenant? }` | a new project (Undo removes it) | yes |
+| `jig_update_project { projectId?, name?, color?, path?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters?, azureTenant? }` | changes a project (default: the chat's project); `""`/`[]` clears a preference; `azureTenant` is a tenant's key, name, domain or id (`""` = Default), the tenant Jig switches to when the project becomes active (D-286); Undo puts back the previous values | yes |
 | `jig_add_project_links { projectId?, group, links: [{ url, label?, type? }] }` | adds links to a group (made if missing); type guessed from the address | yes |
 | `jig_set_project_links { projectId?, groups: [{ title, links }] }` | replaces all links (reorder, regroup, remove); Undo puts the old ones back | yes |
 | `jig_azure_tenants { check? }` | the Azure tenants: your az login and the ones added, which is active, user, domain, tenant id, status; `check` asks each tenant's Azure CLI first (`main/azure`, D-283) | no (read-only) |

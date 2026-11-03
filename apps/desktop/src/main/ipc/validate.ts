@@ -56,6 +56,7 @@ const projectPatch = z.object({
   instructions: z.string().max(20_000).optional(),
   starters: z.array(z.string().max(500)).max(12).optional(),
   links: z.array(LinkGroupSchema).max(50).optional(),
+  azureTenant: z.union([tenantKey, z.literal("")]).optional(),
 });
 
 const attachment = z.object({

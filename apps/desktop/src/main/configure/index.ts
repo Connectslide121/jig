@@ -1,5 +1,6 @@
 import { JigError } from "../../shared/ipc";
 import { addonService } from "../addons";
+import { azureTenants } from "../azure";
 import { getConfig, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
@@ -34,6 +35,7 @@ export function startConfigure(): void {
     addCard: (sessionId, item) => sessionManager().addItem(sessionId, item),
     removeEvidence: (id) => knowledgeStore().remove(id),
     setProfile: (text) => knowledgeStore().setProfile(text),
+    tenants: azureTenants,
     setAddonData: async (id, key, value) => {
       const addons = addonService();
       if (value === undefined) await addons.storageDelete(id, key);

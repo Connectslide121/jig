@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { DEFAULT_TENANT_LABEL } from "../../../shared/azure";
 import { errorMessage } from "../../lib/host";
 import { type MenuEntry, openMenuAt, switchMenuAt, Tooltip } from "../../ui";
+import { useActiveProject } from "../../workbench/projects";
 import { AddTenantDialog, ManageTenantsDialog } from "./dialogs";
 import { needsSignIn, statusText, TenantAvatar, TenantMark } from "./parts";
 import { openAddTenant, openManageTenants, startTenants, switchTenant, useTenants } from "./store";
@@ -37,6 +38,9 @@ export function TenantChip({ menuBar }: { menuBar: string }) {
   const state = useTenants((s) => s.state);
   useEffect(startTenants, []);
   const active = state?.tenants.find((t) => t.key === state.active);
+  // The active project pinned this tenant (D-286): switching to it switched here.
+  const project = useActiveProject();
+  const pinnedBy = project?.azureTenant && project.azureTenant === active?.key ? project.name : undefined;
   const open = (el: HTMLElement) => openMenuAt(el, tenantMenu(), true, menuBar);
   const tip = active && (
     <div className="flex flex-col gap-0.5 py-0.5">
@@ -45,6 +49,7 @@ export function TenantChip({ menuBar }: { menuBar: string }) {
         {active.user ?? (active.isDefault ? "The Azure CLI as you left it" : "")}
       </span>
       {active.domain && <span className="text-muted">{active.domain}</span>}
+      {pinnedBy && <span className="text-muted">Pinned by the project {pinnedBy}</span>}
       {needsSignIn(active) && <span className="text-warning">{statusText(active)}: sign in again</span>}
     </div>
   );

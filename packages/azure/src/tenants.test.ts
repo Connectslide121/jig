@@ -8,10 +8,12 @@ import {
   emptyTenantsFile,
   errorLine,
   failedCheck,
+  findTenant,
   isTenantInput,
   loginArgs,
   mergeSignIn,
   parseTenantsFile,
+  pinnedTenant,
   signInStatusFromError,
   type TenantInfo,
   tenantConfigDir,
@@ -115,6 +117,38 @@ describe("tenantsState and activeKey", () => {
     expect(activeKey(file, "")).toBe(DEFAULT_TENANT);
     expect(activeKey(file, "gone")).toBe(DEFAULT_TENANT);
     expect(activeKey(file, undefined)).toBe(DEFAULT_TENANT);
+  });
+});
+
+describe("findTenant and pinnedTenant", () => {
+  const state = tenantsState(
+    parseTenantsFile({
+      tenants: [
+        {
+          key: "fabrikam",
+          label: "Fabrikam",
+          domain: "fabrikam.com",
+          user: "ann@fabrikam.com",
+          addedAt: "x",
+        },
+      ],
+    }),
+    "",
+  );
+
+  it("finds a tenant by key, label, domain or user", () => {
+    expect(findTenant(state, "fabrikam")?.key).toBe("fabrikam");
+    expect(findTenant(state, " FABRIKAM.COM ")?.key).toBe("fabrikam");
+    expect(findTenant(state, "ann@fabrikam.com")?.key).toBe("fabrikam");
+    expect(findTenant(state, "your az login")?.key).toBe(DEFAULT_TENANT);
+    expect(findTenant(state, "contoso")).toBeUndefined();
+  });
+
+  it("switches only for a pin that still exists", () => {
+    expect(pinnedTenant(state, undefined)).toEqual({ removed: false });
+    expect(pinnedTenant(state, "fabrikam")).toEqual({ key: "fabrikam", removed: false });
+    expect(pinnedTenant(state, DEFAULT_TENANT)).toEqual({ key: DEFAULT_TENANT, removed: false });
+    expect(pinnedTenant(state, "gone")).toEqual({ removed: true });
   });
 });
 

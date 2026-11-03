@@ -464,8 +464,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
 6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–3 are done (host side, D-282; the
    top bar avatar switch with add/manage modals and Claude's tools, D-283; the views follow the
-   tenant, D-284; chats, terminals and scripts start with it, D-285). Next: session 5 (tenant per
-   project).
+   tenant, D-284; chats, terminals and scripts start with it, D-285; a project can pin a tenant,
+   D-286). Next: session 6 (the finishing review).
 7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
@@ -485,7 +485,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   `az` with the active tenant (D-285), and Claude is told which tenant and user that is; a chat or
   terminal that was running when you switched keeps its tenant and shows its initials (the chat header
   also its name) until it ends. Try it: start a chat and a terminal, switch tenant, look at the chat
-  header and the terminal tab. Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
+  header and the terminal tab. A project can pin a tenant (D-286): project settings → Azure tenant
+  (Default keeps the tenant in use); switching to that project switches the tenant, and the avatar's
+  tooltip says "Pinned by the project X". A project whose tenant was removed uses Default and its
+  settings say so. Claude can set it (`jig_update_project azureTenant`). Try it: add a tenant, pin it
+  to one project, switch between projects. Needs a real machine: a real second tenant through the modal, then Pipelines, Boards,
   links, a release pipeline, a workflow pipeline step, and `az account show` in a new chat, a terminal
   and a script with it.
 

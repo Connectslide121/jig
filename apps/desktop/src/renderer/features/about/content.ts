@@ -145,7 +145,10 @@ export const CONFIGURE_TOOLS: Array<{ name: string; what: string }> = [
   { name: "jig_set_addon_enabled", what: "Turn an add-on on or off" },
   { name: "jig_list_projects", what: "See your projects, their settings and links" },
   { name: "jig_create_project", what: "Make a project with its folder, defaults and instructions" },
-  { name: "jig_update_project", what: "Change a project: name, colour, defaults, instructions, starters" },
+  {
+    name: "jig_update_project",
+    what: "Change a project: name, colour, defaults, instructions, starters, Azure tenant",
+  },
   { name: "jig_move_chat", what: "Move a chat to another project, or pin it" },
   { name: "jig_add_project_links", what: "Add links to a project (Azure resources, sites, boards)" },
   { name: "jig_azure_tenants", what: "See your Azure tenants: which is in use, user, domain, expired" },

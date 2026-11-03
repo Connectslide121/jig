@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { findTenant, pinnedTenant, type TenantsState } from "@jig/azure";
 import type { ThemeSummary } from "@jig/themes";
 import { z } from "zod";
 import type { AddonInfo } from "../../shared/addons";
@@ -66,6 +67,8 @@ export interface ConfigureDeps {
   setProfile?(text: string): Promise<unknown>;
   /** An add-on's stored data (Undo of Claude's changes to it); `undefined` deletes the key. */
   setAddonData?(id: string, key: string, value: unknown | undefined): Promise<unknown>;
+  /** The Azure tenants, to resolve and name a project's pinned tenant (D-286). */
+  tenants?(): TenantsState;
 }
 
 /** What each setting does, for Claude (keep in sync with shared/config.ts and docs/reference/state.md). */
@@ -79,7 +82,7 @@ browser.showWhenUsed: true|false, open the browser view when Claude starts using
 projects.repoScanDepth: 1–5, how deep workspaces are searched for repositories.
 learning.recording: true|false; retentionDays: 7–3650; exclusions: array of strings never recorded; schedule: { enabled, day (0=Sunday), hour, minute } of the weekly pattern run; model: model for it; checkIn: off|weekly|biweekly, a short check-in chat about how the user works (off by default).
 setup.firstRunDone: true|false.
-Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), azure.activeTenant (the Azure tenant every az Jig runs uses: a key of a tenant added in Jig, "" = the user's own az login; it decides which credentials programs run with, so the user switches it), updates.*, addonGallery.sources (git URLs or folders add-ons are installed from; the user adds them in Add-on gallery).`;
+Not changeable here (Settings page only): engine.claudePath, engine.allowApiKey, terminal.shell (they decide billing or run programs), azure.activeTenant (the Azure tenant every az Jig runs uses: a key of a tenant added in Jig, "" = the user's own az login; it decides which credentials programs run with, so the user switches it; a project can pin a tenant instead: jig_update_project azureTenant, which switches to it whenever that project becomes active), updates.*, addonGallery.sources (git URLs or folders add-ons are installed from; the user adds them in Add-on gallery).`;
 
 const show = (v: unknown) => (typeof v === "string" ? `"${v}"` : JSON.stringify(v));
 
@@ -344,6 +347,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             p.model ? `model ${p.model}` : "",
             p.effort ? `effort ${p.effort}` : "",
             p.permissionMode ? `permissions ${p.permissionMode}` : "",
+            p.azureTenant ? `Azure tenant ${tenantName(deps, p.azureTenant)}` : "",
             p.instructions ? `instructions: ${JSON.stringify(p.instructions)}` : "",
             p.starters?.length ? `starters: ${JSON.stringify(p.starters)}` : "",
             p.links?.length
@@ -376,14 +380,14 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
       description: `Create a project: a name and a default workspace folder (an absolute path, usually one of the workspaces), optionally a default Git repository inside it, colour (${PROJECT_COLORS.join(", ")}), model, effort, permission mode, instructions appended to Claude's system prompt in its chats, and starter prompts. It becomes the active project.`,
       shape: { name: z.string(), path: z.string(), ...projectFields },
       handler: async (args, meta: SessionMeta) => {
-        const { defaultRepo, ...settings } = args as Record<string, unknown>;
+        const { defaultRepo, ...settings } = withTenantKey(deps, args as Record<string, unknown>);
         const project = await deps.createProject({
           ...(settings as ProjectPatch),
           name: String(args.name),
           path: String(args.path),
         });
         if (typeof defaultRepo === "string" && defaultRepo) await deps.setFocusRepo(project.id, defaultRepo);
-        const details = describeProjectPatch(args as Record<string, unknown>);
+        const details = describeProjectPatch(deps, { ...settings, defaultRepo });
         await deps.addCard(
           meta.id,
           card(`Created project ${project.name}`, details, {
@@ -396,7 +400,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
     },
     {
       name: "jig_update_project",
-      description: `Change a project: name, colour (${PROJECT_COLORS.join(", ")}), default workspace folder (path), default Git repository (defaultRepo, a repository of its workspace; "" for none), and the defaults for its new chats: model, effort, permissionMode, instructions (appended to Claude's system prompt in its chats), starters (prompts on its Home). An empty string or list clears a preference. Without projectId: this chat's project.`,
+      description: `Change a project: name, colour (${PROJECT_COLORS.join(", ")}), default workspace folder (path), default Git repository (defaultRepo, a repository of its workspace; "" for none), and the defaults for its new chats: model, effort, permissionMode, instructions (appended to Claude's system prompt in its chats), starters (prompts on its Home), and azureTenant (the Azure tenant Jig switches to when the project becomes active; "" = Default, the tenant in use stays). An empty string or list clears a preference. Without projectId: this chat's project.`,
       shape: {
         projectId: z.string().optional(),
         name: z.string().optional(),
@@ -408,7 +412,11 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         const project = (await deps.projects()).projects.find((p) => p.id === id);
         if (!id || !project)
           throw new Error("Project not found (this chat is in no project; pass projectId)");
-        const { projectId: _id, defaultRepo, ...patch } = args as Record<string, unknown>;
+        const {
+          projectId: _id,
+          defaultRepo,
+          ...patch
+        } = withTenantKey(deps, args as Record<string, unknown>);
         const keys = Object.keys(patch).filter((k) => patch[k] !== undefined);
         if (!keys.length && defaultRepo === undefined) return "Nothing to change.";
         // Undo puts back what was there ("" clears what wasn't set).
@@ -422,7 +430,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
           before.defaultRepo = project.focusRepo ?? "";
           await deps.setFocusRepo(id, String(defaultRepo) || undefined);
         }
-        const details = describeProjectPatch({
+        const details = describeProjectPatch(deps, {
           ...patch,
           ...(defaultRepo !== undefined ? { defaultRepo } : {}),
         });
@@ -605,9 +613,36 @@ const projectFields = {
   permissionMode: z.enum([...PERMISSION_MODES, ""]).optional(),
   instructions: z.string().optional().describe("Appended to Claude's system prompt in this project's chats"),
   starters: z.array(z.string()).optional().describe("Prompts shown on the project's Home"),
+  azureTenant: z
+    .string()
+    .optional()
+    .describe(
+      'Azure tenant Jig switches to when the project becomes active: a tenant\'s key, name, domain or tenant id from jig_azure_tenants ("default" = the user\'s own az login; "" = Default, the tenant in use stays)',
+    ),
 };
 
-function describeProjectPatch(patch: Record<string, unknown>): string[] {
+/** Turns the `azureTenant` Claude gave (key, name, domain…) into a tenant key; "" stays (Default). */
+function withTenantKey(deps: ConfigureDeps, args: Record<string, unknown>): Record<string, unknown> {
+  const wanted = args.azureTenant;
+  if (typeof wanted !== "string" || !wanted.trim() || !deps.tenants) return args;
+  const state = deps.tenants();
+  const tenant = findTenant(state, wanted);
+  if (!tenant)
+    throw new Error(
+      `No Azure tenant ${JSON.stringify(wanted)}. Jig has: ${state.tenants.map((t) => `${t.label} [${t.key}]`).join(", ")}`,
+    );
+  return { ...args, azureTenant: tenant.key };
+}
+
+/** A pinned tenant by name; one that was removed says it counts as Default. */
+function tenantName(deps: ConfigureDeps, key: string): string {
+  const state = deps.tenants?.();
+  if (!state) return key;
+  if (pinnedTenant(state, key).removed) return `${key} (removed, so Default)`;
+  return state.tenants.find((t) => t.key === key)?.label ?? key;
+}
+
+function describeProjectPatch(deps: ConfigureDeps, patch: Record<string, unknown>): string[] {
   const labels: Record<string, string> = {
     name: "name",
     path: "default workspace",
@@ -618,6 +653,7 @@ function describeProjectPatch(patch: Record<string, unknown>): string[] {
     permissionMode: "permissions",
     instructions: "instructions",
     starters: "starter prompts",
+    azureTenant: "Azure tenant",
   };
   return Object.entries(patch)
     .filter(([k, v]) => labels[k] && v !== undefined)
@@ -628,7 +664,9 @@ function describeProjectPatch(patch: Record<string, unknown>): string[] {
           : "(none)"
         : v === ""
           ? "(default)"
-          : String(v);
+          : k === "azureTenant"
+            ? tenantName(deps, String(v))
+            : String(v);
       return `${labels[k]}: ${value.length > 120 ? `${value.slice(0, 120)}…` : value}`;
     });
 }

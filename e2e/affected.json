@@ -156,6 +156,7 @@
       "specs": [
         "tenants.spec.ts",
         "tenant-tags.spec.ts",
+        "project-tenant.spec.ts",
         "pipelines.spec.ts",
         "boards.spec.ts",
         "links.spec.ts"
@@ -185,7 +186,7 @@
     },
     {
       "files": ["apps/desktop/src/renderer/features/projects/**", "apps/desktop/src/main/projects/**"],
-      "specs": ["projects.spec.ts", "navigation.spec.ts", "ux.spec.ts"]
+      "specs": ["projects.spec.ts", "navigation.spec.ts", "ux.spec.ts", "project-tenant.spec.ts"]
     },
     {
       "files": [

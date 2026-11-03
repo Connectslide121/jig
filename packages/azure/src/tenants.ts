@@ -172,6 +172,31 @@ export function activeKey(file: TenantsFile, active: string | undefined): string
   return active && file.tenants.some((t) => t.key === active) ? active : DEFAULT_TENANT;
 }
 
+/** Picks a tenant by key, label, domain, tenant id or user (case-insensitive). */
+export function findTenant(state: TenantsState, wanted: string): TenantView | undefined {
+  const w = wanted.trim().toLowerCase();
+  return (
+    state.tenants.find((t) => t.key === w) ??
+    state.tenants.find((t) =>
+      [t.label, t.domain, t.tenantId, t.displayName].some((v) => v?.toLowerCase() === w),
+    ) ??
+    state.tenants.find((t) => t.user?.toLowerCase() === w)
+  );
+}
+
+/**
+ * What a project's pinned tenant means now (D-286): the tenant making the project active switches to,
+ * or none ("Default": the tenant in use stays). A pin naming a tenant that was removed is `removed`
+ * and counts as Default.
+ */
+export function pinnedTenant(
+  state: TenantsState,
+  pin: string | undefined,
+): { key?: string; removed: boolean } {
+  if (!pin) return { removed: false };
+  return state.tenants.some((t) => t.key === pin) ? { key: pin, removed: false } : { removed: true };
+}
+
 /** The arguments of a sign-in: in the system browser, to that tenant, also without subscriptions. */
 export function loginArgs(requested: string | undefined): string[] {
   const tenant = requested?.trim();

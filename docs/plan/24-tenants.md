@@ -113,8 +113,17 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 5 — Tenant per project
 
-- [ ] A project setting "Azure tenant" (Default / a tenant), in the project dialog and `jig_update_project`.
-- [ ] Switching to a project with a pinned tenant switches the active tenant; the chip shows it.
+- [x] A project setting "Azure tenant" (Default / a tenant), in the project dialog and `jig_update_project`
+      (`Project.azureTenant`, a tenant key; Claude may name it by key, name, domain or id), listed by
+      `jig_list_projects` (D-286).
+- [x] Switching to a project with a pinned tenant switches the active tenant through the same host path
+      as the top bar (`setActiveTenant`); pinning the active project's tenant switches too. The avatar
+      shows it, and its tooltip says "Pinned by the project X".
+- [x] A project whose pinned tenant was removed falls back to Default (no switch); its dialog shows
+      Default with a note in the hint's slot (same height, nothing moves). `e2e/project-tenant.spec.ts`.
+- [x] Looked at the dialog (pinned, removed) and the avatar tooltip in Jig Dark and Light.
+- [ ] Needs a real machine: pin a real second tenant to a project, switch projects, and see Pipelines
+      and Boards follow.
 
 ## Session 6 — Finish
 
