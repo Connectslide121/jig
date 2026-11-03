@@ -8,7 +8,7 @@ import { app, dialog, Notification, protocol, utilityProcess } from "electron";
 import type { AddonInfo, AddonOriginInfo } from "../../shared/addons";
 import type { SessionStatus } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import { appWindows, focusJig, hiddenMode } from "../appWindows";
+import { appWindows, focusJig, hiddenMode, mainWindow } from "../appWindows";
 import { getConfig } from "../config";
 import { card } from "../configure/tools";
 import {
@@ -392,7 +392,7 @@ export async function startAddons(): Promise<void> {
   });
 
   // Sharing: an add-on as a .zip, and a .zip back in (after you've seen what it is).
-  const window = () => appWindows().find((w) => w.isFocused()) ?? appWindows()[0];
+  const window = () => appWindows().find((w) => w.isFocused()) ?? mainWindow();
   handle("addons.export", async ({ id, copy: asCopy, gallerySource }) => {
     const addon = s.list().find((a) => a.id === id);
     if (!addon) throw new JigError("not_found", "No such add-on");

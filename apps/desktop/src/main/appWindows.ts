@@ -44,11 +44,20 @@ export function appWindows(): BrowserWindow[] {
 }
 
 /**
- * Brings Jig to the front, from a clicked notification or a second launch. Windows refuses focus to a
- * process that isn't in the foreground, so the window is briefly put on top to take it.
+ * Jig's main window: the first of its windows that isn't one waiting in the background (the meeting
+ * window opens hidden at start to ring for calls, so it can come first in the list).
+ */
+export function mainWindow(): BrowserWindow | undefined {
+  const windows = appWindows();
+  return windows.find((w) => !background.has(w)) ?? windows[0];
+}
+
+/**
+ * Brings Jig's main window to the front, from a clicked notification or a second launch. Windows
+ * refuses focus to a process that isn't in the foreground, so the window is briefly put on top to take it.
  */
 export function focusJig(): void {
-  const window = appWindows()[0];
+  const window = mainWindow();
   if (!window || hiddenMode()) return;
   if (window.isMinimized()) window.restore();
   window.show();

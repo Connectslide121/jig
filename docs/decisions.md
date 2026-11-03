@@ -3259,3 +3259,12 @@ the boards up to date from chats. The shape is **Claude, on my own**.
 - CodeMirror draws the selection on a layer behind the lines, so the opaque active-line background hid
   any selection on that line. The active line is now the hover colour at 45% over the canvas, letting
   the selection show through; other lines are unchanged. Applies to every theme (tokens only).
+
+## D-274: Clicking a notification brings the main window, not the meeting window
+
+**Who:** Jon: clicking a Jig notification opened the Meetings window, even when it wasn't open.
+
+- `focusJig()` (notifications, a second launch) and add-on dialogs without a focused window now use
+  `mainWindow()`: the first of Jig's windows that isn't a background window. The meeting window opens
+  hidden at start to ring for Teams calls (D-254), so it could be the first window and got revealed.
+  A ringing call's notification still opens the meeting window itself.
