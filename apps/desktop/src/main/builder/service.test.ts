@@ -229,6 +229,37 @@ describe("BuildService", () => {
     await expect(service.accept(job.id)).rejects.toMatchObject({ code: "not_ready" });
   });
 
+  it("a request for a missing slot keeps the add-on already built: it stays to accept (D-303)", async () => {
+    const { service, home } = await setup();
+    const job = await service.start({ goal: "Hello button for me", origin: "tools" });
+    expect(job.status).toBe("preview");
+    const tools = Object.fromEntries(service.toolsFor(job.id).map((t) => [t.name, t.handler]));
+    const answer = await tools.propose_extension_point!({
+      title: "Top bar placement",
+      reason: "No slot puts an item first on the right.",
+      proposal: "Add `placement` to topbar items.",
+    });
+    expect(answer).toContain("stays as a preview");
+    const kept = service.get(job.id);
+    expect(kept).toMatchObject({
+      status: "preview",
+      kind: "new-addon",
+      addonId: "hello-button-for",
+      revision: 1,
+    });
+    expect(kept.proposal?.title).toBe("Top bar placement");
+    expect(await exists(job.worktree!)).toBe(true);
+    await service.accept(job.id);
+    expect(await exists(join(home, "addons", "hello-button-for", "ui.tsx"))).toBe(true);
+  });
+
+  it("a build that lost its working copy says so instead of asking for git", async () => {
+    const { service } = await setup();
+    const job = await service.start({ goal: "change jig itself", origin: "tools" });
+    const tools = Object.fromEntries(service.toolsFor(job.id).map((t) => [t.name, t.handler]));
+    await expect(tools.start_addon!({ id: "x", mode: "new" })).rejects.toMatchObject({ code: "no_worktree" });
+  });
+
   it("requests no slot can do end with a proposed extension point, not a code change; jobs survive a restart", async () => {
     const { service, home } = await setup();
     const job = await service.start({ goal: "change jig itself", origin: "tools" });

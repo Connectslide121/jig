@@ -218,13 +218,25 @@ export class BuildService {
     if (job?.status === "needs_you") this.update(job.id, { status: "working" });
   }
 
-  private addonFolder(job: BuildJob, id: string): string {
-    if (!job.worktree)
+  /** The build's worktree; without git there is none, and a build can also have lost its own. */
+  private worktreeOf(job: BuildJob): string {
+    if (job.worktree) return job.worktree;
+    if (this.options.addons.repoReady)
       throw new JigError(
-        "no_git",
-        "Add-ons need git (the add-ons folder is a git repository). Install git and try again.",
+        "no_worktree",
+        "This build has no working copy of your add-ons any more. Discard it and start a new build.",
       );
-    return join(job.worktree, job.addonId === id && job.kind === "change-addon" ? this.folderName(id) : id);
+    throw new JigError(
+      "no_git",
+      "Add-ons need git (the add-ons folder is a git repository). Install git and try again.",
+    );
+  }
+
+  private addonFolder(job: BuildJob, id: string): string {
+    return join(
+      this.worktreeOf(job),
+      job.addonId === id && job.kind === "change-addon" ? this.folderName(id) : id,
+    );
   }
 
   private folderName(id: string): string {
@@ -235,29 +247,25 @@ export class BuildService {
 
   private async startAddon(jobId: string, id: string, mode: "change" | "new"): Promise<string> {
     const job = this.get(jobId);
-    if (!job.worktree)
-      throw new JigError(
-        "no_git",
-        "Add-ons need git (the add-ons folder is a git repository). Install git and try again.",
-      );
+    const worktree = this.worktreeOf(job);
     const existing = this.options.addons.list().find((a) => a.id === id && !a.preview);
     if (mode === "new") {
       if (existing)
         throw new Error(`An add-on "${id}" already exists. Change it (mode "change") or pick another id.`);
-      const folder = join(job.worktree, id);
+      const folder = join(worktree, id);
       await mkdir(folder, { recursive: true });
       this.update(jobId, { kind: "new-addon", addonId: id, level: 2 }, `Creating a new add-on "${id}"`);
       return folder;
     }
     if (!existing) throw new Error(`No add-on "${id}". Use an id from the catalog, or mode "new".`);
     const name = this.folderName(id);
-    const folder = join(job.worktree, name);
+    const folder = join(worktree, name);
     let base = job.base;
     if (!(await folderExists(folder))) {
-      await copyInto(existing.dir, job.worktree, name);
+      await copyInto(existing.dir, worktree, name);
       // The copy is its own commit, so the build shows only what the builder changes in it.
       if (existing.source === "builtin")
-        base = await commitAll(job.worktree, `Copy of the built-in add-on ${id}`);
+        base = await commitAll(worktree, `Copy of the built-in add-on ${id}`);
     }
     this.update(
       jobId,
@@ -284,6 +292,27 @@ export class BuildService {
     if (input.kind === "app") {
       // Jig doesn't change its own code (D-074): the job ends with the extension point it is missing.
       const before = job.revision ?? 0;
+      const proposal = { ...input.extra, reason: input.reason ?? "", proposal: input.proposal ?? "" };
+      if (job.worktree && job.addonId && (job.kind === "new-addon" || job.kind === "change-addon")) {
+        // An add-on already does the rest of the request: it stays to accept, the request is only
+        // for the part no slot can do yet (D-303).
+        this.update(
+          jobId,
+          { status: job.files?.length ? "preview" : "needs_you", proposal, revision: before + 1 },
+          before
+            ? `The builder updated the development request (version ${before + 1}).`
+            : "The add-on stays as it is; the part no slot can do yet became a development request.",
+          "warning",
+        );
+        this.options.notify?.({
+          title: "Part of this needs a change in Jig: the add-on works without it",
+          message: job.goal,
+          tone: "warning",
+        });
+        return job.files?.length
+          ? "Recorded. The add-on stays as a preview for the user to accept; the request is for the missing part only. If you changed the add-on since your last finish, call validate and finish with its kind again. Tell the user in one or two sentences, then stop."
+          : "Recorded. The add-on isn't finished yet: call validate and finish with its kind, so the user can accept it. The request is for the missing part only.";
+      }
       if (job.worktree && job.branch)
         await removeWorktree(this.options.addonsRepo, job.worktree, job.branch).catch(() => {});
       this.update(
@@ -295,7 +324,7 @@ export class BuildService {
           worktree: undefined,
           branch: undefined,
           files: [],
-          proposal: { ...input.extra, reason: input.reason ?? "", proposal: input.proposal ?? "" },
+          proposal,
           revision: before + 1,
         },
         before
@@ -418,7 +447,7 @@ export class BuildService {
   /** Your feedback on a development request (after trying its demo): the builder revises it. */
   async reviseRequest(jobId: string, feedback: string): Promise<BuildJob> {
     const job = this.get(jobId);
-    if (job.kind !== "app" || !job.proposal || !job.sessionId)
+    if (!job.proposal || !job.sessionId)
       throw new JigError("invalid_args", "This build has no development request to change");
     if (job.status === "working") throw new JigError("busy", "The builder is still working on it");
     this.update(jobId, { status: "working" }, `You asked for changes: ${feedback.trim()}`);

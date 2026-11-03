@@ -3933,3 +3933,21 @@ without locking the UI". Amends D-251/D-262/D-284.
   (or until the tenant is switched to again); opening a board is your own doing and still asks az.
 - Claude's `cards` tool, and the column/area lookups of `update`/`create`, use the cache when it is
   under a minute old, else fetch.
+
+## D-303: A development request keeps the add-on the build already made
+
+Jon, 2026-11-04: a Time add-on build was previewed, then a wish for a top-bar position and a live menu
+became a development request, and the whole add-on disappeared: `propose_extension_point` removed the
+build's worktree and branch. The builder then put the folder back, but the job had no worktree any
+more, so every step failed with "Add-ons need git".
+
+- When the job already has an add-on (`new-addon` / `change-addon` with a worktree),
+  `propose_extension_point` keeps the kind, worktree, branch and files and only adds the proposal; the
+  status goes back to `preview` when the add-on was finished, so you can accept the add-on and send
+  the request separately. Revising the request works for these jobs too. Jobs without an add-on end as
+  before (kind `app`, worktree removed).
+- The builder prompt says to build what an add-on can do first and propose only the missing part.
+- A build that has no worktree while git works says "This build has no working copy of your add-ons
+  any more" (`no_worktree`) instead of asking you to install git.
+- **Claude, on my own:** the Build tab's request text says the add-on below does the rest when there is
+  one.

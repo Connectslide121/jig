@@ -277,8 +277,11 @@ function DevRequestPanel({ job }: { job: BuildJob }) {
           )}
         </div>
         <div className="text-muted">
-          No add-on can do this with what Jig offers today, and Jig doesn't change its own code. The builder
-          wrote a request for Jig's developers. Try it, change it until it's what you want, then send it.
+          {job.addonId && job.worktree
+            ? "The add-on below does the rest and you can accept it now; this part needs something Jig doesn't offer add-ons yet, and Jig doesn't change its own code."
+            : "No add-on can do this with what Jig offers today, and Jig doesn't change its own code."}{" "}
+          The builder wrote a request for Jig's developers. Try it, change it until it's what you want, then
+          send it.
         </div>
       </div>
 

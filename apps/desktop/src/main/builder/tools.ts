@@ -225,7 +225,7 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "propose_extension_point",
       description:
-        "No layout change, setting or add-on can do the request with the existing slots and add-on API. You can't change Jig's code: describe the missing extension point instead (the user adds it to Jig's source), then stop.",
+        "No layout change, setting or add-on can do the request with the existing slots and add-on API. You can't change Jig's code: describe the missing extension point instead (the user adds it to Jig's source), then stop. An add-on you already started stays: the request is then only for the part it can't do.",
       shape: {
         title: z
           .string()
