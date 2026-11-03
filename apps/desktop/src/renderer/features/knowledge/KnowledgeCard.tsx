@@ -121,7 +121,7 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
           <div className="flex h-16 items-center gap-3 px-3">
             <BookOpen className="size-5 shrink-0 text-hint" />
             <div className="min-w-0 flex-1 text-xs text-muted">
-              Documents Claude reads in this project's chats: specs, style guides, notes. Drop files here, add
+              Documents Claude reads in this project's chats: specs, style guides, notes (text, PDF, Word, Excel, PowerPoint). Drop files here, add
               them, or{" "}
               <button type="button" className="text-accent hover:underline" onClick={openClaudeImportDialog}>
                 bring your claude.ai projects

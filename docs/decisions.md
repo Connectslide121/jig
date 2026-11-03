@@ -3031,8 +3031,9 @@ Claude as an opt-in alternative). The shape is **Claude, on my own**.
 
 - **Knowledge is text kept by Jig**, per project in `JIG_HOME/knowledge/<projectId>/`: files are
   read once when added (text and code as they are, Word/Excel/PowerPoint through `@jig/documents`),
-  so Claude reads the same thing whatever happens to the original. PDFs aren't read yet (no text
-  extractor in Jig); the user is told to save them as Word or text.
+  so Claude reads the same thing whatever happens to the original. PDFs are read page by page with
+  Mozilla's pdf.js through `unpdf` (MIT, ~3 MB, Jon 2026-11-03); a scanned PDF without a text layer is
+  refused with a hint to run text recognition first.
 - **Claude learns about it per turn:** each message's Jig context lists the project's documents
   (name and size) and `jig_knowledge_read` (read-only, by name, paged at 40,000 characters) reads
   one. The list goes with each message because documents change while a chat runs; it's short.

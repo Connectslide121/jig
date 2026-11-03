@@ -150,7 +150,7 @@ readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
 Project knowledge (2026-11-03, D-256): a project's Home has **Knowledge**: drop files on it or
-Add files… (text, Markdown, code, Word, Excel, PowerPoint; PDFs not yet), click one to read it, ×
+Add files… (text, Markdown, code, PDF, Word, Excel, PowerPoint), click one to read it, ×
 removes it. Every chat in the project is told which documents there are and Claude reads them with
 `jig_knowledge_read`. **Import from claude.ai…** (Projects view ⋯, the Knowledge card, or Go to)
 shows the steps to export your data on claude.ai, then reads the zip you drop and makes Jig projects

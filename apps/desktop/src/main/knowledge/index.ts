@@ -16,6 +16,7 @@ import { openExternal } from "../appWindows";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { pdfText } from "./pdf";
 import { KnowledgeStore } from "./store";
 
 const store = new KnowledgeStore();
@@ -32,7 +33,7 @@ async function project(projectId: string) {
   return found;
 }
 
-/** A file as knowledge text: text files as they are, Word/Excel/PowerPoint as their text. */
+/** A file as knowledge text: text files as they are, PDF/Word/Excel/PowerPoint as their text. */
 async function fileText(path: string): Promise<string> {
   const name = basename(path);
   const info = await stat(path).catch(() => undefined);
@@ -42,9 +43,8 @@ async function fileText(path: string): Promise<string> {
   const bytes = await readFile(path);
   if (type.kind === "office") return officeToText(extensionOf(name), bytes);
   if (type.kind === "text") return bytes.toString("utf8");
-  if (type.kind === "pdf")
-    throw new Error(`${name}: PDFs can't be read as text yet; save it as Word or text`);
-  throw new Error(`${name}: only text, Markdown, code, Word, Excel and PowerPoint files`);
+  if (type.kind === "pdf") return pdfText(bytes, name);
+  throw new Error(`${name}: only text, Markdown, code, PDF, Word, Excel and PowerPoint files`);
 }
 
 /** Reads the projects of a claude.ai data export zip. */
@@ -115,7 +115,10 @@ export function startKnowledge(): void {
         title: "Add knowledge",
         properties: ["openFile" as const, "multiSelections" as const],
         filters: [
-          { name: "Documents", extensions: ["md", "txt", "docx", "xlsx", "pptx", "csv", "json", "html"] },
+          {
+            name: "Documents",
+            extensions: ["md", "txt", "pdf", "docx", "xlsx", "pptx", "csv", "json", "html"],
+          },
           { name: "All files", extensions: ["*"] },
         ],
       };

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { expect, hostCall, test } from "./fixtures";
+import { makePdf } from "./makePdf";
 
 test("Knowledge: files kept with a project, read by Claude in its chats, removed", async ({
   page,
@@ -19,6 +20,20 @@ test("Knowledge: files kept with a project, read by Claude in its chats, removed
   await hostCall(page, "knowledge.addFiles", { projectId: project.id, paths: [style] });
   await expect(card.getByTestId("knowledge-doc")).toHaveCount(1);
   await expect(card.getByTestId("knowledge-doc")).toContainText("style.md");
+  // A PDF is read as text, page by page.
+  const pdf = join(jigHome, "pricing.pdf");
+  await writeFile(pdf, makePdf(["Prices include VAT."]));
+  await hostCall(page, "knowledge.addFiles", { projectId: project.id, paths: [pdf] });
+  await expect(card.getByTestId("knowledge-doc")).toHaveCount(2);
+  const pdfDoc = (
+    (await hostCall(page, "knowledge.list", { projectId: project.id })) as {
+      value: Array<{ id: string; name: string }>;
+    }
+  ).value.find((d) => d.name === "pricing.pdf")!;
+  const read = (await hostCall(page, "knowledge.read", { projectId: project.id, id: pdfDoc.id })) as {
+    value: { text: string };
+  };
+  expect(read.value.text).toBe("Prices include VAT.");
   await card.screenshot({ path: test.info().outputPath("knowledge.png") });
 
   // A chat in the project is told about it and reads it with jig_knowledge_read.
@@ -36,7 +51,7 @@ test("Knowledge: files kept with a project, read by Claude in its chats, removed
   const docs = (await hostCall(page, "knowledge.list", { projectId: project.id })) as {
     value: Array<{ id: string }>;
   };
-  await hostCall(page, "knowledge.remove", { projectId: project.id, id: docs.value[0]!.id });
+  for (const d of docs.value) await hostCall(page, "knowledge.remove", { projectId: project.id, id: d.id });
   const after = (await hostCall(page, "knowledge.list", { projectId: project.id })) as { value: unknown[] };
   expect(after.value).toEqual([]);
 });
