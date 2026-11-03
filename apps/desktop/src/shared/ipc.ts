@@ -118,6 +118,16 @@ export interface HostMethods {
   "meetings.signOut": { args: void; result: void };
   "meetings.calendar": { args: void; result: import("./meetings").MeetingEvent[] };
   "meetings.join": { args: { url: string; title: string }; result: import("./meetings").MeetingRecord };
+  "completion.state": { args: void; result: import("./completion").CompletionState };
+  "completion.request": {
+    args: import("./completion").CompletionRequest;
+    result: import("./completion").CompletionSuggestion | null;
+  };
+  "completion.accepted": { args: { id: string }; result: void };
+  "completion.closeFile": { args: { path: string }; result: void };
+  "completion.copilotSetup": { args: void; result: void };
+  "completion.copilotSignIn": { args: void; result: { userCode: string; url: string } };
+  "completion.copilotSignOut": { args: void; result: void };
   "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
   "meetings.startCall": {
     args: import("./meetings").MeetingCall;
@@ -575,6 +585,7 @@ export interface HostMethods {
 /** Event topic → payload type. */
 export interface HostEvents {
   "meetings.changed": void;
+  "completion.changed": import("./completion").CompletionState;
   "meetings.leaveRequested": void;
   "meetings.chatOpen": { sessionId: string };
   "config.changed": JigConfig;

@@ -75,6 +75,17 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.revealChat": z.object({ sessionId: id }).strict(),
   "meetings.join": z.object({ url: z.string().max(8192), title: z.string().min(1).max(500) }).strict(),
   "meetings.people": z.object({ query: z.string().max(200) }).strict(),
+  "completion.request": z
+    .object({
+      path,
+      text: z.string().max(5_000_000),
+      offset: z.number().int().min(0),
+      tabSize: z.number().int().min(1).max(16),
+      insertSpaces: z.boolean(),
+    })
+    .strict(),
+  "completion.accepted": z.object({ id: z.string().max(10_000) }).strict(),
+  "completion.closeFile": z.object({ path }).strict(),
   "meetings.startCall": z
     .object({
       // Empty when the caller isn't a Teams user Jig can call back.

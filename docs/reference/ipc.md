@@ -43,6 +43,13 @@ settings, add-on permissions.
 | `attempts.keep` / `attempts.discard` / `attempts.repoDirty` | `{ id, index }` / `{ id }` / `{ id }` | `AttemptRun` / `AttemptRun` / `boolean` | apply one to the working copy and clean up / only clean up / whether the working copy has changes |
 | `files.preview` | `{ path }` | `FilePreview` | a file for the Preview tab: kind, text or extracted content, `jig-file:` addresses (`docs/reference/preview.md`) |
 | `files.stat` | `{ path }` | `{ size, mtimeMs } \| null` | the Preview tab polls it to follow edits |
+| `completion.state` | — | `CompletionState` | who completes code (copilot, claude, off), Copilot's setup (D-255); event `completion.changed` |
+| `completion.request` | `{ path, text, offset, tabSize, insertSpaces }` | `CompletionSuggestion \| null` | one inline suggestion at the caret; a newer request drops an older one |
+| `completion.accepted` | `{ id }` | — | Tab took a Copilot suggestion (its acceptance command) |
+| `completion.closeFile` | `{ path }` | — | the editor closed a file (Copilot forgets it) |
+| `completion.copilotSetup` | — | — | download Copilot's language server from npm (checksum checked) and start it |
+| `completion.copilotSignIn` | — | `{ userCode, url }` | GitHub device sign-in; the server opens github.com and keeps the sign-in |
+| `completion.copilotSignOut` | — | — | sign out of Copilot |
 | `files.write` | `{ path, text, expectedMtimeMs? }` | `{ size, mtimeMs }` | the Preview editor saves: only inside a workspace or a file opened in Preview this run; with `expectedMtimeMs`, `changed` when the file changed on disk since; written next to the file and renamed over it. Errors `not_allowed`, `not_a_file`, `changed`, `write_failed` |
 | `ai.ask` | `{ addonId, prompt, cwd?, quick? }` | `string` | an add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code (`main/ai`); `quick` uses `engine.quickModel` (schema) |
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |

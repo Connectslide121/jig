@@ -5,6 +5,7 @@ import { AttemptsDialogHost } from "../features/attempts";
 import { useBrowserReveal } from "../features/browser";
 import { useBuildsSync } from "../features/builder";
 import { BuildDialogHost } from "../features/builder/BuildDialog";
+import { CopilotDialogHost } from "../features/completion/CopilotDialog";
 import { StandupHost } from "../features/digest";
 import { GoToHost } from "../features/goto";
 import { useLearningSync } from "../features/learning";
@@ -118,6 +119,7 @@ export function Workbench() {
       <ErrorBoundary label="Dialogs">
         <BuildDialogHost />
         <AttemptsDialogHost />
+        <CopilotDialogHost />
         <ProjectDialogHost />
         <LinkDialogHost />
         <SessionDialogsHost />

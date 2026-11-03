@@ -8,15 +8,14 @@ import { dirtyTabIds } from "../../workbench/dirty";
 import { runAction } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openCopilotDialog } from "../completion/CopilotDialog";
+import { useCompletion, watchCompletion } from "../completion/store";
 
 function CheckRow({ check }: { check: SetupCheck }) {
   const Icon = check.ok ? CheckCircle2 : check.optional ? CircleDashed : CircleAlert;
   const tone = check.ok ? "text-success" : check.optional ? "text-hint" : "text-danger";
   return (
-    <div
-      className="flex items-start gap-3 border-b border-line px-4 py-3 last:border-b-0"
-      data-testid={`setup-${check.id}`}
-    >
+    <div className="flex items-start gap-3 border-b border-line px-4 py-3" data-testid={`setup-${check.id}`}>
       <Icon className={`mt-0.5 size-4 shrink-0 ${tone}`} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium">
@@ -40,6 +39,37 @@ function CheckRow({ check }: { check: SetupCheck }) {
             onClick={() => void call("app.openExternal", { url: check.url! })}
           >
             How to install
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** GitHub Copilot for code completion in the editor: optional, skipping it changes nothing else (D-255). */
+function CopilotRow() {
+  const copilot = useCompletion((s) => s.state?.copilot);
+  useEffect(() => watchCompletion(), []);
+  const ok = Boolean(copilot?.signedIn);
+  const Icon = ok ? CheckCircle2 : CircleDashed;
+  return (
+    <div className="flex items-start gap-3 px-4 py-3" data-testid="setup-copilot">
+      <Icon className={`mt-0.5 size-4 shrink-0 ${ok ? "text-success" : "text-hint"}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          GitHub Copilot
+          <Badge>optional</Badge>
+        </div>
+        <div className="selectable text-sm text-muted">
+          {ok
+            ? `Signed in${copilot?.user ? ` as ${copilot.user}` : ""}: code completion in the editor`
+            : "Only for code completion in the editor. Download it and sign in to GitHub."}
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        {!ok && (
+          <Button size="sm" icon={LogIn} onClick={openCopilotDialog}>
+            Set up…
           </Button>
         )}
       </div>
@@ -98,6 +128,7 @@ export function SetupTab() {
           {checks?.map((c) => (
             <CheckRow key={c.id} check={c} />
           ))}
+          {checks && <CopilotRow />}
         </Card>
         <UpdatesCard />
         {!firstRunDone && (

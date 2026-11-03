@@ -19,7 +19,15 @@ import { isReadOnlyJigTool } from "./jigTools";
 import { commandFrom, contextFrom, Normalizer, toolOutputText } from "./normalize";
 import { AsyncQueue } from "./queue";
 import { isRequestedCall, type ToolCallRequest, type ToolCallResult, toolCallPrompt } from "./toolCall";
-import type { Engine, EngineSession, OneShotOptions, StartOptions, ToolCallOptions } from "./types";
+import type {
+  Completer,
+  CompleterOptions,
+  Engine,
+  EngineSession,
+  OneShotOptions,
+  StartOptions,
+  ToolCallOptions,
+} from "./types";
 
 const log = logger("engine");
 
@@ -341,6 +349,10 @@ export class ClaudeEngine implements Engine {
     }
   }
 
+  completer(options: CompleterOptions): Completer {
+    return new ClaudeCompleter(options);
+  }
+
   async oneShot(prompt: string, options: OneShotOptions): Promise<string> {
     let text = "";
     // A one-shot answer never takes this long; without a limit a hung process would block its caller.
@@ -460,5 +472,97 @@ export class ClaudeEngine implements Engine {
         `Claude Code didn't run ${request.tool}. It may not be available with your Claude Code version or sign-in.`,
       );
     return result;
+  }
+}
+
+/**
+ * One Claude Code process kept running for completions (D-255): each ask is a turn, answered in
+ * order. It starts over every few turns, so the conversation (and what each answer costs) stays
+ * small, and after an error.
+ */
+class ClaudeCompleter implements Completer {
+  private static readonly TURNS = 8;
+  private input?: AsyncQueue<SDKUserMessage>;
+  private abort?: AbortController;
+  private turns = 0;
+  private waiting: Array<{ resolve: (text: string) => void; reject: (error: Error) => void }> = [];
+  private chain: Promise<unknown> = Promise.resolve();
+  constructor(private readonly options: CompleterOptions) {}
+
+  private open(): AsyncQueue<SDKUserMessage> {
+    if (this.input && this.turns < ClaudeCompleter.TURNS) return this.input;
+    this.close();
+    const input = new AsyncQueue<SDKUserMessage>();
+    const abort = new AbortController();
+    this.input = input;
+    this.abort = abort;
+    this.turns = 0;
+    const q = query({
+      prompt: input,
+      options: {
+        cwd: this.options.cwd,
+        model: this.options.model || undefined,
+        settingSources: [],
+        systemPrompt: { type: "preset", preset: "claude_code", append: this.options.appendSystemPrompt },
+        tools: [],
+        persistSession: false,
+        env: this.options.env,
+        pathToClaudeCodeExecutable: this.options.claudePath || undefined,
+        abortController: abort,
+        stderr: (data) => log.debug(`claude stderr (completion): ${data.trimEnd()}`),
+      },
+    });
+    void (async () => {
+      try {
+        for await (const message of q) {
+          if (message.type !== "result") continue;
+          const next = this.waiting.shift();
+          if (message.subtype === "success") next?.resolve(message.result);
+          else next?.reject(new Error(message.errors?.join("\n") || message.subtype));
+        }
+      } catch (error) {
+        if (!abort.signal.aborted) log.warn("Completion process failed", error);
+      } finally {
+        // Whatever still waits gets an answer; the next ask starts a new process.
+        if (this.input === input) {
+          this.input = undefined;
+          for (const w of this.waiting.splice(0)) w.reject(new Error("Claude Code stopped"));
+        }
+      }
+    })();
+    return input;
+  }
+
+  ask(prompt: string, signal?: AbortSignal): Promise<string> {
+    // One turn at a time: a newer ask waits for the one before (whose answer is thrown away).
+    const turn = this.chain.then(
+      () =>
+        new Promise<string>((resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new Error("Cancelled"));
+            return;
+          }
+          const input = this.open();
+          this.turns++;
+          this.waiting.push({ resolve, reject });
+          input.push({
+            type: "user",
+            message: { role: "user", content: prompt },
+            parent_tool_use_id: null,
+            uuid: randomUUID(),
+          } as SDKUserMessage);
+        }),
+    );
+    this.chain = turn.catch(() => undefined);
+    return turn;
+  }
+
+  close(): void {
+    const input = this.input;
+    this.input = undefined;
+    input?.close();
+    this.abort?.abort();
+    this.abort = undefined;
+    for (const w of this.waiting.splice(0)) w.reject(new Error("Closed"));
   }
 }

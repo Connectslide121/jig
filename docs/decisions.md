@@ -2999,3 +2999,28 @@ experience and will ask for admin consent where needed. The shape is **Claude, o
   meeting service rings on request (`window.jigTestRing`, test service only).
 - The meetings window's title is "Jig Meetings", or the live call or meeting's name (Jon).
 
+## D-255: Code completion with GitHub Copilot's language server or Claude Code
+
+**Who:** Jon's notes (Session 6, D-247: completions only through Copilot's language server, with
+Claude as an opt-in alternative). The shape is **Claude, on my own**.
+
+- **Copilot, downloaded when you set it up:** the npm package `@github/copilot-language-server`
+  (MIT, ~28 MB packed, ~90 MB unpacked) is optional, so it isn't in the installer. Setup fetches the
+  latest version's tarball from registry.npmjs.org, checks npm's sha512 integrity, unpacks it with
+  Jig's own tar reader (no names outside its folder) into `cache/copilot/<version>`, and
+  `current.json` names it. It runs with Electron's own Node (`ELECTRON_RUN_AS_NODE`, Node ≥ 22.13), so
+  users need no Node. Jig speaks LSP itself (small JSON-RPC framing, no dependency).
+- **The sign-in stays in Copilot's program:** GitHub's device flow (`signIn`, then the returned
+  command); the server opens github.com through `window/showDocument`, which Jig sends to the system
+  browser. Jig never reads the token. Completions only: `textDocument/inlineCompletion`, plus the
+  documented show/accept notifications; no chat or agent features (ACP) are used.
+- **Claude, opt-in:** `editor.claudeCompletion` (off) and `editor.claudeCompletionModel` (`haiku`,
+  picked from Claude Code's model list); both protected (D-077: plan usage). It goes through Claude
+  Code like everything else: a warm process (`Engine.completer`, no tools, no saved chat, the
+  claude_code preset with Jig's lines appended) that answers turn by turn and starts over every 8
+  turns. Measured: ~0.9 s per suggestion warm, ~4.8 s for the first; requests wait for a 0.7 s
+  pause (Copilot 0.15 s). When Claude is on it completes instead of Copilot.
+- **Editor:** ghost text is a CodeMirror widget at the caret; Tab (before indent) takes it, Esc or
+  moving drops it, typing what it says keeps the rest; a newer request drops an older one. The
+  status line shows who completes (fixed place left of the other items) and its menu switches.
+

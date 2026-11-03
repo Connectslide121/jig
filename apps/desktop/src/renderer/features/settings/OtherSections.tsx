@@ -34,6 +34,8 @@ import { addWorkspace, hiddenViews, resetLayout, saveLayoutAs } from "../../work
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openCopilotDialog } from "../completion/CopilotDialog";
+import { useCompletion, watchCompletion } from "../completion/store";
 import { lookForPatterns, useLearning } from "../learning/store";
 import { shellEntries } from "../terminals/shellEntries";
 import { useShellChoices } from "../terminals/shells";
@@ -173,6 +175,7 @@ function ModelSetting({
   onSave,
   hybrid = false,
   emptyLabel = "Follow Claude Code",
+  disabled,
 }: {
   label: string;
   description: string;
@@ -181,13 +184,20 @@ function ModelSetting({
   onSave: (value: string) => void;
   hybrid?: boolean;
   emptyLabel?: string;
+  disabled?: boolean;
 }) {
   const choices = new Map(modelOptions(models, hybrid).map((m) => [m.id, m.label]));
   choices.set("", emptyLabel);
   if (value && !choices.has(value)) choices.set(value, `${value} (saved choice)`);
   return (
     <SettingRow label={label} description={description}>
-      <Select className="w-40" aria-label={label} value={value} onChange={(ev) => onSave(ev.target.value)}>
+      <Select
+        className="w-40"
+        aria-label={label}
+        value={value}
+        disabled={disabled}
+        onChange={(ev) => onSave(ev.target.value)}
+      >
         {[...choices].map(([id, name]) => (
           <option key={id} value={id}>
             {name}
@@ -408,8 +418,16 @@ export function EngineSettings() {
 }
 export function EditorSettings() {
   const config = useConfig((s) => s.config);
+  const completion = useCompletion((s) => s.state);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  useEffect(() => {
+    watchCompletion();
+    // The model list comes from the running Claude Code (never a list of Jig's own).
+    void call("engine.models").then(setModels, () => setModels([]));
+  }, []);
   if (!config) return <Spinner center />;
   const e = config.editor;
+  const copilot = completion?.copilot;
   return (
     <SettingsSection
       title="Editor"
@@ -460,6 +478,50 @@ export function EditorSettings() {
           ))}
         </Select>
       </SettingRow>
+      <SettingRow
+        label="GitHub Copilot"
+        description="Optional: suggests code as you type; Tab takes it. Needs a GitHub account with Copilot. Used when completion with Claude is off."
+      >
+        <div className="flex items-center gap-2" data-testid="settings-copilot">
+          <span className="max-w-48 truncate text-xs text-muted">
+            {copilot?.signedIn
+              ? `Signed in${copilot.user ? ` as ${copilot.user}` : ""}`
+              : copilot?.installed
+                ? "Not signed in"
+                : "Not set up"}
+          </span>
+          {copilot?.signedIn ? (
+            <Button size="sm" onClick={() => void call("completion.copilotSignOut")}>
+              Sign out
+            </Button>
+          ) : (
+            <Button size="sm" onClick={openCopilotDialog}>
+              Set up…
+            </Button>
+          )}
+        </div>
+      </SettingRow>
+      <SettingRow
+        label="Code completion with Claude"
+        description="Claude Code suggests the code instead of Copilot, after you pause typing. Slower than Copilot: about 1 second after the pause (the first suggestion takes about 5 seconds while Claude Code starts). Each suggestion uses your Claude plan."
+      >
+        <Switch
+          label="Code completion with Claude"
+          checked={e.claudeCompletion}
+          onChange={(claudeCompletion) => void updateConfig({ editor: { claudeCompletion } })}
+        />
+      </SettingRow>
+      <ModelSetting
+        label="Model for completion"
+        description="For completion with Claude. Haiku is the quickest; larger models are slower and use more of your plan."
+        value={e.claudeCompletionModel}
+        models={models}
+        emptyLabel="Haiku (default)"
+        disabled={!e.claudeCompletion}
+        onSave={(claudeCompletionModel) =>
+          void updateConfig({ editor: { claudeCompletionModel: claudeCompletionModel || "haiku" } })
+        }
+      />
     </SettingsSection>
   );
 }

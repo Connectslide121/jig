@@ -19,6 +19,8 @@ import { FakeCloud } from "./fakeCloud";
 import { contextFrom, patchText } from "./normalize";
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 import {
+  type Completer,
+  type CompleterOptions,
   type Engine,
   type EngineSession,
   type OneShotOptions,
@@ -1387,6 +1389,18 @@ export class FakeEngine implements Engine {
   async callTool(request: ToolCallRequest): Promise<ToolCallResult> {
     await new Promise((r) => setTimeout(r, this.delayMs));
     return this.cloud.call(request);
+  }
+
+  /** Completions: `return ` gets `total;`, anything else a short comment, after a short pause. */
+  completer(_options: CompleterOptions): Completer {
+    return {
+      ask: async (prompt, signal) => {
+        await new Promise((resolve) => setTimeout(resolve, this.delayMs * 4));
+        if (signal?.aborted) throw new Error("Cancelled");
+        return /return <CURSOR>/.test(prompt) ? "total;" : "// suggested by the fake engine";
+      },
+      close: () => {},
+    };
   }
 
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {

@@ -142,6 +142,14 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Code completion (2026-11-03, D-255): the file editor suggests code as you type, as faint text at
+the caret; Tab takes it, Esc drops it, typing what it says keeps the rest. Who completes shows in the
+editor's status line (click it to switch): **GitHub Copilot** (optional: Get started → GitHub Copilot
+→ Set up…, or the status line; Jig downloads Copilot's language server, ~28 MB, and you sign in to
+GitHub with a code; Copilot keeps the sign-in) or **Claude** (Settings → Editor → Code completion
+with Claude, off by default; Haiku by default, about 1 s after a typing pause, the first about 5 s).
+Needs testing with a real Copilot account.
+
 Chat (2026-11-03): in the Compact view the latest steps line keeps its spinner and glow while the
 chat works, also between steps ("· Working" while Claude writes its next step), not only while a
 tool runs.

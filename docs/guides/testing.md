@@ -136,6 +136,10 @@ More behaviour:
 write the `mailto:` link to `mailto.txt` instead of opening a mail app. `JIG_FAKE_DELAY` sets the per-word delay (ms), `JIG_FAKE_ONESHOT` a fixed one-shot answer, and
 `JIG_FAKE_USAGE` the plan usage (`unavailable` or JSON).
 
+Code completion with Claude (D-255) uses the fake engine's `completer`: after `return ` at the caret it
+suggests `total;`, anywhere else `// suggested by the fake engine`. The meetings test service rings for
+a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254).
+
 ## Screenshots
 
 `e2e/screenshots.spec.ts` regenerates the pictures of the "What Jig can do" page and the README

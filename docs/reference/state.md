@@ -79,6 +79,8 @@ A new state file is documented here in the same commit that adds it.
 | `editor.showWhitespace` | `false` | spaces and tabs show as faint dots and arrows in the editor |
 | `editor.closeBrackets` | `true` | typing `(` `[` `{` `"` `'` adds the closing one |
 | `editor.tabSize` | `4` | indentation for a file that doesn't show its own; otherwise the editor follows the file |
+| `editor.claudeCompletion` | `false` | code completion with Claude instead of GitHub Copilot (D-255); protected, it spends plan usage |
+| `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |

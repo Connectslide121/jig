@@ -75,12 +75,15 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 
 ## Session 6 — Ghost-text code completion in the editor
 
-- [ ] Inline AI completions in the editor (Tab accepts) through GitHub's Copilot language server
+- [x] Inline AI completions in the editor (Tab accepts) through GitHub's Copilot language server
       (`@github/copilot-language-server`), with the user's own Copilot sign-in kept inside that
       program. Completions only, never agent work (D-247). A status indicator in the editor.
-- [ ] **Get started:** a "GitHub Copilot" row in the Get started list, marked **optional** ("only
+      Done (D-255): downloaded from npm on setup (checksum checked), run with Electron's Node, LSP
+      `textDocument/inlineCompletion`; ghost text, Tab, Esc; the status line names who completes.
+      Needs a real Copilot account to test.
+- [x] **Get started:** a "GitHub Copilot" row in the Get started list, marked **optional** ("only
       for code completion in the editor"), with its sign-in step; skipping it changes nothing else.
-- [ ] **Claude completions (Jon, 2026-11-02):** Settings → Editor → "Code completion with Claude",
+- [x] **Claude completions (Jon, 2026-11-02):** Settings → Editor → "Code completion with Claude",
       **off by default**. Off: Copilot completes when a Copilot account is signed in, otherwise
       nothing. On: Claude completes instead, with a model picker (**Haiku by default**; the list
       comes from the running Claude Code, not hard-coded). It goes through Claude Code like
@@ -88,6 +91,8 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       slower than Copilot; measure the delay with a warm Claude Code process before shipping and
       note it in the setting's help text. Both settings go into `ConfigSchema`, `SETTINGS_GUIDE`
       and `docs/reference/state.md`; the Claude one is protected (it spends plan usage, D-077).
+      Measured 2026-11-03 with a warm Claude Code and Haiku: about 0.9 s per suggestion (the first
+      about 4.8 s while Claude Code starts), plus the 0.7 s pause; in the setting's help text.
 
 ## Session 7 — Project knowledge and claude.ai import
 

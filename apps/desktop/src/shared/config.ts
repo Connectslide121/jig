@@ -77,6 +77,13 @@ export const ConfigSchema = z.object({
       closeBrackets: z.boolean().default(true),
       /** Indentation for a file that doesn't show its own yet (Jig follows the file's otherwise). */
       tabSize: z.number().int().min(1).max(8).default(4),
+      /**
+       * Code completion with Claude (D-255): Claude Code suggests the code at the caret after a typing
+       * pause, instead of GitHub Copilot. Off by default: it spends your Claude plan's usage.
+       */
+      claudeCompletion: z.boolean().default(false),
+      /** The model Claude completes with (a value from Claude Code's model list); Haiku is quickest. */
+      claudeCompletionModel: z.string().default("haiku"),
     })
     .prefault({}),
   chat: z
@@ -226,6 +233,8 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
 export const PROTECTED_SETTINGS = [
   "engine.claudePath",
   "engine.allowApiKey",
+  "editor.claudeCompletion",
+  "editor.claudeCompletionModel",
   "terminal.shell",
   "updates",
   "addonGallery",
