@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { isEnd, isGoAhead, isNo, isYes, permissionPrompt, planOf, toolActivity } from "./replies";
+import {
+  isEnd,
+  isGoAhead,
+  isNo,
+  isReadAloud,
+  isYes,
+  permissionPrompt,
+  planOf,
+  planSpeech,
+  toolActivity,
+} from "./replies";
 
 describe("spoken answers", () => {
   it("hears a plain yes", () => {
@@ -92,5 +102,29 @@ describe("planOf", () => {
 
   it("ignores other tools", () => {
     expect(planOf({ ...request, toolName: "Bash", input: {} })).toBeUndefined();
+  });
+});
+
+describe("reading the plan aloud", () => {
+  it("hears a request to read what is on screen", () => {
+    for (const t of [
+      "Read it out loud for me, I'm not looking at the screen",
+      "Can you read the plan?",
+      "I can't see the screen",
+      "Read it aloud",
+      "What does the plan say?",
+    ])
+      expect(isReadAloud(t)).toBe(true);
+    for (const t of ["Yes, go ahead", "Add a read-only mode", "No, change the header first"])
+      expect(isReadAloud(t)).toBe(false);
+  });
+
+  it("says the plan or the tasks, then asks", () => {
+    expect(planSpeech({ kind: "plan", text: "## Plan\n- Add the **cart** page\n- Test it" })).toBe(
+      "Here is the plan.\nPlan\nAdd the cart page\nTest it\nShall I start?",
+    );
+    expect(planSpeech({ kind: "queue", tasks: ["Build the cart", "Write tests."] })).toBe(
+      "There are 2 tasks.\nTask 1: Build the cart.\nTask 2: Write tests.\nShall I queue them and start?",
+    );
   });
 });

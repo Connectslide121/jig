@@ -1,4 +1,5 @@
 import type { PermissionRequest } from "../../../shared/engine";
+import { speakableText } from "./speak";
 
 /** Understanding short spoken answers while talking with Claude (D-209). */
 
@@ -42,6 +43,23 @@ export function isGoAhead(text: string): boolean {
   return (
     !/\b(but|except|change|instead|however|although|first|before)\b/.test(t) && t.split(" ").length <= 10
   );
+}
+
+/** "Read it out loud", "I'm not looking at the screen": wants to hear what is shown on screen. */
+const READ_ALOUD =
+  /\b(read (it|that|this|them|the plan|the tasks|it all)( out| back)?( to me)?|out loud|aloud|(i'm|i am|im) not (looking at|in front of|at) the (screen|computer)|(i )?can't see the screen|what does (it|the plan) say|tell me (the plan|what it says))\b/;
+
+/** You ask to hear the plan or tasks on screen instead of reading them (D-280). */
+export function isReadAloud(text: string): boolean {
+  return READ_ALOUD.test(clean(text).replace(/\bcannot\b/g, "can't"));
+}
+
+/** The plan or tasks on screen as Jig reads them aloud, ending with the question (D-280). */
+export function planSpeech(plan: VoicePlan): string {
+  if (plan.kind === "plan") return `Here is the plan.\n${speakableText(plan.text)}\nShall I start?`;
+  const count = plan.tasks.length === 1 ? "one task" : `${plan.tasks.length} tasks`;
+  const tasks = plan.tasks.map((t, i) => `Task ${i + 1}: ${speakableText(t).replace(/[.!?]?$/, ".")}`);
+  return [`There are ${count}.`, ...tasks, "Shall I queue them and start?"].join("\n");
 }
 
 /** "Bye", "stop listening": ends talking. */

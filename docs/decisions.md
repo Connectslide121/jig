@@ -3367,3 +3367,19 @@ Claude, on my own.
   can't stop a chat; the user stops it there).
 - **Start over** (`reset` without ids, ⋯ menu, confirmed) resets every task, pauses the queue and
   drops the open run from History (as if it never started); finished runs stay.
+
+## D-280: Talking with Claude: Jig reads the plan when asked, and Claude knows what is spoken
+
+**Who:** Jon reported it: asking "read it out loud, I'm not looking at the screen" after a plan got
+"OK, I'll read it" and nothing, again and again. The fix: Claude, on my own.
+
+- Cause: the plan is ExitPlanMode's input, shown on screen and never read. "Read it" reached Claude as
+  "changes to the plan", so it showed the plan again. Claude also didn't know that only the text of
+  its replies is spoken.
+- While a plan or task queue waits for an answer, a request to hear it (`isReadAloud`: "read it out
+  loud", "I can't see the screen"…) is no longer sent to Claude. Jig reads the plan itself
+  (`planSpeech`, Markdown stripped, tasks numbered) and keeps waiting for yes or no.
+- `VOICE_GUIDANCE` now says exactly what is spoken: only reply text, never thinking, tool input or
+  subagents. When asked to read something aloud, Claude says it in its reply as spoken sentences, as
+  long as needed, instead of calling a tool.
+

@@ -480,7 +480,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   (WebGPU), and the words appear while you speak. The Talk button (sound waves) in the composer (or + →
   Talk with Claude) starts a spoken conversation: pause and it is sent, Claude answers out loud,
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
-  Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
+  Claude starts working. "Read it out loud" (or "I can't see the screen") while a plan waits makes
+  Jig read the plan or tasks, then ask again (D-280). "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
   instructions for talking and for adding system voices (Windows, macOS, Linux).
 - Background noise while talking (D-275): a voice detector (Silero, bundled, runs on this computer)
   decides what is you speaking, so dishes, typing or a sniff neither start your turn, keep it open,

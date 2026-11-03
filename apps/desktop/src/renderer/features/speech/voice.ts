@@ -15,13 +15,15 @@ import {
   isGoAhead,
   isNo,
   isQueueTool,
+  isReadAloud,
   isYes,
   permissionPrompt,
   planOf,
+  planSpeech,
   toolActivity,
   type VoicePlan,
 } from "./replies";
-import { preloadSpeech, speak, speakableText, speakableUntil, stopSpeaking } from "./speak";
+import { preloadSpeech, speak, speakableText, speakableUntil, speechParts, stopSpeaking } from "./speak";
 
 /**
  * Talking with Claude (D-209, D-210): Jig listens; when you pause, what you said is sent; Claude's
@@ -571,8 +573,12 @@ class Conversation {
     const { requestId, toolName } = item.request;
     const respond = (decision: { behavior: "allow" } | { behavior: "deny"; message?: string }) =>
       call("sessions.answerPermission", { id, requestId, decision });
-    if (planOf(item.request)) {
-      if (isYes(text) || isGoAhead(text)) await this.approvePlan(item);
+    const plan = planOf(item.request);
+    if (plan) {
+      // "Read it to me": Jig reads what is on screen itself and keeps waiting for the answer, since
+      // Claude can only show the plan again (its tool input is never read aloud, D-280).
+      if (isReadAloud(text)) for (const part of speechParts(planSpeech(plan))) this.say(part);
+      else if (isYes(text) || isGoAhead(text)) await this.approvePlan(item);
       else
         await respond({
           behavior: "deny",
