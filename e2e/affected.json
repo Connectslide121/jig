@@ -202,7 +202,7 @@
         "apps/desktop/src/main/speech/**",
         "apps/desktop/src/shared/speech.ts"
       ],
-      "specs": ["speech.spec.ts"]
+      "specs": ["speech.spec.ts", "voice-commands.spec.ts"]
     },
     {
       "files": [

@@ -19,6 +19,7 @@ import { registerSessions } from "./sessions";
 import { registerSettings } from "./settings";
 import { registerSetup } from "./setup";
 import { registerSkills } from "./skills";
+import { registerVoiceCommands } from "./speech/commands";
 import { registerTerminals } from "./terminals";
 import { registerTour } from "./tour";
 import { registerUsage } from "./usage";
@@ -45,6 +46,7 @@ export function registerFeatures(): void {
   registerTour();
   registerDigest();
   registerUsage();
+  registerVoiceCommands();
   registerWorktrees();
   registerGoTo();
   registerGallery();

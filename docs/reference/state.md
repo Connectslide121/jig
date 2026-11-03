@@ -98,6 +98,8 @@ A new state file is documented here in the same commit that adds it.
 | `speech.noiseFilter` | `"strong"` | talking with Claude: `strong`, `light` or `off`; how strictly noise that isn't a voice is ignored (Silero voice detector on this computer, D-275; `off` = loudness alone) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | a soft note while Claude thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
+| `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Claude; protected (only Settings → Speech turns it on) |
+| `speech.announce` | `true` | with `speech.wake`: say out loud when a chat finishes or needs you |
 | `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `terminal.shell` | `""` | shell; empty = PowerShell on Windows, `$SHELL` elsewhere. Picked in Settings → Terminal from the detected shells (the full path is stored) or a custom path. Protected: Settings only (it runs programs) |
 | `learning.recording` | `true` | record activity locally |

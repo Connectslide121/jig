@@ -134,6 +134,13 @@ export const ConfigSchema = z.object({
       rate: z.number().min(0.5).max(2).default(1),
       /** Soft sounds while Claude works after you hand it a task by voice, and when it finishes (D-210). */
       workSound: z.boolean().default(true),
+      /**
+       * Listen for "Hey Jig" voice commands while Jig runs, also minimized (D-278). The microphone
+       * stays open; commands are understood and run on this computer, without Claude.
+       */
+      wake: z.boolean().default(false),
+      /** With `wake`: say out loud when a chat finishes or needs you. */
+      announce: z.boolean().default(true),
     })
     .prefault({}),
   /** Teams meetings in Jig (D-217). */
@@ -263,6 +270,7 @@ export const PROTECTED_SETTINGS = [
   "editor.claudeCompletionModel",
   "meetings.aiTranslation",
   "meetings.translationModel",
+  "speech.wake",
   "terminal.shell",
   "updates",
   "addonGallery",

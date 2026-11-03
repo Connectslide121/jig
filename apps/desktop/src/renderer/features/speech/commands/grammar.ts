@@ -231,20 +231,6 @@ export const VOICE_COMMANDS: VoiceCommand[] = [
     patterns: [r("(?:unmute|un mute|speak again|talk again)")],
   },
   {
-    id: "voice.louder",
-    group: "jig",
-    title: "Louder",
-    say: ["louder"],
-    patterns: [r("(?:louder|speak up|volume up|turn (?:it )?up)")],
-  },
-  {
-    id: "voice.quieter",
-    group: "jig",
-    title: "Quieter",
-    say: ["quieter"],
-    patterns: [r("(?:quieter|softer|volume down|turn (?:it )?down)")],
-  },
-  {
     id: "voice.repeat",
     group: "jig",
     title: "Repeat that",

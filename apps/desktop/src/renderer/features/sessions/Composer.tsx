@@ -40,11 +40,12 @@ import { useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
+import { takeTalkRequest, useTalkRequest } from "../speech/commands/talk";
 import { DictationButton, toggleDictation } from "../speech/DictationButton";
 import { cancelDictation, useDictation } from "../speech/dictation";
 import { type DictationSpan, placeDictation } from "../speech/protocol";
 import { VoiceButton } from "../speech/VoiceButton";
-import { toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
+import { startVoice, toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
 import { newSession } from "./actions";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
 import { MentionChips, MentionHighlights, openMention, useLiveMentions } from "./ComposerMentions";
@@ -291,6 +292,17 @@ export function Composer({
     }),
     [],
   );
+  // "Hey Jig, new chat": a voice command asks this chat to start talking (D-278).
+  const talkRequested = useTalkRequest((s) => s.target === meta.id);
+  useEffect(() => {
+    if (!talkRequested) return;
+    const request = takeTalkRequest(meta.id);
+    if (!request) return;
+    void startVoice(meta.id, speechHooks).then(() => {
+      if (request.send && useVoice.getState().target === meta.id)
+        void call("sessions.send", { id: meta.id, text: request.send }).catch(() => undefined);
+    });
+  }, [talkRequested, meta.id, speechHooks]);
 
   const pick = (item: PickerItem) => {
     if (!token) return;

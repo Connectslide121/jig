@@ -57,7 +57,6 @@ describe("parseCommand", () => {
   it("knows Jig's own commands, with polite padding", () => {
     expect(slots("save a note that the API moved to v2")).toEqual({ text: "the api moved to v2" });
     expect(id("could you please mute")).toBe("voice.mute");
-    expect(id("louder please")).toBe("voice.louder");
     expect(id("say that again")).toBe("voice.repeat");
     expect(id("stop listening")).toBe("voice.sleep");
     expect(id("go to sleep")).toBe("voice.sleep");

@@ -36,7 +36,7 @@ In phase files, `[x]` = done, `[~]` = written but not yet tested/wired, `[ ]` = 
 | 22 | [Teams meetings](22-meetings.md) | 🟡 | global meeting room, calendar, screen sharing, live captions, transcript-aware Claude questions and reviewed multi-project tasks; pre-join errors/retry visible; real account/device acceptance remains |
 | 23 | [Jon's notes (November 2026)](23-jons-notes.md) | ✅ | all seven sessions done (D-246–D-257): task queue per project with review and history, add-on restore/share, meeting history, Teams calls, DevOps boards and update progress, code completion (Copilot or Claude), project knowledge with claude.ai import; plus composer mentions. Real-machine checks listed in status.md |
 | 24 | [Tenants](24-tenants.md) | ⬜ | a tenant switch in the top bar: add Azure sign-ins (other accounts or tenants), switch, and Pipelines, Boards, Releases, Workflows, Azure links, chats and terminals follow it |
-| 25 | ["Hey Jig" voice commands](25-voice-commands.md) | 🟡 | say "Hey Jig" and a command, also while Jig is minimized; Jig runs it on this computer without Claude (chats in Talk mode, status, tests, workflows, deploys after a spoken yes); the Voice commands page lists them all |
+| 25 | ["Hey Jig" voice commands](25-voice-commands.md) | 🟡 | say "Hey Jig" and a command, also while Jig is minimized; Jig runs it on this computer without Claude (chats in Talk mode, status, tests, workflows, deploys after a spoken yes); the Voice commands page lists them all; real microphone and waking from minimized need checking on a real machine |
 | — | [Backlog](99-backlog.md) | — | ideas and deferred work |
 
 ## How to work the plan

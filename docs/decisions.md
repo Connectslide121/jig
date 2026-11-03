@@ -3342,6 +3342,14 @@ Claude, on my own.
   model to train or download, and "Hey Jig, new chat" can be said in one breath. A dedicated
   wake-word model can replace it later behind the same detector.
 - A chat opened by voice starts in Talk mode.
+- Only the first 2 s of each thing said are read to look for "Hey Jig", so a radio or a conversation
+  costs one short Whisper pass per sentence; the rest is read only after the wake words.
+- `speech.wake` is protected (a chat can't turn the microphone on); while it's on the main window
+  isn't background-throttled, so it hears you while minimized. Jig doesn't listen while it speaks,
+  while you talk with Claude or dictate.
+- Risky commands (deploy, pull) are read back and run only after a spoken yes. A deploy picks the
+  pipeline parameter that names an environment (Deploy to, environment, stage) and its matching
+  value, on the default branch.
 
 ## D-279: The task queue is fully in the user's hands: ticks, put back, start over
 

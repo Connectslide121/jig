@@ -208,6 +208,17 @@ Settings: `meetings.aiTranslation` (on) and `meetings.translationModel` (`haiku`
 only with your approval. Untested in a real meeting; the fake meeting covers it in e2e (not yet run
 to the end: run `meetings.spec.ts` at the release and look at `translated-ai.png`).
 
+"Hey Jig" voice commands (2026-11-03, D-278): Settings → Speech → Hey Jig → Listen for "Hey Jig"
+(off by default). While Jig is open, also minimized, say "Hey Jig" and a command: new chat (in a
+project), continue my last chat, talk to a chat, talk mode, switch project, add a task, ask Claude,
+what's happening, read the last answer, the queue, tests, pipeline status, run the tests, deploy to
+stage or production and pull (both after a spoken yes), fetch, run a workflow, start a script, save
+a note, mute, repeat, stop listening, what can I say. A chat opened by voice starts in Talk mode.
+Everything is understood and run on this computer, without Claude (only "ask Claude" starts a
+chat). Jig also says when a chat finishes or needs you. The status bar shows it listening; Jig menu →
+Voice commands (or the status bar item) lists every command. Covered by `voice-commands.spec.ts`
+with the fake engine; the real microphone, waking from minimized and CPU need a real machine.
+
 Language servers (2026-11-03, D-259): in the file editor, the language servers you install give
 errors and warnings as you type (wavy underlines, message on hover), hover information, go to
 definition (F12; another file opens in Preview), find references (Shift+F12), rename (F2), signature

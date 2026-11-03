@@ -1,4 +1,4 @@
-import { Download, Trash2, Volume2 } from "lucide-react";
+import { Download, Mic, Trash2, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   NATURAL_VOICES,
@@ -16,6 +16,7 @@ import { updateConfig, useConfig } from "../../stores/config";
 import { Button, confirmDialog, Select, Spinner, Switch } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
+import { openAbout } from "../about";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { AudioDeviceRows } from "./AudioDevicesDialog";
 import { DICTATION_SHORTCUT } from "./DictationButton";
@@ -298,6 +299,42 @@ export function SpeechSettings() {
             <li>Say “bye” or press End talking to stop talking; the chat and Claude's work go on.</li>
           </ol>
         </div>
+      </SettingsSection>
+      <SettingsSection
+        title="Hey Jig"
+        description="Say “Hey Jig” and a command, such as “Hey Jig, new chat in Shop” or “Hey Jig, what's happening”, while Jig is open, also when it is minimized or behind other windows. Jig hears and runs the commands on this computer, without Claude and without using your plan; only “ask Claude” starts a chat. While it's on the microphone stays open, and the status bar shows it."
+      >
+        <SettingRow
+          label="Listen for “Hey Jig”"
+          description="Uses the dictation model above and the voice detector; the first moments of what is said are read to find “Hey Jig”, and nothing else is kept."
+        >
+          <Switch
+            label="Listen for Hey Jig"
+            checked={s.wake}
+            onChange={(v) => void updateConfig({ speech: { wake: v } })}
+          />
+        </SettingRow>
+        <SettingRow
+          label="Say when chats finish"
+          description="While listening: Jig says out loud when a chat is done or needs you."
+        >
+          <Switch
+            label="Say when chats finish"
+            checked={s.announce}
+            disabled={!s.wake}
+            onChange={(v) => void updateConfig({ speech: { announce: v } })}
+          />
+        </SettingRow>
+        <SettingRow label="Voice commands" description="Everything you can say, on What Jig can do.">
+          <Button
+            variant="ghost"
+            icon={Mic}
+            data-testid="settings-speech-commands"
+            onClick={() => openAbout("voice")}
+          >
+            Show the commands
+          </Button>
+        </SettingRow>
       </SettingsSection>
       <SettingsSection
         title="Reading aloud"
