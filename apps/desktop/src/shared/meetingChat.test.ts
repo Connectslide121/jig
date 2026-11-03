@@ -5,7 +5,10 @@ import {
   meetingChatId,
   mergeChat,
   oneOnOneChatIds,
+  TEAMS_CHAT_ID,
+  teamsChatLink,
   toChatMessages,
+  toChatSummaries,
 } from "./meetingChat";
 
 const ME = "11111111-1111-4111-8111-111111111111";
@@ -88,5 +91,65 @@ describe("meeting chat", () => {
     expect(merged.map((m) => m.text)).toEqual(["Hi all", "Hello"]);
     expect(chatChanged([a], merged)).toBe(true);
     expect(chatChanged(merged, mergeChat(merged, [b]))).toBe(false);
+  });
+
+  describe("chat list (D-293)", () => {
+    const one = {
+      id: `19:${ME}_${ALEX}@unq.gbl.spaces`,
+      chatType: "oneOnOne",
+      members: [
+        { userId: ME, displayName: "Me" },
+        { userId: ALEX, displayName: "Alex Contoso" },
+      ],
+      lastMessagePreview: {
+        createdDateTime: "2026-11-03T10:00:00Z",
+        from: { user: { id: ALEX, displayName: "Alex Contoso" } },
+        body: { contentType: "html", content: "<p>Spec&nbsp;is<br><b>ready</b></p>" },
+      },
+      viewpoint: { lastMessageReadDateTime: "2026-11-03T09:00:00Z" },
+    };
+    const group = {
+      id: "19:abc@thread.v2",
+      chatType: "group",
+      topic: null,
+      lastUpdatedDateTime: "2026-11-02T10:00:00Z",
+      members: ["Me", "Sam", "Robin", "Kim", "Lee"].map((n, i) => ({
+        userId: i ? `id-${n}` : ME,
+        displayName: n,
+      })),
+      lastMessagePreview: {
+        createdDateTime: "2026-11-02T10:00:00Z",
+        from: { user: { id: ME, displayName: "Me" } },
+        body: { contentType: "text", content: "Thanks" },
+      },
+    };
+    it("names chats, previews the last message and sorts newest first", () => {
+      const [a, b] = toChatSummaries([group, one], ME);
+      expect(a).toEqual({
+        id: one.id,
+        kind: "oneOnOne",
+        name: "Alex Contoso",
+        peerId: ALEX,
+        preview: { from: "Alex Contoso", text: "Spec is ready" },
+        at: "2026-11-03T10:00:00.000Z",
+        unread: true,
+      });
+      expect(b).toMatchObject({ kind: "group", name: "Sam, Robin, Kim +1", unread: false });
+      expect(b!.preview).toEqual({ from: "You", text: "Thanks", mine: true });
+    });
+    it("counts a chat opened in Jig as read and leaves hidden ones out", () => {
+      const read = new Map([[one.id, "2026-11-03T10:00:00Z"]]);
+      expect(toChatSummaries([one], ME, read)[0]!.unread).toBe(false);
+      expect(toChatSummaries([{ ...one, viewpoint: { isHidden: true } }], ME)).toEqual([]);
+      expect(toChatSummaries([{ ...group, topic: "Portal" }], ME)[0]!.name).toBe("Portal");
+    });
+    it("accepts only Teams chat ids and links to chats", () => {
+      expect(TEAMS_CHAT_ID.test(one.id)).toBe(true);
+      expect(TEAMS_CHAT_ID.test("19:abc@thread.v2")).toBe(true);
+      expect(TEAMS_CHAT_ID.test("../me")).toBe(false);
+      expect(teamsChatLink({ email: "alex@contoso.com" })).toBe(
+        "https://teams.microsoft.com/l/chat/0/0?users=alex%40contoso.com",
+      );
+    });
   });
 });

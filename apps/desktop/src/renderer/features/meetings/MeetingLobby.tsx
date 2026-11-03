@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
+  CalendarDays,
   Link2,
   MessageSquare,
+  MessagesSquare,
   MoreHorizontal,
   Phone,
   Settings,
@@ -18,8 +20,9 @@ import {
 } from "../../../shared/meetingLayout";
 import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../../shared/meetings";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
-import { Badge, Button, cn, confirmDialog, IconButton, openMenuAt, Spinner } from "../../ui";
+import { Badge, Button, CountBadge, cn, confirmDialog, IconButton, openMenuAt, Spinner } from "../../ui";
 import { CallDialog } from "./Calls";
+import { type ChatList, ChatsView, type OpenChat } from "./Chats";
 import { Ask, Connection, Review } from "./dialogs";
 import { clock, dayAndTime } from "./format";
 import { Lobby, STATUS } from "./Lobby";
@@ -52,8 +55,14 @@ function LobbyWindow() {
   const [calling, setCalling] = useState(false);
   const [ask, setAsk] = useState(false);
   const [review, setReview] = useState(false);
+  /** The lobby's two sections, from the rail on the left: meetings, or your Teams chats (D-293). */
+  const [section, setSection] = useState<"meetings" | "chats">("meetings");
+  const [chatList, setChatList] = useState<ChatList>();
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [teamsChat, setTeamsChat] = useState<OpenChat>();
   // A call that just ended: its review opens here (main brings this window to the front).
   useHostEvent("meetings.review", ({ id }) => {
+    setSection("meetings");
     setOpened(id);
     setAsk(false);
     setReview(false);
@@ -89,6 +98,26 @@ function LobbyWindow() {
     loadedCalendar.current = true;
     void refreshCalendar();
   }, [connected]);
+  const loadChats = async () => {
+    setChatsLoading(true);
+    try {
+      setChatList(await call("meetings.chats"));
+    } catch (e) {
+      setChatList((kept) => ({ state: "ok", chats: kept?.chats ?? [], error: errorMessage(e) }));
+    } finally {
+      setChatsLoading(false);
+    }
+  };
+  // Your chats: read once you're connected (for the unread count on the rail), then every 30
+  // seconds while Chats shows.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on connecting and on showing Chats.
+  useEffect(() => {
+    if (!connected) return;
+    void loadChats();
+    if (section !== "chats") return;
+    const timer = setInterval(() => void loadChats(), 30_000);
+    return () => clearInterval(timer);
+  }, [connected, section]);
   if (!overview || !layout)
     return (
       <div className="h-screen bg-canvas text-fg">
@@ -96,7 +125,19 @@ function LobbyWindow() {
       </div>
     );
   const live = overview.records.find((r) => r.id === overview.activeId);
-  const shown = overview.records.find((r) => r.id === opened);
+  const shown = section === "meetings" ? overview.records.find((r) => r.id === opened) : undefined;
+  const unread = chatList?.chats.filter((c) => c.unread).length ?? 0;
+  /** Opens your one-to-one chat with someone from Call…; false when you have none yet. */
+  const chatWith = async (person: { id: string; name: string }) => {
+    const found = await call("meetings.chatWith", { peerId: person.id });
+    if (found.state === "ok" && !found.chatId) return false;
+    setCalling(false);
+    setSection("chats");
+    // Without Microsoft's approval, Chats shows how to connect.
+    if (found.chatId)
+      setTeamsChat({ id: found.chatId, name: person.name, kind: "oneOnOne", peerId: person.id });
+    return true;
+  };
   /** Has the call window join, call or come forward; one call at a time, so a live one is shown instead. */
   const start = async (what: MeetingStart) => {
     if (live && what.kind !== "show") {
@@ -187,8 +228,14 @@ function LobbyWindow() {
           </>
         ) : (
           <>
-            <Video className="size-4 shrink-0 text-accent" />
-            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">Meetings</h1>
+            {section === "chats" ? (
+              <MessagesSquare className="size-4 shrink-0 text-accent" />
+            ) : (
+              <Video className="size-4 shrink-0 text-accent" />
+            )}
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">
+              {section === "chats" ? "Chats" : "Meetings"}
+            </h1>
             <AccountLabel overview={overview} />
             <Button icon={Settings} onClick={() => setSettings(true)}>
               Connection
@@ -206,59 +253,118 @@ function LobbyWindow() {
           </>
         )}
       </header>
-      {shown ? (
-        <main className="flex min-h-0 flex-1">
-          {/* The transcript keeps a readable width; the notes give way in a narrow window. */}
-          <div className="flex min-w-72 flex-1">
-            <TranscriptPanel record={shown} live={false} />
-          </div>
-          <SizedBox
+      <div className="flex min-h-0 flex-1">
+        {/* The rail, like Teams': always there, so switching sections moves nothing. */}
+        <nav
+          aria-label="Sections"
+          className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-2"
+        >
+          {(
+            [
+              ["meetings", "Meetings", CalendarDays, 0],
+              ["chats", "Chats", MessagesSquare, unread],
+            ] as const
+          ).map(([id, label, Icon, count]) => (
+            <button
+              key={id}
+              type="button"
+              aria-label={label}
+              aria-current={section === id ? "page" : undefined}
+              onClick={() => setSection(id)}
+              className={cn(
+                "relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-md text-2xs",
+                section === id ? "bg-active text-accent" : "text-muted hover:bg-hover hover:text-fg",
+              )}
+            >
+              <Icon className="size-5" />
+              {label}
+              <CountBadge count={count} className="absolute top-1 right-1.5" />
+            </button>
+          ))}
+        </nav>
+        {section === "chats" ? (
+          <ChatsView
+            list={chatList}
+            loading={chatsLoading}
+            connected={connected}
             layout={layout}
-            sizeKey="review.notes"
-            edge="left"
-            min={280}
+            open={teamsChat}
             onResize={resize}
-            label="Resize notes"
-            className="border-l border-line bg-surface"
-          >
-            <NotesPanel
-              record={shown}
-              busy={pending === "notes"}
-              onGenerateNotes={() =>
-                void run(async () => {
-                  const chat = await call("meetings.notes", { id: shown.id });
-                  await openChat(chat.sessionId);
-                }, "notes")
+            onOpen={(c) => {
+              setTeamsChat(c);
+              // Opening it reads it (main counts it as read from then on, D-293).
+              setChatList(
+                (l) =>
+                  l && { ...l, chats: l.chats.map((x) => (x.id === c.id ? { ...x, unread: false } : x)) },
+              );
+            }}
+            onRefresh={() => void loadChats()}
+            onConnectAccount={() => setSettings(true)}
+            onConnectChat={async () => {
+              try {
+                await call("meetings.chatConnect");
+              } catch (e) {
+                setError(errorMessage(e));
               }
-              onReview={() => setReview(true)}
-            />
-          </SizedBox>
-        </main>
-      ) : (
-        <Lobby
-          view={overview.lobbyView}
-          onView={(view) => {
-            setOverview((current) => (current ? { ...current, lobbyView: view } : current));
-            void call("meetings.lobbyView", { view }).catch((e) => {
-              setError(errorMessage(e));
-              void reload();
-            });
-          }}
-          events={events}
-          records={overview.records}
-          loading={pending === "calendar"}
-          connected={connected}
-          onRefresh={() => void refreshCalendar()}
-          onConnect={() => setSettings(true)}
-          onJoin={(event) => void start({ kind: "join", title: event.title, url: event.joinUrl! })}
-          onJoinLink={() => void start({ kind: "join", title: "Teams meeting", url: "" })}
-          onOpen={(id) => (id === overview.activeId ? void start({ kind: "show" }) : setOpened(id))}
-          onDelete={(id) => {
-            const r = overview.records.find((x) => x.id === id);
-            if (r) void remove(r);
-          }}
-        />
-      )}
+              await loadChats();
+            }}
+            onSent={() => void loadChats()}
+            onError={setError}
+          />
+        ) : shown ? (
+          <main className="flex min-h-0 min-w-0 flex-1">
+            {/* The transcript keeps a readable width; the notes give way in a narrow window. */}
+            <div className="flex min-w-72 flex-1">
+              <TranscriptPanel record={shown} live={false} />
+            </div>
+            <SizedBox
+              layout={layout}
+              sizeKey="review.notes"
+              edge="left"
+              min={280}
+              onResize={resize}
+              label="Resize notes"
+              className="border-l border-line bg-surface"
+            >
+              <NotesPanel
+                record={shown}
+                busy={pending === "notes"}
+                onGenerateNotes={() =>
+                  void run(async () => {
+                    const chat = await call("meetings.notes", { id: shown.id });
+                    await openChat(chat.sessionId);
+                  }, "notes")
+                }
+                onReview={() => setReview(true)}
+              />
+            </SizedBox>
+          </main>
+        ) : (
+          <Lobby
+            view={overview.lobbyView}
+            onView={(view) => {
+              setOverview((current) => (current ? { ...current, lobbyView: view } : current));
+              void call("meetings.lobbyView", { view }).catch((e) => {
+                setError(errorMessage(e));
+                void reload();
+              });
+            }}
+            events={events}
+            records={overview.records}
+            loading={pending === "calendar"}
+            connected={connected}
+            onRefresh={() => void refreshCalendar()}
+            onConnect={() => setSettings(true)}
+            onJoin={(event) => void start({ kind: "join", title: event.title, url: event.joinUrl! })}
+            onJoinLink={() => void start({ kind: "join", title: "Teams meeting", url: "" })}
+            onOpen={(id) => (id === overview.activeId ? void start({ kind: "show" }) : setOpened(id))}
+            onDelete={(id) => {
+              const r = overview.records.find((x) => x.id === id);
+              if (r) void remove(r);
+            }}
+          />
+        )}
+      </div>
       <StatusBar error={error} onDismiss={() => setError("")}>
         {/* The live call, one click away; the same spot says "No call" between calls. */}
         {live ? (
@@ -289,6 +395,7 @@ function LobbyWindow() {
         <CallDialog
           records={overview.records}
           onClose={() => setCalling(false)}
+          onChat={chatWith}
           onCall={async (person, options) => {
             setCalling(false);
             await start({ kind: "call", peerId: person.id, peerName: person.name, camera: options.camera });

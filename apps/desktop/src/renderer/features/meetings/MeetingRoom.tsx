@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_MEETING_LAYOUT,
+  LOBBY_SIZES,
   MEETING_PANELS,
   MEETING_SLOTS,
   type MeetingLayout,
@@ -96,13 +97,14 @@ function Room() {
     setLayout(next);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      // The review's notes width belongs to the lobby window: keep what it saved meanwhile.
+      // The lobby window's sizes (review notes, chat list) are its own: keep what it saved meanwhile.
       void call("meetings.overview")
         .then((o) => {
-          const notes = normalizeMeetingLayout(o.layout).sizes["review.notes"];
+          const saved = normalizeMeetingLayout(o.layout).sizes;
           const sizes = { ...next.sizes };
-          if (notes === undefined) delete sizes["review.notes"];
-          else sizes["review.notes"] = notes;
+          for (const key of LOBBY_SIZES)
+            if (saved[key] === undefined) delete sizes[key];
+            else sizes[key] = saved[key];
           return call("meetings.layout", { ...next, sizes });
         })
         .catch((e) => setError(errorMessage(e)));
@@ -520,7 +522,7 @@ function Room() {
     if (id === "chat")
       return (
         <ChatPanel
-          record={r}
+          messages={r.chat ?? []}
           status={chatStatus}
           menu={panelMenu(id)}
           onConnect={async () => {

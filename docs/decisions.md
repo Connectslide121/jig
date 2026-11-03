@@ -3704,3 +3704,35 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
 - `AskUserQuestion` and `ExitPlanMode` still wait: they are questions to the user, not safety
   checks. **Claude, on my own.**
 - No `needs_you` status or notification is raised for a declined request.
+
+## D-293: Your Teams chats in the Meetings lobby, and Chat from Call…
+
+- Status: accepted. Asked for by Jon, 2026-11-03: a Chats view in the lobby with your Teams chats
+  (newest first, picture, name, last message, time, unread), the open chat reusing the meeting chat
+  panel, and a Chat action per person in Call… that opens your one-to-one chat. Extends D-270 (the
+  chat of a meeting or call). Details are **Claude, on my own** unless said otherwise.
+- **Same permissions, no new consent.** `GET /me/chats?$expand=members,lastMessagePreview` (top 50,
+  newest first) with D-270's Chat.Read; reading and sending with Chat.Read / ChatMessage.Send. Where
+  Graph refuses both expansions in one request, Jig reads the previews and the members separately and
+  merges them by id. Missing approval shows D-270's Connect chat… flow, in the list and the open chat.
+- **Jig can't start a chat** (that needs Chat.Create, which Jon didn't want to ask for): Call… → Chat
+  finds your one-to-one chat with `callChatId` (the two ids D-270 probes); with none, the dialog says
+  so and offers **Open in Teams** (`https://teams.microsoft.com/l/chat/0/0?users=<email>`, through
+  `openExternal`). People without an e-mail (an old caller) get the message without the link.
+- **Unread** = someone else wrote after Teams' `viewpoint.lastMessageReadDateTime` and after you last
+  opened the chat in Jig. Jig can't mark a chat read in Teams (Chat.ReadWrite), so it remembers in
+  memory, while Jig runs, when you last opened each one; Teams itself still shows it unread until
+  you read it there.
+- **Reading:** the open chat every 5 seconds while it is open; the list once when the lobby is
+  connected (for the count on the rail) and every 30 seconds while Chats shows, and after you send.
+  Messages are read when asked and never stored or logged (unlike a meeting's chat, which is kept
+  with its record for the notes); chat text is shown as evidence, never acted on.
+- **Lobby layout:** a rail on the left (Meetings, Chats with the unread count), always there, so
+  switching moves nothing; Chats is the list (resizable, `chats.list`, owned by the lobby like
+  `review.notes`) beside the open chat. Rows follow the alignment rule: picture, name and time on the
+  first line, the last message and the unread mark (a fixed slot at the far right) on the second; the
+  whole row opens the chat. The header keeps Connection / Call… / Join from link… in both sections.
+- **IPC:** `meetings.chats`, `meetings.chatThread {chatId}`, `meetings.chatThreadSend {chatId, text}`,
+  `meetings.chatWith {peerId}`; lobby or call window only (`lobbyOrCall`, D-292), chat ids validated
+  to Teams' two shapes (`TEAMS_CHAT_ID`) because they go into Graph paths. `meetings.chatConnect` is
+  now allowed from the lobby too.

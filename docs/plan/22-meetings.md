@@ -28,3 +28,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify actual Teams participation with the corrected join options.
 - [x] Lobby and call in separate windows: the lobby stays usable during a call, the call window comes forward to join, call and ring (D-292).
 - [ ] Verify both windows with a real meeting and a real call on the target machine (D-292).
+- [x] Your Teams chats in the lobby (list, read, reply) and Chat per person in Call… (D-293).
+- [ ] Verify the chat list, unread state and Chat from Call… in a real tenant (D-293).

@@ -109,3 +109,107 @@ export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMess
   if (before.length !== after.length) return true;
   return after.some((m, i) => m.id !== before[i]!.id || m.text !== before[i]!.text);
 }
+
+/** A Teams chat id: a thread (`19:…@thread.v2`) or a one-to-one chat (`19:…@unq.gbl.spaces`). */
+export const TEAMS_CHAT_ID = /^19:[\w.-]+@(thread\.(v2|tacv2|skype)|unq\.gbl\.spaces)$/i;
+
+/** One of your Teams chats in the lobby's Chats list (D-293). */
+export interface TeamsChatSummary {
+  id: string;
+  kind: "oneOnOne" | "group" | "meeting";
+  /** The other person (one-to-one), the topic, or the members' names. */
+  name: string;
+  /** The other person's Entra object id in a one-to-one chat, for the picture. */
+  peerId?: string;
+  /** The newest message, as one line. */
+  preview?: { from: string; text: string; mine?: boolean };
+  /** When the chat last had a message (or changed). */
+  at: string;
+  /** Someone else wrote since you last read it (in Teams, or opened it in Jig). */
+  unread: boolean;
+}
+
+/** A chat as Graph's `/me/chats` returns it with members and the last message's preview. */
+export interface GraphChat {
+  id: string;
+  topic?: string | null;
+  chatType?: string;
+  lastUpdatedDateTime?: string;
+  members?: Array<{ userId?: string | null; displayName?: string | null }>;
+  lastMessagePreview?: {
+    createdDateTime: string;
+    isDeleted?: boolean;
+    messageType?: string;
+    from?: { user?: { id?: string; displayName?: string } | null } | null;
+    body?: { contentType?: string; content?: string };
+  } | null;
+  viewpoint?: { isHidden?: boolean; lastMessageReadDateTime?: string | null } | null;
+}
+
+/**
+ * Your chats newest first, as the lobby lists them: hidden ones left out, a name for each, the last
+ * message as one line, and whether it's unread. `readInJig` holds when you last opened a chat in Jig
+ * (Jig can't mark it read in Teams: that needs Chat.ReadWrite).
+ */
+export function toChatSummaries(
+  chats: GraphChat[],
+  self?: string,
+  readInJig: ReadonlyMap<string, string> = new Map(),
+): TeamsChatSummary[] {
+  return chats
+    .filter((c) => !c.viewpoint?.isHidden && TEAMS_CHAT_ID.test(c.id))
+    .map((c) => {
+      const kind = c.chatType === "oneOnOne" ? "oneOnOne" : c.chatType === "meeting" ? "meeting" : "group";
+      const others = (c.members ?? []).filter((m) => m.userId !== self);
+      const peer = kind === "oneOnOne" ? others[0] : undefined;
+      const names = others.map((m) => m.displayName?.trim()).filter(Boolean) as string[];
+      const name =
+        (kind === "oneOnOne" ? peer?.displayName?.trim() : c.topic?.trim()) ||
+        (names.length
+          ? names.length > 3
+            ? `${names.slice(0, 3).join(", ")} +${names.length - 3}`
+            : names.join(", ")
+          : kind === "meeting"
+            ? "Meeting chat"
+            : "Chat");
+      const last = c.lastMessagePreview;
+      const fromId = last?.from?.user?.id;
+      const mine = Boolean(self && fromId === self);
+      const content = last?.body?.content ?? "";
+      const text = (last?.body?.contentType === "text" ? content : chatText(content))
+        .replace(/\s+/g, " ")
+        .trim();
+      const preview =
+        last && !last.isDeleted && (last.messageType ?? "message") === "message" && last.from?.user
+          ? {
+              from: mine ? "You" : last.from.user.displayName || "Someone",
+              text: text || "(attachment)",
+              ...(mine ? { mine } : {}),
+            }
+          : undefined;
+      const at = last?.createdDateTime ?? c.lastUpdatedDateTime ?? new Date(0).toISOString();
+      const read = [c.viewpoint?.lastMessageReadDateTime, readInJig.get(c.id)]
+        .filter((t): t is string => Boolean(t))
+        .map((t) => new Date(t).getTime());
+      const unread = Boolean(
+        preview && !mine && (!read.length || new Date(at).getTime() > Math.max(...read)),
+      );
+      return {
+        id: c.id,
+        kind,
+        name,
+        ...(peer?.userId ? { peerId: peer.userId } : {}),
+        ...(preview ? { preview } : {}),
+        at: new Date(at).toISOString(),
+        unread,
+      } satisfies TeamsChatSummary;
+    })
+    .sort((a, b) => b.at.localeCompare(a.at));
+}
+
+/** Teams' link to a chat, or to a new one with someone (by e-mail) when Jig can't start it. */
+export function teamsChatLink(target: { chatId: string } | { email: string }): string {
+  return "chatId" in target
+    ? `https://teams.microsoft.com/l/chat/${encodeURIComponent(target.chatId)}/0`
+    : `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(target.email)}`;
+}

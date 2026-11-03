@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
+import { TEAMS_CHAT_ID } from "../../shared/meetingChat";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PROJECT_COLORS } from "../../shared/projects";
 import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
@@ -25,6 +26,8 @@ const meetingPanel = z.object({ slot: z.enum(MEETING_SLOTS), hidden: z.boolean()
 const MAX_TEXT = 1_000_000;
 const path = z.string().min(1).max(4096);
 const id = z.string().min(1).max(200);
+/** A Teams chat id (D-293): it goes into a Graph URL path, so only the two shapes Teams uses. */
+const teamsChatId = z.string().max(300).regex(TEAMS_CHAT_ID);
 const text = z.string().max(MAX_TEXT);
 const addonId = z
   .string()
@@ -92,6 +95,11 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "people.photo": z.object({ email: z.string().max(320) }).strict(),
   "meetings.chat": z.object({ id }).strict(),
   "meetings.chatSend": z.object({ id, text: z.string().trim().min(1).max(4000) }).strict(),
+  "meetings.chatThread": z.object({ chatId: teamsChatId }).strict(),
+  "meetings.chatThreadSend": z
+    .object({ chatId: teamsChatId, text: z.string().trim().min(1).max(4000) })
+    .strict(),
+  "meetings.chatWith": z.object({ peerId: z.uuid() }).strict(),
   "completion.request": z
     .object({
       path,

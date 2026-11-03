@@ -300,7 +300,11 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.captionLanguage | The language live captions are shown in (`""` = as spoken), remembered; Teams translates (D-260); room only |
 | meetings.chat | Room only: reads the active meeting's or call's Teams chat (Graph Chat.Read) into its record; `{state: ok/consent/unavailable, error?}` (D-270) |
 | meetings.chatSend | Room only: writes in that chat as you (Graph ChatMessage.Send) |
-| meetings.chatConnect | Room only: asks Microsoft for the chat permissions (browser sign-in) |
+| meetings.chatConnect | Lobby or room: asks Microsoft for the chat permissions (browser sign-in) |
+| meetings.chats | Lobby or room: your 50 newest Teams chats (`TeamsChatSummary`: id, kind, name, peerId?, preview?, at, unread) with `{state, error?}`; Chat.Read, no new consent (D-293) |
+| meetings.chatThread | `{chatId}` (a Teams chat id, `TEAMS_CHAT_ID`): the chat's newest 50 messages, not kept; marks it read in Jig; lobby or room |
+| meetings.chatThreadSend | `{chatId, text}`: write in that chat as you (ChatMessage.Send); returns the sent message; lobby or room |
+| meetings.chatWith | `{peerId}`: your one-to-one chat id with someone, if you have one (Jig can't start one: no Chat.Create); `{state, chatId?}`; lobby or room |
 | meetings.photo | Someone's Microsoft profile picture (48×48 data URL) or null, by Teams id, object id or `local`; silent sign-in only, cached per run (D-263) |
 | people.photo | The same by e-mail / user principal name `{ email }`, for add-ons (`ctx.people.photo`, `PersonAvatar`; D-291); null without Meetings on or its sign-in (no request then), after a refused people token for 10 minutes, or for anything not e-mail-shaped; cached per run |
 | meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); lobby or room |

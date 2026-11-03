@@ -1,5 +1,14 @@
 # Status
 
+Teams chats in the lobby (2026-11-03, D-293): the Meetings lobby has a rail with **Meetings** and
+**Chats**. Chats lists your Teams chats newest first (picture or group icon, name, last message, time,
+an unread mark, the unread count on the rail); a row opens the chat beside the list, where you read
+and write (refreshed every 5 seconds). In **Call…** each person has a **Chat** button that opens your
+one-to-one chat with them; with no chat yet, Jig says it can't start one and offers **Open in Teams**.
+Needs testing in a real tenant: the list loads with Chat.Read (also where Graph refuses expanding
+members and previews together), group and meeting chats get sensible names, unread matches Teams,
+sending works, Chat from Call… finds an existing chat, and Open in Teams starts a new one.
+
 Meetings in two windows (2026-11-03, D-292): Meetings opens the **lobby** (agenda, week, history,
 reviews, notes, actions), and joining or calling brings up a separate **call window** (device check,
 the live call with its panels, ringing calls). The lobby stays usable during a call: its status bar

@@ -8,7 +8,7 @@ export const MEETING_PANELS = ["people", "transcript", "notes", "chat"] as const
 export type MeetingPanelId = (typeof MEETING_PANELS)[number];
 export const MEETING_SLOTS = ["left", "right", "bottom"] as const;
 export type MeetingSlot = (typeof MEETING_SLOTS)[number];
-/** Remembered sizes in px: a slot's width/height, `<slot>.split`/`.split2` the first/second panel's share of a shared slot, `review.notes`. */
+/** Remembered sizes in px: a slot's width/height, `<slot>.split`/`.split2` the first/second panel's share of a shared slot, `review.notes`, the lobby's `chats.list`. */
 export const MEETING_SIZES = [
   "left",
   "right",
@@ -23,7 +23,10 @@ export const MEETING_SIZES = [
   "right.split3",
   "bottom.split3",
   "review.notes",
+  "chats.list",
 ] as const;
+/** The sizes the lobby window owns (D-292, D-293); the call window keeps the rest. */
+export const LOBBY_SIZES = ["review.notes", "chats.list"] as const satisfies readonly MeetingSizeKey[];
 export type MeetingSizeKey = (typeof MEETING_SIZES)[number];
 
 export interface MeetingLayout {
@@ -45,6 +48,7 @@ export const DEFAULT_SIZES: Record<MeetingSizeKey, number> = {
   "right.split3": 240,
   "bottom.split3": 400,
   "review.notes": 420,
+  "chats.list": 340,
 };
 
 export const DEFAULT_MEETING_LAYOUT: MeetingLayout = {

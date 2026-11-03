@@ -14,10 +14,12 @@ import {
 import { JigError } from "../../shared/ipc";
 import {
   chatChanged,
+  type GraphChat,
   type MeetingChatMessage,
   type MeetingChatState,
   meetingChatId,
   mergeChat,
+  toChatSummaries,
 } from "../../shared/meetingChat";
 import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
@@ -58,6 +60,90 @@ const FAKE_PHOTOS: Record<string, string> = {
   "alex@contoso.com": svgPhoto("#4a7bd0"),
   "00000000-0000-4000-8000-0000000005a3": svgPhoto("#3f9d6b"),
 };
+/** The test meeting service's own account id, and a few Teams chats to list, open and write in (D-293). */
+const FAKE_ME = "00000000-0000-4000-8000-0000000000ee";
+const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
+const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
+function fakeChatData() {
+  const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+  const person = (id: string, name: string) => ({ userId: id, displayName: name });
+  const chats: Array<{ chat: GraphChat; messages: MeetingChatMessage[] }> = [
+    {
+      chat: {
+        id: `19:${FAKE_ME}_${FAKE_ALEX}@unq.gbl.spaces`,
+        chatType: "oneOnOne",
+        members: [person(FAKE_ME, "You"), person(FAKE_ALEX, "Alex Contoso")],
+      },
+      messages: [
+        { id: "a1", from: "You", at: ago(70), text: "Is the Shop API spec ready?", mine: true },
+        {
+          id: "a2",
+          from: "Alex Contoso",
+          fromId: FAKE_ALEX,
+          at: ago(12),
+          text: "Almost: can you look at the error codes?",
+        },
+      ],
+    },
+    {
+      chat: {
+        id: "19:portal-planning@thread.v2",
+        chatType: "group",
+        topic: "Portal planning",
+        members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam"), person("robin", "Robin Shop")],
+        viewpoint: { lastMessageReadDateTime: ago(0) },
+      },
+      messages: [
+        { id: "p1", from: "Robin Shop", at: ago(200), text: "Agenda for Thursday is in the channel." },
+        {
+          id: "p2",
+          from: "Sam Fabrikam",
+          fromId: FAKE_SAM,
+          at: ago(95),
+          text: "I added the sign-in flow to it.",
+        },
+      ],
+    },
+    {
+      chat: {
+        id: `19:${FAKE_ME}_${FAKE_SAM}@unq.gbl.spaces`,
+        chatType: "oneOnOne",
+        members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam")],
+      },
+      messages: [{ id: "s1", from: "You", at: ago(26 * 60), text: "Thanks for the review!", mine: true }],
+    },
+  ];
+  const find = (chatId: string) => {
+    const found = chats.find((c) => c.chat.id === chatId);
+    if (!found) throw new JigError("meeting_chat_missing", "This chat isn't open to you.");
+    return found;
+  };
+  return {
+    list: (): GraphChat[] =>
+      chats.map(({ chat, messages }) => {
+        const last = messages.at(-1);
+        return {
+          ...chat,
+          lastMessagePreview: last && {
+            createdDateTime: last.at,
+            from: { user: { id: last.mine ? FAKE_ME : (last.fromId ?? last.from), displayName: last.from } },
+            body: { contentType: "text", content: last.text },
+          },
+        };
+      }),
+    messages: (chatId: string) => [...find(chatId).messages],
+    send(chatId: string, text: string): MeetingChatMessage {
+      const message = { id: `f${Date.now()}`, from: "You", at: new Date().toISOString(), text, mine: true };
+      find(chatId).messages.push(message);
+      return message;
+    },
+    /** Alex and Sam have a chat with you; anyone else hasn't yet. */
+    with: (peerId: string) =>
+      chats.find((c) => c.chat.chatType === "oneOnOne" && c.chat.members?.some((m) => m.userId === peerId))
+        ?.chat.id,
+  };
+}
+
 const store = new MeetingStore();
 const auth = new MeetingAuth(() => store.settings());
 const fake = () => process.env.JIG_ENGINE === "fake" && process.env.JIG_MEETINGS === "fake";
@@ -694,8 +780,59 @@ export async function startMeetings(): Promise<void> {
     if (sent) await keepChat(id, [sent]);
   });
   handle("meetings.chatConnect", async (_args, ctx) => {
-    own(ctx);
+    lobbyOrCall(ctx);
     if (!fake()) await auth.connectChat();
+  });
+
+  // Your Teams chats in the lobby (D-293). Messages are read when asked and never kept or logged;
+  // when you last opened each chat in Jig counts as read (Jig can't mark it read in Teams).
+  const readInJig = new Map<string, string>();
+  const fakeChats = fakeChatData();
+  const chatFailure = (error: unknown) => {
+    const code = (error as JigError).code;
+    if (code === "meeting_chat_consent") return { state: "consent" as const };
+    if (code === "meeting_chat_missing")
+      return { state: "unavailable" as const, error: (error as Error).message };
+    return { state: "ok" as const, error: (error as Error).message };
+  };
+  handle("meetings.chats", async (_args, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    if (fake()) return { state: "ok" as const, chats: toChatSummaries(fakeChats.list(), FAKE_ME, readInJig) };
+    if (!auth.name)
+      return { state: "unavailable" as const, chats: [], error: "Connect Microsoft to see your chats." };
+    if (!(await auth.chatReady())) return { state: "consent" as const, chats: [] };
+    try {
+      return { state: "ok" as const, chats: await auth.chats(readInJig) };
+    } catch (error) {
+      return { ...chatFailure(error), chats: [] };
+    }
+  });
+  handle("meetings.chatThread", async ({ chatId }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    try {
+      const messages = fake() ? fakeChats.messages(chatId) : await auth.chatMessages(chatId);
+      const newest = messages.at(-1)?.at;
+      if (newest) readInJig.set(chatId, newest);
+      return { state: "ok" as const, messages };
+    } catch (error) {
+      return { ...chatFailure(error), messages: [] };
+    }
+  });
+  handle("meetings.chatThreadSend", async ({ chatId, text }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    const sent = fake() ? fakeChats.send(chatId, text.trim()) : await auth.sendChat(chatId, text.trim());
+    if (sent) readInJig.set(chatId, sent.at);
+    return sent ?? null;
+  });
+  handle("meetings.chatWith", async ({ peerId }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    if (fake()) return { state: "ok" as const, chatId: fakeChats.with(peerId) };
+    if (!(await auth.chatReady())) return { state: "consent" as const };
+    return { state: "ok" as const, chatId: await auth.callChatId(peerId) };
   });
   // Profile pictures (D-263): from Microsoft once per person while Jig runs; null = initials.
   const photos = new Map<string, Promise<string | null>>();

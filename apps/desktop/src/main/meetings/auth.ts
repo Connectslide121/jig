@@ -7,10 +7,13 @@ import { type AccountInfo, PublicClientApplication, type TokenCacheContext } fro
 import { safeStorage } from "electron";
 import { JigError } from "../../shared/ipc";
 import {
+  type GraphChat,
   type GraphChatMessage,
   type MeetingChatMessage,
   oneOnOneChatIds,
+  type TeamsChatSummary,
   toChatMessages,
+  toChatSummaries,
 } from "../../shared/meetingChat";
 import type { MeetingEvent, MeetingPerson, MeetingSettings } from "../../shared/meetings";
 import { openExternal } from "../appWindows";
@@ -295,6 +298,31 @@ export class MeetingAuth {
       if (r.ok) return id;
     }
     return undefined;
+  }
+  /**
+   * Your 50 most recent chats (D-293), with members and the last message's preview: Chat.Read is
+   * enough. Where Graph refuses both expansions in one request, the two are read and merged.
+   */
+  async chats(readInJig: ReadonlyMap<string, string>): Promise<TeamsChatSummary[]> {
+    const recent = "/me/chats?$top=50&$orderby=lastMessagePreview/createdDateTime%20desc";
+    const read = async (path: string) => {
+      const r = await this.chatFetch(path);
+      if (!r.ok) throw chatError(r.status);
+      return ((await r.json()) as { value: GraphChat[] }).value;
+    };
+    let chats: GraphChat[];
+    try {
+      chats = await read(`${recent}&$expand=members,lastMessagePreview`);
+    } catch (error) {
+      if ((error as JigError).code === "meeting_chat_consent") throw error;
+      const [previews, members] = await Promise.all([
+        read(`${recent}&$expand=lastMessagePreview`),
+        read("/me/chats?$top=50&$expand=members").catch(() => [] as GraphChat[]),
+      ]);
+      const byId = new Map(members.map((c) => [c.id, c.members]));
+      chats = previews.map((c) => ({ ...c, members: byId.get(c.id) ?? [] }));
+    }
+    return toChatSummaries(chats, this.account?.localAccountId, readInJig);
   }
   /** The newest 50 messages of a chat you're in, oldest first. */
   async chatMessages(chatId: string): Promise<MeetingChatMessage[]> {

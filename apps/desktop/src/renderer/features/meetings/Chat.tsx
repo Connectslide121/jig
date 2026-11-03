@@ -1,7 +1,6 @@
 import { MessagesSquare, SendHorizontal, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { MeetingChatMessage, MeetingChatState } from "../../../shared/meetingChat";
-import type { MeetingRecord } from "../../../shared/meetings";
 import { Button, Empty, IconButton, Input, type MenuEntry, Spinner } from "../../ui";
 import { clock, initials } from "./format";
 import { PanelHeader } from "./Panels";
@@ -26,25 +25,31 @@ function blocks(messages: MeetingChatMessage[]): MeetingChatMessage[][] {
 }
 
 /**
- * The meeting's or call's Teams chat (D-270): read every few seconds while you're in it, with a box
- * to write in it. Its states (loading, needs approval, no chat) fill the list's space; the box keeps
- * its row, so nothing moves.
+ * A Teams chat: the meeting's or call's (D-270), read every few seconds while you're in it, or one of
+ * your chats in the lobby (D-293), with a box to write in it. Its states (loading, needs approval, no
+ * chat) fill the list's space; the box keeps its row, so nothing moves.
  */
 export function ChatPanel({
-  record,
+  messages,
   status,
   menu,
+  header,
+  placeholder = "Write in the meeting chat",
+  emptyText = "Messages in the meeting's Teams chat show here.",
   onConnect,
   onSend,
 }: {
-  record: MeetingRecord;
+  messages: MeetingChatMessage[];
   /** Undefined until the first read. */
   status?: ChatStatus;
   menu?: MenuEntry[];
+  /** Replaces the panel's "Chat" title bar (the lobby shows who the chat is with). */
+  header?: ReactNode;
+  placeholder?: string;
+  emptyText?: string;
   onConnect(): Promise<void>;
   onSend(text: string): Promise<void>;
 }) {
-  const messages = record.chat ?? [];
   const container = useRef<HTMLDivElement>(null);
   const following = useRef(true);
   const [draft, setDraft] = useState("");
@@ -71,19 +76,21 @@ export function ChatPanel({
   };
   return (
     <section className="flex size-full min-h-0 min-w-0 flex-col" aria-label="Chat">
-      <PanelHeader
-        title="Chat"
-        detail={
-          status?.error && status.state === "ok" ? (
-            <span className="text-warning" title={status.error}>
-              Couldn't refresh
-            </span>
-          ) : messages.length ? (
-            `${messages.length} messages`
-          ) : undefined
-        }
-        menu={menu}
-      />
+      {header ?? (
+        <PanelHeader
+          title="Chat"
+          detail={
+            status?.error && status.state === "ok" ? (
+              <span className="text-warning" title={status.error}>
+                Couldn't refresh
+              </span>
+            ) : messages.length ? (
+              `${messages.length} messages`
+            ) : undefined
+          }
+          menu={menu}
+        />
+      )}
       <div
         data-testid="meeting-chat"
         ref={container}
@@ -119,9 +126,7 @@ export function ChatPanel({
           <Spinner center />
         ) : !messages.length ? (
           <Empty icon={MessagesSquare} title="No messages yet" className="h-full">
-            {status?.state === "unavailable"
-              ? status.error
-              : "Messages in the meeting's Teams chat show here."}
+            {status?.state === "unavailable" ? status.error : emptyText}
           </Empty>
         ) : (
           <ol className="space-y-3">
@@ -166,7 +171,7 @@ export function ChatPanel({
       >
         <Input
           className="min-w-0 flex-1"
-          placeholder={canWrite ? "Write in the meeting chat" : "The chat isn't connected"}
+          placeholder={canWrite ? placeholder : "The chat isn't connected"}
           aria-label="Message"
           value={draft}
           disabled={!canWrite}

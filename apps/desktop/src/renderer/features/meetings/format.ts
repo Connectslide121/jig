@@ -65,3 +65,11 @@ export function startsIn(startIso: string, endIso: string, now = Date.now()): st
     return `in ${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`;
   return `${dayLabel(startIso)} ${clock(startIso)}`;
 }
+
+/** A chat's last message time: "14:05" today, "Mon" this week, "3 Nov" before that. */
+export function chatTime(value: string, now = new Date()): string {
+  const d = new Date(value);
+  if (dayKey(d) === dayKey(now)) return clock(value);
+  if (now.getTime() - d.getTime() < 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" });
+  return d.toLocaleDateString([], { day: "numeric", month: "short" });
+}

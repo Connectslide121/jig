@@ -384,3 +384,63 @@ test("Meetings: live captions in another language, with what was said under them
     await app.close();
   }
 });
+
+test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", async ({ jigHome }) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby } = await meetingWindows(app);
+    // Only the Meetings windows read your chats (D-293).
+    expect((await hostCall(main, "meetings.chats")).ok).toBe(false);
+
+    // Your chats, newest first: name, last message, time, and the unread mark.
+    await lobby.getByRole("button", { name: "Chats", exact: true }).click();
+    const rows = lobby.getByTestId("teams-chat");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.first()).toContainText("Alex Contoso");
+    await expect(rows.first()).toContainText("Almost: can you look at the error codes?");
+    await expect(rows.first()).toContainText("Unread");
+    await expect(rows.nth(1)).toContainText("Portal planning");
+    await expect(rows.nth(1)).toContainText("Sam Fabrikam: I added the sign-in flow to it.");
+    await lobby.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/chats.png" });
+
+    // The whole row opens the chat; writing in it updates the list, and opening it counts as read.
+    await rows.first().click();
+    const chat = lobby.getByRole("region", { name: "Chat" });
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Is the Shop API spec ready?");
+    await chat.getByTestId("meeting-chat-input").fill("On it");
+    await chat.getByTestId("meeting-chat-send").click();
+    await expect(chat.getByTestId("meeting-chat")).toContainText("On it");
+    await expect(rows.first()).toContainText("You: On it");
+    await expect(rows.first()).not.toContainText("Unread");
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/chat-open.png",
+    });
+
+    // Call… has a Chat action per person: it opens your one-to-one chat with them.
+    await lobby.getByRole("button", { name: "Meetings", exact: true }).click();
+    await lobby.getByRole("button", { name: "Call…", exact: true }).click();
+    const dialog = lobby.getByTestId("call-dialog");
+    await dialog.getByPlaceholder("Search people by name or e-mail").fill("sam");
+    await dialog.getByRole("button", { name: "Chat with Sam Fabrikam", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Thanks for the review!");
+
+    // Nobody to chat with yet: Jig can't start a chat, so it offers Teams instead.
+    await lobby.getByRole("button", { name: "Call…", exact: true }).click();
+    await dialog.getByPlaceholder("Search people by name or e-mail").fill("robin");
+    await dialog.getByRole("button", { name: "Chat with Robin Shop", exact: true }).click();
+    await expect(dialog.getByTestId("call-status")).toContainText("no Teams chat yet");
+    await expect(dialog.getByRole("button", { name: "Open in Teams", exact: true })).toBeVisible();
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/chat-none.png",
+    });
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  } finally {
+    await app.close();
+  }
+});

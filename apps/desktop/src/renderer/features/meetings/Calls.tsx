@@ -1,8 +1,9 @@
-import { Phone, PhoneIncoming, PhoneOff, Video } from "lucide-react";
+import { MessageSquare, Phone, PhoneIncoming, PhoneOff, Video } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { teamsChatLink } from "../../../shared/meetingChat";
 import type { MeetingPerson, MeetingRecord } from "../../../shared/meetings";
 import { call, errorMessage } from "../../lib/host";
-import { Button, cn, Dialog, SearchInput, Spinner, Switch } from "../../ui";
+import { Button, cn, Dialog, IconButton, SearchInput, Spinner, Switch } from "../../ui";
 import { initials } from "./format";
 import type { Ringing } from "./media";
 import { PersonPhoto } from "./photo";
@@ -38,16 +39,21 @@ export function CallDialog({
   records,
   onClose,
   onCall,
+  onChat,
 }: {
   records: MeetingRecord[];
   onClose(): void;
   onCall(person: MeetingPerson, options: { camera: boolean }): Promise<void>;
+  /** Opens your one-to-one chat with them (D-293); false when you have none yet. */
+  onChat?(person: MeetingPerson): Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<{ query: string; people: MeetingPerson[] }>();
   const [error, setError] = useState("");
   const [camera, setCamera] = useState(false);
   const [busy, setBusy] = useState<string>();
+  /** Someone you have no Teams chat with yet: Jig can't start one (that needs Chat.Create). */
+  const [noChat, setNoChat] = useState<MeetingPerson>();
   const recent = useMemo(() => recentPeople(records), [records]);
   const asked = useRef(0);
   useEffect(() => {
@@ -77,6 +83,19 @@ export function CallDialog({
         ["People you work with", (found?.people ?? []).filter((p) => !recent.some((r) => r.id === p.id))],
       ];
   const loading = found?.query !== query;
+  const chat = async (person: MeetingPerson) => {
+    if (!onChat) return;
+    setBusy(person.id);
+    setNoChat(undefined);
+    setError("");
+    try {
+      if (!(await onChat(person))) setNoChat(person);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(undefined);
+    }
+  };
   const place = async (person: MeetingPerson) => {
     setBusy(person.id);
     try {
@@ -124,32 +143,44 @@ export function CallDialog({
                   <div key={title} className="space-y-1">
                     <h3 className="px-2 text-2xs font-semibold tracking-wide text-hint uppercase">{title}</h3>
                     {people.map((p) => (
-                      <button
-                        type="button"
-                        key={p.id}
-                        data-testid="call-person"
-                        disabled={Boolean(busy)}
-                        title={`Call ${p.name}${camera ? " with video" : ""}`}
-                        onClick={() => void place(p)}
-                        className="group flex h-12 w-full items-center gap-3 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60"
-                      >
-                        <Avatar name={p.name} id={p.id} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{p.name}</span>
-                          <span className="block truncate text-xs text-muted">
-                            {[p.title, p.email].filter(Boolean).join(" · ") || "Called before"}
+                      <div key={p.id} className="flex h-12 items-center gap-1 rounded-md hover:bg-hover">
+                        <button
+                          type="button"
+                          data-testid="call-person"
+                          disabled={Boolean(busy)}
+                          title={`Call ${p.name}${camera ? " with video" : ""}`}
+                          onClick={() => void place(p)}
+                          className="group flex h-full min-w-0 flex-1 items-center gap-3 rounded-md px-2 text-left disabled:opacity-60"
+                        >
+                          <Avatar name={p.name} id={p.id} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{p.name}</span>
+                            <span className="block truncate text-xs text-muted">
+                              {[p.title, p.email].filter(Boolean).join(" · ") || "Called before"}
+                            </span>
                           </span>
-                        </span>
-                        <span className="flex size-8 shrink-0 items-center justify-center text-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">
-                          {busy === p.id ? (
-                            <Spinner size="sm" />
-                          ) : camera ? (
-                            <Video className="size-4" />
-                          ) : (
-                            <Phone className="size-4" />
-                          )}
-                        </span>
-                      </button>
+                          <span className="flex size-8 shrink-0 items-center justify-center text-accent opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">
+                            {busy === p.id ? (
+                              <Spinner size="sm" />
+                            ) : camera ? (
+                              <Video className="size-4" />
+                            ) : (
+                              <Phone className="size-4" />
+                            )}
+                          </span>
+                        </button>
+                        {/* Chat sits in its own column beside the call, the same place in every row. */}
+                        {onChat && (
+                          <IconButton
+                            icon={MessageSquare}
+                            label={`Chat with ${p.name}`}
+                            disabled={Boolean(busy) || !p.id}
+                            onClick={() => void chat(p)}
+                            className="mr-1 shrink-0"
+                            data-testid="chat-person"
+                          />
+                        )}
+                      </div>
                     ))}
                   </div>
                 ) : null,
@@ -164,10 +195,30 @@ export function CallDialog({
         </div>
         <p
           role={error ? "alert" : "status"}
-          className={cn("h-8 text-xs", error ? "text-danger" : "text-hint")}
+          className={cn("h-8 text-xs", error ? "text-danger" : noChat ? "text-fg" : "text-hint")}
+          data-testid="call-status"
         >
           {error ||
-            "Teams calls to people in your organisation. Jig reads names and e-mail addresses from your directory to find them."}
+            (noChat ? (
+              <>
+                You and {noChat.name} have no Teams chat yet, and Jig can't start one.{" "}
+                {noChat.email && (
+                  <button
+                    type="button"
+                    className="text-accent hover:underline"
+                    onClick={() =>
+                      void call("app.openExternal", { url: teamsChatLink({ email: noChat.email }) }).catch(
+                        (e) => setError(errorMessage(e)),
+                      )
+                    }
+                  >
+                    Open in Teams
+                  </button>
+                )}
+              </>
+            ) : (
+              "Teams calls and chats with people in your organisation. Jig reads names and e-mail addresses from your directory to find them."
+            ))}
         </p>
       </div>
     </Dialog>

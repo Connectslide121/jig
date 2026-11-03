@@ -186,6 +186,33 @@ export interface HostMethods {
   "meetings.chatSend": { args: { id: string; text: string }; result: void };
   /** Asks Microsoft for the chat permissions (opens the browser). */
   "meetings.chatConnect": { args: void; result: void };
+  /** Your Teams chats, newest first, for the lobby's Chats (D-293). */
+  "meetings.chats": {
+    args: void;
+    result: {
+      state: import("./meetingChat").MeetingChatState;
+      chats: import("./meetingChat").TeamsChatSummary[];
+      error?: string;
+    };
+  };
+  /** The newest messages of one of your chats (not kept: the chat isn't a meeting record). */
+  "meetings.chatThread": {
+    args: { chatId: string };
+    result: {
+      state: import("./meetingChat").MeetingChatState;
+      messages: import("./meetingChat").MeetingChatMessage[];
+      error?: string;
+    };
+  };
+  "meetings.chatThreadSend": {
+    args: { chatId: string; text: string };
+    result: import("./meetingChat").MeetingChatMessage | null;
+  };
+  /** Your one-to-one chat with someone, if you have one (Jig can't start one: no Chat.Create). */
+  "meetings.chatWith": {
+    args: { peerId: string };
+    result: { state: import("./meetingChat").MeetingChatState; chatId?: string };
+  };
   "meetings.startCall": {
     args: import("./meetings").MeetingCall;
     result: import("./meetings").MeetingRecord;
