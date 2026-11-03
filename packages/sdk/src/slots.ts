@@ -5,10 +5,13 @@
 export const SLOTS = {
   view: "A view in a sidebar or the bottom panel (the layout decides where; the user can move it).",
   "workbench.tab": "A tab type for the main area, opened with ctx.openTab().",
-  "topbar.item": "A small item in the top bar (button, badge).",
+  "topbar.item":
+    'A small item in the top bar (button, badge); placement "right-start" puts it first on the right, before Suggestions.',
   "statusbar.item": "A small item in the status bar, left or right.",
   "dashboard.widget": "A card on the project dashboard.",
   "tools.action": "An action in the grouped top-bar menus and search (optionally with a keyboard shortcut).",
+  "tools.menuGroup":
+    "Live entries in a top-bar menu, computed each time it opens (Start/Stop by state, one entry per project).",
   "context.file": "An entry in the right-click menu of a file (Git changes, commit files).",
   "context.project": "An entry in the right-click menu of a project.",
   "context.repo": "An entry in the right-click menu of a repository (Repos overview).",
@@ -38,6 +41,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   "statusbar.item": "statusbar",
   "dashboard.widget": "dashboard",
   "tools.action": "actions",
+  "tools.menuGroup": "menuGroups",
   "context.file": "menus",
   "context.project": "menus",
   "context.repo": "menus",

@@ -51,7 +51,28 @@ export const ManifestSchema = z.object({
         )
         .default([]),
       tabs: z.array(z.object({ type: Id, title: z.string(), icon: Icon, component: ExportName })).default([]),
-      topbar: z.array(z.object({ id: Id, component: ExportName })).default([]),
+      topbar: z
+        .array(
+          z.object({
+            id: Id,
+            component: ExportName,
+            /**
+             * "right-start": the first item of the right-hand group, before Suggestions. Left out, the
+             * item sits with Jig's own top bar items, after Suggestions (D-305).
+             */
+            placement: z.enum(["right-start"]).optional(),
+            /** Order among the items with the same placement (lower first). */
+            order: z.number().default(50),
+          }),
+        )
+        .default([]),
+      /**
+       * Live entries for a top bar menu group (D-305): `group` is an `actions[].group` title (or the
+       * add-on's name, the default group) and `items` a ui.tsx export `(ctx) => MenuInput[]` (or a
+       * Promise of them), called each time that menu opens. Its entries show above the group's actions;
+       * if it throws or takes longer than half a second, the menu opens with the actions alone.
+       */
+      menuGroups: z.array(z.object({ group: z.string().min(1), items: ExportName })).default([]),
       statusbar: z
         .array(z.object({ id: Id, side: z.enum(["left", "right"]).default("right"), component: ExportName }))
         .default([]),
@@ -223,6 +244,7 @@ export function uiExports(m: AddonManifest): string[] {
     ...c.views.map((v) => v.component),
     ...c.tabs.map((t) => t.component),
     ...c.topbar.map((t) => t.component),
+    ...c.menuGroups.map((g) => g.items),
     ...c.statusbar.map((s) => s.component),
     ...c.dashboard.map((d) => d.component),
     ...c.actions.map((a) => a.run),

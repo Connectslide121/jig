@@ -86,6 +86,11 @@ export function openMenuAt(
   );
 }
 
+/** Whether a menu of this menu bar is open (hovering another of its buttons switches to it). */
+export function menuBarOpen(menuBar: string): boolean {
+  return useMenu.getState().open?.menuBar === menuBar;
+}
+
 /** Switch only within an already-open menu bar; hovering alone never opens a menu. */
 export function switchMenuAt(
   element: HTMLElement,

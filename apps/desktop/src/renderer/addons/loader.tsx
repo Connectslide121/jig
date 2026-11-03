@@ -8,10 +8,12 @@ import { registerPrompt } from "../features/sessions/prompts";
 import { registerPermissionRenderer, registerToolRenderer } from "../features/sessions/toolRenderers";
 import { registerSettingsPage } from "../features/settings/SettingsTab";
 import { call, useHostEvent } from "../lib/host";
+import type { MenuEntry } from "../ui";
 import { contributeMenu } from "../workbench/contextMenus";
 import {
   registerAction,
   registerChatToolbarItem,
+  registerMenuGroup,
   registerStatusItem,
   registerTabType,
   registerTopbarItem,
@@ -20,7 +22,7 @@ import {
 } from "../workbench/registry";
 import { notify } from "../workbench/toasts";
 import { AddonBoundary } from "./AddonBoundary";
-import { AddonContext, dispatchAddonEvent, iconByName, makeContext } from "./context";
+import { AddonContext, dispatchAddonEvent, iconByName, makeContext, toEntries } from "./context";
 import { dispatchJigEvent, setBadges, setKnownAddons } from "./runtime";
 import { installSharedModules } from "./shared";
 
@@ -135,7 +137,43 @@ async function mount(addon: AddonInfo): Promise<void> {
   }
   for (const t of c.topbar) {
     const Component = component(t.component, "top bar item");
-    if (Component) registerTopbarItem({ id: `${owner}.${t.id}`, component: Component, owner });
+    if (Component)
+      registerTopbarItem({
+        id: `${owner}.${t.id}`,
+        placement: t.placement,
+        order: t.order,
+        component: Component,
+        owner,
+      });
+  }
+  // Live entries of a top bar menu group, computed when the menu opens (D-305). A failure is told once
+  // per load, so a broken export doesn't toast on every open.
+  let menuErrorShown = false;
+  for (const [i, g] of c.menuGroups.entries()) {
+    const items = module[g.items];
+    if (typeof items !== "function") {
+      missing.push(g.items);
+      continue;
+    }
+    const entries = (r: unknown) => (Array.isArray(r) ? toEntries(r) : (r as MenuEntry[]));
+    registerMenuGroup({
+      id: `${owner}.menu-${i}`,
+      group: g.group,
+      owner,
+      items: () => {
+        const result = (items as (ctx: AddonUiContext) => unknown)(ctx);
+        return result instanceof Promise ? result.then(entries) : entries(result);
+      },
+      onError: (error) => {
+        if (menuErrorShown) return;
+        menuErrorShown = true;
+        notify({
+          title: `${addon.name}: the ${g.group} menu's entries failed`,
+          message: error.message,
+          tone: "warning",
+        });
+      },
+    });
   }
   for (const s of c.statusbar) {
     const Component = component(s.component, "status bar item");

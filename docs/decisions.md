@@ -3980,3 +3980,27 @@ Jon, 2026-11-04: "a proper board toolbar like Azure DevOps': a search field and 
   generic so other views can use multi-select menus.
 - The filter mark is in the toolbar: the funnel before the pickers turns accent and every active
   picker shows its count; the tabs carry no mark (it would change their width).
+
+## D-305: Top bar placement and live menu entries for add-ons
+
+Jon, 2026-11-04, from a development request the builder wrote for the Time add-on: "the small timer
+as the first item on the right of the top bar (left of Suggestions), and the Time menu to hold
+everything (start/stop and one click per project)".
+
+- `contributes.topbar[]` gained `placement` and `order` (default 50, lower first among items with the
+  same placement). `placement: "right-start"` renders the item first in the right-hand group, before
+  Suggestions. **Claude, on my own:** the enum has only `"right-start"`; the request also proposed
+  `"center"` for today's place, but add-on items already sit on the right after Jig's own items, so
+  that name would describe the wrong place. Leaving `placement` out keeps today's place.
+- A new slot `tools.menuGroup` (manifest key `menuGroups: [{ group, items }]`): `items` is a ui.tsx
+  export `(ctx) => MenuInput[] | Promise<MenuInput[]>` called each time the group's top bar menu
+  opens. Its entries go above the group's actions, a separator between; a group with only live
+  entries still gets its menu. Entries are `ctx.menu`'s (`project`, `person`, `badge`, `checked`,
+  `disabled`, submenus) plus `{ separator: true }` and, new for both, `{ heading }`.
+- **Claude, on my own:** the menu waits for the entries rather than opening with the actions and
+  growing (no layout shifts), at most 500 ms (`LIVE_MENU_TIMEOUT_MS`; the request suggested 300 ms,
+  which a host call reading storage can miss on a busy machine). A synchronous export opens the menu
+  without any delay. On a throw, rejection, non-list answer or timeout the menu opens with the static
+  actions and a warning toast names the add-on, once per load so a broken export doesn't toast on
+  every open. An answer that arrives after another menu was asked for is dropped.
+- Live entries aren't in Jig's search (Ctrl+P): they exist only while the menu is open.

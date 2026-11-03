@@ -52,6 +52,45 @@ design-token warnings (the builder must fix them; the add-on still loads).
   error boundary: a crash shows "Turn off" / "Fix with AI" in its place.
 - Handlers (`actions[].run`, `menus[].run`) are exported functions `(ctx, target?) => void | Promise`.
 
+### Top bar: placement and live menu entries (D-305)
+
+A `topbar` item sits on the right of the top bar, after Jig's own items (Suggestions, Claude's
+browser). With `"placement": "right-start"` it is the first item of the right-hand group instead,
+before Suggestions. Items with the same placement are ordered by `order` (default 50, lower first).
+
+An action group's top bar menu (the add-on's name, or an `actions[].group`) can show entries that
+change with state, through `menuGroups`:
+
+```jsonc
+"topbar": [{ "id": "timer", "component": "TimerBar", "placement": "right-start" }],
+"actions": [{ "id": "open", "title": "Open Time", "group": "Time", "run": "openTime" }],
+"menuGroups": [{ "group": "Time", "items": "timeMenu" }]
+```
+
+```tsx
+import type { MenuGroupItems } from "@jig/sdk";
+export const timeMenu: MenuGroupItems = async (ctx) => {
+  const running = await ctx.host.call<{ project?: string } | null>("running");
+  return [
+    running ? { label: "Stop", icon: "square", onSelect: () => void ctx.host.call("stop") }
+            : { label: "Start", icon: "play", onSelect: () => void ctx.host.call("start") },
+    { heading: "Start for a project" },
+    ...ctx.projects.list().map((p) => ({
+      label: p.name, project: p.id, badge: "1:15", checked: running?.project === p.id,
+      onSelect: () => void ctx.host.call("start", { project: p.id }),
+    })),
+  ];
+};
+```
+
+`items(ctx)` is called each time the menu opens and returns `MenuInput[]` (or a Promise of them):
+the same entries as `ctx.menu` (`project`, `person`, `badge`, `checked`, `disabled`, `danger`,
+submenus), separators (`{ separator: true }`) and headings (`{ heading }`). They show above the
+group's actions, a line between; a group with live entries gets its menu even without actions. The
+menu waits at most 0.5 s: if the export throws, rejects, returns something else than a list or takes
+longer, the menu opens with the actions alone and a toast says so (once per load). Call the same
+export from your top bar item's own `ctx.menu` to keep both menus in step.
+
 ## Where the data lives (`storage.scope`, D-116)
 
 An add-on declares whether its data is **global** (one copy, the default), **per project** or **per
@@ -111,7 +150,7 @@ are add-ons':
 | `notify({ title, message?, tone?, timeout?, system?, actions? })` | toast (`timeout` ms, 0 = until closed); `actions: [{ label, run }]` adds up to 3 buttons; `system: true` also shows a system notification when Jig isn't in front (if notifications are on in Settings), and the toast then waits until closed. Returns a function that closes it |
 | `storage.get/set(key, value)` | per-add-on JSON (`~/.jig/addon-data/<id>.json`), shared with host code. Claude can read and change it from a chat (`jig_set_addon_data`…); then the add-on gets the event `storage` (`{ key }`): `useHostCall` reloads by itself, other views listen with `ctx.on("storage", …)` |
 | `openExternal(url)`, `openPath(path)`, `copy(text)` | |
-| `menu(items, eventOrElement, target?)` | a Jig menu; with `target`, other add-ons' `context.*` entries are added. An item may have `project` (shows its `ProjectSwatch` in front), `person` (`{ name, email }`: their avatar in front), `badge` (text at the right edge), `keepOpen` (a multi-select row: a checkbox, and choosing it toggles it and runs `onSelect` without closing the menu) and `testId` |
+| `menu(items, eventOrElement, target?)` | a Jig menu (`MenuInput[]`: items, `{ separator: true }`, `{ heading }`); with `target`, other add-ons' `context.*` entries are added. An item may have `project` (shows its `ProjectSwatch` in front), `person` (`{ name, email }`: their avatar in front), `badge` (text at the right edge), `keepOpen` (a multi-select row: a checkbox, and choosing it toggles it and runs `onSelect` without closing the menu) and `testId` |
 | `confirm({…})`, `prompt({…})` | Jig dialogs |
 
 `@jig/sdk/ui` exports: `ProjectSwatch` (a project's square, `color` from `AddonProject.color`), `PersonAvatar` (`{ name?, email?, size?: "sm" | "md" }`: a person's round avatar in a fixed-size slot, their picture through `ctx.people.photo` over their initials, an empty slot when there's nobody, name and e-mail on hover; D-291) and `personInitials`, `Button`, `IconButton`, `Input`, `Textarea`, `Select`, `Switch`, `Card`, `Badge`,

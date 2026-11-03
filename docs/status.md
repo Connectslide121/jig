@@ -1,5 +1,16 @@
 # Status
 
+Top bar placement and live menus for add-ons (2026-11-04, D-305): an add-on's top bar item can ask
+for `"placement": "right-start"` to be the first item on the right, before Suggestions (items with the
+same placement sort by `order`); without it the item stays after Jig's own items. A new slot,
+`tools.menuGroup` (`menuGroups: [{ group, items }]`), fills a top bar menu with entries the add-on
+computes each time the menu opens (Start/Stop by state, one entry per project with its square, a
+badge and a check), above the group's static actions; headings work in add-on menus now too. If the
+export fails or takes over half a second the menu opens with the actions alone and a toast says
+which add-on. The builder knows both. Try it: give an add-on a `menuGroups` entry for its action
+group and open that menu twice after changing its state. Needs testing on your machine: the Time
+add-on once it's rebuilt to use both (see D-305).
+
 ChatGPT usage in the footer (2026-11-03, D-298): the status bar shows Claude's plan usage, then
 ChatGPT's after a thin divider, each behind its own mark (an icon and the name, in its own colour).
 The bars keep green/amber/red for room/near/limit for both. Hover for a card with both plans (plan

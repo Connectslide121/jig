@@ -40,7 +40,7 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
   },
   "topbar.item": {
     idea: "An environment badge, a quick toggle",
-    snippet: '"topbar": [{ "id": "env", "component": "EnvBadge" }]',
+    snippet: '"topbar": [{ "id": "env", "component": "EnvBadge", "placement": "right-start" }]',
   },
   "statusbar.item": {
     idea: "The current branch, a build status dot",
@@ -54,6 +54,10 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "Run something with a shortcut",
     snippet:
       '"actions": [{ "id": "deploy", "title": "Deploy to test", "shortcut": "Mod+Shift+D", "run": "deploy" }]',
+  },
+  "tools.menuGroup": {
+    idea: "A timer's Start/Stop and one entry per project, fresh each time the menu opens",
+    snippet: '"menuGroups": [{ "group": "Time", "items": "timeMenu" }]',
   },
   "context.file": {
     idea: "“Explain this change” on a changed file",

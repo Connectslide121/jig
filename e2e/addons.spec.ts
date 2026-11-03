@@ -140,3 +140,63 @@ test("build errors are shown instead of loading a broken add-on", async ({ page,
   await page.getByTestId("settings-nav-addons").click();
   await expect(page.getByTestId("addon-hello").getByTestId("addon-errors")).toContainText("ui.tsx:1:");
 });
+
+test("a top bar item can lead the right side and a menu group gets live entries (D-305)", async ({
+  page,
+  jigHome,
+}) => {
+  const dir = join(jigHome, "addons", "clock");
+  await mkdir(dir, { recursive: true });
+  await writeFile(
+    join(dir, "addon.json"),
+    JSON.stringify({
+      id: "clock",
+      name: "Clock",
+      contributes: {
+        topbar: [
+          { id: "late", component: "Late", placement: "right-start", order: 20 },
+          { id: "early", component: "Early", placement: "right-start", order: 10 },
+        ],
+        actions: [{ id: "open", title: "Open Clock", group: "Clock", run: "open" }],
+        menuGroups: [
+          { group: "Clock", items: "clockMenu" },
+          { group: "Clock", items: "brokenMenu" },
+        ],
+      },
+    }),
+  );
+  await writeFile(
+    join(dir, "ui.tsx"),
+    `
+import type { AddonUiContext, MenuInput } from "@jig/sdk";
+let running = false;
+export function Early() { return <span data-testid="clock-early">E</span>; }
+export function Late() { return <span data-testid="clock-late">L</span>; }
+export function open() {}
+export async function clockMenu(): Promise<MenuInput[]> {
+  return [
+    running
+      ? { label: "Stop", testId: "clock-stop", onSelect: () => { running = false; } }
+      : { label: "Start", testId: "clock-start", onSelect: () => { running = true; } },
+    { heading: "Projects" },
+    { label: "Contoso", badge: "1:15", checked: running },
+  ];
+}
+export function brokenMenu(_ctx: AddonUiContext): MenuInput[] { throw new Error("no clock"); }
+`,
+  );
+  await expect(page.getByTestId("clock-early")).toBeVisible({ timeout: 15000 });
+  // right-start items come first on the right, in order, before Suggestions.
+  const x = async (id: string) => (await page.getByTestId(id).boundingBox())?.x ?? 0;
+  expect(await x("clock-early")).toBeLessThan(await x("clock-late"));
+  expect(await x("clock-late")).toBeLessThan(await x("suggestions-badge"));
+
+  // Live entries above the static action, computed each time; a broken export only toasts.
+  await page.getByTestId("tools-group-Clock").click();
+  await expect(page.getByTestId("clock-start")).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Open Clock" })).toBeVisible();
+  await expect(page.getByTestId("toast").last()).toContainText("no clock");
+  await page.getByTestId("clock-start").click();
+  await page.getByTestId("tools-group-Clock").click();
+  await expect(page.getByTestId("clock-stop")).toBeVisible();
+});

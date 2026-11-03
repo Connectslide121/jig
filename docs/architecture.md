@@ -366,7 +366,7 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 | Group | Slots |
 |---|---|
 | Places | `view` (sidebar or bottom panel view; the layout decides where), `workbench.tab`, `topbar.item`, `statusbar.item`, `dashboard.widget` |
-| Menus & actions | `tools.action` (grouped menus), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
+| Menus & actions | `tools.action` (grouped menus), `tools.menuGroup` (live entries in a top bar menu), `context.file`, `context.project`, `context.repo`, `context.message`, `chat.toolbar` |
 | Chat | `chat.toolRenderer` (custom card for a tool result), `chat.permissionRenderer` (an add-on's own approval card for its tool, which can change the input), `prompt` (a reusable prompt shown as a button) |
 | Background | `watcher` (host-side job on an interval or schedule), `jig.event` (host code when a chat finishes, a commit lands, the project changes; D-215) |
 | Claude | `claude.tool`, `claude.context` |

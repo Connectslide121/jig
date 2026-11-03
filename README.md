@@ -303,7 +303,7 @@ They can plug into 20 places:
 | `statusbar.item` | the status bar | `context.message` | menu of a chat message |
 | `dashboard.widget` | the project dashboard | `chat.toolbar` | a button above the composer |
 | `tools.action` | the grouped menus, with a shortcut | `chat.toolRenderer` | a custom card for a tool's result |
-|  |  | `chat.permissionRenderer` | an editable approval card for an add-on's own tool |
+| `tools.menuGroup` | live entries in a top bar menu | `chat.permissionRenderer` | an editable approval card for an add-on's own tool |
 | `prompt` | a reusable prompt button | `watcher` | host code on an interval |
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |

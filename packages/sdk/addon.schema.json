@@ -126,9 +126,35 @@
               "component": {
                 "type": "string",
                 "pattern": "^[A-Za-z_$][\\w$]*$"
+              },
+              "placement": {
+                "type": "string",
+                "enum": ["right-start"]
+              },
+              "order": {
+                "default": 50,
+                "type": "number"
               }
             },
             "required": ["id", "component"]
+          }
+        },
+        "menuGroups": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "group": {
+                "type": "string",
+                "minLength": 1
+              },
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z_$][\\w$]*$"
+              }
+            },
+            "required": ["group", "items"]
           }
         },
         "statusbar": {

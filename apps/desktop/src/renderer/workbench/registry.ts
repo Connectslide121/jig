@@ -87,6 +87,8 @@ export interface StatusItemDef {
 
 export interface TopbarItemDef {
   id: string;
+  /** "right-start": first in the right-hand group, before Suggestions (D-305); else with Jig's own items. */
+  placement?: "right-start";
   order?: number;
   component: ComponentType;
   owner?: string;
@@ -98,6 +100,20 @@ export interface ChatToolbarItemDef {
   owner?: string;
 }
 
+/**
+ * Live entries of a top bar menu group (an add-on's `menuGroups`, D-305), computed each time the menu
+ * opens and shown above the group's actions.
+ */
+export interface MenuGroupDef {
+  id: string;
+  /** The action group (`ActionDef.group`) whose menu shows the entries. */
+  group: string;
+  items: () => MenuEntry[] | Promise<MenuEntry[]>;
+  /** Told when `items` throws or takes too long; the menu opens without its entries. */
+  onError?: (error: Error) => void;
+  owner?: string;
+}
+
 interface RegistryState {
   topbarItems: Record<string, TopbarItemDef>;
   chatToolbar: Record<string, ChatToolbarItemDef>;
@@ -105,6 +121,7 @@ interface RegistryState {
   tabTypes: Record<string, TabTypeDef>;
   actions: Record<string, ActionDef>;
   statusItems: Record<string, StatusItemDef>;
+  menuGroups: Record<string, MenuGroupDef>;
 }
 
 export const useRegistry = create<RegistryState>(() => ({
@@ -114,6 +131,7 @@ export const useRegistry = create<RegistryState>(() => ({
   tabTypes: {},
   actions: {},
   statusItems: {},
+  menuGroups: {},
 }));
 
 function register<K extends keyof RegistryState>(kind: K, key: string, value: RegistryState[K][string]) {
@@ -131,6 +149,7 @@ export const registerTabType = (def: TabTypeDef) => register("tabTypes", def.typ
 export const registerAction = (def: ActionDef) => register("actions", def.id, def);
 export const registerStatusItem = (def: StatusItemDef) => register("statusItems", def.id, def);
 export const registerTopbarItem = (def: TopbarItemDef) => register("topbarItems", def.id, def);
+export const registerMenuGroup = (def: MenuGroupDef) => register("menuGroups", def.id, def);
 export const registerChatToolbarItem = (def: ChatToolbarItemDef) => register("chatToolbar", def.id, def);
 
 /** Removes everything an owner (an add-on) registered. */
@@ -145,6 +164,7 @@ export function unregisterOwner(owner: string): void {
       tabTypes: keep(s.tabTypes),
       actions: keep(s.actions),
       statusItems: keep(s.statusItems),
+      menuGroups: keep(s.menuGroups),
     };
   });
 }

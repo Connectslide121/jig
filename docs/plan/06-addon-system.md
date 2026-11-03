@@ -42,6 +42,7 @@ declares, reloads on save, can be switched off, and a crash in it never breaks t
 - [x] File watching (`api.fs.watch`) and live program output (`api.spawn`)
 - [x] Add-ons calling each other (`exports`, `addons.call`)
 - [x] Search providers: `search.provider` slot, results in Go to
+- [x] Top bar placement (`placement: "right-start"`, `order`) and live menu entries (`tools.menuGroup`, D-305)
 - [x] The builder and the weekly review know all of it; the catalog has each add-on's purpose
 - [x] Builder check: host functions named in addon.json exist
 

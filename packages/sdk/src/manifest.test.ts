@@ -22,6 +22,7 @@ describe("parseManifest", () => {
         views: [{ id: "main", title: "Hello", component: "HelloView" }],
         tabs: [{ type: "detail", title: "Detail", component: "DetailTab" }],
         topbar: [{ id: "badge", component: "Badge" }],
+        menuGroups: [{ group: "Hello", items: "helloMenu" }],
         statusbar: [{ id: "status", component: "Status", side: "left" }],
         dashboard: [{ id: "card", component: "Card" }],
         actions: [{ id: "say", title: "Say hello", run: "sayHello", shortcut: "Mod+Shift+H" }],
@@ -41,6 +42,7 @@ describe("parseManifest", () => {
       "HelloView",
       "DetailTab",
       "Badge",
+      "helloMenu",
       "Status",
       "Card",
       "sayHello",
@@ -48,6 +50,35 @@ describe("parseManifest", () => {
       "Btn",
       "Card",
       "Settings",
+    ]);
+  });
+
+  it("places top bar items and orders them", () => {
+    const { manifest, errors } = parseManifest({
+      ...minimal,
+      contributes: {
+        topbar: [
+          { id: "timer", component: "Timer", placement: "right-start", order: 10 },
+          { id: "badge", component: "Badge" },
+        ],
+      },
+    });
+    expect(errors).toEqual([]);
+    expect(manifest?.contributes.topbar).toEqual([
+      { id: "timer", component: "Timer", placement: "right-start", order: 10 },
+      { id: "badge", component: "Badge", order: 50 },
+    ]);
+    expect(
+      parseManifest({ ...minimal, contributes: { topbar: [{ id: "x", component: "X", placement: "left" }] } })
+        .errors[0],
+    ).toMatch(/^contributes.topbar.0.placement/);
+  });
+
+  it("checks menu groups name a group and an export", () => {
+    const bad = parseManifest({ ...minimal, contributes: { menuGroups: [{ group: "", items: "not ok" }] } });
+    expect(bad.errors.map((e) => e.split(":")[0])).toEqual([
+      "contributes.menuGroups.0.group",
+      "contributes.menuGroups.0.items",
     ]);
   });
 

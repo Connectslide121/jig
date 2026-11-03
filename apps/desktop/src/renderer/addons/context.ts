@@ -6,7 +6,7 @@ import {
   type AddonWorkspace,
   addonTabType,
   addonViewId,
-  type MenuItemInput,
+  type MenuInput,
   type RunningScript,
   type StorageOptions,
   type StorageScope,
@@ -54,9 +54,10 @@ function projectLeading(id: string | undefined) {
   return project ? createElement(ProjectSwatch, { color: project.color }) : undefined;
 }
 
-function toEntries(items: Array<MenuItemInput | { separator: true }>): MenuEntry[] {
+/** An add-on's menu entries (`ctx.menu`, `menuGroups`) as Jig's menu entries. */
+export function toEntries(items: MenuInput[]): MenuEntry[] {
   return items.map((item) =>
-    "separator" in item
+    "separator" in item || "heading" in item
       ? item
       : {
           label: item.label,

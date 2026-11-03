@@ -26,11 +26,12 @@ import { ProjectSwatch } from "../features/projects/colors";
 import { newTerminalInEntries } from "../features/terminals/shells";
 import { call } from "../lib/host";
 import type { MenuEntry } from "../ui";
-import { cn, ErrorBoundary, IconButton, JigLogo, openMenuAt, switchMenuAt } from "../ui";
+import { cn, ErrorBoundary, IconButton, JigLogo, menuBarOpen, openMenuAt, switchMenuAt } from "../ui";
 import { filterActions } from "./actionGroups";
 import { addProject, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "./actions";
+import { collectLiveEntries, type LiveEntries, withLiveEntries } from "./menuGroups";
 import { useActiveProject, useProjects } from "./projects";
-import { type ActionDef, runAction, useRegistry } from "./registry";
+import { type ActionDef, runAction, type TopbarItemDef, useRegistry } from "./registry";
 import { useWorkbench, workbench } from "./store";
 
 const TOPBAR_MENU = "topbar";
@@ -47,12 +48,21 @@ const TOPBAR_MENUS: Array<{ menu: string; groups: string[] }> = [
 ];
 const OWN_MENU = new Set(["Jig", "Projects"]);
 
-function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>) {
+/** A top bar menu: the action groups it shows and its entries, given the groups' live entries (D-305). */
+interface TopbarMenu {
+  menu: string;
+  groups: string[];
+  entries: (live: LiveEntries) => MenuEntry[];
+}
+
+function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>, liveGroups: Set<string>) {
   const byGroup = new Map(groups.map((g) => [g.group, g.actions]));
-  const merged = TOPBAR_MENUS.map(({ menu, groups: names }) => {
+  // A group with live entries (an add-on's menuGroups) gets its menu even without actions.
+  for (const name of liveGroups) if (!byGroup.has(name)) byGroup.set(name, []);
+  const merged = TOPBAR_MENUS.map(({ menu, groups: names }): TopbarMenu => {
     const parts = names.flatMap((name) => {
-      const actions = byGroup.get(name);
-      return actions?.length ? [{ name, actions }] : [];
+      const actions = byGroup.get(name) ?? [];
+      return actions.length || liveGroups.has(name) ? [{ name, actions }] : [];
     });
     // View → Layouts: saved layouts to switch to sit with the layout actions.
     const items = (name: string, actions: ActionDef[]): MenuEntry[] =>
@@ -64,17 +74,51 @@ function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>) {
               { label: "New terminal in…", icon: SquareTerminal, submenu: newTerminalInEntries() },
             ]
           : actionMenu(actions);
-    const entries: MenuEntry[] =
-      parts.length === 1
-        ? items(parts[0]!.name, parts[0]!.actions)
-        : parts.flatMap(({ name, actions }) => [{ heading: name } as const, ...items(name, actions)]);
-    return { menu, entries };
-  }).filter((m) => m.entries.length > 0);
+    const section = (live: LiveEntries, name: string, actions: ActionDef[]) =>
+      withLiveEntries(live[name], items(name, actions));
+    return {
+      menu,
+      groups: parts.map((p) => p.name),
+      entries: (live) =>
+        parts.length === 1
+          ? section(live, parts[0]!.name, parts[0]!.actions)
+          : parts.flatMap(({ name, actions }) => [
+              { heading: name } as const,
+              ...section(live, name, actions),
+            ]),
+    };
+  }).filter((m) => m.groups.length > 0);
   const taken = new Set([...OWN_MENU, ...TOPBAR_MENUS.flatMap((m) => m.groups)]);
-  const others = groups
-    .filter((g) => !taken.has(g.group))
-    .map((g) => ({ menu: g.group, entries: actionMenu(g.actions) }));
+  const others = [...byGroup]
+    .filter(([name]) => !taken.has(name))
+    .map(
+      ([name, actions]): TopbarMenu => ({
+        menu: name,
+        groups: [name],
+        entries: (live) => withLiveEntries(live[name], actionMenu(actions)),
+      }),
+    );
   return [...merged, ...others];
+}
+
+/**
+ * Opens a top bar menu (or switches to it on hover), with its groups' live entries computed now. A
+ * menu waits for an add-on's slow entries (at most LIVE_MENU_TIMEOUT_MS) rather than growing once
+ * open; an answer that comes after another menu was asked for is dropped.
+ */
+let menuRequest = 0;
+function openTopbarMenu(element: HTMLElement, menu: TopbarMenu, hover: boolean) {
+  if (hover && !menuBarOpen(TOPBAR_MENU)) return;
+  const request = ++menuRequest;
+  const show = (live: LiveEntries) => {
+    if (request !== menuRequest) return;
+    if (hover) switchMenuAt(element, menu.entries(live), TOPBAR_MENU);
+    else openMenuAt(element, menu.entries(live), false, TOPBAR_MENU);
+  };
+  const defs = Object.values(useRegistry.getState().menuGroups).filter((d) => menu.groups.includes(d.group));
+  const live = collectLiveEntries(defs);
+  if (live instanceof Promise) void live.then(show);
+  else show(live);
 }
 
 function actionMenu(actions: ActionDef[]): MenuEntry[] {
@@ -178,11 +222,16 @@ function layoutMenu(): MenuEntry[] {
   ];
 }
 
-/** Items contributed to the top bar (`topbar.item` slot). */
-function TopbarItems() {
-  const items = Object.values(useRegistry((s) => s.topbarItems)).sort(
-    (a, b) => (a.order ?? 0) - (b.order ?? 0),
-  );
+/**
+ * Items contributed to the top bar (`topbar.item` slot): those placed "right-start" lead the right-hand
+ * group, before Suggestions; the others follow Jig's own items (D-305). Each list is sorted by order.
+ */
+function TopbarItems({ placement }: { placement?: TopbarItemDef["placement"] }) {
+  const all = useRegistry((s) => s.topbarItems);
+  const items = Object.values(all)
+    .filter((item) => item.placement === placement)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  if (!items.length) return null;
   return (
     <div className="no-drag flex items-center gap-1">
       {items.map((item) => (
@@ -216,7 +265,11 @@ export function Topbar() {
   const actions = useRegistry((s) => s.actions);
   // View → Layouts lists the saved layouts, so rebuild the menus when one is saved or removed.
   useWorkbench((s) => s.layout?.saved);
-  const menus = topbarMenus(filterActions(Object.values(actions), ""));
+  const menuGroups = useRegistry((s) => s.menuGroups);
+  const menus = topbarMenus(
+    filterActions(Object.values(actions), ""),
+    new Set(Object.values(menuGroups).map((g) => g.group)),
+  );
   return (
     <header
       className={cn(
@@ -260,17 +313,17 @@ export function Topbar() {
             if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
           }}
         >
-          {menus.map(({ menu, entries }) => (
+          {menus.map((m) => (
             <button
               type="button"
-              key={menu}
+              key={m.menu}
               className="no-drag h-7 max-w-32 shrink-0 truncate rounded-md px-2 text-sm hover:bg-hover"
               aria-haspopup="menu"
-              data-testid={`tools-group-${menu}`}
-              onClick={(e) => openMenuAt(e.currentTarget, entries, false, TOPBAR_MENU)}
-              onMouseEnter={(e) => switchMenuAt(e.currentTarget, entries, TOPBAR_MENU)}
+              data-testid={`tools-group-${m.menu}`}
+              onClick={(e) => openTopbarMenu(e.currentTarget, m, false)}
+              onMouseEnter={(e) => openTopbarMenu(e.currentTarget, m, true)}
             >
-              {menu}
+              {m.menu}
             </button>
           ))}
         </div>
@@ -293,6 +346,7 @@ export function Topbar() {
         </button>
       </div>
       <div className="flex min-w-0 items-center justify-end gap-1">
+        <TopbarItems placement="right-start" />
         <TopbarItems />
         <IconButton
           icon={PanelLeft}

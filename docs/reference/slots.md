@@ -11,10 +11,11 @@ add-on's `ui.tsx`; watchers, tools, context, events and search providers are nam
 |---|---|---|---|---|
 | `view` | `views` | `id`, `title`, `icon?`, `region` (`left`/`left2`/`right`/`right2`/`bottom`, default left; `left2`/`right2` are the lower halves of the sidebars), `hidden?` (start hidden, opened as a main tab from an action in the top bar menus; for views used now and then), `component` | `{ ctx }` | a sidebar (upper or lower half), the bottom panel, or a main tab; the user can drag it anywhere or hide it; a new view opens its region the first time |
 | `workbench.tab` | `tabs` | `type`, `title`, `icon?`, `component` | `{ ctx, params, tabId, active }` | main-area tabs, opened with `ctx.openTab(type, params)` (`params.title` overrides the tab title) |
-| `topbar.item` | `topbar` | `id`, `component` | `{ ctx }` | right side of the top bar |
+| `topbar.item` | `topbar` | `id`, `component`, `placement?` (`right-start`), `order?` (default 50, lower first) | `{ ctx }` | right side of the top bar: after Jig's own items (Suggestions, Claude's browser), or with `placement: "right-start"` first in the right-hand group, before Suggestions (D-305) |
 | `statusbar.item` | `statusbar` | `id`, `side` (`left`/`right`, default `right`), `component` | `{ ctx }` | status bar |
 | `dashboard.widget` | `dashboard` | `id`, `component`, `order?` | `{ ctx, project }` | project dashboard |
 | `tools.action` | `actions` | `id`, `title`, `group?` (default: add-on name), `icon?`, `shortcut?`, `run` | `run(ctx)` | grouped menus (+ keyboard shortcut) |
+| `tools.menuGroup` | `menuGroups` | `group` (an action group's title, e.g. the add-on's name), `items` (a ui.tsx export) | `items(ctx)` → `MenuInput[]` or a Promise of them, called each time the menu opens | above that group's actions in its top bar menu (the menu gets made even without actions); within 0.5 s, else the menu opens with the actions alone (D-305) |
 | `context.project` / `context.repo` / `context.file` / `context.message` | `menus` | `slot`, `id`, `title`, `icon?`, `run` | `run(ctx, target)` — see `MenuTarget` | right-click menus of projects, repos (Repos view), files (Git), chat messages (`⋯` on a reply) |
 | `chat.toolbar` | `chatToolbar` | `id`, `component` | `{ ctx, sessionId, projectId }` | row above the chat composer |
 | `chat.toolRenderer` | `toolRenderers` | `tool` (tool name, e.g. `mcp__server__tool`), `component` | `{ ctx, item }` | inside that tool's card in the chat |

@@ -157,8 +157,17 @@ export interface MenuItemInput {
   /** Used by tests (`data-testid`). */
   testId?: string;
   onSelect?: () => void;
-  submenu?: Array<MenuItemInput | { separator: true }>;
+  submenu?: MenuInput[];
 }
+
+/** One entry of an add-on menu: an item, a separator line or a small heading. */
+export type MenuInput = MenuItemInput | { separator: true } | { heading: string };
+
+/**
+ * A `contributes.menuGroups[].items` export (D-305): the live entries of a top bar menu group,
+ * computed each time the menu opens. Return quickly (or a Promise within half a second).
+ */
+export type MenuGroupItems = (ctx: AddonUiContext) => MenuInput[] | Promise<MenuInput[]>;
 
 export interface AddonUiContext {
   /**
@@ -314,11 +323,7 @@ export interface AddonUiContext {
    * Opens a menu at the mouse position (right-click) or below an element. With `target`, entries
    * other add-ons contribute to that context menu (`context.*` slots) are added.
    */
-  menu(
-    items: Array<MenuItemInput | { separator: true }>,
-    at: MouseEvent | HTMLElement,
-    target?: MenuTarget,
-  ): void;
+  menu(items: MenuInput[], at: MouseEvent | HTMLElement, target?: MenuTarget): void;
   confirm(input: {
     title: string;
     message?: string;
