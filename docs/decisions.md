@@ -3190,3 +3190,13 @@ the boards up to date from chats. The shape is **Claude, on my own**.
 - "Another pipeline (type it in)…" swaps the dropdown for the three fields in the same row; a saved
   pipeline that isn't found stays selected as "org / project · pipeline N". With the Pipelines add-on
   off, or no pipelines found, the fields show as before. **Claude, on my own:** those fallbacks.
+
+## D-268: A meeting-notes chat's plan card says it only saves for review
+
+**Who:** Jon: "Approve, and accept edits" on generated notes sounded like it would carry out the plan.
+
+- A chat made by Generate notes is marked with its meeting (`SessionMeta.meetingNotes`). Its plan card
+  is titled "Meeting notes and draft actions", says that saving keeps the notes and draft actions with
+  the meeting and that nothing is queued or started until you review the actions in Meetings and send
+  them to the task queue, and has one button, **Save notes and actions for review**. "Keep planning"
+  reads "Change the notes". Other chats' plan cards are unchanged.

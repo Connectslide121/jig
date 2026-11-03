@@ -577,6 +577,7 @@ export async function startMeetings(): Promise<void> {
       cwd: jigHome(),
       title: `Notes: ${record.title}`,
       permissionMode: "plan",
+      meetingNotes: id,
     });
     noteChats.set(chat.id, id);
     const projects = (await projectStore().list()).map((p) => ({ id: p.id, name: p.name }));

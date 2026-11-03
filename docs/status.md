@@ -461,6 +461,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   restart running tasks catch up within a minute (the watcher); a task Claude didn't report on shows
   Claude's last answer instead. Needs testing on a real machine with real Claude Code.
 - A workflow's pipeline (step or trigger) is picked from a dropdown of your pipelines (D-267).
+- Generated meeting notes ask to **Save notes and actions for review**, not to approve a plan (D-268).
 - Workflows (D-177) can run **after you push** or **when a pipeline finishes**. Needs testing on a
   real machine: a real push and a real Azure DevOps pipeline (the e2e tests use a fake `az`).
 - Add-on gallery (D-179): Tools → Add-on gallery, or Settings → Add-ons. Add a git URL or a folder,

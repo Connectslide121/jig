@@ -69,6 +69,7 @@ export async function createChat(input: {
   cwd?: string;
   title?: string;
   permissionMode?: PermissionMode;
+  meetingNotes?: string;
 }): Promise<SessionMeta> {
   const project = input.projectId ? await projectStore().get(input.projectId) : undefined;
   const folder = input.cwd || project?.path;
@@ -84,6 +85,7 @@ export async function createChat(input: {
     permissionMode:
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
     effort: project?.effort,
+    meetingNotes: input.meetingNotes,
   });
 }
 

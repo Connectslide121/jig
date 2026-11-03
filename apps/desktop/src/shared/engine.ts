@@ -188,6 +188,8 @@ export interface SessionMeta {
   importedFrom?: string;
   /** You are talking with Claude: its replies are read aloud, so it answers briefly (D-209). */
   voice?: boolean;
+  /** Drafts the notes of this Jig meeting (its id): its plan saves notes for review, nothing runs (D-268). */
+  meetingNotes?: string;
 }
 
 /** What restoring files to before a message changes (Claude Code's file checkpoints). */
