@@ -897,11 +897,14 @@ const SUMMARY_ORDER: TaskStatus[] = [
  */
 function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
   const t = tally(tasks);
+  // How many chats the tasks run in (a task that continues the one before shares its chat).
+  const chats = chatGroups({ tasks }).length;
+  const chatsLabel = `${chats} ${chats === 1 ? "chat" : "chats"}`;
   return (
     <div
       className={cn("flex min-w-0 items-center", inline ? "flex-1 gap-3" : "h-12 shrink-0 gap-4 px-6")}
       data-testid="tasks-summary"
-      title={`${t.byStatus.queued ?? 0} queued · ${t.finished} of ${tasks.length} finished`}
+      title={`${chatsLabel} · ${t.byStatus.queued ?? 0} queued · ${t.finished} of ${tasks.length} finished`}
     >
       <div
         className={cn(
@@ -925,6 +928,11 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
           inline ? "hidden @lg:flex" : "flex",
         )}
       >
+        <span className="flex shrink-0 items-center gap-1" data-testid="tasks-chats">
+          <MessageSquare className="size-3.5 text-hint" />
+          <span className="tabular-nums text-fg">{chats}</span>
+          {chats === 1 ? "chat" : "chats"}
+        </span>
         {SUMMARY_ORDER.filter((status) => t.byStatus[status]).map((status) => (
           <span key={status} className="flex shrink-0 items-center gap-1">
             <StatusIcon status={status} />
@@ -941,7 +949,7 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
       {/* Narrow: no counts per status, so say how far along the queue is. */}
       {inline && (
         <span className="min-w-0 truncate text-xs text-muted tabular-nums @lg:hidden">
-          {t.finished}/{tasks.length}
+          {chatsLabel} · {t.finished}/{tasks.length}
         </span>
       )}
     </div>

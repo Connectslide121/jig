@@ -3236,6 +3236,8 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   row is a container: as it narrows, the time and cost, then the switch's words and the per-status
   counts (replaced by "finished/total") give way, and Add tasks becomes an icon. Past runs keep
   their own summary row.
+- The summary starts with how many chats the tasks run in ("8 chats"; narrow: "8 chats · 0/20"),
+  counted like the table's chat cards (Jon, after 0.4.0).
 - The queue and history tables hide optional columns in narrow containers (Started, Notes,
   Follow-ups, Files, Done/Failed below 48rem; Time and Cost below 36rem); task and status always stay.
 

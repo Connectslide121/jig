@@ -451,7 +451,7 @@ export interface ChatGroup {
  * The queue as chats: a task that starts its own chat (or comes first, or is in another project than
  * the one before) begins a group; the others join the group before, as they continue its chat.
  */
-export function chatGroups(queue: Queue): ChatGroup[] {
+export function chatGroups(queue: Pick<Queue, "tasks">): ChatGroup[] {
   const groups: ChatGroup[] = [];
   queue.tasks.forEach((task, index) => {
     const last = groups[groups.length - 1];
