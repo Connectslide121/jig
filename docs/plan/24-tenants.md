@@ -64,18 +64,22 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
 
 ## Session 2 — Top bar tenant switch and the manage dialog
 
-- [ ] A tenant chip in the top-right cell of `Topbar.tsx`, before the layout button: initials avatar +
-      tenant label, fixed width with ellipsis (no shift when switching or loading), tooltip with user
-      and domain. Hidden-but-reserved behaviour decided so the right cell never jumps.
-- [ ] Its menu: one row per tenant (avatar, label, user email, domain), the active one checked at the
-      far right, an expired mark in the same column; whole row clickable; "Add tenant…" and
-      "Manage tenants…".
-- [ ] "Add tenant" modal: tenant id or domain (optional), Sign in (opens the browser via `az login`),
-      progress and errors inside the modal, Cancel. "Manage" modal: rename, sign in again, remove
-      (with confirmation). Also reachable from Settings → Azure.
-- [ ] Jig tools for Claude: list tenants (readOnly) and switch tenant (approval), with `jigContext`
-      guidance; the fake engine can call them.
-- [ ] Screenshots in narrow and wide windows, light and dark.
+- [x] A tenant switch in the top bar. First a chip (avatar + label) before the layout button; Jon then
+      asked for just an avatar at the far right: the tenant's initials in a fixed-size round button
+      after Settings, a warning dot when its sign-in expired, tooltip with name, user and domain.
+      Always shown, so the right cell never jumps (D-283).
+- [x] Its menu: one row per tenant (avatar, label, user email, domain in aligned columns), the active
+      one checked at the far right, an expired mark in the same column; whole row clickable; "Add
+      tenant…" and "Manage tenants…". (`ui/Menu.tsx` items got `avatar`, `columns` and `mark`.)
+- [x] "Add tenant" modal: tenant id or domain (optional), Sign in (opens the browser via `az login`),
+      progress and errors in a fixed-height box inside the modal, Cancel. "Manage" modal: switch by
+      clicking a row, rename, sign in again (cancellable), remove (with confirmation). Also reachable
+      from Settings → Azure.
+- [x] Jig tools for Claude: `jig_azure_tenants` (readOnly) and `jig_azure_switch_tenant` (approval),
+      with `jigContext` guidance; the fake engine calls them ("azure tenants", "switch … to X");
+      `e2e/tenants.spec.ts`.
+- [x] Looked at in narrow and wide windows, Jig Dark and Light (screenshots not committed).
+- [ ] Needs a real machine: add a real second tenant from the modal, cancel one, sign in again.
 
 ## Session 3 — Azure and DevOps views follow the tenant
 

@@ -147,6 +147,14 @@
     },
     { "files": ["addons/notes/**"], "specs": ["notes.spec.ts"] },
     { "files": ["addons/pipelines/**"], "specs": ["pipelines.spec.ts"] },
+    {
+      "files": [
+        "apps/desktop/src/main/azure/**",
+        "apps/desktop/src/renderer/features/azure/**",
+        "packages/azure/**"
+      ],
+      "specs": ["tenants.spec.ts"]
+    },
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts"] },

@@ -1,5 +1,6 @@
 import {
   Bot,
+  Cloud,
   Download,
   FileCode,
   FolderTree,
@@ -18,6 +19,7 @@ import { cn } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import type { TabProps } from "../../workbench/registry";
 import { updateLayout } from "../../workbench/store";
+import { AzureSettings } from "../azure/AzureSettings";
 import { SpeechSettings } from "../speech/SpeechSettings";
 import { AddonsSettings } from "./AddonsSettings";
 import { AppearanceSettings } from "./Appearance";
@@ -68,6 +70,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       component: TerminalSettings,
       order: 3,
     },
+    azure: { id: "azure", title: "Azure", icon: Cloud, component: AzureSettings, order: 3.7 },
     updates: { id: "updates", title: "Updates", icon: Download, component: UpdatesSettings, order: 90 },
     speech: { id: "speech", title: "Speech", icon: Mic, component: SpeechSettings, order: 3.5 },
     learning: { id: "learning", title: "Learning", icon: Sparkles, component: LearningSettings, order: 4 },

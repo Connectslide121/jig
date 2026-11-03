@@ -148,6 +148,8 @@ export const CONFIGURE_TOOLS: Array<{ name: string; what: string }> = [
   { name: "jig_update_project", what: "Change a project: name, colour, defaults, instructions, starters" },
   { name: "jig_move_chat", what: "Move a chat to another project, or pin it" },
   { name: "jig_add_project_links", what: "Add links to a project (Azure resources, sites, boards)" },
+  { name: "jig_azure_tenants", what: "See your Azure tenants: which is in use, user, domain, expired" },
+  { name: "jig_azure_switch_tenant", what: "Switch the Azure tenant Jig uses (you approve)" },
   { name: "jig_get_addon", what: "Look inside an add-on: what it does, its files and its data" },
   { name: "jig_set_addon_data", what: "Create or change an add-on's data (e.g. a workflow), with Undo" },
   { name: "jig_delete_addon_data", what: "Delete an add-on's data, with Undo" },

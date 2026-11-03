@@ -251,3 +251,24 @@ export function failedCheck<T extends TenantInfo>(previous: T, errorText: string
 export function defaultLabel(t: TenantInfo, requested?: string): string {
   return (t.displayName ?? t.domain ?? requested?.trim() ?? t.user ?? "Tenant").slice(0, 80);
 }
+
+/**
+ * One or two letters for a tenant's avatar: the label's words (`Contoso Dev` → `CD`), the first part of
+ * a domain or email (`contoso.com` → `C`). Your az login is named after the tenant it signed in to,
+ * since its label says nothing about it.
+ */
+export function tenantInitials(
+  t: Pick<TenantView, "label" | "isDefault" | "displayName" | "domain" | "user">,
+): string {
+  const source = t.isDefault ? (t.displayName ?? t.domain ?? t.user?.split("@")[1] ?? "az") : t.label;
+  // A domain or an email is one word: its first part.
+  const name = /\s/.test(source.trim()) ? source : (source.split("@")[0] ?? "").split(".")[0]!;
+  const words = name
+    .split(/[\s_-]+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean);
+  if (!words.length) return "?";
+  const first = words[0]!;
+  const letters = words.length > 1 ? first[0]! + words.at(-1)![0]! : first.slice(0, 1);
+  return letters.toUpperCase();
+}

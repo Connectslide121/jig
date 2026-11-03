@@ -20,6 +20,8 @@ repositories". Claude uses tools on Jig's `jig` MCP server (`main/configure/tool
 | `jig_update_project { projectId?, name?, color?, path?, defaultRepo?, model?, effort?, permissionMode?, instructions?, starters? }` | changes a project (default: the chat's project); `""`/`[]` clears a preference; Undo puts back the previous values | yes |
 | `jig_add_project_links { projectId?, group, links: [{ url, label?, type? }] }` | adds links to a group (made if missing); type guessed from the address | yes |
 | `jig_set_project_links { projectId?, groups: [{ title, links }] }` | replaces all links (reorder, regroup, remove); Undo puts the old ones back | yes |
+| `jig_azure_tenants { check? }` | the Azure tenants: your az login and the ones added, which is active, user, domain, tenant id, status; `check` asks each tenant's Azure CLI first (`main/azure`, D-283) | no (read-only) |
+| `jig_azure_switch_tenant { tenant }` | makes a tenant (key, name, domain or tenant id; `default` = your az login) the one Jig's `az` uses, like the top bar menu | yes |
 | `jig_move_chat { chatId?, projectId?, pinned? }` | puts a chat (default: this one) in a project, moves it, takes it out, pins/unpins it | yes |
 | `jig_install_theme { namespace, name }` | installs a theme extension from Open VSX (theme files only) | yes |
 | `jig_get_addon { addonId }` | what an add-on is and contributes, its permissions, files, README, and the keys of its stored data with a preview | no (read-only) |

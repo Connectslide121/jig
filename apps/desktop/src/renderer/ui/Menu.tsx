@@ -19,6 +19,15 @@ export interface MenuItem {
   checked?: boolean;
   /** Shown before the label, after the icon or check (a project's colour). */
   leading?: ReactNode;
+  /**
+   * Drawn in the icon column instead of an icon (a tenant's initials). Any avatar in a menu widens
+   * that column for every row, so icons and avatars stay centred on one line.
+   */
+  avatar?: ReactNode;
+  /** Muted text columns after the label (a user, a domain), each a fixed width shared by the menu. */
+  columns?: string[];
+  /** A status mark at the far right edge (a check, a warning) in a fixed column shared by the menu. */
+  mark?: ReactNode;
   /** Muted text after the label, in its own column (a path); long ones truncate. */
   detail?: string;
   /** A small marker at the far right in a fixed column shared by the whole menu ("Default"). */
@@ -167,6 +176,9 @@ function MenuList({
   const subEntry = sub ? entries[sub.index] : undefined;
   const hasDetail = entries.some((e) => isItem(e) && e.detail);
   const hasBadge = entries.some((e) => isItem(e) && e.badge);
+  const hasAvatar = entries.some((e) => isItem(e) && e.avatar);
+  const columnCount = Math.max(0, ...entries.map((e) => (isItem(e) ? (e.columns?.length ?? 0) : 0)));
+  const hasMark = entries.some((e) => isItem(e) && e.mark);
   return (
     <>
       <div
@@ -177,7 +189,7 @@ function MenuList({
         style={{ left: place.left, top: place.top, minWidth: Math.max(minWidth ?? 0, 180) }}
         className={cn(
           "jig-menu-panel no-drag fixed z-50 max-h-[var(--jig-menu-max-h)] overflow-y-auto rounded-lg border border-line bg-elevated p-1 text-sm text-fg shadow-popover outline-none",
-          hasDetail ? "max-w-xl" : "max-w-sm",
+          columnCount ? "max-w-2xl" : hasDetail ? "max-w-xl" : "max-w-sm",
         )}
       >
         {entries.map((entry, index) => {
@@ -213,9 +225,16 @@ function MenuList({
                 entry.danger && "text-danger",
               )}
             >
-              <span className="flex size-4 shrink-0 items-center justify-center text-muted">
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center text-muted",
+                  hasAvatar ? "size-5" : "size-4",
+                )}
+              >
                 {entry.checked ? (
                   <Check className="size-3.5 text-accent" />
+                ) : entry.avatar ? (
+                  entry.avatar
                 ) : Icon ? (
                   <Icon className="size-4" />
                 ) : null}
@@ -230,9 +249,21 @@ function MenuList({
                   {entry.detail}
                 </span>
               )}
+              {Array.from({ length: columnCount }, (_, i) => (
+                <span
+                  key={i}
+                  className="w-48 min-w-0 shrink truncate text-xs text-muted"
+                  title={entry.columns?.[i]}
+                >
+                  {entry.columns?.[i]}
+                </span>
+              ))}
               {hasBadge && <span className="w-14 shrink-0 text-right text-2xs text-hint">{entry.badge}</span>}
               {entry.shortcut && <Kbd>{entry.shortcut}</Kbd>}
               {entry.submenu && <ChevronRight className="size-3.5 text-muted" />}
+              {hasMark && (
+                <span className="flex size-4 shrink-0 items-center justify-center">{entry.mark}</span>
+              )}
             </div>
           );
         })}

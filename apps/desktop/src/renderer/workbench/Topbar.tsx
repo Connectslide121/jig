@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { LOWER_HALF } from "../../shared/layout";
 import { openAbout } from "../features/about";
+import { TenantChip } from "../features/azure";
 import { TopbarSearch } from "../features/goto";
 import { ProjectSwatch } from "../features/projects/colors";
 import { newTerminalInEntries } from "../features/terminals/shells";
@@ -312,6 +313,7 @@ export function Topbar() {
           data-testid="settings-button"
           onClick={() => openSettings()}
         />
+        <TenantChip menuBar={TOPBAR_MENU} />
       </div>
     </header>
   );

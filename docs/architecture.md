@@ -493,6 +493,9 @@ changes.
   explicit `options.env` from an add-on still wins.
 - Switching emits `azure.tenantChanged` to the renderer and the add-on event `azure.tenant`
   (`JIG_EVENTS`). Chats, terminals and scripts follow in phase 24 session 4.
+- Renderer (D-283): `features/azure` — the tenant avatar at the far right of the top bar (its menu
+  switches; the Add and Manage modals hang off it), Settings → Azure, a store fed by
+  `azure.tenantChanged`. Claude: `jig_azure_tenants` (reads) and `jig_azure_switch_tenant` (approval).
 
 ## 12. Packaging, first run and updates
 

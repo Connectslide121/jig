@@ -3430,3 +3430,25 @@ follows (2026-11-03, phase 24). The design: Claude, on my own (the plan's design
 - Switching emits `azure.tenantChanged` (renderer) and the add-on event `azure.tenant` (`JIG_EVENTS`)
   with the tenant's key, label, user, tenant id and domain.
 - Kept apart: Meetings' own Microsoft sign-in (D-232).
+
+## D-283: The tenant switch is an avatar at the far right of the top bar
+
+**Who:** Jon (2026-11-03): after seeing a chip with the tenant's name, "just like a user avatar, and on
+the far right". The rest: Claude, on my own.
+
+- The switch is a round button with the tenant's initials (`tenantInitials`: the label's first and last
+  word; your az login is named after the tenant it signed in to), after Settings at the far right.
+  Fixed size and always shown, also with only your az login, so nothing in the top bar moves when the
+  tenants load or you switch. Name, user and domain are in its tooltip; an expired or signed-out
+  sign-in adds a warning dot on the avatar (absolute, no shift).
+- The menu lists tenants one row each: the avatar in the icon column, label, user and domain in fixed
+  columns, and one far-right column for a check (in use) or a warning (sign in again; it wins over the
+  check). `ui/Menu.tsx` items gained `avatar`, `columns` and `mark` for this, usable by any menu.
+- Add and Manage are modals hosted by the switch (Settings → Azure opens the same ones). A sign-in's
+  output shows in a fixed-height box; Add switches to the new tenant by default (a switch in the
+  modal). Manage checks every tenant's sign-in when it opens; clicking a row switches.
+- The renderer asks the Azure CLI on start only when tenants were added, so someone who never added
+  one never has `az` run for this.
+- Claude: `jig_azure_tenants` (reads; `check` runs the same check) and `jig_azure_switch_tenant`
+  (needs approval: it decides which credentials Jig's programs use). `jigContext` tells Claude not to
+  switch with `az login`/`az logout` and to send the user to the menu for an expired sign-in.

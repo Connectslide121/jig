@@ -25,6 +25,7 @@ import { z } from "zod";
 import { JigError } from "../../shared/ipc";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig, onConfigChange, updateConfig } from "../config";
+import { type JigTool, registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
@@ -284,4 +285,69 @@ export async function startAzure(): Promise<void> {
   });
   handle("azure.removeTenant", ({ key }) => removeTenant(key));
   handle("azure.setActiveTenant", ({ key }) => setActiveTenant(key));
+  registerJigTools(azureTools());
+}
+
+/** What Claude sees of a tenant: who and where, never anything of the sign-in itself. */
+const describe = (s: TenantsState) =>
+  JSON.stringify(
+    s.tenants.map((t) => ({
+      key: t.key,
+      label: t.label,
+      active: t.key === s.active,
+      ...(t.isDefault ? { yourOwnAzLogin: true } : {}),
+      user: t.user,
+      domain: t.domain,
+      tenantId: t.tenantId,
+      status: t.status,
+      ...(t.problem ? { problem: t.problem } : {}),
+    })),
+  );
+
+/** Picks a tenant by key, label, domain, tenant id or user (case-insensitive). */
+function findTenant(s: TenantsState, wanted: string) {
+  const w = wanted.trim().toLowerCase();
+  return (
+    s.tenants.find((t) => t.key === w) ??
+    s.tenants.find((t) =>
+      [t.label, t.domain, t.tenantId, t.displayName].some((v) => v?.toLowerCase() === w),
+    ) ??
+    s.tenants.find((t) => t.user?.toLowerCase() === w)
+  );
+}
+
+/** Claude's tools for tenants (D-283): list them (reads) and switch (the user approves). */
+function azureTools(): JigTool[] {
+  return [
+    {
+      name: "jig_azure_tenants",
+      description:
+        "List the Azure tenants (Azure CLI sign-ins) Jig knows: your own az login first, then the ones added in Jig, with which one is active, the signed-in user, domain, tenant id and status (ok, expired, signedOut, unknown). check: true asks each tenant's Azure CLI first (slower, no prompt).",
+      readOnly: true,
+      shape: { check: z.boolean().optional() },
+      handler: async (args: Record<string, unknown>) => describe(args.check ? await checkAll() : state()),
+    },
+    {
+      name: "jig_azure_switch_tenant",
+      description:
+        'Switch the Azure tenant Jig uses for its Azure and Azure DevOps views (Pipelines, Boards, links) and the az it runs, like picking it in the top bar. tenant: its key, name, domain or tenant id from jig_azure_tenants ("default" = the user\'s own az login). The user approves.',
+      shape: { tenant: z.string().min(1).max(253) },
+      handler: async (args: Record<string, unknown>) => {
+        const current = state();
+        const tenant = findTenant(current, String(args.tenant));
+        if (!tenant)
+          throw new JigError(
+            "not_found",
+            `No tenant ${JSON.stringify(args.tenant)}. Jig has: ${current.tenants.map((t) => `${t.label} [${t.key}]`).join(", ")}`,
+          );
+        const next = await setActiveTenant(tenant.key);
+        const now = next.tenants.find((t) => t.key === next.active);
+        const signIn =
+          now?.status === "expired" || now?.status === "signedOut"
+            ? " Its sign-in needs renewing: ask the user to sign in again from the tenant menu in Jig's top bar (Manage tenants…)."
+            : "";
+        return `Jig now uses the Azure tenant ${now?.label ?? tenant.label}${now?.user ? ` (${now.user})` : ""}.${signIn}`;
+      },
+    },
+  ];
 }

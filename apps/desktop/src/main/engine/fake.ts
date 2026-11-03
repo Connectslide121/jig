@@ -738,6 +738,54 @@ export class FakeEngine implements Engine {
             }),
           });
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
+        } else if (options.toolHandlers?.jig_azure_tenants && /\bazure tenants?\b/.test(lower)) {
+          // "which azure tenants…" lists them; "switch the azure tenant to X" also switches (asks first).
+          const listId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: listId, name: "mcp__jig__jig_azure_tenants", input: {} });
+          const list = outputText(await options.toolHandlers.jig_azure_tenants({}));
+          onEvent({ type: "tool_result", toolUseId: listId, output: list, isError: false });
+          const wanted = /\bswitch\b.*\bto\s+(.+?)[.!?]?$/i.exec(text.trim())?.[1];
+          if (!wanted || !options.toolHandlers.jig_azure_switch_tenant) {
+            await stream(`${msg}:text:0`, "These are the Azure tenants Jig knows.", signal);
+          } else {
+            const toolId = `tool-${randomUUID()}`;
+            const input = { tenant: wanted };
+            onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__jig_azure_switch_tenant", input });
+            const decision =
+              permissionMode === "bypassPermissions"
+                ? { behavior: "allow" as const, updatedInput: undefined }
+                : await options.askPermission(
+                    {
+                      requestId: toolId,
+                      toolName: "mcp__jig__jig_azure_switch_tenant",
+                      input,
+                      canAlwaysAllow: false,
+                    },
+                    signal,
+                  );
+            if (decision.behavior !== "allow") {
+              onEvent({
+                type: "tool_result",
+                toolUseId: toolId,
+                output: decision.message ?? "Denied",
+                isError: true,
+              });
+              await stream(`${msg}:text:0`, "OK, I kept the tenant.", signal);
+            } else {
+              const output = outputText(
+                await options.toolHandlers
+                  .jig_azure_switch_tenant(input)
+                  .catch((e: Error) => `Error: ${e.message}`),
+              );
+              onEvent({
+                type: "tool_result",
+                toolUseId: toolId,
+                output,
+                isError: output.startsWith("Error"),
+              });
+              await stream(`${msg}:text:0`, output, signal);
+            }
+          }
         } else if (
           options.toolHandlers?.jig_update_settings &&
           /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal)\b/.test(

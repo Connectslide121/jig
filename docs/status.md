@@ -462,11 +462,22 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    ("Needs testing on your machine" below) and ask Jon what comes next.
 5. Phase 23 (`docs/plan/23-jons-notes.md`) is done. Next: try its features on a real machine (a real Teams
    call, a Copilot account, a real claude.ai export, a Windows update) and ask Jon what comes next.
-6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): session 1 (host side, D-282) is done; there is
-   no UI yet (session 2: the top bar switch). Next: session 2.
+6. Phase 24 (`docs/plan/24-tenants.md`, Azure tenants): sessions 1–2 are done (host side, D-282; the
+   top bar avatar switch with add/manage modals and Claude's tools, D-283). Views don't reload on a
+   switch yet. Next: session 3 (Pipelines, Boards, Releases, links follow the tenant).
 7. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
+
+- Azure tenants (D-282, D-283): the round avatar at the far right of the top bar shows the tenant
+  Jig's `az` uses (initials; tooltip with name, user, domain; a warning dot when its sign-in
+  expired). Its menu lists your az login and the tenants you added (user and domain in columns,
+  ✓ for the one in use, ⚠ for an expired sign-in) to switch, plus Add tenant… (a modal: tenant id or
+  domain, Sign in opens the browser through `az login`, progress and errors in the modal, Cancel)
+  and Manage tenants… (switch, rename, sign in again, remove). Also in Settings → Azure. Claude can
+  list tenants and, with your approval, switch (`jig_azure_tenants`, `jig_azure_switch_tenant`).
+  Pipelines/Boards don't reload on a switch yet (session 3); chats and terminals don't follow yet
+  (session 4). Needs a real machine: a real second tenant through the modal.
 
 - Speech (D-208): the mic button in the composer (or Ctrl/Cmd+Shift+Space) records; click again
   and the words appear at the caret (not sent). Esc throws a recording away. The first time it asks

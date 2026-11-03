@@ -15,6 +15,7 @@ import {
   signInStatusFromError,
   type TenantInfo,
   tenantConfigDir,
+  tenantInitials,
   tenantKey,
   tenantsState,
 } from "./tenants";
@@ -206,5 +207,23 @@ describe("defaultLabel", () => {
     expect(defaultLabel({ status: "ok", domain: "c.com" })).toBe("c.com");
     expect(defaultLabel({ status: "ok" }, "fabrikam.com")).toBe("fabrikam.com");
     expect(defaultLabel({ status: "ok" })).toBe("Tenant");
+  });
+});
+
+describe("tenantInitials", () => {
+  const t = (label: string, more: Partial<Parameters<typeof tenantInitials>[0]> = {}) =>
+    tenantInitials({ label, isDefault: false, ...more });
+  it("takes the first and last word of the label", () => {
+    expect(t("Contoso")).toBe("C");
+    expect(t("Contoso Dev Tenant")).toBe("CT");
+    expect(t("fabrikam-test")).toBe("FT");
+    expect(t("contoso.onmicrosoft.com")).toBe("C");
+    expect(t("ann@fabrikam.com")).toBe("A");
+    expect(t("  ")).toBe("?");
+  });
+  it("names your az login after the tenant it signed in to", () => {
+    expect(t("Your az login", { isDefault: true, displayName: "Fabrikam Ltd" })).toBe("FL");
+    expect(t("Your az login", { isDefault: true, user: "ann@contoso.com" })).toBe("C");
+    expect(t("Your az login", { isDefault: true })).toBe("A");
   });
 });
