@@ -3861,3 +3861,9 @@ tab and in the lobby.
   two max-width classes the stylesheet's order decides, and the default won. A caller's own max-width
   now replaces the default.
 
+
+## D-299: The builder's chat starts in your default permission mode
+
+Jon, 2026-11-03: a builder chat started in *Accept edits* whatever you set (D-052). It now starts in
+Settings → default permission mode (`engine.defaultPermissionMode`), like every new chat; you can
+still change it in the chat. Amends D-052.

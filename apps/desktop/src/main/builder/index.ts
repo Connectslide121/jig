@@ -1,4 +1,5 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import type { PermissionMode } from "../../shared/engine";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
 import { getEngine } from "../engine";
@@ -41,7 +42,8 @@ export async function startBuilder(nodePaths: string[]): Promise<void> {
           cwd,
           title,
           model: getConfig().engine.defaultModel,
-          permissionMode: "acceptEdits",
+          // Your default mode from Settings, like any new chat (D-299).
+          permissionMode: getConfig().engine.defaultPermissionMode as PermissionMode,
           kind: "builder",
           buildId,
         }),

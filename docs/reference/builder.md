@@ -21,7 +21,7 @@ edits its own source (D-074): when no slot fits, the builder writes a developmen
 
 1. **Start.** A git worktree of `~/.jig/addons` is created at `~/.jig/work/<job>` on branch
    `build/<job>`, and a **builder session** starts there: a normal Claude Code session (`kind:
-   "builder"`, permission mode *Accept edits*) with the builder instructions appended to Claude Code's
+   "builder"`, in your default permission mode from Settings, D-299) with the builder instructions appended to Claude Code's
    own system prompt (`main/builder/prompt.ts`) and the `jig-builder` MCP tools. It isn't listed under
    Sessions; open it from the build ("Builder chat") to follow along or answer its questions.
 2. **Decide, lightest level first** (the instructions say so, D-004/D-005): layout/settings, else an
