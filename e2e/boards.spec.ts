@@ -202,6 +202,46 @@ test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude
   expect(listed.value).toContain("#101 Bug");
 });
 
+test("Boards: cards stay on screen while the board refreshes in the background (D-302)", async ({
+  page,
+  jigHome,
+}) => {
+  const view = await setUp(page, jigHome, true);
+  await view.getByTestId("boards-add-first").click();
+  const dialog = page.getByTestId("boards-dialog");
+  await dialog.getByTestId("boards-pick-Web-Stories").click();
+  await dialog.getByTestId("boards-pick-Mobile-Features").click();
+  await dialog.getByTestId("boards-add-picked").click();
+  await view.getByTestId("board-tab-Web · Stories").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  await expect(view.getByTestId("board-updated")).toHaveText("updated just now");
+  const card = await settledBox(view.getByTestId("board-item-101"));
+  const refresh = await settledBox(view.getByTestId("board-refresh"));
+
+  // Refreshing keeps the cards where they are; only the refresh button's icon turns.
+  await view.getByTestId("board-refresh").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible();
+  expect(await view.getByTestId("board-item-101").boundingBox()).toEqual(card);
+  await expect(view.getByTestId("board-refresh")).not.toHaveAttribute("data-refreshing", "true");
+  expect(await settledBox(view.getByTestId("board-refresh"))).toEqual(refresh);
+
+  // Back on a board seen before: its cards at once, from the host's cache, while it refreshes.
+  await view.getByTestId("board-tab-Mobile · Features").click();
+  await view.getByTestId("board-tab-Web · Stories").click();
+  await expect(view.getByTestId("board-item-101")).toBeVisible({ timeout: 1_000 });
+
+  // A reload of the window shows the cached cards too, and Claude's tools read the fresh cache.
+  await page.reload();
+  await expect(page.getByTestId("board-item-101")).toBeVisible({ timeout: 2_000 });
+  const projects = (await hostCall(page, "projects.list")) as { value: { projects: Array<{ id: string }> } };
+  const listed = (await hostCall(page, "addons.call", {
+    id: "boards",
+    method: "toolCards",
+    args: { chat: { projectId: projects.value.projects[0]!.id } },
+  })) as { value: string };
+  expect(listed.value).toContain("#104");
+});
+
 test("Boards: a board followed in another tenant keeps its space and switches to it", async ({
   page,
   jigHome,

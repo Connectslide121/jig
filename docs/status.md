@@ -49,6 +49,18 @@ Closing the lobby doesn't end a call. Needs testing on your machine: a real Team
 call (both windows on screen, the call window coming forward to ring while the lobby is closed, and
 quitting Jig with only the hidden call window left).
 
+Boards load at startup (2026-11-04, D-302): Jig fetches every followed board of every project a few
+seconds after it starts (two at a time, in the active tenant) and keeps the cards, also across
+restarts. Opening or switching to a board tab shows its cards at once and refreshes them behind the
+scenes: the refresh button turns and "updated N min ago" sits beside it, both in fixed slots, and
+changed cards update in place (a card you're dragging, or an open card, isn't interrupted). The
+centred spinner only shows for a board with nothing cached yet. A tenant switch shows that tenant's
+cached cards, never another's, and refreshes its boards. Claude's board tools read the cache when it's
+under a minute old. Signed out or expired: the board says so as before, and background refreshes in
+that tenant pause for 5 minutes. How to try it: follow two boards, restart Jig, open Code → Boards and
+switch tabs. Needs testing on your machine: a real board with many cards (no flicker or scroll jump
+while it refreshes), and Jig's start-up time with several followed boards.
+
 Board avatars (2026-11-03, D-291): Boards cards show who has them as an avatar at the far right
 (their Microsoft profile picture when Meetings' sign-in is connected, else initials; an empty slot when
 unassigned; hover for name and e-mail), and the card's detail shows it next to "Assigned to". Add-ons

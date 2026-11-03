@@ -24,8 +24,18 @@ import {
   type WorkItemDetail,
   type WorkItemPatch,
 } from "./lib/boards";
+import {
+  type BoardState,
+  type CachedBoard,
+  cacheKey,
+  Flights,
+  isFresh,
+  isSignInProblem,
+  pruneCache,
+  readCache,
+} from "./lib/cache";
 
-export type { Board, BoardData, FoundBoard, WorkItem, WorkItemDetail, WorkItemPatch };
+export type { Board, BoardData, BoardState, FoundBoard, WorkItem, WorkItemDetail, WorkItemPatch };
 
 /**
  * Azure DevOps team boards through the user's `az` CLI (az login + the azure-devops extension), like
@@ -154,11 +164,8 @@ export async function boards(
   return force ? load() : boardsCache(api, key, load);
 }
 
-/** A board as Azure DevOps shows it: its columns, and its cards with the column each is in. */
-export async function board({ board: b }: { board: Board }, api: AddonHostApi): Promise<BoardData> {
-  // Another tenant's board: the view shows where it is (and a Switch) instead of an az error.
-  if (boardTenant(b) !== api.azure.tenant().key)
-    return { columns: [], items: [], elsewhere: { tenant: boardTenant(b) } };
+/** A board as Azure DevOps shows it now: its columns, and its cards with the column each is in. */
+async function fetchBoard(b: Board, api: AddonHostApi): Promise<BoardData> {
   const base = teamApi(b);
   const [raw, areas] = await Promise.all([
     rest<unknown>(api, `${base}/boards/${encodeURIComponent(b.boardId)}`),
@@ -179,6 +186,185 @@ export async function board({ board: b }: { board: Board }, api: AddonHostApi): 
     .filter((i): i is WorkItem => !!i);
   const area = defaultArea(areas);
   return { columns, items, ...(field ? { columnField: field } : {}), ...(area ? { area } : {}) };
+}
+
+// ── Stale-while-revalidate (D-302): every followed board's last answer, refreshed in the background ──
+
+/** Claude's tools (and changes) use a board's cached answer while it is younger than this. */
+const FRESH_FOR_TOOLS = 60_000;
+/** The start-up and tenant-switch refresh skips boards refreshed this recently. */
+const WARM_SKIP = 2 * 60_000;
+/** Background refreshes at a time (each is three az runs). */
+const WARM_PARALLEL = 2;
+/** After az said signed out or expired, background refreshes in that tenant wait this long. */
+const SIGNED_OUT_WAIT = 5 * 60_000;
+
+/** Tenant + board → its last answer; read once from storage (`cache`, global), so a restart shows it at once. */
+let entries: Promise<Record<string, CachedBoard>> | undefined;
+const flights = new Flights<CachedBoard>();
+/** Tenants az said you're signed out of (or whose sign-in expired), and when. */
+const signedOut = new Map<string, number>();
+let persistTimer: ReturnType<typeof setTimeout> | undefined;
+
+function cache(api: AddonHostApi): Promise<Record<string, CachedBoard>> {
+  entries ??= api.storage
+    .get("cache", { scope: "global" })
+    .then(readCache)
+    .catch(() => ({}));
+  return entries;
+}
+
+/** Writes the cache to storage a moment after the last change (a batch of refreshes writes once). */
+function persist(api: AddonHostApi): void {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = undefined;
+    void cache(api).then((c) =>
+      api.storage
+        .set("cache", c, { scope: "global" })
+        .catch((e: Error) => api.log("Couldn't keep the boards' cache", e.message)),
+    );
+  }, 1_000);
+}
+
+const elsewhere = (b: Board): BoardData => ({
+  columns: [],
+  items: [],
+  elsewhere: { tenant: boardTenant(b) },
+});
+const inOtherTenant = (b: Board, api: AddonHostApi) => boardTenant(b) !== api.azure.tenant().key;
+
+/** Background refreshes in this tenant wait: az said you're signed out a moment ago. */
+function blocked(tenant: string): boolean {
+  const at = signedOut.get(tenant);
+  if (at !== undefined && Date.now() - at < SIGNED_OUT_WAIT) return true;
+  signedOut.delete(tenant);
+  return false;
+}
+
+/**
+ * Fetches a board into the cache, one request per board at a time (`fresh`: an answer that starts
+ * after now, e.g. after a change). The view hears `board` events: refreshing, then the data or the error.
+ */
+function refresh(b: Board, api: AddonHostApi, fresh = false): Promise<CachedBoard> {
+  const key = cacheKey(b);
+  return flights.run(
+    key,
+    async () => {
+      const tenant = api.azure.tenant().key;
+      const at = Date.now();
+      api.emit("board", { key, refreshing: true });
+      try {
+        const data = await fetchBoard(b, api);
+        // Switched tenants meanwhile: some of it may come from the other sign-in, so it isn't kept.
+        if (api.azure.tenant().key !== tenant)
+          throw new Error("The Azure tenant changed while the board loaded.");
+        signedOut.delete(tenant);
+        const entry = { at, data };
+        (await cache(api))[key] = entry;
+        persist(api);
+        api.emit("board", { key, refreshing: flights.queued(key), ...entry });
+        return entry;
+      } catch (error) {
+        const signIn = isSignInProblem(error);
+        if (signIn) signedOut.set(tenant, Date.now());
+        api.emit("board", { key, refreshing: flights.queued(key), error: (error as Error).message, signIn });
+        throw error;
+      }
+    },
+    fresh,
+  );
+}
+
+/** A board's data no older than `maxAgeMs`: from the cache, or fetched now. */
+async function boardData(b: Board, api: AddonHostApi, maxAgeMs: number): Promise<BoardData> {
+  // Another tenant's board: the view shows where it is (and a Switch) instead of an az error.
+  if (inOtherTenant(b, api)) return elsewhere(b);
+  const hit = (await cache(api))[cacheKey(b)];
+  if (hit && isFresh(hit, Date.now(), maxAgeMs)) return hit.data;
+  return (await refresh(b, api)).data;
+}
+
+/** A board as Azure DevOps shows it now (fetched, and kept in the cache). */
+export async function board({ board: b }: { board: Board }, api: AddonHostApi): Promise<BoardData> {
+  return boardData(b, api, 0);
+}
+
+/** The board's cached answer, at once (nothing when it was never loaded in this tenant). */
+export async function cachedBoard({ board: b }: { board: Board }, api: AddonHostApi): Promise<BoardState> {
+  if (inOtherTenant(b, api)) return { data: elsewhere(b) };
+  const hit = (await cache(api))[cacheKey(b)];
+  return hit ? { data: hit.data, at: hit.at } : {};
+}
+
+/**
+ * Refreshes a board (joining a refresh already running) and answers with the newest data, or with the
+ * cached data and why it failed. Opening a board is your own doing, so it asks az even while
+ * background refreshes wait for a sign-in.
+ */
+export async function refreshBoard({ board: b }: { board: Board }, api: AddonHostApi): Promise<BoardState> {
+  if (inOtherTenant(b, api)) return { data: elsewhere(b) };
+  const known = await cachedBoard({ board: b }, api);
+  try {
+    const entry = await refresh(b, api);
+    return { data: entry.data, at: entry.at };
+  } catch (error) {
+    return { ...known, error: (error as Error).message, signIn: isSignInProblem(error) };
+  }
+}
+
+/** Every followed board of every Jig project. */
+async function followedEverywhere(api: AddonHostApi): Promise<Board[]> {
+  const projects = await api.projects();
+  const lists = await Promise.all(
+    projects.map((p) =>
+      api.storage.get<Board[]>("boards", { scope: "project", id: p.id }).catch(() => undefined),
+    ),
+  );
+  return lists.flatMap((l) => (Array.isArray(l) ? l : []));
+}
+
+/**
+ * The background refresh (a watcher: a few seconds after Jig starts, then now and then): every
+ * followed board of the active tenant that isn't fresh, a few at a time. Boards no project follows
+ * any more leave the cache.
+ */
+export async function refreshAll(_: unknown, api: AddonHostApi): Promise<void> {
+  const tenant = api.azure.tenant().key;
+  const all = await followedEverywhere(api);
+  const c = await cache(api);
+  const keep = pruneCache(c, all.map(cacheKey));
+  if (Object.keys(keep).length !== Object.keys(c).length) {
+    for (const k of Object.keys(c)) if (!(k in keep)) delete c[k];
+    persist(api);
+  }
+  const due = new Map<string, Board>();
+  for (const b of all) {
+    const key = cacheKey(b);
+    if (boardTenant(b) === tenant && !isFresh(c[key], Date.now(), WARM_SKIP) && !flights.has(key))
+      due.set(key, b);
+  }
+  await inBatches([...due.values()], WARM_PARALLEL, async (b) => {
+    if (blocked(tenant) || api.azure.tenant().key !== tenant) return;
+    await refresh(b, api).catch(() => undefined);
+  });
+}
+
+/** Another tenant (the `azure.tenant` event): its boards refresh in the background. */
+export async function tenantChanged(t: { key: string }, api: AddonHostApi): Promise<void> {
+  signedOut.delete(t.key);
+  void (async () => {
+    // The host hears the new tenant's az environment on its own: wait for it (briefly).
+    for (let i = 0; i < 20 && api.azure.tenant().key !== t.key; i++)
+      await new Promise((r) => setTimeout(r, 100));
+    if (api.azure.tenant().key === t.key) await refreshAll(undefined, api);
+  })().catch(() => undefined);
+}
+
+/** After a change: the board refreshes (with an answer from after it) and the view hears `changed`. */
+function changed(b: Board, api: AddonHostApi): void {
+  void refresh(b, api, true).catch(() => undefined);
+  api.emit("changed", { boardId: b.id });
 }
 
 // ── Managing cards (D-262): the UI and Claude's tools use the same functions ────────────────────────
@@ -222,12 +408,12 @@ export async function item(
 export async function update(
   { board: b, id, patch }: { board: Board; id: number; patch: WorkItemPatch },
   api: AddonHostApi,
-): Promise<void> {
+): Promise<{ savedAt: number }> {
   let field: string | undefined;
   let columnState: string | undefined;
   let next = patch;
   if (patch.column) {
-    const data = await board({ board: b }, api);
+    const data = await boardData(b, api, FRESH_FOR_TOOLS);
     const wanted = patch.column.toLowerCase();
     const column = data.columns.find((c) => c.name.toLowerCase() === wanted);
     if (!column)
@@ -240,9 +426,12 @@ export async function update(
     next = { ...patch, column: column.name };
   }
   const args = updateArgs(next, field, columnState);
-  if (!args.length) return;
+  if (!args.length) return { savedAt: Date.now() };
   await az(api, ["boards", "work-item", "update", "--id", String(id), "--org", orgUrl(b.org), ...args]);
-  api.emit("changed", { boardId: b.id });
+  // Refreshes that start from now on include the change (the view stops showing a moved card as moving).
+  const savedAt = Date.now();
+  changed(b, api);
+  return { savedAt };
 }
 
 export interface NewCard {
@@ -259,7 +448,7 @@ export interface NewCard {
 export async function create(input: NewCard, api: AddonHostApi): Promise<WorkItem> {
   const b = input.board;
   if (!input.title.trim()) throw new Error("A card needs a title.");
-  const data = await board({ board: b }, api);
+  const data = await boardData(b, api, FRESH_FOR_TOOLS);
   const created = await az<unknown>(api, [
     "boards",
     "work-item",
@@ -294,7 +483,7 @@ export async function create(input: NewCard, api: AddonHostApi): Promise<WorkIte
       "--org",
       orgUrl(b.org),
     ]);
-  api.emit("changed", { boardId: b.id });
+  changed(b, api);
   return card;
 }
 
@@ -307,7 +496,7 @@ export async function remove(
   api: AddonHostApi,
 ): Promise<void> {
   await rest(api, `${projectUrl(b)}/_apis/wit/workitems/${id}`, [], "7.1", "delete");
-  api.emit("changed", { boardId: b.id });
+  changed(b, api);
 }
 
 // ── Claude's tools: the boards of the chat's project ────────────────────────────────────────────────
@@ -353,7 +542,8 @@ export async function toolCards(
   api: AddonHostApi,
 ): Promise<string> {
   const b = await chatBoard(args, api);
-  const data = await board({ board: b }, api);
+  // From the cache while it's under a minute old (the view and the background keep it), else fetched.
+  const data = await boardData(b, api, FRESH_FOR_TOOLS);
   const q = args.query?.trim().toLowerCase();
   const out = [`Board ${tabName(b)} (${b.org}/${b.project}, team ${b.team}).`];
   for (const column of data.columns) {

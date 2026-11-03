@@ -25,6 +25,8 @@ import {
   CircleDot,
   Crown,
   Kanban,
+  type LucideIcon,
+  type LucideProps,
   MoreHorizontal,
   MoveHorizontal,
   Plus,
@@ -34,7 +36,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CardDialog, NewCardDialog } from "./cards";
 import {
   type Board,
@@ -48,6 +50,7 @@ import {
   tabName,
   type WorkItem,
 } from "./lib/boards";
+import { type BoardState, cacheKey, mergeBoard, updatedAgo } from "./lib/cache";
 
 /** A work item type's icon and colour, the same on every board (like Azure DevOps' own colours). */
 function typeLook(type: string) {
@@ -66,6 +69,8 @@ interface CardActions {
   open: (item: WorkItem) => void;
   move: (item: WorkItem, column: string) => void;
   remove: (item: WorkItem) => void;
+  /** A card is being dragged (true) or was dropped (false): refreshes wait meanwhile. */
+  drag: (on: boolean) => void;
   columns: string[];
 }
 
@@ -148,7 +153,9 @@ function Card({
       onDragStart={(e) => {
         e.dataTransfer.setData("application/x-jig-card", String(item.id));
         e.dataTransfer.effectAllowed = "move";
+        actions.drag(true);
       }}
+      onDragEnd={() => actions.drag(false)}
       onContextMenu={(e) => {
         e.preventDefault();
         cardMenu(ctx, item, projectId, actions, e.nativeEvent);
@@ -207,7 +214,6 @@ function BoardColumns({
   ctx,
   data,
   projectId,
-  stale,
   width,
   actions,
   moving,
@@ -216,7 +222,6 @@ function BoardColumns({
   ctx: AddonUiContext;
   data: BoardData;
   projectId?: string;
-  stale: boolean;
   width: number;
   actions: CardActions;
   /** Cards being moved: id → the column they go to (shown there until the board reloads). */
@@ -229,7 +234,7 @@ function BoardColumns({
     items: data.items.map((i) => (moving[i.id] ? { ...i, column: moving[i.id] } : i)),
   });
   return (
-    <div className={cn("flex h-full gap-3 overflow-x-auto p-3 transition-opacity", stale && "opacity-60")}>
+    <div className="flex h-full gap-3 overflow-x-auto p-3">
       {lanes.map(({ column, items }) => {
         const over = column.itemLimit > 0 && items.length > column.itemLimit;
         return (
@@ -292,50 +297,143 @@ function BoardColumns({
   );
 }
 
+/** How the open board's refresh is going, for the toolbar's fixed slot. */
+interface BoardStatus {
+  refreshing: boolean;
+  /** When the cards on screen were fetched. */
+  at?: number;
+  /** The last refresh failed (the cards on screen are older). */
+  error?: string;
+}
+
+/** Cards moved here and not yet seen in their new column (`savedAt`: when Azure DevOps had the move). */
+type Moving = Record<number, { column: string; savedAt?: number }>;
+
+/**
+ * A board, stale-while-revalidate (D-302): the host's cached cards at once, then a refresh in the
+ * background. What lands is merged in place (unchanged cards keep their objects) and waits while a
+ * card is being dragged. The spinner is only for a board with nothing cached yet.
+ */
 function BoardBody({
   ctx,
   board,
   projectId,
-  onLoading,
+  onStatus,
   width,
 }: {
   ctx: AddonUiContext;
   board: Board;
   projectId?: string;
-  onLoading: (loading: boolean) => void;
+  onStatus: (status: BoardStatus) => void;
   width: number;
 }) {
-  const { data, error, loading, reload } = useHostCall<BoardData>("board", { board });
+  const key = cacheKey(board);
+  const [view, setView] = useState<BoardState>({});
+  const [own, setOwn] = useState(0);
+  const [hostRefreshing, setHostRefreshing] = useState(false);
   const [open, setOpen] = useState<number>();
   const [adding, setAdding] = useState<BoardColumn>();
-  const [moving, setMoving] = useState<Record<number, string>>({});
-  useEffect(() => onLoading(loading), [loading, onLoading]);
+  const [moving, setMoving] = useState<Moving>({});
+  const dragging = useRef(false);
+  const held = useRef<BoardState[]>([]);
+  const mounted = useRef(true);
+
+  const apply = useCallback((s: BoardState) => {
+    if (!mounted.current) return;
+    if (dragging.current) {
+      held.current.push(s);
+      return;
+    }
+    setView((v) => {
+      // An answer older than the one on screen (the cache arriving after a refresh) is ignored.
+      const newer = !!s.data && !(v.at !== undefined && s.at !== undefined && s.at < v.at);
+      const data = newer && s.data ? mergeBoard(v.data, s.data) : v.data;
+      const at = newer ? (s.at ?? v.at) : v.at;
+      if (s.error) return { data, at, error: s.error, signIn: s.signIn };
+      if (!newer) return v;
+      return data === v.data && at === v.at && !v.error ? v : { data, at };
+    });
+  }, []);
+
+  const load = useCallback(async () => {
+    setOwn((n) => n + 1);
+    try {
+      apply(await ctx.host.call<BoardState>("refreshBoard", { board }));
+    } catch (e) {
+      apply({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      if (mounted.current) setOwn((n) => n - 1);
+    }
+  }, [ctx, board, apply]);
+
   useEffect(() => {
-    const again = () => void reload();
+    mounted.current = true;
+    ctx.host.call<BoardState>("cachedBoard", { board }).then(apply, () => undefined);
+    void load();
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    const again = () => void load();
     window.addEventListener("jig-boards-refresh", again);
     return () => window.removeEventListener("jig-boards-refresh", again);
-  }, [reload]);
-  // A change from here or from a chat (Claude's tools) reloads the board (D-262).
-  useAddonEvent("changed", () => void reload());
-  // Once the board has reloaded, cards are where Azure DevOps says.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: clear when new data arrives.
-  useEffect(() => setMoving({}), [data]);
+  }, [load]);
+  // Every refresh of this board, whoever started it: the background, a change here or from a chat.
+  useAddonEvent("board", (payload) => {
+    const e = payload as BoardState & { key?: string; refreshing?: boolean };
+    if (e.key !== key) return;
+    if (typeof e.refreshing === "boolean") setHostRefreshing(e.refreshing);
+    if (e.data || e.error) apply(e);
+  });
+  // A moved card shows in its new column until Azure DevOps' answer has it there.
+  useEffect(() => {
+    const data = view.data;
+    if (!data) return;
+    setMoving((m) => {
+      const all = Object.entries(m);
+      const keep = all.filter(([id, entry]) => {
+        const item = data.items.find((i) => i.id === Number(id));
+        if (!item || item.column === entry.column) return false;
+        return !(entry.savedAt !== undefined && view.at !== undefined && view.at >= entry.savedAt);
+      });
+      return keep.length === all.length ? m : Object.fromEntries(keep);
+    });
+  }, [view.data, view.at]);
+
+  const refreshing = own > 0 || hostRefreshing;
+  const shownError = view.data && !view.signIn ? view.error : undefined;
+  useEffect(
+    () => onStatus({ refreshing, at: view.at, error: shownError }),
+    [refreshing, view.at, shownError, onStatus],
+  );
+
   const fail = (title: string, e: unknown) =>
     ctx.notify({ title, message: e instanceof Error ? e.message : String(e), tone: "danger" });
   const actions: CardActions = {
     open: (item) => setOpen(item.id),
-    columns: data?.columns.map((c) => c.name) ?? [],
+    columns: view.data?.columns.map((c) => c.name) ?? [],
+    drag: (on) => {
+      dragging.current = on;
+      if (on) return;
+      const waiting = held.current;
+      held.current = [];
+      for (const s of waiting) apply(s);
+    },
     move: (item, column) => {
       if (item.column === column) return;
-      setMoving((m) => ({ ...m, [item.id]: column }));
-      ctx.host.call("update", { board, id: item.id, patch: { column } }).catch((e: unknown) => {
-        setMoving((m) => {
-          const next = { ...m };
-          delete next[item.id];
-          return next;
+      setMoving((m) => ({ ...m, [item.id]: { column } }));
+      ctx.host
+        .call<{ savedAt: number }>("update", { board, id: item.id, patch: { column } })
+        .then(({ savedAt }) => setMoving((m) => (m[item.id] ? { ...m, [item.id]: { column, savedAt } } : m)))
+        .catch((e: unknown) => {
+          setMoving((m) => {
+            const next = { ...m };
+            delete next[item.id];
+            return next;
+          });
+          fail(`Couldn't move #${item.id}`, e);
         });
-        fail(`Couldn't move #${item.id}`, e);
-      });
     },
     remove: async (item) => {
       const yes = await ctx.confirm({
@@ -350,19 +448,21 @@ function BoardBody({
           .catch((e: unknown) => fail(`Couldn't delete #${item.id}`, e));
     },
   };
+  const data = view.data;
   if (data?.elsewhere) return <InOtherTenant ctx={ctx} board={board} tenant={data.elsewhere.tenant} />;
-  if (error && !data)
+  // Signed out or expired, or nothing to show: the board says why, as it did before the cache.
+  if (view.error && (view.signIn || !data))
     return (
       <Empty icon={TriangleAlert} title="Couldn't load this board" className="h-full">
         <p className="max-w-sm text-xs whitespace-pre-wrap text-muted" data-testid="board-error">
-          {error}
+          {view.error}
         </p>
-        <Button size="sm" icon={RefreshCw} onClick={() => void reload()}>
+        <Button size="sm" icon={RefreshCw} disabled={refreshing} onClick={() => void load()}>
           Try again
         </Button>
       </Empty>
     );
-  if (!data) return <Spinner center />;
+  if (!data) return <Spinner center className="h-full" />;
   if (data.columns.length === 0)
     return (
       <Empty icon={Kanban} title="This board has no columns" className="h-full">
@@ -375,10 +475,9 @@ function BoardBody({
         ctx={ctx}
         data={data}
         projectId={projectId}
-        stale={loading}
         width={width}
         actions={actions}
-        moving={moving}
+        moving={Object.fromEntries(Object.entries(moving).map(([id, m]) => [id, m.column]))}
         onNew={setAdding}
       />
       {open !== undefined ? (
@@ -398,6 +497,14 @@ function BoardBody({
     </>
   );
 }
+
+/** The refresh icon, turning while the board refreshes (in the same button, so nothing moves). */
+const SpinningRefresh = forwardRef<SVGSVGElement, LucideProps>(function SpinningRefresh(
+  { className, ...rest },
+  ref,
+) {
+  return <RefreshCw ref={ref} {...rest} className={cn(className, "animate-spin")} />;
+}) as LucideIcon;
 
 /** Your own az login in a sentence, with the name you gave it in Jig ("Your az login" unless renamed). */
 const ownAzLogin = (label: string) =>
@@ -667,9 +774,15 @@ export function BoardsView({ ctx }: AddonComponentProps) {
   });
   const [selected, setSelected] = useStorage<string | undefined>("selected", undefined);
   const [adding, setAdding] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<BoardStatus>({ refreshing: false });
+  // "updated N min ago" moves on by itself.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   const board = boards.find((b) => b.id === selected) ?? boards[0];
-  // Another Azure tenant (D-282): the board loads again with it (a spinner in its space meanwhile).
+  // Another Azure tenant (D-282): the board shows that tenant's cached cards, or where it is.
   const [tenant, setTenant] = useState(() => ctx.azure.tenant().key);
   useJigEvent("azure.tenant", (t) => {
     setTenant(t.key);
@@ -748,7 +861,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
   };
 
   return (
-    <div className="flex h-full flex-col" data-testid="boards-view">
+    <div className="@container flex h-full flex-col" data-testid="boards-view">
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line pr-1">
         <div className="min-w-0 flex-1 overflow-x-auto">
           {board ? (
@@ -756,7 +869,11 @@ export function BoardsView({ ctx }: AddonComponentProps) {
               className="border-b-0"
               items={boards.map((b) => ({
                 id: b.id,
-                label: <span data-testid={`board-tab-${tabName(b)}`}>{tabName(b)}</span>,
+                label: (
+                  <span className="whitespace-nowrap" data-testid={`board-tab-${tabName(b)}`}>
+                    {tabName(b)}
+                  </span>
+                ),
               }))}
               value={board.id}
               onChange={(id) => void setSelected(id)}
@@ -780,19 +897,36 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             className="jig-range w-24"
           />
         </div>
-        <span className="flex size-7 shrink-0 items-center justify-center">
-          {loading && board ? (
-            <Spinner size="sm" />
-          ) : (
-            <IconButton
-              icon={RefreshCw}
-              label="Refresh"
-              size="sm"
-              disabled={!board}
-              onClick={() => window.dispatchEvent(new Event("jig-boards-refresh"))}
-            />
-          )}
+        {/* When the cards were fetched, in a fixed slot (empty until known; hidden when narrow). */}
+        <span
+          className="w-32 shrink-0 truncate text-right text-xs text-hint @max-2xl:hidden @2xl:block"
+          data-testid="board-updated"
+        >
+          {board && !status.refreshing && status.error
+            ? "couldn't refresh"
+            : board && status.at
+              ? updatedAgo(status.at, now)
+              : ""}
         </span>
+        {/* Refreshing turns the icon; a failed refresh (older cards on screen) shows a warning there. */}
+        <IconButton
+          icon={
+            board && status.refreshing ? SpinningRefresh : board && status.error ? TriangleAlert : RefreshCw
+          }
+          label={
+            board && status.refreshing
+              ? "Refreshing…"
+              : board && status.error
+                ? `Couldn't refresh: ${status.error}\nClick to try again.`
+                : "Refresh"
+          }
+          size="sm"
+          className={board && status.error && !status.refreshing ? "text-warning" : undefined}
+          disabled={!board}
+          data-testid="board-refresh"
+          data-refreshing={board && status.refreshing ? "true" : undefined}
+          onClick={() => window.dispatchEvent(new Event("jig-boards-refresh"))}
+        />
         <IconButton
           icon={Plus}
           label="Add boards"
@@ -821,7 +955,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
             ctx={ctx}
             board={board}
             projectId={project.id}
-            onLoading={setLoading}
+            onStatus={setStatus}
             width={width}
           />
         ) : (

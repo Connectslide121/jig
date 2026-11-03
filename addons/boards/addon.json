@@ -20,6 +20,8 @@
         "component": "BoardsView"
       }
     ],
+    "watchers": [{ "id": "refresh", "every": "30m", "run": "refreshAll", "atStart": true }],
+    "events": [{ "on": "azure.tenant", "run": "tenantChanged" }],
     "actions": [
       {
         "id": "show",

@@ -3899,3 +3899,37 @@ Jon, 2026-11-04: he wants to name all his tenants, "Your az login" included. Ame
   signed-in tenant's), and the avatar tooltip and Manage add "Your own az login" under the name. The
   project dialog lists it as "<name> — your own az login", so it stays distinct from "Default (the
   tenant in use stays)". Claude's context says "the user's own az login (named "X" in Jig)".
+
+## D-302: Boards are stale-while-revalidate, with the cache in the add-on's host
+
+Jon, 2026-11-04: "the boards reload data every time I open the tab, really annoying; they should fetch
+all the boards data when Jig opens, and then just refresh it in the background when I open the tab,
+without locking the UI". Amends D-251/D-262/D-284.
+
+- The host keeps every board's last answer keyed by **tenant + organisation/project/team/board**
+  (`cacheKey`, lower-case): two projects following the same board share it, and another tenant's
+  cards are never under it. A board followed in another tenant than the active one still answers
+  "elsewhere", from the cache too.
+- It is persisted in the add-on's storage as one global key, `cache` (written a second after the last
+  refresh, entries of boards no project follows any more are dropped), so a restart shows cards before
+  the first refresh lands.
+- Start-up: a watcher `refresh` (`atStart`, every 30 min) runs `refreshAll`: every followed board of
+  every project in the active tenant that's older than 2 minutes, two at a time. The `azure.tenant`
+  event runs it for the new tenant. **Claude, on my own:** the 30-minute repeat keeps the cache warm
+  for Claude's tools; the 2-minute skip avoids refetching what was just seen.
+- One request per board at a time (`Flights`): callers join the running one; after a change
+  (`update`, `create`, `remove`) a follow-up starts when it ends, so the answer includes the change.
+  `update` returns `savedAt`; the view shows a moved card in its new column until an answer fetched
+  after that has it there.
+- The view: `cachedBoard` at once, then `refreshBoard`; `board` events from the host (refreshing, data,
+  error) reach it whoever started the refresh. New data is merged (`mergeBoard`: unchanged cards and
+  columns keep their objects, nothing re-renders when nothing changed) and held while a card is
+  dragged. Refreshing is the refresh button's icon turning, and "updated N min ago" sits in a fixed
+  `w-32` slot before it (hidden below `@2xl`); a failed refresh with cards on screen shows a warning
+  icon there and keeps the cards. **Claude, on my own:** a signed-out/expired error still replaces the
+  cards with the "Couldn't load this board" panel ("show that as today"), since the cards can't be
+  trusted or changed until you sign in.
+- Signed out or expired (`AzError.problem`): background refreshes in that tenant pause for 5 minutes
+  (or until the tenant is switched to again); opening a board is your own doing and still asks az.
+- Claude's `cards` tool, and the column/area lookups of `update`/`create`, use the cache when it is
+  under a minute old, else fetch.

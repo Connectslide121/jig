@@ -68,6 +68,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **Boards per project:** each Jig project picks its DevOps boards (several allowed); the view
       shows a tab per board. Built-in add-on `addons/boards` (D-251): boards are found in your
       organisations (no links to paste), shown with their real columns and cards like Azure DevOps.
+- [x] **Boards load at startup, refresh in the background (Jon, 2026-11-04, D-302):** every followed
+      board is fetched a few seconds after Jig starts and kept in the host (and in storage, for the
+      next start); a tab shows its cached cards at once and refreshes behind them, with the refresh
+      button turning and "updated N min ago" in fixed toolbar slots.
 - [x] **Update progress:** while an update installs, show the installer or a progress window
       instead of Jig vanishing (D-252): an "Installing Jig X" modal says what happens next for 2 s,
       then the assisted installer shows its progress and starts Jig, which says "Updated to Jig X".
