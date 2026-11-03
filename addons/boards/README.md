@@ -3,7 +3,7 @@
 Azure DevOps team boards per Jig project, laid out like Azure DevOps (D-251), through your own `az`
 CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
 
-- **Code → Boards** opens the view for the active project; each followed board is a tab (⋯: Open in
+- **Code → Boards** opens the view for the active project; each followed board is a tab named by its team and board ("Shop Team · Stories"; D-265) (⋯: Open in
   Azure DevOps, Rename…, Move left/right, Remove…).
 - **Add boards (+):** your organisations (from the az login) and their projects; the project named
   like the Jig project is picked first. Every team's boards are listed (Stories, Features…); tick

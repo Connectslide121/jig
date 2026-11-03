@@ -42,6 +42,7 @@ import {
   type FoundBoard,
   initials,
   placeCards,
+  tabName,
   type WorkItem,
 } from "./lib/boards";
 
@@ -601,9 +602,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
       const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       all.push({ id, name: "", ...p });
     }
-    const teams = new Set(all.map((b) => `${b.org}/${b.project}/${b.team}`)).size;
-    // Names follow the set: the team joins the name once boards of several teams are followed.
-    const named = all.map((b) => ({ ...b, name: b.name || boardTitle(b, teams) }));
+    const named = all.map((b) => ({ ...b, name: b.name || boardTitle(b) }));
     void setBoards(named);
     void setSelected(named[boards.length]?.id);
     setAdding(false);
@@ -632,7 +631,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
           onSelect: async () => {
             const name = await ctx.prompt({
               title: "Rename board",
-              initial: board.name,
+              initial: tabName(board),
               confirmLabel: "Rename",
             });
             if (name?.trim())
@@ -654,7 +653,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
           testId: "board-remove",
           onSelect: async () => {
             const yes = await ctx.confirm({
-              title: `Remove ${board.name}?`,
+              title: `Remove ${tabName(board)}?`,
               message: "This project stops following it; nothing changes in Azure DevOps.",
               confirmLabel: "Remove",
               danger: true,
@@ -676,7 +675,7 @@ export function BoardsView({ ctx }: AddonComponentProps) {
               className="border-b-0"
               items={boards.map((b) => ({
                 id: b.id,
-                label: <span data-testid={`board-tab-${b.name}`}>{b.name}</span>,
+                label: <span data-testid={`board-tab-${tabName(b)}`}>{tabName(b)}</span>,
               }))}
               value={board.id}
               onChange={(id) => void setSelected(id)}

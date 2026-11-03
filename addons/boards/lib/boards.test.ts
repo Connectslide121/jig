@@ -10,6 +10,7 @@ import {
   initials,
   orgName,
   placeCards,
+  tabName,
   teamApi,
   toColumns,
   toWorkItem,
@@ -48,8 +49,9 @@ describe("links and names", () => {
   it("builds the team API, board link and titles", () => {
     expect(teamApi(where)).toBe("https://dev.azure.com/contoso/Shop/Shop%20Team/_apis/work");
     expect(boardUrl(where)).toBe("https://dev.azure.com/contoso/Shop/_boards/board/t/Shop%20Team/Stories");
-    expect(boardTitle(where, 1)).toBe("Stories");
-    expect(boardTitle(where, 2)).toBe("Shop Team · Stories");
+    expect(boardTitle(where)).toBe("Shop Team · Stories");
+    expect(tabName({ ...where, name: "Stories" })).toBe("Shop Team · Stories");
+    expect(tabName({ ...where, name: "Sprint board" })).toBe("Sprint board");
     expect(orgName("https://dev.azure.com/contoso")).toBe("contoso");
     expect(orgName("https://fabrikam.visualstudio.com/")).toBe("fabrikam");
   });

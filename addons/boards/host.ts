@@ -12,6 +12,7 @@ import {
   orgName,
   orgUrl,
   stateForColumn,
+  tabName,
   teamApi,
   textToHtml,
   toColumns,
@@ -332,7 +333,7 @@ async function chatBoard(args: ChatArgs, api: AddonHostApi): Promise<Board> {
   const found = findBoard(boards, args.board);
   if (!found)
     throw new Error(
-      `No board named ${JSON.stringify(args.board)}. Boards: ${boards.map((b) => b.name).join(", ")}`,
+      `No board named ${JSON.stringify(args.board)}. Boards: ${boards.map(tabName).join(", ")}`,
     );
   return found;
 }
@@ -340,7 +341,7 @@ async function chatBoard(args: ChatArgs, api: AddonHostApi): Promise<Board> {
 export async function toolBoards(args: ChatArgs, api: AddonHostApi): Promise<string> {
   const boards = await followed(args, api);
   if (!boards.length) return "This project follows no Azure DevOps boards yet (Code → Boards → +).";
-  return boards.map((b) => `- ${b.name} (team ${b.team}, ${b.org}/${b.project})`).join("\n");
+  return boards.map((b) => `- ${tabName(b)} (team ${b.team}, ${b.org}/${b.project})`).join("\n");
 }
 
 export async function toolCards(
@@ -350,7 +351,7 @@ export async function toolCards(
   const b = await chatBoard(args, api);
   const data = await board({ board: b }, api);
   const q = args.query?.trim().toLowerCase();
-  const out = [`Board ${b.name} (${b.org}/${b.project}, team ${b.team}).`];
+  const out = [`Board ${tabName(b)} (${b.org}/${b.project}, team ${b.team}).`];
   for (const column of data.columns) {
     if (args.column && column.name.toLowerCase() !== args.column.toLowerCase()) continue;
     const cards = data.items.filter(
@@ -387,7 +388,7 @@ export async function toolCreate(
   const b = await chatBoard(args, api);
   const { chat: _chat, board: _board, ...input } = args;
   const card = await create({ ...input, board: b }, api);
-  return `Created ${itemLine(card)} on ${b.name}: ${card.url}`;
+  return `Created ${itemLine(card)} on ${tabName(b)}: ${card.url}`;
 }
 
 export async function toolDelete(args: ChatArgs & { id: number }, api: AddonHostApi): Promise<string> {

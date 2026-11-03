@@ -78,9 +78,14 @@ export function boardUrl(b: Pick<Board, "org" | "project" | "team" | "boardName"
   return `${orgUrl(b.org)}/${encodeURIComponent(b.project)}/_boards/board/t/${encodeURIComponent(b.team)}/${encodeURIComponent(b.boardName)}`;
 }
 
-/** The default tab name: the board's name, with the team when a project follows several teams. */
-export function boardTitle(b: Pick<Board, "team" | "boardName">, teams: number): string {
-  return teams > 1 ? `${b.team} · ${b.boardName}` : b.boardName;
+/** The default tab name: the team and the board ("Shop Team · Stories"), as Jon reads them (D-265). */
+export function boardTitle(b: Pick<Board, "team" | "boardName">): string {
+  return `${b.team} · ${b.boardName}`;
+}
+
+/** The tab's name: the one you gave it, else the team and board (old tabs named just "Stories" too). */
+export function tabName(b: Pick<Board, "name" | "team" | "boardName">): string {
+  return b.name && b.name !== b.boardName ? b.name : boardTitle(b);
 }
 
 /** `GET …/work/boards/{id}` → its columns, in order. */
@@ -328,7 +333,7 @@ export function findBoard(boards: Board[], ref?: string): Board | undefined {
   const r = ref.trim().toLowerCase();
   return (
     boards.find((b) => b.id === ref) ??
-    boards.find((b) => b.name.toLowerCase() === r) ??
+    boards.find((b) => b.name.toLowerCase() === r || tabName(b).toLowerCase() === r) ??
     boards.find((b) => b.boardName.toLowerCase() === r || `${b.team} ${b.boardName}`.toLowerCase() === r)
   );
 }

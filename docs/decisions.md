@@ -3157,3 +3157,11 @@ the boards up to date from chats. The shape is **Claude, on my own**.
 - Shown on call tiles, in People, beside captions, in Call someone and on a ringing call. The test
   meeting service gives Alex and Sam generated pictures.
 
+## D-265: Board tabs are named by team and board
+
+**Who:** Jon wanted the tab to say "Podium Systems Team", not just "Stories".
+
+- A tab is "Team · Board" by default (it used to add the team only when several teams were followed).
+  Tabs saved with the old default (the board's name alone) show the new name too; a name you gave a
+  tab yourself is kept. Claude's boards tools accept either name.
+
