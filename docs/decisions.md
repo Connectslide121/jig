@@ -3268,3 +3268,23 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   `mainWindow()`: the first of Jig's windows that isn't a background window. The meeting window opens
   hidden at start to ring for Teams calls (D-254), so it could be the first window and got revealed.
   A ringing call's notification still opens the meeting window itself.
+
+## D-275: Talking with Claude goes by a voice detector, not loudness
+
+**Who:** Jon: while washing dishes or blowing his nose, the noise started turns, interrupted Claude
+and came through as "you". Choices of detector and thresholds: Claude, on my own.
+
+- Each 128 ms microphone frame is scored by Silero VAD v6 (MIT, 2.3 MB, bundled in
+  `renderer/features/speech/vad/`), run with the onnxruntime-web build Whisper's worker already
+  ships (no extra runtime). It runs in the renderer, in order, under a millisecond per 32 ms window.
+- A frame is your voice when it is loud enough over the room (as before) *and* scores ≥ 0.6
+  (`speech.noiseFilter: strong`, default) or ≥ 0.35 (`light`); a turn stays open while frames score
+  ≥ 0.4 / 0.25. Barge-in uses the same test, so noise no longer cuts Claude off. `off` keeps the
+  loudness-only behaviour; if the detector can't load, talking falls back to it.
+- Whisper's output loses sound tags ([Music], (water running), *sniffs*) and lone fillers ("you",
+  "um") in dictation and talking; in talking, phrases it invents from noise ("Thank you.", "Thanks
+  for watching!") are dropped when the turn had under a second of voice.
+- RNNoise-style noise removal on the audio itself was left out: Chromium's own noise suppression
+  stays on, and the problem was deciding what is speech, which the detector does.
+- A turn you start while the previous one is still being transcribed and sent waits for it (its
+  audio is kept); before, both wrote into the message box at once and left words behind.

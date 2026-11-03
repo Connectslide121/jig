@@ -5,10 +5,10 @@ import { notify } from "../../workbench/toasts";
 import { ensureTranscript, useSessions } from "../sessions/store";
 import { followWork, playCue, unfollowWork, WorkCue } from "./cues";
 import { cancelDictation, type DictationText, useDictation } from "./dictation";
-import { Capture, LiveText, prepareSpeech, speechSettings } from "./engine";
+import { Capture, FRAME, LiveText, prepareSpeech, speechSettings } from "./engine";
 import { amplitude, meters, sliceLevels } from "./meter";
 import { warmNaturalVoice } from "./naturalVoice";
-import { level, SAMPLE_RATE } from "./protocol";
+import { cleanSpeech, level, SAMPLE_RATE } from "./protocol";
 import {
   isEnd,
   isGoAhead,
@@ -76,6 +76,14 @@ const BARGE_IN_FRAMES = 3;
 const MAX_TURN = 120 * SAMPLE_RATE;
 /** Audio kept from before your voice was noticed. */
 const PREROLL = 0.3 * SAMPLE_RATE;
+/**
+ * How sure the voice detector must be that a frame is a voice (D-275): to start your turn or
+ * interrupt Claude, and (a little less) to keep your turn going. "off": loudness alone.
+ */
+const VOICE_SCORE: Record<"strong" | "light", { start: number; keep: number }> = {
+  strong: { start: 0.6, keep: 0.4 },
+  light: { start: 0.35, keep: 0.25 },
+};
 /** Claude's voice lingers in the room a moment after it stops. */
 const ECHO_TAIL_MS = 350;
 /** Lines kept in the talking window. */
@@ -110,7 +118,7 @@ export async function startVoice(target: string, hooks: VoiceHooks): Promise<voi
         off();
         return;
       }
-      capture = await Capture.open();
+      capture = await Capture.open({ detectVoice: s.noiseFilter !== "off" });
       if (!capture) {
         off();
         return;
@@ -120,7 +128,7 @@ export async function startVoice(target: string, hooks: VoiceHooks): Promise<voi
     // The natural voice loads while you say your first words, so Claude's first answer doesn't wait.
     if (!s.fake) warmNaturalVoice();
     await call("sessions.setVoice", { id: target, voice: true });
-    active = new Conversation(target, hooks, capture, s.fake, s.pause);
+    active = new Conversation(target, hooks, capture, s.fake, s.pause, s.noiseFilter);
     await active.begin();
   } catch (error) {
     active?.stop();
@@ -187,6 +195,8 @@ class Conversation {
   private waitingFrom?: number;
   private lastVoice = 0;
   private turnStart = 0;
+  /** Frames of this turn the detector heard a voice in (too few: it was noise). */
+  private voicedFrames = 0;
   private quietUntil = 0;
   /** Chat items there before you started talking: not read aloud. */
   private readonly before = new Set<string>();
@@ -216,6 +226,7 @@ class Conversation {
     private readonly capture: Capture | undefined,
     private readonly fake: boolean,
     private readonly pause: number,
+    private readonly noiseFilter: "strong" | "light" | "off",
   ) {}
 
   async begin(): Promise<void> {
@@ -230,7 +241,7 @@ class Conversation {
       if (meta.permissionMode === "bypassPermissions") this.workMode = meta.permissionMode;
       await call("sessions.setPermissionMode", { id: this.target, mode: "plan" }).catch(() => undefined);
     }
-    if (this.capture) this.capture.onFrame = (frame) => this.frame(frame);
+    if (this.capture) this.capture.onFrame = (frame, end, voice) => this.frame(frame, end, voice);
     if (this.fake) window.addEventListener("jig-fake-speech", this.fakeSpeech);
     this.unsubscribe = useSessions.subscribe(() => this.scan());
     this.set("listening");
@@ -324,17 +335,26 @@ class Conversation {
 
   // ── Hearing you ──────────────────────────────────────────────────────────
 
-  private frame(frame: Float32Array): void {
+  /**
+   * A frame of the microphone: loud enough above the room's noise, and (with the noise filter) a
+   * voice according to the detector, is you speaking.
+   */
+  private frame(frame: Float32Array, now: number, voice: number | undefined): void {
     if (this.stopped || !this.capture || this.muted) return;
     meters.you.push(sliceLevels(frame, 8).map(amplitude), performance.now());
-    const now = this.capture.length;
     const l = level(frame, 0, frame.length);
     this.floor = l < this.floor ? this.floor * 0.7 + l * 0.3 : this.floor * 0.998 + l * 0.002;
     this.floor = Math.max(this.floor, 0.002);
     const speaking = Boolean(this.speaking) || Date.now() < this.quietUntil;
-    const voiced = l > (speaking ? Math.max(0.04, this.floor * 6) : Math.max(0.012, this.floor * 3));
+    const loud = l > (speaking ? Math.max(0.04, this.floor * 6) : Math.max(0.012, this.floor * 3));
+    const score =
+      this.noiseFilter === "off" || voice === undefined ? undefined : VOICE_SCORE[this.noiseFilter];
+    const voiced = loud && (!score || voice! >= score.start);
     if (this.phase === "hearing") {
-      if (voiced) this.lastVoice = now;
+      // Your turn goes on while you speak; noise (dishes, typing) doesn't keep it open.
+      const going = score ? voice! >= score.keep && l > Math.max(0.008, this.floor * 2) : loud;
+      if (going) this.lastVoice = now;
+      if (voiced) this.voicedFrames++;
       if ((now - this.lastVoice) / SAMPLE_RATE > this.pause / 1000 || now - this.turnStart > MAX_TURN)
         void this.endTurn();
       return;
@@ -355,6 +375,7 @@ class Conversation {
   private beginTurn(from: number): void {
     if (!this.capture) return;
     this.loud = 0;
+    this.voicedFrames = START_FRAMES;
     this.turnStart = from;
     this.lastVoice = this.capture.length;
     this.set("hearing");
@@ -368,9 +389,12 @@ class Conversation {
     if (!live || this.finishing) return;
     this.finishing = true;
     this.set("thinking");
+    const voiced = (this.voicedFrames * FRAME) / SAMPLE_RATE;
     let text = "";
     try {
       text = await live.finish();
+      // Whisper makes words up from noise ("you", "Thank you."): kept only when you spoke.
+      if (this.capture?.detectsVoice) text = cleanSpeech(text, voiced);
     } catch (error) {
       notify({ title: "Couldn't understand that", message: errorMessage(error), tone: "danger" });
     }

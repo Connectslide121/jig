@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanSpeech,
   insertDictation,
   isSilent,
   joinSpeech,
@@ -55,5 +56,24 @@ describe("joinSpeech", () => {
   it("joins pieces with single spaces and skips empty ones", () => {
     expect(joinSpeech(" Hello. ", "", "How are you?")).toBe("Hello. How are you?");
     expect(joinSpeech()).toBe("");
+  });
+});
+
+describe("cleanSpeech", () => {
+  it("removes Whisper's sound tags and lone fillers", () => {
+    expect(cleanSpeech("[Music]")).toBe("");
+    expect(cleanSpeech("(water running) Fix the bug *sniffs*")).toBe("Fix the bug");
+    expect(cleanSpeech(" you ")).toBe("");
+    expect(cleanSpeech("You.")).toBe("");
+    expect(cleanSpeech("Um...")).toBe("");
+    expect(cleanSpeech("Thank you, you too")).toBe("Thank you, you too");
+  });
+
+  it("drops what Whisper makes up from noise only when there was hardly any voice", () => {
+    expect(cleanSpeech("Thank you.", 0.3)).toBe("");
+    expect(cleanSpeech("Thanks for watching!", 0.5)).toBe("");
+    expect(cleanSpeech("Thank you.", 1.2)).toBe("Thank you.");
+    expect(cleanSpeech("Thank you.")).toBe("Thank you.");
+    expect(cleanSpeech("Go ahead", 0.4)).toBe("Go ahead");
   });
 });

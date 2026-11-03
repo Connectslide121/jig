@@ -5,6 +5,7 @@ import { useConfig } from "../../stores/config";
 import { confirmDialog } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import {
+  cleanSpeech,
   isSilent,
   joinSpeech,
   quietestCut,
@@ -12,6 +13,7 @@ import {
   type WorkerReply,
   type WorkerRequest,
 } from "./protocol";
+import { VoiceDetector } from "./vad";
 
 /**
  * What dictation and talking with Claude share (D-208, D-209): the Whisper worker, getting its
@@ -108,6 +110,8 @@ export interface SpeechSettings {
   gpu: boolean;
   live: boolean;
   pause: number;
+  /** Talking with Claude: how strictly noise is kept from counting as your voice. */
+  noiseFilter: "strong" | "light" | "off";
   fake: boolean;
 }
 
@@ -121,6 +125,7 @@ export function speechSettings(): SpeechSettings {
     gpu: config?.speech.gpu ?? true,
     live: config?.speech.live ?? true,
     pause: config?.speech.pause ?? 1000,
+    noiseFilter: config?.speech.noiseFilter ?? "strong",
     fake: info?.engine === "fake",
   };
 }
@@ -219,33 +224,50 @@ async function microphoneAllowed(): Promise<boolean> {
 export const FRAME = 2048;
 
 /**
+ * What `onFrame` gets for each 128 ms frame: the samples, where the frame ends (an index, as
+ * `length`) and, with voice detection, how sure the detector is that it holds a voice (0–1).
+ */
+export type FrameListener = (frame: Float32Array, end: number, voice: number | undefined) => void;
+
+/**
  * The microphone as 16 kHz mono samples, kept as they come in. `onFrame` sees each 128 ms frame
- * (voice activity detection while talking with Claude).
+ * (voice activity detection while talking with Claude), in order.
  */
 export class Capture {
   private chunks: Float32Array[] = [];
   /** Samples dropped from the front (`forget`), so indexes stay the same. */
   private dropped = 0;
   length = 0;
-  onFrame?: (frame: Float32Array) => void;
+  onFrame?: FrameListener;
   private context?: AudioContext;
   private node?: ScriptProcessorNode;
+  private frames: Promise<void> = Promise.resolve();
 
-  private constructor(private readonly stream: MediaStream) {}
+  private constructor(
+    private readonly stream: MediaStream,
+    private readonly detector?: VoiceDetector,
+  ) {}
 
-  static async open(): Promise<Capture | undefined> {
+  /** `detectVoice`: score each frame with the voice detector (talking with Claude). */
+  static async open(options: { detectVoice?: boolean } = {}): Promise<Capture | undefined> {
     if (!(await microphoneAllowed())) return undefined;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
-      const capture = new Capture(stream);
+      const detector = options.detectVoice ? await VoiceDetector.open() : undefined;
+      const capture = new Capture(stream, detector);
       await capture.start();
       return capture;
     } catch (error) {
       notify({ title: "No microphone", message: errorMessage(error), tone: "danger" });
       return undefined;
     }
+  }
+
+  /** Whether frames come with a voice score (the detector loaded). */
+  get detectsVoice(): boolean {
+    return Boolean(this.detector);
   }
 
   private async start(): Promise<void> {
@@ -257,7 +279,15 @@ export class Capture {
       const frame = new Float32Array(event.inputBuffer.getChannelData(0));
       this.chunks.push(frame);
       this.length += frame.length;
-      this.onFrame?.(frame);
+      const end = this.length;
+      const detector = this.detector;
+      if (!detector) {
+        this.onFrame?.(frame, end, undefined);
+        return;
+      }
+      // Scored in order; a frame the detector fails on counts as a voice (loudness decides).
+      const scored = detector.score(frame).catch(() => 1);
+      this.frames = this.frames.then(async () => this.onFrame?.(frame, end, await scored));
     };
     source.connect(node);
     node.connect(context.destination);
@@ -294,6 +324,7 @@ export class Capture {
     this.onFrame = undefined;
     if (this.node) this.node.onaudioprocess = null;
     for (const track of this.stream.getTracks()) track.stop();
+    this.detector?.close();
     void this.context?.close().catch(() => undefined);
   }
 }
@@ -354,7 +385,7 @@ export class LiveText {
   private read(from: number, to: number): Promise<string> {
     const audio = this.capture.samples(from, to);
     if (!this.s.fake && isSilent(audio)) return Promise.resolve("");
-    return transcribe(audio, this.s);
+    return transcribe(audio, this.s).then((text) => cleanSpeech(text));
   }
 
   /** Everything you said, read once more to the end. */

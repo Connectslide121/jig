@@ -121,6 +121,11 @@ export const ConfigSchema = z.object({
       live: z.boolean().default(true),
       /** Talking with Claude: how long a pause (ms) ends what you say and sends it. */
       pause: z.number().int().min(400).max(4000).default(1000),
+      /**
+       * Talking with Claude: keeps noise from counting as your voice (D-275). `strong` and `light`
+       * use a voice detector on this computer; `off` goes by loudness alone.
+       */
+      noiseFilter: z.enum(["strong", "light", "off"]).default("strong"),
       /** Speed of the voice that reads aloud (1 = normal). */
       rate: z.number().min(0.5).max(2).default(1),
       /** Soft sounds while Claude works after you hand it a task by voice, and when it finishes (D-210). */

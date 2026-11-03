@@ -43,6 +43,44 @@ export function quietestCut(audio: Float32Array, from: number, to: number): numb
   return best;
 }
 
+/** Whisper's words for sounds that aren't speech: [Music], (water running), *sniffs*, ♪. */
+const NOISE_TAGS = /\[[^\]]*\]|\([^)]*\)|\*[^*]*\*|[♪♫]+/g;
+/** Sounds that say nothing on their own. */
+const FILLERS = new Set(["you", "uh", "um", "uhm", "hmm", "mm", "mhm", "ah", "oh", "eh", "huh"]);
+/**
+ * What Whisper makes up from noise or near-silence (it learnt from subtitled videos). Dropped only
+ * when there was hardly any voice: said for real, they stay.
+ */
+const MADE_UP = new Set([
+  "thank you",
+  "thanks",
+  "thanks for watching",
+  "thank you for watching",
+  "thank you so much for watching",
+  "please subscribe",
+  "subtitles by the amaraorg community",
+  "gracias",
+  "gracias por ver",
+  "subtítulos realizados por la comunidad de amaraorg",
+]);
+
+/**
+ * What you said without what Whisper hears in noise: sound tags are removed, and a lone filler
+ * ("you", "um") is nothing. With `voiced` (seconds of voice the detector heard), a phrase Whisper
+ * makes up from noise is nothing too when there was less than a second of voice.
+ */
+export function cleanSpeech(text: string, voiced = Number.POSITIVE_INFINITY): string {
+  const words = text.replace(NOISE_TAGS, " ").replace(/\s+/g, " ").trim();
+  const key = words
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}' ]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!key || FILLERS.has(key)) return "";
+  if (voiced < 1 && MADE_UP.has(key)) return "";
+  return words;
+}
+
 /** Pieces of what you said, one after the other. */
 export function joinSpeech(...parts: string[]): string {
   return parts

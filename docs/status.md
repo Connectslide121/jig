@@ -448,6 +448,12 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   talk over it to interrupt; the chat is in plan mode and "yes, go ahead" approves the plan so
   Claude starts working. "Bye" ends it. Settings → Speech: graphics card, live words, pause, speed, Try the voice, and step-by-step
   instructions for talking and for adding system voices (Windows, macOS, Linux).
+- Background noise while talking (D-275): a voice detector (Silero, bundled, runs on this computer)
+  decides what is you speaking, so dishes, typing or a sniff neither start your turn, keep it open,
+  nor interrupt Claude. What Whisper makes up from noise ("you", "Thank you.", [Music]) is dropped.
+  Settings → Speech → Talking with Claude → Ignore background noise: Strongly (default), A little, Off.
+  A turn you start while the last one is still being sent now waits for it, so words no longer stay
+  in the message box and come back in your next message.
 - Talking window (D-210, redesigned in D-218): talking opens a wide, calm window over the chat with
   sound waves in the centre (blue: you, from the microphone; accent: Claude, a pulse per spoken
   word) and the conversation under them, fading out upwards as it scrolls (no tabs). While Claude
@@ -954,6 +960,10 @@ Things the cloud build environment couldn't verify:
   Try: Settings → Speech shows "Use the graphics card" working; dictate a long paragraph (live
   words, corrections); talk with Claude with headphones, then with speakers (the system voice may
   be heard as you: raise `speech.pause` or use headphones); say "yes, go ahead" on a plan.
+- **Ignoring background noise (D-275):** the detector was checked on recorded speech (voice ≈ 1.0,
+  silence and noise ≤ 0.16 per 128 ms frame), not yet with a live microphone. Try: talk with Claude
+  while running water, typing or clapping (no turn starts, Claude isn't interrupted), then speak
+  normally and quietly (turns still start and end as before), with Strongly and A little.
 - **Natural voice (D-243):** checked on Jon's Windows machine in the built app (English and Spanish,
   ~1.5 s for 3 s of speech after ~7 s loading). Try: the first download from Read aloud (the dialog,
   then the "ready" toast), talking with Claude (no gaps between sentences, speaking over it stops it,

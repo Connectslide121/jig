@@ -252,6 +252,23 @@ export function SpeechSettings() {
             ))}
           </Select>
         </SettingRow>
+        <SettingRow
+          label="Ignore background noise"
+          description="Only a voice starts your turn or interrupts Claude: dishes, typing or a sniff don't. Checked on this computer."
+        >
+          <Select
+            value={s.noiseFilter}
+            aria-label="Ignore background noise"
+            data-testid="settings-speech-noise"
+            onChange={(e) =>
+              void updateConfig({ speech: { noiseFilter: e.target.value as typeof s.noiseFilter } })
+            }
+          >
+            <option value="strong">Strongly</option>
+            <option value="light">A little</option>
+            <option value="off">Off (any loud sound)</option>
+          </Select>
+        </SettingRow>
         <div className="px-4 py-3" data-testid="settings-speech-how-to-talk">
           <div className="text-sm text-fg">How to talk with Claude</div>
           <ol className="mt-1 flex list-decimal flex-col gap-0.5 pl-4 text-xs text-muted">

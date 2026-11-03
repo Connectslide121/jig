@@ -91,6 +91,7 @@ A new state file is documented here in the same commit that adds it.
 | `speech.gpu` | `true` | run Whisper on the graphics card (WebGPU) when there is one (D-209) |
 | `speech.live` | `true` | show the words while you speak (Whisper reads again every ~250 ms) |
 | `speech.pause` | `1000` | talking with Claude: ms of silence that end your turn (400–4000) |
+| `speech.noiseFilter` | `"strong"` | talking with Claude: `strong`, `light` or `off`; how strictly noise that isn't a voice is ignored (Silero voice detector on this computer, D-275; `off` = loudness alone) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | a soft note while Claude thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
 | `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
