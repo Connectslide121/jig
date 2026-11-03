@@ -5,6 +5,7 @@ import { call, errorMessage } from "../../lib/host";
 import { Button, cn, Dialog, SearchInput, Spinner, Switch } from "../../ui";
 import { initials } from "./format";
 import type { Ringing } from "./media";
+import { PersonPhoto } from "./photo";
 
 /** The people you called or who called you, newest first, one row each (D-254). */
 export function recentPeople(records: MeetingRecord[]): MeetingPerson[] {
@@ -15,15 +16,16 @@ export function recentPeople(records: MeetingRecord[]): MeetingPerson[] {
   return out.slice(0, 8);
 }
 
-function Avatar({ name, ringing }: { name: string; ringing?: boolean }) {
+function Avatar({ name, id, ringing }: { name: string; id?: string; ringing?: boolean }) {
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent",
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-soft font-semibold text-accent",
         ringing ? "size-20 text-2xl" : "size-8 text-xs",
       )}
     >
       {initials(name)}
+      <PersonPhoto id={id} />
     </span>
   );
 }
@@ -131,7 +133,7 @@ export function CallDialog({
                         onClick={() => void place(p)}
                         className="group flex h-12 w-full items-center gap-3 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60"
                       >
-                        <Avatar name={p.name} />
+                        <Avatar name={p.name} id={p.id} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium">{p.name}</span>
                           <span className="block truncate text-xs text-muted">
@@ -239,7 +241,7 @@ export function IncomingCall({
       }
     >
       <div className="flex flex-col items-center gap-3 py-4 text-center">
-        <Avatar name={ringing.name} ringing />
+        <Avatar name={ringing.name} id={ringing.peerId} ringing />
         <div className="space-y-1">
           <div className="text-lg font-semibold">{ringing.name}</div>
           <div className="flex items-center justify-center gap-1.5 text-sm text-muted">

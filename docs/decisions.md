@@ -3145,3 +3145,15 @@ the boards up to date from chats. The shape is **Claude, on my own**.
   (`'Podium Systems'`, quotes doubled) and doesn't pass `--project`. The test projects had no spaces,
   so the e2e tests didn't catch it.
 
+## D-263: Profile pictures in meetings and calls
+
+**Who:** Jon asked for avatars now that the people permission is being approved. **Claude, on my own.**
+
+- Graph `GET /users/{id}/photos/48x48/$value` with the same User.ReadBasic.All token as people search
+  (D-254), requested silently: no browser sign-in pops up during a call; without the permission the
+  initials stay. Teams participants are `8:orgid:<object id>`; Jig's own tile is "local" (you).
+- Pictures go to the window as data URLs (only image types), cached per person while Jig runs. The
+  picture lies over the initials in the same circle, so nothing moves when it arrives.
+- Shown on call tiles, in People, beside captions, in Call someone and on a ringing call. The test
+  meeting service gives Alex and Sam generated pictures.
+

@@ -156,6 +156,10 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Profile pictures in meetings (2026-11-03, D-263): people's Microsoft profile pictures show on their
+tiles, in People, beside their captions in the transcript, in Call someone and on a ringing call;
+initials until (or unless) there is one. Needs the User.ReadBasic.All approval.
+
 Boards you manage in Jig (2026-11-03, D-262): Code → Boards. Click a card to open it in Jig and
 edit it (title, description, column, state, assignee, tags, priority, story points, comments); drag
 cards between columns; + in a column adds a card; ⋯ → Move to / Delete…. Claude reads and updates the

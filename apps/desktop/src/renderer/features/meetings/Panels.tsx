@@ -15,6 +15,7 @@ import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
 import { Button, CountBadge, cn, Empty, IconButton, Markdown, type MenuEntry, openMenuAt } from "../../ui";
 import { clock, initials } from "./format";
 import type { Person } from "./media";
+import { PersonPhoto } from "./photo";
 
 /** A panel's title bar: the same height everywhere, so panels side by side line up. */
 export function PanelHeader({
@@ -142,9 +143,10 @@ export function TranscriptPanel({
                   </time>
                   <span
                     aria-hidden
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full bg-raised text-2xs font-semibold text-muted"
+                    className="relative flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised text-2xs font-semibold text-muted"
                   >
                     {initials(item.speaker)}
+                    <PersonPhoto id={item.speakerId} />
                   </span>
                   <div className="min-w-0 flex-1 text-sm">
                     <div className="pt-1 font-semibold">{item.speaker}</div>
@@ -241,11 +243,12 @@ export function PeoplePanel({ people, you, menu }: { people: Person[]; you: Pers
             <span
               aria-hidden
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-xs font-semibold",
+                "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-xs font-semibold",
                 p.speaking && "ring-2 ring-accent",
               )}
             >
               {initials(p.name)}
+              <PersonPhoto id={p.id} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">{p.name}</span>

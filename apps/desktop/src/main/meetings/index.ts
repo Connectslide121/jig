@@ -27,6 +27,17 @@ import { closeMeetingPage, meetingPage, meetingPageOrigin } from "./page";
 import { ownMediaUrl, ownPagePermission } from "./permissions";
 import { MeetingStore } from "./store";
 
+/** The test meeting service's people have pictures, so the avatars can be seen in tests. */
+const svgPhoto = (fill: string) =>
+  `data:image/svg+xml;base64,${Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="${fill}"/><circle cx="24" cy="19" r="9" fill="#ffffff" opacity=".85"/><rect x="10" y="31" width="28" height="17" rx="12" fill="#ffffff" opacity=".85"/></svg>`,
+  ).toString("base64")}`;
+const FAKE_PHOTOS: Record<string, string> = {
+  alex: svgPhoto("#4a7bd0"),
+  "00000000-0000-4000-8000-00000000a1e5": svgPhoto("#4a7bd0"),
+  sam: svgPhoto("#3f9d6b"),
+  "00000000-0000-4000-8000-0000000005a3": svgPhoto("#3f9d6b"),
+};
 const store = new MeetingStore();
 const auth = new MeetingAuth(() => store.settings());
 const fake = () => process.env.JIG_ENGINE === "fake" && process.env.JIG_MEETINGS === "fake";
@@ -452,6 +463,21 @@ export async function startMeetings(): Promise<void> {
     activity("join");
     changed();
     return record;
+  });
+  // Profile pictures (D-263): from Microsoft once per person while Jig runs; null = initials.
+  const photos = new Map<string, Promise<string | null>>();
+  handle("meetings.photo", async ({ id }, ctx) => {
+    fromJig(ctx);
+    // A Teams participant is "8:orgid:<object id>"; Jig's own tile is "local".
+    const objectId = id === "local" ? "me" : (/^(?:8:orgid:)?([0-9a-f-]{36})$/i.exec(id)?.[1] ?? "");
+    if (fake()) return FAKE_PHOTOS[id] ?? null;
+    if (!objectId) return null;
+    let photo = photos.get(objectId);
+    if (!photo) {
+      photo = auth.photo(objectId).catch(() => null);
+      photos.set(objectId, photo);
+    }
+    return photo;
   });
   handle("meetings.people", async ({ query }, ctx) => {
     own(ctx);

@@ -194,6 +194,26 @@ export class MeetingAuth {
    * People in your organisation to call: the ones you work with most (empty query), or a directory
    * search by name or e-mail. Asks for the people permissions the first time.
    */
+  /**
+   * A person's profile picture (48×48) as a data URL, or null when they have none. Never asks you to
+   * sign in (a call is no time for a browser pop-up): without the people permission it's just null.
+   * `objectId` "me" is you.
+   */
+  async photo(objectId: string): Promise<string | null> {
+    const id = objectId === "me" ? this.account?.localAccountId : objectId;
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+    const token = await this.access(PEOPLE_SCOPES, false).catch(() => undefined);
+    if (!token) return null;
+    const response = await fetch(`https://graph.microsoft.com/v1.0/users/${id}/photos/48x48/$value`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => undefined);
+    if (!response?.ok) return null;
+    const type = response.headers.get("content-type") ?? "image/jpeg";
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(type)) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return `data:${type};base64,${bytes.toString("base64")}`;
+  }
   async people(query: string): Promise<MeetingPerson[]> {
     const token = await this.access(PEOPLE_SCOPES, true);
     const self = this.account?.localAccountId;

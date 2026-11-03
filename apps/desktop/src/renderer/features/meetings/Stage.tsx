@@ -16,6 +16,7 @@ import type { MeetingRecord } from "../../../shared/meetings";
 import { Button, cn, openMenuAt } from "../../ui";
 import { elapsed, initials } from "./format";
 import { type MediaState, type Person, selfPerson } from "./media";
+import { PersonPhoto } from "./photo";
 
 /**
  * The call's video area. Its size never depends on the call: idle, it explains itself; live, the
@@ -278,8 +279,9 @@ function Tile({
       )}
     >
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="flex size-16 items-center justify-center rounded-full bg-raised text-lg font-semibold shadow-card">
+        <span className="relative flex size-16 items-center justify-center overflow-hidden rounded-full bg-raised text-lg font-semibold shadow-card">
           {initials(person.name)}
+          <PersonPhoto id={person.id} />
         </span>
       </div>
       {person.camera && <div ref={slot(key)} className="absolute inset-0 *:size-full" />}

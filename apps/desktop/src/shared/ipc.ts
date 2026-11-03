@@ -151,6 +151,8 @@ export interface HostMethods {
   "completion.copilotSignIn": { args: void; result: { userCode: string; url: string } };
   "completion.copilotSignOut": { args: void; result: void };
   "meetings.people": { args: { query: string }; result: import("./meetings").MeetingPerson[] };
+  /** Someone's Microsoft profile picture (a data URL), or null; `id` is a Teams id, an object id or "local" (D-263). */
+  "meetings.photo": { args: { id: string }; result: string | null };
   "meetings.startCall": {
     args: import("./meetings").MeetingCall;
     result: import("./meetings").MeetingRecord;
