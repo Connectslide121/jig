@@ -322,6 +322,9 @@ test("Meetings: live captions in another language, with what was said under them
     // The choice is remembered for the next meeting.
     const overview = (await hostCall(room, "meetings.overview")) as { value: MeetingOverview };
     expect(overview.value.captionLanguage).toBe("sv-se");
+    // Leave, so Jig closes without asking about the running meeting.
+    await room.getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(room.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);
   } finally {
     await app.close();
   }
