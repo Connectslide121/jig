@@ -149,6 +149,12 @@ stops the spinner after device failure and offers Retry devices. The pre-join ch
 readiness without moving existing controls.
 Physical devices and a real Teams call still need target-machine acceptance.
 
+Translated captions (2026-11-03, D-260): in a live meeting the Transcript's language picker ("As
+spoken", or any language Teams offers) shows each caption in that language with what was said in
+small grey text under it; both are kept with the meeting and Claude reads both. The choice is
+remembered. Teams translates: that needs Teams Premium for the meeting; without it Jig says so and
+captions stay as spoken. Needs a real meeting to confirm.
+
 Language servers (2026-11-03, D-259): in the file editor, the language servers you install give
 errors and warnings as you type (wavy underlines, message on hover), hover information, go to
 definition (F12; another file opens in Preview), find references (Shift+F12), rename (F2), signature

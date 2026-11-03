@@ -47,6 +47,7 @@ import {
   type MenuEntry,
   MenuHost,
   openMenuAt,
+  Select,
   Spinner,
 } from "../../ui";
 import { CallDialog, IncomingCall } from "./Calls";
@@ -186,6 +187,13 @@ function Room() {
     if (fakeService)
       (window as { jigTestRing?: (name: string) => void }).jigTestRing = (name) => m.fakeRing(name);
   }, [listen, fakeService]);
+  // Your caption language from last time applies to the next call (D-260).
+  const savedLanguage = overview?.captionLanguage;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the saved choice changes.
+  useEffect(() => {
+    if (savedLanguage !== undefined && savedLanguage !== mediaState.captionLanguage)
+      void media.current!.setCaptionLanguage(savedLanguage).catch((e) => setError(errorMessage(e)));
+  }, [savedLanguage]);
   // The window's title says what it is (the page's own title would just say "Jig").
   const liveTitle = overview?.records.find((r) => r.id === overview.activeId)?.title;
   useEffect(() => {
@@ -266,10 +274,48 @@ function Room() {
       const chat = await call("meetings.notes", { id });
       await openChat(chat.sessionId);
     }, "notes");
+  const captionLanguages = mediaState.captionLanguages;
+  // "Swedish" rather than "Swedish (Sweden)", unless two variants of a language are offered.
+  const languageName = (code: string) => {
+    const base = code.split("-")[0]!;
+    const shared = captionLanguages.filter((c) => c.split("-")[0] === base).length > 1;
+    try {
+      return (
+        new Intl.DisplayNames([navigator.language], { type: "language" }).of(shared ? code : base) ?? code
+      );
+    } catch {
+      return code;
+    }
+  };
   const askButton = (
-    <Button size="sm" icon={MessageSquare} onClick={() => setAsk(true)}>
-      Ask Claude
-    </Button>
+    <>
+      {/* Captions in your language: Teams translates (Teams Premium); the original stays under it. */}
+      <Select
+        aria-label="Show captions in"
+        title="Show captions in another language (Teams translates; needs Teams Premium for the meeting)"
+        className="h-7 w-40 text-xs"
+        disabled={!captionLanguages.length}
+        value={mediaState.captionLanguage}
+        onChange={(e) => {
+          const language = e.target.value;
+          void run(async () => {
+            await call("meetings.captionLanguage", { language });
+            await media.current!.setCaptionLanguage(language);
+          });
+        }}
+        data-testid="caption-language"
+      >
+        <option value="">As spoken</option>
+        {captionLanguages.map((code) => (
+          <option key={code} value={code}>
+            {languageName(code)}
+          </option>
+        ))}
+      </Select>
+      <Button size="sm" icon={MessageSquare} onClick={() => setAsk(true)}>
+        Ask Claude
+      </Button>
+    </>
   );
   const notes = (r: MeetingRecord, menu?: MenuEntry[]) => (
     <NotesPanel

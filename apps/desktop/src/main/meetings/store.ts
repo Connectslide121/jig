@@ -15,6 +15,8 @@ const caption = z.object({
   timestamp: z.iso.datetime(),
   text: z.string(),
   final: z.boolean(),
+  translated: z.string().optional(),
+  translatedLanguage: z.string().optional(),
 });
 const action = z.object({
   id: z.string(),
@@ -52,6 +54,7 @@ const schema = z.object({
     .default({ tenantId: "", clientId: "", endpoint: "" }),
   lobbyView: z.enum(["agenda", "week"]).default("agenda"),
   ringing: z.boolean().default(true),
+  captionLanguage: z.string().default(""),
   records: z.array(record).default([]),
   layout: z.unknown().optional(),
 });
@@ -83,6 +86,14 @@ export class MeetingStore {
   setLobbyView(view: "agenda" | "week"): Promise<void> {
     return this.change(() => {
       this.data.lobbyView = view;
+    });
+  }
+  captionLanguage(): string {
+    return this.data.captionLanguage;
+  }
+  setCaptionLanguage(language: string): Promise<void> {
+    return this.change(() => {
+      this.data.captionLanguage = language;
     });
   }
   /** Whether Jig rings for Teams calls while it runs (on until you turn it off). */

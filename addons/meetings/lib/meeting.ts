@@ -27,7 +27,10 @@ export function mergeCaption(captions: MeetingCaption[], incoming: MeetingCaptio
 export function transcriptText(record: MeetingRecord, through?: string): string {
   const lines = record.captions
     .filter((c) => !through || c.timestamp <= through)
-    .map((c) => `[${c.timestamp}] ${c.speaker}${c.final ? "" : " (unfinished)"}: ${c.text}`);
+    .map(
+      (c) =>
+        `[${c.timestamp}] ${c.speaker}${c.final ? "" : " (unfinished)"}: ${c.text}${c.translated ? ` (translated to ${c.translatedLanguage}: ${c.translated})` : ""}`,
+    );
   const gaps = record.gaps
     .filter((g) => !through || g.at <= through)
     .map((g) => `[${g.at}] CAPTURE GAP: ${g.reason}`);

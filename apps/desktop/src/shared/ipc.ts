@@ -98,6 +98,7 @@ export interface HostMethods {
   "meetings.revealChat": { args: { sessionId: string }; result: void };
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
+  "meetings.captionLanguage": { args: { language: string }; result: void };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
   "meetings.delete": { args: { id: string }; result: void };
   /** Past meetings, newest first, without the one in progress (the meeting history tab, D-250). */

@@ -11,6 +11,9 @@ export interface MeetingCaption {
   timestamp: string;
   text: string;
   final: boolean;
+  /** The caption in the language you chose (Teams' translated captions), when it isn't the spoken one. */
+  translated?: string;
+  translatedLanguage?: string;
 }
 export interface MeetingAction {
   id: string;
@@ -62,6 +65,8 @@ export type LobbyView = "agenda" | "week";
 
 export interface MeetingOverview {
   lobbyView: LobbyView;
+  /** The language captions are shown in ("" = as spoken); Teams translates (D-260). */
+  captionLanguage: string;
   settings: MeetingSettings;
   account?: string;
   fake: boolean;

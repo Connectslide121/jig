@@ -323,6 +323,7 @@ export async function startMeetings(): Promise<void> {
       records: store.records(),
       layout: store.layout(),
       lobbyView: store.lobbyView(),
+      captionLanguage: store.captionLanguage(),
     };
   });
   handle("meetings.delete", async ({ id }, ctx) => {
@@ -379,6 +380,11 @@ export async function startMeetings(): Promise<void> {
     if (picked.canceled || !picked.filePath) return undefined;
     await writeFile(picked.filePath, meetingMarkdown(record));
     return picked.filePath;
+  });
+  handle("meetings.captionLanguage", async ({ language }, ctx) => {
+    own(ctx);
+    await store.setCaptionLanguage(language);
+    changed();
   });
   handle("meetings.lobbyView", async ({ view }, ctx) => {
     own(ctx);

@@ -28,6 +28,10 @@ export interface Person {
   speaking: boolean;
 }
 export interface MediaState {
+  /** Languages Teams can show captions in (empty until captions run). */
+  captionLanguages: string[];
+  /** The one chosen ("" = as spoken). */
+  captionLanguage: string;
   state: string;
   muted: boolean;
   camera: boolean;
@@ -35,6 +39,8 @@ export interface MediaState {
   people: Person[];
 }
 export const INITIAL_MEDIA: MediaState = {
+  captionLanguages: [],
+  captionLanguage: "",
   state: "Not connected",
   muted: true,
   camera: false,
@@ -105,6 +111,7 @@ export class MeetingMedia {
   private cancelJoin?: () => void;
   private leaving = false;
   private spokenLanguage = "en-us";
+  private captionLanguage = "";
   /** Listening for Teams calls (D-254): the agent stays between calls and rings through `listeningFor`. */
   private listeningFor?: (ringing: Ringing | undefined) => void;
   private incoming?: TeamsIncomingCall;
@@ -463,6 +470,7 @@ export class MeetingMedia {
               ],
         });
         this.status("connected", "Capturing live captions (test)");
+        this.update({ captionLanguages: ["en-us", "sv-se", "es-es", "de-de"] });
         const texts = [
           "We should review the Shop API before release.",
           "I will update the service documentation.",
@@ -478,6 +486,12 @@ export class MeetingMedia {
             timestamp,
             text: texts[seq % texts.length]!,
             final: true,
+            ...(this.captionLanguage
+              ? {
+                  translated: `[${this.captionLanguage}] ${texts[seq % texts.length]!}`,
+                  translatedLanguage: this.captionLanguage,
+                }
+              : {}),
           };
           this.update({
             people: this.state.people.map((p) => ({
@@ -595,6 +609,11 @@ export class MeetingMedia {
         this.captions = captions as TeamsCaptions;
         this.captions.on("CaptionsReceived", (data) => {
           const text = data.spokenText || data.captionText;
+          // Teams' translation of it, when captions are shown in another language (D-260).
+          const translated =
+            this.captionLanguage && data.captionText && data.captionText !== data.spokenText
+              ? data.captionText
+              : undefined;
           const id = this.record?.id;
           if (!text || !id || this.leaving) return;
           const speakerId = data.speaker.identifier ? getIdentifierRawId(data.speaker.identifier) : "unknown";
@@ -606,6 +625,7 @@ export class MeetingMedia {
             timestamp,
             text,
             final: data.resultType === "Final",
+            ...(translated ? { translated, translatedLanguage: data.captionLanguage } : {}),
           };
           this.captionChain = this.captionChain
             .then(() => call("meetings.caption", { id, caption }))
@@ -623,11 +643,31 @@ export class MeetingMedia {
       if (!this.captions!.isCaptionsFeatureActive)
         await this.captions!.startCaptions({ spokenLanguage: language });
       this.status("connected", "Capturing live captions");
+      this.update({ captionLanguages: this.captions!.supportedCaptionLanguages ?? [] });
+      if (this.captionLanguage) await this.setCaptionLanguage(this.captionLanguage).catch(this.error);
     } catch (error) {
       this.status("connected", "Captions unavailable — retry captions", "Captions could not start");
       this.error(error);
     } finally {
       this.captionsStarting = false;
+    }
+  }
+  /**
+   * Shows captions in `language` ("" = as spoken). Teams translates them; that needs Teams Premium for
+   * the meeting, so a refusal says so and captions stay as spoken (D-260).
+   */
+  async setCaptionLanguage(language: string): Promise<void> {
+    this.captionLanguage = language;
+    this.update({ captionLanguage: language });
+    if (this.fakeTimer || !this.captions) return;
+    try {
+      await this.captions.setCaptionLanguage(language || this.spokenLanguage);
+    } catch {
+      this.captionLanguage = "";
+      this.update({ captionLanguage: "" });
+      throw new Error(
+        "Teams didn't translate the captions. Translated captions need Teams Premium for this meeting; they stay as spoken.",
+      );
     }
   }
   async mute(): Promise<void> {

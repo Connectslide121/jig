@@ -3092,3 +3092,16 @@ for test runs. Supersedes the per-change part of D-242.
   Markdown is sanitised (DOMPurify). Diagnostics and tooltips use Jig's tokens.
 - `npm` `.cmd` launchers on Windows run through a shell with Jig's own resolved path, never input.
 
+## D-260: Live captions in your language, translated by Teams
+
+**Who:** Jon asked for the live transcript in his chosen language. The shape is **Claude, on my own**.
+
+- **Teams translates**, through the calling SDK's `TeamsCaptions.setCaptionLanguage`; every caption
+  then carries the spoken text and the translation (`captionText`). Translated captions need Teams
+  Premium for the meeting; when Teams refuses, Jig says so and stays on the spoken language. No AI
+  call of Jig's own (nothing calls an AI in the background), and no extra cost beyond Teams.
+- **Both are kept:** `MeetingCaption.translated` and `translatedLanguage` sit beside `text`, the
+  transcript shows the translation with the original under it, and `jig_meeting_read` gives Claude
+  both. The choice ("" = as spoken) is remembered in the meetings store and applied when captions
+  start in the next meeting.
+

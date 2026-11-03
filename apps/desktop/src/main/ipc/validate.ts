@@ -63,6 +63,9 @@ const attachment = z.object({
 
 export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.lobbyView": z.object({ view: z.enum(["agenda", "week"]) }).strict(),
+  "meetings.captionLanguage": z
+    .object({ language: z.string().regex(/^([a-z]{2,3}(-[a-z0-9]{2,8})*)?$/i) })
+    .strict(),
   "meetings.configure": z
     .object({ tenantId: z.uuid(), clientId: z.uuid(), endpoint: z.url().max(1000) })
     .strict(),
@@ -118,6 +121,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
           timestamp: z.iso.datetime(),
           text: z.string().min(1).max(20_000),
           final: z.boolean(),
+          translated: z.string().max(20_000).optional(),
+          translatedLanguage: z.string().max(40).optional(),
         })
         .strict(),
     })

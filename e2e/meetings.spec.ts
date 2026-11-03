@@ -297,3 +297,32 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await app.close();
   }
 });
+
+test("Meetings: live captions in another language, with what was said under them", async ({ jigHome }) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    const newWindow = app.waitForEvent("window");
+    await hostCall(main, "meetings.open");
+    const room = await newWindow;
+    await room.emulateMedia({ reducedMotion: "reduce" });
+    await room.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    await prejoin.getByLabel("Teams join link").fill("https://teams.microsoft.com/l/meetup-join/test");
+    await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
+    const transcript = room.getByTestId("meeting-transcript");
+    await expect(transcript).toContainText("We should review the Shop API");
+    await room.getByTestId("caption-language").selectOption("sv-se");
+    await expect(transcript).toContainText("[sv-se] ", { timeout: 15_000 });
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/translated.png",
+    });
+    // The choice is remembered for the next meeting.
+    const overview = (await hostCall(room, "meetings.overview")) as { value: MeetingOverview };
+    expect(overview.value.captionLanguage).toBe("sv-se");
+  } finally {
+    await app.close();
+  }
+});

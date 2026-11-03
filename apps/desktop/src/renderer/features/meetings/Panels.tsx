@@ -149,16 +149,23 @@ export function TranscriptPanel({
                   <div className="min-w-0 flex-1 text-sm">
                     <div className="pt-1 font-semibold">{item.speaker}</div>
                     {item.lines.map((c) => (
-                      <p
-                        key={c.id}
-                        className={
-                          c.final
-                            ? "whitespace-pre-wrap leading-relaxed"
-                            : "whitespace-pre-wrap leading-relaxed text-muted"
-                        }
-                      >
-                        {c.text}
-                      </p>
+                      <div key={c.id}>
+                        <p
+                          className={
+                            c.final
+                              ? "whitespace-pre-wrap leading-relaxed"
+                              : "whitespace-pre-wrap leading-relaxed text-muted"
+                          }
+                        >
+                          {c.translated ?? c.text}
+                        </p>
+                        {/* What was said, under its translation (D-260). */}
+                        {c.translated && (
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-hint" lang="">
+                            {c.text}
+                          </p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </li>
