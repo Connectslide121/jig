@@ -3061,3 +3061,14 @@ default because shell commands kept failing; he left both to Claude. **Claude, o
   backslashes broke in Git Bash. Jig's terminal default is unrelated and stays. On Windows, Jig's
   context now tells Claude to write long scripts to a file and run that instead.
 
+## D-258: Tests run when releasing, not after each change
+
+**Who:** Jon, 2026-11-03: "only run tests when we do a release": most of a session went to waiting
+for test runs. Supersedes the per-change part of D-242.
+
+- Each change still brings its unit and e2e tests (and `e2e/affected.json` rules); they aren't run.
+- Before a commit: `npm run verify` (typecheck, lint, design tokens), which takes seconds.
+- Releasing (the jig-release skill) runs `npm run check` and the whole `npm run e2e`; failures are
+  fixed then. Jon can ask for a test run at any time.
+- UI work is still looked at (a screenshot) before it's called done.
+

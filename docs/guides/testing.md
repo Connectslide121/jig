@@ -6,9 +6,12 @@
 | End-to-end, what a change needs | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e:changed` |
 | End-to-end, everything (releases) | Playwright + Electron | `e2e/*.spec.ts` | `npm run e2e` |
 | Design tokens | `scripts/check-tokens.ts` | renderer + add-ons | `npm run check:tokens` |
-| Everything fast | — | — | `npm run check` |
+| Before each commit (no tests, D-258) | — | — | `npm run verify` |
+| Everything fast (releases) | — | — | `npm run check` |
 
 ## End-to-end tests
+
+**When they run (D-258):** when releasing, or when Jon asks; not after each change.
 
 **Two ways to run them (D-242).**
 

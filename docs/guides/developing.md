@@ -13,7 +13,8 @@
 ```bash
 npm install          # once, and after pulling dependency changes
 npm run dev          # Electron + Vite dev server; UI hot-reloads, main/preload changes restart Electron
-npm run check        # typecheck + lint + unit tests + design-token check (run before committing)
+npm run verify       # typecheck + lint + design-token check (run before committing; tests run at release, D-258)
+npm run check        # verify + unit tests (releases)
 npm run build        # production build into apps/desktop/dist
 npm start            # run the production build
 npm run e2e          # build + Playwright end-to-end tests

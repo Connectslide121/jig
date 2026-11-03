@@ -44,9 +44,10 @@ npm install            # once
 npm run dev            # Electron + Vite dev server with hot reload
 npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
-npm run check          # typecheck + lint + unit tests + design-token check — run before every commit
-npm run e2e:changed    # the e2e specs your change needs (build when stale): after a change, < 1 min
-npm run e2e            # the whole e2e suite in parallel (~3-4 min): when releasing (Linux: xvfb-run)
+npm run verify         # typecheck + lint + design-token check (no tests) — run before every commit
+npm run check          # verify + unit tests — when releasing
+npm run e2e:changed    # the e2e specs a change needs — only when Jon asks
+npm run e2e            # the whole e2e suite in parallel (~4-5 min): when releasing (Linux: xvfb-run)
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
@@ -56,7 +57,7 @@ JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts   # re
 Claude Code chats opened in this repository load `.claude/settings.json`: after Edit/Write and
 Bash/PowerShell tools, `scripts/format-after-tool.mjs` runs the installed Biome with safe fixes.
 Shell tools sweep modified/untracked files in this checkout. Keep script-written text LF on Windows
-(Python: `open(..., newline="\n")`); the hook is a fallback, not a replacement for `npm run check`.
+(Python: `open(..., newline="\n")`); the hook is a fallback, not a replacement for `npm run verify`.
 See `docs/guides/developing.md` for scope and activation.
 
 What the fake engine does for which message is listed in `docs/guides/testing.md` → The fake engine.
@@ -201,9 +202,15 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`. A new
   fake-engine behaviour gets a row in the table in `docs/guides/testing.md`.
 - Never use real Claude credentials in tests.
-- **Run `npm run e2e:changed` after a change** that touches runtime/UI code; the full `npm run e2e` runs
-  when releasing (D-242). A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no
-  dependence on other tests or timing; keep each test short (the slowest sets the suite's time).
+- **Tests run only when releasing (Jon, D-258).** Write and update unit and e2e tests with each change
+  as before, but don't run them while working: waiting for tests cost most of the time. Before a commit
+  run `npm run verify` (typecheck, lint, tokens; seconds). The release runs `npm run check` and the
+  whole `npm run e2e`, and fixes what fails then. Run tests earlier only when Jon asks, or a single
+  quick unit test file (`npx vitest run <file>`) when a pure function's logic is tricky.
+- A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or
+  timing; keep each test short (the slowest sets the suite's time).
+- **UI is still looked at before it's done:** a screenshot in Claude's browser or a quick `npm run dev`
+  look, not a test run (the hard UI rules above still apply).
 
 ## Commits
 
@@ -212,7 +219,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Always commit (Jon).** Commit after each logical, validated change without being asked; never
   leave completed work uncommitted, and never ask whether to commit. Never push except for an explicitly
   requested Jig publication through the release skill below.
-- Run `npm run check` before committing.
+- Run `npm run verify` before committing (not the tests; they run when releasing, D-258).
 - No AI attribution trailers in commit messages.
 
 ## Releasing Jig
