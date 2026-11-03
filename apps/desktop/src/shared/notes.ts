@@ -1,3 +1,8 @@
+/**
+ * Project notes (D-202, part of the project's knowledge since D-289): short facts every chat in a
+ * project gets in full with each message, kept by you and Claude. Stored with the project's
+ * knowledge in `knowledge/<projectId>/notes.json`.
+ */
 export type NoteKind = "wait" | "note" | "link";
 
 export interface Note {
@@ -67,14 +72,14 @@ export function addNote(list: Note[], fields: Omit<Note, "id" | "createdAt">, no
 }
 
 /**
- * What Claude gets with every message of a chat (D-151): the notes as they stand and how to keep
- * them, short enough to repeat each turn.
+ * The notes part of what Claude gets with every message of a chat (D-151, D-289): the notes as they
+ * stand and how to keep them, short enough to repeat each turn.
  */
 export function turnContext(list: readonly Note[]): string {
   const rule =
-    "These notes describe the PROJECT and are shared with every chat in it. Save only important context that another chat needs to understand the project beyond this task or chat: lasting decisions, constraints, facts, useful project links, and dependencies or blockers affecting future project work. Example (wait): 'Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete.' This is not a to-do list, task reminder, plan, progress log or handoff: do not record current work, files changed, commits, temporary branches, routine next steps, or things relevant only to this task or chat. Do not add notes merely because a turn ended. Use addon_notes_add only when meaningful project knowledge emerges; read existing notes first, update rather than duplicate with addon_notes_update, and remove obsolete notes with addon_notes_remove. Mark a dependency cleared (done: true) only when confirmed. Keep a small set of concise, accurate notes; do not infer project facts from guesses. The user sees and edits the same list in Project notes.";
+    "Notes describe the PROJECT and are shared with every chat in it. Save only important context that another chat needs to understand the project beyond this task or chat: lasting decisions, constraints, facts, useful project links, and dependencies or blockers affecting future project work. Example (wait): 'Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete.' This is not a to-do list, task reminder, plan, progress log or handoff: do not record current work, files changed, commits, temporary branches, routine next steps, or things relevant only to this task or chat. Do not add notes merely because a turn ended. Use jig_notes_add only when meaningful project knowledge emerges; read existing notes first, update rather than duplicate with jig_notes_update, and remove obsolete notes with jig_notes_remove. Mark a dependency cleared (done: true) only when confirmed. Keep a small set of concise, accurate notes; do not infer project facts from guesses. The user sees and edits the same notes in the project's Knowledge.";
   return [
-    listing(list, "This project's notes (shared across its chats):"),
+    listing(list, "Notes:"),
     ...(list.some((n) => n.kind === "wait" && !isDone(n))
       ? ["Open dependencies constrain only the work they describe; unrelated project work can continue."]
       : []),

@@ -145,7 +145,6 @@
       ],
       "specs": ["meetings.spec.ts", "meeting-history.spec.ts"]
     },
-    { "files": ["addons/notes/**"], "specs": ["notes.spec.ts"] },
     { "files": ["addons/pipelines/**"], "specs": ["pipelines.spec.ts"] },
     {
       "files": [
@@ -180,9 +179,10 @@
       "files": [
         "apps/desktop/src/renderer/features/knowledge/**",
         "apps/desktop/src/main/knowledge/**",
-        "apps/desktop/src/shared/knowledge.ts"
+        "apps/desktop/src/shared/knowledge.ts",
+        "apps/desktop/src/shared/notes.ts"
       ],
-      "specs": ["knowledge.spec.ts"]
+      "specs": ["knowledge.spec.ts", "notes.spec.ts"]
     },
     {
       "files": ["apps/desktop/src/renderer/features/projects/**", "apps/desktop/src/main/projects/**"],

@@ -309,7 +309,7 @@ They can plug into 20 places:
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 | `jig.event` | host code when a chat finishes, a commit lands… | `search.provider` | results in Jig's search (Ctrl+P) |
 
-Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** and **Boards** (Azure DevOps), **Releases**, **Project notes** (decisions, constraints and dependencies shared across chats),
+Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** and **Boards** (Azure DevOps), **Releases**,
 **Workflows** and **Tasks** are add-ons too, written against the same API. Add-ons can also stream a
 program's output live, watch files, show toasts with buttons and system notifications, badge their
 views and call each other's shared functions. Guide: [`docs/guides/writing-addons.md`](docs/guides/writing-addons.md) ·

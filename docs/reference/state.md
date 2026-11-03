@@ -130,12 +130,13 @@ Regular chats start with optional `SessionMeta.draft: true` in memory only. The 
 Unsent drafts are hidden from history/search and omitted from disk layouts; startup ignores legacy
 empty regular chats without deleting files. Imported/forked/builder chats retain persistence (D-199).
 
-### Project notes (D-202)
+### Project notes (D-202, D-289)
 
-`addon-data/notes.json` stores `@project(<projectId>) notes`: an array of
+Part of the project's knowledge: `knowledge/<projectId>/notes.json` holds `{ notes: [...] }`, each
 `{ id, kind: "wait" | "note" | "link", text, url?, done?, by: "you" | "claude", createdAt }`.
-Every chat in the project shares it; projectless chats do not read it. Host operations explicitly
-pass project scope. Legacy global `chat:<id>` entries are unused and are not migrated.
+Every chat in the project shares them; projectless chats do not read them. The Notes add-on kept
+them in `addon-data/notes.json` (`@project(<projectId>) notes`); Jig moves those once at startup
+and renames that file `notes.json.migrated` (legacy `chat:<id>` entries stay only there).
 
 ### Bundled skill controls (D-205)
 
@@ -169,5 +170,5 @@ Connection, and are not exposed as AI-editable ConfigSchema fields because they 
 
 `knowledge/<projectId>/index.json` lists a project's documents (`id`, `name`, `chars`, `addedAt`,
 `source`); `knowledge/<projectId>/docs/<id>.txt` holds each one's text (cut at 1,000,000 characters).
-Removing the project removes its folder. `cache/copilot/<version>/` holds Copilot's language server
+`knowledge/<projectId>/notes.json` holds its notes (above). Removing the project removes its folder. `cache/copilot/<version>/` holds Copilot's language server
 (D-255) and `cache/copilot/current.json` names the version in use.

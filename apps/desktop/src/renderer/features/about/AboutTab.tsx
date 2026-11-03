@@ -643,7 +643,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
               items={[
                 "Drag chats between projects; pin the ones you keep coming back to and put them in your order; group the list by project, status or day",
                 "Instructions per project, added to what Claude reads in its chats",
-                "Knowledge per project: documents (text, PDF, Office) every chat in it can read (drop files on the project's Home)",
+                "Knowledge per project: notes every chat in it gets with each message (decisions, constraints, dependencies, links; you and Claude keep them current) and documents (text, PDF, Office) it can read (drop files on the project's Home)",
                 "Import your claude.ai projects (instructions and knowledge) from claude.ai's data export",
                 "One Home per project with its starter prompts, recent chats and scripts",
                 "A default repo per project for the Git view, others shown next to it when needed",
@@ -910,7 +910,6 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
                 "Boards per project (Code → Boards): pick team boards found in your organisations; a tab per board with its columns and cards, like Azure DevOps",
-                "Project notes shared across chats: important decisions, constraints, dependencies and links — you and Claude keep project knowledge current, separate from task plans",
               ]}
             />
           </Section>

@@ -108,6 +108,25 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "lsp.restart": z.object({ id }).strict(),
   "knowledge.read": z.object({ projectId: id, id }).strict(),
   "knowledge.remove": z.object({ projectId: id, id }).strict(),
+  "notes.list": z.object({ projectId: id }).strict(),
+  "notes.add": z
+    .object({
+      projectId: id,
+      kind: z.enum(["wait", "note", "link"]),
+      text: z.string().max(5_000),
+      url: z.string().max(2_000).optional(),
+    })
+    .strict(),
+  "notes.update": z
+    .object({
+      projectId: id,
+      id,
+      text: z.string().max(5_000).optional(),
+      url: z.string().max(2_000).optional(),
+      done: z.boolean().optional(),
+    })
+    .strict(),
+  "notes.remove": z.object({ projectId: id, id }).strict(),
   "knowledge.addFiles": z.object({ projectId: id, paths: z.array(path).max(100).optional() }).strict(),
   "claudeImport.open": z.object({ path: path.optional() }).strict(),
   "claudeImport.apply": z.object({ token: id, uuids: z.array(id).max(500), path }).strict(),

@@ -9,6 +9,7 @@ import { registerDigest } from "./digest";
 import { registerFiles } from "./files";
 import { registerGallery } from "./gallery";
 import { registerGoTo } from "./goto";
+import { registerKnowledge } from "./knowledge";
 import { registerLearning } from "./learning";
 import { registerLinks } from "./links";
 import { registerMeetingHistory } from "./meetings/History";
@@ -31,6 +32,7 @@ export function registerFeatures(): void {
   registerViewTab();
   registerProjects();
   registerLinks();
+  registerKnowledge();
   registerSessions();
   registerSettings();
   registerTerminals();

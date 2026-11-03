@@ -1,4 +1,4 @@
-import { BookOpen, Download, FilePlus2, X } from "lucide-react";
+import { BookOpen, Download, FilePlus2, NotebookPen, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
 import type { KnowledgeDoc } from "../../../shared/knowledge";
@@ -7,6 +7,7 @@ import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { Badge, Button, cn, Dialog, FileIcon, IconButton, Spinner } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { openClaudeImportDialog } from "./ClaudeImportDialog";
+import { NoteList, notesCount, openNoteEditor, useNotes } from "./Notes";
 
 const sizeLabel = (chars: number) =>
   chars < 1000 ? `${chars} characters` : `${Math.round(chars / 1000)}k characters`;
@@ -38,11 +39,23 @@ export function KnowledgeReaderHost() {
   );
 }
 
+/** A label above one part of the knowledge, with its count at the right. */
+function PartLabel({ children, count }: { children: string; count: string }) {
+  return (
+    <div className="flex h-5 items-center gap-2 px-1 text-2xs text-hint">
+      <span className="flex-1 font-medium">{children}</span>
+      <span className="tabular-nums">{count}</span>
+    </div>
+  );
+}
+
 /**
- * The project's knowledge on its Home (D-256): documents every chat in the project can read. Add
- * files (or drop them here), import claude.ai projects, open one to read it, remove one.
+ * The project's knowledge on its Home (D-256, D-289): notes every chat in the project gets with
+ * each message, and documents it can read. Add notes and files (or drop files here), import
+ * claude.ai projects, open a document to read it, remove one.
  */
 export function KnowledgeCard({ project }: { project: ProjectInfo }) {
+  const { notes } = useNotes(project.id);
   const [docs, setDocs] = useState<KnowledgeDoc[]>();
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -94,6 +107,15 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
       <div className="flex h-7 items-center gap-2">
         <h2 className="flex-1 text-xs font-semibold tracking-wide text-hint uppercase">Knowledge</h2>
         {busy && <Spinner size="sm" />}
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Plus}
+          onClick={() => openNoteEditor(project.id)}
+          data-testid="knowledge-add-note"
+        >
+          Add note…
+        </Button>
         <Button size="sm" variant="ghost" icon={Download} onClick={openClaudeImportDialog}>
           Import from claude.ai…
         </Button>
@@ -107,6 +129,37 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
           Add files…
         </Button>
       </div>
+      <PartLabel count={notesCount(notes)}>Notes · every chat gets them</PartLabel>
+      <div
+        className={cn(
+          "rounded-lg border bg-surface p-1",
+          notes?.length ? "border-line" : "border-dashed border-line-strong",
+        )}
+        data-testid="knowledge-notes"
+      >
+        {notes === undefined ? (
+          <div className="relative h-16">
+            <Spinner center />
+          </div>
+        ) : notes.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => openNoteEditor(project.id)}
+            className="flex h-16 w-full items-center gap-3 rounded-md px-3 text-left hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <NotebookPen className="size-5 shrink-0 text-hint" />
+            <span className="min-w-0 flex-1 text-xs text-muted">
+              Short facts every chat in this project gets with each message: decisions, constraints,
+              dependencies and links. You and Claude keep them current.
+            </span>
+          </button>
+        ) : (
+          <NoteList projectId={project.id} notes={notes} />
+        )}
+      </div>
+      <PartLabel count={docs?.length ? `${docs.length} ${docs.length === 1 ? "document" : "documents"}` : ""}>
+        Documents · Claude reads them when they help
+      </PartLabel>
       <div
         className={cn(
           "rounded-lg border bg-surface p-1",
@@ -121,8 +174,8 @@ export function KnowledgeCard({ project }: { project: ProjectInfo }) {
           <div className="flex h-16 items-center gap-3 px-3">
             <BookOpen className="size-5 shrink-0 text-hint" />
             <div className="min-w-0 flex-1 text-xs text-muted">
-              Documents Claude reads in this project's chats: specs, style guides, notes (text, PDF, Word,
-              Excel, PowerPoint). Drop files here, add them, or{" "}
+              Specs, style guides and other longer texts (text, PDF, Word, Excel, PowerPoint). Drop files
+              here, add them, or{" "}
               <button type="button" className="text-accent hover:underline" onClick={openClaudeImportDialog}>
                 bring your claude.ai projects
               </button>

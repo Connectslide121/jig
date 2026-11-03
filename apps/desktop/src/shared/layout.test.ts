@@ -74,6 +74,16 @@ describe("views", () => {
     expect(layout.right.views).toEqual(["jig.projects"]);
   });
 
+  it("keeps the place of a view that moved into Jig under a new id", () => {
+    const old = LayoutSchema.parse({
+      right: { views: ["jig.sessions", "addon.notes.notes"], active: "addon.notes.notes" },
+    });
+    const layout = normalizeLayout(old, [...views, { id: "jig.notes", defaultRegion: "left" }]);
+    expect(layout.right.views).toEqual(["jig.sessions", "jig.notes"]);
+    expect(layout.right.active).toBe("jig.notes");
+    expect(layout.left.views).not.toContain("jig.notes");
+  });
+
   it("reveals a newly placed view when asked (new add-on views)", () => {
     const layout = normalizeLayout(base(), [
       ...views,

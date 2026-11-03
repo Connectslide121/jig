@@ -130,6 +130,16 @@ export interface HostMethods {
   "knowledge.list": { args: { projectId: string }; result: import("./knowledge").KnowledgeDoc[] };
   "knowledge.read": { args: { projectId: string; id: string }; result: { name: string; text: string } };
   "knowledge.remove": { args: { projectId: string; id: string }; result: void };
+  "notes.list": { args: { projectId: string }; result: import("./notes").Note[] };
+  "notes.add": {
+    args: { projectId: string; kind: import("./notes").NoteKind; text: string; url?: string };
+    result: import("./notes").Note[];
+  };
+  "notes.update": {
+    args: { projectId: string; id: string; text?: string; url?: string; done?: boolean };
+    result: import("./notes").Note[];
+  };
+  "notes.remove": { args: { projectId: string; id: string }; result: import("./notes").Note[] };
   "knowledge.addFiles": {
     args: { projectId: string; paths?: string[] };
     result: { added: import("./knowledge").KnowledgeDoc[]; skipped: string[] };

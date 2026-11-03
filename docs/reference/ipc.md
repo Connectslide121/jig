@@ -53,6 +53,10 @@ settings, add-on permissions.
 | `knowledge.read` | `{ projectId, id }` | `{ name, text }` | one document's text |
 | `knowledge.addFiles` | `{ projectId, paths? }` | `{ added, skipped }` | add files (a picker without `paths`): text, code, Word, Excel, PowerPoint |
 | `knowledge.remove` | `{ projectId, id }` | — | remove a document |
+| `notes.list` | `{ projectId }` | `Note[]` | a project's notes (D-289); changes emit `knowledge.changed` |
+| `notes.add` | `{ projectId, kind, text, url? }` | `Note[]` | add a note as you |
+| `notes.update` | `{ projectId, id, text?, url?, done? }` | `Note[]` | change a note (`url: ""` clears it) |
+| `notes.remove` | `{ projectId, id }` | `Note[]` | remove a note |
 | `claudeImport.open` | `{ path? }` | `ClaudeExportSummary \| undefined` | read `projects.json` from claude.ai's export zip (a picker without `path`) |
 | `claudeImport.apply` | `{ token, uuids, path }` | `{ projectIds }` | make Jig projects (default workspace `path`) with instructions and knowledge |
 | `claudeImport.openSettings` | — | — | claude.ai's settings in the system browser |

@@ -140,6 +140,21 @@ function removeEverywhere(layout: Layout, viewId: string) {
   layout.hidden = layout.hidden.filter((v) => v !== viewId);
 }
 
+/** Views that moved into Jig keep the place you gave them: old id → new id (D-289). */
+const RENAMED_VIEWS: Record<string, string> = { "addon.notes.notes": "jig.notes" };
+
+function renameViews(layout: Layout): void {
+  const to = (id: string) => RENAMED_VIEWS[id] ?? id;
+  for (const r of SIDE_REGIONS) {
+    layout[r].views = layout[r].views.map(to);
+    if (layout[r].active) layout[r].active = to(layout[r].active);
+  }
+  layout.hidden = layout.hidden.map(to);
+  for (const tab of layout.main.tabs)
+    if (tab.type === VIEW_TAB && typeof tab.params.viewId === "string")
+      tab.params.viewId = to(tab.params.viewId);
+}
+
 /**
  * Makes the layout consistent with the views that exist: views nobody placed yet (a new add-on) go to
  * their default region; unknown views are kept (an add-on may be reloading) and stay active if they
@@ -148,6 +163,7 @@ function removeEverywhere(layout: Layout, viewId: string) {
  */
 export function normalizeLayout(input: Layout, views: ViewPlacement[]): Layout {
   const layout = clone(input);
+  renameViews(layout);
   const known = new Set(views.map((v) => v.id));
   const seen = new Set<string>();
   for (const r of SIDE_REGIONS) {

@@ -12,14 +12,17 @@ import {
   type KnowledgeDoc,
   parseClaudeProjects,
 } from "../../shared/knowledge";
+import { listing, type Note, turnContext as notesContext } from "../../shared/notes";
 import { openExternal } from "../appWindows";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
+import { NotesStore } from "./notes";
 import { pdfText } from "./pdf";
 import { KnowledgeStore } from "./store";
 
 const store = new KnowledgeStore();
+const notes = new NotesStore();
 const changed = (projectId: string) => emit("knowledge.changed", { projectId });
 /** Parsed exports waiting for you to pick projects (only the projects are kept, never the chats). */
 const exports = new Map<string, ClaudeProject[]>();
@@ -92,12 +95,53 @@ async function readExport(path: string): Promise<ClaudeExportSummary> {
 const describe = (docs: KnowledgeDoc[]) =>
   docs.map((d) => `- ${d.name} (${Math.max(1, Math.round(d.chars / 1000))}k characters)`).join("\n");
 
+/** Claude's note tools answer with every note as it now stands, and the UI follows. */
+function noted(projectId: string, list: Note[], said: string): string {
+  changed(projectId);
+  return listing(list, said);
+}
+
+function projectOf(meta: { projectId?: string }): string {
+  if (!meta.projectId) throw new JigError("not_found", "Notes belong to a project. This chat isn't in one.");
+  return meta.projectId;
+}
+
+/** Moves the Notes add-on's notes into the projects' knowledge (D-289); logs, never stops startup. */
+async function migrateNotes(): Promise<void> {
+  try {
+    const ids = (await projectStore().list()).map((p) => p.id);
+    const moved = await notes.migrateFromAddon(ids);
+    if (moved) console.log(`[knowledge] moved ${moved} project notes from the Notes add-on`);
+  } catch (error) {
+    console.warn("[knowledge] couldn't move the Notes add-on's notes:", error);
+  }
+}
+
 /**
- * Project knowledge (D-256): documents kept with a project that every chat in it can read, and the
- * import of claude.ai projects (instructions and knowledge) from claude.ai's own data export.
+ * Project knowledge (D-256, D-289): the project's notes, which every chat in it gets in full, and
+ * documents it can read; plus the import of claude.ai projects (instructions and knowledge) from
+ * claude.ai's own data export.
  */
 export function startKnowledge(): void {
+  void migrateNotes();
   handle("knowledge.list", async ({ projectId }) => store.list(projectId));
+  handle("notes.list", async ({ projectId }) => notes.list(projectId));
+  handle("notes.add", async ({ projectId, kind, text, url }) => {
+    await project(projectId);
+    const list = await notes.add(projectId, { kind, text, url }, "you");
+    changed(projectId);
+    return list;
+  });
+  handle("notes.update", async ({ projectId, id, ...fields }) => {
+    const list = await notes.update(projectId, id, fields, "you");
+    changed(projectId);
+    return list;
+  });
+  handle("notes.remove", async ({ projectId, id }) => {
+    const list = await notes.remove(projectId, id);
+    changed(projectId);
+    return list;
+  });
   handle("knowledge.read", async ({ projectId, id }) => {
     const { doc, text } = await store.read(projectId, id);
     return { name: doc.name, text };
@@ -179,15 +223,88 @@ export function startKnowledge(): void {
     await openExternal("https://claude.ai/settings/data-privacy-controls");
   });
 
-  // Each message tells Claude which documents the chat's project has (they change between turns).
+  // Each message gives Claude the project's notes in full and the names of its documents (both
+  // change between turns).
   addMessageContext(async (_text, meta) => {
     if (!meta.projectId) return "";
-    const docs = await store.list(meta.projectId).catch(() => []);
-    if (!docs.length) return "";
-    return `This project has knowledge documents the user keeps for its chats. Read one with jig_knowledge_read (by name) when it may help:\n${describe(docs)}`;
+    const [list, docs] = await Promise.all([
+      notes.list(meta.projectId).catch(() => []),
+      store.list(meta.projectId).catch(() => []),
+    ]);
+    return [
+      "Project knowledge (shared by every chat in this project):",
+      notesContext(list),
+      ...(docs.length
+        ? [
+            `Documents the user keeps for this project's chats. Read one with jig_knowledge_read (by name) when it may help:\n${describe(docs)}`,
+          ]
+        : []),
+    ].join("\n\n");
   });
 
   registerJigTools([
+    {
+      name: "jig_notes_list",
+      description:
+        "Read this chat's project notes, shared with every chat in the project, with ids. They also arrive with each message. Open dependencies constrain only their described work.",
+      readOnly: true,
+      alwaysLoad: true,
+      shape: {},
+      handler: async (_args, meta) => listing(await notes.list(projectOf(meta)), "This project's notes:"),
+    },
+    {
+      name: "jig_notes_add",
+      description:
+        "Save important knowledge ABOUT THE PROJECT that remains useful to other chats beyond this task: lasting decisions, constraints, facts, project links, dependencies or blockers. Example wait: pipeline improvements deferred until the Jenkins-to-Azure-DevOps migration is complete. Not a to-do list, task reminder, progress log or handoff. Never save current work, routine next steps, temporary branches, changed files or commits. Keep notes concise; read first and update duplicates instead.",
+      alwaysLoad: true,
+      shape: {
+        kind: z
+          .enum(["wait", "note", "link"])
+          .describe(
+            "wait: project dependency/blocker; note: lasting project knowledge; link: project reference",
+          ),
+        text: z.string().optional().describe("Concise project context, useful beyond this task or chat"),
+        url: z.string().optional().describe("link: the address"),
+      },
+      handler: async (args, meta) => {
+        const projectId = projectOf(meta);
+        const list = await notes.add(
+          projectId,
+          args as { kind?: string; text?: string; url?: string },
+          "claude",
+        );
+        return noted(projectId, list, `Added note ${list.at(-1)!.id}. The notes now:`);
+      },
+    },
+    {
+      name: "jig_notes_update",
+      description:
+        "Update a project note by id when project facts change, or mark a dependency confirmed cleared (done: true). Update rather than duplicate. These notes are shared across the project's chats.",
+      alwaysLoad: true,
+      shape: {
+        id: z.string().describe("The note's id, as the list shows it"),
+        text: z.string().optional(),
+        url: z.string().optional(),
+        done: z.boolean().optional(),
+      },
+      handler: async (args, meta) => {
+        const projectId = projectOf(meta);
+        const { id, ...fields } = args as { id: string; text?: string; url?: string; done?: boolean };
+        const list = await notes.update(projectId, String(id), fields, "claude");
+        return noted(projectId, list, `Updated note ${id}. The notes now:`);
+      },
+    },
+    {
+      name: "jig_notes_remove",
+      description: "Remove obsolete project knowledge by id from the shared project notes.",
+      alwaysLoad: true,
+      shape: { id: z.string().describe("The note's id") },
+      handler: async (args, meta) => {
+        const projectId = projectOf(meta);
+        const list = await notes.remove(projectId, String(args.id));
+        return noted(projectId, list, `Removed note ${args.id}. The notes now:`);
+      },
+    },
     {
       name: "jig_knowledge_read",
       description:

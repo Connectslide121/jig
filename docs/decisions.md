@@ -3578,3 +3578,29 @@ meaningful short name".
 - **Setting:** `engine.aiTitles`, on by default; protected (it spends the plan, like caption
   translation), so it's switched in Settings → Claude Code, not from a chat. This adds a third exception
   to "nothing calls an AI in the background" in `AGENTS.md`.
+
+## D-289: Project notes are part of the project's knowledge, not an add-on
+
+Jon, 2026-11-03: "the project notes should probably just belong there as well, in the project, not
+as a separate addon … how can we do this so that we dont lose the existing notes". Agreed with the
+plan below, including keeping the sidebar view.
+
+- **Where:** notes move into Jig itself, next to the project's documents:
+  `knowledge/<projectId>/notes.json` (`{ notes: Note[] }`, the same note shape as D-202). Removing a
+  project removes them with its knowledge. The Notes add-on is gone; its logic lives in
+  `shared/notes.ts`, its store in `main/knowledge/notes.ts`.
+- **Notes stay notes, not documents:** short, typed, given to Claude in full with every message and
+  kept by Claude; documents stay long, read on demand, added by you. Claude gets one "Project
+  knowledge" block per message: the notes, then the document names.
+- **Moving the existing notes (an exception to "no migrations", D-101):** at startup, every existing
+  project whose `@project(<id>) notes` entry is in `addon-data/notes.json` and that has no
+  `notes.json` yet gets them unchanged (ids, kinds, authors, times). The old file is then renamed
+  `notes.json.migrated`, never deleted. Notes of removed projects and legacy `chat:*` entries stay
+  only in that file. (Claude, on my own: copy-if-missing, so it is safe to run again.)
+- **Tools:** `jig_notes_list` (reads, no prompt) and `jig_notes_add` / `jig_notes_update` /
+  `jig_notes_remove`, all always loaded. The writing tools follow the chat's permission mode: the
+  add-on had marked them read-only, which `AGENTS.md` reserves for tools that only read.
+- **UI:** the project's Home Knowledge card shows Notes above Documents, with **Add note…**. The
+  sidebar view stays as `jig.notes` ("Project notes", left), and saved layouts keep where you had
+  `addon.notes.notes` (`RENAMED_VIEWS` in `shared/layout.ts`). (Claude, on my own: a whole note row
+  opens its editor; the hourglass clears a dependency; open and remove are on hover.)

@@ -51,11 +51,11 @@ describe("a project's notes", () => {
 
   it("tells Claude the notes and how to keep them with every message", () => {
     const empty = turnContext([]);
-    expect(empty).toContain("This project's notes");
+    expect(empty).toContain("Notes:\n(no notes)");
     expect(empty).toContain("not a to-do list");
     expect(empty).toContain("beyond this task or chat");
     expect(empty).toContain("Do not add notes merely because a turn ended");
-    expect(empty).toContain("addon_notes_add");
+    expect(empty).toContain("jig_notes_add");
     const text = turnContext([note("1", "wait", "API review"), note("2", "note", "VAT")]);
     expect(text).toContain("[1] Waiting on: API review");
     expect(text).toContain("unrelated project work can continue");

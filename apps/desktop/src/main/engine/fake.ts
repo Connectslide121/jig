@@ -276,10 +276,10 @@ export class FakeEngine implements Engine {
         } else if (
           options.toolHandlers?.jig_knowledge_read &&
           /knowledge/i.test(text) &&
-          /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
+          /Documents the user keeps[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
         ) {
           // Jig's context lists the project's knowledge (D-256): read the first document.
-          const name = /knowledge documents[^\n]*\n- (.+?) \(\d+k characters\)/.exec(sent)![1]!;
+          const name = /Documents the user keeps[^\n]*\n- (.+?) \(\d+k characters\)/.exec(sent)![1]!;
           const readId = `tool-${randomUUID()}`;
           onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_knowledge_read", input: { name } });
           const output = outputText(await options.toolHandlers.jig_knowledge_read({ name }));
@@ -842,8 +842,8 @@ export class FakeEngine implements Engine {
             await call("addon_tests_run", { suite: "npm:test" });
             await stream(`${msg}:text:0`, "The unit tests ran: see the result above.", signal);
           } else if (/remember in the notes/.test(lower)) {
-            // The Notes add-on's tool: a note for this project (it shows in the Notes view).
-            await call("addon_notes_add", {
+            // The project notes tool: a note for this project (it shows in its Knowledge and Notes view).
+            await call("jig_notes_add", {
               kind: "wait",
               text: "Pipeline improvements are deferred until the Jenkins-to-Azure-DevOps migration is complete",
             });

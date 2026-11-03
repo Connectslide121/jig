@@ -247,6 +247,14 @@ Restart); "No language server" offers to install one. Settings → Editor → La
 TypeScript/JavaScript, Python, C#, JSON, CSS, HTML, Go and Rust with where each was found, or Install…
 (runs the install command in a terminal). Needs a try with real servers (`typescript-language-server`).
 
+Project notes in the project's knowledge (2026-11-03, D-289): notes are no longer an add-on. The
+Home's **Knowledge** card shows **Notes** (every chat gets them) above **Documents** (Claude reads
+them when they help), with **Add note…**; the **Project notes** sidebar view stays. Claude's tools
+are now `jig_notes_*`; adding, changing or removing a note asks like other changes unless the
+chat's mode allows it. At the first start, notes the add-on kept move into each project unchanged
+and `addon-data/notes.json` becomes `notes.json.migrated`. Try: start Jig with existing notes and
+check each project's Knowledge card.
+
 Project knowledge (2026-11-03, D-256): a project's Home has **Knowledge**: drop files on it or
 Add files… (text, Markdown, code, PDF, Word, Excel, PowerPoint), click one to read it, ×
 removes it. Every chat in the project is told which documents there are and Claude reads them with
@@ -675,9 +683,6 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     repository by its own name, a sync chip (pull, then push) and its branch; Arrange hides,
     reorders and groups them with dividers, once for all projects; "N to push/pull" in the status
     bar; right-click a project → Open in VS Code / Explorer.
-  - **Project notes** (left sidebar for new placements; D-202): important project knowledge shared
-    across all chats, with Waiting on, Note and Link kinds. Claude gets current notes with every
-    message and tools stay always loaded. Add/Edit uses modals; legacy chat notes are ignored.
   - **Pipelines** (right sidebar; D-148), like the pipelines plugin: the Azure DevOps pipelines of
     the repositories in your workspaces, per repository, with the newest run (chip, branch, why, who,
     changed parameters) and its stages; **Run** opens a modal form with the branch, a picker per YAML

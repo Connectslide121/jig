@@ -16,7 +16,15 @@ test("Knowledge: files kept with a project, read by Claude in its chats, removed
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   const card = page.getByTestId("home-knowledge").first();
-  await expect(card).toContainText("Documents Claude reads in this project's chats");
+  await expect(card).toContainText("Specs, style guides and other longer texts");
+  // Notes are part of the knowledge: added from the card, shown in it.
+  await card.getByTestId("knowledge-add-note").click();
+  await page.getByRole("dialog").getByTestId("note-input").fill("Totals include VAT");
+  await page.getByRole("dialog").getByTestId("note-save").click();
+  await expect(card.getByTestId("knowledge-notes")).toContainText("Totals include VAT");
+  expect(await hostCall(page, "notes.list", { projectId: project.id })).toMatchObject({
+    value: [{ id: "1", kind: "note", text: "Totals include VAT", by: "you" }],
+  });
   await hostCall(page, "knowledge.addFiles", { projectId: project.id, paths: [style] });
   await expect(card.getByTestId("knowledge-doc")).toHaveCount(1);
   await expect(card.getByTestId("knowledge-doc")).toContainText("style.md");

@@ -97,7 +97,7 @@ in this order:
 | "list jig library skills" | Reports the skill plugin ids actually selected at engine start; used to verify global/project controls and continuing chats |
 | "in a jig terminal" | Claude runs `echo build finished` in a Jig terminal (`jig_terminal_run`); when it exits, Jig sends the chat a "Terminal "Build" finished" message, which starts a new turn |
 | "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) and runs `npm:test` (`addon_tests_run`); the run shows in the Tests view (D-244) |
-| "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `addon_notes_add`; all chats in that project see it |
+| "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `jig_notes_add`; all chats in that project see it |
 | "change the queued task" | Claude appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |

@@ -467,7 +467,7 @@ extensions or embed VS Code (D-019, D-022).
 
 The other built-in add-ons: `addons/repos` (all projects' repos at a glance, fetch/pull/push, switching
 branches, Open in VS Code/Explorer), `addons/pipelines` (Azure DevOps through `az`, with a watcher for runs you started)
-`addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/notes` (project knowledge shared across chats, stored with project scope; sent with every message through `claude.context`, D-202), `addons/releases` (versions, changelogs and
+`addons/scripts` (scripts view and menu actions), `addons/files` (the project's file tree with git colours), `addons/releases` (versions, changelogs and
 deploys per repository from its `.jig/release.json` policy, D-110; its Claude tools are the first
 `claude.tool` contributions, D-115) and `addons/workflows` (repeated
 lists of steps per project, run by hand, with help or on a schedule, D-112). They use only public slots, so they are
@@ -629,3 +629,9 @@ then create normal project/meeting-only Plan-mode chats that read paginated text
 Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'
 shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
 See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.
+
+**Project knowledge** (`main/knowledge/`, D-256, D-289) is core, not an add-on: per project, notes
+(`notes.ts`, `shared/notes.ts`) and documents (`store.ts`) under `knowledge/<projectId>/`. One
+message context gives Claude the notes in full and the document names; `jig_notes_*` keep the
+notes, `jig_knowledge_read` reads a document. The renderer shows them on the project's Home
+(`features/knowledge/KnowledgeCard.tsx`) and in the `jig.notes` view (`Notes.tsx`).

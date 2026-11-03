@@ -10,6 +10,7 @@ import { StandupHost } from "../features/digest";
 import { GoToHost } from "../features/goto";
 import { ClaudeImportDialogHost } from "../features/knowledge/ClaudeImportDialog";
 import { KnowledgeReaderHost } from "../features/knowledge/KnowledgeCard";
+import { NoteEditorHost } from "../features/knowledge/Notes";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
@@ -124,6 +125,7 @@ export function Workbench() {
         <CopilotDialogHost />
         <ClaudeImportDialogHost />
         <KnowledgeReaderHost />
+        <NoteEditorHost />
         <ProjectDialogHost />
         <LinkDialogHost />
         <SessionDialogsHost />
