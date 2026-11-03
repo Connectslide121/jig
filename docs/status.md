@@ -70,7 +70,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.6.0 being prepared (2026-11-03): Jig 0.6.0 adds Azure tenants: sign in to several tenants, switch from the avatar at the top right, pin one per project, and have chats, terminals, Pipelines and Boards follow it. Claude now hears when a terminal it started finishes, and the task queue no longer loses changes. Publication not yet verified.
+Jig 0.6.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.6.0),
+source/tag `d212aa8923af0c4f4e446c08b632ed823239cc06`. Installer: 373,097,013 bytes;
+SHA-256 `b4d802b0a6ba7144f8f82fd6c7c98d70686014aa0e9631139991ec3ae6e58a5f`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.6.0 with its feed and installer. In 0.6.0: Jig 0.6.0 adds Azure tenants: sign in to several tenants, switch from the avatar at the top right, pin one per project, and have chats, terminals, Pipelines and Boards follow it. Claude now hears when a terminal it started finishes, and the task queue no longer loses changes.
 
 Jig 0.5.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.5.0),
 source/tag `da3672b10281e8257eae1cbf99af6093a59628fb`. Installer: 373,067,457 bytes;
