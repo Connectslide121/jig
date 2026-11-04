@@ -107,7 +107,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   |---|---|---|---|
   | `default` (Ask before changes) | `untrusted` | workspace-write (+ extra folders) | commands Codex knows only read run; it asks before every other command and every file change, and what you approve can write in the project (D-315) |
   | `acceptEdits` | `on-request` | workspace-write (+ extra folders) | edits run; file changes Codex still asks about are accepted |
-  | `bypassPermissions` (Don't ask) | `never` | workspace-write with network | Codex never asks |
+  | `bypassPermissions` (Don't ask) | `never` | danger-full-access (no sandbox, D-334) | Codex never asks; MCP tools, Jig's included, run unasked |
   | `plan` (Plan only, D-315) | `on-request` | read-only | Jig declines every command or file approval; each turn starts with `PLAN_MODE_PROMPT`; the plan goes to `exit_plan` |
 
 - **Plan only (D-315):** the turn's input starts with `PLAN_MODE_PROMPT` (a `<jig_plan_mode>` text
@@ -141,6 +141,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   | `agentMessage` item, `item/agentMessage/delta` | text `block_start` / `block_delta` / `block_end` |
   | `reasoning` summary or text deltas | thinking blocks (nothing when Codex keeps its reasoning to itself) |
   | `commandExecution` item | `tool_use` Bash (`command` without Codex's `powershell -Command` / `bash -lc` wrapper) and its `tool_result` (exit code, declined) |
+  | a command with no `item/commandExecution/outputDelta` for 3 minutes | a warning notice (key `silent-command-<id>`), replaced by an info notice when it finishes (`SilentCommandWatch`, D-334) |
   | `fileChange` item | `tool_use` Edit (Write for a new file) per file, `tool_result` with the diff |
   | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>` (Jig's `exit_plan` / `ask_user` → `ExitPlanMode` / `AskUserQuestion`), result text and images |
   | `webSearch`, `imageView`, `contextCompaction` | WebSearch, Read, `compacted` |

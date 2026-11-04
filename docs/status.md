@@ -1,5 +1,16 @@
 # Status
 
+ChatGPT chats in Don't ask run without a sandbox (2026-11-04, D-334): a ChatGPT (Codex) chat in
+**Don't ask** now runs like a Claude chat in that mode, with no sandbox, so Codex's elevated Windows
+sandbox can't leave its commands hanging, and Jig's own tools (`jig_terminal_run`…) run instead of
+being refused with "approval policy is never". The other modes keep their sandbox. A Codex command
+that prints nothing for 3 minutes now gets a warning in the chat with the command and "press Stop to
+end the turn if it hangs"; when it finishes, the warning says after how long. Checked with Codex
+0.166.0 driven directly: an MCP tool refused in the old setup runs in the new one, also after
+switching a chat to Don't ask mid-way. Unit tests pass.
+**Check on your machine:** run a ChatGPT queue task in Don't ask that reads files and calls
+`jig_terminal_run`: its commands should finish and the tool should run.
+
 Mention a Teams chat in a Jig chat (2026-11-04, D-333): type **@chat** in any chat's message box
 (Claude or ChatGPT) and the @ picker lists your Teams chats from the Meetings lobby (picture or group
 icon, name, last activity); type on (`@chat alex`, `@chat:alex`) to filter them by name or member.

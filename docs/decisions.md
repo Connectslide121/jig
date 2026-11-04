@@ -4162,7 +4162,8 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   a read-only sandbox, so Codex reads freely and asks before writing (Codex's own default,
   workspace-write, would edit without asking, which isn't what the mode says). Accept edits =
   `on-request` with workspace-write, and file-change approvals Codex still sends are accepted. Don't
-  ask = `never` with workspace-write and network. Plan mode is off in Codex's capabilities.
+  ask = `never` with workspace-write and network (replaced by D-334: no sandbox). Plan mode is off in
+  Codex's capabilities.
   Overrides go with the next `turn/start` (Codex keeps them), like model and effort.
 - **Approvals:** Allow → `accept`, Always → `acceptForSession` (Codex remembers it for the thread;
   Jig writes no rule), Deny → `decline`. Questions and MCP elicitations wait for phase E: elicitations
@@ -4963,3 +4964,31 @@ written or changed but never run. Extends D-258 and D-325.
   resume. Stop and report after two rounds or when a fix needs more than a small app change. Flaky tests
   don't block; they're reported with a task offered. Claude, on my own: the two-round limit and the
   four kinds.
+
+## D-334: Codex's Don't ask runs without a sandbox, and silent commands are flagged
+
+**Who:** Jon, 2026-11-04, after a ChatGPT queue task in Don't ask couldn't run a single command.
+Replaces D-311's Don't-ask sandbox (`never` with workspace-write and network).
+
+- **What happened:** Codex 0.166.0 ran the chat with `never` and workspace-write. With
+  `[windows] sandbox = "elevated"` in `~/.codex/config.toml`, every command (PowerShell, then cmd)
+  went through Codex's elevated Windows sandbox and hung for minutes with no output. The fallback,
+  `jig_terminal_run`, was refused: "MCP tool call requires approval, but approval policy is never".
+  The day before, a Don't-ask chat with `never` and danger-full-access ran 247 commands without trouble.
+- **Don't ask = `never` with danger-full-access** (`sandboxPolicy: { type: "dangerFullAccess" }`, at
+  `thread/start` and on each mode switch's `turn/start`), like Claude Code's bypassPermissions, which
+  has no sandbox either. The other modes are unchanged.
+- **Jig's tools run in it without extra config.** Why the call was refused: Codex decides an MCP
+  tool's approval from its `approval_mode` (Jig pre-approves only `readOnly` tools); `auto` with no
+  annotations needs approval, and inside a sandbox `never` turns that into a refusal. With full access
+  Codex runs MCP tools unasked. Checked live with 0.166.0: an unannotated tool is refused with
+  workspace-write + `never`, runs with danger-full-access + `never`, and also runs when a chat started
+  in Ask before changes switches to Don't ask (the turn's overrides decide). So Jig doesn't pre-approve
+  all its tools in the thread's config, which would also have outlived a switch back to a stricter mode.
+  Claude, on my own: the live check and not adding `default_tools_approval_mode`.
+- **A silent command is flagged in the chat** (`SilentCommandWatch`, `engine/codexSilentCommands.ts`):
+  a Codex command that has printed nothing for 3 minutes gets a warning notice with the command ("press
+  Stop to end the turn if it hangs"); when it finishes, the same notice (by key) says after how long.
+  Codex keeps waiting either way; Jig doesn't stop the command. Not in the queue report: the report is
+  the chat's own, so the chat's agent would have to mention it. Claude, on my own: the 3 minutes and
+  the wording.

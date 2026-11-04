@@ -45,6 +45,7 @@ import { savedThread, threadMessages } from "./codexHistory";
 import { personalInstructions } from "./codexInstructions";
 import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
+import { SilentCommandWatch } from "./codexSilentCommands";
 import { claudeSkillFolders, missingSkills } from "./codexSkills";
 import {
   JIG_ADDED_TEXT,
@@ -78,21 +79,30 @@ const log = logger("engine");
  *   Windows it often reported the sandbox's "access denied" instead; an approved command still ran
  *   read-only. Checked with Codex 0.166.0, D-315.)
  * - acceptEdits: workspace-write sandbox, file changes it still asks about are accepted.
- * - bypassPermissions (Don't ask): workspace-write with network, Codex never asks.
+ * - bypassPermissions (Don't ask): no sandbox (danger-full-access) and Codex never asks, like Claude
+ *   Code's bypassPermissions, which has no sandbox either (D-334). Inside a sandbox with `never`,
+ *   Codex refuses every MCP tool call that needs approval (Jig's own tools included), and on Windows
+ *   the elevated sandbox can leave a command hanging with no output. With full access Codex runs MCP
+ *   tools unasked, also when a chat switches to this mode mid-way (checked with Codex 0.166.0).
  */
 export function codexPolicy(
   mode: PermissionMode,
   extraRoots: string[] = [],
 ): { approvalPolicy: AskForApproval; sandbox: SandboxMode; sandboxPolicy: SandboxPolicy } {
+  if (mode === "bypassPermissions")
+    return {
+      approvalPolicy: "never",
+      sandbox: "danger-full-access",
+      sandboxPolicy: { type: "dangerFullAccess" },
+    };
   if (mode !== "plan")
     return {
-      approvalPolicy:
-        mode === "bypassPermissions" ? "never" : mode === "default" ? "untrusted" : "on-request",
+      approvalPolicy: mode === "default" ? "untrusted" : "on-request",
       sandbox: "workspace-write",
       sandboxPolicy: {
         type: "workspaceWrite",
         writableRoots: extraRoots,
-        networkAccess: mode === "bypassPermissions",
+        networkAccess: false,
         excludeTmpdirEnvVar: false,
         excludeSlashTmp: false,
       },
@@ -282,7 +292,10 @@ export class CodexEngine implements Engine {
     const normalizer = new CodexNormalizer();
     /** Aborted when a turn ends or the chat closes: a stand-in's card waiting for you goes away. */
     let turnAbort = new AbortController();
+    /** A command that runs for minutes without output gets a warning in the chat. */
+    const silent = new SilentCommandWatch(onEvent);
     const endTurn = () => {
+      silent.clear();
       turnAbort.abort();
       turnAbort = new AbortController();
     };
@@ -376,6 +389,7 @@ export class CodexEngine implements Engine {
           asking.get(String(p.requestId))?.abort();
           asking.delete(String(p.requestId));
         }
+        silent.handle(message.method, message.params);
         emit(normalizer.handle(message));
       },
       request: (message) => void answer(message),
