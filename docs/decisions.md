@@ -4237,3 +4237,37 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   Code (`${VAR}`, `${VAR:-default}`); SSE servers are skipped because Codex has no SSE transport.
 - **Tool timeout 30 minutes** in Codex's config: a test run or a release through a Jig tool can take
   long, and Codex's default would cut it off.
+
+## D-314: Picking a chat's provider: in the message box, Settings → Chats and the project
+
+- Status: accepted. Task Codex chat D (Jon's plan "Codex chats in Jig", phase D, 2026-11-04). The
+  settings layout is Jon's (2026-11-04); the rest is Claude's, on my own, unless it says otherwise.
+- **Where you pick** (Claude, on my own): Jig has no new-chat dialog, a chat opens empty and you
+  choose its model in the message box. So the provider is a button there, before the model picker:
+  Claude or ChatGPT (ChatGPT greyed out, with "Sign in to ChatGPT on Get started…", while Codex isn't
+  signed in). It can change until the chat has sent anything (`sessions.setProvider`, refused with
+  `not_allowed` after a turn, a queued message or anything in the transcript), so a chat is still one
+  provider for life (D-309). After that the same button is the chat's mark, without a chevron and
+  without a menu, keeping its size, so nothing beside it moves.
+- **Switching takes the provider's defaults** (Claude, on my own): its model and effort (the
+  project's when the project runs on that provider, else `engine.defaultModel` or `engine.codexModel`
+  / the new `engine.codexEffort`) and the default permission mode. A provider without plan mode gets
+  Ask before changes instead of Plan only, also for new chats (`createChat`).
+- **Settings → Chats** (Jon): the Claude Code section is renamed Chats. "New chats run on: Claude |
+  ChatGPT" on top, then two fixed groups, Claude chats and ChatGPT chats, always both shown; the group
+  of the current default has a Default badge at the far right of its header. Tester, search and
+  subagent models stay in Claude chats (they are Claude subagents). AI features stays its own
+  section. The ChatGPT group also holds `engine.codexInstructions` and `engine.codexAllowApiKey`
+  (D-311, D-312). Rows for every chat (permission mode, names, notifications, the browser) moved to
+  an "All chats" group (Claude, on my own). The section keeps its id `engine`, so links to it work.
+- **Projects** (plan): "Chats run on" in the project dialog (`Project.provider`, D-309); its model and
+  effort pickers list that provider's choices and reset when it changes.
+- **Hidden, not dead** (plan): Codex chats don't show Plan only (Shift+Tab skips it), rewind and
+  edit-and-resend, fork or Claude Code's suggestion chip. The composer has no reserved row for them:
+  Claude chats show the suggestion only when there is one, so a Codex chat simply never has it.
+- **Marks** (plan): the usage footer's provider marks are one component (`ProviderMark`). The chat
+  header always shows the chat's mark. In the Chats list, once any ChatGPT chat exists, every row
+  keeps a slot at the far right; ChatGPT chats show their mark there and Claude chats, the default,
+  leave it empty (Claude, on my own: a mark on every row would be noise for the common case).
+- **Usage** (plan): a Codex chat's turn refreshes the ChatGPT meter (at most every 15 s), not
+  Claude's.

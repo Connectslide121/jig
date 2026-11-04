@@ -45,6 +45,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
 - **The real Claude Code.** Every chat is an official Claude Code session, with your CLAUDE.md files,
   skills, MCP servers, plugins and **your own subscription**. Jig adds a workbench around it; it
   doesn't replace the agent.
+- **Or ChatGPT, if you have it.** Sign in to OpenAI's Codex CLI and a chat can run on your ChatGPT plan
+  instead: pick Claude or ChatGPT beside the model picker, set the default in Settings → Chats or per
+  project. Codex chats get Jig's tools under the same names and your personal instructions.
 - **Everything Claude Code's terminal does, with menus.**
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.
@@ -322,6 +325,8 @@ reference: [`docs/reference/slots.md`](docs/reference/slots.md),
   yourself (`claude`, then `/login`). **Jig never reads, stores or forwards your Claude login.**
 - By default `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` are removed from chat sessions, so usage goes
   to your Claude plan, not to pay-as-you-go API billing.
+- ChatGPT chats run the official **Codex CLI**, signed in with `codex login`; Jig never reads its
+  login either, and removes `OPENAI_API_KEY` / `CODEX_API_KEY` from them by default.
 - git, GitHub and Azure work with your own `git`, `gh` and `az`. Jig stores no tokens: an Azure tenant
   you add is an `az login` in a folder of its own, kept by the Azure CLI.
 - Everything Jig keeps (settings, layout, chats, add-ons, the activity it learns from) is in `~/.jig`

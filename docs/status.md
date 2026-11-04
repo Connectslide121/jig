@@ -1,5 +1,18 @@
 # Status
 
+Picking Claude or ChatGPT for a chat (2026-11-04, D-314): a new chat has a provider button before its
+model picker, Claude or ChatGPT (greyed out with a link to Get started while Codex isn't signed in).
+It can change until the first message; then it is the chat's mark. ChatGPT chats show ChatGPT's
+models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and hide what Codex can't do
+(Plan only, rewind and edit-and-resend, fork, the suggestion chip). The chat header shows the chat's
+mark, and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
+(was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
+group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the
+default one badged. A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the
+ChatGPT usage meter. Checked with the fake engine in Jig Dark and Jig Light, narrow and wide. Needs
+testing on your machine with Codex signed in: a real ChatGPT chat from the picker (reply, a command,
+the model and effort menus, the ChatGPT meter moving), and the picker greyed out after `codex logout`.
+
 Jig's tools in Codex chats (2026-11-04, D-313): a Codex chat now has the same Jig tools as a Claude
 chat, under the same names (`addon_boards_*`, `addon_tasks_add`, `jig_*`), so instructions that name
 them work in both. They come from a small server only that chat can reach (on this computer, with a
@@ -7,7 +20,7 @@ secret of its own, gone when the chat ends). Tools that only read run without as
 the usual permission card; screenshots from tools show on the tool card. The project's `.mcp.json`
 servers that Claude Code is allowed to start there come along too. Checked against Codex 0.166.0 with
 a script (the server connects, a read-only tool runs unasked, another asks, commands Codex runs can't
-see the secret). Needs testing in the app once the provider picker exists (task D).
+see the secret). Needs testing in the app with a ChatGPT chat from the provider picker (D-314).
 
 Codex chat engine (2026-11-04, D-311, D-312): a chat whose provider is Codex now runs on OpenAI's
 Codex (`codex app-server`, your ChatGPT sign-in) instead of failing: replies stream, commands show on
@@ -15,7 +28,7 @@ the Bash card, file changes on the Edit/Write cards with their diffs, MCP calls 
 Codex's approvals are the usual permission cards (Allow, Always, Deny). Ask before changes runs Codex
 read-only and asking; Accept edits lets it write in the project; Don't ask never asks. Your personal
 instructions (`~/.claude/CLAUDE.md` with its imports) go with every Codex chat, so one file stays the
-source. There is no way to start a Codex chat from the UI yet (the provider picker comes with task D);
+source. (Starting one from the UI came with D-314.)
 checked with a script driving the engine against Codex 0.166.0 on Windows (a reply, a command, the
 context meter, the model list, Stop). Needs testing in the app once the picker exists.
 

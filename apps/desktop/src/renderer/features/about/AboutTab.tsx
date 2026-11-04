@@ -476,8 +476,8 @@ function Skills() {
           </>,
           <>
             <b>Your ChatGPT plan too</b> (optional) — sign in to OpenAI's Codex CLI from Get started, then
-            pick Claude or ChatGPT and a model for each AI feature in Settings → AI features; a ChatGPT family
-            (Sol, Terra, Luna) always uses its newest version
+            run chats on ChatGPT and pick Claude or ChatGPT and a model for each AI feature in Settings → AI
+            features; a ChatGPT family (Sol, Terra, Luna) always uses its newest version
           </>,
         ]}
       />
@@ -611,6 +611,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "New chats name themselves: the quick model gives each a short name from its first message (Settings → Chats → Name new chats)",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
+                "Chats on Claude or ChatGPT: pick it beside the model picker before the first message (the chat keeps it), set the default in Settings → Chats and per project in its settings; each chat shows its mark",
                 "Tool calls with diffs and file previews",
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",

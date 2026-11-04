@@ -54,9 +54,13 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   fake engine's `call <tool> over mcp` (D-313; unit tests in `localMcp.test.ts`, `codexMcp.test.ts`,
   `projectMcp.test.ts`, `fakeMcp.test.ts`, `jigTools.test.ts`, `codexNormalize.test.ts`; e2e in
   `codex-tools.spec.ts`).
-- [ ] Codex chats D–E: the provider picker and Codex-aware chat UI (with the
-  `engine.codexInstructions` / `engine.codexAllowApiKey` settings), plan mode/questions/
-  history/skills (queued tasks).
+- [x] Codex chats D: the provider picker beside the model picker (`sessions.setProvider`, until the
+  first message), provider-aware model/effort pickers, Codex chats without Plan only, rewind, fork
+  and suggestions, provider marks in the chat header and the Chats list, Settings → Chats (default
+  provider, a group per provider with `engine.codexModel`/`codexEffort`/`codexInstructions`/
+  `codexAllowApiKey`), the project's "Chats run on", Codex chats refreshing the ChatGPT meter (D-314;
+  unit tests in `sessions/manager.test.ts`, `composerInput.test.ts`; e2e in `chat-provider.spec.ts`).
+- [ ] Codex chats E: plan mode/questions/history/skills (queued task).
 
 ## Later
 
