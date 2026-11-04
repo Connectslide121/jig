@@ -178,6 +178,24 @@ function money(usd?: number) {
   return usd === undefined ? "—" : `$${usd.toFixed(2)}`;
 }
 
+/**
+ * The queue table's columns, shared by its header, chat rows and task rows so they line up. Each has a
+ * fixed width that fits its longest value on one line ("10h 59m", "12:59 PM", "$99.99", "4 of 12
+ * finished"). Narrow containers hide the detail columns first, then time and cost; the variants are on
+ * both sides because plain utilities from add-on CSS win over container variants (D-297).
+ */
+const COL = {
+  started: "@max-3xl:hidden @3xl:block w-16",
+  notes: "@max-3xl:hidden @3xl:block w-12",
+  followUps: "@max-3xl:hidden @3xl:block w-20",
+  files: "@max-3xl:hidden @3xl:flex w-12 justify-end",
+  time: "@max-xl:hidden @xl:block w-16",
+  cost: "@max-xl:hidden @xl:block w-16",
+  status: "w-28",
+};
+/** Every value column: one line, right-aligned, digits of equal width. */
+const CELL = "shrink-0 whitespace-nowrap text-right tabular-nums";
+
 /** Opens a task's file the way the chat does: images in the image viewer, documents in Preview. */
 function openFile(ctx: AddonUiContext, file: TaskFile) {
   if ((file.kind ?? "image") === "image") ctx.openImage(file.path);
@@ -379,7 +397,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
           project: p.id,
           checked: p.id === projectId,
           testId: `tasks-project-${p.name}`,
-          badge: o?.needsYou ? "needs you" : o?.running ? "running" : busy ? `${busy} queued` : undefined,
+          badge: o?.needsYou ? "Needs you" : o?.running ? "Running" : busy ? `${busy} queued` : undefined,
           onSelect: () => pick(p.id),
         };
       }),
@@ -745,7 +763,8 @@ function TaskTable({
 }) {
   const all = tickState(queue.tasks);
   return (
-    // Narrow (a sidebar): the detail columns give way first, then time and cost; task and status stay.
+    // Narrow (a sidebar): the detail columns give way first, then time and cost, then the chats' and
+    // tasks' hints beside their titles; task and status stay.
     <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
         {onTick && (
@@ -760,14 +779,14 @@ function TaskTable({
         )}
         <span className="w-6 shrink-0 text-right">#</span>
         <span className="min-w-0 flex-1">Task and how it went</span>
-        <span className="@max-3xl:hidden @3xl:block w-16 shrink-0 text-right">Started</span>
-        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Notes</span>
-        <span className="@max-3xl:hidden @3xl:block w-20 shrink-0 text-right">Follow-ups</span>
-        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Files</span>
-        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right">Time</span>
-        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right">Cost</span>
+        <span className={cn(COL.started, CELL)}>Started</span>
+        <span className={cn(COL.notes, CELL)}>Notes</span>
+        <span className={cn(COL.followUps, CELL)}>Follow-ups</span>
+        <span className={cn(COL.files, CELL)}>Files</span>
+        <span className={cn(COL.time, CELL)}>Time</span>
+        <span className={cn(COL.cost, CELL)}>Cost</span>
         <span className="w-7 shrink-0" />
-        <span className="w-28 shrink-0 text-right">Status</span>
+        <span className={cn(COL.status, CELL)}>Status</span>
       </div>
       <div className="flex flex-col gap-3">
         {chatGroups(queue).map((group, gi) => (
@@ -820,9 +839,9 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         <span className="min-w-0 flex-1">Tasks</span>
         <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Done</span>
         <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
-        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right">Time</span>
-        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right">Cost</span>
-        <span className="w-24 shrink-0 text-right">Status</span>
+        <span className={cn(COL.time, CELL)}>Time</span>
+        <span className={cn(COL.cost, CELL)}>Cost</span>
+        <span className={cn("w-24", CELL)}>Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
         {runs.map((run, i) => {
@@ -854,13 +873,9 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
                 {o.failed || ""}
               </span>
-              <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-                {runTime(run)}
-              </span>
-              <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
-                {money(t.costUsd)}
-              </span>
-              <span className="flex w-24 shrink-0 items-center justify-end gap-1.5">
+              <span className={cn(COL.time, CELL, "text-xs text-muted")}>{runTime(run)}</span>
+              <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+              <span className="flex w-24 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
                 {run.finishedAt ? (
                   o.failed ? (
                     <Badge tone="danger">{o.failed} failed</Badge>
@@ -1160,19 +1175,15 @@ function ChatCard({
               {tasks[0]!.title}
             </span>
           )}
-          <span className="shrink-0 text-xs text-hint">
+          <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-xs text-hint">
             {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
             {projectName ? ` · ${projectName}` : ""}
           </span>
         </div>
-        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-          {formatMs(t.ms)}
-        </span>
-        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
-          {money(t.costUsd)}
-        </span>
+        <span className={cn(COL.time, CELL, "text-xs text-muted")}>{formatMs(t.ms)}</span>
+        <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
         <span className="w-7 shrink-0" />
-        <span className="w-28 shrink-0 text-right text-xs tabular-nums text-muted">
+        <span className={cn(COL.status, CELL, "text-xs text-muted")}>
           {t.finished} of {tasks.length} finished
         </span>
       </div>
@@ -1259,7 +1270,11 @@ function TaskRow({
           <span className="truncate text-sm font-medium text-fg" title={task.prompt}>
             {task.title}
           </span>
-          {tags.length > 0 && <span className="shrink-0 text-2xs text-hint">{tags.join(" · ")}</span>}
+          {tags.length > 0 && (
+            <span className="@max-md:hidden @md:inline shrink-0 whitespace-nowrap text-2xs text-hint">
+              {tags.join(" · ")}
+            </span>
+          )}
         </div>
         <div
           className={cn(
@@ -1270,16 +1285,10 @@ function TaskRow({
           {detail ?? task.prompt}
         </div>
       </div>
-      <span className="@max-3xl:hidden @3xl:block w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted">
-        {startedAt(task)}
-      </span>
-      <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-        {notes || ""}
-      </span>
-      <span className="@max-3xl:hidden @3xl:block w-20 shrink-0 text-right text-xs tabular-nums text-muted">
-        {followUps || ""}
-      </span>
-      <span className="@max-3xl:hidden w-12 shrink-0 justify-end @3xl:flex">
+      <span className={cn(COL.started, CELL, "text-xs text-muted")}>{startedAt(task)}</span>
+      <span className={cn(COL.notes, CELL, "text-xs text-muted")}>{notes || ""}</span>
+      <span className={cn(COL.followUps, CELL, "text-xs text-muted")}>{followUps || ""}</span>
+      <span className={cn(COL.files, CELL)}>
         {files.length > 0 && (
           <button
             type="button"
@@ -1297,12 +1306,8 @@ function TaskRow({
           </button>
         )}
       </span>
-      <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
-        {duration(task)}
-      </span>
-      <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
-        {money(task.costUsd)}
-      </span>
+      <span className={cn(COL.time, CELL, "text-xs text-muted")}>{duration(task)}</span>
+      <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(task.costUsd)}</span>
       <span className="w-7 shrink-0">
         <IconButton
           size="sm"
@@ -1316,7 +1321,7 @@ function TaskRow({
         />
       </span>
       <span
-        className="flex w-28 shrink-0 items-center justify-end gap-1.5"
+        className={cn(COL.status, "flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap")}
         data-testid={`task-status-${task.id}`}
       >
         {leftOut ? (

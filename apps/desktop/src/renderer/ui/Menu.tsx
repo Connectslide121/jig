@@ -35,7 +35,10 @@ export interface MenuItem {
   mark?: ReactNode;
   /** Muted text after the label, in its own column (a path); long ones truncate. */
   detail?: string;
-  /** A small marker at the far right in a fixed column shared by the whole menu ("Default"). */
+  /**
+   * A small marker at the far right in a fixed column shared by the whole menu ("Default", "3 queued"):
+   * one line, sized for about ten characters; every row keeps the slot, longer ones truncate.
+   */
   badge?: string;
   onSelect?: () => void;
   submenu?: MenuEntry[];
@@ -293,7 +296,14 @@ function MenuList({
                   {entry.columns?.[i]}
                 </span>
               ))}
-              {hasBadge && <span className="w-14 shrink-0 text-right text-2xs text-hint">{entry.badge}</span>}
+              {hasBadge && (
+                <span
+                  className="w-20 shrink-0 truncate text-right text-2xs tabular-nums text-hint"
+                  title={entry.badge}
+                >
+                  {entry.badge}
+                </span>
+              )}
               {entry.shortcut && <Kbd>{entry.shortcut}</Kbd>}
               {entry.submenu && <ChevronRight className="size-3.5 text-muted" />}
               {hasMark && (

@@ -61,10 +61,15 @@ went, so you read the results as a table instead of scrolling one long chat.
   started changes status. A watcher (every minute) catches up after a restart; a task whose chat
   went idle without answering is marked "Interrupted".
 - **One queue per project** (D-248): the view's project picker (top right, with each project's
-  queued count) switches; the view follows Jig's project picker; picking another project in the view only overrides what it
+  status: "Needs you", "Running" or "N queued", in the menu's badge slot) switches; the view follows Jig's project picker; picking another project in the view only overrides what it
   shows, until the global project changes again. Queues run
   independently; the badge and "needs you" count every project. The old global queue is split by
   project the first time the host runs.
+- **Columns:** the queue and history tables share fixed-width, one-line, right-aligned columns
+  (`COL` in `ui.tsx`), sized for their longest values ("10h 59m", "12:59 PM", "$99.99", "4 of 12
+  finished"); the title takes the rest and truncates. Narrow containers drop Started, Notes,
+  Follow-ups and Files first, then Time and Cost, then the hints beside titles (container variants on
+  both sides, D-297).
 - **History** (D-248): every Start opens a run; the tasks it starts belong to it, and it finishes
   when the queue does. The History tab lists runs (started, tasks, done, failed, time, cost, status);
   a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
