@@ -25,6 +25,7 @@ import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
+import { providerStatus } from "../providers";
 import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { notificationsAllowed } from "../sessions/notify";
@@ -169,6 +170,8 @@ export async function startAddons(): Promise<void> {
         .find((a) => a.id === id)
         ?.manifest?.permissions.includes("chat"),
     create: (input) => createChat(input),
+    chatGptReady: async () =>
+      (await providerStatus().catch(() => [])).some((p) => p.provider === "chatgpt" && p.ready),
     send: (sessionId, text, attachments) => sessionManager().send(sessionId, text, attachments),
     sendFrom: (sessionId, text, from, icon) => sessionManager().notify(sessionId, text, from, icon),
     icon: (id) => service?.list().find((a) => a.id === id)?.manifest?.icon,
@@ -246,7 +249,12 @@ export async function startAddons(): Promise<void> {
         const { topic, payload } = args as { topic: string; payload: unknown };
         emit("addons.event", { id: addonId, topic, payload });
       } else if (op === "projects") {
-        return (await projectStore().state()).projects;
+        // With the provider of each project's new chats (its own, else Jig's), as the UI's list has it.
+        const fallback = getConfig().engine.provider;
+        return (await projectStore().state()).projects.map((p) => ({
+          ...p,
+          provider: (p.provider ?? fallback) === "codex" ? "chatgpt" : "claude",
+        }));
       } else if (op === "workspaces") {
         return (await projectStore().state()).workspaces;
       } else if (op === "chats.create") {

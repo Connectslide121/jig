@@ -1,5 +1,12 @@
 import type { AddonChatInfo, AddonChatSend } from "@jig/sdk";
-import type { ChatAttachment, PermissionMode, SessionMeta, SessionSnapshot } from "../../shared/engine";
+import {
+  type ChatAttachment,
+  type ChatProvider,
+  chatProvider,
+  type PermissionMode,
+  type SessionMeta,
+  type SessionSnapshot,
+} from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 
 /**
@@ -14,7 +21,11 @@ export interface ChatsDeps {
     cwd?: string;
     title?: string;
     permissionMode?: PermissionMode;
+    provider?: ChatProvider;
+    model?: string;
   }): Promise<SessionMeta>;
+  /** Whether ChatGPT can run chats now (the Codex CLI installed and signed in). */
+  chatGptReady(): Promise<boolean>;
   send(sessionId: string, text: string, attachments: ChatAttachment[]): Promise<void>;
   /** A message from the add-on, not you: the transcript shows `from` with the add-on's icon. */
   sendFrom(sessionId: string, text: string, from: string, icon?: string): Promise<void>;
@@ -27,6 +38,10 @@ export interface ChatsDeps {
 }
 
 const MODES = new Set(["default", "acceptEdits", "plan"]);
+/** An add-on names providers as people do; Codex chats run on ChatGPT. */
+const PROVIDERS: Record<string, ChatProvider> = { claude: "claude", chatgpt: "codex" };
+/** A model alias (`opus`, `sol`) or an exact id (`claude-opus-5-5[1m]`, `gpt-6.1-sol`). */
+const MODEL = /^[\w.:[\]-]{1,80}$/;
 
 /** When you last stopped a turn of the chat (Stop) or rejected a tool call in it. */
 function userStoppedAt(items: SessionSnapshot["items"]): string | undefined {
@@ -54,6 +69,8 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
   return {
     id: meta.id,
     title: meta.title,
+    provider: chatProvider(meta) === "codex" ? "chatgpt" : "claude",
+    model: meta.model ?? "",
     status: meta.status,
     projectId: meta.projectId,
     cwd: meta.cwd,
@@ -82,11 +99,25 @@ export function addonChats(deps: ChatsDeps) {
   const create = async (addonId: string, input: Omit<AddonChatSend, "text" | "sessionId">) => {
     if (input?.permissionMode && !MODES.has(input.permissionMode))
       throw new JigError("invalid_args", `Unknown permission mode ${input.permissionMode}`);
+    // Who runs it (D-330): checked here, the host process isn't trusted.
+    const provider = input?.provider === undefined ? undefined : PROVIDERS[String(input.provider)];
+    if (input?.provider !== undefined && !provider)
+      throw new JigError("invalid_args", `Unknown provider ${input.provider}: use "claude" or "chatgpt"`);
+    const model = input?.model === undefined || input.model === "" ? undefined : String(input.model).trim();
+    if (model !== undefined && !MODEL.test(model))
+      throw new JigError("invalid_args", `"${input?.model}" isn't a model id`);
+    if (provider === "codex" && !(await deps.chatGptReady()))
+      throw new JigError(
+        "not_signed_in",
+        "ChatGPT isn't signed in: sign in on Get Started, or run this chat on Claude",
+      );
     const meta = await deps.create({
       projectId: input?.projectId,
       cwd: input?.cwd,
       title: input?.title,
       permissionMode: input?.permissionMode,
+      provider,
+      model,
     });
     watch(addonId, meta.id);
     return meta.id;
@@ -114,6 +145,12 @@ export function addonChats(deps: ChatsDeps) {
         return { sessionId: input.sessionId, sentAt };
       }
       let sessionId = input.sessionId;
+      // A chat keeps its provider for life (D-309): a provider or model is only for a new chat.
+      if (sessionId && (input.provider !== undefined || input.model !== undefined))
+        throw new JigError(
+          "invalid_args",
+          "A chat keeps its provider and model: provider and model are only for a new chat (leave out sessionId)",
+        );
       if (sessionId) {
         await deps.snapshot(sessionId);
         watch(addonId, sessionId);

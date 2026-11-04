@@ -27,7 +27,12 @@ export interface AddonProject {
   focusRepo?: string;
   /** Its colour (UI only), for `ProjectSwatch` and a menu entry's `project`. */
   color?: string;
+  /** Who runs its new chats (D-309): the project's choice, else Jig's default. */
+  provider: AddonChatProvider;
 }
+
+/** Who runs a chat (D-309): Claude Code, or ChatGPT through OpenAI's Codex. */
+export type AddonChatProvider = "claude" | "chatgpt";
 
 /** A folder the user added (a repository or a folder of repositories), whatever the projects. */
 export interface AddonWorkspace {
@@ -152,6 +157,10 @@ export interface MenuItemInput {
   person?: { name?: string; email?: string };
   /** A project id: its colour square before the label (a menu of projects). */
   project?: string;
+  /** Who runs a chat: the provider's mark before the label (`ProviderMark`), as Jig's own pickers show it. */
+  provider?: AddonChatProvider;
+  /** Muted text after the label, in its own column ("Sign in on Get Started"). */
+  detail?: string;
   /** A small marker at the far right, in a column shared by the whole menu (a count). */
   badge?: string;
   /** The keys that do the same where the menu was opened ("Alt+↑"), shown at the right like Jig's. */
@@ -283,6 +292,8 @@ export interface AddonUiContext {
   };
   /** Opens this add-on's settings page (`contributes.settings`). */
   openSettings(): void;
+  /** Opens Get Started, where you sign in to ChatGPT (Codex) or check Claude Code (D-330). */
+  openGetStarted(): void;
   /** Opens a terminal in the bottom panel running `command`. Needs the `terminal` permission. */
   runInTerminal(
     command: string,
@@ -408,6 +419,17 @@ export interface AddonChatSend {
   /** For a new chat; never bypasses permissions. Default: the project's (or Jig's) default. */
   permissionMode?: "default" | "acceptEdits" | "plan";
   /**
+   * For a new chat only (D-330): who runs it. Default: the project's provider, else Jig's. A chat keeps
+   * its provider for life, so with `sessionId` it is refused. "chatgpt" fails while ChatGPT isn't
+   * signed in (the message starts with "ChatGPT isn't signed in").
+   */
+  provider?: AddonChatProvider;
+  /**
+   * For a new chat only: its model, a family alias (`opus`, `sonnet`, `haiku`; ChatGPT's `sol`,
+   * `terra`, `luna`, which run their newest version) or an exact id. Default: the provider's default.
+   */
+  model?: string;
+  /**
    * Sent by the add-on, not typed by you: the one line the transcript shows for it, with the add-on's
    * icon (e.g. "Task queue: asked for the report of task 3"). Needs `sessionId`, no attachments; an
    * idle chat starts a turn, a busy one gets it in its running turn.
@@ -418,6 +440,10 @@ export interface AddonChatSend {
 export interface AddonChatInfo {
   id: string;
   title: string;
+  /** Who runs it; a chat keeps its provider for life. */
+  provider: AddonChatProvider;
+  /** Its model as chosen (an alias or exact id); empty = the provider's default. */
+  model: string;
   status: "idle" | "starting" | "working" | "needs_you" | "error";
   projectId?: string;
   cwd: string;

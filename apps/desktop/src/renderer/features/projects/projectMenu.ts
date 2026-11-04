@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { closeTabsWhere } from "../../../shared/layout";
 import { PROJECT_COLORS, type ProjectInfo } from "../../../shared/projects";
+import { toProject } from "../../addons/project";
 import { call } from "../../lib/host";
 import { confirmDialog, type MenuEntry, promptDialog } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
@@ -35,7 +36,7 @@ export async function removeProject(project: ProjectInfo): Promise<void> {
 }
 
 export function projectMenu(project: ProjectInfo): MenuEntry[] {
-  const extra = contributedEntries({ slot: "context.project", project });
+  const extra = contributedEntries({ slot: "context.project", project: toProject(project) });
   return [
     {
       label: "Project settings…",

@@ -121,6 +121,8 @@ export async function createChat(input: {
   title?: string;
   permissionMode?: PermissionMode;
   provider?: ChatProvider;
+  /** Instead of the provider's default (an add-on's new chat, D-330). */
+  model?: string;
   meetingNotes?: string;
 }): Promise<SessionMeta> {
   const project = input.projectId ? await projectStore().get(input.projectId) : undefined;
@@ -135,7 +137,7 @@ export async function createChat(input: {
     cwd: folder,
     title: input.title,
     provider: defaults.provider,
-    model: defaults.model,
+    model: input.model ?? defaults.model,
     permissionMode: modeFor(
       defaults.provider,
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),

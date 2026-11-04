@@ -29,8 +29,9 @@ const snap = (over: Partial<SessionMeta> = {}): SessionSnapshot => ({
   queue: [{ id: "q", text: "later" }],
 });
 
-function setup(permitted = true) {
+function setup(permitted = true, chatGptReady = true) {
   const deps = {
+    chatGptReady: vi.fn(async () => chatGptReady),
     hasPermission: vi.fn(() => permitted),
     create: vi.fn(async (input: { title?: string }) => meta({ id: "new", title: input.title ?? "New chat" })),
     send: vi.fn(async () => {}),
@@ -76,6 +77,8 @@ describe("chatInfo", () => {
     expect(chatInfo(snap({ lastError: "boom", projectId: "p1" }))).toEqual({
       id: "s1",
       title: "Fix the login",
+      provider: "claude",
+      model: "",
       status: "idle",
       projectId: "p1",
       cwd: "/w/shop",
@@ -128,6 +131,8 @@ describe("addonChats", () => {
       cwd: undefined,
       title: "T",
       permissionMode: "plan",
+      provider: undefined,
+      model: undefined,
     });
     expect(deps.send).toHaveBeenCalledWith("new", "do it", []);
     expect(deps.copyAttachments).not.toHaveBeenCalled();
@@ -147,6 +152,47 @@ describe("addonChats", () => {
     await expect(
       chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" as never }),
     ).rejects.toThrow(/permission mode/);
+  });
+
+  it("starts a new chat on the provider and model asked for (D-330)", async () => {
+    const { chats, deps } = setup();
+    await chats.create("tasks", { projectId: "p1", provider: "chatgpt", model: "sol" });
+    expect(deps.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: "codex", model: "sol" }),
+    );
+    await chats.create("tasks", { projectId: "p1", provider: "claude", model: "claude-opus-5-5[1m]" });
+    expect(deps.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ provider: "claude", model: "claude-opus-5-5[1m]" }),
+    );
+    await expect(chats.create("tasks", { provider: "gemini" as never })).rejects.toThrow(/Unknown provider/);
+    await expect(chats.create("tasks", { model: "rm -rf /" })).rejects.toThrow(/model id/);
+  });
+
+  it("refuses a provider or model for a chat that exists: a chat keeps its provider", async () => {
+    const { chats, deps } = setup();
+    await expect(chats.send("tasks", { text: "x", sessionId: "s1", provider: "chatgpt" })).rejects.toThrow(
+      /only for a new chat/,
+    );
+    await expect(chats.send("tasks", { text: "x", sessionId: "s1", model: "opus" })).rejects.toThrow(
+      /only for a new chat/,
+    );
+    expect(deps.send).not.toHaveBeenCalled();
+  });
+
+  it("fails clearly when ChatGPT isn't signed in", async () => {
+    const { chats, deps } = setup(true, false);
+    await expect(chats.create("tasks", { provider: "chatgpt" })).rejects.toThrow(/^ChatGPT isn't signed in/);
+    expect(deps.create).not.toHaveBeenCalled();
+    await chats.create("tasks", { provider: "claude" });
+    expect(deps.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells a chat's provider and model", () => {
+    expect(chatInfo(snap({ provider: "codex", model: "sol" }))).toMatchObject({
+      provider: "chatgpt",
+      model: "sol",
+    });
+    expect(chatInfo(snap())).toMatchObject({ provider: "claude", model: "" });
   });
 
   it("sends a message from the add-on with its line and icon, only to an existing chat", async () => {

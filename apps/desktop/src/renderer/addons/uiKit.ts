@@ -14,6 +14,11 @@ export { PersonAvatar, personInitials } from "../features/people/PersonAvatar";
 export { ProjectSwatch } from "../features/projects/colors";
 /** A message's files: image thumbnails and document chips that open them; removable with `onRemove`. */
 export { ChatAttachments as Attachments } from "../features/sessions/ChatAttachments";
+/**
+ * Who runs a chat (D-298, D-314): Claude's or ChatGPT's mark, the same as the usage footer and the chat
+ * pickers (`provider`: "claude" | "chatgpt"; `iconOnly` keeps the name for the tooltip).
+ */
+export { ProviderMark } from "../features/usage/ProviderMark";
 export { languageForPath } from "../lib/highlight";
 export {
   Badge,
@@ -58,3 +63,4 @@ export {
 } from "./context";
 export { useAddonEvent, useHostCall, useJigEvent, useStorage } from "./hooks";
 export { Icon, iconByName } from "./icons";
+export { useChatGptReady } from "./providers";

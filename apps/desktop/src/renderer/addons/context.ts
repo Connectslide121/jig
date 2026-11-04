@@ -20,14 +20,17 @@ import { PersonAvatar, personPhoto } from "../features/people/PersonAvatar";
 import { ProjectSwatch } from "../features/projects/colors";
 import { useSessions } from "../features/sessions/store";
 import { useTerminals } from "../features/terminals/store";
+import { ProviderMark } from "../features/usage/ProviderMark";
 import { copyText } from "../lib/clipboard";
 import { call, errorMessage } from "../lib/host";
+import { useConfig } from "../stores/config";
 import { confirmDialog, type MenuEntry, openMenu, openMenuAt, promptDialog } from "../ui";
 import { contributedEntries } from "../workbench/contextMenus";
 import { useProjects } from "../workbench/projects";
 import { updateLayout, useWorkbench, workbench } from "../workbench/store";
 import { dismiss, notify } from "../workbench/toasts";
 import { iconByName } from "./icons";
+import { toProject } from "./project";
 import { knownAddons, onJigEvent } from "./runtime";
 
 export { iconByName };
@@ -37,17 +40,6 @@ const eventListeners = new Map<string, Set<(topic: string, payload: unknown) => 
 export function dispatchAddonEvent(id: string, topic: string, payload: unknown): void {
   for (const listener of eventListeners.get(id) ?? []) listener(topic, payload);
 }
-
-const toProject = (p: ReturnType<typeof useProjects.getState>["projects"][number]): AddonProject => ({
-  id: p.id,
-  name: p.name,
-  path: p.path,
-  isGitRepo: p.isGitRepo,
-  exists: p.exists,
-  repos: p.repos ?? [],
-  focusRepo: p.focusRepo,
-  color: p.color,
-});
 
 function projectLeading(id: string | undefined) {
   const project = id ? useProjects.getState().projects.find((p) => p.id === id) : undefined;
@@ -66,7 +58,12 @@ export function toEntries(items: MenuInput[]): MenuEntry[] {
           disabled: item.disabled,
           checked: item.checked,
           keepOpen: item.keepOpen,
-          avatar: item.person ? createElement(PersonAvatar, item.person) : undefined,
+          avatar: item.person
+            ? createElement(PersonAvatar, item.person)
+            : item.provider
+              ? createElement(ProviderMark, { provider: item.provider, iconOnly: true })
+              : undefined,
+          detail: item.detail,
           badge: item.badge,
           shortcut: item.shortcut,
           testId: item.testId,
@@ -169,7 +166,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         const p = projects.find((x) => x.id === activeId);
         return p ? toProject(p) : undefined;
       },
-      list: () => useProjects.getState().projects.map(toProject),
+      list: () => useProjects.getState().projects.map((p) => toProject(p)),
       setActive: async (projectId) => {
         await call("projects.setActive", { id: projectId });
       },
@@ -247,6 +244,7 @@ export function makeContext(addon: AddonInfo): AddonUiContext {
         void import("../features/terminals/actions").then((m) => m.showTerminal(terminalId)),
     },
     openSettings: () => void workbench.openTab("jig.settings", { section: `addon.${id}` }),
+    openGetStarted: () => void workbench.openTab("jig.setup"),
     async runInTerminal(command, options = {}) {
       if (!has(addon, "terminal")) throw new Error(`${addon.name} needs the "terminal" permission`);
       const { showTerminal } = await import("../features/terminals/actions");
@@ -371,7 +369,9 @@ export function useActiveProject(): AddonProject | undefined {
 
 export function useProjectList(): AddonProject[] {
   const projects = useProjects((s) => s.projects);
-  return projects.map(toProject);
+  // Read here too, so a change of Jig's default provider re-renders the list.
+  const fallback = useConfig((s) => s.config?.engine.provider);
+  return projects.map((p) => toProject(p, fallback));
 }
 
 /** Every folder the user added, re-rendering when it changes. */
