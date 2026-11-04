@@ -23,25 +23,39 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0
  * `bash -lc '…'`), so the Bash card shows what Codex meant to run.
  */
 export function displayCommand(command: string): string {
-  const ps =
-    /^"?(?:[^"\s]*[\\/])?(?:powershell|pwsh)(?:\.exe)?"?(?:\s+-NoProfile)?\s+-Command\s+([\s\S]+)$/i.exec(
-      command.trim(),
-    );
+  const trimmed = command.trim();
+  const ps = PS_WRAPPER.exec(trimmed);
   if (ps) {
     const inner = ps[1]!.trim();
-    if (/^'[\s\S]*'$/.test(inner)) return inner.slice(1, -1).replace(/''/g, "'");
-    if (/^"[\s\S]*"$/.test(inner)) return inner.slice(1, -1).replace(/\\"/g, '"');
+    // Only a single quoted string is unwrapped: `'a' ; 'b'` stays as it is.
+    if (/^'(?:[^']|'')*'$/.test(inner)) return inner.slice(1, -1).replace(/''/g, "'");
+    if (/^"(?:[^"\\]|\\.)*"$/.test(inner)) return inner.slice(1, -1).replace(/\\"/g, '"');
     return inner;
   }
-  const sh = /^"?(?:[^"\s]*\/)?(?:bash|zsh|sh)"?\s+-l?c\s+([\s\S]+)$/.exec(command.trim());
+  const sh = SH_WRAPPER.exec(trimmed);
   if (sh) {
     const inner = sh[1]!.trim();
-    if (/^'[\s\S]*'$/.test(inner)) return inner.slice(1, -1).replace(/'\\''/g, "'");
-    if (/^"[\s\S]*"$/.test(inner)) return inner.slice(1, -1).replace(/\\"/g, '"');
+    if (/^'(?:[^']|'\\'')*'$/.test(inner)) return inner.slice(1, -1).replace(/'\\''/g, "'");
+    if (/^"(?:[^"\\]|\\.)*"$/.test(inner)) return inner.slice(1, -1).replace(/\\(["\\$`])/g, "$1");
     return inner;
   }
   return command;
 }
+
+/** A program by name, bare or as a path with `/` or `\` (in quotes when it has spaces). */
+const program = (names: string) =>
+  String.raw`(?:"(?:[^"]*[\\/])?(?:${names})(?:\.exe)?"|(?:[^\s"]*[\\/])?(?:${names})(?:\.exe)?)`;
+
+/** `powershell.exe [-NoLogo -NoProfile -ExecutionPolicy Bypass …] -Command <script>`. */
+const PS_WRAPPER = new RegExp(
+  String.raw`^${program("powershell|pwsh")}(?:\s+-(?:NoProfile|NoLogo|NonInteractive|ExecutionPolicy\s+\S+|InputFormat\s+\S+|OutputFormat\s+\S+))*\s+-(?:Command|c)\s+([\s\S]+)$`,
+  "i",
+);
+
+/** `bash -lc <script>`, `bash -l -c`, `bash --login -c`, `sh -c`. */
+const SH_WRAPPER = new RegExp(
+  String.raw`^${program("bash|zsh|sh")}(?:\s+(?:-l|--login))?\s+-l?c\s+([\s\S]+)$`,
+);
 
 /**
  * Codex asking before an MCP tool runs (an `mcpServer/elicitation/request` whose `_meta` says
@@ -73,26 +87,42 @@ export function mcpToolApproval(
   };
 }
 
-/** A file change's diff as unified-diff hunks; a new file's content becomes one added hunk. */
+/**
+ * A file change's diff as unified-diff hunks: a new file's content becomes one added hunk, a deleted
+ * file's content one removed hunk.
+ */
 export function changeDiff(kind: string, diff: string): string {
-  if (!diff) return diff;
-  if (kind !== "add" || diff.startsWith("@@")) return diff;
-  const body = diff.replace(/\n$/, "").split("\n");
-  return [`@@ -0,0 +1,${body.length} @@`, ...body.map((l) => `+${l}`)].join("\n");
+  if (!diff || diff.startsWith("@@") || (kind !== "add" && kind !== "delete")) return diff;
+  const body = diff.replace(/\r?\n$/, "").split(/\r?\n/);
+  if (kind === "add") return [`@@ -0,0 +1,${body.length} @@`, ...body.map((l) => `+${l}`)].join("\n");
+  return [`@@ -1,${body.length} +0,0 @@`, ...body.map((l) => `-${l}`)].join("\n");
 }
 
-/** What an MCP call returned: its text, and its images (MCP blocks: `{ type, data, mimeType }`). */
-function mcpOutput(content: unknown): { text: string; images: Array<{ mime: string; data: string }> } {
+/**
+ * What a tool call returned: its text, and its images. MCP blocks are `{ type: "text" | "image", … }`;
+ * a dynamic tool's items are `inputText`, `inputImage` (a URL, usually a data URL) and `inputAudio`.
+ */
+export function mcpOutput(content: unknown): {
+  text: string;
+  images: Array<{ mime: string; data: string }>;
+} {
   if (!Array.isArray(content))
     return { text: content === undefined ? "" : JSON.stringify(content), images: [] };
   const images: Array<{ mime: string; data: string }> = [];
   const text = content
     .map((block: Msg) => {
-      if (block?.type === "text") return String(block.text ?? "");
+      if (block?.type === "text" || block?.type === "inputText") return String(block.text ?? "");
       if (block?.type === "image" && typeof block.data === "string") {
         images.push({ mime: String(block.mimeType ?? "image/png"), data: block.data });
         return "[image]";
       }
+      if (block?.type === "inputImage" && typeof block.imageUrl === "string") {
+        const data = /^data:([^;,]+);base64,([\s\S]*)$/.exec(block.imageUrl);
+        if (!data) return `[image: ${block.imageUrl}]`;
+        images.push({ mime: data[1]!, data: data[2]! });
+        return "[image]";
+      }
+      if (block?.type === "inputAudio") return "[audio]";
       return JSON.stringify(block);
     })
     .join("\n");
@@ -133,6 +163,10 @@ interface FileChange {
   movePath?: string;
   diff: string;
 }
+
+/** The cards of a file change item: the item's id for one file, `<id>:<n>` for each of several. */
+const changeIds = (id: string, count: number): string[] =>
+  count === 1 ? [id] : Array.from({ length: count }, (_, i) => `${id}:${i}`);
 
 /** The tool card a file change shows as: Write for a new file, Edit for the rest. */
 function changeTool(change: FileChange): { name: string; input: Record<string, unknown> } {
@@ -332,9 +366,10 @@ export class CodexNormalizer {
       case "fileChange": {
         const changes = this.fileChanges(item.changes);
         this.changes.set(id, changes);
+        const ids = changeIds(id, changes.length);
         return changes.map((change, i) => ({
           type: "tool_use" as const,
-          id: changes.length === 1 ? id : `${id}:${i}`,
+          id: ids[i]!,
           ...changeTool(change),
           model: this.model || undefined,
         }));
@@ -443,21 +478,25 @@ export class CodexNormalizer {
             : status === "failed"
               ? "Codex couldn't apply this change."
               : "";
-        // A change the start didn't announce (or a different count) still gets its cards.
-        const announced = known?.length ?? 0;
-        return list.flatMap((change, i) => {
-          const toolUseId = list.length === 1 ? id : `${id}:${i}`;
-          const start =
-            announced === list.length
-              ? []
-              : [
-                  {
-                    type: "tool_use" as const,
-                    id: toolUseId,
-                    ...changeTool(change),
-                    model: this.model || undefined,
-                  },
-                ];
+        // A change the start didn't announce gets its card now; an announced card the completion
+        // doesn't list (a different count) still gets a result, so none keeps running.
+        const announced = changeIds(id, known?.length ?? 0);
+        const listed = changeIds(id, list.length);
+        const unlisted = announced
+          .filter((toolUseId) => !listed.includes(toolUseId))
+          .map((toolUseId) => ({ type: "tool_result" as const, toolUseId, output, isError }));
+        const cards = list.flatMap((change, i) => {
+          const toolUseId = listed[i]!;
+          const start = announced.includes(toolUseId)
+            ? []
+            : [
+                {
+                  type: "tool_use" as const,
+                  id: toolUseId,
+                  ...changeTool(change),
+                  model: this.model || undefined,
+                },
+              ];
           return [
             ...start,
             {
@@ -469,6 +508,7 @@ export class CodexNormalizer {
             },
           ];
         });
+        return [...cards, ...unlisted];
       }
       case "mcpToolCall":
       case "dynamicToolCall": {
@@ -517,6 +557,10 @@ export class CodexNormalizer {
       });
     this.open.clear();
     this.output.clear();
+    // What an interrupted turn left running is over too (the chat closes its cards on the result).
+    this.commands.clear();
+    this.changes.clear();
+    this.mcpCalls.clear();
     const status = str(turn?.status);
     const usage = minus(this.total, this.turnBase);
     this.turnBase = this.total;

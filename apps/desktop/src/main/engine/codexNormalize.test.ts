@@ -273,6 +273,96 @@ describe("CodexNormalizer", () => {
     ]);
   });
 
+  it("keeps cards and results paired when the completion lists a different number of changes", () => {
+    const a = {
+      path: "/shop/a.ts",
+      kind: { type: "update", move_path: null },
+      diff: "@@ -1 +1 @@\n-a\n+b\n",
+    };
+    const b = {
+      path: "/shop/b.ts",
+      kind: { type: "update", move_path: null },
+      diff: "@@ -1 +1 @@\n-c\n+d\n",
+    };
+    const ids = (events: ReturnType<CodexNormalizer["handle"]>) =>
+      events.map((e) =>
+        e.type === "tool_use" ? `use ${e.id}` : e.type === "tool_result" ? `result ${e.toolUseId}` : e.type,
+      );
+
+    // One announced, two completed: the announced card is closed, both files get a card and a result.
+    const grow = new CodexNormalizer();
+    grow.handle(item("item/started", { type: "fileChange", id: "f", changes: [a], status: "inProgress" }));
+    expect(
+      ids(
+        grow.handle(
+          item("item/completed", { type: "fileChange", id: "f", changes: [a, b], status: "completed" }),
+        ),
+      ),
+    ).toEqual(["use f:0", "result f:0", "use f:1", "result f:1", "result f"]);
+
+    // Two announced, one completed: no duplicate card, and the second announced card gets a result.
+    const shrink = new CodexNormalizer();
+    shrink.handle(
+      item("item/started", { type: "fileChange", id: "f", changes: [a, b], status: "inProgress" }),
+    );
+    expect(
+      ids(
+        shrink.handle(
+          item("item/completed", { type: "fileChange", id: "f", changes: [a], status: "completed" }),
+        ),
+      ),
+    ).toEqual(["use f", "result f", "result f:0", "result f:1"]);
+
+    // Same count: results only.
+    const same = new CodexNormalizer();
+    same.handle(item("item/started", { type: "fileChange", id: "f", changes: [a, b], status: "inProgress" }));
+    expect(
+      ids(
+        same.handle(
+          item("item/completed", { type: "fileChange", id: "f", changes: [a, b], status: "completed" }),
+        ),
+      ),
+    ).toEqual(["result f:0", "result f:1"]);
+  });
+
+  it("forgets running tools when a turn ends", () => {
+    const n = new CodexNormalizer();
+    n.handle({ method: "turn/started", params: { turn: { id: "t" } } });
+    n.handle(
+      item("item/started", { type: "mcpToolCall", id: "m", server: "jig", tool: "run", arguments: {} }),
+    );
+    expect(n.mcpCallId("jig", "run")).toBe("m");
+    n.handle({ method: "turn/completed", params: { turn: { id: "t", status: "interrupted" } } });
+    expect(n.mcpCallId("jig", "run")).toBeUndefined();
+  });
+
+  it("shows a dynamic tool's text and images, not their JSON", () => {
+    const n = new CodexNormalizer();
+    n.handle(
+      item("item/started", { type: "dynamicToolCall", id: "d", namespace: "x", tool: "shot", arguments: {} }),
+    );
+    const [result] = n.handle(
+      item("item/completed", {
+        type: "dynamicToolCall",
+        id: "d",
+        success: true,
+        contentItems: [
+          { type: "inputText", text: "Done" },
+          { type: "inputImage", imageUrl: "data:image/jpeg;base64,BBBB" },
+          { type: "inputImage", imageUrl: "https://example.com/a.png" },
+          { type: "inputAudio", audioUrl: "data:audio/wav;base64,CCCC" },
+        ],
+      }),
+    );
+    expect(result).toEqual({
+      type: "tool_result",
+      toolUseId: "d",
+      output: "Done\n[image]\n[image: https://example.com/a.png]\n[audio]",
+      isError: false,
+      imageData: [{ mime: "image/jpeg", data: "BBBB" }],
+    });
+  });
+
   it("adds a failed command's exit code to its output", () => {
     const n = new CodexNormalizer();
     n.handle(item("item/started", { type: "commandExecution", id: "c", command: "bash -lc 'npm test'" }));
@@ -415,6 +505,30 @@ describe("displayCommand", () => {
     expect(displayCommand('bash -c "npm test"')).toBe("npm test");
     expect(displayCommand("git status")).toBe("git status");
   });
+
+  it("unwraps shells by path with spaces, with options before the script", () => {
+    expect(
+      displayCommand(
+        `"C:\\Program Files\\PowerShell\\7\\pwsh.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command 'Get-ChildItem'`,
+      ),
+    ).toBe("Get-ChildItem");
+    expect(
+      displayCommand(
+        `C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NonInteractive -c 'dir'`,
+      ),
+    ).toBe("dir");
+    expect(displayCommand(`C:\\Git\\bin\\bash.exe -lc 'ls -la'`)).toBe("ls -la");
+    expect(displayCommand(`"C:\\Program Files\\Git\\bin\\bash.exe" -lc 'ls'`)).toBe("ls");
+    expect(displayCommand(`bash -l -c 'npm test'`)).toBe("npm test");
+    expect(displayCommand(`/bin/zsh --login -c 'make'`)).toBe("make");
+    expect(displayCommand(`bash -c "echo \\"hi\\" \\$HOME"`)).toBe(`echo "hi" $HOME`);
+  });
+
+  it("leaves a script of several quoted strings as it is", () => {
+    expect(displayCommand(`powershell.exe -Command 'a' ; 'b'`)).toBe("'a' ; 'b'");
+    expect(displayCommand(`bash -lc 'a' && 'b'`)).toBe("'a' && 'b'");
+    expect(displayCommand(`pwsh -Command "a" + "b"`)).toBe(`"a" + "b"`);
+  });
 });
 
 describe("changeDiff", () => {
@@ -422,6 +536,12 @@ describe("changeDiff", () => {
     expect(changeDiff("update", "@@ -1 +1 @@\n-a\n+b\n")).toBe("@@ -1 +1 @@\n-a\n+b\n");
     expect(changeDiff("add", "x\n")).toBe("@@ -0,0 +1,1 @@\n+x");
     expect(changeDiff("add", "")).toBe("");
+  });
+
+  it("turns a deleted file's content into one removed hunk", () => {
+    expect(changeDiff("delete", "a\r\nb\r\n")).toBe("@@ -1,2 +0,0 @@\n-a\n-b");
+    expect(changeDiff("delete", "@@ -1 +0,0 @@\n-a\n")).toBe("@@ -1 +0,0 @@\n-a\n");
+    expect(changeDiff("delete", "")).toBe("");
   });
 });
 
