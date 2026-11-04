@@ -75,6 +75,25 @@ describe("parseCodexExec", () => {
     );
   });
 
+  it("keeps the answer of a completed turn after a passing error", () => {
+    const out = [
+      '{"type":"error","message":"Reconnecting... 2/5"}',
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"answer"}}',
+      '{"type":"turn.completed"}',
+    ].join("\n");
+    expect(parseCodexExec(out)).toBe("answer");
+    expect(parseCodexExec(out, 0)).toBe("answer");
+  });
+
+  it("throws when Codex exits badly before the turn completed, even after a message", () => {
+    const out =
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Let me look"}}';
+    expect(() => parseCodexExec(out, 1)).toThrow("exit code 1");
+    expect(() => parseCodexExec(out, null)).toThrow("stopped before it answered");
+    expect(parseCodexExec(out, 0)).toBe("Let me look");
+    expect(parseCodexExec(`${out}\n{"type":"turn.completed"}`, 1)).toBe("Let me look");
+  });
+
   it("throws when there is no answer", () => {
     expect(() => parseCodexExec('{"type":"turn.completed"}')).toThrow("without an answer");
     expect(() => parseCodexExec("")).toThrow("without an answer");

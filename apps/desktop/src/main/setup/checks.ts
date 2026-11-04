@@ -8,15 +8,17 @@ import { parseSignIn, signInText } from "./signIn";
 export type Exec = (
   command: string,
   args: string[],
+  /** The environment instead of Jig's own (`process.env`). */
+  env?: Record<string, string | undefined>,
 ) => Promise<{ code: number; stdout: string; stderr: string }>;
 
 /**
  * Runs a program without a shell (`.cmd` files on Windows through cmd.exe, safely quoted), `az` with
  * the active tenant's folder (D-282).
  */
-export const execTool: Exec = (command, args) =>
+export const execTool: Exec = (command, args, base = process.env) =>
   new Promise((resolve) => {
-    const r = resolveCommand(command, args, process.platform, process.env);
+    const r = resolveCommand(command, args, process.platform, base);
     execFile(
       r.file,
       r.args,
@@ -25,7 +27,7 @@ export const execTool: Exec = (command, args) =>
         windowsHide: true,
         windowsVerbatimArguments: r.verbatim,
         maxBuffer: 1024 * 1024,
-        env: { ...process.env, ...azureEnv() },
+        env: { ...base, ...azureEnv() },
       },
       (error, stdout, stderr) => {
         const code = error ? (typeof error.code === "number" ? error.code : 127) : 0;
@@ -54,7 +56,8 @@ const firstLine = (s: string) =>
 export async function runSetupChecks(
   exec: Exec,
   claude: string | undefined,
-  options: { signIn?: boolean; codex?: string } = {},
+  /** `codexEnv`: the environment Codex chats get (no API key unless allowed), for its sign-in. */
+  options: { signIn?: boolean; codex?: string; codexEnv?: Record<string, string | undefined> } = {},
 ): Promise<SetupCheck[]> {
   const version = async (command: string, args = ["--version"]) => {
     const r = await exec(command, args);
@@ -76,7 +79,7 @@ export async function runSetupChecks(
   // `codex login status` prints its answer on stderr in some versions, and exits 1 when signed out.
   const codexSignIn =
     codex && codexVersion && options.signIn
-      ? await exec(codex, ["login", "status"]).then((r) =>
+      ? await exec(codex, ["login", "status"], options.codexEnv).then((r) =>
           parseCodexLoginStatus(`${r.stdout}
 ${r.stderr}`),
         )

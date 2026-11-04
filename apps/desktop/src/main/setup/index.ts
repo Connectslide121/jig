@@ -5,6 +5,7 @@ import { compareVersions, type UpdateInfo } from "../../shared/setup";
 import { openExternal } from "../appWindows";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
+import { codexSessionEnv } from "../engine/types";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
 import { hasActiveMeeting } from "../meetings";
@@ -102,6 +103,7 @@ export function registerSetupHandlers(): void {
     runSetupChecks(execTool, claudeBinary(getConfig().engine.claudePath), {
       signIn: getEngine().kind !== "fake",
       codex: codexBinary(),
+      codexEnv: codexSessionEnv(process.env, getConfig().engine.codexAllowApiKey),
     }),
   );
   handle("engine.models", () => {

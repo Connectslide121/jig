@@ -119,13 +119,29 @@ export function codexExecArgs(model: string, cwd: string): string[] {
 }
 
 /**
- * The final answer from `codex exec --json` output (JSONL events): the last `agent_message`. A
- * `turn.failed` or top-level `error` event throws its message; `error` items are warnings and are
- * skipped. Lines that aren't JSON (stray log output) are ignored.
+ * Codex's environment: no OpenAI API key, so it always uses the ChatGPT sign-in it stored itself
+ * (Jig never reads that), and nothing Electron set for its own child processes.
  */
-export function parseCodexExec(stdout: string): string {
+export const CODEX_UNSET_ENV = ["OPENAI_API_KEY", "CODEX_API_KEY", "ELECTRON_RUN_AS_NODE"];
+
+export function codexEnv(base: Record<string, string | undefined>): Record<string, string | undefined> {
+  const env = { ...base };
+  for (const name of CODEX_UNSET_ENV) delete env[name];
+  return env;
+}
+
+/**
+ * The final answer from `codex exec --json` output (JSONL events): the last `agent_message`. A
+ * `turn.failed` or top-level `error` event throws its message, unless the turn completed with an
+ * answer after it (a top-level `error` can be a passing "Reconnecting… 2/5"). `error` items are
+ * warnings and are skipped. Lines that aren't JSON (stray log output) are ignored. With `exitCode`
+ * (null: killed), a run that ended badly without `turn.completed` throws, even after a message (it
+ * may be only a preamble).
+ */
+export function parseCodexExec(stdout: string, exitCode?: number | null): string {
   let text: string | undefined;
   let failure: string | undefined;
+  let completed = false;
   for (const line of stdout.split(/\r?\n/)) {
     if (!line.trim().startsWith("{")) continue;
     let event: {
@@ -141,11 +157,19 @@ export function parseCodexExec(stdout: string): string {
     }
     if (event.type === "item.completed" && event.item?.type === "agent_message")
       text = typeof event.item.text === "string" ? event.item.text : text;
-    else if (event.type === "turn.failed")
+    else if (event.type === "turn.completed") completed = true;
+    else if (event.type === "turn.failed") {
+      completed = false;
       failure = String(event.error?.message ?? failure ?? "Codex couldn't answer");
-    else if (event.type === "error" && !failure && typeof event.message === "string") failure = event.message;
+    } else if (event.type === "error" && !failure && typeof event.message === "string")
+      failure = event.message;
   }
+  if (completed && text !== undefined) return text;
   if (failure) throw new Error(failure);
+  if (exitCode !== undefined && exitCode !== 0 && !completed)
+    throw new Error(
+      exitCode === null ? "Codex was stopped before it answered" : `Codex stopped (exit code ${exitCode})`,
+    );
   if (text === undefined) throw new Error("Codex finished without an answer");
   return text;
 }

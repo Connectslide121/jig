@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 
 /**
  * Runs one of the configured commands (check, build, install) in a folder, through the shell (they
@@ -50,6 +50,15 @@ export function runCommand(
       resolve({ ok: code === 0 && !timedOut, code, output, timedOut });
     });
   });
+}
+
+/**
+ * Stops a child that wasn't started in its own process group: on Windows with everything it started
+ * (a `.cmd` shim's program, the commands Codex runs), elsewhere with a signal.
+ */
+export function killProcess(child: ChildProcess): void {
+  if (process.platform === "win32" && child.pid && child.exitCode === null) killTree(child.pid);
+  else child.kill();
 }
 
 /** Ends a command and everything it started (npm runs node, which runs the build…). */

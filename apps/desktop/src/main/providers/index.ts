@@ -14,12 +14,15 @@ import type { RawCodexRateLimits } from "../../shared/usage";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
+import { codexSessionEnv } from "../engine/types";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
 import { execTool } from "../setup/checks";
 import { jigHome } from "../state/paths";
 import { makeWhich } from "../terminals/shell";
+import { killProcess } from "../updates/run";
 import {
+  codexEnv,
   codexExecArgs,
   codexRateLimitRequests,
   codexSignInText,
@@ -53,17 +56,7 @@ export function codexBinary(): string | undefined {
   });
 }
 
-/**
- * Codex's environment: no OpenAI API key, so it always uses the ChatGPT sign-in it stored itself
- * (Jig never reads that), and nothing Electron set for its own child processes.
- */
-export const CODEX_UNSET_ENV = ["OPENAI_API_KEY", "CODEX_API_KEY", "ELECTRON_RUN_AS_NODE"];
-
-export function codexEnv(base: Record<string, string | undefined>): Record<string, string | undefined> {
-  const env = { ...base };
-  for (const name of CODEX_UNSET_ENV) delete env[name];
-  return env;
-}
+export { CODEX_UNSET_ENV, codexEnv } from "./codex";
 
 export interface OneShotExtras {
   /** Working folder (default: Jig's home, no repository). */
@@ -85,10 +78,17 @@ function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: 
     });
     let stdout = "";
     let stderr = "";
-    let timedOut = false;
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    // Settles here too: a command Codex started can keep the pipes (and so "close") open.
     const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill();
+      killProcess(child);
+      settle(() => reject(new Error("Codex didn't answer in time")));
     }, timeoutMs);
     child.stdout.on("data", (d: Buffer) => {
       stdout += d.toString("utf8");
@@ -97,20 +97,17 @@ function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: 
     child.stderr.on("data", (d: Buffer) => {
       stderr = (stderr + d.toString("utf8")).slice(-4000);
     });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      reject(new Error(`Couldn't start Codex: ${error.message}`));
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (timedOut) return reject(new Error("Codex didn't answer in time"));
-      try {
-        resolve(parseCodexExec(stdout));
-      } catch (error) {
-        if (code) log.debug(`codex exec exited ${code}: ${stderr.trim().split(/\r?\n/).pop() ?? ""}`);
-        reject(error);
-      }
-    });
+    child.on("error", (error) => settle(() => reject(new Error(`Couldn't start Codex: ${error.message}`))));
+    child.on("close", (code) =>
+      settle(() => {
+        try {
+          resolve(parseCodexExec(stdout, code));
+        } catch (error) {
+          if (code) log.debug(`codex exec exited ${code}: ${stderr.trim().split(/\r?\n/).pop() ?? ""}`);
+          reject(error);
+        }
+      }),
+    );
     child.stdin.on("error", () => {});
     child.stdin.end(prompt);
   });
@@ -223,7 +220,12 @@ export async function providerStatus(): Promise<ProviderStatus[]> {
   const binary = codexBinary();
   if (!binary)
     return [claude, { provider: "chatgpt", ready: false, detail: "The Codex CLI isn't installed." }];
-  const r = await execTool(binary, ["login", "status"]);
+  // Codex chats' environment: an API key Jig strips from them would otherwise read as signed in.
+  const r = await execTool(
+    binary,
+    ["login", "status"],
+    codexSessionEnv(process.env, getConfig().engine.codexAllowApiKey),
+  );
   const signIn = parseCodexLoginStatus(`${r.stdout}
 ${r.stderr}`);
   return [
@@ -297,7 +299,7 @@ export async function readChatGptUsage(version = "0"): Promise<RawCodexRateLimit
       if (done) return;
       done = true;
       clearTimeout(timer);
-      child.kill();
+      killProcess(child);
       if (error) reject(error);
       else resolve(value);
     };
