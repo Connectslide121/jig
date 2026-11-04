@@ -271,7 +271,7 @@ test("action groups are merged into a few top bar menus and model defaults remai
   await page.getByTestId("settings-nav-engine").click();
   await expect(page.getByRole("combobox", { name: "Default model", exact: true })).toHaveValue("opus");
   await expect(page.getByRole("combobox", { name: "Subagent fallback model" })).toHaveValue("sonnet");
-  await expect(page.getByRole("combobox", { name: "Search model" })).toHaveValue("haiku");
+  await expect(page.getByRole("combobox", { name: "Search model", exact: true })).toHaveValue("haiku");
   await expect(
     page.getByRole("combobox", { name: "Default model", exact: true }).locator('option[value="opus"]'),
   ).toHaveText("Opus");
