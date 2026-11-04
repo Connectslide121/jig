@@ -584,7 +584,7 @@ function QueuePanel({
               checked={queue.stopOnFailure}
               onChange={(on) => void call("setStopOnFailure", { on })}
               label="Stop when a task fails"
-              labelClassName="hidden @3xl:inline"
+              labelClassName="@max-3xl:hidden @3xl:inline"
             />
             <Button
               size="sm"
@@ -594,7 +594,7 @@ function QueuePanel({
               title="Add tasks"
               data-testid="tasks-add"
             >
-              <span className="hidden @xl:inline">Add tasks</span>
+              <span className="@max-xl:hidden @xl:inline">Add tasks</span>
             </Button>
             {queue.running ? (
               <Button size="sm" icon={Pause} onClick={() => void call("pause")} data-testid="tasks-pause">
@@ -760,12 +760,12 @@ function TaskTable({
         )}
         <span className="w-6 shrink-0 text-right">#</span>
         <span className="min-w-0 flex-1">Task and how it went</span>
-        <span className="hidden @3xl:block w-16 shrink-0 text-right">Started</span>
-        <span className="hidden @3xl:block w-12 shrink-0 text-right">Notes</span>
-        <span className="hidden @3xl:block w-20 shrink-0 text-right">Follow-ups</span>
-        <span className="hidden @3xl:block w-12 shrink-0 text-right">Files</span>
-        <span className="hidden @xl:block w-12 shrink-0 text-right">Time</span>
-        <span className="hidden @xl:block w-14 shrink-0 text-right">Cost</span>
+        <span className="@max-3xl:hidden @3xl:block w-16 shrink-0 text-right">Started</span>
+        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Notes</span>
+        <span className="@max-3xl:hidden @3xl:block w-20 shrink-0 text-right">Follow-ups</span>
+        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Files</span>
+        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right">Time</span>
+        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right">Cost</span>
         <span className="w-7 shrink-0" />
         <span className="w-28 shrink-0 text-right">Status</span>
       </div>
@@ -816,12 +816,12 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
   return (
     <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3" data-testid="tasks-history">
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
-        <span className="w-24 shrink-0 @xl:w-40">Started</span>
+        <span className="@max-xl:w-24 shrink-0 @xl:w-40">Started</span>
         <span className="min-w-0 flex-1">Tasks</span>
-        <span className="hidden @3xl:block w-12 shrink-0 text-right">Done</span>
-        <span className="hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
-        <span className="hidden @xl:block w-12 shrink-0 text-right">Time</span>
-        <span className="hidden @xl:block w-14 shrink-0 text-right">Cost</span>
+        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Done</span>
+        <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right">Failed</span>
+        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right">Time</span>
+        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right">Cost</span>
         <span className="w-24 shrink-0 text-right">Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
@@ -837,7 +837,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               onClick={() => onOpen(run.id)}
               className="flex h-12 w-full items-center gap-3 border-b border-line px-3 text-left last:border-b-0 hover:bg-hover"
             >
-              <span className="w-24 shrink-0 truncate text-xs tabular-nums text-fg @xl:w-40">
+              <span className="@max-xl:w-24 shrink-0 truncate text-xs tabular-nums text-fg @xl:w-40">
                 {when(run.startedAt)}
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
@@ -848,16 +848,16 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
                   {titles}
                 </span>
               </span>
-              <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
                 {o.done || ""}
               </span>
-              <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
                 {o.failed || ""}
               </span>
-              <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
                 {runTime(run)}
               </span>
-              <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+              <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
                 {money(t.costUsd)}
               </span>
               <span className="flex w-24 shrink-0 items-center justify-end gap-1.5">
@@ -1044,7 +1044,7 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
       <div
         className={cn(
           "flex h-1.5 shrink-0 overflow-hidden rounded-full bg-raised",
-          inline ? "w-16 @xl:w-28" : "w-40",
+          inline ? "@max-xl:w-16 @xl:w-28" : "w-40",
         )}
       >
         {SUMMARY_ORDER.map((status) =>
@@ -1060,7 +1060,7 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
       <div
         className={cn(
           "min-w-0 flex-1 items-center gap-3 overflow-hidden text-xs text-muted",
-          inline ? "hidden @lg:flex" : "flex",
+          inline ? "@max-lg:hidden @lg:flex" : "flex",
         )}
       >
         <span className="flex shrink-0 items-center gap-1" data-testid="tasks-chats">
@@ -1077,7 +1077,9 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
         ))}
       </div>
       {(t.ms > 0 || (t.costUsd ?? 0) > 0) && (
-        <span className={cn("shrink-0 text-xs tabular-nums text-muted", inline && "hidden @4xl:inline")}>
+        <span
+          className={cn("shrink-0 text-xs tabular-nums text-muted", inline && "@max-4xl:hidden @4xl:inline")}
+        >
           {[formatMs(t.ms), money(t.costUsd)].filter(Boolean).join(" · ")}
         </span>
       )}
@@ -1163,10 +1165,10 @@ function ChatCard({
             {projectName ? ` · ${projectName}` : ""}
           </span>
         </div>
-        <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+        <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
           {formatMs(t.ms)}
         </span>
-        <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+        <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
           {money(t.costUsd)}
         </span>
         <span className="w-7 shrink-0" />
@@ -1268,16 +1270,16 @@ function TaskRow({
           {detail ?? task.prompt}
         </div>
       </div>
-      <span className="hidden @3xl:block w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted">
+      <span className="@max-3xl:hidden @3xl:block w-16 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted">
         {startedAt(task)}
       </span>
-      <span className="hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+      <span className="@max-3xl:hidden @3xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
         {notes || ""}
       </span>
-      <span className="hidden @3xl:block w-20 shrink-0 text-right text-xs tabular-nums text-muted">
+      <span className="@max-3xl:hidden @3xl:block w-20 shrink-0 text-right text-xs tabular-nums text-muted">
         {followUps || ""}
       </span>
-      <span className="hidden w-12 shrink-0 justify-end @3xl:flex">
+      <span className="@max-3xl:hidden w-12 shrink-0 justify-end @3xl:flex">
         {files.length > 0 && (
           <button
             type="button"
@@ -1295,10 +1297,10 @@ function TaskRow({
           </button>
         )}
       </span>
-      <span className="hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
+      <span className="@max-xl:hidden @xl:block w-12 shrink-0 text-right text-xs tabular-nums text-muted">
         {duration(task)}
       </span>
-      <span className="hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
+      <span className="@max-xl:hidden @xl:block w-14 shrink-0 text-right text-xs tabular-nums text-muted">
         {money(task.costUsd)}
       </span>
       <span className="w-7 shrink-0">
