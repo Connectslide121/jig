@@ -107,6 +107,14 @@ export function Composer({
   // Suggestions are Claude Code's; a provider without them never shows the chip (D-309).
   const suggestion = busy || !caps.promptSuggestions ? undefined : meta.suggestion;
   const mode = inputMode(text);
+  const sendLabel =
+    mode === "shell"
+      ? "Run in shell (Enter)"
+      : mode === "memory"
+        ? "Remember (Enter)"
+        : busy
+          ? "Queue: read after this turn (Enter)"
+          : "Send (Enter)";
   const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
   const localCommands = useMemo<BoxCommand[]>(
     () => LOCAL_COMMANDS.map((c) => ({ ...c, run: (anchor) => c.run(meta, anchor) })),
@@ -487,33 +495,34 @@ export function Composer({
               </button>
               {busy && (
                 <Button
-                  size="md"
+                  size="icon"
                   variant="secondary"
                   icon={Square}
+                  aria-label="Stop (Esc)"
+                  title="Stop (Esc)"
                   data-testid="composer-stop"
                   onClick={() => void call("sessions.interrupt", { id: meta.id })}
-                >
-                  Stop
-                </Button>
+                />
               )}
               {busy && (text.trim() || files.length > 0) && !mode && (
                 <IconButton
                   icon={Zap}
+                  size="sm"
                   label={`Send now: ${who} reads it at its next step (${formatShortcut("Mod+Enter")})`}
                   data-testid="composer-send-now"
                   onClick={() => void send(text, files, true)}
                 />
               )}
               <Button
-                size="md"
+                size="icon"
                 variant="primary"
                 icon={mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : ArrowUp}
+                aria-label={sendLabel}
+                title={sendLabel}
                 disabled={!text.trim() && files.length === 0}
                 data-testid="composer-send"
                 onClick={() => submit()}
-              >
-                {mode === "shell" ? "Run" : mode === "memory" ? "Remember" : busy ? "Queue" : "Send"}
-              </Button>
+              />
             </>
           }
         />

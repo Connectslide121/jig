@@ -1,5 +1,11 @@
 # Status
 
+Composer's Send and Stop are icons (2026-11-04, D-346, Jon): the chat's message box shows Send (the
+accent square: arrow, terminal for `!`, bookmark for `#`) and Stop (a square) without labels; hover
+for what they do and their key ("Send (Enter)", "Queue: read after this turn (Enter)", "Stop (Esc)").
+Stop, Send now and Send are the same size in one line. Checked with the fake engine in Jig Dark and
+Light, narrow and wide, idle, busy, `!` and `#`.
+
 Files keeps its tree (2026-11-04, D-344, Jon): switching the Files view away and back, or collapsing
 and reopening the sidebar, shows the tree at once, with the same folders open, scrolled where you
 left it and the filter as you left it: no blank moment, no loading rows. It is read when Jig starts

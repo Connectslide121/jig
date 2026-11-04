@@ -4,7 +4,8 @@ import { cn } from "./cn";
 import { Spinner } from "./Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md";
+/** `icon`: a square, icon-only button as tall as `md`; give it `aria-label` and `title`. */
+export type ButtonSize = "sm" | "md" | "icon";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -23,6 +24,7 @@ const variants: Record<ButtonVariant, string> = {
 const sizes: Record<ButtonSize, string> = {
   sm: "h-6 px-2 text-sm gap-1",
   md: "h-7 px-3 text-sm gap-1.5",
+  icon: "size-7",
 };
 
 /** The one button. Use `variant` for emphasis; `icon` for a leading icon; `busy` shows a spinner. */
@@ -82,7 +84,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   icon: LucideIcon;
   /** Accessible label, also shown as the tooltip. */
   label: string;
-  size?: ButtonSize;
+  size?: "sm" | "md";
   active?: boolean;
 }
 

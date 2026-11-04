@@ -5336,3 +5336,21 @@ provider, capabilities and Claude as the default still hold.
   keeps dropping results tagged with another tenant (`otherTenant`).
 - **Lists saved before the fix heal themselves:** a saved `found` with errors naming another tenant
   than its own is searched again however new, and `saved` leaves those errors out until then.
+
+## D-346: The composer's Send and Stop are icon-only buttons
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: the composer's action row was too cluttered; the icon is enough. The
+  shape (a `Button` size, the tooltip wording, the smaller Send-now): Claude, on my own, along the
+  lines Jon's task asked for.
+- **What:** Stop (secondary, square icon) and Send (primary/accent: arrow, terminal for `!`, bookmark
+  for `#`) show no label. Each has an `aria-label` and tooltip with the full meaning and its key:
+  "Send (Enter)", "Queue: read after this turn (Enter)", "Run in shell (Enter)", "Remember (Enter)",
+  "Stop (Esc)". No provider name in them: chats name the provider only where it matters (the
+  app-wide sweep is a separate task).
+- **`Button size="icon"`** (`ui/Button.tsx`) is the base component's square, icon-only size, as tall
+  as `md` (`size-7`), so any variant (primary included) can be icon-only without one-off styling;
+  the caller gives `aria-label` and `title`. `IconButton` stays the plain ghost tool button.
+- **One height in the row:** Send now (`IconButton`) moved from `md` (32 px) to `sm` (28 px), so Stop,
+  Send now and Send are the same square in one line; the row's height doesn't change when Send now
+  appears, and Send keeps its slot in every mode and busy state.
