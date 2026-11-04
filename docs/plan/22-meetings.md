@@ -37,3 +37,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify noise suppression on a real call: colleagues don't hear typing, voice quality matches Teams (D-322).
 - [x] Devices follow Windows' default device, the selects name it, picks are remembered and device changes are followed in a call (D-323).
 - [ ] Verify the devices on a real machine: headphones as default output, switching the default and unplugging during a call (D-323).
+- [x] Share sound: the SDK has no supported way to send system sound, so the share dialog says "Sound isn't shared" instead of a switch (D-324).
+- [ ] Add a "Share sound" switch (off on every open) once the calling SDK gets a public option for system audio (D-324).

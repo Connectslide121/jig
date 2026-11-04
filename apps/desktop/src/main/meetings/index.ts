@@ -474,6 +474,8 @@ export async function startMeetings(): Promise<void> {
     try {
       const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
       const source = sources.find((s) => s.id === selected.id);
+      // Never `audio`: the calling SDK has no supported way to send system sound, and Windows loopback
+      // would also capture the meeting itself (D-324).
       callback(source ? { video: source } : {});
       if (source) showShareFrame(source);
     } catch {

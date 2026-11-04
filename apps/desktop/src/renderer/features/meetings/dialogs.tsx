@@ -1,4 +1,15 @@
-import { AppWindow, AudioLines, Info, Mic, Monitor, Phone, PlugZap, Video, VideoOff } from "lucide-react";
+import {
+  AppWindow,
+  AudioLines,
+  Info,
+  Mic,
+  Monitor,
+  Phone,
+  PlugZap,
+  Video,
+  VideoOff,
+  VolumeX,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   DEVICE_KINDS,
@@ -533,7 +544,23 @@ export function ShareSources({
     { title: "Windows", icon: AppWindow, items: sources.filter((s) => !s.id.startsWith("screen:")) },
   ].filter((g) => g.items.length);
   return (
-    <Dialog open title="Share a screen or window" width="lg" column onClose={onClose}>
+    <Dialog
+      open
+      title="Share a screen or window"
+      width="lg"
+      column
+      onClose={onClose}
+      footer={
+        <>
+          {/* The calling SDK offers no supported way to send your computer's sound (D-324). */}
+          <span className="mr-auto flex min-w-0 items-center gap-1.5 text-xs text-hint">
+            <VolumeX className="size-3.5 shrink-0" />
+            <span className="truncate">Sound isn't shared, only the picture</span>
+          </span>
+          <Button onClick={onClose}>Cancel</Button>
+        </>
+      }
+    >
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         {groups.map(({ title, icon: Icon, items }) => (
           <section key={title} className="space-y-2">

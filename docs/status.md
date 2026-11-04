@@ -1,5 +1,15 @@
 # Status
 
+Screen sharing and sound (2026-11-04, D-324): Jon thought his computer's sound was shared with his
+screen. It isn't: Jig only ever gives the call the picture, and the calling SDK has no supported way to
+send system sound (only Microsoft's own Teams apps get it). So there is no "Share sound" switch; the
+"Share a screen or window" dialog says **"Sound isn't shared, only the picture"** in its footer, next
+to a Cancel button. Checked with screenshots in Jig Dark and Light (test meeting service).
+**Check on a real call:** share a screen while a video plays with sound, using speakers rather than a
+headset, and ask someone what they hear. If they hear the video, it is your microphone picking up the
+speakers (try a headset); if they hear it clearly with a headset on, tell Claude, because then the SDK
+sends sound after all.
+
 Meeting devices (2026-11-04, D-323): in the Join dialog Microphone, Speakers and Camera all said
 "System default", but the meeting played through Speakers (Realtek) while Windows' default output was
 the JBL headphones. Jig took the first device in the SDK's list. Now "System default" is **Windows'

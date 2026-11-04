@@ -4650,3 +4650,33 @@ id `"default"`, found nothing and took the first device.
   from a webcam microphone.
 - **Test meeting service:** sample devices with neutral names (Contoso Cam HD, Contoso Headset,
   Fabrikam Audio), so the dialogs, Devices… (now enabled there) and the e2e test show real lists.
+
+## D-324: Screen sharing never sends your computer's sound; the share dialog says so instead of a switch
+
+**Who:** Jon (asked for a "Share sound" switch, off by default, and not to ship one that does nothing);
+Claude, on my own (the finding, the wording). **When:** 2026-11-04.
+
+**Why.** Jon thought his computer's sound was shared with his screen. It isn't, and it can't be in a
+supported way:
+- Jig answers Electron's `setDisplayMediaRequestHandler` with `{ video: source }` only, never `audio`,
+  so no system sound reaches the SDK.
+- The calling SDK (2.0.0, and the newest 2.1.1-beta.1) only sends screen-share sound when its internal
+  config `enableAudioSharing` is on. It is off by default and turned on only for Microsoft's own Teams
+  clients (internal platform overrides) or by Microsoft's remote config; no `CallClientOptions` field or
+  `startScreenSharing` option sets it. With it off the SDK never creates the audio mixer that adds
+  "SystemAudio" to the call, so `startScreenSharing(new LocalVideoStream(streamWithAudio))` would send
+  the picture and silently drop the sound. Microsoft's feature table lists "Share system audio during
+  screen sharing" for the web SDK, but there is no public API for it.
+- Windows loopback (`audio: "loopback"`) captures everything the computer plays, including the meeting
+  itself, so the others would hear themselves; there is no supported way to leave the call out.
+
+**What.**
+- **No switch.** The "Share a screen or window" dialog's footer says **"Sound isn't shared, only the
+  picture"** (muted-speaker icon, hint colour) beside Cancel. It is in the footer, so nothing moves.
+- The display-media handler keeps answering video only, with a comment pointing here. No
+  `sound` argument on `meetings.selectShare`.
+- **Likely reason for the impression:** without a headset the microphone picks up the speakers, so a
+  video played while sharing is heard through your microphone (deep noise suppression, D-322, damps
+  steady noise but not music or speech).
+- **Revisit** when the SDK gets a public option for system audio (check its changelog on updates):
+  then add the switch, off on every open, and pass `audio` only when it is on.

@@ -219,6 +219,10 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
       { ...caption, text: "Ship Thursday", final: true },
     ]);
     await room.getByRole("button", { name: "Share screen", exact: true }).click();
+    // No supported way to send the computer's sound: the dialog says so instead of a dead switch (D-324).
+    await expect(room.getByRole("dialog", { name: "Share a screen or window" })).toContainText(
+      "Sound isn't shared, only the picture",
+    );
     await room.screenshot({
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/share-screen.png",
