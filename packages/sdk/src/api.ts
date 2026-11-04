@@ -194,6 +194,13 @@ export type MenuInput = MenuItemInput | { separator: true } | { heading: string 
  */
 export type MenuGroupItems = (ctx: AddonUiContext) => MenuInput[] | Promise<MenuInput[]>;
 
+/**
+ * `ui.tsx`'s optional `activate` export (D-344): runs once when the add-on's UI loads, before any of
+ * its views is shown (warm a cache, keep a watch, listen to events). The function it returns runs
+ * when the add-on unloads or reloads.
+ */
+export type AddonUiActivate = (ctx: AddonUiContext) => (() => void) | undefined;
+
 export interface AddonUiContext {
   /**
    * Opens Jig's dedicated Teams meeting window; the call survives project/view switches. `history()`

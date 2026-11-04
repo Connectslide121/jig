@@ -1,5 +1,16 @@
 # Status
 
+Files keeps its tree (2026-11-04, D-344, Jon): switching the Files view away and back, or collapsing
+and reopening the sidebar, shows the tree at once, with the same folders open, scrolled where you
+left it and the filter as you left it: no blank moment, no loading rows. It is read when Jig starts
+(view shown or not) and kept up to date in the background: when you come back to it, when Jig gets
+focus and when files change, also while it is hidden (the active project's folders stay watched).
+A loading row only shows for a folder you open for the first time. For add-on authors: `ui.tsx` can
+export `activate(ctx)`, run once when the add-on loads. How to try it: open a few folders in Files,
+scroll, switch to Chats, create a file in one of the open folders, switch back. Checked with the fake
+engine (screenshots identical before and after switching). Needs testing on your machine: a large
+repository (many folders open) and switching projects.
+
 Jig asks before it quits (2026-11-04, D-343, Jon): when something would be lost or forgotten, quitting
 (the menu, Alt+F4, the window's ×, an update's restart) shows one **Quit Jig?** modal listing each
 reason as a row (icon, name, message, its own buttons), with Cancel (the default) and Quit anyway.
@@ -1454,7 +1465,8 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
     the path.
   - The picker chooses the folder it follows, and the eye button shows others next to it (kept per
     project).
-  - It updates by itself when files change.
+  - It updates by itself when files change, also while hidden; switching to it shows the tree at once
+    where you left it (D-344).
 - **Workspaces** (Settings → Workspaces, or the folder button in the Projects view): the folders Jig
   knows. A repos folder lists the repositories inside (three levels deep, set on the same page).
   - The Git view lists the project's repository, picked at its top; All repositories lists every one,

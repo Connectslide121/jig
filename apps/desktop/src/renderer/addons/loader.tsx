@@ -261,6 +261,17 @@ async function mount(addon: AddonInfo): Promise<void> {
     link.href = addon.cssUrl;
     document.head.appendChild(link);
   }
+  // `activate(ctx)`: optional, runs once the UI has loaded (warm a cache, listen to events); what it
+  // returns runs when the add-on unloads or reloads.
+  const activate = module.activate;
+  if (typeof activate === "function") {
+    try {
+      const dispose = (activate as (c: AddonUiContext) => unknown)(ctx);
+      if (typeof dispose === "function") cleanups.push(dispose as () => void);
+    } catch (e) {
+      notify({ title: `${addon.name}: ${(e as Error).message}`, tone: "danger" });
+    }
+  }
   if (missing.length)
     useAddons.setState((s) => ({
       loadErrors: {

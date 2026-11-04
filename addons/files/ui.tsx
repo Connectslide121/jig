@@ -1,4 +1,4 @@
-import type { AddonComponentProps, AddonProject, AddonUiContext, AddonWorkspace } from "@jig/sdk";
+import type { AddonComponentProps, AddonProject, AddonUiActivate, AddonUiContext } from "@jig/sdk";
 import {
   cn,
   Empty,
@@ -7,24 +7,28 @@ import {
   SearchInput,
   Spinner,
   useActiveProject,
-  useAddonEvent,
   useWorkspaceList,
   VirtualList,
 } from "@jig/sdk/ui";
 import { ChevronDown, ChevronRight, Eye, Files, FolderTree, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { type Entry, type FileState, filterPaths, folderChanged, type Roots, toggleRoot } from "./lib/tree";
 import {
-  type Entry,
-  type FileState,
-  filterPaths,
-  folderChanged,
-  type Roots,
-  toggleRoot,
-  visibleRoots,
-} from "./lib/tree";
+  type Folder,
+  keepActiveProject,
+  knownFolders,
+  loadDir,
+  loadFiles,
+  refresh,
+  rememberScroll,
+  setRoots,
+  shownFolders,
+  snapshot,
+  subscribe,
+  sync,
+  update,
+} from "./store";
 
-/** How often the view looks again where folders can't be watched (Linux), while visible. */
-const POLL_MS = 5000;
 const ROW = 24;
 
 const STATE_CLASS: Record<FileState, string> = {
@@ -44,45 +48,6 @@ const STATE_LETTER: Record<FileState, string> = {
   conflict: "!",
 };
 
-/** A folder Jig knows: a workspace, or a repository inside one. */
-interface Folder {
-  path: string;
-  name: string;
-  /** For a folder of repositories: the repositories inside (for git status and the filter). */
-  repos: string[];
-}
-
-function knownFolders(workspaces: AddonWorkspace[]): Folder[] {
-  return workspaces.flatMap((w) => [
-    { path: w.path, name: w.name, repos: w.repos.map((r) => r.path) },
-    ...w.repos.map((r) => ({ path: r.path, name: `${w.name}/${r.name}`, repos: [] })),
-  ]);
-}
-
-/** Which folders the view shows, per project (add-on storage `roots:<projectId>`). */
-function useRoots(ctx: AddonUiContext, projectId: string) {
-  const key = `roots:${projectId}`;
-  const [roots, setRoots] = useState<Roots>();
-  useEffect(() => {
-    let gone = false;
-    setRoots(undefined);
-    void ctx.storage.get<Roots>(key).then(
-      (v) => !gone && setRoots(v ?? { extras: {} }),
-      () => !gone && setRoots({ extras: {} }),
-    );
-    return () => {
-      gone = true;
-    };
-  }, [ctx, key]);
-  const update = (change: (r: Roots) => Roots) =>
-    setRoots((r) => {
-      const next = change(r ?? { extras: {} });
-      void ctx.storage.set(key, next);
-      return next;
-    });
-  return [roots, update] as const;
-}
-
 /**
  * The project's files (D-101, D-102: it follows the active project). By default its default workspace;
  * the picker chooses another folder and the eye button shows more next to it.
@@ -98,6 +63,9 @@ export function FilesView({ ctx }: AddonComponentProps) {
   return <ProjectFiles key={project.id} ctx={ctx} project={project} />;
 }
 
+/** Keeps the active project's tree loaded and watched from startup, view shown or not (D-344). */
+export const activate: AddonUiActivate = keepActiveProject;
+
 type Row =
   | { kind: "root"; folder: Folder; open: boolean }
   | { kind: "entry"; entry: Entry; depth: number; open: boolean; root: string }
@@ -105,132 +73,44 @@ type Row =
   | { kind: "loading"; depth: number };
 
 function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonProject }) {
-  const [roots, setRoots] = useRoots(ctx, project.id);
+  // The kept tree (store.ts): shown at once when the view comes back, then reread in the background.
+  const tree = useSyncExternalStore(
+    useCallback((listener: () => void) => subscribe(project.id, listener), [project.id]),
+    () => snapshot(project.id),
+  );
+  const { roots, entries, open, states, query } = tree;
   const workspaces = useWorkspaceList();
   const folders = useMemo(() => knownFolders(workspaces), [workspaces]);
-  const shown = roots
-    ? visibleRoots(
-        roots,
-        project.path,
-        folders.map((f) => f.path),
-      )
-    : [];
-  const shownFolders = shown.map((p) => folders.find((f) => f.path === p) ?? { path: p, name: p, repos: [] });
+  const shownList = roots ? shownFolders(roots, project.path, folders) : [];
+  const shown = shownList.map((f) => f.path);
   const main = shown[0];
   const shownKey = shown.join("\n");
 
-  // Loaded folder listings, opened folders, git states.
-  const [entries, setEntries] = useState<Record<string, Entry[] | "error">>({});
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  const [states, setStates] = useState<Record<string, Record<string, FileState>>>({});
-  const loaded = useRef(new Set<string>());
-
-  const loadDir = useCallback(
-    (dir: string) => {
-      loaded.current.add(dir);
-      void ctx.host.call<Entry[]>("list", { dir }).then(
-        (list) => setEntries((e) => ({ ...e, [dir]: list })),
-        () => setEntries((e) => ({ ...e, [dir]: "error" })),
-      );
-    },
-    [ctx],
-  );
-  const loadStatus = useCallback(
-    (folder: Folder) =>
-      void ctx.host
-        .call<Record<string, FileState>>("status", { root: folder.path, repos: folder.repos })
-        .then((s) => setStates((all) => ({ ...all, [folder.path]: s })))
-        .catch(() => {}),
-    [ctx],
-  );
-  /** Looks at a shown folder again: its opened folders and its git state. */
-  const refresh = useCallback(
-    (root: string) => {
-      for (const dir of loaded.current)
-        if (dir === root || dir.startsWith(`${root}/`) || dir.startsWith(`${root}\\`)) loadDir(dir);
-      const folder = folders.find((f) => f.path === root);
-      if (folder) loadStatus(folder);
-    },
-    [folders, loadDir, loadStatus],
-  );
-
-  const watchLost = useRef<() => void>(undefined);
+  // Shown, or its folders changed: reread them in the background and keep them watched.
   useEffect(() => {
-    if (!roots) return;
-    let timer: ReturnType<typeof setInterval> | undefined;
-    let gone = false;
-    const poll = () => {
-      if (gone || timer) return;
-      timer = setInterval(() => document.visibilityState === "visible" && shown.forEach(refresh), POLL_MS);
-    };
-    watchLost.current = poll;
-    for (const folder of shownFolders) {
-      loadDir(folder.path);
-      loadStatus(folder);
-    }
-    void Promise.all(
-      shown.map((root) =>
-        ctx.host.call<{ live: boolean }>("watchFolder", { root }).then(
-          (r) => r.live,
-          () => false,
-        ),
-      ),
-    ).then((live) => {
-      if (!live.every(Boolean)) poll();
-    });
-    const onFocus = () => shown.forEach(refresh);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      gone = true;
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      for (const root of shown) void ctx.host.call("unwatchFolder", { root }).catch(() => {});
-    };
-  }, [shownKey, roots === undefined, ctx]);
-  useAddonEvent("changed", (payload) => {
-    const root = (payload as { root?: string })?.root;
-    if (root && shown.includes(root)) refresh(root);
-  });
-  useAddonEvent("watchLost", (payload) => {
-    const root = (payload as { root?: string })?.root;
-    if (root && shown.includes(root)) watchLost.current?.();
-  });
+    void sync(ctx, project);
+  }, [ctx, project.id, project.path, shownKey]);
 
-  // The filter: every file of the shown folders, loaded when you start typing.
-  const [query, setQuery] = useState("");
-  const [all, setAll] = useState<Record<string, string[]>>();
-  const listing = useRef<string>(undefined);
+  // The filter: every file of the shown folders, loaded when you start typing and again after a change.
+  const all = tree.allKey === shownKey ? tree.all : undefined;
+  const stale = !all || tree.allStale;
   useEffect(() => {
-    // Once per set of folders (not on every render while the first answer is on its way).
-    if (!query.trim() || all || listing.current === shownKey) return;
-    const key = shownKey;
-    listing.current = key;
-    void Promise.all(
-      shownFolders.map(
-        async (f) =>
-          [f.path, await ctx.host.call<string[]>("files", { root: f.path, repos: f.repos })] as const,
-      ),
-    )
-      .then((list) => {
-        // Folders changed meanwhile: this list is of the old ones.
-        if (listing.current === key) setAll(Object.fromEntries(list));
-      })
-      .catch(() => {
-        if (listing.current === key) listing.current = undefined;
-      });
-  }, [query, all, shownKey, ctx]);
-  useEffect(() => {
-    setAll(undefined);
-    listing.current = undefined;
-  }, [shownKey]);
+    if (query.trim() && stale && shownList.length) loadFiles(ctx, project.id, shownList);
+  }, [query, stale, shownKey, ctx, project.id]);
+  const setQuery = (q: string) => update(project.id, () => ({ query: q }));
+  const setRootsOf = (change: (r: Roots) => Roots) => setRoots(ctx, project.id, change);
+  const refreshAll = () => {
+    for (const root of shown) refresh(ctx, project.id, root);
+  };
 
-  if (!roots || !main) return null;
+  // Nothing kept yet (the very first moment after Jig starts): one spinner in the view's space.
+  if (!roots || !main) return <Spinner center />;
   const stateOf = (root: string, path: string) => states[root]?.[path];
   const isOpen = (path: string, root: boolean) => open[path] ?? root;
   const toggle = (path: string, root: boolean) => {
     const next = !isOpen(path, root);
-    setOpen((o) => ({ ...o, [path]: next }));
-    if (next && !entries[path]) loadDir(path);
+    update(project.id, (t) => ({ open: { ...t.open, [path]: next } }));
+    if (next && !entries[path]) loadDir(ctx, project.id, path);
   };
 
   // The tree, flattened into rows for the virtual list.
@@ -246,7 +126,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
       if (o) walk(entry.path, depth + 1, root);
     }
   };
-  for (const folder of shownFolders) {
+  for (const folder of shownList) {
     const o = isOpen(folder.path, true);
     rows.push({ kind: "root", folder, open: o });
     if (o) walk(folder.path, 1, folder.path);
@@ -294,20 +174,20 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
       folders.map((f) => ({
         label: f.name,
         checked: f.path === main,
-        onSelect: () => setRoots((r) => ({ ...r, main: f.path === project.path ? undefined : f.path })),
+        onSelect: () => setRootsOf((r) => ({ ...r, main: f.path === project.path ? undefined : f.path })),
       })),
       at,
     );
   const chooseShown = (at: HTMLElement) =>
     ctx.menu(
       [
-        { label: `Show next to ${shownFolders[0]?.name ?? "this folder"}`, disabled: true },
+        { label: `Show next to ${shownList[0]?.name ?? "this folder"}`, disabled: true },
         ...folders
           .filter((f) => f.path !== main)
           .map((f) => ({
             label: f.name,
             checked: shown.includes(f.path),
-            onSelect: () => setRoots((r) => toggleRoot(r, main, f.path)),
+            onSelect: () => setRootsOf((r) => toggleRoot(r, main, f.path)),
           })),
       ],
       at,
@@ -315,7 +195,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
 
   const matches =
     query.trim() && all
-      ? shownFolders.flatMap((f) =>
+      ? shownList.flatMap((f) =>
           filterPaths(all[f.path] ?? [], query).map((rel) => ({ root: f, rel, path: joinPath(f.path, rel) })),
         )
       : [];
@@ -331,7 +211,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
           onClick={(e) => pick(e.currentTarget)}
         >
           <FolderTree className="size-3.5 shrink-0 text-muted" />
-          <span className="truncate font-medium">{shownFolders[0]?.name}</span>
+          <span className="truncate font-medium">{shownList[0]?.name}</span>
           {shown.length > 1 && <span className="shrink-0 text-xs text-muted">+{shown.length - 1}</span>}
           <ChevronDown className="size-3 shrink-0 text-hint" />
         </button>
@@ -343,7 +223,7 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
           data-testid="files-shown-menu"
           onClick={(e) => chooseShown(e.currentTarget)}
         />
-        <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={() => shown.forEach(refresh)} />
+        <IconButton icon={RefreshCw} size="sm" label="Refresh" onClick={refreshAll} />
       </div>
       <div className="shrink-0 border-b border-line p-1.5">
         <SearchInput
@@ -394,6 +274,8 @@ function ProjectFiles({ ctx, project }: { ctx: AddonUiContext; project: AddonPro
           className="min-h-0 flex-1 py-1"
           items={rows}
           rowHeight={ROW}
+          initialScrollTop={tree.scrollTop}
+          onScrollTop={(top) => rememberScroll(project.id, top)}
           renderRow={(row) => {
             // A folder being read: a spinner, centered for a whole shown folder.
             if (row.kind === "loading")

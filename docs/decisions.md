@@ -5278,3 +5278,37 @@ provider, capabilities and Claude as the default still hold.
 - **Time add-on (Jon's own, 1.1.0):** while a timer runs it answers "A timer is running: description ·
   project · 1:23", with "Stop timer and quit" (kept as an entry when it lasted a minute) and "Keep it
   running and quit"; its detail says it goes on counting from its start time while Jig is closed.
+
+## D-344: Files keeps its tree; add-ons get a UI `activate`
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: "the files addon loads the files every time I switch to that tab. We should
+  just load it in the beginning, then keep it and refresh in the background without locking the UI
+  when switching to it."
+- **Why it reloaded:** a sidebar shows only its active view; switching tabs or collapsing the sidebar
+  unmounts it. Files kept its tree in component state and its folder watch in the view's effect, so
+  every switch started from nothing (a blank frame, loading rows, the scroll back at the top) and tore
+  the host's watch down and up again.
+- **The tree lives in a module-level store** (`addons/files/store.ts`), one per project: which folders
+  it shows, folder listings, opened folders, git states, the filter's text and file list, and the
+  scroll position. The view reads it with `useSyncExternalStore`, so coming back shows the tree in the
+  same frame, where it was scrolled. Rereads replace a listing only when it differs and never put a
+  loading row over one that is shown; a loading row is only for a folder opened for the first time.
+  A read asked for while one runs runs once more afterwards. Like Repos' overview cache and Boards'
+  stale-while-revalidate (D-302).
+- **Loaded at startup, watched while the project is active:** the add-on's UI `activate` reads the
+  active project's folders and git status as soon as the add-on loads, view shown or not, and keeps
+  its shown folders watched (the host's ref-counted watch) until another project becomes active or
+  the add-on unloads. It rereads on the view being shown, on window focus and on the watch's
+  `changed` events; where a watch can't run (Linux, a lost watch) it looks every 5 s while visible.
+- **New add-on API: `ui.tsx` may export `activate(ctx)`** (type `AddonUiActivate`): the UI-side twin
+  of host.ts's `activate`. It runs once after the add-on's UI loads; the function it returns runs when
+  the add-on unloads or reloads. No manifest key, like host `activate` (Claude, on my own).
+- **No `keepMounted` for side views (Claude, on my own):** keeping a hidden view mounted in
+  `Region.tsx` would still lose it when the sidebar collapses (the region unmounts) or the view moves
+  to another region, would keep hidden views rendering on every change, and would hide the problem
+  for one add-on instead of giving add-ons a way to keep data. A store plus `activate` covers every
+  case; other add-ons can do the same.
+- **`VirtualList` keeps its position:** `initialScrollTop` and `onScrollTop` (set before the first
+  paint, so a restored list never shows its top first).
+

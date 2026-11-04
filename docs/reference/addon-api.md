@@ -51,6 +51,13 @@ design-token warnings (the builder must fix them; the add-on still loads).
 - Every component gets `ctx: AddonUiContext` as a prop (also `useAddon()`), and renders inside an
   error boundary: a crash shows "Turn off" / "Fix with AI" in its place.
 - Handlers (`actions[].run`, `menus[].run`) are exported functions `(ctx, target?) => void | Promise`.
+- `export const activate: AddonUiActivate = (ctx) => () => { … }` (optional, D-344) runs once when
+  the add-on's UI loads, before any of its views is shown: warm a cache, keep a watch, listen with
+  `ctx.on` / `ctx.onJigEvent`. The function it returns runs when the add-on unloads or reloads (undo
+  your listeners there). Views unmount when they are hidden (another tab in the sidebar, the sidebar
+  collapsed), so keep data that should survive that in a module-level store seeded from here, like
+  Files (`addons/files/store.ts`) and Repos do; `VirtualList` takes `initialScrollTop` and
+  `onScrollTop` to keep its position.
 
 ### Top bar: placement and live menu entries (D-305)
 

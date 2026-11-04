@@ -66,3 +66,48 @@ test("Files: the project's tree with git colours, a filter, Preview, other folde
   await writeFile(join(shop, "todo.md"), "- x\n");
   await expect(view.getByTestId("files-entry-todo.md")).toBeVisible({ timeout: 15000 });
 });
+
+test("Files: switching away and back keeps the tree, opened folders and changes made meanwhile", async ({
+  page,
+  jigHome,
+}) => {
+  const shop = join(jigHome, "shop");
+  await mkdir(join(shop, "src"), { recursive: true });
+  git(shop, "init", "-q", "-b", "main");
+  await writeFile(join(shop, "src", "cart.ts"), "export const total = 1;\n");
+  await hostCall(page, "projects.add", { path: shop });
+  await hostCall(page, "projects.create", { name: "Shop", path: shop });
+  await page.keyboard.press("Control+Shift+E");
+  const left = page.getByTestId("region-left");
+  const view = left.getByTestId("files-view");
+  await view.getByTestId("files-entry-src").click();
+  await expect(view.getByTestId("files-entry-cart.ts")).toBeVisible();
+
+  // From here on, a loading row or a view without its tree would be a blink.
+  await page.evaluate(() => {
+    const w = window as unknown as { filesBlinked?: string };
+    new MutationObserver(() => {
+      const shown = document.querySelector('[data-testid="files-view"]');
+      if (shown?.querySelector('[data-testid="loading"]')) w.filesBlinked = "a loading row";
+      else if (shown && !shown.querySelector('[data-testid="files-entry-cart.ts"]'))
+        w.filesBlinked = "the view without its tree";
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+
+  // Another view in the same sidebar, a file created meanwhile, then back: there at once, still open.
+  await left.getByTestId("view-tab-jig.sessions").click();
+  await expect(view).toHaveCount(0);
+  await writeFile(join(shop, "src", "later.ts"), "export {};\n");
+  await left.getByTestId("view-tab-addon.files.files").click();
+  await expect(view.getByTestId("files-entry-cart.ts")).toBeVisible();
+  await expect(view.getByTestId("files-entry-later.ts")).toBeVisible({ timeout: 15000 });
+
+  // The sidebar collapsed and opened again: the same.
+  await page.keyboard.press("Control+B");
+  await expect(view).toHaveCount(0);
+  await page.keyboard.press("Control+B");
+  await expect(view.getByTestId("files-entry-later.ts")).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as unknown as { filesBlinked?: string }).filesBlinked),
+  ).toBeUndefined();
+});
