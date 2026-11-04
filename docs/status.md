@@ -626,7 +626,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.11.0 being prepared (2026-11-04): Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Claude's browser got a round of polish. Publication not yet verified.
+Jig 0.11.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.11.0),
+source/tag `3e2bb4b815957ca5f208597fbc5606f065fa36fd`. Installer: 388,962,178 bytes;
+SHA-256 `6b83ea698d67c2b3466e3e4f9d874fa346814b66579b721c64cecace163e72f7`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.11.0 with its feed and installer. In 0.11.0: Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Claude's browser got a round of polish.
 
 Jig 0.10.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.10.0),
 source/tag `8eef63465b5e3d0dd03779acf81b0aade332f038`. Installer: 388,925,532 bytes;
