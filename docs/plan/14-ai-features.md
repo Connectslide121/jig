@@ -60,7 +60,12 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   provider, a group per provider with `engine.codexModel`/`codexEffort`/`codexInstructions`/
   `codexAllowApiKey`), the project's "Chats run on", Codex chats refreshing the ChatGPT meter (D-314;
   unit tests in `sessions/manager.test.ts`, `composerInput.test.ts`; e2e in `chat-provider.spec.ts`).
-- [ ] Codex chats E: plan mode/questions/history/skills (queued task).
+- [x] Codex chats E: Plan only through Jig's `exit_plan` (read-only sandbox, a plan-only instruction
+  per turn, Jig starting the next turn in the approved mode), questions through `ask_user`, both on
+  the existing cards; saved Codex threads in Open a saved chat (`thread/list`, `thread/read`,
+  continued as a copy with `thread/fork`); Claude Code's skills as extra skill roots
+  (`engine.codexSkills`); a next-message one-shot (AI feature `chatSuggestions`); Ask before changes
+  on `untrusted` approvals; the capability flags on; fake-engine coverage (D-315).
 
 ## Later
 

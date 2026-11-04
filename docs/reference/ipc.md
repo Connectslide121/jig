@@ -72,8 +72,8 @@ settings, add-on permissions.
 | `ai.ask` | `{ addonId, prompt, cwd?, quick?, feature? }` | `string` | an add-on with the `ai` permission asks a one-shot question (no tools) on the provider and model picked in Settings → AI features (`main/ai`): `feature` (`commitMessage` \| `commitCheck` \| `releaseNotes`, the built-in add-ons) picks that row, else "Add-ons: short answers" for `quick` or "Add-ons: other questions" (D-297, schema) |
 | `ai.providers` | — | `ProviderStatus[]` | whether Claude and ChatGPT can answer now: ChatGPT is ready when the Codex CLI is installed and `codex login status` says signed in (only yes/no and the method), D-297 |
 | `sessions.fork` | `{ id }` | `SessionMeta` | a new chat continuing this one as a branch (Claude Code's fork; transcript copied) |
-| `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code saved on this computer, newest first; `chatId` when one is already a Jig chat (D-150) |
-| `sessions.openSaved` | `{ sessionId }` | `SessionMeta` | opens one as a chat in No project with its history; its first message continues it as a copy (validated id; folder and title from Claude Code's list) |
+| `sessions.saved` | — | `SavedClaudeSession[]` | the conversations Claude Code and Codex saved on this computer, newest first (`provider: "codex"` for Codex threads, D-315); `chatId` when one is already a Jig chat (D-150) |
+| `sessions.openSaved` | `{ sessionId }` | `SessionMeta` | opens one as a chat in No project with its history, on the provider that saved it; its first message continues it as a copy (validated id; folder and title from the saved list) |
 | `sessions.rewindFiles` | `{ id, itemId, dryRun }` | `RewindResult` | restore files Claude changed since a user message (file checkpoints); `dryRun` only reports |
 | `usage.get` / `usage.refresh` | — | `UsageByProvider` | your plans' usage per provider: `claude` (5-hour and weekly windows from Claude Code) and `chatgpt` (from the Codex CLI's app-server, D-298; `docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |

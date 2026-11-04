@@ -1,10 +1,29 @@
 # Status
 
+ChatGPT chats close the gaps (2026-11-04, D-315): a ChatGPT chat now has **Plan only** (Codex looks
+around read-only, then shows its plan on the same plan card as Claude; approving switches the mode and
+Codex carries the plan out), **question cards** (Codex asks with choices on the same card, which voice
+mode answers too), a **suggested next message** after each turn (a small ChatGPT one-shot, Settings →
+AI features → Next-message suggestions, behind the existing suggestions switch), and **Claude Code's
+skills** next to Codex's own (Settings → Chats → ChatGPT chats → Claude Code's skills; nothing is
+copied). **Open a saved chat…** (was Open a Claude Code chat…) lists your Codex threads with your
+Claude Code chats, each with its mark; a Codex one opens as a ChatGPT chat with its history and diffs.
+**Ask before changes** now asks before Codex runs any command it doesn't know to only read (on Windows
+that includes `git status`) and before every file change; before, Codex often just reported the
+sandbox's "access denied". The plan, question and permission cards say ChatGPT in ChatGPT chats.
+Checked on Windows with Codex 0.166.0 signed in to ChatGPT, driving the built app: an edit with its
+approval and diff, a command with its approval card, a Jig tool (project notes), Plan only with the
+plan approved (the file was created in Accept edits), a question answered, a suggestion, Stop, a
+restart with the chat resumed (it remembered earlier turns), the saved Codex threads listed and the
+ChatGPT usage meter. Known gaps: an answered question card shows "—" for its answers after a restart
+(Claude chats too: the answers aren't saved with the card); Codex chats still have no subagents,
+rewind or fork.
+
 Picking Claude or ChatGPT for a chat (2026-11-04, D-314): a new chat has a provider button before its
 model picker, Claude or ChatGPT (greyed out with a link to Get started while Codex isn't signed in).
 It can change until the first message; then it is the chat's mark. ChatGPT chats show ChatGPT's
 models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and hide what Codex can't do
-(Plan only, rewind and edit-and-resend, fork, the suggestion chip). The chat header shows the chat's
+(rewind and edit-and-resend, fork; Plan only, questions and suggestions came with D-315). The chat header shows the chat's
 mark, and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
 (was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
 group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the

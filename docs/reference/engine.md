@@ -52,21 +52,22 @@ life (`SessionMeta.provider`; missing = `claude`, so chats from before read as C
 the project's `provider`, else `engine.provider`. The project's `model` and `effort` are for its own
 provider's chats; a chat on the other provider gets `engine.defaultModel` (Claude) or
 `engine.codexModel` (Codex). Forks keep the provider; builder, attempt, worktree and opened Claude
-Code chats stay on Claude. The session manager starts each chat on `engineFor(provider)`.
+Code chats stay on Claude; a saved conversation opens on the provider that saved it (D-315). The
+session manager starts each chat on `engineFor(provider)`.
 
 `ENGINE_CAPABILITIES` (`shared/engine.ts`) says what each provider's chats can do, so the UI hides
 controls a provider doesn't have instead of showing dead buttons:
 
-| Capability | Claude | Codex (at first) | What it covers |
+| Capability | Claude | Codex | What it covers |
 |---|---|---|---|
-| `planMode` | yes | no | Plan mode and the approve-the-plan card (ExitPlanMode) |
-| `questions` | yes | no | questions with choices (AskUserQuestion) |
+| `planMode` | yes | yes (D-315: Jig's `exit_plan`) | Plan mode and the approve-the-plan card (ExitPlanMode) |
+| `questions` | yes | yes (D-315: Jig's `ask_user`) | questions with choices (AskUserQuestion) |
 | `subagents` | yes | no | jig-tester, jig-search (no `agents` are passed to Codex chats) |
 | `rewind` | yes | no | restoring files and the conversation (file checkpoints) |
 | `fork` | yes | no | forking a chat into a new branch |
-| `history` | yes | no | opening conversations the CLI saved on this machine |
+| `history` | yes | yes (D-315: `thread/list`, `thread/read`) | opening conversations the CLI saved on this machine |
 | `effortLevels` | low, medium, high, xhigh, max | low, medium, high, xhigh, max, ultra | the effort picker's levels (Codex's from `codex debug models`) |
-| `promptSuggestions` | yes | no | suggesting the next message after a turn |
+| `promptSuggestions` | yes | yes (D-315: a one-shot after each turn) | suggesting the next message after a turn |
 
 Jig's tools (`toolServers`) go to both: in-process for Claude, over a local MCP server for Codex (see
 Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude (Claude's cloud).
@@ -83,10 +84,12 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   (`CODEX_PROTOCOL_VERSION`). `npm run codex:protocol [path-to-codex]` regenerates both after a Codex
   update; Biome skips the folder. A chat on another Codex version still runs (the normalizer reads
   messages loosely) and logs the difference.
-- **Start:** `initialize`, `model/list`, then `thread/resume { threadId: engineSessionId }` (a thread
-  that can't resume starts a new one, with a notice) or `thread/start`, both with `cwd`, the model,
-  the approval policy and sandbox of the permission mode, and `developerInstructions` (personal
-  instructions, D-312, then Jig's appended context). The answer becomes `init` (thread id = the chat's
+- **Start:** `initialize`, `model/list`, with `engine.codexSkills` = `claude` `skills/list` and
+  `skills/extraRoots/set` (see Skills below), then `thread/resume { threadId: engineSessionId }` (a
+  thread that can't resume starts a new one, with a notice), `thread/fork` for a chat opened from a
+  saved thread (`forkSession`, D-315), or `thread/start`, all with `cwd`, the model, the approval
+  policy and sandbox of the permission mode, and `developerInstructions` (personal instructions,
+  D-312, then Jig's appended context, then `STAND_IN_INSTRUCTIONS`, which name the stand-in tools). The answer becomes `init` (thread id = the chat's
   `engineSessionId`, the model Codex picked). A model family (`sol`) resolves with
   `resolveChatGptModel` against `model/list` (D-310).
 - **Turns:** `send(text, attachments)` → `turn/start` with text and image items (images as data URLs;
@@ -102,10 +105,25 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
 
   | Mode | `approvalPolicy` | Sandbox | Effect |
   |---|---|---|---|
-  | `default` (Ask before changes) | `on-request` | read-only | reads run; Codex asks before writing or leaving the sandbox |
+  | `default` (Ask before changes) | `untrusted` | workspace-write (+ extra folders) | commands Codex knows only read run; it asks before every other command and every file change, and what you approve can write in the project (D-315) |
   | `acceptEdits` | `on-request` | workspace-write (+ extra folders) | edits run; file changes Codex still asks about are accepted |
   | `bypassPermissions` (Don't ask) | `never` | workspace-write with network | Codex never asks |
-  | `plan` | – | – | not offered (`capabilities.planMode` is off); asks like `default` |
+  | `plan` (Plan only, D-315) | `on-request` | read-only | Jig declines every command or file approval; each turn starts with `PLAN_MODE_PROMPT`; the plan goes to `exit_plan` |
+
+- **Plan only (D-315):** the turn's input starts with `PLAN_MODE_PROMPT` (a `<jig_plan_mode>` text
+  item) while the mode is `plan`. Codex presents the plan with the stand-in `exit_plan`, whose card
+  is the plan card. The card switches the mode first (`sessions.setPermissionMode`), then allows; as
+  Codex takes a new sandbox only with a new turn, Jig holds that turn's `result` and starts the next
+  turn itself with `PLAN_APPROVED_PROMPT` (hidden), in the new mode; the chat shows the two as one
+  turn (`mergeResults`: durations and tokens added).
+- **Stand-in tools (D-315, `codexTools.ts`):** each Codex chat's `jig` server also has `exit_plan`
+  (`{ plan }`) and `ask_user` (AskUserQuestion's `{ questions }`). They run on Jig's side: the
+  handler asks through `askPermission` with Claude's tool name (`ExitPlanMode`,
+  `AskUserQuestion`) on the call's tool card (`normalizer.mcpCallId`), so the plan and question
+  cards, Don't ask's "questions still wait" and voice mode work unchanged. They are marked
+  `readOnly`, so Codex doesn't ask before calling them. Their tool cards are mapped to Claude's names
+  (`codexToolCardName`). `ask_user` returns one `- question → answer` line per answer, or the card's
+  message (skipped, or answered by voice). Waiting cards close when the turn ends.
 
 - **Approvals:** `item/commandExecution/requestApproval` and `item/fileChange/requestApproval` become
   permission cards through `askPermission` (Bash, or Edit/Write with the file). Allow → `accept`,
@@ -124,7 +142,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   | `reasoning` summary or text deltas | thinking blocks (nothing when Codex keeps its reasoning to itself) |
   | `commandExecution` item | `tool_use` Bash (`command` without Codex's `powershell -Command` / `bash -lc` wrapper) and its `tool_result` (exit code, declined) |
   | `fileChange` item | `tool_use` Edit (Write for a new file) per file, `tool_result` with the diff |
-  | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>`, result text and images |
+  | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>` (Jig's `exit_plan` / `ask_user` → `ExitPlanMode` / `AskUserQuestion`), result text and images |
   | `webSearch`, `imageView`, `contextCompaction` | WebSearch, Read, `compacted` |
   | `turn/completed` | open blocks end, then `result` (this turn's tokens, no cost; interrupted → `stopped`) |
   | `error` | a notice (`willRetry`: "retrying"); login failures → `error` `not_signed_in` |
@@ -142,9 +160,26 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
   to the importing file, `~/` = home, five hops, no cycles, not in code), and the chat gets it as
   developer instructions. Nothing is written: no copy in `~/.codex`. When Codex's own
   `$CODEX_HOME/AGENTS.md` says the same, it isn't sent twice. `off` leaves Codex with its own file.
+- **Skills (D-315, `codexSkills.ts`):** Codex finds its own (`.agents/skills` in the repository,
+  `~/.agents/skills`, `~/.codex/skills`). With `engine.codexSkills` = `claude` (the default) the
+  chat's app-server also gets the skill folders a Claude chat there would load: `.claude/skills` from
+  the chat's folder up to its repository root, `~/.claude/skills`, and the chat's skill plugins
+  (Jig's built-in skills), one extra root per skill (`skills/extraRoots/set`), skipping any name
+  `skills/list` already has. Nothing is copied. Jig's appended context leaves out what Codex can't
+  use: the subagent and routine lines, `SEARCH_GUIDANCE` and the bundled-skill line.
+- **Suggestions (D-315):** after a turn that ended well, with `promptSuggestions` on, the engine calls
+  `StartOptions.suggestNext` with your last message (Jig's added text removed) and Codex's last
+  reply. The session manager answers it with the AI feature `chatSuggestions` (ChatGPT / Luna by
+  default) and `suggestionFrom`; the engine emits `suggestion` unless another turn started meanwhile.
+- **History (D-315, `codexHistory.ts`):** `savedSessions` is `thread/list` (newest first, sources
+  `cli`, `vscode`, `appServer`; not `exec`, Jig's one-shots) on a short-lived app-server, each thread
+  as a `SavedClaudeSession` with `provider: "codex"`. `savedMessages` is `thread/read` with its turns,
+  converted into Claude Code transcript messages (`threadMessages`: your text without Jig's added
+  text, replies, reasoning, commands, file changes with a structured patch for the diff, MCP calls),
+  so `savedChatItems` builds the chat. The session manager lists both providers' saved chats
+  together and opens one on its own provider.
 - **Not in chats:** the Codex engine's `oneShot`, `completer`, `callTool` and `planUsage` refuse;
-  those run on Claude's engine or through `main/providers` (D-294, D-298). Saved Codex conversations
-  come later (`history` is off).
+  those run on Claude's engine or through `main/providers` (D-294, D-298).
 
 - **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
   an exact input, for Jig's routines and artifacts tabs.
