@@ -7,6 +7,8 @@ import {
   chatToContinue,
   closeRun,
   counts,
+  currentSlot,
+  dropSlots,
   duration,
   editTasks,
   emptyQueue,
@@ -14,7 +16,7 @@ import {
   historyFiles,
   joinQueues,
   listing,
-  moveTask,
+  moveTasks,
   nextTask,
   openRun,
   parseNewTasks,
@@ -31,6 +33,7 @@ import {
   setLeftOut,
   shouldPause,
   splitQueue,
+  stepTasks,
   type Task,
   tally,
   taskContext,
@@ -280,12 +283,70 @@ describe("parseNewTasks", () => {
   });
 });
 
-describe("moveTask and requeue", () => {
-  it("moves within bounds", () => {
-    const q = queued(["a", "b"]);
-    expect(moveTask(q, "t2", -1).tasks.map((t) => t.id)).toEqual(["t2", "t1"]);
-    expect(moveTask(q, "t1", -1)).toBe(q);
+/**
+ * A queue from a picture: each letter a task with that id, upper case starting a chat, lower case
+ * continuing it; `done` lists tasks that already ran.
+ */
+const pic = (spec: string, done = ""): Queue => ({
+  ...emptyQueue(),
+  tasks: [...spec.replace(/\s/g, "")].map((c) => ({
+    id: c.toLowerCase(),
+    title: c,
+    prompt: c,
+    projectId: "p1",
+    newChat: c !== c.toLowerCase(),
+    status: done.includes(c.toLowerCase()) ? "done" : "queued",
+  })),
+});
+/** The queue back as a picture. */
+const draw = (q: Queue) => q.tasks.map((t) => (t.newChat ? t.id.toUpperCase() : t.id)).join("");
+
+describe("moving tasks (D-307)", () => {
+  it("moves a task into another chat or into a chat of its own", () => {
+    const q = pic("Ab Cd");
+    expect(draw(moveTasks(q, ["c"], { before: "b", join: true }))).toBe("AcbD");
+    expect(draw(moveTasks(q, ["d"], { before: "a", join: false }))).toBe("DAbC");
+    expect(draw(moveTasks(q, ["b"], { join: true }))).toBe("ACdb");
+    expect(draw(moveTasks(q, ["b"], { join: false }))).toBe("ACdB");
   });
+  it("hands a chat to its next task when its first one moves away", () => {
+    expect(draw(moveTasks(pic("Abc D"), ["a"], { join: false }))).toBe("BcDA");
+    expect(draw(moveTasks(pic("Abc D"), ["b"], { join: false }))).toBe("AcDB");
+  });
+  it("moves a whole chat only between chats", () => {
+    const q = pic("Ab Cd E");
+    expect(draw(moveTasks(q, ["c", "d"], { before: "a", join: false }))).toBe("CdAbE");
+    expect(dropSlots(q, ["c", "d"]).every((s) => !s.join)).toBe(true);
+    expect(() => moveTasks(q, ["c", "d"], { before: "b", join: true })).toThrow();
+  });
+  it("never moves above or into tasks that ran, and only queued tasks move", () => {
+    const q = pic("Ab Cd", "ab");
+    expect(dropSlots(q, ["d"])[0]).toEqual({ before: "c", join: true });
+    expect(() => moveTasks(q, ["c"], { before: "a", join: false })).toThrow(/queued/);
+    expect(() => moveTasks(q, ["a"], { join: false })).toThrow(/Only queued/);
+    // Joining the chat that ran, at its end, is fine.
+    expect(draw(moveTasks(q, ["d"], { before: "c", join: true }))).toBe("AbdC");
+  });
+  it("tells where tasks are now", () => {
+    const q = pic("Ab Cd");
+    expect(currentSlot(q, ["b"])).toEqual({ before: "c", join: true });
+    expect(currentSlot(q, ["c", "d"])).toEqual({ before: undefined, join: false });
+    expect(currentSlot(q, ["a"])).toEqual({ before: "b", join: false });
+  });
+  it("steps through the same slots with the keyboard and the menu", () => {
+    const q = pic("Ab Cd");
+    expect(draw(stepTasks(q, ["c"], -1))).toBe("AbcD");
+    expect(draw(stepTasks(stepTasks(q, ["c"], -1), ["c"], -1))).toBe("AcbD");
+    expect(draw(stepTasks(q, ["b"], 1))).toBe("ABCd");
+    expect(draw(stepTasks(q, ["c", "d"], -1))).toBe("CdAb");
+    expect(draw(stepTasks(q, ["d"], "top"))).toBe("DAbC");
+    expect(draw(stepTasks(q, ["a"], "bottom"))).toBe("BCdA");
+    expect(stepTasks(q, ["a"], -1)).toBe(q);
+    expect(stepTasks(q, ["c", "d"], 1)).toBe(q);
+  });
+});
+
+describe("requeue", () => {
   it("queues a copy in a new chat", () => {
     const q = queued(["a"], false);
     q.tasks[0]!.status = "failed";

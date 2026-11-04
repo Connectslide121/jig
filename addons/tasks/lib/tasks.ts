@@ -389,13 +389,128 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
   };
 }
 
-export function moveTask(queue: Queue, id: string, delta: -1 | 1): Queue {
-  const tasks = [...queue.tasks];
-  const i = tasks.findIndex((t) => t.id === id);
-  const j = i + delta;
-  if (i < 0 || j < 0 || j >= tasks.length) return queue;
-  [tasks[i], tasks[j]] = [tasks[j]!, tasks[i]!];
+/**
+ * Where moved tasks can land (D-307): before the task `before` (or at the end), and either joining the
+ * chat of the task just above (`join`, inside its card) or starting their own chat (between cards).
+ */
+export interface DropSlot {
+  before?: string;
+  join: boolean;
+}
+
+/**
+ * The queue without the tasks being moved. A chat's first task that moves away hands its chat to the
+ * next task of its group, which then starts it (so its other tasks stay together); a task moved out
+ * of a group keeps nothing of that chat.
+ */
+function withoutTasks(tasks: Task[], moving: Set<string>): Task[] {
+  const rest: Task[] = [];
+  let headMoved = false;
+  for (const task of tasks) {
+    const startsChat = task.newChat || rest.length === 0;
+    if (moving.has(task.id)) {
+      if (startsChat) headMoved = true;
+      continue;
+    }
+    if (task.newChat) headMoved = false;
+    rest.push(headMoved && !task.newChat ? { ...task, newChat: true } : task);
+    headMoved = false;
+  }
+  return rest;
+}
+
+/**
+ * The tasks a move takes, in queue order: only queued ones can move; several at once must be one
+ * whole chat (a group card).
+ */
+function movingTasks(queue: Pick<Queue, "tasks">, ids: string[]): Task[] {
+  const wanted = new Set(ids);
+  const tasks = queue.tasks.filter((t) => wanted.has(t.id));
+  if (!tasks.length || tasks.length !== wanted.size) throw new Error("There is no such task in this queue");
+  if (tasks.some((t) => t.status !== "queued")) throw new Error("Only queued tasks can be moved");
+  return tasks;
+}
+
+/** A slot's place in the list, top to bottom: a chat's end comes before the gap after its card. */
+const slotOrder = (rest: Task[], slot: DropSlot) => {
+  const k = slot.before ? rest.findIndex((t) => t.id === slot.before) : rest.length;
+  return k * 2 + (slot.join ? 0 : 1);
+};
+
+/**
+ * Where `ids` can be dropped, top to bottom. Never above or between running or finished tasks: only
+ * after the last task that isn't queued. One task can join a chat (inside a card, or at its end) or
+ * start its own (between cards); a whole chat only goes between cards, never into another chat.
+ */
+export function dropSlots(queue: Pick<Queue, "tasks">, ids: string[]): DropSlot[] {
+  const moving = movingTasks(queue, ids);
+  const rest = withoutTasks(queue.tasks, new Set(ids));
+  const single = moving.length === 1;
+  let lastFixed = -1;
+  rest.forEach((t, i) => {
+    if (t.status !== "queued") lastFixed = i;
+  });
+  const slots: DropSlot[] = [];
+  for (let k = lastFixed + 1; k <= rest.length; k++) {
+    const next = rest[k];
+    const before = next?.id;
+    if (next && !next.newChat) {
+      // Inside a card: only a single task, which then continues that chat.
+      if (single) slots.push({ before, join: true });
+      continue;
+    }
+    if (single && k > 0) slots.push({ before, join: true });
+    slots.push({ before, join: false });
+  }
+  return slots;
+}
+
+/** Where `ids` are now, as a slot (it may not be a valid drop slot, e.g. above a finished task). */
+export function currentSlot(queue: Pick<Queue, "tasks">, ids: string[]): DropSlot {
+  const moving = movingTasks(queue, ids);
+  const first = moving[0]!;
+  const i = queue.tasks.indexOf(first);
+  const after = queue.tasks.slice(i).find((t) => !ids.includes(t.id));
+  const rest = withoutTasks(queue.tasks, new Set(ids));
+  const before = after && rest.find((t) => t.id === after.id);
+  return { before: before?.id, join: i > 0 && !first.newChat };
+}
+
+/**
+ * Moves `ids` (one task, or a whole chat) to `slot`, which must be one of `dropSlots`. The first moved
+ * task starts its own chat unless the slot joins one; a chat's first task that moves away hands its
+ * chat to its next task.
+ */
+export function moveTasks(queue: Queue, ids: string[], slot: DropSlot): Queue {
+  const moving = movingTasks(queue, ids);
+  const allowed = dropSlots(queue, ids);
+  if (!allowed.some((s) => s.before === slot.before && s.join === slot.join))
+    throw new Error("Tasks can only move among the queued tasks, below the ones that ran");
+  const rest = withoutTasks(queue.tasks, new Set(ids));
+  const at = slot.before ? rest.findIndex((t) => t.id === slot.before) : rest.length;
+  const block = moving.map((t, i) => (i === 0 ? { ...t, newChat: !slot.join } : t));
+  const tasks = [...rest.slice(0, at), ...block, ...rest.slice(at)];
   return { ...queue, tasks };
+}
+
+/**
+ * One step up or down (Alt+↑/↓, Move up/down) through the same slots a drag offers; Move to top and
+ * bottom go to the first slot that starts a chat and to the end. Unchanged when it can't go further.
+ */
+export function stepTasks(queue: Queue, ids: string[], to: -1 | 1 | "top" | "bottom"): Queue {
+  const slots = dropSlots(queue, ids);
+  const rest = withoutTasks(queue.tasks, new Set(ids));
+  const here = slotOrder(rest, currentSlot(queue, ids));
+  const target =
+    to === "top"
+      ? slots.find((s) => !s.join)
+      : to === "bottom"
+        ? slots[slots.length - 1]
+        : to === -1
+          ? slots.filter((s) => slotOrder(rest, s) < here).pop()
+          : slots.find((s) => slotOrder(rest, s) > here);
+  if (!target || slotOrder(rest, target) === here) return queue;
+  return moveTasks(queue, ids, target);
 }
 
 /** A finished task back in the queue (Run again): a new queued copy at the end, in a new chat. */

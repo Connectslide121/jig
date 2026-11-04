@@ -45,7 +45,14 @@ went, so you read the results as a table instead of scrolling one long chat.
   follow-ups, files, time, cost, and the status at the far right. Click a row for the details: project,
   chat, permissions, started, finished, time, cost and who queued it; summary, things to know,
   follow-ups each with **Add to queue** (or all), the prompt, Open chat and Run again. Right-click or
-  ⋯: Edit, Move up/down, Skip, Run again, Remove.
+  ⋯: Edit, Move up/down (Alt+↑/↓ on a focused row), Move to top/bottom, Skip, Run again, Remove.
+- **Reordering by drag and drop** (D-307): drag a queued task's row (a grip replaces its number on
+  hover) or a chat card's header (the whole chat, when all its tasks are queued). A line shows where it
+  lands, drawn over the edge or gap so nothing moves until the drop: inside a chat (the task continues
+  that chat) or between chats (it starts its own; a whole chat only goes between chats). Nothing lands
+  above or between tasks that ran. A chat whose first task moves away is started by its next task.
+  The rules are `dropSlots`/`moveTasks`/`stepTasks` in `lib/tasks.ts`; the host's `move` takes
+  `{ ids, slot }` (a drop) or `{ ids, to: -1 | 1 | "top" | "bottom" }` (a step).
 - **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
   chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue.

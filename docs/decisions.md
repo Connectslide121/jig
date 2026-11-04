@@ -4017,3 +4017,32 @@ its time (`at`); nothing showed it.
   step's time.
 - **Always on hover:** a message's hover toolbar starts with its time; a steps line's tooltip and the
   time column's give it to the second with how long after the previous step.
+
+## D-307: Reordering the task queue by drag and drop
+
+Jon, 2026-11-04: "Reordering items today is a pain." The Queue tab only had Move up/down in a task's ⋯,
+one swap at a time, which also ignored chats and could swap a queued task above a finished one.
+
+- **Drag a row or a chat.** A queued task's row drags (the whole row; a grip replaces its number on
+  hover), and a chat card's header drags the whole chat when all its tasks are still queued. While
+  dragging, the rows stay where they are (the dragged ones fade) and a 2 px accent line, drawn over the
+  edge or gap, shows where they will land; the drop sends the new place to the host (`move` with a
+  `slot`). Native HTML5 drag and drop with its own data type, as Boards, Links and `ArrangeList` do:
+  Jig has no drag-and-drop library, and this adds none.
+- **Rules (`dropSlots` in `lib/tasks.ts`).** Tasks move only among queued tasks: every slot is below the
+  last task that is running, waiting for you or finished, so nothing lands above or between them. A
+  single task can land inside a chat (between its tasks, or at its end: the line under its last row),
+  and then continues that chat; or between chats (the line in the gap between cards), where it starts
+  its own. A whole chat only lands between chats, never inside another.
+- **A task moved out of its chat (Claude, on my own).** It starts a chat of its own wherever it lands
+  between chats, or continues the chat it is dropped into; it never silently stays attached to the
+  chat above its new place. When a chat's first task moves away, the chat's next task becomes its
+  first (starts the chat), so the rest of that chat stays together instead of joining the chat above.
+  Why: the drop line says which of the two you get, and a continuing task joining an unrelated chat
+  by accident would run with the wrong context.
+- **Keyboard and menu.** Alt+↑/↓ on a focused row steps through the same slots (into the chat above,
+  then the gap, then the next chat…), and the row keeps the focus. The ⋯ menu has Move up and Move
+  down (showing Alt+↑/↓), Move to top (the first slot that starts a chat) and Move to bottom (the end
+  of the queue). Add-on menu items gained `shortcut` for this.
+- Status: accepted. Asked for by Jon, 2026-11-04; the rule for tasks moved out of their chat is
+  Claude's, on my own.

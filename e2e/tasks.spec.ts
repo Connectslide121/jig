@@ -284,3 +284,74 @@ test("Tasks: Claude's queued tasks are reviewed first, and each project has its 
   await expect(view.getByTestId("tasks-project")).toContainText("shop");
   await expect(view).toContainText("Contoso spec");
 });
+
+test("Tasks: drag queued tasks and chats into a new order, or move them with Alt+arrows", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  // Two chats: t1 with t2 continuing it, then t3 on its own.
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: [
+        { prompt: "write the spec" },
+        { prompt: "add its tests", newChat: false },
+        { prompt: "tidy up" },
+      ],
+      newChat: true,
+    },
+  });
+  /** The queue as a picture: ids in order, upper case where a task starts its own chat. */
+  const order = async () => {
+    const q = (await hostCall(page, "addons.call", {
+      id: "tasks",
+      method: "list",
+      args: { projectId: ids.shop },
+    })) as { value: { tasks: Array<{ id: string; newChat: boolean }> } };
+    return q.value.tasks.map((t) => (t.newChat ? t.id.toUpperCase() : t.id)).join(" ");
+  };
+  await expect(view.getByTestId("task-t3")).toBeVisible();
+  expect(await order()).toBe("T1 t2 T3");
+
+  /** Drags one element onto another, `y` px below its top or (negative) above its bottom, by mouse. */
+  const drag = async (from: string, to: string, at: number) => {
+    const a = (await view.getByTestId(from).boundingBox())!;
+    const b = (await view.getByTestId(to).boundingBox())!;
+    const y = at < 0 ? b.height + at : at;
+    await page.mouse.move(a.x + 200, a.y + a.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(a.x + 200, a.y + 4, { steps: 3 });
+    await page.mouse.move(b.x + 200, b.y + y, { steps: 8 });
+    await page.mouse.move(b.x + 200, b.y + y + 1, { steps: 2 });
+    await page.mouse.up();
+  };
+
+  // A chat's header drags the whole chat; below the last card is the end of the queue.
+  const list = (await view.getByTestId("tasks-list").boundingBox())!;
+  await drag("task-group-header-0", "tasks-list", list.height + 30);
+  await expect.poll(order).toBe("T3 T1 t2");
+  await expect(view.getByTestId("tasks-drop-line")).toHaveCount(0);
+
+  // A task dropped on the top half of a continuing row joins that chat.
+  await drag("task-t3", "task-t2", 8);
+  await expect.poll(order).toBe("T1 t3 t2");
+
+  // A chat's first task that moves away hands the chat to its next task.
+  await drag("task-t1", "task-t2", -6);
+  await expect.poll(order).toBe("T3 t2 t1");
+
+  // Alt+↑/↓ on a focused row walks the same places, and the row keeps the focus.
+  await view.getByTestId("task-t1").focus();
+  await page.keyboard.press("Alt+ArrowUp");
+  await expect.poll(order).toBe("T3 t1 t2");
+  await expect(view.getByTestId("task-t1")).toBeFocused();
+
+  // The ⋯ menu: Move to top makes it a chat of its own at the top.
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Move to top" }).click();
+  await expect.poll(order).toBe("T1 T3 t2");
+});

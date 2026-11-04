@@ -154,6 +154,8 @@ export interface MenuItemInput {
   project?: string;
   /** A small marker at the far right, in a column shared by the whole menu (a count). */
   badge?: string;
+  /** The keys that do the same where the menu was opened ("Alt+↑"), shown at the right like Jig's. */
+  shortcut?: string;
   /** Used by tests (`data-testid`). */
   testId?: string;
   onSelect?: () => void;

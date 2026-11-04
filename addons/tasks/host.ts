@@ -4,6 +4,7 @@ import {
   chatFinished,
   chatToContinue,
   closeRun,
+  type DropSlot,
   editTasks,
   emptyQueue,
   finishTask,
@@ -11,7 +12,7 @@ import {
   isActive,
   joinQueues,
   listing,
-  moveTask,
+  moveTasks,
   type NewTask,
   nextTask,
   openRun,
@@ -28,6 +29,7 @@ import {
   setLeftOut,
   shouldPause,
   splitQueue,
+  stepTasks,
   type Task,
   type TaskFile,
   taskContext,
@@ -439,12 +441,19 @@ export async function discard({ paths }: { paths: string[] }, api: AddonHostApi)
   if (unused.length) await api.attachments.remove(unused.map((path) => ({ path, mime: "" })));
 }
 
+/**
+ * Moves queued tasks (one, or a whole chat): `slot` puts them where a drag dropped them, `to` steps
+ * them (Alt+↑/↓, Move up/down/to top/to bottom). Both keep to the rules in `dropSlots` (D-307).
+ */
 export async function move(
-  args: ProjectArgs & { id: string; delta: -1 | 1 },
+  args: ProjectArgs & { ids: string[]; slot?: DropSlot; to?: -1 | 1 | "top" | "bottom" },
   api: AddonHostApi,
 ): Promise<void> {
+  const ids = Array.isArray(args?.ids) ? args.ids.filter((id) => typeof id === "string") : [];
   await change(api, await projectArg(api, args?.projectId), (q) => [
-    moveTask(q, args.id, args.delta),
+    args.slot
+      ? moveTasks(q, ids, { before: args.slot.before, join: !!args.slot.join })
+      : stepTasks(q, ids, args.to ?? 1),
     undefined,
   ]);
 }

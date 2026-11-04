@@ -68,6 +68,7 @@ export function toEntries(items: MenuInput[]): MenuEntry[] {
           keepOpen: item.keepOpen,
           avatar: item.person ? createElement(PersonAvatar, item.person) : undefined,
           badge: item.badge,
+          shortcut: item.shortcut,
           testId: item.testId,
           leading: projectLeading(item.project),
           onSelect: item.onSelect,

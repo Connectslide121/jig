@@ -1,5 +1,12 @@
 # Status
 
+Task queue reordering (2026-11-04, D-307): drag a queued task's row, or a chat card's header for the
+whole chat, to a new place in the Queue tab; a line shows where it lands and nothing else moves until
+the drop. A task dropped inside a chat continues that chat; dropped between chats it starts its own.
+Nothing moves above or between tasks that ran. Alt+↑/↓ on a focused row does the same from the
+keyboard; ⋯ has Move up/down, Move to top and Move to bottom. Checked on Windows with screenshots,
+wide and in a narrow view. Needs testing on your machine: dragging with a real mouse in a sidebar.
+
 Top bar placement and live menus for add-ons (2026-11-04, D-305): an add-on's top bar item can ask
 for `"placement": "right-start"` to be the first item on the right, before Suggestions (items with the
 same placement sort by `order`); without it the item stays after Jig's own items. A new slot,

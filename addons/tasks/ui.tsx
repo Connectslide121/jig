@@ -34,6 +34,7 @@ import {
   CircleMinus,
   CircleX,
   CornerDownRight,
+  GripVertical,
   History,
   ListTodo,
   LoaderCircle,
@@ -68,6 +69,9 @@ import {
   type ChatGroup,
   chatGroups,
   counts,
+  currentSlot,
+  type DropSlot,
+  dropSlots,
   duration,
   fileName,
   formatMs,
@@ -80,6 +84,7 @@ import {
   type Run,
   runOutcome,
   STATUS_LABEL,
+  stepTasks,
   type Task,
   type TaskFile,
   type TaskStatus,
@@ -521,7 +526,6 @@ function QueuePanel({
   };
 
   const menuFor = (task: Task, at: MouseEvent | HTMLElement) => {
-    const i = queue.tasks.indexOf(task);
     const queued = task.status === "queued";
     ctx.menu(
       [
@@ -541,18 +545,13 @@ function QueuePanel({
                     icon: "square",
                     onSelect: () => call("select", { ids: [task.id], on: false }),
                   },
-              {
-                label: "Move up",
-                icon: "arrow-up",
-                disabled: i === 0,
-                onSelect: () => call("move", { id: task.id, delta: -1 }),
-              },
-              {
-                label: "Move down",
-                icon: "arrow-down",
-                disabled: i === queue.tasks.length - 1,
-                onSelect: () => call("move", { id: task.id, delta: 1 }),
-              },
+              ...MOVES.map((m) => ({
+                label: m.label,
+                icon: m.icon,
+                shortcut: m.shortcut,
+                disabled: !canStep(queue, task, m.to),
+                onSelect: () => call("move", { ids: [task.id], to: m.to }),
+              })),
               { label: "Skip", icon: "skip-forward", onSelect: () => call("skip", { id: task.id }) },
             ]
           : []),
@@ -684,6 +683,7 @@ function QueuePanel({
             onOpen={setOpen}
             onMenu={menuFor}
             onTick={(ids, on) => void call("select", { ids, on })}
+            onMove={(ids, move) => void call("move", { ids, ...move })}
           />
         </>
       )}
@@ -744,7 +744,61 @@ function QueuePanel({
   );
 }
 
-/** The results table: the tasks grouped by chat, under one header row. */
+/** What a drag in the queue carries: its own type, so the Add tasks form's file drops ignore it. */
+const DRAG_TASKS = "application/x-jig-tasks";
+
+type MoveTo = -1 | 1 | "top" | "bottom";
+
+/** The ⋯ menu's moves; up and down are also Alt+↑/↓ on a focused row (D-307). */
+const MOVES: Array<{ label: string; icon: string; shortcut?: string; to: MoveTo }> = [
+  { label: "Move up", icon: "arrow-up", shortcut: "Alt+↑", to: -1 },
+  { label: "Move down", icon: "arrow-down", shortcut: "Alt+↓", to: 1 },
+  { label: "Move to top", icon: "arrow-up-to-line", to: "top" },
+  { label: "Move to bottom", icon: "arrow-down-to-line", to: "bottom" },
+];
+
+/** Whether a move would change anything (and is allowed: only queued tasks move). */
+function canStep(queue: Queue, task: Task, to: MoveTo): boolean {
+  try {
+    return stepTasks(queue, [task.id], to) !== queue;
+  } catch {
+    return false;
+  }
+}
+
+const sameSlot = (a?: DropSlot, b?: DropSlot) => !!a && !!b && a.before === b.before && a.join === b.join;
+
+/** Drag and drop in the queue, handed from the table to its cards and rows. */
+interface QueueDnd {
+  dragging: (id: string) => boolean;
+  start: (ids: string[], e: React.DragEvent) => void;
+  end: () => void;
+  overRow: (task: Task, group: Task[], e: React.DragEvent) => void;
+  overHeader: (group: Task[], e: React.DragEvent) => void;
+  step: (task: Task, to: -1 | 1) => void;
+  /** The row the drop line shows under (the task lands in its chat, after it). */
+  lineAfter?: string;
+}
+
+/** The line where a drag will land: drawn over the gap or edge, so nothing moves to make room. */
+function DropLine({ at }: { at: "above" | "below" | "row" }) {
+  return (
+    <span
+      aria-hidden
+      data-testid="tasks-drop-line"
+      className={cn(
+        "pointer-events-none absolute inset-x-0 z-20 h-0.5 rounded-full bg-accent",
+        at === "above" ? "-top-2" : at === "below" ? "-bottom-2" : "bottom-0",
+      )}
+    />
+  );
+}
+
+/**
+ * The results table: the tasks grouped by chat, under one header row. In the queue (`onMove`) queued
+ * tasks drag to a new place, one task or a whole chat by its card's header (D-307); a line shows
+ * where they'll land and nothing else moves until the drop.
+ */
 function TaskTable({
   ctx,
   queue,
@@ -752,6 +806,7 @@ function TaskTable({
   onOpen,
   onMenu,
   onTick,
+  onMove,
 }: {
   ctx: AddonUiContext;
   queue: Queue;
@@ -760,12 +815,113 @@ function TaskTable({
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
   /** The queue (not a past run): ticks that include or leave out queued tasks. */
   onTick?: (ids: string[], on: boolean) => void;
+  /** The queue (not a past run): moves queued tasks to a dropped slot, or a step. */
+  onMove?: (ids: string[], move: { slot?: DropSlot; to?: MoveTo }) => void;
 }) {
   const all = tickState(queue.tasks);
+  const groups = chatGroups(queue);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<string[]>();
+  const [target, setTarget] = useState<DropSlot>();
+  // A row moved with Alt+↑/↓ keeps the focus after the queue reloads (it may be in another card now).
+  const focusAfter = useRef<string>(undefined);
+  useEffect(() => {
+    const id = focusAfter.current;
+    if (!id) return;
+    focusAfter.current = undefined;
+    listRef.current?.querySelector<HTMLElement>(`[data-testid="task-${id}"]`)?.focus();
+  }, [queue]);
+
+  let slots: DropSlot[] = [];
+  let here: DropSlot | undefined;
+  try {
+    if (drag) {
+      slots = dropSlots(queue, drag);
+      here = currentSlot(queue, drag);
+    }
+  } catch {
+    slots = [];
+  }
+  const rest = drag ? queue.tasks.filter((t) => !drag.includes(t.id)) : queue.tasks;
+  /** The slot to show for where the pointer is: the preferred one, else the other kind there. */
+  const aim = (e: React.DragEvent, prefer?: DropSlot) => {
+    if (!drag || !e.dataTransfer.types.includes(DRAG_TASKS)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!prefer) return;
+    const found = [prefer, { ...prefer, join: !prefer.join }]
+      .map((c) => slots.find((slot) => sameSlot(slot, c)))
+      .find(Boolean);
+    const next = found && !sameSlot(found, here) ? found : undefined;
+    e.dataTransfer.dropEffect = next ? "move" : "none";
+    if (!sameSlot(next, target) && (next || target)) setTarget(next);
+  };
+  const upper = (e: React.DragEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return e.clientY < r.top + r.height / 2;
+  };
+  const end = () => {
+    setDrag(undefined);
+    setTarget(undefined);
+  };
+
+  // Where the line shows: under the row a task joins after, or above a card (or below the last one).
+  const joinAfter = target?.join
+    ? (target.before ? rest[rest.findIndex((t) => t.id === target.before) - 1] : rest[rest.length - 1])?.id
+    : undefined;
+  const cardBefore =
+    target && !target.join && target.before
+      ? groups.findIndex((g) => g.tasks.some((t) => t.task.id === target.before))
+      : -1;
+  const lineAtEnd = !!target && !target.join && !target.before;
+
+  const dnd: QueueDnd | undefined = onMove && {
+    dragging: (id) => !!drag?.includes(id),
+    start: (ids, e) => {
+      e.stopPropagation();
+      e.dataTransfer.setData(DRAG_TASKS, ids.join(","));
+      e.dataTransfer.effectAllowed = "move";
+      setDrag(ids);
+    },
+    end,
+    overRow: (task, group, e) => {
+      if (drag?.includes(task.id)) return aim(e);
+      const shown = group.filter((t) => !drag?.includes(t.id));
+      if (upper(e)) return aim(e, { before: task.id, join: shown[0] !== task });
+      const next = rest[rest.indexOf(task) + 1];
+      aim(e, { before: next?.id, join: true });
+    },
+    overHeader: (group, e) => {
+      const first = group.find((t) => !drag?.includes(t.id));
+      aim(e, first && { before: first.id, join: false });
+    },
+    step: (task, to) => {
+      focusAfter.current = task.id;
+      onMove([task.id], { to });
+    },
+    lineAfter: joinAfter,
+  };
+
   return (
     // Narrow (a sidebar): the detail columns give way first, then time and cost, then the chats' and
     // tasks' hints beside their titles; task and status stay.
-    <div className="@container min-h-0 flex-1 overflow-auto px-3 pb-3">
+    <div
+      className="@container min-h-0 flex-1 overflow-auto px-3 pb-3"
+      onDragOver={(e) => {
+        // Below the last card: the end of the queue. Over the gaps between cards the line stays put.
+        const last = listRef.current?.lastElementChild;
+        aim(e, last && e.clientY > last.getBoundingClientRect().bottom ? { join: false } : target);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setTarget(undefined);
+      }}
+      onDrop={(e) => {
+        if (!drag || !e.dataTransfer.types.includes(DRAG_TASKS)) return;
+        e.preventDefault();
+        if (target) onMove?.(drag, { slot: target });
+        end();
+      }}
+    >
       <div className="sticky top-0 z-10 flex h-7 items-center gap-3 whitespace-nowrap border-x border-transparent bg-surface px-3 text-2xs font-medium uppercase tracking-wide text-hint">
         {onTick && (
           <Tick
@@ -788,18 +944,22 @@ function TaskTable({
         <span className="w-7 shrink-0" />
         <span className={cn(COL.status, CELL)}>Status</span>
       </div>
-      <div className="flex flex-col gap-3">
-        {chatGroups(queue).map((group, gi) => (
-          <ChatCard
-            key={group.tasks[0]!.task.id}
-            ctx={ctx}
-            group={group}
-            number={gi + 1}
-            projectName={projectName(group.projectId)}
-            onOpen={onOpen}
-            onMenu={onMenu}
-            onTick={onTick}
-          />
+      <div ref={listRef} className="flex flex-col gap-3 pt-2" data-testid="tasks-list">
+        {groups.map((group, gi) => (
+          <div key={group.tasks[0]!.task.id} className="relative">
+            {cardBefore === gi && <DropLine at="above" />}
+            <ChatCard
+              ctx={ctx}
+              group={group}
+              number={gi + 1}
+              projectName={projectName(group.projectId)}
+              onOpen={onOpen}
+              onMenu={onMenu}
+              onTick={onTick}
+              dnd={dnd}
+            />
+            {lineAtEnd && gi === groups.length - 1 && <DropLine at="below" />}
+          </div>
         ))}
       </div>
     </div>
@@ -1126,6 +1286,7 @@ function ChatCard({
   onOpen,
   onMenu,
   onTick,
+  dnd,
 }: {
   ctx: AddonUiContext;
   group: ChatGroup;
@@ -1135,16 +1296,31 @@ function ChatCard({
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): ticks that include or leave out queued tasks. */
   onTick?: (ids: string[], on: boolean) => void;
+  /** In the queue: drag the header to move the whole chat (when all its tasks are still queued). */
+  dnd?: QueueDnd;
 }) {
   const tasks = group.tasks.map((t) => t.task);
   const t = tally(tasks);
   const ticks = tickState(tasks);
+  const canDrag = !!dnd && tasks.every((task) => task.status === "queued");
+  const ids = tasks.map((task) => task.id);
   return (
     <div
       className="overflow-hidden rounded-lg border border-line bg-raised"
       data-testid={`task-group-${number - 1}`}
     >
-      <div className="flex h-9 items-center gap-3 border-b border-line px-3">
+      <div
+        draggable={canDrag || undefined}
+        title={canDrag ? "Drag to move this chat and its tasks" : undefined}
+        data-testid={`task-group-header-${number - 1}`}
+        onDragStart={canDrag ? (e) => dnd.start(ids, e) : undefined}
+        onDragEnd={dnd?.end}
+        onDragOver={dnd && ((e) => dnd.overHeader(tasks, e))}
+        className={cn(
+          "group flex h-9 items-center gap-3 border-b border-line px-3",
+          canDrag && ids.every((id) => dnd.dragging(id)) && "opacity-40",
+        )}
+      >
         {onTick && (
           <Tick
             hidden={!ticks.ids.length}
@@ -1155,7 +1331,10 @@ function ChatCard({
             testId={`task-group-tick-${number - 1}`}
           />
         )}
-        <MessageSquare className="ml-2 size-4 shrink-0 text-hint" />
+        <span className="ml-2 flex size-4 shrink-0 items-center justify-center text-hint">
+          <MessageSquare className={cn("size-4", canDrag && "group-hover:hidden")} />
+          {canDrag && <GripVertical aria-hidden className="hidden size-4 cursor-grab group-hover:block" />}
+        </span>
         <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
           {group.sessionId ? (
             <button
@@ -1197,6 +1376,8 @@ function ChatCard({
           onOpen={() => onOpen(task.id)}
           onMenu={(at) => onMenu(task, at)}
           onTick={onTick && ((on) => onTick([task.id], on))}
+          dnd={dnd}
+          group={tasks}
         />
       ))}
     </div>
@@ -1214,6 +1395,8 @@ function TaskRow({
   onOpen,
   onMenu,
   onTick,
+  dnd,
+  group,
 }: {
   ctx: AddonUiContext;
   task: Task;
@@ -1223,7 +1406,12 @@ function TaskRow({
   onMenu: (at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): the tick that includes or leaves out a queued task. */
   onTick?: (on: boolean) => void;
+  /** In the queue: a queued task drags to a new place, or moves with Alt+↑/↓. */
+  dnd?: QueueDnd;
+  /** The tasks of its chat's card. */
+  group: Task[];
 }) {
+  const canDrag = !!dnd && task.status === "queued";
   const leftOut = task.status === "queued" && !!task.leftOut;
   const detail = task.report?.summary ?? task.error ?? task.answer;
   const notes = task.report?.notes.length ?? 0;
@@ -1245,13 +1433,28 @@ function TaskRow({
       tabIndex={0}
       data-testid={`task-${task.id}`}
       onClick={onOpen}
-      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      aria-keyshortcuts={canDrag ? "Alt+ArrowUp Alt+ArrowDown" : undefined}
+      draggable={canDrag || undefined}
+      onDragStart={canDrag ? (e) => dnd.start([task.id], e) : undefined}
+      onDragEnd={dnd?.end}
+      onDragOver={dnd && ((e) => dnd.overRow(task, group, e))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen();
+        else if (canDrag && e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+          e.preventDefault();
+          dnd.step(task, e.key === "ArrowUp" ? -1 : 1);
+        }
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         onMenu(e.nativeEvent);
       }}
-      className="group flex h-16 cursor-default items-center gap-3 border-b border-line px-3 last:border-b-0 hover:bg-hover"
+      className={cn(
+        "group relative flex h-16 cursor-default items-center gap-3 border-b border-line px-3 last:border-b-0 hover:bg-hover",
+        dnd?.dragging(task.id) && "opacity-40",
+      )}
     >
+      {dnd?.lineAfter === task.id && <DropLine at="row" />}
       {onTick && (
         <Tick
           hidden={task.status !== "queued"}
@@ -1261,7 +1464,13 @@ function TaskRow({
           testId={`task-tick-${task.id}`}
         />
       )}
-      <span className="w-6 shrink-0 text-right text-xs tabular-nums text-hint">{index + 1}</span>
+      <span
+        className="flex w-6 shrink-0 items-center justify-end text-xs tabular-nums text-hint"
+        title={canDrag ? "Drag to move, or Alt+↑/↓" : undefined}
+      >
+        <span className={cn(canDrag && "group-hover:hidden")}>{index + 1}</span>
+        {canDrag && <GripVertical aria-hidden className="hidden size-3.5 cursor-grab group-hover:block" />}
+      </span>
       <div className={cn("flex min-w-0 flex-1 flex-col", leftOut && "opacity-60")}>
         <div className="flex min-w-0 items-center gap-2">
           {continues && (
