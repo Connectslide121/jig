@@ -169,7 +169,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.7.0 being prepared (2026-11-04): Jig 0.7.0 adds ChatGPT (through the Codex CLI) as a second provider for one-shot AI features with its usage in the footer, a meeting lobby window with your Teams chats and history folders, a Boards toolbar with search and filters, and times in chats. Publication not yet verified.
+Jig 0.7.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.7.0),
+source/tag `43b923dee9ceec6da0e31038383a981e88b3448d`. Installer: 373,138,754 bytes;
+SHA-256 `9ad4c70dcd0491b34e63b7370d0a39bf099c6b8964f350e592392f0688509393`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.7.0 with its feed and installer. In 0.7.0: Jig 0.7.0 adds ChatGPT (through the Codex CLI) as a second provider for one-shot AI features with its usage in the footer, a meeting lobby window with your Teams chats and history folders, a Boards toolbar with search and filters, and times in chats.
 
 Jig 0.6.0 published (2026-11-03): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.6.0),
 source/tag `d212aa8923af0c4f4e446c08b632ed823239cc06`. Installer: 373,097,013 bytes;
