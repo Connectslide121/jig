@@ -122,6 +122,8 @@ export const ConfigSchema = z.object({
       view: z.enum(["compact", "detailed"]).default("compact"),
       /** The overview card floating at a chat's right (turns, tools, files, skills…; D-184). */
       overview: z.boolean().default(true),
+      /** A time beside every message and step of a chat (D-306); off, times show on hover. */
+      times: z.boolean().default(false),
     })
     .prefault({}),
   /** Talking to Claude (D-208): dictation runs Whisper on this computer; reading aloud uses a natural voice (D-243) or system voices. */

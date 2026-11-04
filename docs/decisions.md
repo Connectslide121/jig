@@ -4004,3 +4004,16 @@ everything (start/stop and one click per project)".
   actions and a warning toast names the add-on, once per load so a broken export doesn't toast on
   every open. An answer that arrives after another menu was asked for is dropped.
 - Live entries aren't in Jig's search (Ctrl+P): they exist only while the menu is open.
+
+## D-306: Times beside a chat's messages and steps
+
+Jon, 2026-11-04: "is there a way to get timestamps in each Claude event?" Every chat item already had
+its time (`at`); nothing showed it.
+
+- **Show times** (the clock button in the chat's top bar, setting `chat.times`, off by default): each
+  row gets a fixed time column at its left, so nothing moves as events arrive. 24-hour clock whatever
+  the locale (12-hour "01:02 AM" wrapped the column), the day above the time when it changes, and an
+  empty slot for a turn's "Done" line (a summary, not an event). In Compact a steps line shows its first
+  step's time.
+- **Always on hover:** a message's hover toolbar starts with its time; a steps line's tooltip and the
+  time column's give it to the second with how long after the previous step.

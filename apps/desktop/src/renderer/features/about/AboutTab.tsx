@@ -614,6 +614,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
+                "Times in chats: the clock button puts a time beside every message and step (hover any message for its time and the gap before it)",
                 "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in",
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",

@@ -1,4 +1,4 @@
-import { ChartColumn, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
+import { ChartColumn, Clock, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
@@ -53,6 +53,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
   const [finding, setFinding] = useState(false);
   const [details, setDetails] = useState(false);
   const overview = useConfig((s) => s.config?.chat.overview ?? true);
+  const times = useConfig((s) => s.config?.chat.times ?? false);
   const showOverview = overview && Boolean(transcript?.items.length);
   // Keep the card mounted while its column slides shut, then drop it.
   const [overviewMounted, setOverviewMounted] = useState(showOverview);
@@ -136,6 +137,15 @@ export function ChatTab({ params, active, focused }: TabProps) {
           </span>
         )}
         <ChatViewSwitch />
+        <IconButton
+          icon={Clock}
+          label={times ? "Hide the times" : "Show the time of every message and step"}
+          size="sm"
+          active={times}
+          aria-pressed={times}
+          data-testid="chat-times-toggle"
+          onClick={() => void updateConfig({ chat: { times: !times } })}
+        />
         <IconButton
           icon={ChartColumn}
           label={overview ? "Hide the chat overview" : "Show the chat overview"}

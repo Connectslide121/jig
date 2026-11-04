@@ -84,6 +84,10 @@ resolved active model is recorded separately and never replaces the selected ali
   `main/sessions/manager.ts`), tells Claude to do it a safer way or skip it, and shows a warning
   notice in the chat. Questions (`AskUserQuestion`, `ExitPlanMode`) still wait for you.
 
+- **Times** (clock button in the header, setting `chat.times`, D-306): every message and step gets its
+  time in a fixed column at the left, with the day when it changes; a turn's "Done" line has none. The
+  tooltip gives the time to the second and how long after the previous step. Off, the time shows in a
+  message's hover toolbar and in a steps line's tooltip.
 - **Chat overview** (chart button in the header, setting `chat.overview`, D-184): a small card at the
   top right of the chat, in its own reserved column beside the conversation (D-189). The transcript,
   queue and composer share a column and matching content edges. The overview's space stays reserved

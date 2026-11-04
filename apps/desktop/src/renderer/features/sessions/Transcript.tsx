@@ -20,6 +20,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "rea
 import type { ChatItem } from "../../../shared/engine";
 import { agentModels } from "../../../shared/toolModels";
 import { copyText } from "../../lib/clipboard";
+import { clockTime, eventTime, sameDay, shortDay } from "../../lib/time";
 import { useConfig } from "../../stores/config";
 import { cn, IconButton, Markdown, type MenuEntry, openMenuAt, Spinner } from "../../ui";
 import { contributedEntries } from "../../workbench/contextMenus";
@@ -154,17 +155,33 @@ export function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
 }
 
+/** A message's time in its hover toolbar: the clock, and in full (with the gap before it) on hover. */
+function ToolbarTime({ at, prevAt }: { at: string; prevAt?: string }) {
+  return (
+    <span
+      className="px-1.5 text-2xs text-hint tabular-nums"
+      title={eventTime(at, prevAt)}
+      data-testid="message-time"
+    >
+      {clockTime(at)}
+    </span>
+  );
+}
+
 const Item = memo(function Item({
   item,
   sessionId,
   nested,
   waiting,
+  prevAt,
 }: {
   item: ChatItem;
   sessionId: string;
   nested?: ChatItem[];
   /** A tool call waiting for your permission. */
   waiting?: boolean;
+  /** When the event before it happened (its time's tooltip says how long after). */
+  prevAt?: string;
 }) {
   // Paths Claude writes in inline code are links to the files, from the chat's folder (D-261).
   const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
@@ -194,6 +211,7 @@ const Item = memo(function Item({
             </div>
           )}
           <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-focus-within/message:flex group-hover/message:flex">
+            <ToolbarTime at={item.at} prevAt={prevAt} />
             <IconButton
               icon={Pencil}
               size="sm"
@@ -219,6 +237,7 @@ const Item = memo(function Item({
           {item.streaming && !item.text && <Spinner size="sm" />}
           {!item.streaming && item.text && (
             <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-hover/message:flex has-aria-pressed:flex">
+              <ToolbarTime at={item.at} prevAt={prevAt} />
               <IconButton
                 icon={Copy}
                 size="sm"
@@ -311,8 +330,11 @@ function StepsRow({
   onToggle,
   pending,
   live,
+  prevAt,
 }: {
   row: Extract<Row, { kind: "steps" }>;
+  /** When the event before these steps happened (for the line's time tooltip). */
+  prevAt?: string;
   sessionId: string;
   open: boolean;
   onToggle: () => void;
@@ -331,6 +353,7 @@ function StepsRow({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
+        title={row.entries[0] ? eventTime(row.entries[0].item.at, prevAt) : undefined}
         className="-ml-1 flex h-6 max-w-full min-w-0 items-center gap-1.5 self-start rounded-md px-1 text-xs text-muted hover:bg-hover hover:text-fg"
         data-testid="steps-toggle"
         data-working={working ? "true" : undefined}
@@ -395,6 +418,30 @@ export function groupItems(items: ChatItem[]): Array<{ item: ChatItem; children:
   return top.map((item) => ({ item, children: children.get(item.id) ?? [] }));
 }
 
+/** When a row happened: its item's time, or its first step's. */
+const rowAt = (row: Row): string | undefined =>
+  row.kind === "steps" ? row.entries[0]?.item.at : row.entry.item.at;
+/** A turn's "Done · 2 s" line is a summary, not an event: its time slot stays empty. */
+const isResult = (row: Row) => row.kind === "item" && row.entry.item.kind === "result";
+
+/**
+ * The time column (Show times, D-306): the row's clock time in a fixed slot at its left, with the
+ * day above it when the day changes, so nothing moves as events arrive.
+ */
+function TimeColumn({ at, prevAt }: { at?: string; prevAt?: string }) {
+  const newDay = at && (!prevAt || !sameDay(at, prevAt));
+  return (
+    <div
+      className="w-16 shrink-0 pt-0.5 pr-3 text-right text-2xs leading-5 text-hint tabular-nums select-none"
+      title={at ? eventTime(at, prevAt) : undefined}
+      data-testid="event-time"
+    >
+      {at && newDay && <div className="truncate">{shortDay(at)}</div>}
+      {at && <div>{clockTime(at)}</div>}
+    </div>
+  );
+}
+
 /** The transcript's rows: every item (detailed), or steps folded per run (compact, D-159). */
 function rowsOf(entries: Entry[], compact: boolean, pending: Set<string>): Row[] {
   return compact ? compactRows(entries, pending) : entries.map((entry) => ({ kind: "item", entry }));
@@ -418,6 +465,7 @@ export function Transcript({
   const ref = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const compact = useConfig((s) => s.config?.chat.view ?? "compact") === "compact";
+  const times = useConfig((s) => s.config?.chat.times ?? false);
   // Steps rows opened by hand (compact view).
   const [opened, setOpened] = useState<Set<string>>(() => new Set());
   const [away, setAway] = useState(false);
@@ -463,44 +511,61 @@ export function Transcript({
         }}
         data-testid="transcript"
       >
-        <div className="mx-auto flex max-w-[var(--jig-chat-width)] min-w-0 flex-col gap-3 px-6 py-4 wrap-anywhere">
-          {rowsOf(groupItems(items), compact, pending).map((row, index, rows) =>
-            row.kind === "steps" ? (
-              <StepsRow
-                key={row.id}
-                row={row}
-                sessionId={sessionId}
-                live={working && index === rows.length - 1}
-                // A match of Find in chat inside opens its row.
-                open={opened.has(row.id) || row.entries.some((e) => e.item.id === highlight)}
-                onToggle={() =>
-                  setOpened((current) => {
-                    const next = new Set(current);
-                    if (next.has(row.id)) next.delete(row.id);
-                    else next.add(row.id);
-                    return next;
-                  })
-                }
-                pending={pending}
-              />
-            ) : (
-              <div
-                key={row.entry.item.id}
-                data-item-id={row.entry.item.id}
-                className={cn(
-                  "flex flex-col rounded-md",
-                  highlight === row.entry.item.id && "outline-2 outline-offset-4 outline-accent",
-                )}
-              >
-                <Item
-                  item={row.entry.item}
-                  sessionId={sessionId}
-                  nested={row.entry.children}
-                  waiting={row.entry.item.kind === "tool" && pending.has(row.entry.item.id)}
-                />
-              </div>
-            ),
+        <div
+          className={cn(
+            "mx-auto flex max-w-[var(--jig-chat-width)] min-w-0 flex-col gap-3 py-4 wrap-anywhere",
+            times ? "pr-6 pl-2" : "px-6",
           )}
+        >
+          {rowsOf(groupItems(items), compact, pending).map((row, index, rows) => {
+            const prevAt = index > 0 ? rowAt(rows[index - 1]!) : undefined;
+            const content =
+              row.kind === "steps" ? (
+                <StepsRow
+                  key={row.id}
+                  row={row}
+                  sessionId={sessionId}
+                  live={working && index === rows.length - 1}
+                  // A match of Find in chat inside opens its row.
+                  open={opened.has(row.id) || row.entries.some((e) => e.item.id === highlight)}
+                  onToggle={() =>
+                    setOpened((current) => {
+                      const next = new Set(current);
+                      if (next.has(row.id)) next.delete(row.id);
+                      else next.add(row.id);
+                      return next;
+                    })
+                  }
+                  pending={pending}
+                  prevAt={prevAt}
+                />
+              ) : (
+                <div
+                  key={row.entry.item.id}
+                  data-item-id={row.entry.item.id}
+                  className={cn(
+                    "flex flex-col rounded-md",
+                    highlight === row.entry.item.id && "outline-2 outline-offset-4 outline-accent",
+                  )}
+                >
+                  <Item
+                    item={row.entry.item}
+                    sessionId={sessionId}
+                    nested={row.entry.children}
+                    waiting={row.entry.item.kind === "tool" && pending.has(row.entry.item.id)}
+                    prevAt={prevAt}
+                  />
+                </div>
+              );
+            if (!times) return content;
+            const key = row.kind === "steps" ? row.id : row.entry.item.id;
+            return (
+              <div key={key} className="flex min-w-0" data-testid="timed-row">
+                <TimeColumn at={isResult(row) ? undefined : rowAt(row)} prevAt={prevAt} />
+                <div className="flex min-w-0 flex-1 flex-col">{content}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
       {away && (
