@@ -608,7 +608,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Talk with Claude: the Talk button (sound waves) opens a calm talking window with live waves and the conversation; Claude looks at the code while you plan, shows its plan (or a task queue for bigger work), “go ahead” (or the button) starts the work, and a chime says when it's done; a voice detector ignores background noise",
                 "Permission cards: allow once, always, or deny",
                 "Queue messages while Claude works",
-                "New chats name themselves: the quick model gives each a short name from its first message (Settings → Claude Code → Name new chats)",
+                "New chats name themselves: the quick model gives each a short name from its first message (Settings → Chats → Name new chats)",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
                 "Tool calls with diffs and file previews",
@@ -705,7 +705,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             <Bullets
               items={[
                 "Ask a chat to “open the app and check the login form”",
-                "Settings → Claude Code: chats use Opus by default and hand code searches to the jig-search helper (Haiku); change chat, subagent fallback, helper, tester and search models there",
+                "Settings → Chats: chats use Opus by default and hand code searches to the jig-search helper (Haiku); change chat, subagent fallback, helper, tester and search models there",
                 "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Search → Test something… (or the flask in the browser view) starts a test chat on it",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",

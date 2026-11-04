@@ -7,7 +7,7 @@ Code: `apps/desktop/src/main/setup/` (checks, IPC), `apps/desktop/src/main/updat
 
 | id | Needed | How it is checked |
 |---|---|---|
-| `claude` | yes | `<claude> --version`, where `<claude>` is Settings → Claude Code → binary, else the Agent SDK's binary for this platform |
+| `claude` | yes | `<claude> --version`, where `<claude>` is Settings → Chats → binary, else the Agent SDK's binary for this platform |
 | `codex` | optional | `codex --version`, then `codex login status` (OpenAI's Codex CLI on PATH, for ChatGPT as a provider, D-294) |
 | `git` | yes | `git --version` |
 | `gh` | optional | `gh --version` |

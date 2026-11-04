@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Save,
   Search,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,7 +18,6 @@ import { shellName } from "../../../shared/shellNames";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import {
-  Badge,
   Button,
   cn,
   confirmDialog,
@@ -141,7 +139,7 @@ function WorkspaceDepthRow() {
   );
 }
 
-function TextSetting({
+export function TextSetting({
   label,
   description,
   value,
@@ -171,7 +169,7 @@ function TextSetting({
   );
 }
 
-function ModelSetting({
+export function ModelSetting({
   label,
   description,
   value,
@@ -180,6 +178,7 @@ function ModelSetting({
   hybrid = false,
   emptyLabel = "Follow Claude Code",
   disabled,
+  className = "w-40",
 }: {
   label: string;
   description: string;
@@ -189,6 +188,8 @@ function ModelSetting({
   hybrid?: boolean;
   emptyLabel?: string;
   disabled?: boolean;
+  /** The select's width; a group of rows uses one width so the selects line up. */
+  className?: string;
 }) {
   const choices = new Map(modelOptions(models, hybrid).map((m) => [m.id, m.label]));
   choices.set("", emptyLabel);
@@ -196,7 +197,7 @@ function ModelSetting({
   return (
     <SettingRow label={label} description={description}>
       <Select
-        className="w-40"
+        className={className}
         aria-label={label}
         value={value}
         disabled={disabled}
@@ -213,7 +214,7 @@ function ModelSetting({
 }
 
 /** Points to Settings → AI features, where one-shot features pick their provider and model (D-297). */
-function AiFeaturesLink({ description }: { description: string }) {
+export function AiFeaturesLink({ description }: { description: string }) {
   return (
     <SettingRow label="Models for AI features" description={description}>
       <Button size="sm" icon={BrainCircuit} onClick={() => openSettings("ai")}>
@@ -223,211 +224,6 @@ function AiFeaturesLink({ description }: { description: string }) {
   );
 }
 
-export function EngineSettings() {
-  const config = useConfig((s) => s.config);
-  const info = useConfig((s) => s.info);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [modelsError, setModelsError] = useState<string>();
-  const [reload, setReload] = useState(0);
-  const binary = config?.engine.claudePath;
-  const allowApiKey = config?.engine.allowApiKey;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: retry and host-side engine options deliberately reload discovery.
-  useEffect(() => {
-    if (binary === undefined) return;
-    let active = true;
-    setModelsError(undefined);
-    void call("engine.models").then(
-      (list) => active && setModels(list),
-      (error) => active && setModelsError(errorMessage(error)),
-    );
-    return () => {
-      active = false;
-    };
-  }, [binary, allowApiKey, reload]);
-  if (!config) return <Spinner center />;
-  const e = config.engine;
-  return (
-    <SettingsSection
-      title="Claude Code"
-      description="Jig runs the official Claude Code, signed in with your own Claude account. Jig never sees your login."
-    >
-      <SettingRow label="Engine">
-        <Badge tone={info?.engine === "fake" ? "warning" : "success"}>
-          {info?.engine === "fake" ? "Fake (testing)" : "Claude Code"}
-        </Badge>
-      </SettingRow>
-      <TextSetting
-        label="Claude Code binary"
-        description="Leave empty to use the Claude Code that ships with Jig, or point to your own `claude`."
-        value={e.claudePath}
-        placeholder="(built in)"
-        onSave={(claudePath) => void updateConfig({ engine: { claudePath } })}
-      />
-      <SettingRow
-        label="claude.ai connectors"
-        description="The connectors of your claude.ai account (Asana, Notion, Linear, Microsoft 365…). Off: none are loaded into chats, so none is flagged as needing sign-in. The MCP servers in your own Claude Code settings are not affected. Applies to new chats."
-      >
-        <Switch
-          label="claude.ai connectors"
-          checked={e.claudeAiConnectors}
-          onChange={(claudeAiConnectors) => void updateConfig({ engine: { claudeAiConnectors } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Recommended setup"
-        description="Opus works, Sonnet helps, Haiku searches and tests. Applies to new chats."
-      >
-        <Button
-          variant="primary"
-          icon={Sparkles}
-          onClick={() =>
-            void updateConfig({
-              engine: {
-                defaultModel: "opus",
-                defaultPermissionMode: "plan",
-                subagentModel: "sonnet",
-                helperModel: "sonnet",
-                quickModel: "haiku",
-                testerModel: "haiku",
-                searchModel: "haiku",
-              },
-            })
-          }
-        >
-          Use recommended defaults
-        </Button>
-      </SettingRow>
-      {modelsError && (
-        <SettingRow label="Couldn't load available models" description={modelsError}>
-          <Button onClick={() => setReload((n) => n + 1)}>Retry</Button>
-        </SettingRow>
-      )}
-      <ModelSetting
-        label="Default model"
-        description="For new chats. Project and chat selections override this."
-        value={e.defaultModel}
-        models={models}
-        hybrid
-        onSave={(defaultModel) => void updateConfig({ engine: { defaultModel } })}
-      />
-      <AiFeaturesLink description="Commit messages, checks, tours, chat names and add-ons' questions each pick Claude or ChatGPT and a model there." />
-      <ModelSetting
-        label="Subagent fallback model"
-        description="For subagents without an explicit model choice."
-        value={e.subagentModel}
-        models={models}
-        onSave={(subagentModel) => void updateConfig({ engine: { subagentModel } })}
-      />
-      <ModelSetting
-        label="Tester model"
-        description="For the browser-testing helper and Test something…."
-        value={e.testerModel}
-        models={models}
-        onSave={(testerModel) => void updateConfig({ engine: { testerModel } })}
-      />
-      <ModelSetting
-        label="Search model"
-        description="For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself."
-        value={e.searchModel}
-        models={models}
-        emptyLabel="Off (the chat searches itself)"
-        onSave={(searchModel) => void updateConfig({ engine: { searchModel } })}
-      />
-      <div className="px-4 py-3 text-xs text-muted">
-        <p>Defaults affect new chats. Smaller models save usage but cannot guarantee equal quality.</p>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-fg">How subagent models are chosen</summary>
-          <p className="mt-2">
-            Claude’s choice for the invocation wins, then the agent definition, then your fallback, then the
-            chat model. Built-in Explore and Plan follow Claude Code’s own rules. A forced model in your
-            environment can override these choices.
-          </p>
-        </details>
-      </div>
-      <SettingRow
-        label="Default permission mode"
-        description="How new chats ask before editing files or running commands."
-      >
-        <Select
-          value={e.defaultPermissionMode}
-          aria-label="Default permission mode"
-          onChange={(ev) =>
-            void updateConfig({
-              engine: {
-                defaultPermissionMode: ev.target.value as typeof e.defaultPermissionMode,
-              },
-            })
-          }
-        >
-          <option value="default">Ask before changes</option>
-          <option value="acceptEdits">Accept edits</option>
-          <option value="plan">Plan only</option>
-          <option value="bypassPermissions">Don't ask (bypass)</option>
-        </Select>
-      </SettingRow>
-      <SettingRow
-        label="Suggest the next message"
-        description="After a turn, Claude Code proposes what you might send next (shown above the message box; Tab takes it). Nearly free: it reuses the conversation's cache."
-      >
-        <Switch
-          label="Suggest the next message"
-          checked={e.promptSuggestions}
-          onChange={(promptSuggestions) => void updateConfig({ engine: { promptSuggestions } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Name new chats"
-        description="An AI model gives each new chat a short name from its first message (pick which in AI features → Chat names). Until it answers, the chat is called by the message's first words; renaming a chat yourself always wins."
-      >
-        <Switch
-          label="Name new chats"
-          checked={e.aiTitles}
-          onChange={(aiTitles) => void updateConfig({ engine: { aiTitles } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Desktop notifications"
-        description="A system notification (and a flashing taskbar button) when a chat needs you, finishes or fails while Jig is in the background. Click it to go to the chat."
-      >
-        <Switch
-          label="Desktop notifications"
-          checked={config.notifications.desktop}
-          onChange={(desktop) => void updateConfig({ notifications: { desktop } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Show Claude’s browser when it's used"
-        description="Opens the browser view by itself when Claude starts browsing, so you can watch. The view only shows a picture of the page: Claude resizes the page and takes screenshots at any size whatever the view's size, and no window ever pops up. Turn it off to keep the view closed; you can open it from Tools."
-      >
-        <Switch
-          label="Show Claude’s browser when it's used"
-          checked={config.browser.showWhenUsed}
-          onChange={(showWhenUsed) => void updateConfig({ browser: { showWhenUsed } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="File checkpoints"
-        description="Claude Code keeps a copy of each file before changing it, so you can restore files to how they were before any of your messages (the message's menu)."
-      >
-        <Switch
-          label="File checkpoints"
-          checked={e.fileCheckpoints}
-          onChange={(fileCheckpoints) => void updateConfig({ engine: { fileCheckpoints } })}
-        />
-      </SettingRow>
-      <SettingRow
-        label="Allow API keys"
-        description="Off: ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are removed from chats, so usage always comes from your Claude plan. On: a key in your environment switches chats to pay-as-you-go billing."
-      >
-        <Switch
-          label="Allow API keys"
-          checked={e.allowApiKey}
-          onChange={(allowApiKey) => void updateConfig({ engine: { allowApiKey } })}
-        />
-      </SettingRow>
-    </SettingsSection>
-  );
-}
 /**
  * Language servers (D-259): the switch, and each server Jig knows with where it was found, or an
  * Install button that runs its install command in a terminal you can watch.

@@ -187,7 +187,7 @@ export class ClaudeEngine implements Engine {
             type: "error",
             code: "process",
             message: notFound
-              ? `Claude Code could not be started (${message}). Check Settings → Claude Code.`
+              ? `Claude Code could not be started (${message}). Check Settings → Chats.`
               : `Claude Code stopped: ${message}`,
           });
         }

@@ -1,5 +1,4 @@
 import {
-  Bot,
   BrainCircuit,
   Cloud,
   Download,
@@ -7,6 +6,7 @@ import {
   FolderTree,
   Info,
   LayoutPanelLeft,
+  MessagesSquare,
   Mic,
   Palette,
   Puzzle,
@@ -25,10 +25,10 @@ import { SpeechSettings } from "../speech/SpeechSettings";
 import { AddonsSettings } from "./AddonsSettings";
 import { AiFeaturesSettings } from "./AiFeatures";
 import { AppearanceSettings } from "./Appearance";
+import { ChatSettings } from "./ChatSettings";
 import {
   AboutSettings,
   EditorSettings,
-  EngineSettings,
   LayoutSettings,
   LearningSettings,
   TerminalSettings,
@@ -63,7 +63,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       component: WorkspacesSettings,
       order: 1.5,
     },
-    engine: { id: "engine", title: "Claude Code", icon: Bot, component: EngineSettings, order: 2 },
+    engine: { id: "engine", title: "Chats", icon: MessagesSquare, component: ChatSettings, order: 2 },
     ai: { id: "ai", title: "AI features", icon: BrainCircuit, component: AiFeaturesSettings, order: 2.2 },
     editor: { id: "editor", title: "Editor", icon: FileCode, component: EditorSettings, order: 2.5 },
     terminal: {

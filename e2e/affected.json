@@ -79,8 +79,17 @@
         "images.spec.ts",
         "saved-chats.spec.ts",
         "usage.spec.ts",
-        "codex-tools.spec.ts"
+        "codex-tools.spec.ts",
+        "chat-provider.spec.ts"
       ]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/features/settings/ChatSettings.tsx",
+        "apps/desktop/src/renderer/features/settings/parts.tsx",
+        "apps/desktop/src/renderer/stores/providers.ts"
+      ],
+      "specs": ["chat-provider.spec.ts", "themes.spec.ts", "workbench.spec.ts", "ai.spec.ts"]
     },
     { "files": ["apps/desktop/src/main/configure/**"], "specs": ["configure.spec.ts", "projects.spec.ts"] },
     {

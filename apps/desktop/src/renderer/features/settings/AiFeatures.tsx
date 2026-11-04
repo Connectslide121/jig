@@ -1,5 +1,5 @@
 import { LogIn } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AI_FEATURES, type AiFeature } from "../../../shared/aiFeatures";
 import type { JigConfig } from "../../../shared/config";
 import type { ModelInfo } from "../../../shared/engine";
@@ -8,11 +8,11 @@ import {
   AI_PROVIDER_LABELS,
   type AiProvider,
   chatGptModelChoices,
-  type ProviderStatus,
   resolveChatGptModel,
 } from "../../../shared/providers";
-import { call, useHostEvent } from "../../lib/host";
+import { call } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
+import { useChatGptStatus } from "../../stores/providers";
 import { Button, Select, Spinner } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { SettingsSection } from "./parts";
@@ -32,20 +32,6 @@ function useProviderModels(): Record<AiProvider, ModelInfo[]> {
     };
   }, []);
   return models;
-}
-
-/** Whether ChatGPT can answer (the Codex CLI installed and signed in); asked again after a sign-in. */
-function useChatGptStatus(): ProviderStatus | undefined {
-  const [status, setStatus] = useState<ProviderStatus>();
-  const load = useCallback(() => {
-    void call("ai.providers").then(
-      (list) => setStatus(list.find((p) => p.provider === "chatgpt")),
-      () => setStatus({ provider: "chatgpt", ready: false, detail: "Couldn't ask the Codex CLI." }),
-    );
-  }, []);
-  useEffect(() => load(), [load]);
-  useHostEvent("codex.signIn", () => load());
-  return status;
 }
 
 /** The model a feature's picker shows: the saved one, else its default (ChatGPT: the feature's family). */

@@ -79,7 +79,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.testerModel` | `"haiku"` | model for testing in the browser: the `jig-tester` subagent every chat gets, and Search → Test something… (D-124) |
 | `engine.searchModel` | `"haiku"` | model of the `jig-search` subagent every chat gets and is asked to hand code searches to; empty = no search subagent (D-207) |
 | `engine.promptSuggestions` | `true` | Claude Code suggests your next message after a turn (shown above the composer) |
-| `engine.aiTitles` | `true` | the quick model (`engine.quickModel`) names each new chat from its first message, in a few words; until it answers the chat is called by the message's first words, and a name you give meanwhile is kept (D-288). Protected: Settings → Claude Code only |
+| `engine.aiTitles` | `true` | the quick model (`engine.quickModel`) names each new chat from its first message, in a few words; until it answers the chat is called by the message's first words, and a name you give meanwhile is kept (D-288). Protected: Settings → Chats only |
 | `engine.fileCheckpoints` | `true` | Claude Code keeps copies of files before editing, so a chat can restore files to before a message |
 | `chat.overview` | `true` | the small overview card at the top right of each chat: turns, tool calls, files changed, commands, skills, subagents, add-ons, MCP calls, tokens; **Show details** opens the full breakdown in a modal (D-184). The chart button in the chat's top bar turns it on or off |
 | `chat.times` | `false` | a time beside every message and step of a chat, in a fixed column at its left (24-hour, the day when it changes; D-306). The clock button in the chat's top bar turns it on or off. Off, a message's time shows in its hover toolbar and a steps line's in its tooltip |
@@ -127,7 +127,7 @@ A new state file is documented here in the same commit that adds it.
 | `updates.buildCommand` / `installCommand` | `npm run build` / `npm install` | commands an update runs (`docs/reference/setup.md`) |
 | `addonGallery.sources` | `[]` | add-on gallery sources: git URLs (https/ssh) or folders (D-179); protected, Settings and the gallery only |
 
-Settings → Claude Code edits the model strings through pickers populated by Claude Code. Use recommended defaults is a primary action. Appearance offers bundled/system font choices, an optional custom font field and per-font Reset to the schema defaults.
+Settings → Chats edits the model strings through pickers populated by Claude Code. Use recommended defaults is a primary action. Appearance offers bundled/system font choices, an optional custom font field and per-font Reset to the schema defaults.
 
 Chat transcript assistant/thinking/tool items may include optional `model` (the SDK-reported calling
 assistant model). This stays with the historical call across model changes and restarts. Existing

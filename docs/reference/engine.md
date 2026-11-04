@@ -158,7 +158,7 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
 
 - Jig never reads, stores or forwards Claude credentials, and has no login screen.
 - `sessionEnv()` removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the session environment
-  unless Settings → Claude Code → Allow API keys is on (`engine.allowApiKey`). Codex chats:
+  unless Settings → Chats → Allow API keys is on (`engine.allowApiKey`). Codex chats:
   `codexSessionEnv()` removes `OPENAI_API_KEY` and `CODEX_API_KEY` unless `engine.codexAllowApiKey`.
 - The init message's `apiKeySource` becomes `meta.authSource`: `none` → `subscription`, anything else
   → `api_key` (a warning is shown in the chat and a badge in its header).
@@ -401,7 +401,7 @@ Claude when to use the terminal and browser tools.
 
 ## Model routing defaults (D-129)
 
-New chats use Opus (D-207; before, Claude Code's native `opusplan`, which uses Opus only in Plan mode and Sonnet for all other work, tool calls included). Project/chat model choices win over the global default. Explicit saved settings are preserved; Settings → Claude Code → Use recommended defaults applies the preset to an existing installation.
+New chats use Opus (D-207; before, Claude Code's native `opusplan`, which uses Opus only in Plan mode and Sonnet for all other work, tool calls included). Project/chat model choices win over the global default. Explicit saved settings are preserved; Settings → Chats → Use recommended defaults applies the preset to an existing installation.
 
 Every regular chat gets the `jig-search` subagent (`shared/searcher.ts`): Read, Grep and Glob only, no CLAUDE.md, on `engine.searchModel` (Haiku; empty leaves it out), and a system-prompt line asking the chat to hand code searches to it instead of searching itself or using Explore. Claude Code's built-in Explore inherits the chat's model (capped at Opus), so it saves nothing in an Opus chat. Delegating stays Claude's choice.
 

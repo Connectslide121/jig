@@ -94,7 +94,7 @@ ${r.stderr}`),
         ? `${claudeVersion}. ${options.signIn ? signInText(signIn) : "Sign-in is checked by Claude Code when your first session starts."}`
         : claude
           ? `Couldn't run ${claude}.`
-          : "Not found: no Claude Code shipped for this platform and none set in Settings → Claude Code.",
+          : "Not found: no Claude Code shipped for this platform and none set in Settings → Chats.",
       help: "Sign in once with Sign in to Claude Code… (Claude Code's own sign-in, in a terminal; Jig never sees your login).",
       url: "https://docs.claude.com/en/docs/claude-code/setup",
     },

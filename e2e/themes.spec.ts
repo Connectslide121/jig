@@ -90,9 +90,7 @@ test("Open VSX searches automatically after typing pauses", async ({ page, app }
   await expect(page.getByText("No theme extensions found.")).toBeVisible();
 });
 
-test("Settings → Claude Code: claude.ai connectors are off by default and the switch is kept", async ({
-  page,
-}) => {
+test("Settings → Chats: claude.ai connectors are off by default and the switch is kept", async ({ page }) => {
   await page.getByTestId("settings-button").click();
   await page.getByTestId("settings-nav-engine").click();
   const toggle = page.getByRole("switch", { name: "claude.ai connectors" });

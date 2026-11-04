@@ -34,7 +34,7 @@ Decisions: D-090, D-095.
 Claude checks its own web work in a real Chromium page inside Jig. The page is offscreen with its own
 size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a scaled
 picture of it, so the view's size never limits Claude, and resizing never moves anything on screen.
-The view opens by itself when Claude starts browsing; turn off Settings → Claude Code → **Show Claude’s browser
+The view opens by itself when Claude starts browsing; turn off Settings → Chats → **Show Claude’s browser
 when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can take over
 inside the page for sign-ins and other steps Claude needs your help with. The address is
 read-only; there are no user Back/Forward, Reload, viewport or test-launch controls in this view.
