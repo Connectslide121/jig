@@ -7,7 +7,6 @@ import {
 } from "@jig/sdk";
 import {
   ArrangeList,
-  Button,
   cn,
   Empty,
   IconButton,
@@ -19,7 +18,6 @@ import {
   useWorkspaceList,
 } from "@jig/sdk/ui";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   CloudDownload,
@@ -403,16 +401,15 @@ export function ReposView({ ctx }: AddonComponentProps) {
             </span>
           )}
         </span>
-        <Button
+        <IconButton
+          icon={ListOrdered}
           size="sm"
-          variant={arranging ? "primary" : "ghost"}
-          icon={arranging ? Check : ListOrdered}
+          label={arranging ? "Done arranging" : "Arrange: hide, reorder and group repositories with dividers"}
+          active={arranging}
+          aria-pressed={arranging}
           onClick={() => setArranging(!arranging)}
           data-testid="repos-arrange"
-          title="Hide repositories, reorder them, group them with dividers"
-        >
-          {arranging ? "Done" : "Arrange"}
-        </Button>
+        />
         <IconButton
           icon={CloudDownload}
           size="sm"

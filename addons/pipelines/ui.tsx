@@ -17,7 +17,6 @@ import {
   useJigEvent,
 } from "@jig/sdk/ui";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   CircleCheck,
@@ -824,16 +823,15 @@ export function PipelinesView({ ctx }: AddonComponentProps) {
           )}
         </span>
         {found && (loading || finding) && <Spinner size="sm" />}
-        <Button
+        <IconButton
+          icon={ListOrdered}
           size="sm"
-          variant={arranging ? "primary" : "ghost"}
-          icon={arranging ? Check : ListOrdered}
+          label={arranging ? "Done arranging" : "Arrange: hide, reorder and group pipelines with dividers"}
+          active={arranging}
+          aria-pressed={arranging}
           onClick={() => setArranging(!arranging)}
           data-testid="pipelines-arrange"
-          title="Hide pipelines, reorder them, group them with dividers"
-        >
-          {arranging ? "Done" : "Arrange"}
-        </Button>
+        />
         <IconButton icon={RefreshCw} size="sm" label="Refresh runs" onClick={() => void reload()} />
         <IconButton
           icon={SearchCheck}
