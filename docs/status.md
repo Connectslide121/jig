@@ -1,5 +1,12 @@
 # Status
 
+ChatGPT model families (2026-11-04, D-310): in **Settings → AI features**, a row on ChatGPT now offers
+Sol, Terra and Luna first ("Terra (latest) · now GPT-6.1 Terra"), then a divider and the exact
+versions for pinning one. A family always runs on its newest version in the list Codex reports, so a
+new release is used without changing a setting. Switching a row to ChatGPT picks the family of its
+Claude tier (Luna for Haiku, Terra for Sonnet, Sol for Opus) instead of Codex's default. Checked with
+the fake engine; needs testing on your machine: a feature on Sol, Terra and Luna with Codex signed in.
+
 Editing a queued message (2026-11-04, D-308): clicking a message waiting in the queue opens a dialog
 with the chat's own message box: its attachments as thumbnails and chips with ×, paste a screenshot or
 drop files, the paperclip, the + menu (commands, mention a file, attach), dictation, and the `@` and `/`

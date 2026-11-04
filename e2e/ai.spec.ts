@@ -263,11 +263,13 @@ test("Settings → AI features: each feature picks a provider and a model from t
   await expect(page.getByTestId("ai-chatgpt-status")).toContainText("ChatGPT: the fake engine");
   const before = await row.boundingBox();
   await row.getByLabel("Commit message: provider").selectOption("chatgpt");
-  // Only ChatGPT's models now, starting with Codex's own default.
-  await expect(row.getByLabel("Commit message: model").locator("option").first()).toHaveText(
-    "Codex's default",
-  );
-  await expect(row.getByLabel("Commit message: model")).not.toContainText("Haiku");
+  // Only ChatGPT's models now: the families first (D-310), the feature's own picked, then versions.
+  const model = row.getByLabel("Commit message: model");
+  await expect(model.locator("option").first()).toHaveText("Sol (latest) · now GPT-6.1-Sol");
+  await expect(model).toHaveValue("luna");
+  await expect(model.locator("option:checked")).toHaveText("Luna (latest) · now GPT-6-Luna");
+  await expect(model.locator("option").nth(3)).toHaveText("GPT-6.1-Sol");
+  await expect(model).not.toContainText("Haiku");
   // Switching moves nothing.
   expect(await row.boundingBox()).toEqual(before);
   await expect
@@ -275,5 +277,5 @@ test("Settings → AI features: each feature picks a provider and a model from t
       const r = await hostCall(page, "config.get");
       return r.ok ? (r.value as { ai: Record<string, unknown> }).ai.commitMessage : undefined;
     })
-    .toEqual({ provider: "chatgpt", model: "" });
+    .toEqual({ provider: "chatgpt", model: "luna" });
 });

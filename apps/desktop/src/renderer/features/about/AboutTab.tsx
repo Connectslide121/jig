@@ -476,7 +476,8 @@ function Skills() {
           </>,
           <>
             <b>Your ChatGPT plan too</b> (optional) — sign in to OpenAI's Codex CLI from Get started, then
-            pick Claude or ChatGPT and a model for each AI feature in Settings → AI features
+            pick Claude or ChatGPT and a model for each AI feature in Settings → AI features; a ChatGPT family
+            (Sol, Terra, Luna) always uses its newest version
           </>,
         ]}
       />

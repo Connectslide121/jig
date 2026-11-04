@@ -3808,7 +3808,7 @@ tab and in the lobby.
   feature used before: `engine.quickModel` (commit message, chat names, add-ons' short answers),
   `engine.helperModel` (check, release notes, add-ons' other questions), `engine.defaultModel`
   (tour, compare attempts, standup), `learning.model`, `meetings.translationModel`. Those keys stay
-  as the fallbacks. Settings shows "Default (Haiku)" etc. On ChatGPT, `""` is Codex's own default.
+  as the fallbacks. Settings shows "Default (Haiku)" etc. On ChatGPT, `""` was Codex's own default (now the feature's family, D-310).
 - **Settings → AI features** is one table with fixed columns (feature · provider · model). The model
   list is only the chosen provider's (Claude Code's list, or `codex debug models`); switching the
   provider resets the model to the default. ChatGPT's option is disabled while the Codex CLI isn't
@@ -4111,3 +4111,31 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
 - **Tests:** `JIG_ENGINE=fake` stands in for both: `getEngine("codex")` is a `FakeEngine` with
   `provider: "codex"` and Codex's capabilities. Until the Codex engine exists, `getEngine("codex")`
   throws `codex_unavailable` outside the fake engine.
+
+## D-310: ChatGPT model families without version numbers
+
+- Status: accepted. Decided by Jon, 2026-11-04 (task Codex chat A): ChatGPT models get family names
+  like Claude's opus/sonnet/haiku: **Sol, Terra, Luna**. Jig stores the family and each call uses its
+  newest version, the same way "sonnet" works; exact versions stay available for pinning.
+- **Jig translates.** Codex's `--model` takes exact slugs (`gpt-6.1-sol`, `gpt-6.1-terra`,
+  `gpt-6-luna`) and has no aliases. `resolveChatGptModel` (`shared/providers.ts`, pure, unit-tested)
+  maps a family to the newest `gpt-<version>-<family>` model in the list Codex reports (`codex debug
+  models`), else in `CHATGPT_FALLBACK_MODELS`. Versions compare as numbers (6.1 > 6, 6.10 > 6.9), per
+  family: Luna may be on 6 while the others are on 6.1. Suffixed variants (`gpt-6.1-sol-mini`) are
+  not part of a family.
+- **At call time.** `resolveCodexModel` resolves when the call runs, and the model list is read again
+  after 30 minutes (Claude, on my own), so a new release such as 6.2 is used without a setting or a
+  restart. One-shots use it now; the Codex chat engine uses the same function.
+- **What passes through** (Claude, on my own): an exact slug (anything with a digit or a dash) and
+  `""` go to Codex unchanged. A one-word alias no model has (a typo, a retired family) runs on
+  Codex's default model and logs a notice; Settings marks it "(no such family: Codex's default)".
+  Any family Codex lists resolves, not only the three in the pickers (Codex also lists `astra`).
+- **Pickers** list the families first, "Sol (latest) · now GPT-6.1-Sol", then a divider (a native
+  `<hr>` in the select), then the exact versions. Settings → AI features is the first; the chat
+  pickers follow with Codex chats.
+- **Defaults** (Claude, on my own on the mapping): the family aliases replace the empty "Codex's
+  default". A feature on ChatGPT without a picked model, or one you just switched to ChatGPT, uses
+  the family of its Claude tier: Luna where it used Haiku (commit message, chat names, weekly
+  patterns, caption translation, add-ons' short answers), Terra for Sonnet (check, release notes,
+  add-ons' other questions), Sol for Opus (tour, compare attempts, standup). New Codex chats default
+  to `sol` (`engine.codexModel`, D-309).

@@ -40,6 +40,9 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   `Engine.provider` / `capabilities` (`ENGINE_CAPABILITIES`), `SessionMeta.provider`,
   `engine.provider` with a project override, the fake engine as Codex (D-309; unit tests in
   `engine/index.test.ts`, `sessions/manager.test.ts`).
+- [x] ChatGPT model families (Sol, Terra, Luna) resolved to their newest version at call time; family
+  pickers in Settings → AI features (D-310; unit tests in `shared/providers.test.ts`,
+  `aiFeatures.test.ts`, e2e in `e2e/ai.spec.ts`).
 - [ ] Codex chats B–E: the Codex engine over `codex app-server`, Jig's tools as a local MCP server,
   the provider picker and Codex-aware chat UI, plan mode/questions/history/skills (queued tasks).
 

@@ -25,7 +25,7 @@ describe("aiChoice", () => {
     expect(aiChoice(c, "meetingTranslation").model).toBe("sonnet");
   });
 
-  it("uses the picked provider and model; ChatGPT without a model gets Codex's default", () => {
+  it("uses the picked provider and model; ChatGPT without a model gets the feature's family", () => {
     const c = ConfigSchema.parse({
       ai: {
         tour: { provider: "chatgpt", model: "gpt-6.1-terra" },
@@ -34,8 +34,17 @@ describe("aiChoice", () => {
       },
     });
     expect(aiChoice(c, "tour")).toEqual({ provider: "chatgpt", model: "gpt-6.1-terra" });
-    expect(aiChoice(c, "standup")).toEqual({ provider: "chatgpt", model: "" });
+    expect(aiChoice(c, "standup")).toEqual({ provider: "chatgpt", model: "sol" });
     expect(aiChoice(c, "commitMessage")).toEqual({ provider: "claude", model: "sonnet" });
+  });
+
+  it("gives every feature the ChatGPT family of its Claude tier", () => {
+    const c = ConfigSchema.parse({
+      ai: Object.fromEntries(AI_FEATURE_IDS.map((id) => [id, { provider: "chatgpt" }])),
+    });
+    const tier = { haiku: "luna", sonnet: "terra", opus: "sol" } as Record<string, string>;
+    for (const feature of AI_FEATURES)
+      expect(aiChoice(c, feature.id).model).toBe(tier[feature.fallback(defaultConfig())]);
   });
 
   it("rejects unknown providers", () => {

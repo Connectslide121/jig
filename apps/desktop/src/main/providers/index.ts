@@ -3,7 +3,13 @@ import { existsSync } from "node:fs";
 import { type AiFeatureId, aiChoice } from "../../shared/aiFeatures";
 import type { ModelInfo } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import { type AiProvider, CHATGPT_FALLBACK_MODELS, type ProviderStatus } from "../../shared/providers";
+import {
+  type AiProvider,
+  CHATGPT_FALLBACK_MODELS,
+  type ProviderStatus,
+  type ResolvedChatGptModel,
+  resolveChatGptModel,
+} from "../../shared/providers";
 import type { RawCodexRateLimits } from "../../shared/usage";
 import { resolveCommand } from "../addons/winCommand";
 import { getConfig } from "../config";
@@ -111,18 +117,31 @@ function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: 
 }
 
 /**
+ * The exact ChatGPT model for a stored choice, now (D-310): a family (`sol`, `terra`, `luna`) becomes
+ * its newest model in the list Codex reports, so a new release is used without a setting changing.
+ * Exact slugs pass through. One-shots and Codex chats both resolve through this.
+ */
+export async function resolveCodexModel(choice: string): Promise<ResolvedChatGptModel> {
+  const resolved = resolveChatGptModel(choice, await providerModels("chatgpt"));
+  if (resolved.notice) log.warn(resolved.notice);
+  return resolved;
+}
+
+/**
  * One prompt, one answer, on the chosen provider. Same timeout and errors on both: a rejection with a
  * plain message ("… didn't answer in time"). The fake engine answers for both providers in tests.
+ * ChatGPT's model may be a family alias; it is resolved here, at call time.
  */
 export async function oneShot(
   provider: AiProvider,
-  model: string,
+  choice: string,
   prompt: string,
   timeoutMs = ONE_SHOT_TIMEOUT,
   extras: OneShotExtras = {},
 ): Promise<string> {
   const cwd = extras.cwd || jigHome();
   const engine = getEngine();
+  const model = provider === "chatgpt" ? (await resolveCodexModel(choice)).model : choice;
   if (provider === "claude" || engine.kind === "fake") {
     const config = getConfig().engine;
     return engine.oneShot(prompt, {
@@ -151,8 +170,12 @@ export async function oneShot(
   }
 }
 
-/** `codex debug models` (about 1 MB of JSON with every model's instructions), read once per run. */
-let codexModels: Promise<ModelInfo[]> | undefined;
+/**
+ * `codex debug models` (about 1 MB of JSON with every model's instructions), read again after
+ * `CODEX_MODELS_TTL` so a new release reaches family aliases without restarting Jig.
+ */
+let codexModels: { list: Promise<ModelInfo[]>; at: number } | undefined;
+const CODEX_MODELS_TTL = 30 * 60_000;
 
 function readCodexModels(binary: string): Promise<ModelInfo[]> {
   return new Promise((resolve) => {
@@ -181,8 +204,9 @@ export async function providerModels(provider: AiProvider): Promise<ModelInfo[]>
   }
   const binary = engine.kind === "fake" ? undefined : codexBinary();
   if (!binary) return CHATGPT_FALLBACK_MODELS;
-  codexModels ??= readCodexModels(binary);
-  const models = await codexModels;
+  if (!codexModels || Date.now() - codexModels.at > CODEX_MODELS_TTL)
+    codexModels = { list: readCodexModels(binary), at: Date.now() };
+  const models = await codexModels.list;
   if (!models.length) codexModels = undefined;
   return models.length ? models : CHATGPT_FALLBACK_MODELS;
 }

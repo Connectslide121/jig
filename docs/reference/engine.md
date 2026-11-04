@@ -104,15 +104,28 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
   top-level `error` events reject (`error` *items* are warnings). `OPENAI_API_KEY` and
   `CODEX_API_KEY` are removed from its environment so it uses the ChatGPT sign-in.
 - **Models** (`providerModels`, IPC `ai.models { provider }`): Claude's from Claude Code; ChatGPT's
-  from `codex debug models` (visible ones, Codex's order; read once per run), else
+  from `codex debug models` (visible ones, Codex's order; read again after 30 minutes), else
   `CHATGPT_FALLBACK_MODELS`.
+- **ChatGPT model families (D-310):** like Claude's `opus`/`sonnet`/`haiku`, Jig stores a family
+  (`sol`, `terra`, `luna`; `CHATGPT_FAMILIES` in `shared/providers.ts`), while Codex's `--model` only
+  takes exact slugs (`gpt-6.1-sol`). `resolveChatGptModel(choice, models)` (pure, unit-tested) turns
+  a family into the newest `gpt-<version>-<family>` model in Codex's list, comparing versions as
+  numbers (6.1 > 6, 6.10 > 6.9; families may sit on different versions), else in
+  `CHATGPT_FALLBACK_MODELS`. Any family Codex lists resolves (`astra` too); exact slugs and `""` pass
+  through unchanged; an alias no model has gives `""` (Codex's default) with a notice (logged).
+  `resolveCodexModel(choice)` (`main/providers`) resolves at call time against the current list, so
+  a new release (6.2) is used without a setting changing; `oneShot` uses it, and Codex chats will
+  too. Pickers list the families first ("Sol (latest) · now GPT-6.1-Sol", `chatGptModelChoices`),
+  then a divider, then the exact versions for pinning one.
 - **Credentials:** Jig never reads `~/.codex/auth.json` or any Codex/ChatGPT token. Sign-in is `codex
   login` in a private terminal (`jig.codexLogin`); `codex login status` gives only yes/no and the
   method (`parseCodexLoginStatus`).
 - **Fake engine:** both providers answer from the fake engine's `oneShot`; Codex never runs in tests.
 - **Per feature (D-297):** features call `featureOneShot(feature, prompt, { cwd, system, timeoutMs })`,
   which takes `aiChoice(config, feature)` (`shared/aiFeatures.ts`): the provider and model picked in
-  Settings → AI features, else Claude on the feature's old model. `ai.providers` says whether ChatGPT
+  Settings → AI features, else Claude on the feature's old model. On ChatGPT without a picked model
+  it is the feature's family (`AiFeature.chatgpt`: Luna where Claude used Haiku, Terra for Sonnet,
+  Sol for Opus), and switching a row to ChatGPT picks that family. `ai.providers` says whether ChatGPT
   is ready (installed and signed in). `ai.ask` (add-ons) uses its `feature` (Git, Releases) or the
   add-ons' rows. JSON features (tour, compare attempts) name who answered when the reply doesn't
   parse. Caption translation keeps Claude's warm completer; on ChatGPT it calls `oneShot` per caption.

@@ -4,7 +4,13 @@ import { AI_FEATURES, type AiFeature } from "../../../shared/aiFeatures";
 import type { JigConfig } from "../../../shared/config";
 import type { ModelInfo } from "../../../shared/engine";
 import { modelName, modelOptions } from "../../../shared/models";
-import { AI_PROVIDER_LABELS, type AiProvider, type ProviderStatus } from "../../../shared/providers";
+import {
+  AI_PROVIDER_LABELS,
+  type AiProvider,
+  chatGptModelChoices,
+  type ProviderStatus,
+  resolveChatGptModel,
+} from "../../../shared/providers";
 import { call, useHostEvent } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Button, Select, Spinner } from "../../ui";
@@ -42,25 +48,37 @@ function useChatGptStatus(): ProviderStatus | undefined {
   return status;
 }
 
-/** The model choices for a feature on a provider: its default first, then the provider's models. */
+/** The model a feature's picker shows: the saved one, else its default (ChatGPT: the feature's family). */
+function shownModel(feature: AiFeature, provider: AiProvider, config: JigConfig): string {
+  return config.ai[feature.id].model || (provider === "chatgpt" ? feature.chatgpt : "");
+}
+
+/**
+ * The model choices for a feature on a provider. Claude: its default first, then Claude Code's models.
+ * ChatGPT (D-310): the families first ("Sol (latest) · now GPT-6.1-Sol"), a divider, then the exact
+ * versions for pinning one. `null` is the divider.
+ */
 function modelChoices(
   feature: AiFeature,
   provider: AiProvider,
   config: JigConfig,
   models: ModelInfo[],
-): Array<[string, string]> {
-  const fallback = feature.fallback(config);
-  const choices: Array<[string, string]> =
-    provider === "claude"
-      ? [
-          ["", `Default (${modelName(fallback, models) || "Claude Code's"})`],
-          ...modelOptions(models, false)
-            .filter((m) => m.id)
-            .map((m): [string, string] => [m.id, m.label]),
-        ]
-      : [["", "Codex's default"], ...models.map((m): [string, string] => [m.value, m.displayName])];
-  const saved = config.ai[feature.id].model;
-  if (saved && !choices.some(([id]) => id === saved)) choices.push([saved, `${saved} (saved choice)`]);
+): Array<[string, string] | null> {
+  const choices: Array<[string, string] | null> = [];
+  if (provider === "claude") {
+    choices.push(["", `Default (${modelName(feature.fallback(config), models) || "Claude Code's"})`]);
+    for (const m of modelOptions(models, false)) if (m.id) choices.push([m.id, m.label]);
+  } else {
+    const { families, versions } = chatGptModelChoices(models);
+    for (const f of families) choices.push([f.value, f.label]);
+    choices.push(null);
+    for (const v of versions) choices.push([v.value, v.label]);
+  }
+  const saved = shownModel(feature, provider, config);
+  if (saved && !choices.some((c) => c?.[0] === saved)) {
+    const unknown = provider === "chatgpt" && resolveChatGptModel(saved, models).notice;
+    choices.push([saved, unknown ? `${saved} (no such family: Codex's default)` : `${saved} (saved choice)`]);
+  }
   return choices;
 }
 
@@ -79,7 +97,7 @@ export function AiFeaturesSettings() {
   return (
     <SettingsSection
       title="AI features"
-      description="Who answers Jig's one-shot AI features, and on which model. Claude runs through Claude Code on your Claude plan; ChatGPT through OpenAI's Codex CLI on your ChatGPT plan. Chats always run on Claude Code. Answers are AI-generated and can be wrong: check them before you use them."
+      description="Who answers Jig's one-shot AI features, and on which model. Claude runs through Claude Code on your Claude plan; ChatGPT through OpenAI's Codex CLI on your ChatGPT plan, where a family (Sol, Terra, Luna) always uses its newest version. Answers are AI-generated and can be wrong: check them before you use them."
     >
       <div className="@container" data-testid="ai-features">
         {/* Wide: one row per feature (feature · provider · model). Narrow: the pickers go under the
@@ -89,10 +107,12 @@ export function AiFeaturesSettings() {
         <div className="items-center gap-3 border-b border-line px-4 py-2 text-xs font-medium text-muted @max-xl:hidden @xl:flex">
           <span className="min-w-0 flex-1">Feature</span>
           <span className="w-40 shrink-0">Provider</span>
-          <span className="w-52 shrink-0">Model</span>
+          <span className="shrink-0 @max-2xl:w-52 @2xl:w-72">Model</span>
         </div>
         {AI_FEATURES.map((feature) => {
           const { provider } = config.ai[feature.id];
+          const model = shownModel(feature, provider, config);
+          const choices = modelChoices(feature, provider, config, models[provider]);
           return (
             <div
               key={feature.id}
@@ -109,7 +129,10 @@ export function AiFeaturesSettings() {
                     className="w-full"
                     aria-label={`${feature.label}: provider`}
                     value={provider}
-                    onChange={(ev) => choose(feature, ev.target.value as AiProvider, "")}
+                    onChange={(ev) => {
+                      const next = ev.target.value as AiProvider;
+                      choose(feature, next, next === "chatgpt" ? feature.chatgpt : "");
+                    }}
                   >
                     <option value="claude">{AI_PROVIDER_LABELS.claude}</option>
                     <option value="chatgpt" disabled={!chatgpt?.ready}>
@@ -117,18 +140,25 @@ export function AiFeaturesSettings() {
                     </option>
                   </Select>
                 </div>
-                <div className="min-w-0 @max-xl:flex-1 @xl:w-52">
+                <div className="min-w-0 @max-xl:flex-1 @xl:w-52 @2xl:w-72">
                   <Select
                     className="w-full"
                     aria-label={`${feature.label}: model`}
-                    value={config.ai[feature.id].model}
+                    // The whole name on hover, where a narrow column cuts it off.
+                    title={choices.find((c) => c?.[0] === model)?.[1]}
+                    value={model}
                     onChange={(ev) => choose(feature, provider, ev.target.value)}
                   >
-                    {modelChoices(feature, provider, config, models[provider]).map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
+                    {choices.map((choice) =>
+                      choice ? (
+                        <option key={choice[0]} value={choice[0]}>
+                          {choice[1]}
+                        </option>
+                      ) : (
+                        // Families above, exact versions below (a native select separator).
+                        <hr key="divider" />
+                      ),
+                    )}
                   </Select>
                 </div>
               </div>

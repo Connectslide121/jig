@@ -2,10 +2,11 @@
  * Jig's simple AI features (one text in, one text out) and which provider and model each runs on
  * (D-297). Settings → AI features lists them in this order. A feature's `config.ai.<id>` holds the
  * provider and the model; an empty model means the model the feature used before this setting
- * existed (`fallback`), so nothing changes until you pick one. Documented in docs/reference/engine.md.
+ * existed (`fallback`), so nothing changes until you pick one, and on ChatGPT the feature's family
+ * (`chatgpt`, D-310). Documented in docs/reference/engine.md.
  */
 import type { JigConfig } from "./config";
-import type { AiProvider } from "./providers";
+import type { AiProvider, ChatGptFamily } from "./providers";
 
 export interface AiFeature {
   id: AiFeatureId;
@@ -14,6 +15,9 @@ export interface AiFeature {
   where: string;
   /** The model it uses with Claude when none is picked: the setting it used before. */
   fallback: (config: JigConfig) => string;
+  /** Its ChatGPT family when none is picked, matching the Claude tier (haiku → luna, sonnet → terra,
+   * opus → sol; D-310). */
+  chatgpt: ChatGptFamily;
   /** It asks for JSON: Jig checks the answer and says so when it doesn't parse. */
   json?: boolean;
 }
@@ -38,22 +42,73 @@ const helper = (c: JigConfig) => c.engine.helperModel;
 const chat = (c: JigConfig) => c.engine.defaultModel;
 
 export const AI_FEATURES: AiFeature[] = [
-  { id: "commitMessage", label: "Commit message", where: "Git → Write message", fallback: quick },
-  { id: "commitCheck", label: "Check before committing", where: "Git → Check changes", fallback: helper },
-  { id: "releaseNotes", label: "Release notes draft", where: "Releases → Draft", fallback: helper },
-  { id: "tour", label: "Tour of changes", where: "Git → Walk me through", fallback: chat, json: true },
-  { id: "attemptsJudge", label: "Compare attempts", where: "Parallel attempts", fallback: chat, json: true },
-  { id: "standup", label: "Standup", where: "Tools → Standup", fallback: chat },
-  { id: "chatTitles", label: "Chat names", where: "New chats", fallback: quick },
-  { id: "learning", label: "Weekly patterns", where: "Learning", fallback: (c) => c.learning.model },
+  {
+    id: "commitMessage",
+    label: "Commit message",
+    where: "Git → Write message",
+    fallback: quick,
+    chatgpt: "luna",
+  },
+  {
+    id: "commitCheck",
+    label: "Check before committing",
+    where: "Git → Check changes",
+    fallback: helper,
+    chatgpt: "terra",
+  },
+  {
+    id: "releaseNotes",
+    label: "Release notes draft",
+    where: "Releases → Draft",
+    fallback: helper,
+    chatgpt: "terra",
+  },
+  {
+    id: "tour",
+    label: "Tour of changes",
+    where: "Git → Walk me through",
+    fallback: chat,
+    chatgpt: "sol",
+    json: true,
+  },
+  {
+    id: "attemptsJudge",
+    label: "Compare attempts",
+    where: "Parallel attempts",
+    fallback: chat,
+    chatgpt: "sol",
+    json: true,
+  },
+  { id: "standup", label: "Standup", where: "Tools → Standup", fallback: chat, chatgpt: "sol" },
+  { id: "chatTitles", label: "Chat names", where: "New chats", fallback: quick, chatgpt: "luna" },
+  {
+    id: "learning",
+    label: "Weekly patterns",
+    where: "Learning",
+    fallback: (c) => c.learning.model,
+    chatgpt: "luna",
+  },
   {
     id: "meetingTranslation",
     label: "Caption translation",
     where: "Meetings",
     fallback: (c) => c.meetings.translationModel,
+    chatgpt: "luna",
   },
-  { id: "addonQuick", label: "Add-ons: short answers", where: "Other add-ons", fallback: quick },
-  { id: "addonHelper", label: "Add-ons: other questions", where: "Other add-ons", fallback: helper },
+  {
+    id: "addonQuick",
+    label: "Add-ons: short answers",
+    where: "Other add-ons",
+    fallback: quick,
+    chatgpt: "luna",
+  },
+  {
+    id: "addonHelper",
+    label: "Add-ons: other questions",
+    where: "Other add-ons",
+    fallback: helper,
+    chatgpt: "terra",
+  },
 ];
 
 /** Features an add-on may name in `ctx.ai.ask({ feature })`: the built-in add-ons' own rows. */
@@ -66,12 +121,14 @@ export function aiFeature(id: AiFeatureId): AiFeature {
 
 /**
  * The provider and model a feature runs on. Claude without a picked model: the feature's old
- * setting. ChatGPT without one: "" (Codex's own default model).
+ * setting. ChatGPT without one: the feature's family (`sol`, `terra`, `luna`), which `oneShot`
+ * resolves to that family's newest model when it runs (D-310).
  */
 export function aiChoice(config: JigConfig, id: AiFeatureId): { provider: AiProvider; model: string } {
   const choice = config.ai[id];
   const provider = choice.provider;
-  const model = choice.model || (provider === "claude" ? aiFeature(id).fallback(config) : "");
+  const feature = aiFeature(id);
+  const model = choice.model || (provider === "claude" ? feature.fallback(config) : feature.chatgpt);
   return { provider, model };
 }
 
