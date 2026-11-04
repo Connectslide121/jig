@@ -32,6 +32,8 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   page,
   jigHome,
 }) => {
+  // Long: every click waits for a frame, and hidden windows draw about one a second.
+  test.setTimeout(120_000);
   await twoProjects(page, jigHome);
 
   // Chats → Task queue (here through the Tools search, which lists the same actions).
@@ -456,7 +458,7 @@ test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it 
   // The details pane names the provider and model.
   await view.getByTestId("task-t3").click();
   await expect(page.getByTestId("task-runs-on")).toContainText("Claude · Sonnet (latest)");
-  await page.getByTestId("task-details").getByRole("button", { name: "Close" }).click();
+  await page.getByTestId("task-details").getByRole("button", { name: "Close" }).last().click();
 
   // The ChatGPT chat runs and reports through Jig's MCP server, like Codex.
   await view.getByTestId("task-tick-t3").click();

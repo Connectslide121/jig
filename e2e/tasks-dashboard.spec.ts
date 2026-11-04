@@ -85,9 +85,9 @@ test("Tasks: Claude lists another project's queue, or every queue compactly", as
   const chat = { sessionId: "s-none", projectId: ids.shop };
   const other = (await call("toolList", { chat, project: "contoso" })) as { value: string };
   expect(other.value).toContain("contoso: The task queue is paused.");
-  expect(other.value).toContain("1. [Queued] write the specs (id t1)");
+  expect(other.value).toContain("1. [Queued] write the specs (id t1, on Claude, the project's)");
   const all = (await call("toolList", { chat, all: true })) as { value: string };
   expect(all.value).toBe(
-    `contoso (project id ${ids.contoso}): 1 task, paused.\n- t1 [Queued] write the specs`,
+    `contoso (project id ${ids.contoso}): 1 task, paused. New chats run on the project's default.\n- t1 [Queued] write the specs`,
   );
 });
