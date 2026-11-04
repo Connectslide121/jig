@@ -1,5 +1,12 @@
 # Status
 
+Permission mode in the chat's header (2026-11-04, D-347, Jon): the message box no longer has its own
+permission button. The mode shows in the chat's header, right after the status (icon and label; only
+the icon in a narrow chat; red for Don't ask, the accent for Accept edits and Plan only), and
+clicking it opens the modes. The model picker's menu has the same list as "Permissions: <mode> ›"
+under Effort. Shift+Tab in the box still switches. Checked with the fake engine in Claude and ChatGPT
+chats, Jig Dark and Light, narrow and wide.
+
 Composer's Send and Stop are icons (2026-11-04, D-346, Jon): the chat's message box shows Send (the
 accent square: arrow, terminal for `!`, bookmark for `#`) and Stop (a square) without labels; hover
 for what they do and their key ("Send (Enter)", "Queue: read after this turn (Enter)", "Stop (Esc)").

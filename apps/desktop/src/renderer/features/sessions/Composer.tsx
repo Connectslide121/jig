@@ -7,7 +7,6 @@ import {
   Download,
   FolderPlus,
   History,
-  ListChecks,
   MessageSquareShare,
   Paperclip,
   Plug,
@@ -21,12 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type ChatAttachment,
-  PERMISSION_MODE_LABELS,
-  type QueuedMessage,
-  type SessionMeta,
-} from "../../../shared/engine";
+import type { ChatAttachment, QueuedMessage, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
@@ -469,28 +463,6 @@ export function Composer({
                 }
               >
                 <span className="truncate">{modelName}</span>{" "}
-                <ChevronDown className="block size-3.5 shrink-0" />
-              </button>
-              <button
-                type="button"
-                data-testid="permission-menu"
-                onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
-                className={cn(
-                  "flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
-                  meta.permissionMode === "bypassPermissions"
-                    ? "text-danger"
-                    : meta.permissionMode === "default"
-                      ? "text-muted hover:text-fg"
-                      : "text-accent",
-                )}
-                title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What ${who} may do without asking (Shift+Tab to switch)`}
-              >
-                {meta.permissionMode === "plan" ? (
-                  <ListChecks className="block size-3.5 shrink-0" />
-                ) : (
-                  <Shield className="block size-3.5 shrink-0" />
-                )}
-                <span className="truncate">{PERMISSION_MODE_LABELS[meta.permissionMode]}</span>{" "}
                 <ChevronDown className="block size-3.5 shrink-0" />
               </button>
               {busy && (

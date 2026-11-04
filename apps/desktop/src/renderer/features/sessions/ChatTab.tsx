@@ -1,6 +1,6 @@
 import { ChartColumn, ChevronDown, Clock, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { chatProvider, type SessionMeta } from "../../../shared/engine";
+import { chatProvider, PERMISSION_MODE_LABELS, type SessionMeta } from "../../../shared/engine";
 import type { ProjectInfo } from "../../../shared/projects";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
@@ -16,11 +16,40 @@ import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
 import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
 import { fillComposer } from "./drafts";
-import { renameSession, sessionMenu } from "./menus";
+import { permissionIcon, permissionMenu, permissionTone, renameSession, sessionMenu } from "./menus";
 import { canChangeProject, showProjectOf, switchChatProject } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
+
+/**
+ * The chat's permission mode, always in view: its icon and label (only the icon in a narrow chat),
+ * coloured when it asks less than the default. The whole chip opens the modes (D-347).
+ */
+function PermissionChip({ meta }: { meta: SessionMeta }) {
+  const mode = meta.permissionMode;
+  const Icon = permissionIcon(mode);
+  const label = PERMISSION_MODE_LABELS[mode];
+  return (
+    <button
+      type="button"
+      data-testid="permission-menu"
+      data-mode={mode}
+      aria-label={`Permission mode: ${label}`}
+      title={`Permission mode: ${label} · what the chat may do without asking (Shift+Tab in the message box to switch)`}
+      onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta))}
+      className={cn(
+        "flex h-6 min-w-0 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-xs leading-none hover:bg-hover",
+        permissionTone(mode),
+        mode === "default" && "hover:text-fg",
+      )}
+    >
+      <Icon className="block size-3.5 shrink-0" />
+      <span className="truncate @max-2xl:hidden">{label}</span>
+      <ChevronDown className="block size-3 shrink-0" />
+    </button>
+  );
+}
 
 function LoginBanner() {
   const canOpen = useRegistry((s) => Boolean(s.actions["jig.claudeLogin"]));
@@ -122,7 +151,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
     meta.usage.outputTokens;
   return (
     <div className="flex h-full flex-col" data-testid="chat">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
+      <header className="@container flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
         <StatusDot status={meta.status} />
         <button
           type="button"
@@ -137,9 +166,11 @@ export function ChatTab({ params, active, focused }: TabProps) {
         </button>
         {project && <ChatProject meta={meta} project={project} canMove={canMove} />}
         {meta.kind === "builder" && <Badge tone="accent">Builder</Badge>}
-        <span className="text-xs text-hint" data-testid="chat-status">
+        {/* A fixed slot (the longest status fits), so the mode beside it never moves. */}
+        <span className="w-20 shrink-0 truncate text-xs text-hint" data-testid="chat-status">
           {meta.limit ? "Limit reached" : STATUS_LABEL[meta.status]}
         </span>
+        <PermissionChip meta={meta} />
         {/* The spacer is the tenant label's slot: it appears at its right end and nothing moves. */}
         <div className="flex min-w-0 flex-1 justify-end">
           <TenantTagLabel tag={meta.azureTenant} />

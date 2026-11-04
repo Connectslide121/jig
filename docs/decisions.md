@@ -5354,3 +5354,25 @@ provider, capabilities and Claude as the default still hold.
 - **One height in the row:** Send now (`IconButton`) moved from `md` (32 px) to `sm` (28 px), so Stop,
   Send now and Send are the same square in one line; the row's height doesn't change when Send now
   appears, and Send keeps its slot in every mode and busy state.
+
+## D-347: The permission mode moves to the chat's header and the model menu
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: the composer's row was cluttered; the permission button goes, the model
+  picker's menu gets a Permissions submenu under Effort, and the mode shows in the chat's header so
+  it's always visible. The details (fixed status slot, colours, narrow behaviour): Claude, on my own,
+  along the lines Jon's task asked for.
+- **One list of modes:** `permissionMenu(meta)` in `sessions/menus.ts` is the only list: the header's
+  chip opens it, the model menu nests it as "Permissions: <mode> ›" (`permission-submenu`), and
+  `/permissions` and the + menu's "Permission mode…" open it. The modes come from `permissionModesOf`
+  (Plan only only where `ENGINE_CAPABILITIES` has plan mode); switching goes through
+  `sessions.setPermissionMode` as before. `permissionIcon` (ListChecks for Plan only, Shield for the
+  rest) and `permissionTone` (red for Don't ask, the accent for Accept edits and Plan only, muted for
+  Ask before changes) are shared by the chip and the menus.
+- **The header's chip** (`permission-menu`, moved from the composer): right after the status, the
+  whole chip is the button. The status text sits in a fixed slot (`w-20`, "Limit reached" fits), so
+  the chip doesn't move when the status changes; what follows it is the flexible spacer, so a longer
+  mode label moves nothing on the right. The header is a container: below `@2xl` the chip shows only
+  its icon (the label stays in its tooltip and accessible name).
+- **Shift+Tab** in the message box still goes through the modes; the hint under the box still says
+  so, and the chip updates with the chat's meta.

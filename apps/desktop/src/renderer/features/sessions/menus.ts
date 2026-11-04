@@ -9,6 +9,8 @@ import {
   FolderPlus,
   Gauge,
   GitFork,
+  ListChecks,
+  type LucideIcon,
   Map as MapIcon,
   Pencil,
   Pin,
@@ -164,6 +166,12 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
       ],
     },
     {
+      label: `Permissions: ${PERMISSION_MODE_LABELS[meta.permissionMode]}`,
+      icon: permissionIcon(meta.permissionMode),
+      testId: "permission-submenu",
+      submenu: permissionMenu(meta),
+    },
+    {
       label: "Other model…",
       icon: Bot,
       onSelect: async () => {
@@ -210,12 +218,20 @@ export async function exportChat(meta: SessionMeta): Promise<void> {
   }
 }
 
+/** A permission mode's icon, the same in the header, the model menu and the modes' list. */
+export const permissionIcon = (mode: PermissionMode): LucideIcon => (mode === "plan" ? ListChecks : Shield);
+
+/** A permission mode's colour: red when nothing is asked, the accent when it's not the default. */
+export const permissionTone = (mode: PermissionMode): string =>
+  mode === "bypassPermissions" ? "text-danger" : mode === "default" ? "text-muted" : "text-accent";
+
+/** The modes a chat can switch to (the header's chip, the model menu's Permissions, /permissions). */
 export function permissionMenu(meta: SessionMeta): MenuEntry[] {
   return [
     { heading: `When ${providerName(meta)} wants to change things` },
     ...permissionModesOf(meta).map((mode) => ({
       label: PERMISSION_MODE_LABELS[mode],
-      icon: Shield,
+      icon: permissionIcon(mode),
       checked: mode === meta.permissionMode,
       testId: `mode-${mode}`,
       onSelect: () => void call("sessions.setPermissionMode", { id: meta.id, mode }),
