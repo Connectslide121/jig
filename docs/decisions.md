@@ -4680,3 +4680,19 @@ supported way:
   steady noise but not music or speech).
 - **Revisit** when the SDK gets a public option for system audio (check its changelog on updates):
   then add the switch, off on every open, and pass `audio` only when it is on.
+
+## D-325: A release rerun after failed e2e tests runs only what failed and what the fixes touch
+
+**Who:** Jon: when a run fails, the next one shouldn't run the whole e2e suite, only what needs to be
+rerun.
+
+- A whole-suite `npm run e2e` on a clean checkout that fails writes `.jig-e2e-failed.json` (ignored):
+  the commit and the spec files with a failed test (from Playwright's JSON report; flaky tests and
+  errors outside a test don't count; with no failed test nothing is recorded and the next run is whole).
+- `npm run e2e -- --resume`, which the release runs, reruns those specs plus the ones the commits since
+  need (`e2e/affected.json`, the same selection as `npm run e2e:changed`, the release's own files left
+  out), when that commit is an ancestor of HEAD and the tree is clean; otherwise the whole suite. When
+  they pass it records a whole-suite pass for HEAD (D-272), since every other spec passed on the earlier
+  commit and nothing since affects it; when they fail it records the new failures for HEAD.
+- Trade-off (Claude, on my own): a change `e2e/affected.json` doesn't map runs its fallback specs, not
+  the whole suite, as with `npm run e2e:changed`.

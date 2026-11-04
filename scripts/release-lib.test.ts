@@ -4,10 +4,12 @@ import {
   checkBump,
   compareVersions,
   e2eStillPasses,
+  failedSpecFiles,
   parseLatestYml,
   parsePlan,
   preparedParagraph,
   publishedParagraph,
+  rerunSpecs,
   withStatus,
 } from "./release-lib.ts";
 
@@ -128,5 +130,35 @@ describe("skipping an e2e suite that already passed (D-272)", () => {
   it("doesn't hold once anything else changed", () => {
     expect(e2eStillPasses(["package.json", "addons/tasks/ui.tsx"])).toBe(false);
     expect(e2eStillPasses(["docs/decisions.md"])).toBe(false);
+  });
+});
+
+describe("rerunning only what failed (D-325)", () => {
+  const report = {
+    suites: [
+      {
+        file: "chat.spec.ts",
+        specs: [
+          { file: "chat.spec.ts", tests: [{ status: "expected" }] },
+          { file: "chat.spec.ts", tests: [{ status: "unexpected" }] },
+        ],
+      },
+      { file: "tasks.spec.ts", specs: [{ file: "tasks.spec.ts", tests: [{ status: "flaky" }] }] },
+      {
+        file: "meetings.spec.ts",
+        suites: [{ specs: [{ file: "meetings.spec.ts", tests: [{ status: "unexpected" }] }] }],
+      },
+    ],
+  };
+  it("lists spec files with a failed test, not flaky or passing ones", () => {
+    expect(failedSpecFiles(report)).toEqual(["chat.spec.ts", "meetings.spec.ts"]);
+    expect(failedSpecFiles(undefined)).toEqual([]);
+  });
+  it("adds the specs the changes since need, or runs everything", () => {
+    expect(rerunSpecs(["chat.spec.ts"], ["smoke.spec.ts", "chat.spec.ts"])).toEqual([
+      "chat.spec.ts",
+      "smoke.spec.ts",
+    ]);
+    expect(rerunSpecs(["chat.spec.ts"], "all")).toBe("all");
   });
 });

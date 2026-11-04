@@ -24,6 +24,8 @@
   rule covers runs `fallback` and is named, so you can add a rule. A new spec needs a rule
   (`scripts/e2e-select.test.ts` fails otherwise, and when a rule's glob matches no file).
 - `npm run e2e`, the whole suite: when releasing Jig (the release skill runs it). About 3–4 minutes.
+  When it fails on a clean checkout it records the failed specs; `npm run e2e -- --resume` (what the
+  release runs) then reruns only those and the specs the commits since need (D-325).
 
 Both build first only when the build is stale (`scripts/build-if-stale.ts` keeps a stamp of the
 inputs in `apps/desktop/dist/.build-stamp`; `--force` rebuilds). Tests run side by side: one Electron

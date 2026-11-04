@@ -7,7 +7,8 @@
  * release commit already made is reused, a draft already uploaded is checked, not recreated).
  * Run with: npm run release (`npm run release -- --check` checks the plan and the repository only;
  * `-- --skip-tests` skips check and e2e when they already passed on this source). The e2e suite is
- * skipped on its own when `npm run e2e` last passed in full on this source (D-272).
+ * skipped on its own when `npm run e2e` last passed in full on this source (D-272); after a failed
+ * run, the next one runs only the specs that failed and those the fixes since need (D-325).
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -188,7 +189,7 @@ if (process.argv.includes("--skip-tests")) {
   const passed = e2ePassedOn();
   if (passed)
     console.log(`Already passed on ${passed.slice(0, 7)}, and only the version changed since: skipped.`);
-  else run("npm", ["run", "e2e"]);
+  else run("npm", ["run", "e2e", "--", "--resume"]);
 }
 step("Building and packaging the installer");
 run("npm", ["run", "build"]);

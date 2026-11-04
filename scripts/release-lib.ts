@@ -141,10 +141,47 @@ const RELEASE_FILES = new Set([
   "docs/status.md",
 ]);
 
+/** Whether a changed file is only the release commit's own (or an empty line of git's output). */
+export const isReleaseFile = (file: string): boolean => RELEASE_FILES.has(file.trim()) || !file.trim();
+
 /**
  * Whether the e2e suite that passed on an earlier commit still stands for this one: true when the
  * files changed since then (`git diff --name-only <passed> HEAD`) are only the release's own.
  */
 export function e2eStillPasses(changed: string[]): boolean {
-  return changed.every((file) => RELEASE_FILES.has(file.trim()) || !file.trim());
+  return changed.every(isReleaseFile);
+}
+
+/**
+ * Where `npm run e2e` records a failed run of the whole suite: the commit and the spec files that
+ * failed (ignored by git, D-325). Every other spec passed on that commit, so a rerun runs only these
+ * and the specs the commits since then affect.
+ */
+export const E2E_FAILED = ".jig-e2e-failed.json";
+
+interface ReportSuite {
+  file?: string;
+  specs?: Array<{ file?: string; tests?: Array<{ status?: string }> }>;
+  suites?: ReportSuite[];
+}
+
+/**
+ * The spec files (`chat.spec.ts`) with a test that failed in a Playwright JSON report. A flaky test
+ * passed on its retry and doesn't count; nor does an error outside any test (a worker's teardown).
+ */
+export function failedSpecFiles(report: unknown): string[] {
+  const failed = new Set<string>();
+  const walk = (suite: ReportSuite) => {
+    for (const spec of suite.specs ?? [])
+      if (spec.file && spec.tests?.some((t) => t.status === "unexpected"))
+        failed.add(spec.file.replaceAll("\\", "/").replace(/^e2e\//, ""));
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of (report as { suites?: ReportSuite[] } | undefined)?.suites ?? []) walk(suite);
+  return [...failed].sort();
+}
+
+/** What a rerun runs: the specs that failed and the specs the changes since need, or everything. */
+export function rerunSpecs(failed: string[], affected: "all" | string[]): "all" | string[] {
+  return affected === "all" ? "all" : [...new Set([...failed, ...affected])].sort();
 }
