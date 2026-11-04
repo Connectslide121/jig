@@ -170,6 +170,9 @@ checkerboard, zoom buttons/presets (10–800%), Fit/100%, Ctrl/Cmd + wheel zoom,
 (reads through the host), `isImagePath(path)` and `formatBytes(n)`. `Attachments` (`<Attachments files onRemove? className?>`)
 shows a message's files as in the chat: image thumbnails and document chips that open them. `@jig/sdk` also exports
 `isImagePath`, `imageMime`, `IMAGE_TYPES` and `MAX_IMAGE_BYTES` for host code.
+`sanitizeHtml(html)` makes HTML from elsewhere safe for the DOM (DOMPurify: no scripts, handlers,
+`javascript:` links, frames or forms; inline styles kept); show it inside `jig-rich jig-markdown`,
+which draws its colours and fonts in the theme's and makes images fit (D-342).
 
 `ArrangeList` accepts `showFooter={false}` to omit its trailing Add divider/help row in nested
 lists while retaining each row's side button for inserting a divider above it (used in pipeline cards).

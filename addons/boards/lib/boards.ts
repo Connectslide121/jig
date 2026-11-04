@@ -281,11 +281,86 @@ export function chatDraft(item: WorkItem): string {
 
 // ── Managing cards (D-262): details, edits, moves, new and deleted cards ─────────────────────────────
 
+/** A rich-text (HTML) field of a card: Repro steps, System info, a custom HTML field. */
+export interface RichField {
+  /** The field's reference name (`Microsoft.VSTS.TCM.ReproSteps`). */
+  ref: string;
+  label: string;
+  /** As Azure DevOps keeps it: HTML, images pointing at its attachments. */
+  html: string;
+  /** The same as plain text, images as `[image: name]` (for Claude). */
+  text: string;
+}
+
+/** Another field of a card, shown read-only in the side column (Reason, Severity, dates, Custom.*). */
+export interface DetailField {
+  ref: string;
+  label: string;
+  value: string;
+  /** How to show `value`: an ISO date, a number, or text. */
+  kind: "date" | "number" | "text";
+}
+
+/** A link from a card to another work item (Parent, Child, Related…) or to a web page (Hyperlink). */
+export interface WorkItemLink {
+  /** Azure DevOps' relation type (`System.LinkTypes.Related`, `Hyperlink`). */
+  rel: string;
+  /** How Azure DevOps names it (`Parent`, `Related`, `Tested By`, `Hyperlink`). */
+  name: string;
+  /** The linked work item's id; missing for a hyperlink. */
+  id?: number;
+  /** The linked item's REST URL, or the hyperlink's address. */
+  url: string;
+  comment?: string;
+  /** The linked work item's type, title and state (one batch request; missing when it couldn't be read). */
+  type?: string;
+  title?: string;
+  state?: string;
+}
+
+/** A file attached to a card (`AttachedFile`). */
+export interface Attachment {
+  name: string;
+  /** Its attachment URL (needs your sign-in: Jig fetches it through az). */
+  url: string;
+  size?: number;
+  comment?: string;
+  added?: string;
+}
+
+/** Code and builds linked to a card (`ArtifactLink`): a branch, commit, pull request or build. */
+export interface DevelopmentLink {
+  kind: "branch" | "commit" | "pullRequest" | "build" | "other";
+  /** How Azure DevOps names the link (`Branch`, `Fixed in Commit`, `Pull Request`, `Build`). */
+  name: string;
+  /** The `vstfs:///…` artifact URI. */
+  uri: string;
+  /** The page in Azure DevOps, when the URI is one Jig knows. */
+  webUrl?: string;
+  /** Short reference: the branch name, the commit's first 8 characters, the PR or build number. */
+  ref: string;
+  projectId?: string;
+  repoId?: string;
+  /** Read best-effort: the repository's name, the PR's title or the commit's message, its status. */
+  repo?: string;
+  title?: string;
+  status?: string;
+}
+
 /** A card with everything the detail view and Claude need. */
 export interface WorkItemDetail extends WorkItem {
   /** The description as plain text (Azure DevOps keeps HTML; see `htmlToText`). */
   description: string;
+  /** The description as Azure DevOps keeps it (HTML, with images). */
+  descriptionHtml: string;
   acceptance?: string;
+  acceptanceHtml?: string;
+  /** Other rich-text fields with a value: Repro steps, System info, custom HTML fields. */
+  rich: RichField[];
+  /** Rich-text fields this type has that are empty now (the dialog shows them as empty editors). */
+  emptyRich: Array<{ ref: string; label: string }>;
+  /** Other fields with a value (Reason, Severity, Effort, dates, Custom.*), in a fixed order. */
+  fields: DetailField[];
   tags: string[];
   priority?: number;
   storyPoints?: number;
@@ -295,7 +370,11 @@ export interface WorkItemDetail extends WorkItem {
   created?: string;
   parentId?: number;
   childIds: number[];
-  comments: Array<{ by: string; at: string; text: string }>;
+  /** Every link to another work item and every hyperlink, in Azure DevOps' order. */
+  links: WorkItemLink[];
+  attachments: Attachment[];
+  development: DevelopmentLink[];
+  comments: Array<{ by: string; at: string; text: string; html: string }>;
   /** The states this type of work item can be in, in order. */
   states: string[];
 }
@@ -303,7 +382,15 @@ export interface WorkItemDetail extends WorkItem {
 /** What can change on a card; `column` moves it on the board (and sets the column's state). */
 export interface WorkItemPatch {
   title?: string;
+  /** Plain text; replaces the description (its images and formatting too). */
   description?: string;
+  /** HTML; replaces the description as it is (images keep their attachment URLs). */
+  descriptionHtml?: string;
+  /** Plain text; replaces the acceptance criteria. */
+  acceptance?: string;
+  acceptanceHtml?: string;
+  /** Other rich-text fields by reference name → their new HTML. */
+  html?: Record<string, string>;
   state?: string;
   column?: string;
   assignedTo?: string;
@@ -317,6 +404,7 @@ export interface WorkItemPatch {
 /** Azure DevOps rich text as plain text: paragraphs and line breaks kept, tags and entities gone. */
 export function htmlToText(html: string): string {
   return html
+    .replace(/<img\b[^>]*>/gi, (tag) => `[image: ${imageName(tag)}]`)
     .replace(/<\s*br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n")
     .replace(/<li[^>]*>/gi, "• ")
@@ -354,8 +442,13 @@ export function updateArgs(patch: WorkItemPatch, columnField?: string, columnSta
   const state = patch.state ?? columnState;
   if (state) args.push("--state", state);
   if (patch.assignedTo !== undefined) args.push("--assigned-to", patch.assignedTo);
-  if (patch.description !== undefined) args.push("--description", textToHtml(patch.description));
+  if (patch.descriptionHtml !== undefined) args.push("--description", patch.descriptionHtml);
+  else if (patch.description !== undefined) args.push("--description", textToHtml(patch.description));
   if (patch.comment?.trim()) args.push("--discussion", textToHtml(patch.comment));
+  if (patch.acceptanceHtml !== undefined) fields.push(`${ACCEPTANCE}=${patch.acceptanceHtml}`);
+  else if (patch.acceptance !== undefined) fields.push(`${ACCEPTANCE}=${textToHtml(patch.acceptance)}`);
+  for (const [ref, html] of Object.entries(patch.html ?? {}))
+    if (/^[\w.]+$/.test(ref) && ref !== DESCRIPTION && ref !== ACCEPTANCE) fields.push(`${ref}=${html}`);
   if (patch.tags)
     fields.push(
       `System.Tags=${patch.tags
@@ -392,16 +485,13 @@ export function findBoard(boards: Board[], ref?: string): Board | undefined {
 export function toDetail(
   raw: unknown,
   b: Pick<Board, "org" | "project">,
-  extra: { comments?: unknown; states?: unknown; columnField?: string },
+  extra: { comments?: unknown; states?: unknown; columnField?: string; fieldNames?: Record<string, string> },
 ): WorkItemDetail | undefined {
   const item = toWorkItem(raw, b, extra.columnField);
   if (!item) return undefined;
   const f = (raw as { fields: Record<string, unknown> }).fields;
-  const relations = ((raw as { relations?: unknown }).relations ?? []) as Array<{
-    rel?: string;
-    url?: string;
-  }>;
-  const idOf = (url?: string) => Number(/\/(\d+)$/.exec(url ?? "")?.[1]);
+  const names = extra.fieldNames ?? {};
+  const { links, attachments, development } = parseRelations((raw as { relations?: unknown }).relations, b);
   const comments = (
     ((extra.comments as { comments?: unknown[] })?.comments ?? []) as Array<{
       text?: string;
@@ -413,24 +503,27 @@ export function toDetail(
       by: c.createdBy?.displayName ?? "",
       at: c.createdDate ?? "",
       text: htmlToText(c.text ?? ""),
+      html: c.text ?? "",
     }))
     .filter((c) => c.text);
   const states = (((extra.states as { value?: unknown[] })?.value ?? []) as Array<{ name?: string }>)
     .map((s) => s.name)
     .filter((s): s is string => !!s);
-  const text = (k: string) => (typeof f[k] === "string" ? htmlToText(f[k] as string) : "");
+  const html = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : "");
   const num = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : undefined);
+  const { rich, empty } = richFields(f, names);
+  const acceptanceHtml = html(ACCEPTANCE);
   return {
     ...item,
-    description: text("System.Description"),
-    acceptance: text("Microsoft.VSTS.Common.AcceptanceCriteria") || undefined,
-    tags:
-      typeof f["System.Tags"] === "string"
-        ? (f["System.Tags"] as string)
-            .split(";")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [],
+    description: htmlToText(html(DESCRIPTION)),
+    descriptionHtml: html(DESCRIPTION),
+    acceptance: htmlToText(acceptanceHtml) || undefined,
+    // The type has acceptance criteria (an empty editor) or the card has some.
+    ...(acceptanceHtml || names[ACCEPTANCE] ? { acceptanceHtml } : {}),
+    rich,
+    emptyRich: empty,
+    fields: moreFields(f, names),
+    tags: splitTags(f["System.Tags"]),
     priority: num("Microsoft.VSTS.Common.Priority"),
     storyPoints: num("Microsoft.VSTS.Scheduling.StoryPoints"),
     areaPath: typeof f["System.AreaPath"] === "string" ? (f["System.AreaPath"] as string) : undefined,
@@ -438,16 +531,391 @@ export function toDetail(
       typeof f["System.IterationPath"] === "string" ? (f["System.IterationPath"] as string) : undefined,
     createdBy: person(f["System.CreatedBy"]),
     created: typeof f["System.CreatedDate"] === "string" ? (f["System.CreatedDate"] as string) : undefined,
-    parentId: relations
-      .filter((r) => r.rel === "System.LinkTypes.Hierarchy-Reverse")
-      .map((r) => idOf(r.url))
-      .find(Number.isFinite),
-    childIds: relations
-      .filter((r) => r.rel === "System.LinkTypes.Hierarchy-Forward")
-      .map((r) => idOf(r.url))
-      .filter(Number.isFinite),
+    parentId: links.find((l) => l.rel === "System.LinkTypes.Hierarchy-Reverse")?.id,
+    childIds: links
+      .filter((l) => l.rel === "System.LinkTypes.Hierarchy-Forward")
+      .map((l) => l.id)
+      .filter((id): id is number => id !== undefined),
+    links,
+    attachments,
+    development,
     comments,
     states: states.length ? states : [item.state],
+  };
+}
+
+// ── A card's details like Azure DevOps' form (D-342): rich text, fields, links, attachments, code ────
+
+export const DESCRIPTION = "System.Description";
+export const ACCEPTANCE = "Microsoft.VSTS.Common.AcceptanceCriteria";
+
+/** Rich-text fields of Azure DevOps' own processes, besides the description and acceptance criteria. */
+const RICH_FIELDS: Record<string, string> = {
+  "Microsoft.VSTS.TCM.ReproSteps": "Repro steps",
+  "Microsoft.VSTS.TCM.SystemInfo": "System info",
+  "Microsoft.VSTS.Common.Resolution": "Resolution",
+  "Microsoft.VSTS.CMMI.Justification": "Justification",
+};
+
+/** The other fields the side column shows when they have a value, in this order (like Azure DevOps' form). */
+const MORE_FIELDS: Array<[ref: string, label: string, kind?: DetailField["kind"]]> = [
+  ["System.Reason", "Reason"],
+  ["Microsoft.VSTS.Common.Severity", "Severity"],
+  ["Microsoft.VSTS.Common.ValueArea", "Value area"],
+  ["Microsoft.VSTS.Common.Risk", "Risk"],
+  ["Microsoft.VSTS.Common.BusinessValue", "Business value", "number"],
+  ["Microsoft.VSTS.Common.TimeCriticality", "Time criticality", "number"],
+  ["Microsoft.VSTS.Common.Activity", "Activity"],
+  ["Microsoft.VSTS.Scheduling.Effort", "Effort", "number"],
+  ["Microsoft.VSTS.Scheduling.Size", "Size", "number"],
+  ["Microsoft.VSTS.Scheduling.OriginalEstimate", "Original estimate", "number"],
+  ["Microsoft.VSTS.Scheduling.RemainingWork", "Remaining work", "number"],
+  ["Microsoft.VSTS.Scheduling.CompletedWork", "Completed work", "number"],
+  ["Microsoft.VSTS.Scheduling.StartDate", "Start date", "date"],
+  ["Microsoft.VSTS.Scheduling.TargetDate", "Target date", "date"],
+  ["Microsoft.VSTS.Scheduling.FinishDate", "Finish date", "date"],
+  ["Microsoft.VSTS.Scheduling.DueDate", "Due date", "date"],
+  ["Microsoft.VSTS.Build.FoundIn", "Found in"],
+  ["Microsoft.VSTS.Build.IntegrationBuild", "Integration build"],
+  ["Microsoft.VSTS.Common.ResolvedReason", "Resolved reason"],
+];
+
+/**
+ * A field's label from its reference name, when the type's fields didn't name it:
+ * `Custom.CustomerImpact` → "Customer impact", `Custom.Customer_ID` → "Customer ID".
+ */
+export function fieldLabel(ref: string): string {
+  const last = ref.split(".").pop() || ref;
+  const words = last
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .trim()
+    .split(/\s+/);
+  return words
+    .map((w, i) =>
+      /^[A-Z0-9]{2,}$/.test(w) ? w : i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w.toLowerCase(),
+    )
+    .join(" ");
+}
+
+/** `workitemtypes/{type}/fields` → reference name → the name this process gives it. */
+export function typeFieldNames(raw: unknown): Record<string, string> {
+  const list = (raw as { value?: unknown })?.value;
+  const out: Record<string, string> = {};
+  for (const f of Array.isArray(list) ? list : []) {
+    const r = f as { referenceName?: unknown; name?: unknown };
+    if (typeof r.referenceName === "string" && typeof r.name === "string") out[r.referenceName] = r.name;
+  }
+  return out;
+}
+
+/** Text that holds HTML markup (a custom rich-text field), not plain words. */
+export function looksLikeHtml(v: string): boolean {
+  return /<\/?(div|p|br|span|img|ul|ol|li|b|i|u|strong|em|a|h[1-6]|table)\b/i.test(v);
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+/** A field value as text: a person's name, a number, yes/no, a string; undefined when empty. */
+function fieldText(v: unknown): string | undefined {
+  if (v === null || v === undefined || v === "") return undefined;
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (typeof v === "number") return String(v);
+  if (typeof v === "string") return v.trim() || undefined;
+  return person(v);
+}
+
+/** The side column's other fields: the known ones in order, then every Custom.* field that isn't rich text. */
+export function moreFields(
+  fields: Record<string, unknown>,
+  names: Record<string, string> = {},
+): DetailField[] {
+  const out: DetailField[] = [];
+  for (const [ref, label, kind] of MORE_FIELDS) {
+    const value = fieldText(fields[ref]);
+    if (value === undefined) continue;
+    out.push({ ref, label, value, kind: kind ?? (ISO_DATE.test(value) ? "date" : "text") });
+  }
+  const custom = Object.keys(fields)
+    .filter((k) => k.startsWith("Custom."))
+    .map((ref) => ({ ref, label: names[ref] ?? fieldLabel(ref) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  for (const { ref, label } of custom) {
+    const raw = fields[ref];
+    const value = fieldText(raw);
+    if (value === undefined || (typeof raw === "string" && looksLikeHtml(raw))) continue;
+    out.push({
+      ref,
+      label,
+      value,
+      kind: typeof raw === "number" ? "number" : ISO_DATE.test(value) ? "date" : "text",
+    });
+  }
+  return out;
+}
+
+/** The rich-text fields besides description and acceptance: those with a value, and the type's empty ones. */
+export function richFields(
+  fields: Record<string, unknown>,
+  names: Record<string, string> = {},
+): { rich: RichField[]; empty: Array<{ ref: string; label: string }> } {
+  const rich: RichField[] = [];
+  const empty: Array<{ ref: string; label: string }> = [];
+  for (const [ref, label] of Object.entries(RICH_FIELDS)) {
+    const v = fields[ref];
+    if (typeof v === "string" && v.trim()) rich.push({ ref, label, html: v, text: htmlToText(v) });
+    else if (names[ref]) empty.push({ ref, label });
+  }
+  for (const ref of Object.keys(fields).filter((k) => k.startsWith("Custom."))) {
+    const v = fields[ref];
+    if (typeof v === "string" && looksLikeHtml(v))
+      rich.push({ ref, label: names[ref] ?? fieldLabel(ref), html: v, text: htmlToText(v) });
+  }
+  return { rich, empty };
+}
+
+const ATTACHMENT =
+  /^https:\/\/(?:dev\.azure\.com\/([^/?#]+)|([^./?#]+)\.visualstudio\.com)\/(?:[^/?#]+\/)?_apis\/wit\/attachments\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?=[?#]|$)/i;
+
+/**
+ * The attachment id in an Azure DevOps attachment URL of organisation `org`; undefined for any other
+ * URL, so the host only ever downloads that organisation's attachments.
+ */
+export function attachmentId(url: string, org: string): string | undefined {
+  const m = ATTACHMENT.exec(url.trim());
+  if (!m) return undefined;
+  let from = m[1] ?? m[2] ?? "";
+  try {
+    from = decodeURIComponent(from);
+  } catch {
+    return undefined;
+  }
+  return from.toLowerCase() === org.toLowerCase() ? m[3]?.toLowerCase() : undefined;
+}
+
+/** An attachment URL's file name (`?fileName=shot.png`), else its last segment. */
+export function attachmentName(url: string): string {
+  const named = /[?&]fileName=([^&#]+)/i.exec(url)?.[1];
+  if (named) {
+    try {
+      return decodeURIComponent(named.replace(/\+/g, " "));
+    } catch {
+      return named;
+    }
+  }
+  return url.split(/[?#]/)[0]?.split("/").pop() || "attachment";
+}
+
+/** An `<img>` tag's name for plain text: its attachment's file name, else its alt text, else "image". */
+function imageName(tag: string): string {
+  const src = /\ssrc\s*=\s*["']([^"']*)["']/i.exec(tag)?.[1] ?? "";
+  const alt = /\salt\s*=\s*["']([^"']*)["']/i.exec(tag)?.[1]?.trim();
+  if (src && !/^data:/i.test(src)) return attachmentName(src.replace(/&amp;/g, "&"));
+  return alt || "image";
+}
+
+/** An attachment in the browser, as a download (Azure DevOps' own sign-in there). */
+export function downloadUrl(a: Pick<Attachment, "url" | "name">): string {
+  const named = /[?&]fileName=/i.test(a.url)
+    ? a.url
+    : `${a.url}${a.url.includes("?") ? "&" : "?"}fileName=${encodeURIComponent(a.name)}`;
+  return `${named}&download=true`;
+}
+
+/** An image's type from its first bytes (base64), else an SVG by its name; undefined when it isn't an image. */
+export function sniffImageMime(base64: string, name = ""): string | undefined {
+  if (base64.startsWith("iVBORw0KGgo")) return "image/png";
+  if (base64.startsWith("/9j/")) return "image/jpeg";
+  if (base64.startsWith("R0lGOD")) return "image/gif";
+  if (base64.startsWith("UklGR")) return "image/webp";
+  if (base64.startsWith("Qk")) return "image/bmp";
+  if (/\.svg$/i.test(name)) return "image/svg+xml";
+  return undefined;
+}
+
+/**
+ * An `ArtifactLink` (`vstfs:///Git/Commit/…`, `/Git/PullRequestId/…`, `/Git/Ref/…GB{branch}`,
+ * `/Build/Build/{id}`) as a development link with its page in Azure DevOps.
+ */
+export function parseArtifact(uri: string, name: string, b: Pick<Board, "org" | "project">): DevelopmentLink {
+  const base = orgUrl(b.org);
+  const other: DevelopmentLink = { kind: "other", name, uri, ref: uri.split("/").pop() || uri };
+  const m = /^vstfs:\/\/\/([^/]+)\/([^/]+)\/(.+)$/i.exec(uri.trim());
+  if (!m) return other;
+  const tool = (m[1] ?? "").toLowerCase();
+  const type = (m[2] ?? "").toLowerCase();
+  let id: string;
+  try {
+    id = decodeURIComponent(m[3] ?? "");
+  } catch {
+    return other;
+  }
+  if (tool === "build" && type === "build")
+    return {
+      kind: "build",
+      name,
+      uri,
+      ref: id,
+      webUrl: `${base}/${encodeURIComponent(b.project)}/_build/results?buildId=${encodeURIComponent(id)}`,
+    };
+  const parts = id.split("/");
+  if (tool !== "git" || parts.length < 3) return other;
+  const [projectId = "", repoId = ""] = parts;
+  const rest = parts.slice(2).join("/");
+  const repoUrl = `${base}/${encodeURIComponent(projectId)}/_git/${encodeURIComponent(repoId)}`;
+  const where = { projectId, repoId };
+  if (type === "commit")
+    return {
+      kind: "commit",
+      name,
+      uri,
+      ref: rest.slice(0, 8),
+      webUrl: `${repoUrl}/commit/${rest}`,
+      ...where,
+    };
+  if (type === "pullrequestid")
+    return { kind: "pullRequest", name, uri, ref: rest, webUrl: `${repoUrl}/pullrequest/${rest}`, ...where };
+  if (type === "ref") {
+    // Some links encode the branch's slashes twice (`GBfeature%252Fx`).
+    let branch = rest.replace(/^GB/, "");
+    try {
+      if (/%[0-9a-f]{2}/i.test(branch)) branch = decodeURIComponent(branch);
+    } catch {
+      // Keep it as it is.
+    }
+    const webUrl = `${repoUrl}?version=GB${encodeURIComponent(branch)}`;
+    return { kind: "branch", name, uri, ref: branch, webUrl, ...where };
+  }
+  return other;
+}
+
+type RawRelation = { rel?: string; url?: string; attributes?: Record<string, unknown> };
+
+/** A card's relations as its links (work items and hyperlinks), attachments and development links. */
+export function parseRelations(
+  raw: unknown,
+  b: Pick<Board, "org" | "project">,
+): { links: WorkItemLink[]; attachments: Attachment[]; development: DevelopmentLink[] } {
+  const links: WorkItemLink[] = [];
+  const attachments: Attachment[] = [];
+  const development: DevelopmentLink[] = [];
+  for (const r of (Array.isArray(raw) ? raw : []) as RawRelation[]) {
+    if (!r?.rel || typeof r.url !== "string") continue;
+    const a = r.attributes ?? {};
+    const name = typeof a.name === "string" && a.name ? a.name : r.rel;
+    const comment = typeof a.comment === "string" && a.comment.trim() ? a.comment.trim() : undefined;
+    if (r.rel === "AttachedFile") {
+      attachments.push({
+        name: typeof a.name === "string" && a.name ? a.name : attachmentName(r.url),
+        url: r.url,
+        ...(typeof a.resourceSize === "number" ? { size: a.resourceSize } : {}),
+        ...(comment ? { comment } : {}),
+        ...(typeof a.authorizedDate === "string" ? { added: a.authorizedDate } : {}),
+      });
+    } else if (r.rel === "ArtifactLink") {
+      development.push(parseArtifact(r.url, name, b));
+    } else if (r.rel === "Hyperlink") {
+      links.push({ rel: r.rel, name: "Hyperlink", url: r.url, ...(comment ? { comment } : {}) });
+    } else {
+      const id = Number(/\/workItems\/(\d+)$/i.exec(r.url)?.[1]);
+      if (Number.isFinite(id))
+        links.push({ rel: r.rel, name, id, url: r.url, ...(comment ? { comment } : {}) });
+    }
+  }
+  return { links, attachments, development };
+}
+
+/** The work item ids a card links to (each once, at most 200: one batch request). */
+export function linkedIds(links: WorkItemLink[]): number[] {
+  return [...new Set(links.map((l) => l.id).filter((id): id is number => id !== undefined))].slice(0, 200);
+}
+
+/** `_apis/wit/workitems?ids=…` → each linked work item's type, title and state filled in. */
+export function withLinkedItems(links: WorkItemLink[], raw: unknown): WorkItemLink[] {
+  const list = (raw as { value?: unknown })?.value;
+  const byId = new Map<number, Record<string, unknown>>();
+  for (const w of Array.isArray(list) ? list : []) {
+    const r = w as { id?: unknown; fields?: Record<string, unknown> } | null;
+    if (r && typeof r.id === "number" && r.fields) byId.set(r.id, r.fields);
+  }
+  return links.map((l) => {
+    const f = l.id !== undefined ? byId.get(l.id) : undefined;
+    if (!f) return l;
+    return {
+      ...l,
+      type: String(f["System.WorkItemType"] ?? ""),
+      title: String(f["System.Title"] ?? ""),
+      state: String(f["System.State"] ?? ""),
+    };
+  });
+}
+
+/** Links grouped by their name: Parent, Child, then the others as they come, Hyperlinks last. */
+export function groupLinks(links: WorkItemLink[]): Array<{ name: string; links: WorkItemLink[] }> {
+  const groups = new Map<string, WorkItemLink[]>();
+  for (const l of links) groups.set(l.name, [...(groups.get(l.name) ?? []), l]);
+  const order = (n: string) => (n === "Parent" ? 0 : n === "Child" ? 1 : n === "Hyperlink" ? 3 : 2);
+  return [...groups]
+    .map(([name, list]) => ({ name, links: list }))
+    .sort((a, b) => order(a.name) - order(b.name));
+}
+
+/** A pull request's title, status and repository (`_apis/git/pullrequests/{id}`). */
+export function pullRequestInfo(raw: unknown): Pick<DevelopmentLink, "title" | "status" | "repo"> {
+  const r = raw as { title?: unknown; status?: unknown; isDraft?: unknown; repository?: { name?: unknown } };
+  const status =
+    typeof r?.status === "string"
+      ? r.isDraft === true && r.status === "active"
+        ? "draft"
+        : r.status
+      : undefined;
+  return {
+    ...(typeof r?.title === "string" ? { title: r.title } : {}),
+    ...(status ? { status } : {}),
+    ...(typeof r?.repository?.name === "string" ? { repo: r.repository.name } : {}),
+  };
+}
+
+/** A commit's first message line and repository (`repositories/{repo}/commits/{sha}`). */
+export function commitInfo(raw: unknown): Pick<DevelopmentLink, "title" | "repo"> {
+  const r = raw as { comment?: unknown; remoteUrl?: unknown };
+  const title = typeof r?.comment === "string" ? r.comment.split(/\r?\n/)[0]?.trim() : undefined;
+  const repo = typeof r?.remoteUrl === "string" ? /\/_git\/([^/?#]+)/.exec(r.remoteUrl)?.[1] : undefined;
+  return { ...(title ? { title } : {}), ...(repo ? { repo: decodeURIComponent(repo) } : {}) };
+}
+
+/** A build's pipeline and number, and its result (`_apis/build/builds/{id}`). */
+export function buildInfo(raw: unknown): Pick<DevelopmentLink, "title" | "status"> {
+  const r = raw as {
+    buildNumber?: unknown;
+    definition?: { name?: unknown };
+    status?: unknown;
+    result?: unknown;
+  };
+  const title = [r?.definition?.name, r?.buildNumber].filter((s) => typeof s === "string" && s).join(" ");
+  const status =
+    typeof r?.result === "string" && r.result !== "none"
+      ? r.result
+      : typeof r?.status === "string"
+        ? r.status
+        : undefined;
+  return { ...(title ? { title } : {}), ...(status ? { status } : {}) };
+}
+
+/**
+ * The card for Claude's `card` tool: plain text everywhere (images as `[image: name]`), the HTML of
+ * the description and acceptance criteria only when they hold images (so an edit can keep them).
+ */
+export function toolDetail(d: WorkItemDetail): Record<string, unknown> {
+  const { descriptionHtml, acceptanceHtml, rich, emptyRich: _empty, comments, ...rest } = d;
+  const hasImage = (h?: string) => !!h && /<img\b/i.test(h);
+  return {
+    ...rest,
+    ...(hasImage(descriptionHtml) ? { descriptionHtml } : {}),
+    ...(hasImage(acceptanceHtml) ? { acceptanceHtml } : {}),
+    ...(rich.length ? { richFields: rich.map((r) => ({ field: r.ref, label: r.label, text: r.text })) } : {}),
+    comments: comments.map(({ html: _html, ...c }) => c),
   };
 }
 

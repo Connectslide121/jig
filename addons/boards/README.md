@@ -46,13 +46,29 @@ CLI (`az login` + the `azure-devops` extension). Jig stores no tokens (D-018).
   state go to Azure DevOps). + in a column's header adds a card there (in the team's area). ⋯ or
   right-click: Open, Start a chat about it, Move to, Open in Azure DevOps, Copy link, Copy #id,
   Delete… (to the recycle bin). The board refreshes when anything changes, also from a chat.
+- **A card like Azure DevOps' form (D-342):** the dialog keeps its size and has tabs Details · Links
+  (n) · Attachments (n). **Details:** the description, acceptance criteria, repro steps, system info and
+  custom HTML fields as rich text with their images, each editable in place (bold, italic, underline,
+  lists and links in its header while you edit it); only fields you changed are sent, as HTML, with
+  every image back on its attachment URL, so nothing is lost. Pasting images or files is refused (Jig
+  can't upload attachments yet). The discussion as rich text. The side column: the fields you edit,
+  then every other field with a value (Reason, Severity, Value area, Risk, Business value, Effort,
+  estimates, dates, Found in, Custom.*), labelled by the type's field names. **Links:** development
+  (pull requests with title and status, commits with their message, branches, builds), work items by
+  link type with type colour, id, title and state (click: that card opens here), hyperlinks.
+  **Attachments:** name, size, date; images open large in Jig, other files download in the browser.
+  Rich text is sanitized (`sanitizeHtml`) and drawn in the theme's colours (`.jig-rich`); its links open
+  in the browser. A rich pane waits for its images (one centred spinner), so nothing moves.
+- **Images through your az login:** `attachment({ board, url })` downloads an attachment of the board's
+  organisation with `az rest --output-file` into the add-on's data folder (`attachment-<id>`, reused)
+  and answers a data URL; images only (by their bytes), up to 20 MB. Needs `fs:read`.
 - **Claude keeps it up to date:** tools `addon_boards_boards`, `_cards` (by column or text), `_card`
-  (everything on one), `_update` (fields, state, column, comment), `_create` and `_delete`, for the
+  (everything on one, as plain text: images as `[image: name]`, the HTML only when it holds images), `_update` (fields, state, column, comment; `descriptionHtml` / `acceptanceHtml` keep images), `_create` and `_delete`, for the
   chat's project. `_cards` reads the cache when it's under a minute old. Changes ask your permission like other edits. A slider in the header sets one width for every column (kept for all projects, across restarts).
 - **How:** `GET {team}/_apis/work/boards/{id}` (columns, state mappings, column field) and
   `teamsettings/teamfieldvalues` (the team's areas) through `az rest`, then one `az boards query`.
-  Cards: `az boards work-item show/update/create` and `relation add`; comments, a type's states and
+  Cards: `az boards work-item show/update/create` and `relation add`; comments, a type's states and fields, linked items (one `workitems?ids=` batch), pull requests, commits, builds, attachments and
   deleting (`az boards work-item delete` answers in plain text) through `az rest`. Titles,
   descriptions and comments reach az as written, quotes and non-ASCII included (D-290).
 
-Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px; `filters` (project scope), each board's search and filters by board id; `cache`, each board's last cards keyed `tenant|org|project|team|boardId` (written by the host). The cache and merge logic is in `lib/cache.ts`, the filter logic in `lib/filter.ts` (both unit-tested). Cards also carry their tags, iteration and area (from the board query) for the filters. Tested by `e2e/boards.spec.ts` with a fake `az`.
+Storage (project scope): `boards`, the followed boards; `selected`, the open tab. Global: `columnWidth`, the columns' width in px; `filters` (project scope), each board's search and filters by board id; `cache`, each board's last cards keyed `tenant|org|project|team|boardId` (written by the host). The cache and merge logic is in `lib/cache.ts`, the filter logic in `lib/filter.ts`, a card's details (relations, development links, fields, attachments) in `lib/boards.ts` (all unit-tested; details in `lib/details.test.ts`). Cards also carry their tags, iteration and area (from the board query) for the filters. Tested by `e2e/boards.spec.ts` with a fake `az`.

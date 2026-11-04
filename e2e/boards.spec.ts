@@ -36,12 +36,26 @@ if (uri.endsWith("/teamfieldvalues")) say({ field: { referenceName: "System.Area
 // Managing cards (D-262): writes are logged next to this script, for the test to read.
 const log = (line) => require("node:fs").appendFileSync(require("node:path").join(__dirname, "az-writes.log"), line + "\\n");
 const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+// A card's details like Azure DevOps' form (D-342): an image in the description, links, a file, a PR.
+const ATTACHMENT = "https://dev.azure.com/contoso/Shop/_apis/wit/attachments/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0";
+if (uri.includes("/_apis/wit/attachments/")) {
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+  require("node:fs").writeFileSync(arg("--output-file"), Buffer.from(png, "base64"));
+  process.exit(0);
+}
 if (has("boards", "work-item", "show")) say({ id: Number(arg("--id")), fields: {
   "System.Id": Number(arg("--id")), "System.Title": "Checkout fails with a saved card", "System.WorkItemType": "Bug",
   "System.State": "Active", "WEF_1_Kanban.Column": "Doing", "System.AssignedTo": { displayName: "Ann Demo" },
-  "System.Description": "<div>Paying with a saved card fails.</div>", "System.Tags": "checkout; payments",
+  "System.Description": '<div>Paying with a saved card fails.</div><div><img src="' + ATTACHMENT + '?fileName=card.png"></div>',
+  "System.Tags": "checkout; payments", "System.Reason": "Investigating",
   "Microsoft.VSTS.Common.Priority": 2, "System.AreaPath": "Shop\\\\Web",
-}, relations: [] });
+}, relations: [
+  { rel: "System.LinkTypes.Hierarchy-Reverse", url: "https://dev.azure.com/contoso/_apis/wit/workItems/100", attributes: { name: "Parent" } },
+  { rel: "AttachedFile", url: ATTACHMENT, attributes: { name: "checkout.log", resourceSize: 2048, authorizedDate: "2026-11-01T10:00:00Z" } },
+  { rel: "ArtifactLink", url: "vstfs:///Git/PullRequestId/p1%2Fr1%2F7", attributes: { name: "Pull Request" } },
+] });
+if (/\\/_apis\\/wit\\/workitems$/.test(uri)) say({ value: [{ id: 100, fields: { "System.WorkItemType": "Feature", "System.Title": "Saved cards", "System.State": "Active" } }] });
+if (uri.endsWith("/_apis/git/pullrequests/7")) say({ title: "Fix saved card payments", status: "active", repository: { name: "web" } });
 if (uri.endsWith("/comments")) say({ comments: [{ text: "<div>Seen on mobile too.</div>", createdBy: { displayName: "Ben Sample" }, createdDate: "2026-11-01T10:00:00Z" }] });
 if (uri.includes("/workitemtypes/")) say({ value: [{ name: "New" }, { name: "Active" }, { name: "Closed" }] });
 if (has("boards", "work-item", "update")) { log("update " + args.join(" ")); say(card(Number(arg("--id")), "x", "Bug", "Active", "Doing")); }
@@ -160,16 +174,33 @@ test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude
   await expect(view.getByTestId("board-item-101")).toBeVisible();
   const writes = async () => readFile(join(jigHome, "fake-bin", "az-writes.log"), "utf8").catch(() => "");
 
-  // A click opens the card in Jig: description, tags, comments; edit and save.
+  // A click opens the card in Jig: rich description with its image, comments, links, files; edit and save.
   await view.getByTestId("board-item-101").click();
   const card = page.getByTestId("board-card-dialog");
-  await expect(card.getByTestId("board-card-description")).toHaveValue("Paying with a saved card fails.");
+  const description = card.getByTestId("board-card-description");
+  await expect(description).toContainText("Paying with a saved card fails.");
+  // The attachment image comes through the host (az), as a data URL.
+  await expect(description.locator("img")).toHaveAttribute("src", /^data:image\/png;base64,/);
   await expect(card.getByTestId("board-card-comments")).toContainText("Seen on mobile too.");
+  await expect(card.getByTestId("board-card-fields")).toContainText("Investigating");
   await page.screenshot({ path: test.info().outputPath("card.png") });
+  await card.getByRole("tab", { name: /Links/ }).click();
+  await expect(card.getByTestId("board-card-link-100")).toContainText("Saved cards");
+  await expect(card.getByTestId("board-card-links")).toContainText("Fix saved card payments");
+  await card.getByRole("tab", { name: /Attachments/ }).click();
+  await expect(card.getByTestId("board-card-attachments")).toContainText("checkout.log");
+  await card.getByRole("tab", { name: "Details" }).click();
   await card.getByTestId("board-card-title").fill("Checkout fails with a saved Visa card");
+  await description.getByText("Paying with a saved card fails.").click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Every time.");
   await card.getByTestId("board-card-save").click();
   await expect(card).toBeHidden();
   await expect.poll(writes).toContain("--title Checkout fails with a saved Visa card");
+  // The edited description keeps its image on the attachment URL, never the data URL Jig showed.
+  expect(await writes()).toContain("fails. Every time.");
+  expect(await writes()).toContain("attachments/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0?fileName=card.png");
+  expect(await writes()).not.toContain("data:image");
 
   // Drag a card to another column: its column and the column's state go to Azure DevOps.
   await view.getByTestId("board-item-102").dragTo(view.getByTestId("board-column-Doing"));

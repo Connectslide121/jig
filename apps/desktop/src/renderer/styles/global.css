@@ -210,6 +210,54 @@ html[data-platform="darwin"] .topbar-insets {
 .jig-document [align="center"] {
   text-align: center;
 }
+/*
+ * Rich text from elsewhere (an Azure DevOps description, `sanitizeHtml` first): used with
+ * `jig-markdown` for spacing and lists. Its inline colours, fonts and sizes stay in the HTML (saving it
+ * back loses nothing) but are drawn in the theme's, so it reads in every theme.
+ */
+.jig-rich * {
+  color: inherit !important;
+  background-color: transparent !important;
+  font-family: inherit !important;
+}
+.jig-rich a {
+  color: var(--jig-accent) !important;
+  text-decoration: underline;
+}
+.jig-rich img {
+  max-width: 100%;
+  height: auto !important;
+  border-radius: 0.25rem;
+  cursor: zoom-in;
+}
+.jig-rich img[data-jig-missing] {
+  display: inline-block;
+  min-width: 8rem;
+  min-height: 2rem;
+  border: 1px dashed var(--jig-line-strong);
+  cursor: default;
+}
+.jig-rich table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+.jig-rich td,
+.jig-rich th {
+  border: 1px solid var(--jig-line);
+  padding: 0.125rem 0.375rem;
+  vertical-align: top;
+}
+.jig-rich ul ul,
+.jig-rich ol ol {
+  margin: 0;
+}
+.jig-rich[contenteditable="true"] {
+  outline: none;
+}
+.jig-rich[data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--jig-hint);
+}
 .jig-document [align="center"] img {
   margin-inline: auto;
 }

@@ -3,9 +3,9 @@
   "id": "boards",
   "name": "Boards",
   "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board. Open, edit, drag between columns, create and delete cards right here, and Claude can read and update them from your chats. Uses your own az login.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "icon": "kanban",
-  "permissions": ["exec:az", "chat"],
+  "permissions": ["exec:az", "fs:read", "chat"],
   "storage": {
     "scope": "project"
   },
@@ -59,7 +59,7 @@
       },
       {
         "id": "card",
-        "description": "One Azure DevOps work item with everything: description, acceptance criteria, state, column, tags, priority, story points, parent and children, comments, and the states its type can be in.",
+        "description": "One Azure DevOps work item with everything its form shows: description and acceptance criteria as plain text (images as [image: name]; descriptionHtml/acceptanceHtml too when they hold images), other rich-text fields (repro steps, system info…), state, column, tags, priority, story points, more fields (reason, severity, effort, dates, custom fields), links (parent, children, related… with their titles and states, and hyperlinks), attachments, development (branches, commits, pull requests, builds), comments, and the states its type can be in.",
         "params": {
           "id": { "type": "number", "description": "The work item id (#123)" },
           "board": {
@@ -73,7 +73,7 @@
       },
       {
         "id": "update",
-        "description": "Change an Azure DevOps work item: title, description (plain text), state, move it to a board column (its state follows the column), assignee, tags, priority, story points, or add a comment. Only the given fields change. Keep the board up to date as work progresses in the chat.",
+        "description": "Change an Azure DevOps work item: title, description, acceptance criteria, state, move it to a board column (its state follows the column), assignee, tags, priority, story points, or add a comment. Only the given fields change. Keep the board up to date as work progresses in the chat.",
         "params": {
           "id": { "type": "number", "description": "The work item id" },
           "board": {
@@ -84,7 +84,22 @@
           "title": { "type": "string", "optional": true },
           "description": {
             "type": "string",
-            "description": "Plain text; replaces the description",
+            "description": "Plain text; replaces the whole description, its images and formatting too. To keep them, use descriptionHtml",
+            "optional": true
+          },
+          "descriptionHtml": {
+            "type": "string",
+            "description": "HTML; replaces the description. Start from the card's descriptionHtml to keep its images (their attachment URLs)",
+            "optional": true
+          },
+          "acceptance": {
+            "type": "string",
+            "description": "Plain text; replaces the acceptance criteria",
+            "optional": true
+          },
+          "acceptanceHtml": {
+            "type": "string",
+            "description": "HTML; replaces the acceptance criteria (keeps images like descriptionHtml)",
             "optional": true
           },
           "state": {

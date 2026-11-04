@@ -105,6 +105,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       board is fetched a few seconds after Jig starts and kept in the host (and in storage, for the
       next start); a tab shows its cached cards at once and refreshes behind them, with the refresh
       button turning and "updated N min ago" in fixed toolbar slots.
+- [x] **A card like Azure DevOps' form (Jon, 2026-11-04, D-342):** tabs Details · Links · Attachments;
+      rich text with images (fetched with az), editable without losing them; comments as rich text;
+      every field; links with titles and states, development (PRs, commits, branches, builds),
+      attachments. Pasting/uploading images is left for later (99-backlog).
 - [x] **Board search and filters (Jon, 2026-11-04, D-304):** a toolbar like Azure DevOps': search,
       Type / Assigned to / State / Tags / Iteration / Area pickers (multi-select menus), Clear filters;
       client-side, columns never move, remembered per board.

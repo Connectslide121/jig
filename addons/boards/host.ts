@@ -1,28 +1,42 @@
+import { join } from "node:path";
 import type { AddonHostApi } from "@jig/sdk";
 import {
   areaClause,
+  attachmentId,
+  attachmentName,
   type Board,
   type BoardData,
   boardQuery,
   boardTenant,
+  buildInfo,
   columnField,
+  commitInfo,
+  type DevelopmentLink,
   defaultArea,
   type FoundBoard,
   findBoard,
   itemLine,
+  linkedIds,
   orgName,
   orgUrl,
+  parseRelations,
+  pullRequestInfo,
+  sniffImageMime,
   stateForColumn,
   tabName,
   teamApi,
   textToHtml,
   toColumns,
   toDetail,
+  toolDetail,
   toWorkItem,
+  typeFieldNames,
   updateArgs,
   type WorkItem,
   type WorkItemDetail,
+  type WorkItemLink,
   type WorkItemPatch,
+  withLinkedItems,
 } from "./lib/boards";
 import {
   type BoardState,
@@ -371,7 +385,88 @@ function changed(b: Board, api: AddonHostApi): void {
 
 const projectUrl = (b: Board) => `${orgUrl(b.org)}/${encodeURIComponent(b.project)}`;
 
-/** A card with its description, tags, comments and the states its type can be in. */
+const typeFieldsCache = remembered<Record<string, string>>(HOUR);
+const repoNames = remembered<string | undefined>(HOUR);
+
+/** The names a work item type gives its fields (labels, and which rich-text fields it has), cached. */
+function typeFields(b: Board, type: string, api: AddonHostApi): Promise<Record<string, string>> {
+  return typeFieldsCache(api, `${b.org}/${b.project}/${type}`.toLowerCase(), async () =>
+    typeFieldNames(
+      await rest<unknown>(api, `${projectUrl(b)}/_apis/wit/workitemtypes/${encodeURIComponent(type)}/fields`),
+    ),
+  ).catch(() => ({}));
+}
+
+/** The type, title and state of the work items a card links to: one batch request. */
+async function linkedItems(b: Board, links: WorkItemLink[], api: AddonHostApi): Promise<WorkItemLink[]> {
+  const ids = linkedIds(links);
+  if (!ids.length) return links;
+  const raw = await rest<unknown>(api, `${orgUrl(b.org)}/_apis/wit/workitems`, [
+    `ids=${ids.join(",")}`,
+    "fields=System.Id,System.Title,System.State,System.WorkItemType",
+    "errorPolicy=omit",
+  ]).catch(() => undefined);
+  return withLinkedItems(links, raw);
+}
+
+/** At most this many pull requests, commits and builds get their title read (each is one az run). */
+const DEVELOPMENT_DETAILS = 8;
+
+/** Best effort: each pull request's title and status, commit's message, build's result, repository's name. */
+async function developmentDetails(
+  b: Board,
+  links: DevelopmentLink[],
+  api: AddonHostApi,
+): Promise<DevelopmentLink[]> {
+  const org = orgUrl(b.org);
+  const repoName = (l: DevelopmentLink) =>
+    l.projectId && l.repoId
+      ? repoNames(api, `${b.org}/${l.repoId}`.toLowerCase(), async () => {
+          const r = await rest<{ name?: unknown }>(
+            api,
+            `${org}/${encodeURIComponent(l.projectId ?? "")}/_apis/git/repositories/${encodeURIComponent(l.repoId ?? "")}`,
+          );
+          return typeof r?.name === "string" ? r.name : undefined;
+        }).catch(() => undefined)
+      : Promise.resolve(undefined);
+  const one = async (l: DevelopmentLink): Promise<DevelopmentLink> => {
+    try {
+      if (l.kind === "pullRequest")
+        return { ...l, ...pullRequestInfo(await rest(api, `${org}/_apis/git/pullrequests/${l.ref}`)) };
+      if (l.kind === "commit" && l.projectId && l.repoId) {
+        const sha = l.uri.split("%2F").pop() ?? l.ref;
+        return {
+          ...l,
+          ...commitInfo(
+            await rest(
+              api,
+              `${org}/${encodeURIComponent(l.projectId)}/_apis/git/repositories/${encodeURIComponent(l.repoId)}/commits/${encodeURIComponent(sha)}`,
+            ),
+          ),
+        };
+      }
+      if (l.kind === "branch") {
+        const repo = await repoName(l);
+        return repo ? { ...l, repo } : l;
+      }
+      if (l.kind === "build")
+        return {
+          ...l,
+          ...buildInfo(await rest(api, `${projectUrl(b)}/_apis/build/builds/${encodeURIComponent(l.ref)}`)),
+        };
+    } catch {
+      // Best effort: the link still shows, without its title.
+    }
+    return l;
+  };
+  const known = links.slice(0, DEVELOPMENT_DETAILS);
+  return [...(await inBatches(known, PARALLEL, one)), ...links.slice(DEVELOPMENT_DETAILS)];
+}
+
+/**
+ * A card with everything Azure DevOps' form shows: rich text, fields, comments, links (with the
+ * linked items' titles), attachments, development links, and the states its type can be in.
+ */
 export async function item(
   { board: b, id, columnField: field }: { board: Board; id: number; columnField?: string },
   api: AddonHostApi,
@@ -388,7 +483,8 @@ export async function item(
     orgUrl(b.org),
   ]);
   const type = String(raw?.fields?.["System.WorkItemType"] ?? "");
-  const [comments, states] = await Promise.all([
+  const relations = parseRelations((raw as { relations?: unknown } | undefined)?.relations, b);
+  const [comments, states, fieldNames, links, development] = await Promise.all([
     rest<unknown>(api, `${projectUrl(b)}/_apis/wit/workItems/${id}/comments`, [], "7.1-preview.4").catch(
       () => undefined,
     ),
@@ -398,10 +494,58 @@ export async function item(
           `${projectUrl(b)}/_apis/wit/workitemtypes/${encodeURIComponent(type)}/states`,
         ).catch(() => undefined)
       : undefined,
+    type ? typeFields(b, type, api) : {},
+    linkedItems(b, relations.links, api),
+    developmentDetails(b, relations.development, api),
   ]);
-  const detail = toDetail(raw, b, { comments, states, columnField: field });
+  const detail = toDetail(raw, b, { comments, states, columnField: field, fieldNames });
   if (!detail) throw new Error(`Work item #${id} wasn't found.`);
-  return detail;
+  return { ...detail, links, development };
+}
+
+/** Attachments bigger than this aren't shown in Jig (they open in the browser). */
+const MAX_ATTACHMENT = 20 * 1024 * 1024;
+const attachmentFlights = new Map<string, Promise<{ dataUrl: string; bytes: number }>>();
+
+/**
+ * An image attached to a card (in its description, a comment or its attachments) as a data URL,
+ * downloaded once with your az login (`az rest --output-file`) and kept in the add-on's data folder.
+ * Only the board's own organisation's attachment URLs are fetched; Jig never handles the token (D-018).
+ */
+export async function attachment(
+  { board: b, url, name }: { board: Board; url: string; name?: string },
+  api: AddonHostApi,
+): Promise<{ dataUrl: string; bytes: number }> {
+  const guid = attachmentId(url, b.org);
+  if (!guid) throw new Error("That isn't an attachment of this board's organisation.");
+  const file = join(api.addon.dataDir, `attachment-${guid}`);
+  let flight = attachmentFlights.get(guid);
+  if (!flight) {
+    flight = (async () => {
+      if (!(await api.fs.exists(file)))
+        await rest(
+          api,
+          `${orgUrl(b.org)}/_apis/wit/attachments/${guid}`,
+          ["--output-file", file],
+          "7.1",
+          "get",
+        );
+      const base64 = await api.fs.readFile(file, "base64");
+      const bytes = Math.floor((base64.length * 3) / 4);
+      if (bytes > MAX_ATTACHMENT) throw new Error("This attachment is too big to show in Jig.");
+      const mime = sniffImageMime(base64, name ?? attachmentName(url));
+      if (!mime) throw new Error("This attachment isn't an image.");
+      return { dataUrl: `data:${mime};base64,${base64}`, bytes };
+    })();
+    attachmentFlights.set(guid, flight);
+    // A failure is asked again next time; a success stays (the file is on disk anyway).
+    flight.catch(() => attachmentFlights.delete(guid));
+    // Keep memory small: the data URL is read from disk again after a while.
+    void flight
+      .then(() => setTimeout(() => attachmentFlights.delete(guid), 5 * 60_000))
+      .catch(() => undefined);
+  }
+  return flight;
 }
 
 /** Changes a card: fields, state, column (with the column's state for its type), a comment. */
@@ -561,7 +705,7 @@ export async function toolCards(
 
 export async function toolShow(args: ChatArgs & { id: number }, api: AddonHostApi): Promise<string> {
   const b = await chatBoard(args, api);
-  return JSON.stringify(await item({ board: b, id: Number(args.id) }, api), null, 1);
+  return JSON.stringify(toolDetail(await item({ board: b, id: Number(args.id) }, api)), null, 1);
 }
 
 export async function toolUpdate(

@@ -5203,3 +5203,42 @@ provider, capabilities and Claude as the default still hold.
   box as plain text with the chevron slot kept empty, so nothing beside it (the status) moves.
 - **Starter prompts:** the empty chat now shows the project's starter prompts (Settings of the
   project), else Jig's; they follow the switch.
+
+## D-342: A board card shows what Azure DevOps' work item form shows
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: "we need to support images, attachments, links... whatever devops shows in
+  the details of a card, we should as well if possible". His example: a User Story whose description
+  holds a pasted screenshot, which Jig showed as plain text without the image.
+- **What:** the card dialog has Azure DevOps' tabs, Details · Links (n) · Attachments (n), in the same
+  fixed height. Details: the description, acceptance criteria, repro steps, system info and custom HTML
+  fields as rich text (images, lists, formatting), each editable in place; the discussion as rich
+  text; in the side column every other field with a value (Reason, Severity, Value area, Risk,
+  Business value, Time criticality, Activity, Effort, estimates, Start/Target/Due dates, Found in,
+  Integration build, Custom.*), labelled by the type's field names (cached an hour) or from the
+  reference name. Links: development (pull requests with title and status, commits with their
+  message, branches, builds; best effort, at most 8 read), work items grouped by link type with each
+  one's type, title and state (one batch request) — a click opens that card in the dialog — and
+  hyperlinks. Attachments: aligned rows (icon, name, size, date); images open in Jig, other files
+  download in the browser.
+- **Images need a sign-in, Jig never holds it (D-018):** the host downloads an attachment with
+  `az rest --output-file` into the add-on's data folder (`attachment-<id>`, reused afterwards) and
+  answers a data URL (`attachment`). It only fetches attachment URLs of the board's own organisation
+  (`attachmentId`), images only (by their bytes), up to 20 MB. Boards gets `fs:read` for it.
+- **Edits lose nothing:** the old dialog saved the description from a plain textarea as
+  `textToHtml(text)`, which wiped images and formatting in Azure DevOps. Now a rich field is a
+  contentEditable editor that is only sent when you changed it, with every shown image put back on
+  its attachment URL (`data-jig-src`), as `descriptionHtml`, `acceptanceHtml` or `html[field]`.
+  Pasting images or files is refused with a message (uploading attachments is left out, Claude, on my
+  own); pasted HTML is sanitized and its images dropped. Claude's `update` tool gets
+  `descriptionHtml`, `acceptance` and `acceptanceHtml`; its plain `description` says it replaces images.
+- **Safe HTML** (Claude, on my own): `sanitizeHtml` (DOMPurify, already Jig's) is new in `@jig/sdk/ui`
+  because add-ons can't import packages; `.jig-rich` keeps stored inline colours and fonts in the HTML
+  (so saving loses nothing) but draws them in the theme's, so Azure DevOps text reads in Jig Dark.
+  Links in rich text never navigate Jig's window: they open in the browser (Ctrl/Cmd+click while editing).
+- **No layout shifts:** a rich section waits for all its images (centred spinner in the Details pane),
+  then shows complete; images already fetched are remembered, so a new comment doesn't bring the
+  spinner back. Tabs keep the dialog's size; the formatting buttons sit in each field's header row,
+  visible while you edit it.
+- **Claude's `card` tool** stays plain text: images as `[image: name]`, rich fields as text, comments
+  as text; `descriptionHtml` / `acceptanceHtml` only when they hold images (so an edit can keep them).

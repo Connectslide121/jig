@@ -45,6 +45,7 @@ export {
   Select,
   Spinner,
   Switch,
+  sanitizeHtml,
   Tabs,
   Textarea,
   Tooltip,

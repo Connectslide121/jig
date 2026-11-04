@@ -1,5 +1,18 @@
 # Status
 
+A board card like Azure DevOps' form (2026-11-04, D-342, Jon): opening a card in Code → Boards shows
+tabs **Details · Links (n) · Attachments (n)**. Details shows the description, acceptance criteria, repro
+steps, system info and custom HTML fields as rich text with their images (pasted screenshots
+included), editable in place without losing images or formatting (fixes a bug where saving a
+description wiped its images); comments as rich text; and every other field Azure DevOps has on the
+card (reason, severity, effort, dates, custom fields…) in the side column. Links lists pull requests
+(title, status), commits, branches and builds, the linked work items by link type (click one to open
+it) and hyperlinks. Attachments lists the files; images open large in Jig, other files download in the
+browser. Images come through your az login. Not done: pasting or uploading images and files (Jig says
+to add them in Azure DevOps). How to try it: open a card with a screenshot in its description, edit
+a word and save, then check it in Azure DevOps. Needs testing on your machine: real attachments
+(sizes, GIFs), real pull requests, branches and builds, and a process with custom HTML fields.
+
 A new chat changes project until its first message (2026-11-04, D-341, Jon): in a new chat, the
 project beside the title (swatch, name, chevron) opens a **Start this chat in** menu; switching the
 project in the top bar takes the chat in front along too. Its folder, provider, model, effort,

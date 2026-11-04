@@ -17,6 +17,7 @@ export * from "./motion";
 export * from "./OverlayScrollbar";
 export * from "./ResizeHandle";
 export * from "./Spinner";
+export * from "./sanitizeHtml";
 export * from "./Tabs";
 export * from "./Tooltip";
 export * from "./useHighlightedLines";

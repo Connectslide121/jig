@@ -18,12 +18,8 @@ import {
   useStorage,
 } from "@jig/sdk/ui";
 import {
-  BookOpen,
-  Bug,
   Building2,
   Check,
-  CircleDot,
-  Crown,
   Kanban,
   type LucideIcon,
   type LucideProps,
@@ -31,10 +27,8 @@ import {
   MoveHorizontal,
   Plus,
   RefreshCw,
-  SquareCheck,
   SquarePlus,
   TriangleAlert,
-  Trophy,
   Users,
 } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -53,19 +47,8 @@ import {
 } from "./lib/boards";
 import { type BoardState, cacheKey, mergeBoard, updatedAgo } from "./lib/cache";
 import { type BoardFilter, facets, isFiltering, matches, readFilter } from "./lib/filter";
+import { typeLook } from "./look";
 import { FilterBar } from "./toolbar";
-
-/** A work item type's icon and colour, the same on every board (like Azure DevOps' own colours). */
-function typeLook(type: string) {
-  const t = type.toLowerCase();
-  if (t === "bug") return { Icon: Bug, text: "text-danger", edge: "bg-danger" };
-  if (t === "task") return { Icon: SquareCheck, text: "text-warning", edge: "bg-warning" };
-  if (t === "epic") return { Icon: Crown, text: "text-accent", edge: "bg-accent" };
-  if (t === "feature") return { Icon: Trophy, text: "text-success", edge: "bg-success" };
-  if (t.includes("story") || t.includes("backlog") || t === "requirement")
-    return { Icon: BookOpen, text: "text-info", edge: "bg-info" };
-  return { Icon: CircleDot, text: "text-muted", edge: "bg-line-strong" };
-}
 
 /** What a card can do from the board: open, chat, move, delete, copy (D-262). */
 interface CardActions {
@@ -527,6 +510,7 @@ function BoardBody({
       />
       {open !== undefined ? (
         <CardDialog
+          key={open}
           ctx={ctx}
           board={board}
           id={open}
@@ -534,6 +518,7 @@ function BoardBody({
           columnField={data.columnField}
           projectId={projectId}
           onClose={() => setOpen(undefined)}
+          onOpenCard={setOpen}
         />
       ) : null}
       {adding ? (
