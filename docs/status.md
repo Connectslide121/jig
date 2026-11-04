@@ -498,6 +498,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.10.0 being prepared (2026-11-04): Jig 0.10.0 adds @chat mentions of Teams chats and a Meetings chats toolbar, makes ChatGPT (Codex) chats much sturdier, and merges the layout controls into the View menu. Publication not yet verified.
+
 Jig 0.9.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.9.0),
 source/tag `cef7338fb00f0121937bb0d068e334c77bf53c7c`. Installer: 388,914,344 bytes;
 SHA-256 `f798be16e35fc1eb74a2f96d486c0b8b23e24a4d93ed1f6af89319f5c6365a63`.
