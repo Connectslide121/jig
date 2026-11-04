@@ -35,7 +35,7 @@ import type {
 } from "./codex-protocol/v2";
 import { CODEX_PROTOCOL_VERSION } from "./codex-protocol/version";
 import { personalInstructions } from "./codexInstructions";
-import { JIG_MCP_TOKEN_ENV, jigMcpConfig } from "./codexMcp";
+import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
 import { type LocalMcp, newMcpToken, startLocalMcp } from "./localMcp";
 import { projectMcpConfig } from "./projectMcp";
@@ -268,10 +268,7 @@ export class CodexEngine implements Engine {
       void localMcp?.close();
       localMcp = undefined;
     };
-    const env = {
-      ...codexSessionEnv(options.env, Boolean(options.codexAllowApiKey)),
-      ...(mcpToken ? { [JIG_MCP_TOKEN_ENV]: mcpToken } : {}),
-    };
+    const env = codexSessionEnv(options.env, Boolean(options.codexAllowApiKey));
     const binary = codexBinary(options.codexPath, env);
     let permissionMode = options.permissionMode;
     let threadId: string | undefined;
@@ -422,7 +419,9 @@ export class CodexEngine implements Engine {
         config: {
           // The project's approved .mcp.json servers, as a Claude chat here gets them; Jig's last.
           ...projectMcpConfig(options.cwd, options.env),
-          ...(localMcp && toolServers ? jigMcpConfig(toolServers, (name) => localMcp!.url(name)) : {}),
+          ...(localMcp && toolServers && mcpToken
+            ? jigMcpConfig(toolServers, (name) => localMcp!.url(name), mcpToken)
+            : {}),
         },
         model: resolved.model || null,
         approvalPolicy: policy.approvalPolicy,
