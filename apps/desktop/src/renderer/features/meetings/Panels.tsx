@@ -48,10 +48,21 @@ export function PanelHeader({
 }
 
 type Item =
-  | { kind: "speech"; key: string; speaker: string; speakerId: string; at: string; lines: MeetingCaption[] }
+  | {
+      kind: "speech";
+      key: string;
+      speaker: string;
+      speakerId: string;
+      at: string;
+      local: boolean;
+      lines: MeetingCaption[];
+    }
   | { kind: "gap"; key: string; at: string; reason: string };
 
-/** Consecutive captions from one speaker within two minutes read as one block; gaps sit where they happened. */
+/**
+ * Consecutive captions from one speaker within two minutes read as one block (Teams' captions and
+ * the local transcript's apart, D-321); gaps sit where they happened.
+ */
 function items(record: MeetingRecord): Item[] {
   const out: Item[] = [];
   for (const c of record.captions) {
@@ -59,6 +70,7 @@ function items(record: MeetingRecord): Item[] {
     if (
       last?.kind === "speech" &&
       last.speakerId === c.speakerId &&
+      last.local === (c.source === "local") &&
       new Date(c.timestamp).getTime() - new Date(last.lines.at(-1)!.timestamp).getTime() < 120_000
     )
       last.lines.push(c);
@@ -69,6 +81,7 @@ function items(record: MeetingRecord): Item[] {
         speaker: c.speaker,
         speakerId: c.speakerId,
         at: c.timestamp,
+        local: c.source === "local",
         lines: [c],
       });
   }
@@ -162,7 +175,17 @@ export function TranscriptPanel({
                     <PersonPhoto id={item.speakerId} />
                   </span>
                   <div className="min-w-0 flex-1 text-sm">
-                    <div className="pt-1 font-semibold">{item.speaker}</div>
+                    <div className="flex min-w-0 items-center gap-2 pt-1">
+                      <span className="min-w-0 truncate font-semibold">{item.speaker}</span>
+                      {item.local && (
+                        <span
+                          className="shrink-0 rounded-sm border border-line px-1 text-2xs leading-4 font-medium text-hint"
+                          title="Transcribed on this computer because Teams captions weren't available. Who spoke may be a guess."
+                        >
+                          Local
+                        </span>
+                      )}
+                    </div>
                     {item.lines.map((c) => (
                       <div key={c.id}>
                         <p

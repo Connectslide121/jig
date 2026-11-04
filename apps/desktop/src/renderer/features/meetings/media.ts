@@ -1,6 +1,10 @@
 import {
   type AudioDeviceInfo,
   CallClient,
+  type CapabilitiesFeature,
+  type Captions,
+  type CaptionsCallFeature,
+  type CaptionsInfo,
   type DeviceManager,
   Features,
   LocalVideoStream,
@@ -9,13 +13,24 @@ import {
   type TeamsCall,
   type TeamsCallAgent,
   type TeamsCaptions,
+  type TeamsCaptionsInfo,
   type TeamsIncomingCall,
   type VideoDeviceInfo,
   VideoStreamRenderer,
 } from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential, getIdentifierRawId } from "@azure/communication-common";
-import type { MeetingRecord } from "../../../shared/meetings";
+import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
+import {
+  CAPTION_RETRY_DELAYS,
+  type CaptionCapability,
+  capabilityPending,
+  captionErrorText,
+  captionStartDecision,
+  nextSource,
+  type TranscriptSwitch,
+} from "../../../shared/meetingTranscript";
 import { call } from "../../lib/host";
+import { LocalTranscript, localTranscriptUnavailable } from "./localTranscript";
 
 /** Someone else in the call, as the tiles need them. */
 export interface Person {
@@ -91,7 +106,20 @@ export class MeetingMedia {
   private deviceManager?: DeviceManager;
   private active?: TeamsCall;
   private record?: MeetingRecord;
-  private captions?: TeamsCaptions;
+  private captions?: TeamsCaptions | Captions;
+  private captionsCleanup?: () => void;
+  private captionsFeature?: CaptionsCallFeature;
+  private capabilities?: CapabilitiesFeature;
+  /** Failed tries to start Teams captions in this call, and the next one waiting (D-321). */
+  private captionAttempt = 0;
+  private captionRetry?: ReturnType<typeof setTimeout>;
+  /** Teams captions run; they failed (or stopped) so the local transcript may take over. */
+  private teamsActive = false;
+  private teamsFailed = false;
+  /** Transcribe on this computer when Teams captions aren't available (`meetings.localTranscription`). */
+  private localAllowed = true;
+  private transcriptSwitch: TranscriptSwitch = { source: "none", since: 0 };
+  private local?: LocalTranscript;
   private video?: LocalVideoStream;
   private slots = new Map<SlotKey, HTMLElement>();
   private slotRefs = new Map<SlotKey, (element: HTMLElement | null) => void>();
@@ -120,6 +148,8 @@ export class MeetingMedia {
   private agentStarting?: Promise<TeamsCallAgent>;
   private statusChain: Promise<unknown> = Promise.resolve();
   private captionChain: Promise<unknown> = Promise.resolve();
+  /** Test meeting service: Teams captions "unavailable", local transcript on (true) or off (false). */
+  private fakeLocal?: boolean;
   constructor(private readonly error: (error: unknown) => void) {}
   subscribe(listener: (state: MediaState) => void): () => void {
     this.listeners.add(listener);
@@ -274,14 +304,19 @@ export class MeetingMedia {
     p.on("videoStreamsUpdated", streams);
     p.on("stateChanged", sync);
     p.on("isMutedChanged", sync);
-    p.on("isSpeakingChanged", sync);
+    // Who speaks when, so the local transcript can say who said a piece of the call's audio.
+    const speaking = () => {
+      this.local?.speaking(getIdentifierRawId(p.identifier), p.displayName || "Participant", p.isSpeaking);
+      sync();
+    };
+    p.on("isSpeakingChanged", speaking);
     p.on("displayNameChanged", sync);
     streams();
     this.participantCleanup.push(() => {
       p.off("videoStreamsUpdated", streams);
       p.off("stateChanged", sync);
       p.off("isMutedChanged", sync);
-      p.off("isSpeakingChanged", sync);
+      p.off("isSpeakingChanged", speaking);
       p.off("displayNameChanged", sync);
     });
   }
@@ -369,6 +404,22 @@ export class MeetingMedia {
   /** A test call ringing (test meeting service only). */
   fakeRing(name: string): void {
     this.listeningFor?.({ id: `fake-${Date.now()}`, name, peerId: "00000000-0000-4000-8000-00000000a1e5" });
+  }
+  /** Test meeting service only: Teams captions stop being available, as in a meeting that refuses them. */
+  fakeCaptionsUnavailable(): void {
+    if (!this.fakeTimer) return;
+    this.fakeLocal = this.localAllowed;
+    this.status(
+      "connected",
+      this.localAllowed ? "Transcribing locally (test)" : "Captions unavailable — retry captions",
+      "Captions could not start: Captions feature is disabled in meeting policy. (403/45203) (test)",
+    );
+    if (this.localAllowed)
+      this.status(
+        "connected",
+        "Transcribing locally (test)",
+        "Teams captions unavailable — transcribing on this computer",
+      );
   }
   /** Declines the ringing call (Teams' own apps stop ringing too). */
   declineRinging(): void {
@@ -482,16 +533,20 @@ export class MeetingMedia {
           "The Portal work belongs to a different project.",
         ];
         this.fakeTimer = setInterval(() => {
+          // Teams captions unavailable (test): the local transcript writes, if it is on (D-321).
+          if (this.fakeLocal === false) return;
           const seq = this.fakeSequence++;
           const timestamp = new Date().toISOString();
-          const caption = {
+          const local = this.fakeLocal === true;
+          const caption: MeetingCaption = {
             id: `fake-${seq}`,
-            speakerId: seq % 2 ? "sam" : "alex",
-            speaker: seq % 2 ? "Sam" : "Alex",
+            speakerId: local && seq % 2 ? "you" : seq % 2 ? "sam" : "alex",
+            speaker: local && seq % 2 ? "You" : seq % 2 ? "Sam" : "Alex",
             timestamp,
             text: texts[seq % texts.length]!,
             final: true,
-            ...(this.teamsTranslates
+            ...(local ? { source: "local" as const } : {}),
+            ...(this.teamsTranslates && !local
               ? {
                   translated: `[${this.captionLanguage}] ${texts[seq % texts.length]!}`,
                   translatedLanguage: this.captionLanguage,
@@ -517,11 +572,13 @@ export class MeetingMedia {
       let joining = true;
       this.active = await start(agent);
       const c = this.active;
+      this.spokenLanguage = options.language;
+      this.watchCaptions(c);
       const state = () => {
         this.sync();
-        if (c.state === "Connected") {
+        if (c.state === "Connected" && !this.teamsActive && !this.captionsStarting && !this.captionRetry) {
           this.status("connected", "Starting captions");
-          void this.startCaptions(options.language);
+          void this.startCaptions(options.language, false);
         }
         if (c.state === "Disconnected" && !this.leaving && !joining) {
           const failure = this.disconnected(c);
@@ -603,61 +660,302 @@ export class MeetingMedia {
       `The Teams call disconnected${reason ? ` (code ${reason.code}, subcode ${reason.subCode ?? 0})` : ""}. Try joining again or use Teams.`,
     );
   }
-  async startCaptions(language = this.spokenLanguage): Promise<void> {
+  /**
+   * The call's captions feature and your capabilities, taken as soon as the call exists, so the
+   * SDK follows them from the start: in a Teams meeting, whether you may start captions arrives a
+   * moment after Connected, and starting before that fails as "disabled in meeting policy" (D-321).
+   */
+  private watchCaptions(c: TeamsCall): void {
+    try {
+      const feature = c.feature(Features.Captions);
+      const capabilities = c.feature(Features.Capabilities);
+      this.captionsFeature = feature;
+      this.capabilities = capabilities;
+      const kindChanged = () => {
+        if (this.active !== c || this.leaving) return;
+        this.bindCaptions();
+        if (c.state === "Connected" && !this.teamsActive) this.retryCaptionsSoon(0);
+      };
+      // Capabilities arrived while a try waits: try now instead of at the end of the wait.
+      const capabilitiesChanged = () => {
+        if (this.active !== c || this.leaving || !this.captionRetry) return;
+        if (!capabilityPending(this.captionCapability())) this.retryCaptionsSoon(0);
+      };
+      feature.on("CaptionsKindChanged", kindChanged);
+      capabilities.on("capabilitiesChanged", capabilitiesChanged);
+      this.participantCleanup.push(() => {
+        feature.off("CaptionsKindChanged", kindChanged);
+        capabilities.off("capabilitiesChanged", capabilitiesChanged);
+      });
+    } catch {
+      // Older calls without these features: startCaptions still tries.
+    }
+  }
+  /** Whether you may start captions here: the meeting's capability, or the call's for a 1:1 call. */
+  private captionCapability(): CaptionCapability | undefined {
+    try {
+      const all = this.capabilities?.capabilities;
+      return this.record?.call ? all?.startLiveCallingCaptions : all?.startLiveMeetingCaptions;
+    } catch {
+      return undefined;
+    }
+  }
+  /** Listens to the call's captions object (Teams captions, or ACS captions if the SDK gives those). */
+  private bindCaptions(): TeamsCaptions | Captions | undefined {
+    const captions = (this.captionsFeature ?? this.active?.feature(Features.Captions))?.captions as
+      | TeamsCaptions
+      | Captions
+      | undefined;
+    if (!captions || captions === this.captions) return captions;
+    this.captionsCleanup?.();
+    this.captions = captions;
+    const received = (data: CaptionsInfo | TeamsCaptionsInfo) => {
+      const captionText = "captionText" in data ? data.captionText : "";
+      const text = data.spokenText || captionText;
+      // Teams' translation of it, when captions are shown in another language (D-260).
+      const translated =
+        this.teamsTranslates && captionText && captionText !== data.spokenText ? captionText : undefined;
+      const id = this.record?.id;
+      if (!text || !id || this.leaving) return;
+      // Captions are coming: Teams writes the transcript, whatever the events said.
+      if (!this.teamsActive) this.captionsRunning();
+      const speakerId = data.speaker.identifier ? getIdentifierRawId(data.speaker.identifier) : "unknown";
+      const timestamp = data.timestamp.toISOString();
+      const caption: MeetingCaption = {
+        id: `${speakerId}:${timestamp}`,
+        speakerId,
+        speaker: data.speaker.displayName || "Unknown speaker",
+        timestamp,
+        text,
+        final: data.resultType === "Final",
+        ...(translated && "captionLanguage" in data
+          ? { translated, translatedLanguage: data.captionLanguage, translatedBy: "teams" as const }
+          : {}),
+      };
+      this.sendCaption(id, caption);
+    };
+    const activeChanged = () => this.captionsActiveChanged();
+    const events = captions as TeamsCaptions;
+    events.on("CaptionsReceived", received);
+    events.on("CaptionsActiveChanged", activeChanged);
+    this.captionsCleanup = () => {
+      events.off("CaptionsReceived", received);
+      events.off("CaptionsActiveChanged", activeChanged);
+    };
+    return captions;
+  }
+  private sendCaption(id: string, caption: MeetingCaption): void {
+    this.captionChain = this.captionChain
+      .then(() => call("meetings.caption", { id, caption }))
+      .catch(this.error);
+  }
+  /**
+   * Starts Teams captions (or joins the ones someone else started). `manual` is the Retry captions
+   * button: it starts over. Otherwise a failure is retried with growing waits while that can help
+   * (the meeting's capabilities still loading), and its real reason goes into the transcript (D-321).
+   */
+  async startCaptions(language = this.spokenLanguage, manual = true): Promise<void> {
     this.spokenLanguage = language;
-    if (!this.active || this.captionsStarting) return;
+    if (manual) {
+      this.captionAttempt = 0;
+      clearTimeout(this.captionRetry);
+      this.captionRetry = undefined;
+    }
+    const c = this.active;
+    if (!c || this.captionsStarting || this.leaving) return;
     this.captionsStarting = true;
     try {
-      const feature = this.active.feature(Features.Captions);
-      const captions = feature.captions;
-      if (captions.kind !== "TeamsCaptions") throw new Error("Teams captions are unavailable for this call");
-      if (this.captions !== captions) {
-        this.captions = captions as TeamsCaptions;
-        this.captions.on("CaptionsReceived", (data) => {
-          const text = data.spokenText || data.captionText;
-          // Teams' translation of it, when captions are shown in another language (D-260).
-          const translated =
-            this.teamsTranslates && data.captionText && data.captionText !== data.spokenText
-              ? data.captionText
-              : undefined;
-          const id = this.record?.id;
-          if (!text || !id || this.leaving) return;
-          const speakerId = data.speaker.identifier ? getIdentifierRawId(data.speaker.identifier) : "unknown";
-          const timestamp = data.timestamp.toISOString();
-          const caption = {
-            id: `${speakerId}:${timestamp}`,
-            speakerId,
-            speaker: data.speaker.displayName || "Unknown speaker",
-            timestamp,
-            text,
-            final: data.resultType === "Final",
-            ...(translated
-              ? { translated, translatedLanguage: data.captionLanguage, translatedBy: "teams" as const }
-              : {}),
-          };
-          this.captionChain = this.captionChain
-            .then(() => call("meetings.caption", { id, caption }))
-            .catch(this.error);
-        });
-        this.captions.on("CaptionsActiveChanged", () => {
-          if (this.leaving) return;
-          this.status(
-            "connected",
-            this.captions?.isCaptionsFeatureActive ? "Capturing live captions" : "Captions stopped",
-            this.captions?.isCaptionsFeatureActive ? undefined : "Captions stopped; speech may be missing",
-          );
-        });
+      // Right after Connected: give the capabilities a moment instead of failing on them.
+      if (capabilityPending(this.captionCapability())) await this.capabilityReady(8000);
+      const captions = this.bindCaptions();
+      if (!captions) throw new Error("This call has no captions feature");
+      if (!captions.isCaptionsFeatureActive) {
+        await captions.startCaptions({ spokenLanguage: language });
+        // Teams says they started with CaptionsActiveChanged; some refusals are only silence.
+        if (!(await this.captionsActive(captions, 20_000)))
+          throw new Error("Teams didn't start captions within 20 seconds");
       }
-      if (!this.captions!.isCaptionsFeatureActive)
-        await this.captions!.startCaptions({ spokenLanguage: language });
-      this.status("connected", "Capturing live captions");
-      this.update({ captionLanguages: this.captions!.supportedCaptionLanguages ?? [] });
-      if (this.captionLanguage) await this.setCaptionLanguage(this.captionLanguage).catch(this.error);
+      if (this.active === c) this.captionsRunning();
     } catch (error) {
-      this.status("connected", "Captions unavailable — retry captions", "Captions could not start");
-      this.error(error);
+      if (this.active === c && !this.leaving) this.captionsFailed(error);
     } finally {
       this.captionsStarting = false;
+    }
+  }
+  private capabilityReady(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.capabilities?.off("capabilitiesChanged", check);
+        resolve();
+      };
+      const check = () => {
+        if (!capabilityPending(this.captionCapability())) done();
+      };
+      const timer = setTimeout(done, ms);
+      this.capabilities?.on("capabilitiesChanged", check);
+    });
+  }
+  private captionsActive(captions: TeamsCaptions | Captions, ms: number): Promise<boolean> {
+    if (captions.isCaptionsFeatureActive) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const events = captions as TeamsCaptions;
+      const done = (active: boolean) => {
+        clearTimeout(timer);
+        events.off("CaptionsActiveChanged", check);
+        resolve(active);
+      };
+      const check = () => {
+        if (captions.isCaptionsFeatureActive) done(true);
+      };
+      const timer = setTimeout(() => done(captions.isCaptionsFeatureActive), ms);
+      events.on("CaptionsActiveChanged", check);
+    });
+  }
+  private retryCaptionsSoon(ms: number): void {
+    clearTimeout(this.captionRetry);
+    this.captionRetry = setTimeout(() => {
+      this.captionRetry = undefined;
+      void this.startCaptions(undefined, false);
+    }, ms);
+  }
+  /** Teams captions run: the transcript is theirs again, and the local one stops. */
+  private captionsRunning(): void {
+    clearTimeout(this.captionRetry);
+    this.captionRetry = undefined;
+    this.captionAttempt = 0;
+    if (this.teamsActive) return;
+    this.teamsActive = true;
+    this.teamsFailed = false;
+    this.status("connected", "Capturing live captions");
+    const captions = this.captions;
+    if (captions?.kind === "TeamsCaptions")
+      this.update({ captionLanguages: (captions as TeamsCaptions).supportedCaptionLanguages ?? [] });
+    if (this.captionLanguage) void this.setCaptionLanguage(this.captionLanguage).catch(this.error);
+    this.followSource();
+  }
+  private captionsFailed(error: unknown): void {
+    const decision = captionStartDecision({
+      error,
+      attempt: this.captionAttempt,
+      capability: this.captionCapability(),
+    });
+    if (decision.kind === "active") {
+      this.captionsRunning();
+      return;
+    }
+    const reason = decision.reason.slice(0, 300);
+    if (decision.kind === "retry") {
+      this.captionAttempt++;
+      // After a few seconds of trying, the local transcript covers what is said meanwhile.
+      if (this.captionAttempt >= 2) this.teamsFailed = true;
+      this.status(
+        "connected",
+        `Captions not ready: ${reason} — trying again in ${Math.round(decision.delayMs / 1000)} s`,
+      );
+      this.retryCaptionsSoon(decision.delayMs);
+    } else {
+      this.teamsFailed = true;
+      this.status(
+        "connected",
+        "Captions unavailable — retry captions",
+        `Captions could not start: ${reason}`,
+      );
+    }
+    this.followSource();
+  }
+  private captionsActiveChanged(): void {
+    const captions = this.captions;
+    if (this.leaving || !captions) return;
+    if (captions.isCaptionsFeatureActive) {
+      this.captionsRunning();
+      return;
+    }
+    if (!this.teamsActive) return;
+    // They stopped (the bot left, the organiser turned them off): try once more, transcribe meanwhile.
+    this.teamsActive = false;
+    this.teamsFailed = true;
+    this.captionAttempt = CAPTION_RETRY_DELAYS.length - 1;
+    this.status("connected", "Captions stopped — trying again", "Captions stopped; speech may be missing");
+    this.retryCaptionsSoon(3000);
+    this.followSource();
+  }
+  /** Turns transcribing on this computer on or off for when Teams captions aren't available. */
+  setLocalTranscription(allowed: boolean): void {
+    if (this.localAllowed === allowed) return;
+    this.localAllowed = allowed;
+    if (this.fakeTimer && this.fakeLocal !== undefined) {
+      this.fakeLocal = allowed;
+      if (!allowed) this.status("connected", "Captions unavailable — retry captions");
+      else
+        this.status(
+          "connected",
+          "Transcribing locally (test)",
+          "Teams captions unavailable — transcribing on this computer",
+        );
+      return;
+    }
+    this.followSource();
+  }
+  /** Teams captions or the local transcript, whichever should write the transcript now. */
+  private followSource(): void {
+    const next = nextSource(
+      this.transcriptSwitch,
+      { teamsActive: this.teamsActive, teamsFailed: this.teamsFailed, localAllowed: this.localAllowed },
+      Date.now(),
+    );
+    if (next === this.transcriptSwitch) return;
+    const was = this.transcriptSwitch.source;
+    this.transcriptSwitch = next;
+    if (next.source === "local") void this.startLocal();
+    else {
+      this.local?.stop();
+      this.local = undefined;
+      // Turned off while Teams captions still fail: say so where the status shows.
+      if (was === "local" && next.source === "none")
+        this.status("connected", "Captions unavailable — retry captions");
+    }
+  }
+  private async startLocal(): Promise<void> {
+    const c = this.active;
+    const id = this.record?.id;
+    if (!c || !id || this.local) return;
+    const unavailable = await localTranscriptUnavailable().catch((e: unknown) => captionErrorText(e));
+    if (this.active !== c || this.transcriptSwitch.source !== "local" || this.local) return;
+    if (unavailable) {
+      this.status("connected", "Captions unavailable — retry captions", unavailable);
+      return;
+    }
+    const local = new LocalTranscript({
+      call: c,
+      language: this.spokenLanguage.split("-")[0] ?? "",
+      microphoneId: this.deviceManager?.selectedMicrophone?.id ?? "",
+      source: () => this.transcriptSwitch,
+      onCaption: (caption) => {
+        if (this.record?.id === id && !this.leaving) this.sendCaption(id, caption);
+      },
+      onNotice: (reason) => {
+        if (this.record?.id === id && !this.leaving) this.status("connected", "Transcribing locally", reason);
+      },
+    });
+    this.local = local;
+    this.status(
+      "connected",
+      "Transcribing locally",
+      "Teams captions unavailable — transcribing on this computer",
+    );
+    try {
+      await local.start();
+      // Claude translates these lines too, while you have picked a language (D-277).
+      if (this.captionLanguage) void this.setCaptionLanguage(this.captionLanguage).catch(this.error);
+    } catch (error) {
+      local.stop();
+      if (this.local === local) this.local = undefined;
+      this.status(
+        "connected",
+        "Captions unavailable — retry captions",
+        `Transcribing on this computer couldn't start: ${captionErrorText(error)}`,
+      );
     }
   }
   /**
@@ -669,19 +967,21 @@ export class MeetingMedia {
     this.captionLanguage = language;
     this.update({ captionLanguage: language });
     let teams = false;
+    const teamsCaptions =
+      this.captions?.kind === "TeamsCaptions" ? (this.captions as TeamsCaptions) : undefined;
     if (this.fakeTimer) teams = Boolean(language) && this.state.captionLanguages.includes(language);
-    else if (this.captions) {
+    else if (teamsCaptions) {
       if (language && this.state.captionLanguages.includes(language))
-        teams = await this.captions.setCaptionLanguage(language).then(
+        teams = await teamsCaptions.setCaptionLanguage(language).then(
           () => true,
           () => false,
         );
-      if (!teams) await this.captions.setCaptionLanguage(this.spokenLanguage).catch(() => undefined);
+      if (!teams) await teamsCaptions.setCaptionLanguage(this.spokenLanguage).catch(() => undefined);
     }
     this.teamsTranslates = teams;
     const id = this.record?.id;
     // Before captions run there is nothing to translate yet; starting them applies the choice again.
-    if (!id || (!this.captions && !this.fakeTimer)) return;
+    if (!id || (!this.captions && !this.fakeTimer && !this.local)) return;
     try {
       await call("meetings.aiTranslation", { id, language: language && !teams ? language : "" });
     } catch (error) {
@@ -733,6 +1033,8 @@ export class MeetingMedia {
     if (!this.record || this.leaving) return;
     this.leaving = true;
     this.cancelJoin?.();
+    this.local?.stop();
+    clearTimeout(this.captionRetry);
     clearInterval(this.fakeTimer);
     this.fakeTimer = undefined;
     try {
@@ -768,6 +1070,19 @@ export class MeetingMedia {
     this.preview = undefined;
     this.video?.dispose();
     this.video = undefined;
+    this.local?.stop();
+    this.local = undefined;
+    clearTimeout(this.captionRetry);
+    this.captionRetry = undefined;
+    this.captionAttempt = 0;
+    this.teamsActive = false;
+    this.teamsFailed = false;
+    this.transcriptSwitch = { source: "none", since: 0 };
+    this.fakeLocal = undefined;
+    this.captionsCleanup?.();
+    this.captionsCleanup = undefined;
+    this.captionsFeature = undefined;
+    this.capabilities = undefined;
     this.active = undefined;
     this.record = undefined;
     this.captions = undefined;

@@ -658,7 +658,11 @@ Teams chats (D-296: `/me/chats` with Chat.Read, read on demand, never stored or 
 beside the list with the same chat panel as the call.
 
 The window is independent of workbench mounts and project selection; CallClient, TeamsCallAgent and
-caption listeners live in its media owner. Closing/reloading/crashing and application quit have explicit
+caption listeners live in its media owner. Teams captions start only once the meeting's capabilities
+have arrived and are retried with backoff; when they aren't available, the media owner transcribes the
+call's remote audio and your microphone with dictation's Whisper worker inside the call window and
+sends only text through `meetings.caption` (`source: "local"`; D-321, `localTranscript.ts`, pure logic
+in `shared/meetingTranscript.ts`). Closing/reloading/crashing and application quit have explicit
 lifecycle handling. Stored meeting records contain no projectId. Questions make immutable snapshots,
 then create normal project/meeting-only Plan-mode chats that read paginated text with jig_meeting_read.
 Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'

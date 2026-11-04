@@ -87,6 +87,7 @@ A new state file is documented here in the same commit that adds it.
 | `chat.view` | `"compact"` | how chats show Claude's work: `compact` folds each run of steps (commands, reads, edits, thinking) into one line you can open; `detailed` shows every step as its card (D-159). The switch is in each chat's top bar |
 | `meetings.aiTranslation` | `true` | when Teams can't translate live captions (Teams Premium), Claude translates each finished caption into the language picked in the meeting (D-277); protected |
 | `meetings.translationModel` | `"haiku"` | the model that translates captions; protected |
+| `meetings.localTranscription` | `true` | when Teams captions aren't available in a meeting or call, the call window transcribes it on this computer with Whisper (`speech.model`; D-321): the call's audio and your microphone, in pieces of 5–10 s, kept in memory only until transcribed. Lines are marked Local. Also in the transcript panel's ⋯ menu |
 | `azure.activeTenant` | `""` | the Azure tenant every `az` Jig runs uses (add-on `exec`/`spawn`, project links, setup checks; D-282): a key from `azure/tenants.json`, empty (or a key that's gone) = your own az login, no override. Protected: it decides which credentials programs run with |
 | `chatList.view` | `"project"` | how the Chats list groups chats: `project` (a group per project, then "No project"), `status` (Pinned, Needs you, Working, Error, Idle), `recent` (Pinned, Today, Yesterday, Last 7 days, Older) or `all` (one list). The switch is in the Chats header |
 | `chatList.pinnedOrder` | `[]` | ids of pinned chats in the order you dragged them; pinned chats not listed follow, newest first |
@@ -166,7 +167,7 @@ and `folders` [{id, name}]: your meeting history folders (D-295). A record's `fo
 `null` when you took it out of every folder, or missing to let it go to its recurring meeting's folder (meetings
 whose join links name the same Teams meeting thread, two or more of them; worked out, not stored).
 `chat` is the meeting's Teams chat read while you were in it ({id, from, fromId?, at, text, mine?}, D-270). A record
-has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final;
+has no project id; actions may have one. Captions carry id/speakerId/speaker/timestamp/text/final, `source: "local"` when Whisper transcribed them on this computer (D-321); gap reasons include Teams' error message and codes;
 actions carry id/title/prompt/owner/projectId?/evidence/queued?. Writes use state/jsonStore atomically
 and are serialized across captions, notes and queue acknowledgements. Active records become interrupted
 with a gap on restart. Immutable question snapshots live in addon-data/meeting-snapshots/<sha256>.json.

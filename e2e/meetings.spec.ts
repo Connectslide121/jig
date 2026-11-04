@@ -385,6 +385,52 @@ test("Meetings: live captions in another language, with what was said under them
   }
 });
 
+test("Meetings: without Teams captions, the call is transcribed on this computer (D-321)", async ({
+  jigHome,
+}) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby, room } = await meetingWindows(app);
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    await prejoin.getByLabel("Teams join link").fill("https://teams.microsoft.com/l/meetup-join/test");
+    await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
+    const transcript = room.getByTestId("meeting-transcript");
+    await expect(transcript).toContainText("We should review the Shop API");
+
+    // Teams refuses captions: the real reason and the one-line notice show, lines come marked Local.
+    await room.evaluate(() =>
+      (window as { jigTestCaptionsUnavailable?: () => void }).jigTestCaptionsUnavailable?.(),
+    );
+    await expect(transcript).toContainText("disabled in meeting policy. (403/45203)");
+    await expect(transcript).toContainText("Teams captions unavailable — transcribing on this computer");
+    await expect(transcript.getByText("Local", { exact: true }).first()).toBeVisible();
+    await expect(transcript).toContainText("You");
+    await expect(room.getByRole("status")).toContainText("Transcribing locally");
+    await room.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/local-transcript.png",
+    });
+
+    // Turned off from the transcript's ⋯ menu: the setting follows, and the status says captions are missing.
+    await room.getByRole("button", { name: "Transcript options", exact: true }).click();
+    await room.getByRole("menuitem", { name: /Transcribe on this computer/ }).click();
+    await expect(room.getByRole("status")).toContainText("Captions unavailable");
+    const config = (await hostCall(room, "config.get")) as {
+      value: { meetings: { localTranscription: boolean } };
+    };
+    expect(config.value.meetings.localTranscription).toBe(false);
+
+    await room.getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(room.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});
+
 test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", async ({ jigHome }) => {
   const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
   try {

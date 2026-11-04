@@ -4,6 +4,7 @@ import type { MeetingOverview } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { useThemeController } from "../../lib/theme";
+import { useConfig } from "../../stores/config";
 import { cn, DialogHost, ErrorBoundary, MenuHost } from "../../ui";
 
 const EMPTY_PROJECTS: ProjectsState = { projects: [], workspaces: [], activeId: undefined };
@@ -21,6 +22,19 @@ export function MeetingsShell({ label, children }: { label: string; children: Re
 }
 
 export type Pending = "calendar" | "notes" | "join" | "ask" | "queue" | "connection" | "call";
+
+/**
+ * Settings and app facts in this window's config store (the main window loads its own), kept fresh
+ * on `config.changed`: the call window reads the Speech and Meetings settings from it.
+ */
+export function useConfigStore(): void {
+  useEffect(() => {
+    void Promise.all([call("config.get"), call("app.info")])
+      .then(([config, info]) => useConfig.setState({ config, info }))
+      .catch(() => undefined);
+  }, []);
+  useHostEvent("config.changed", (config) => useConfig.setState({ config }));
+}
 
 /**
  * What the lobby and the call window both read: the overview (kept fresh on `meetings.changed`), the

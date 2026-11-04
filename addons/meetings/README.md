@@ -33,7 +33,11 @@ project's context, and review actions for the task queue. Meetings are global (D
 - **Transcript:** follows the latest speech until you scroll up to read earlier material. SDK caption events supply speaker identifiers/names, timestamps and partial/final
   text. Partial sentences are replaced, late partials cannot overwrite finals, and repeated utterances
   are retained. Speech before joining/caption activation is unavailable. Capture failures and restarts
-  are marked as gaps/interrupted. No raw audio/video file or diarization job exists.
+  are marked as gaps/interrupted, with Teams' own reason and codes. No raw audio/video file or diarization job exists.
+- **Without Teams captions (D-321):** captions wait for the meeting's capabilities and retry with backoff.
+  When they still aren't available, the call window transcribes the call's audio and your microphone on
+  this computer with Whisper (Settings → Speech's model) and marks those lines **Local**; audio stays in
+  memory until transcribed. Teams captions take over again when they start. Off in the transcript's ⋯ menu.
 - **Ask Claude:** explicit Meeting only, Current Jig project or a selected project; the normal chat
   opens in Plan mode. It receives a frozen snapshot via `jig_meeting_read`, paginated at 40k characters.
   The selected chat keeps its project; a later question can use another project. Each Ask starts a new

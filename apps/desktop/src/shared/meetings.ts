@@ -38,6 +38,8 @@ export interface MeetingCaption {
   translatedLanguage?: string;
   /** Who translated it: Teams (Premium) or Claude (D-277). */
   translatedBy?: "teams" | "ai";
+  /** Transcribed on this computer (Whisper) because Teams captions weren't available (D-321). */
+  source?: "local";
 }
 export interface MeetingAction {
   id: string;

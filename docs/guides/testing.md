@@ -159,7 +159,10 @@ suggests `total;`, anywhere else `// suggested by the fake engine`. A caption to
 comes back as `[<language>] <caption>`. The meetings test service rings for
 a Teams call when a test calls `window.jigTestRing(name)` in the meetings window (D-254). It has three
 Teams chats (D-296): an unread one-to-one with Alex, a "Portal planning" group and a one-to-one with
-Sam; Call… → Chat finds Alex's and Sam's, anyone else has none. Messages you send are kept while Jig runs.
+Sam; Call… → Chat finds Alex's and Sam's, anyone else has none. `window.jigTestCaptionsUnavailable()`
+in the call window makes Teams captions "unavailable" in a running test meeting (D-321): the
+transcript gets the policy notice and, with `meetings.localTranscription` on, lines marked Local
+(alternating Alex and You); off, no more lines. Messages you send are kept while Jig runs.
 
 ## Screenshots
 

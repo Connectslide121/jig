@@ -205,6 +205,11 @@ export const ConfigSchema = z.object({
       aiTranslation: z.boolean().default(true),
       /** The model that translates captions (a fast one: lines come every few seconds). */
       translationModel: z.string().max(100).default("haiku"),
+      /**
+       * When Teams captions aren't available in a meeting or call, transcribe it on this computer
+       * (Whisper, the Speech settings' model; D-321). Audio never leaves the meeting window.
+       */
+      localTranscription: z.boolean().default(true),
     })
     .prefault({}),
   /** Azure tenants (D-282). */

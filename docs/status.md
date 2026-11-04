@@ -1,5 +1,35 @@
 # Status
 
+Meeting captions in group meetings, and a transcript without them (2026-11-04, D-321): in Teams
+meetings with several people, Jig 0.7.0 showed "Captions could not start" right after joining. The
+cause: Jig asked for captions before Teams had said you may start them in that meeting (the meeting's
+permissions arrive a moment after joining, and since 0.7.0 joins are fast enough to beat them); Teams
+then answers "disabled in meeting policy". Jig now waits for them and tries again (after 2, 4, 8, 15
+and 30 s), and when captions really can't start, the transcript says Teams' own reason and code
+(also in the status bar's tooltip and in Jig's log). When Teams captions aren't available, Jig
+**transcribes the meeting on this computer**: everyone's audio from the call and your microphone,
+with Whisper (the model in Settings → Speech), the same as captions: nothing is recorded or sent, only
+the text is kept. Those lines carry a small **Local** mark; your own lines say "You", others get the
+name of whoever was speaking then, or "Unknown speaker". The status bar says **Transcribing locally**;
+when Teams captions start working, Jig switches back without writing lines twice. Turn it off in the
+transcript's ⋯ menu (**Transcribe on this computer without Teams captions**). Not measured yet: CPU
+during a 30-minute call (no real call here). Covered by unit tests and `e2e/meetings.spec.ts` (the new
+test was run once for its screenshot). **Check in the next daily (Sprinta Daily, several people):**
+1. Join from Jig as usual. Within about 10 s the status bar should say **Capturing live captions**
+   and lines should appear with names. If the status says "Captions not ready: … trying again in N s"
+   for a moment first, that is the fix working.
+2. If it still fails, the transcript's orange line now reads "Captions could not start: <Teams'
+   reason> (code/subcode)": send that text (or `~/.jig/logs/main.log`, lines with `[meetings] Meeting
+   capture`). "MeetingRestricted" or "policy" there means the organiser's or tenant's setting.
+3. Then the line "Teams captions unavailable — transcribing on this computer" should follow, and the
+   status bar should say **Transcribing locally**; speak and check your lines appear as "You" with
+   **Local**, and colleagues' lines with their names (or "Unknown speaker" when two talk at once).
+4. Watch the call while it transcribes locally: video and audio should stay smooth (Task Manager →
+   Jig's CPU; note the model in Settings → Speech, and whether it says graphics card or processor).
+5. Generate notes after the meeting: local lines should be in the notes like captions.
+6. The New Podium Daily (external organiser) may refuse captions for real: its orange line should now
+   say so, and the local transcript should cover it.
+
 Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.

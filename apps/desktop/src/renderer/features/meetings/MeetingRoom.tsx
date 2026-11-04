@@ -1,4 +1,5 @@
 import {
+  AudioLines,
   EyeOff,
   LayoutPanelLeft,
   MessageSquare,
@@ -32,6 +33,7 @@ import {
   type MeetingStart,
 } from "../../../shared/meetings";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
+import { updateConfig, useConfig } from "../../stores/config";
 import { Button, cn, Empty, type MenuEntry, openMenuAt, Select, Spinner } from "../../ui";
 import { IncomingCall } from "./Calls";
 import { ChatPanel, type ChatStatus } from "./Chat";
@@ -44,7 +46,7 @@ const callLanguage = () =>
   SPEECH_LANGUAGES.find(([code]) => code === navigator.language.toLowerCase())?.[0] ?? "en-us";
 
 import { NotesPanel, PeoplePanel, TranscriptPanel } from "./Panels";
-import { AccountLabel, MeetingsShell, StatusBar, useMeetingsData } from "./Shell";
+import { AccountLabel, MeetingsShell, StatusBar, useConfigStore, useMeetingsData } from "./Shell";
 import { Slot } from "./Slots";
 import { Stage } from "./Stage";
 
@@ -82,6 +84,10 @@ function Room() {
   const media = useRef<MeetingMedia | null>(null);
   media.current ??= new MeetingMedia((e) => setError(errorMessage(e)));
   useEffect(() => media.current!.subscribe(setMediaState), []);
+  // Transcribe on this computer when Teams captions aren't available (D-321).
+  useConfigStore();
+  const localTranscription = useConfig((s) => s.config?.meetings.localTranscription ?? true);
+  useEffect(() => media.current!.setLocalTranscription(localTranscription), [localTranscription]);
   useHostEvent("meetings.leaveRequested", () => {
     void run(async () => {
       await media.current!.leave();
@@ -125,9 +131,13 @@ function Room() {
         void call("meetings.incoming", { name: r?.name }).catch(() => {});
       }, fakeService)
       .catch((e) => setError(`Jig can't ring for Teams calls: ${errorMessage(e)}`));
-    // The test meeting service rings on request, so the e2e tests can answer a call.
+    // The test meeting service rings on request, so the e2e tests can answer a call; and makes Teams
+    // captions unavailable, so they can see the local transcript take over.
     if (fakeService)
-      (window as { jigTestRing?: (name: string) => void }).jigTestRing = (name) => m.fakeRing(name);
+      Object.assign(window, {
+        jigTestRing: (name: string) => m.fakeRing(name),
+        jigTestCaptionsUnavailable: () => m.fakeCaptionsUnavailable(),
+      });
   }, [listen, fakeService, setError]);
   // Your caption language from last time applies to the next call (D-260).
   const savedLanguage = overview?.captionLanguage;
@@ -227,9 +237,25 @@ function Room() {
     );
   const active = overview.records.find((r) => r.id === overview.activeId);
   const record = active;
-  const captionTrouble = active && /unavailable|stopped/i.test(active.capture);
+  const captionTrouble = active && /unavailable|stopped|not ready|locally/i.test(active.capture);
+  // Why: the latest notice in the transcript (the real error from Teams), as the status's tooltip.
+  const captionReason = captionTrouble ? active.gaps.at(-1)?.reason : undefined;
   const resize = (key: MeetingSizeKey, size: number) => changeLayout(resizeSlot(layout, key, size));
   const panelMenu = (id: MeetingPanelId): MenuEntry[] => [
+    ...(id === "transcript"
+      ? ([
+          {
+            label: "Transcribe on this computer without Teams captions",
+            icon: AudioLines,
+            checked: localTranscription,
+            onSelect: () =>
+              void updateConfig({ meetings: { localTranscription: !localTranscription } }).catch((e) =>
+                setError(errorMessage(e)),
+              ),
+          },
+          { separator: true },
+        ] satisfies MenuEntry[])
+      : []),
     { heading: "Move to" },
     ...MEETING_SLOTS.map((slot) => ({
       label: SLOT_TITLES[slot],
@@ -399,7 +425,7 @@ function Room() {
             active ? (mediaState.state === "Connected" ? "bg-success" : "bg-warning") : "bg-hint",
           )}
         />
-        <span className="min-w-0 truncate text-muted">
+        <span className="min-w-0 truncate text-muted" title={captionReason}>
           {active
             ? `${mediaState.state} · ${active.capture}${mediaState.sharing ? " · Sharing your screen" : ""}`
             : "No call"}

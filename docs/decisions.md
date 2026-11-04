@@ -4507,3 +4507,59 @@ and tabs in the view.
 - **IPC:** every `browser.*` method takes `chatId`; `browser.pages` (method and event) replaces the
   `browser.state` event; `browser.frame` and `browser.reveal` carry `chatId`; `browser.input` is
   `{ chatId, input }`.
+
+## D-321: Teams captions retry until the meeting allows them, and the transcript falls back to Whisper on this computer
+
+Jon, 2026-11-04: in the two daily stand-ups on Jig 0.7.0 the transcript showed only "Captions could not
+start" about 1.5 s after joining, so there was no transcript, notes or actions. The same Sprinta Daily
+(same link) got 627 captions on 0.3.0 the day before, a colleague on an older Jig got captions in the
+same meeting, and one-to-one calls kept working. Asked for the real reason, a fix, and a transcript
+made on this computer when Teams captions aren't available.
+
+- **Cause (Claude, from the calling SDK 2.0.0's code).** For a Teams *meeting* the SDK checks your
+  `startLiveMeetingCaptions` capability before starting captions; a one-to-one call checks
+  `startLiveCallingCaptions` instead. The meeting's capabilities arrive a moment after the call is
+  Connected; until then the capability reads `NotInitialized` (not present), and `startCaptions` throws
+  "Captions feature is disabled in meeting policy." (403/45203) although nothing is disabled. Jig
+  started captions the instant the call said Connected and never tried again. Since D-292 the call
+  window and its Teams call agent are made at Jig's start and kept, so a join reaches Connected in about
+  a second instead of after the agent's own start-up: the start now always beat the capabilities. That
+  is the regression from 0.3.0. The colleague's Jig (and 0.3.0) were slow enough to win the race.
+  The D-277 translation change and the chat polling don't touch the start (checked).
+- **The fix (Claude, on my own: the timings).** The captions and capabilities features are taken as
+  soon as the call exists. On Connected, a capability still `NotInitialized` gets up to 8 s
+  (`capabilitiesChanged` ends the wait early). A failed start is retried after 2, 4, 8, 15 and 30 s
+  (a capability change during a wait retries at once); "already active" (someone else started them)
+  counts as running; a real restriction (`MeetingRestricted`, `UserPolicyRestricted`, `RoleRestricted`,
+  Teams Premium…) or an unsupported language stops at once and says that the organiser or the
+  organisation's policy turned captions off. After `startCaptions` resolves Jig waits up to 20 s for
+  `CaptionsActiveChanged`, since several SDK refusals return without an error. When running captions
+  stop, Jig tries once more after 3 s. `CaptionsKindChanged` re-binds the captions object. Pure logic:
+  `shared/meetingTranscript.ts` (`captionStartDecision`, `captionErrorText`).
+- **The real reason is kept (Jon).** The transcript's notice says "Captions could not start:" plus the
+  SDK's message and codes, the status bar's tooltip shows it, and main logs every capture status change
+  (`[meetings] Meeting capture` / `Meeting capture gap`) to `main.log`. Why the red banner never showed:
+  the error went to the call window's status bar, and every button there (`run()`, e.g. Unmute) clears
+  it first, so it was gone before anyone looked. Caption failures no longer use the banner.
+- **Local transcript (Jon; how Claude, on my own).** When Teams captions failed twice (about 6 s) or
+  gave up, and `meetings.localTranscription` is on (default), the call window transcribes the call
+  itself: the calling SDK's remote audio (`call.remoteAudioStreams[i].getMediaStream()`, supported in
+  2.0.0) and your microphone (`getUserMedia` on the call's microphone, echo-cancelled; silence while
+  you're muted) go through Web Audio at 16 kHz, are cut into pieces of 4–10 s at a 0.7 s silence
+  (`SpeechChunker`), and each piece goes to dictation's Whisper worker (the Speech settings' model and
+  graphics card choice, the meeting's spoken language). Audio stays in the call window's memory until
+  its piece is transcribed and is never written or sent; only the text goes to main through
+  `meetings.caption`, with `source: "local"`. Your microphone's lines are "You"; a piece of the call's
+  audio goes to the participant whose `isSpeaking` overlaps it most (at least a third of it and twice
+  anyone else), else "Unknown speaker" (`attributePiece`). More than 4 pieces waiting: newer ones are
+  skipped with one notice, so the call stays smooth. The model isn't downloaded: the notice says to
+  download it in Settings → Speech (no download prompt during a call).
+- **Switching (Claude, on my own).** Teams captions win whenever they run (`nextSource`): the first
+  Teams caption or `CaptionsActiveChanged` stops the local transcript, and a local piece mostly said
+  after Teams took over is dropped (`keepLocalPiece`), so no line is written twice. The transcript
+  shows "Teams captions unavailable — transcribing on this computer" once, a small **Local** mark beside
+  the speaker, and the status bar "Transcribing locally". Notes, Ask Claude, actions and Claude's
+  caption translation read local lines like any other; `transcriptText` marks them as transcribed on
+  this computer with a speaker that may be a guess.
+- **Control (Jon).** `meetings.localTranscription` (Settings through chats, the transcript panel's ⋯
+  menu). It isn't an AI call in the background: Whisper runs on this computer (D-208).

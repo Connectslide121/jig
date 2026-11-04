@@ -37,6 +37,7 @@ import {
 import { getConfig } from "../config";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
+import { logger } from "../log";
 import { projectStore } from "../projects";
 import { createChat, sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
@@ -48,6 +49,8 @@ import { ownMediaUrl, ownPagePermission } from "./permissions";
 import { hideShareFrame, showShareFrame } from "./shareFrame";
 import { MeetingStore } from "./store";
 import { CaptionTranslator } from "./translate";
+
+const log = logger("meetings");
 
 /** The test meeting service's people have pictures, so the avatars can be seen in tests. */
 const svgPhoto = (fill: string) =>
@@ -973,6 +976,9 @@ export async function startMeetings(): Promise<void> {
   handle("meetings.status", async ({ id, status, capture, gap }, ctx) => {
     own(ctx);
     current(id);
+    // The capture's timeline in main.log, so a failure's real reason is there afterwards (D-321).
+    if (gap) log.warn("Meeting capture gap", { status, capture, gap });
+    else log.info("Meeting capture", { status, capture });
     await store.update(id, (r) => lifecycle(r, status, capture, gap));
     if (["ended", "interrupted"].includes(status)) {
       translator.stop();

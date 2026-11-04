@@ -156,6 +156,7 @@
         "apps/desktop/src/main/meetings/**",
         "apps/desktop/src/shared/meetings.ts",
         "apps/desktop/src/shared/meetingLayout.ts",
+        "apps/desktop/src/shared/meetingTranscript.ts",
         "addons/meetings/**",
         "apps/desktop/src/renderer/features/sessions/Composer.tsx"
       ],

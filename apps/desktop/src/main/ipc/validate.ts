@@ -184,6 +184,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
           translatedLanguage: z.string().max(40).optional(),
           // Only Teams' translations come from the meeting window; Claude's are made in main.
           translatedBy: z.literal("teams").optional(),
+          // Transcribed in the meeting window by Whisper while Teams captions don't run (D-321).
+          source: z.literal("local").optional(),
         })
         .strict(),
     })

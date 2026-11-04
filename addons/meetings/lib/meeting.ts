@@ -41,7 +41,7 @@ export function transcriptText(record: MeetingRecord, through?: string): string 
     .filter((c) => !through || c.timestamp <= through)
     .map(
       (c) =>
-        `[${c.timestamp}] ${c.speaker}${c.final ? "" : " (unfinished)"}: ${c.text}${c.translated ? ` (translated to ${c.translatedLanguage}: ${c.translated})` : ""}`,
+        `[${c.timestamp}] ${c.speaker}${c.final ? "" : " (unfinished)"}${c.source === "local" ? " (transcribed on this computer; speaker may be a guess)" : ""}: ${c.text}${c.translated ? ` (translated to ${c.translatedLanguage}: ${c.translated})` : ""}`,
     );
   const gaps = record.gaps
     .filter((g) => !through || g.at <= through)
