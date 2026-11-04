@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codexPolicy } from "./codex";
+import { codexExitError, codexPolicy } from "./codex";
 
 describe("Codex permission modes", () => {
   it("runs Don't ask without a sandbox and never asks, like Claude Code's bypassPermissions (D-334)", () => {
@@ -41,5 +41,20 @@ describe("Codex permission modes", () => {
       sandbox: "read-only",
       sandboxPolicy: { type: "readOnly", networkAccess: false },
     });
+  });
+});
+
+describe("Codex's app-server ending", () => {
+  it("says nothing when Jig stopped it or it ended cleanly", () => {
+    expect(codexExitError(1, null, true, "boom")).toBeUndefined();
+    expect(codexExitError(null, "SIGTERM", true, "")).toBeUndefined();
+    expect(codexExitError(0, null, false, "bye")).toBeUndefined();
+  });
+
+  it("reports an exit code or a signal with the last line Codex logged", () => {
+    expect(codexExitError(3, null, false, "starting\npanic: oops\n")).toBe(
+      "Codex stopped (exit code 3): panic: oops",
+    );
+    expect(codexExitError(null, "SIGKILL", false, "")).toBe("Codex stopped (stopped by SIGKILL)");
   });
 });

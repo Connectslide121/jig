@@ -18,6 +18,7 @@ import { resolveCommand } from "../addons/winCommand";
 import { logger } from "../log";
 import { findCodex } from "../providers/codex";
 import { makeWhich } from "../terminals/shell";
+import { killProcess } from "../updates/run";
 import { isReadOnlyChatTool } from "./chatTools";
 import type {
   AskForApproval,
@@ -136,6 +137,22 @@ export function versionFromUserAgent(userAgent: unknown): string | undefined {
 type Pending = { resolve: (value: unknown) => void; reject: (error: Error) => void };
 
 /**
+ * What the chat says when `codex app-server` ends: nothing when Jig stopped it or it ended cleanly;
+ * otherwise its exit code or the signal that killed it, with the last line it logged.
+ */
+export function codexExitError(
+  code: number | null,
+  signal: NodeJS.Signals | null,
+  stoppedByJig: boolean,
+  stderr: string,
+): string | undefined {
+  if (stoppedByJig || (code === 0 && !signal)) return undefined;
+  const tail = stderr.trim().split(/\r?\n/).pop();
+  const how = code !== null ? `exit code ${code}` : signal ? `stopped by ${signal}` : "stopped";
+  return `Codex stopped (${how})${tail ? `: ${tail}` : ""}`;
+}
+
+/**
  * `codex app-server` over stdio: JSON-RPC, one message per line. Requests get numbered ids;
  * notifications and Codex's own requests (approvals) go to the handlers.
  */
@@ -210,10 +227,8 @@ class CodexRpc {
       handlers.exit(error);
     };
     this.child.on("error", (error) => end(`Codex could not be started (${error.message})`));
-    this.child.on("exit", (code) => {
-      const tail = this.stderr.trim().split(/\r?\n/).pop();
-      end(code && !this.closed ? `Codex stopped (exit code ${code})${tail ? `: ${tail}` : ""}` : undefined);
-    });
+    // "close", not "exit": its last lines (a turn's end, an answer) are read before the chat ends.
+    this.child.on("close", (code, signal) => end(codexExitError(code, signal, this.closed, this.stderr)));
   }
 
   request<T>(method: string, params: unknown): Promise<T> {
@@ -249,7 +264,7 @@ class CodexRpc {
     } catch {
       // Already closed.
     }
-    this.child.kill();
+    killProcess(this.child);
   }
 
   /** initialize + initialized; resolves with Codex's version. */
@@ -392,7 +407,14 @@ export class CodexEngine implements Engine {
         silent.handle(message.method, message.params);
         emit(normalizer.handle(message));
       },
-      request: (message) => void answer(message),
+      // Every request gets an answer, or Codex waits for it forever: a failure declines it.
+      request: (message) =>
+        void answer(message).catch((error: Error) => {
+          log.warn(`Couldn't answer Codex's ${message.method}`, error);
+          if (message.method === "mcpServer/elicitation/request")
+            rpc.respond(message.id, { action: "decline", content: null, _meta: null });
+          else rpc.respond(message.id, { decision: "decline" satisfies CommandExecutionApprovalDecision });
+        }),
       exit: (error) => {
         closeMcp();
         endTurn();
@@ -427,8 +449,9 @@ export class CodexEngine implements Engine {
       }
       const controller = new AbortController();
       asking.set(String(message.id), controller);
-      const decision = await options.askPermission(request, controller.signal);
-      asking.delete(String(message.id));
+      const decision = await options
+        .askPermission(request, controller.signal)
+        .finally(() => asking.delete(String(message.id)));
       if (controller.signal.aborted) return;
       const reply: CommandExecutionApprovalDecision & FileChangeApprovalDecision =
         decision.behavior === "deny" ? "decline" : decision.always ? "acceptForSession" : "accept";
@@ -454,17 +477,18 @@ export class CodexEngine implements Engine {
         return accept();
       const controller = new AbortController();
       asking.set(String(message.id), controller);
-      const decision = await options.askPermission(
-        {
-          requestId: normalizer.mcpCallId(call.server, call.tool) ?? `mcp-${message.id}`,
-          toolName,
-          input: call.input,
-          title: call.message || undefined,
-          canAlwaysAllow: call.canPersist,
-        },
-        controller.signal,
-      );
-      asking.delete(String(message.id));
+      const decision = await options
+        .askPermission(
+          {
+            requestId: normalizer.mcpCallId(call.server, call.tool) ?? `mcp-${message.id}`,
+            toolName,
+            input: call.input,
+            title: call.message || undefined,
+            canAlwaysAllow: call.canPersist,
+          },
+          controller.signal,
+        )
+        .finally(() => asking.delete(String(message.id)));
       if (controller.signal.aborted) return;
       if (decision.behavior === "deny") decline();
       else accept(Boolean(decision.always));
@@ -546,8 +570,10 @@ export class CodexEngine implements Engine {
       }
       response ??= await rpc.request<ThreadStartResponse>("thread/start", common satisfies ThreadStartParams);
       threadId = response.thread.id;
-      // The first turn sends the sandbox with its extra folders.
-      next = { ...next, sandboxPolicy: policy.sandboxPolicy };
+      // The first turn sends the sandbox with its extra folders, in the mode the chat has now (it may
+      // have changed while the thread started).
+      const current = codexPolicy(permissionMode, options.additionalDirectories);
+      next = { ...next, approvalPolicy: current.approvalPolicy, sandboxPolicy: current.sandboxPolicy };
       emit(normalizer.started(response, permissionMode));
     })();
     ready.catch((error: Error) => {
@@ -579,20 +605,28 @@ export class CodexEngine implements Engine {
       return input;
     };
 
-    /** A turn's request with the overrides waiting for it; in Plan only, the instruction to plan first. */
-    const turnParams = (input: UserInput[], clientUserMessageId: string): TurnStartParams => {
+    /**
+     * Starts a turn with the overrides waiting for it; in Plan only, with the instruction to plan
+     * first. When Codex refuses the turn, the overrides wait for the next one (newer ones win).
+     */
+    const requestTurn = async (input: UserInput[], clientUserMessageId: string) => {
       const overrides = next;
       next = {};
-      return {
-        threadId: threadId!,
-        clientUserMessageId,
-        input:
-          permissionMode === "plan"
-            ? [{ type: "text", text: PLAN_MODE_PROMPT, text_elements: [] }, ...input]
-            : input,
-        summary: "auto",
-        ...overrides,
-      };
+      try {
+        await rpc.request<TurnStartResponse>("turn/start", {
+          threadId: threadId!,
+          clientUserMessageId,
+          input:
+            permissionMode === "plan"
+              ? [{ type: "text", text: PLAN_MODE_PROMPT, text_elements: [] }, ...input]
+              : input,
+          summary: "auto",
+          ...overrides,
+        } satisfies TurnStartParams);
+      } catch (error) {
+        next = { ...overrides, ...next };
+        throw error;
+      }
     };
     const turnFailed = (error: Error) => {
       if (rpc.closed) return;
@@ -608,7 +642,7 @@ export class CodexEngine implements Engine {
     const startTurn = (input: UserInput[]) =>
       void ready
         .then(async () => {
-          if (threadId) await rpc.request<TurnStartResponse>("turn/start", turnParams(input, randomUUID()));
+          if (threadId) await requestTurn(input, randomUUID());
         })
         .catch(turnFailed);
 
@@ -623,17 +657,22 @@ export class CodexEngine implements Engine {
         void ready
           .then(async () => {
             if (!threadId) return;
-            // A message sent while Codex works joins the running turn.
-            if (normalizer.turnId && priority) {
-              await rpc.request("turn/steer", {
-                threadId,
-                clientUserMessageId,
-                input,
-                expectedTurnId: normalizer.turnId,
-              });
-              return;
+            // A message sent while Codex works joins the running turn; if that turn ended meanwhile,
+            // the message starts the next one.
+            const running = normalizer.turnId;
+            if (running && priority) {
+              const steered = await rpc
+                .request("turn/steer", { threadId, clientUserMessageId, input, expectedTurnId: running })
+                .then(
+                  () => true,
+                  (error: Error) => {
+                    if (normalizer.turnId === running) throw error;
+                    return false;
+                  },
+                );
+              if (steered) return;
             }
-            await rpc.request<TurnStartResponse>("turn/start", turnParams(input, clientUserMessageId));
+            await requestTurn(input, clientUserMessageId);
           })
           .catch(turnFailed);
         return clientUserMessageId;
