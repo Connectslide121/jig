@@ -62,7 +62,7 @@ A new state file is documented here in the same commit that adds it.
 | `appearance.uiFont` / `monoFont` | Inter / JetBrains Mono | font families |
 | `appearance.fontSize` | `13` | base UI font size in px (11–18) |
 | `engine.claudePath` | `""` | your own `claude` binary; empty = the one shipped with the Agent SDK |
-| `engine.provider` | `"claude"` | who runs new chats (D-309): `claude` (Claude Code) or `codex` (OpenAI's Codex, signed in with ChatGPT); a project's `provider` overrides it, and a chat keeps the one it started with unless a limit hands it over (D-338). Protected |
+| `engine.provider` | `"claude"` | who runs new chats (D-309): `claude` (Claude Code) or `codex` (OpenAI's Codex, signed in with ChatGPT); a project's `provider` overrides it, and a chat keeps the one it started with until a limit or you hand it over (D-338, D-339). Protected |
 | `engine.onLimit` | `"ask"` | when a chat hits its plan's limit (D-338): `ask` (the limit card's choices), `switch` (the same chat carries on with the other provider when its plan has room, else waits for the reset), `wait` (resumes on the same provider at the reset). A project's `onLimit` overrides it; queued tasks follow it too. Protected |
 | `engine.codexPath` | `""` | your own `codex` binary; empty = the one on PATH. Protected |
 | `engine.codexModel` | `"sol"` | model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`: always the newest of it, D-310) or an exact slug |

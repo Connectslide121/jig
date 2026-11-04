@@ -1,4 +1,4 @@
-import type { ChatItem, ChatProvider } from "./engine";
+import { type ChatItem, type ChatProvider, type EffortLevel, ENGINE_CAPABILITIES } from "./engine";
 
 /**
  * The handoff a chat's new provider reads when the chat continues with it (D-338): built from the
@@ -56,9 +56,7 @@ type Todo = { content?: unknown; status?: unknown };
 export function buildHandoff(input: HandoffInput): string {
   const { items, from, to } = input;
   // Messages you typed (not ones Jig or an add-on sent), top-level replies, and tool calls.
-  const mine = items.filter(
-    (i): i is Extract<ChatItem, { kind: "user" }> => i.kind === "user" && !i.from && Boolean(i.text.trim()),
-  );
+  const mine = ownMessages(items);
   if (mine.length === 0) return "";
   const replies = items.filter(
     (i): i is Extract<ChatItem, { kind: "assistant" }> =>
@@ -122,14 +120,7 @@ export function buildHandoff(input: HandoffInput): string {
         .join("\n")}`,
     );
 
-  const files = [
-    ...new Set(
-      tools
-        .filter((t) => EDIT_TOOLS.has(t.name) && t.status !== "error")
-        .map((t) => t.input.file_path ?? t.input.notebook_path)
-        .filter((p): p is string => typeof p === "string" && Boolean(p)),
-    ),
-  ];
+  const files = editedFiles(items);
   if (files.length || input.diffStat?.trim()) {
     const listed = files.slice(-FILES_MAX).map((f) => `- ${f}`);
     if (files.length > FILES_MAX) listed.unshift(`- … and ${files.length - FILES_MAX} more`);
@@ -165,9 +156,88 @@ export function buildHandoff(input: HandoffInput): string {
   return `<jig-handoff>\n${text}\n</jig-handoff>`;
 }
 
+/** The files a chat's own steps edited (not its subagents'), each once, in order. */
+export function editedFiles(items: ChatItem[]): string[] {
+  return [
+    ...new Set(
+      items
+        .filter(
+          (t): t is Extract<ChatItem, { kind: "tool" }> =>
+            t.kind === "tool" && !t.parentId && EDIT_TOOLS.has(t.name) && t.status !== "error",
+        )
+        .map((t) => t.input.file_path ?? t.input.notebook_path)
+        .filter((p): p is string => typeof p === "string" && Boolean(p)),
+    ),
+  ];
+}
+
+/** Messages you typed in a chat (not ones Jig or an add-on sent): what a handoff is built around. */
+export const ownMessages = (items: ChatItem[]): Extract<ChatItem, { kind: "user" }>[] =>
+  items.filter(
+    (i): i is Extract<ChatItem, { kind: "user" }> => i.kind === "user" && !i.from && Boolean(i.text.trim()),
+  );
+
 /** A tool call's input in a few words (its command, path or pattern). */
 function stepSummary(input: Record<string, unknown>): string {
   for (const key of ["command", "file_path", "path", "pattern", "url", "description"])
     if (typeof input[key] === "string" && input[key]) return String(input[key]).replace(/\s+/g, " ");
   return "";
+}
+
+/**
+ * The model tiers of the two providers, top to bottom (D-339): Claude's opus/sonnet/haiku and
+ * ChatGPT's families Sol/Terra/Luna (D-310) stand for the same place in each line-up.
+ */
+const TIERS: Record<ChatProvider, readonly string[]> = {
+  claude: ["opus", "sonnet", "haiku"],
+  codex: ["sol", "terra", "luna"],
+};
+
+/** A model's tier (0 = top), from a family alias or a full id (`claude-opus-5-5`, `gpt-6.1-sol`). */
+export function modelTier(model: string | undefined): number | undefined {
+  const m = model?.toLowerCase() ?? "";
+  for (const line of Object.values(TIERS)) {
+    const tier = line.findIndex((family) => new RegExp(`(^|[^a-z])${family}([^a-z]|$)`).test(m));
+    if (tier >= 0) return tier;
+  }
+  return undefined;
+}
+
+/**
+ * The model and effort a chat gets on the provider it moves to (D-339): the same tier of the other
+ * provider's line-up, and the same effort when that provider has it ("ultra" is Claude's "max").
+ * A model Jig can't place (the provider's default, a custom id) takes the new provider's defaults.
+ */
+export function mapModelAndEffort(input: {
+  to: ChatProvider;
+  model: string | undefined;
+  effort: EffortLevel | undefined;
+  defaults: { model: string; effort?: EffortLevel };
+}): { model: string; effort?: EffortLevel } {
+  const tier = modelTier(input.model);
+  const levels = ENGINE_CAPABILITIES[input.to].effortLevels;
+  const effort =
+    input.effort === undefined
+      ? input.defaults.effort
+      : levels.includes(input.effort)
+        ? input.effort
+        : input.effort === "ultra"
+          ? "max"
+          : input.defaults.effort;
+  if (tier === undefined) return { model: input.defaults.model, effort: input.defaults.effort };
+  return { model: TIERS[input.to][tier]!, effort };
+}
+
+/** What the chat can't do any more on the provider it moves to, in words (D-339). */
+export function featuresLost(from: ChatProvider, to: ChatProvider): string[] {
+  const had = ENGINE_CAPABILITIES[from];
+  const has = ENGINE_CAPABILITIES[to];
+  const lost: string[] = [];
+  if (had.planMode && !has.planMode) lost.push("Plan mode");
+  if (had.questions && !has.questions) lost.push("questions with choices");
+  if (had.subagents && !has.subagents) lost.push("subagents");
+  if (had.rewind && !has.rewind) lost.push("rewinding to an earlier message");
+  if (had.fork && !has.fork) lost.push("forking the chat");
+  if (had.promptSuggestions && !has.promptSuggestions) lost.push("next-message suggestions");
+  return lost;
 }

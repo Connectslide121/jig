@@ -725,4 +725,41 @@ describe("limits (D-338)", () => {
     expect((await metaOf(waiting.m, other.id)).limit).toBeUndefined();
     await waiting.m.shutdown();
   });
+  it("hands over by hand between turns (D-339): a plan, a divider, and the next message brings the handoff", async () => {
+    const { m, sent } = twoEngines("ask", false);
+    const chat = await create(m);
+    await m.send(chat.id, "Fix the cart total");
+    // While the turn runs it can't be handed over.
+    const busy = await m.handOverPlan(chat.id, "codex");
+    expect(busy.blocked).toContain("hand over once this turn has finished");
+    await expect(m.handOver(chat.id, "codex")).rejects.toMatchObject({ code: "invalid_args" });
+    await until(async () => (await metaOf(m, chat.id)).status === "idle");
+
+    const plan = await m.handOverPlan(chat.id, "codex");
+    expect(plan).toMatchObject({
+      from: "claude",
+      to: "codex",
+      after: { model: "sol" },
+      room: { ok: false, reason: "no room" },
+      messages: 1,
+    });
+    expect(plan.blocked).toBeUndefined();
+    // No room on the other plan is a warning, not a stop.
+    const meta = await m.handOver(chat.id, "codex");
+    expect(meta).toMatchObject({ provider: "codex", model: "sol", status: "idle" });
+    expect(meta.providers?.[0]).toMatchObject({ provider: "claude", reason: "manual" });
+    const items = (await m.snapshot(chat.id)).items;
+    expect(items.at(-1)).toMatchObject({ kind: "handoff", from: "claude", to: "codex", reason: "manual" });
+    // Nothing is sent until you write.
+    expect(sent.some((s) => s.provider === "codex")).toBe(false);
+    await m.send(chat.id, "Carry on please");
+    await until(async () => sent.some((s) => s.provider === "codex"));
+    const handed = sent.find((s) => s.provider === "codex")!.text;
+    expect(handed).toContain("The user moved it to you");
+    expect(handed).toContain("> Fix the cart total");
+    expect(handed).toContain("Carry on please");
+    // Already there: nothing to do.
+    expect((await m.handOverPlan(chat.id, "codex")).blocked).toContain("already runs on ChatGPT");
+    await m.shutdown();
+  });
 });

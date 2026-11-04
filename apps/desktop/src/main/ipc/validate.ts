@@ -348,6 +348,8 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
   "sessions.setProvider": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
+  "sessions.handOverPlan": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
+  "sessions.handOver": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
   "sessions.limitAction": z.object({
     id,
     itemId: z.string().min(1).max(200),

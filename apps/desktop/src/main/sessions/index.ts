@@ -16,6 +16,7 @@ import {
   type SessionMeta,
   type SessionStatus,
 } from "../../shared/engine";
+import { mapModelAndEffort } from "../../shared/handoff";
 import { JigError } from "../../shared/ipc";
 import type { Project } from "../../shared/projects";
 import {
@@ -343,9 +344,15 @@ export function startSessions(): void {
     providerRoom: (provider) =>
       planHasRoom(planUsageOf(provider), provider === "codex" ? "ChatGPT" : "Claude"),
     providerResetsAt: (provider) => planResetsAt(planUsageOf(provider)),
+    // A chat that moves to the other provider keeps its tier and effort there (D-339), else its defaults.
     providerDefaults: (meta, provider) => {
       const project = meta.projectId ? projects.get(meta.projectId) : undefined;
-      const { model, effort } = chatDefaults(project, provider);
+      const { model, effort } = mapModelAndEffort({
+        to: provider,
+        model: meta.model || meta.activeModel,
+        effort: meta.effort,
+        defaults: chatDefaults(project, provider),
+      });
       return { model, effort, permissionMode: modeFor(provider, meta.permissionMode) };
     },
     diffStat: (cwd) => gitDiffStat(cwd),
@@ -531,6 +538,8 @@ export function startSessions(): void {
     const permissionMode = modeFor(provider, fallback as PermissionMode);
     return m.setProvider(id, provider, { model, effort, permissionMode });
   });
+  handle("sessions.handOverPlan", ({ id, provider }) => m.handOverPlan(id, provider));
+  handle("sessions.handOver", ({ id, provider }) => m.handOver(id, provider));
   handle("sessions.limitAction", ({ id, itemId, action }) => m.limitAction(id, itemId, action));
   handle("sessions.setPermissionMode", ({ id, mode }) => m.setPermissionMode(id, mode));
   handle("sessions.rename", ({ id, title }) => m.rename(id, title));

@@ -46,8 +46,8 @@ interface EngineSession {
 
 ## Chat providers (D-309)
 
-A chat runs on Claude Code (the default) or on OpenAI's Codex, and keeps that provider unless a plan
-limit hands it over to the other one (D-338, below) (`SessionMeta.provider`; missing = `claude`, so chats from before read as Claude chats,
+A chat runs on Claude Code (the default) or on OpenAI's Codex, and keeps that provider until it is
+handed over to the other one, by a plan limit (D-338) or by you (D-339), both below (`SessionMeta.provider`; missing = `claude`, so chats from before read as Claude chats,
 `chatProvider(meta)`). New chats take the provider asked for (`sessions.create { provider }`), else
 the project's `provider`, else `engine.provider`. The project's `model` and `effort` are for its own
 provider's chats; a chat on the other provider gets `engine.defaultModel` (Claude) or
@@ -93,13 +93,32 @@ Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude 
   says Dismissed).
 - **Continuing** (`continueWith(to, reason)`): stops the old process, pushes a `handoff` item (the
   divider), moves the old provider's `engineSessionId` and model into `SessionMeta.providers`, sets
-  `provider`, `model`, `effort` and `permissionMode` from `providerDefaults` (a new chat's defaults),
+  `provider`, `model`, `effort` and `permissionMode` from `providerDefaults` (the same model tier
+  and effort on the new provider, `mapModelAndEffort`, else a new chat's defaults, D-339),
   clears the engine session, and sets `handoffPending`. The next turn prepends
   `buildHandoff(...)` (`shared/handoff.ts`; rules, no AI, ≤ 16 000 characters, `diffStat` from
   `git diff --stat HEAD`) inside `<jig-handoff>`. After a limit Jig sends that turn itself ("Carry on
   with this chat's work from where it stopped.", a Jig message in the transcript).
 - **Rewind** to a message before the last handoff is refused (it belongs to the other provider's
   session); the transcript hides rewind on those messages.
+
+### Handing a chat over by hand (D-339)
+
+- **Entry points:** the composer's provider picker (after the first message; before it the picker
+  just switches with `sessions.setProvider`) and "Hand over to …" in the chat's ⋯ menu. Both open
+  `HandoverDialog` (`renderer/features/sessions/HandoverDialog.tsx`) once
+  `sessions.handOverPlan` has answered: `HandoverPlan { from, to, before, after, room, messages,
+  files, blocked? }`, computed with the same `providerDefaults` the handover applies.
+- **Hand over** calls `sessions.handOver`: `handOver(id, to)` refuses while a turn runs
+  (`invalid_args`) and for builder/attempt/worktree chats (`not_allowed`), then `continueWith(to,
+  "manual")`. Nothing is sent: the next message you write brings the handoff. No room on the other
+  plan is a warning in the dialog, not a refusal.
+- **Model tiers** (`mapModelAndEffort`, `shared/handoff.ts`): opus ⇄ sol, sonnet ⇄ terra, haiku ⇄
+  luna, read from an alias or a full id; effort kept when the provider has it, `ultra` → `max` on
+  Claude; anything else takes the provider's defaults. `featuresLost(from, to)` lists the
+  capabilities the dialog says are missing there.
+- **The divider** (`handoff` item) shows both marks, "Claude → ChatGPT", then "handed over by you" or
+  "Claude's limit reached" (`data-reason` on `handoff-divider`).
 
 ## Codex chats (D-311)
 

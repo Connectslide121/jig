@@ -32,6 +32,7 @@ import type {
   ChatProvider,
   ChatUpdate,
   EffortLevel,
+  HandoverPlan,
   McpServerInfo,
   ModelInfo,
   PermissionDecision,
@@ -579,10 +580,18 @@ export interface HostMethods {
   "sessions.setModel": { args: { id: string; model: string }; result: void };
   /**
    * Who runs a chat that hasn't sent anything yet (the new-chat picker, D-314): it takes that
-   * provider's default model and effort. `not_allowed` once the chat has started: a chat keeps its
-   * provider for life (D-309).
+   * provider's default model and effort. `not_allowed` once the chat has started: from then on it
+   * changes provider through `sessions.handOver` (D-339).
    */
   "sessions.setProvider": { args: { id: string; provider: ChatProvider }; result: SessionMeta };
+  /** What handing a chat over to `provider` would do (D-339), for the confirmation dialog. */
+  "sessions.handOverPlan": { args: { id: string; provider: ChatProvider }; result: HandoverPlan };
+  /**
+   * Hands a chat over to the other provider between turns (D-339): a divider, its model, effort and
+   * mode mapped, and your next message brings the handoff. `invalid_args` while a turn runs,
+   * `not_allowed` for chats that stay on Claude Code (the builder).
+   */
+  "sessions.handOver": { args: { id: string; provider: ChatProvider }; result: SessionMeta };
   /**
    * Your choice on a limit card (D-338): `continue` with the other provider, `wait` for the reset and
    * resume, `cancel` the wait, or `dismiss` the card.

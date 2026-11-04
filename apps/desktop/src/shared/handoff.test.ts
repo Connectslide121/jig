@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "./engine";
-import { buildHandoff, HANDOFF_MAX } from "./handoff";
+import { buildHandoff, featuresLost, HANDOFF_MAX, mapModelAndEffort, modelTier } from "./handoff";
 
 const at = "2026-01-01T10:00:00.000Z";
 const user = (id: string, text: string, from?: string): ChatItem => ({
@@ -108,5 +108,62 @@ describe("buildHandoff", () => {
     const text = buildHandoff({ items, from: "codex", to: "claude", reason: "manual", diffStat: long });
     expect(text.length).toBeLessThanOrEqual(HANDOFF_MAX + 40);
     expect(text).toContain("The user moved it to you");
+  });
+});
+
+describe("mapModelAndEffort (D-339)", () => {
+  const defaults = { model: "default-model", effort: "medium" as const };
+
+  it("places a model in its tier, from a family or a full id", () => {
+    expect(modelTier("opus")).toBe(0);
+    expect(modelTier("claude-sonnet-5-5")).toBe(1);
+    expect(modelTier("opus[1m]")).toBe(0);
+    expect(modelTier("gpt-6-luna")).toBe(2);
+    expect(modelTier("Terra")).toBe(1);
+    expect(modelTier("")).toBeUndefined();
+    expect(modelTier("claude-fable-5-1")).toBeUndefined();
+    // A family word inside another word isn't that family.
+    expect(modelTier("solar")).toBeUndefined();
+  });
+
+  it("moves to the same tier on the other provider and keeps an effort it has", () => {
+    expect(mapModelAndEffort({ to: "codex", model: "opus", effort: "high", defaults })).toEqual({
+      model: "sol",
+      effort: "high",
+    });
+    expect(mapModelAndEffort({ to: "claude", model: "gpt-6.1-terra", effort: "xhigh", defaults })).toEqual({
+      model: "sonnet",
+      effort: "xhigh",
+    });
+  });
+
+  it("turns ultra into max on Claude, and no effort into the defaults' one", () => {
+    expect(mapModelAndEffort({ to: "claude", model: "luna", effort: "ultra", defaults }).effort).toBe("max");
+    expect(mapModelAndEffort({ to: "codex", model: "haiku", effort: undefined, defaults })).toEqual({
+      model: "luna",
+      effort: "medium",
+    });
+  });
+
+  it("takes the new provider's defaults for a model it can't place", () => {
+    expect(mapModelAndEffort({ to: "codex", model: "", effort: "high", defaults })).toEqual(defaults);
+    expect(mapModelAndEffort({ to: "claude", model: "my-custom", effort: undefined, defaults })).toEqual(
+      defaults,
+    );
+  });
+});
+
+describe("featuresLost (D-339)", () => {
+  it("lists what ChatGPT chats can't do that Claude chats can", () => {
+    expect(featuresLost("claude", "codex")).toEqual([
+      "subagents",
+      "rewinding to an earlier message",
+      "forking the chat",
+    ]);
+  });
+
+  it("is empty the other way round", () => {
+    expect(featuresLost("codex", "claude")).toEqual([]);
+    expect(featuresLost("claude", "claude")).toEqual([]);
   });
 });

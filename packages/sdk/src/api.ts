@@ -419,8 +419,8 @@ export interface AddonChatSend {
   /** For a new chat; never bypasses permissions. Default: the project's (or Jig's) default. */
   permissionMode?: "default" | "acceptEdits" | "plan";
   /**
-   * For a new chat only (D-330): who runs it. Default: the project's provider, else Jig's. A chat keeps
-   * its provider for life, so with `sessionId` it is refused. "chatgpt" fails while ChatGPT isn't
+   * For a new chat only (D-330): who runs it. Default: the project's provider, else Jig's. Only you hand
+   * a started chat over to the other provider (D-339), so with `sessionId` it is refused. "chatgpt" fails while ChatGPT isn't
    * signed in (the message starts with "ChatGPT isn't signed in").
    */
   provider?: AddonChatProvider;

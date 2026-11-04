@@ -14,6 +14,7 @@ import {
   chatProvider,
   type EffortLevel,
   type EngineEvent,
+  type HandoverPlan,
   type LimitPolicy,
   type McpServerInfo,
   type ModelInfo,
@@ -29,7 +30,7 @@ import {
   type SessionSnapshot,
   type SlashCommandInfo,
 } from "../../shared/engine";
-import { buildHandoff } from "../../shared/handoff";
+import { buildHandoff, editedFiles, ownMessages } from "../../shared/handoff";
 import { JigError } from "../../shared/ipc";
 import { abortJigToolCalls } from "../engine/jigTools";
 import type { ChatToolServer, Engine, EngineSession } from "../engine/types";
@@ -330,7 +331,7 @@ export class SessionManager {
     title?: string;
     model: string;
     permissionMode: PermissionMode;
-    /** Who runs it, for its whole life (D-309); default Claude. */
+    /** Who runs it at first (D-309); default Claude. A handover changes it later (D-338, D-339). */
     provider?: ChatProvider;
     kind?: SessionMeta["kind"];
     buildId?: string;
@@ -1332,6 +1333,55 @@ export class SessionManager {
   }
 
   /**
+   * What handing the chat over to `to` would do (D-339), for the confirmation dialog: the same
+   * settings `handOver` applies, so the dialog says exactly what happens.
+   */
+  async handOverPlan(id: string, to: ChatProvider): Promise<HandoverPlan> {
+    const live = await this.live(id);
+    const meta = live.state.meta;
+    const from = chatProvider(meta);
+    const after = this.options.providerDefaults?.(meta, to) ?? {
+      model: "",
+      permissionMode: meta.permissionMode,
+    };
+    return {
+      from,
+      to,
+      before: {
+        model: meta.activeModel ?? meta.model,
+        effort: meta.effort,
+        permissionMode: meta.permissionMode,
+      },
+      after,
+      room: this.options.providerRoom?.(to) ?? { ok: true },
+      messages: ownMessages(live.state.items).length,
+      files: editedFiles(live.state.items).length,
+      blocked: this.handOverBlocked(live, from, to),
+    };
+  }
+
+  /** Why the chat can't be handed over now, or undefined when it can. */
+  private handOverBlocked(live: Live, from: ChatProvider, to: ChatProvider): string | undefined {
+    if (live.state.meta.kind) return "This chat stays on Claude Code";
+    if (from === to) return `This chat already runs on ${NAME[to]}`;
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status))
+      return `${NAME[from]} is working: hand over once this turn has finished`;
+    return undefined;
+  }
+
+  /**
+   * You hand the chat over to the other provider (D-339): the same handover as after a limit, but
+   * nothing is sent; your next message brings the handoff. Only between turns.
+   */
+  async handOver(id: string, to: ChatProvider): Promise<SessionMeta> {
+    const live = await this.live(id);
+    const blocked = this.handOverBlocked(live, chatProvider(live.state.meta), to);
+    if (blocked) throw new JigError(live.state.meta.kind ? "not_allowed" : "invalid_args", blocked);
+    await this.continueWith(live, to, "manual");
+    return live.state.meta;
+  }
+
+  /**
    * What you chose on a limit card (D-338): carry on with the other provider, wait for the reset and
    * resume, stop waiting (the card asks again), or dismiss it.
    */
@@ -1396,7 +1446,7 @@ export class SessionManager {
 
   /**
    * Another provider for a chat that hasn't started (D-314), with that provider's model and effort.
-   * A chat that has sent a message keeps its provider for life (D-309).
+   * A chat that has sent a message changes provider through a handover instead (`handOver`, D-339).
    */
   async setProvider(
     id: string,

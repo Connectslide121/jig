@@ -75,6 +75,25 @@ export interface ProviderSpan {
   reason: "limit" | "manual";
 }
 
+/**
+ * What handing a chat over to the other provider would do (D-339), for the confirmation dialog:
+ * the model, effort and mode before and after, whether the other plan has room, and why it can't
+ * happen now (`blocked`: a turn runs, or a builder chat stays on Claude Code).
+ */
+export interface HandoverPlan {
+  from: ChatProvider;
+  to: ChatProvider;
+  before: { model: string; effort?: EffortLevel; permissionMode: PermissionMode };
+  after: { model: string; effort?: EffortLevel; permissionMode: PermissionMode };
+  /** The other plan's room on the usage meter; a warning only, the handover still works. */
+  room: { ok: boolean; reason?: string };
+  /** Messages the chat has had: 0 means nothing to carry over (the composer picker just switches). */
+  messages: number;
+  /** Files the chat edited, for the summary of what carries over. */
+  files: number;
+  blocked?: string;
+}
+
 /** What a chat engine can do, so the UI hides controls a provider doesn't have (D-309). */
 export interface EngineCapabilities {
   /** Plan mode and its approve-the-plan card (ExitPlanMode). */

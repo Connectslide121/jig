@@ -1191,7 +1191,7 @@ export interface RunsOn {
 
 /**
  * The provider a task runs on (D-330): once it started, the one its chat ran on; a task that continues
- * a chat, that chat's (a chat keeps its provider for life), so its own choice is ignored; otherwise its
+ * a chat, that chat's (only you hand a chat over, D-339), so its own choice is ignored; otherwise its
  * own choice, then the queue's "Runs on", then the project's default (`projectDefault`: the project's
  * provider, else Jig's).
  */
@@ -1233,8 +1233,8 @@ export function startFailed(task: Task, message: string, at = new Date().toISOSt
 }
 
 /**
- * Throws when a queued task with its own provider or model continues a chat (D-330): a chat keeps its
- * provider for life, so the choice could never apply. `ids`: the tasks to check (just added or edited).
+ * Throws when a queued task with its own provider or model continues a chat (D-330): a task can't change
+ * a chat's provider (only you hand it over, D-339), so the choice could never apply. `ids`: the tasks to check (just added or edited).
  */
 export function checkProviderChoices(queue: Pick<Queue, "tasks">, ids: string[]): void {
   for (const task of queue.tasks) {

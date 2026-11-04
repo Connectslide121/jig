@@ -4076,7 +4076,7 @@ He wants the chat's message box there, reused rather than rebuilt, without the c
   empty when files remain (as when sending); both empty is `invalid_args`. Files are still checked to
   be the chat's attachments when the message is sent.
 
-## D-309: Two chat engines: Claude Code the default, Codex optional _("provider for life" superseded by D-338 for limit handoffs)_
+## D-309: Two chat engines: Claude Code the default, Codex optional _("provider for life" superseded by D-338 and D-339: a chat changes provider through a handover)_
 
 Supersedes the chat part of D-294 ("Claude Code stays the engine for chats"), and with it the
 "Claude Code is the only engine" wording of D-002 and principle 1 for chats. The non-chat parts of
@@ -5110,5 +5110,57 @@ capabilities, Claude the default, everything non-chat on Claude Code) still hold
   provider when its own plan is used up and the setting is `switch` (`chats.create` returns
   `provider`). A task that finished on another provider records it (`ranOn`, `startedOn`), and its
   details say "started on Claude".
-- **Left for later:** handing a chat over by hand at any time (its own queued task) uses the same
-  `continueWith` with reason `manual`; the divider and handoff already say "moved".
+- **Handing over by hand** at any time between turns came next: D-339, through the same
+  `continueWith` with reason `manual`.
+
+## D-339: Hand a chat over to the other provider whenever you want
+
+Extends D-338 from the limit case to any moment, and with it ends D-309's "a chat keeps its provider
+for life": a chat changes provider through a handover, by its limit or by you. One engine per
+provider, capabilities and Claude as the default still hold.
+
+- **Who:** Jon, 2026-11-04 (the visible way, the confirmation dialog and what it must say, no slash
+  command). The choices below the first point are Claude, on my own.
+- **Where:** the composer's provider picker (after the first message its heading says "Hand this chat
+  over to", picking the other provider opens the dialog) and **Hand over to ChatGPT… / Claude…** in
+  the chat's ⋯ menu. Before the first message the picker still just switches (D-314): there is
+  nothing to carry over, so no dialog. No Jig slash command (D-091). Builder, attempt and worktree
+  chats stay on Claude Code: the ⋯ entry isn't there, the picker's entries say "Stays on Claude Code".
+- **Always a confirmation dialog** (Jon): Claude → ChatGPT, the model and permission mode before →
+  after, what carries over, what doesn't, what is different there (`featuresLost` from
+  `ENGINE_CAPABILITIES`, whose plan pays, no cost estimate on ChatGPT, a warning when the other
+  plan's meter has no room), Cancel and Hand over. No "don't ask again": a handover changes which
+  plan pays and drops the old provider's own conversation, so it is never silent when you start it.
+  The dialog opens after the host has answered `sessions.handOverPlan`, so nothing in it loads.
+- **Only between turns; disabled while one runs** (Claude, on my own): while a turn runs (working,
+  needs you, starting) both entries are greyed out with "After this turn" beside them, and the host
+  refuses (`invalid_args`). Chosen over "offer it after the turn" because that needs a pending
+  state the chat would have to show and keep; stopping the turn first (Esc) then handing over does
+  the same thing explicitly. No room on the other plan is a warning only: you may know better than
+  the meter.
+- **What carries over** (Claude, on my own):
+  - **A summary, not the full history:** the same rules-built handoff as D-338 (`buildHandoff`: goal,
+    latest messages, last replies, plan, open to-dos, files edited, `git diff --stat`, where it
+    stopped; ≤ 16 000 characters, no AI). The other CLI can't take a foreign session's history, and
+    replaying it all as text would fill the new context with stale tool output. The transcript in Jig
+    keeps everything, above the divider.
+  - **Files and changes** stay where they are: same folder, same working tree; nothing is copied.
+  - **Model and effort map to the same tier** (`mapModelAndEffort`): opus ⇄ Sol, sonnet ⇄ Terra,
+    haiku ⇄ Luna (D-310's families, from an alias or a full id like `claude-opus-5-5` or
+    `gpt-6.1-sol`); the effort stays when the other provider has it, `ultra` becomes `max` on Claude.
+    A model Jig can't place (the provider's default, a custom id) takes that provider's defaults
+    (project's, then Jig's). This applies to the limit handover too (`providerDefaults`), replacing
+    D-338's "the new provider's defaults".
+  - **Permission mode** stays, mapped like a new chat's (Plan only only where the provider has it).
+  - **Not carried:** the old provider's own conversation (its session id is kept in
+    `SessionMeta.providers`), rewind to messages before the divider (D-338), the context meter
+    (starts again).
+- **Nothing is sent by the handover:** unlike the limit case, Jig doesn't send a "carry on"; the
+  handoff goes with your next message (`handoffPending`). The divider reads "Claude → ChatGPT ·
+  handed over by you" (a limit one "· Claude's limit reached"), appended at the end of the transcript
+  so nothing above it moves.
+- **What else assumed a provider for life:** capabilities follow `SessionMeta.provider`, which the
+  handover changes, so hidden features come and go with it; history and saved conversations already
+  follow `providers` (D-338); usage tokens add up across providers and the cost stays Claude Code's
+  estimate. Add-ons still can't change a started chat's provider (`chats.send` with `provider` and
+  a `sessionId` is refused): handing over is your choice, in the dialog.

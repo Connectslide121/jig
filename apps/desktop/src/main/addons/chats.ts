@@ -166,7 +166,7 @@ export function addonChats(deps: ChatsDeps) {
         return { sessionId: input.sessionId, sentAt };
       }
       let sessionId = input.sessionId;
-      // A chat keeps its provider for life (D-309): a provider or model is only for a new chat.
+      // An add-on never changes a started chat's provider (D-339: only you hand it over): a provider or model is only for a new chat.
       if (sessionId && (input.provider !== undefined || input.model !== undefined))
         throw new JigError(
           "invalid_args",
