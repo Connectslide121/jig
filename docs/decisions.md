@@ -4731,3 +4731,39 @@ the raw data was cut off at 60 KB).
 - `addon_tasks_list` takes `project` (name or id) and `all` (every queue, one line per task: id,
   status, title, under the project's name and id), so any chat finds a task and edits it with
   `addon_tasks_edit` and its `project`.
+
+## D-327: Teams chats as bubbles, and senders named from the chat's members
+
+**Jon** asked for a real chat layout ("shouldn't all be aligned on the left") and for names instead of
+"Someone"; the details are **Claude, on my own**.
+
+- One `ChatPanel` (`features/meetings/Chat.tsx`) draws the lobby's chats and the in-call Chat panel.
+  Your messages are on the right in `bg-accent-soft` bubbles, everyone else's on the left in
+  `bg-raised` ones. Bubbles are `rounded-2xl` with the corner toward the sender squared on a group's
+  first bubble and softened between bubbles of one group. The time sits inside the bubble's bottom
+  right corner (a spacer on the last line keeps text from running under it); hover shows day and time.
+- Grouping and day dividers are pure (`chatTimeline`, `chatDayLabel` in `shared/meetingChat.ts`): one
+  sender's messages group while each follows the one before within 5 minutes (`CHAT_GROUP_GAP_MS`) on
+  the same local day; senders are told apart by id (then name), so two people with one name don't
+  merge. Only the first message of someone else's group has their picture and name; yours have
+  neither. Dividers say Today, Yesterday, the weekday within a week, else "Oct 27" (with the year when
+  it isn't this year).
+- Width by the scroll area's container, not the window: the messages sit in a centred `max-w-3xl`
+  column (the wide lobby pane stays readable); bubbles are at most 70 % of it from `@md`, and in a
+  narrow panel (the call's ~300 px Chat) others' bubbles may fill the column beside the picture while
+  yours stop at 85 %, so they stay visibly on the right.
+- Scrolling: the view follows new messages while you're at the bottom. Scrolled up, it keeps the first
+  message in view at the same place when messages are added above it or drop off the top (Graph's
+  newest 50 move on), so nothing you read moves.
+- Web links in messages are clickable (opened with `app.openExternal`); `(image)`/`(attachment)` are
+  muted italic.
+- Names: Graph's `from.user.displayName` is empty for some senders (seen in a one-to-one chat with
+  someone from another organisation; guests likely the same). The chat's members still name them, so
+  `senderName` tries Graph's name, then the members' name for that user id, then (one-to-one, not
+  you) the other person (`ChatDirectory.peer`, from the members or the chat's title: the call's peer
+  name), and only then "Someone". `MeetingAuth` keeps a directory per chat: seeded from the chat
+  list's `$expand=members`, otherwise read with `GET /chats/{id}?$expand=members` (Chat.Read) only when
+  a message has a sender it can't name, at most every 5 minutes per chat; cleared on sign-out. The chat
+  list's last-message preview uses the same lookup. Pictures keep coming from `meetings.photo` by the
+  sender's id, which Graph gives even when the name is missing.
+- `chatChanged` also compares senders, so a meeting's kept chat picks up a name found later.

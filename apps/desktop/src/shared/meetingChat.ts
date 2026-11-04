@@ -76,8 +76,71 @@ export interface GraphChatMessage {
   attachments?: unknown[];
 }
 
+/**
+ * Who is in a chat, for naming senders Graph leaves nameless: `from.user.displayName` is empty for
+ * some people (seen for guests and people from another organisation), while the chat's members
+ * (`/chats/{id}/members`, within Chat.Read) still name them. `peer` is the other person of a
+ * one-to-one chat (its title), the last name to try before "Someone".
+ */
+export interface ChatDirectory {
+  names: ReadonlyMap<string, string>;
+  peer?: string;
+}
+
+/** A chat's members as a directory: names by user id, and the other person of a one-to-one chat. */
+export function chatDirectory(
+  chat: Pick<GraphChat, "chatType" | "members">,
+  self?: string,
+  title?: string,
+): ChatDirectory {
+  const names = new Map<string, string>();
+  for (const m of chat.members ?? []) {
+    const name = m.displayName?.trim();
+    if (m.userId && name) names.set(m.userId.toLowerCase(), name);
+  }
+  const others = (chat.members ?? []).filter((m) => m.userId !== self);
+  const peer =
+    chat.chatType === "oneOnOne" ? others[0]?.displayName?.trim() || title?.trim() || undefined : undefined;
+  return { names, ...(peer ? { peer } : {}) };
+}
+
+/**
+ * A sender's name: Graph's own, else the chat's members', else (in a one-to-one chat, when it isn't
+ * you) the other person's, and only then "Someone".
+ */
+export function senderName(
+  user: { id?: string; displayName?: string | null },
+  directory?: ChatDirectory,
+  self?: string,
+): string {
+  const own = user.displayName?.trim();
+  if (own) return own;
+  const member = user.id ? directory?.names.get(user.id.toLowerCase()) : undefined;
+  if (member) return member;
+  if (directory?.peer && (!self || user.id !== self)) return directory.peer;
+  return "Someone";
+}
+
+/** Whether some message's sender has no name of its own and none in `directory` yet. */
+export function needsDirectory(
+  messages: Array<Pick<GraphChatMessage, "from" | "messageType">>,
+  directory?: ChatDirectory,
+  self?: string,
+): boolean {
+  return messages.some((m) => {
+    const user = m.from?.user;
+    if (!user || (m.messageType ?? "message") !== "message" || user.displayName?.trim()) return false;
+    if (self && user.id === self) return false;
+    return !(user.id && directory?.names.has(user.id.toLowerCase()));
+  });
+}
+
 /** People's messages, oldest first; system notices, deleted and empty messages left out. */
-export function toChatMessages(messages: GraphChatMessage[], self?: string): MeetingChatMessage[] {
+export function toChatMessages(
+  messages: GraphChatMessage[],
+  self?: string,
+  directory?: ChatDirectory,
+): MeetingChatMessage[] {
   return messages
     .filter((m) => (m.messageType ?? "message") === "message" && !m.deletedDateTime && m.from?.user)
     .map((m) => {
@@ -86,7 +149,7 @@ export function toChatMessages(messages: GraphChatMessage[], self?: string): Mee
       const user = m.from!.user!;
       return {
         id: m.id,
-        from: user.displayName || "Someone",
+        from: senderName(user, directory, self),
         ...(user.id ? { fromId: user.id } : {}),
         at: new Date(m.createdDateTime).toISOString(),
         text: text || (m.attachments?.length ? "(attachment)" : ""),
@@ -97,6 +160,88 @@ export function toChatMessages(messages: GraphChatMessage[], self?: string): Mee
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
+/** Messages from one person this close together read as one group (one name and picture). */
+export const CHAT_GROUP_GAP_MS = 5 * 60_000;
+
+/** Consecutive messages of one sender, each within a few minutes of the one before, on one day. */
+export interface ChatGroup {
+  key: string;
+  mine: boolean;
+  from: string;
+  fromId?: string;
+  messages: MeetingChatMessage[];
+}
+
+/** What the chat view shows, top to bottom: a day's divider, then that day's groups. */
+export type ChatTimelineItem =
+  | { kind: "day"; key: string; label: string }
+  | { kind: "group"; key: string; group: ChatGroup };
+
+const localDay = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+/** A chat's day divider: "Today", "Yesterday", the weekday this week ("Tuesday"), else "Oct 27". */
+export function chatDayLabel(value: string, now = new Date(), locale?: string): string {
+  const d = new Date(value);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days > 1 && days < 7) return d.toLocaleDateString(locale, { weekday: "long" });
+  return d.toLocaleDateString(locale, {
+    month: "short",
+    day: "numeric",
+    ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
+}
+
+/** Who wrote a message, for grouping: you, else their id, else their name. */
+const senderKey = (m: MeetingChatMessage) =>
+  m.mine ? "you" : m.fromId ? `id:${m.fromId.toLowerCase()}` : `name:${m.from}`;
+
+/**
+ * Messages (oldest first) as the chat view lays them out: a divider whenever the day changes, and
+ * the messages grouped by sender while each follows the one before within `gap`.
+ */
+export function chatTimeline(
+  messages: MeetingChatMessage[],
+  now = new Date(),
+  gap = CHAT_GROUP_GAP_MS,
+  locale?: string,
+): ChatTimelineItem[] {
+  const out: ChatTimelineItem[] = [];
+  let group: ChatGroup | undefined;
+  let day: string | undefined;
+  for (const m of messages) {
+    const at = new Date(m.at);
+    const thisDay = localDay(at);
+    if (thisDay !== day) {
+      day = thisDay;
+      group = undefined;
+      out.push({ kind: "day", key: `day:${thisDay}`, label: chatDayLabel(m.at, now, locale) });
+    }
+    const prev = group?.messages.at(-1);
+    if (
+      group &&
+      prev &&
+      senderKey(prev) === senderKey(m) &&
+      at.getTime() - new Date(prev.at).getTime() <= gap
+    ) {
+      group.messages.push(m);
+      continue;
+    }
+    group = {
+      key: m.id,
+      mine: Boolean(m.mine),
+      from: m.mine ? "You" : m.from,
+      ...(m.fromId ? { fromId: m.fromId } : {}),
+      messages: [m],
+    };
+    out.push({ kind: "group", key: `group:${m.id}`, group });
+  }
+  return out;
+}
+
 /** New messages and edits merged into what's kept, by id, oldest first. */
 export function mergeChat(kept: MeetingChatMessage[], fresh: MeetingChatMessage[]): MeetingChatMessage[] {
   const byId = new Map(kept.map((m) => [m.id, m]));
@@ -104,10 +249,12 @@ export function mergeChat(kept: MeetingChatMessage[], fresh: MeetingChatMessage[
   return [...byId.values()].sort((a, b) => a.at.localeCompare(b.at));
 }
 
-/** Whether merging changed anything (so the room isn't told about nothing every few seconds). */
+/** Whether merging changed anything (so the room isn't told about nothing every few seconds), a sender's name too. */
 export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMessage[]): boolean {
   if (before.length !== after.length) return true;
-  return after.some((m, i) => m.id !== before[i]!.id || m.text !== before[i]!.text);
+  return after.some(
+    (m, i) => m.id !== before[i]!.id || m.text !== before[i]!.text || m.from !== before[i]!.from,
+  );
 }
 
 /** A Teams chat id: a thread (`19:…@thread.v2`) or a one-to-one chat (`19:…@unq.gbl.spaces`). */
@@ -173,6 +320,7 @@ export function toChatSummaries(
             ? "Meeting chat"
             : "Chat");
       const last = c.lastMessagePreview;
+      const directory = chatDirectory(c, self);
       const fromId = last?.from?.user?.id;
       const mine = Boolean(self && fromId === self);
       const content = last?.body?.content ?? "";
@@ -182,7 +330,7 @@ export function toChatSummaries(
       const preview =
         last && !last.isDeleted && (last.messageType ?? "message") === "message" && last.from?.user
           ? {
-              from: mine ? "You" : last.from.user.displayName || "Someone",
+              from: mine ? "You" : senderName(last.from.user, directory, self),
               text: text || "(attachment)",
               ...(mine ? { mine } : {}),
             }

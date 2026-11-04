@@ -139,7 +139,7 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await chat.getByTestId("meeting-chat-send").click();
     await expect(chat.getByTestId("meeting-chat")).toContainText("I'll review it today");
     await expect(chat.getByTestId("meeting-chat-input")).toHaveValue("");
-    await expect.poll(async () => (await overview()).records[0]!.chat?.length).toBe(3);
+    await expect.poll(async () => (await overview()).records[0]!.chat?.length).toBe(7);
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/chat.png" });
     // The lobby stays usable beside the live meeting (D-292): it says what is live, and joining
     // another meeting first offers to show the one you're in.

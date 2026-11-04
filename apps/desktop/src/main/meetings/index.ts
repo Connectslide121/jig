@@ -15,11 +15,14 @@ import { aiChoice, providerName } from "../../shared/aiFeatures";
 import { JigError } from "../../shared/ipc";
 import {
   chatChanged,
+  chatDirectory,
   type GraphChat,
+  type GraphChatMessage,
   type MeetingChatMessage,
   type MeetingChatState,
   meetingChatId,
   mergeChat,
+  toChatMessages,
   toChatSummaries,
 } from "../../shared/meetingChat";
 import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
@@ -68,25 +71,43 @@ const FAKE_PHOTOS: Record<string, string> = {
 const FAKE_ME = "00000000-0000-4000-8000-0000000000ee";
 const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
 const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
+const FAKE_ROBIN = "00000000-0000-4000-8000-0000000000b0";
+/**
+ * A message as Graph sends it. `name` "" is a sender Graph leaves nameless (a guest or someone from
+ * another organisation): the chat's members name them (D-327).
+ */
+function fakeMessage(id: string, user: string, name: string, at: string, text: string): GraphChatMessage {
+  return {
+    id,
+    createdDateTime: at,
+    from: { user: { id: user, displayName: name } },
+    body: { contentType: "text", content: text },
+  };
+}
+
 function fakeChatData() {
   const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
   const person = (id: string, name: string) => ({ userId: id, displayName: name });
-  const chats: Array<{ chat: GraphChat; messages: MeetingChatMessage[] }> = [
+  const chats: Array<{ chat: GraphChat; messages: GraphChatMessage[] }> = [
     {
       chat: {
         id: `19:${FAKE_ME}_${FAKE_ALEX}@unq.gbl.spaces`,
         chatType: "oneOnOne",
         members: [person(FAKE_ME, "You"), person(FAKE_ALEX, "Alex Contoso")],
       },
+      // Alex is from another organisation: Graph gives his messages no name.
       messages: [
-        { id: "a1", from: "You", at: ago(70), text: "Is the Shop API spec ready?", mine: true },
-        {
-          id: "a2",
-          from: "Alex Contoso",
-          fromId: FAKE_ALEX,
-          at: ago(12),
-          text: "Almost: can you look at the error codes?",
-        },
+        fakeMessage("a0", FAKE_ALEX, "", ago(27 * 60), "Morning! Did the Fabrikam build go out?"),
+        fakeMessage(
+          "a0b",
+          FAKE_ME,
+          "",
+          ago(27 * 60 - 4),
+          "Yes, last night. Release notes:\nhttps://example.com/fabrikam/releases/2026-11-03-build-4821-with-a-long-name",
+        ),
+        fakeMessage("a1", FAKE_ME, "", ago(70), "Is the Shop API spec ready?"),
+        fakeMessage("a1b", FAKE_ALEX, "", ago(14), "Nearly."),
+        fakeMessage("a2", FAKE_ALEX, "", ago(12), "Almost: can you look at the error codes?"),
       ],
     },
     {
@@ -94,18 +115,13 @@ function fakeChatData() {
         id: "19:portal-planning@thread.v2",
         chatType: "group",
         topic: "Portal planning",
-        members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam"), person("robin", "Robin Shop")],
+        members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam"), person(FAKE_ROBIN, "Robin Shop")],
         viewpoint: { lastMessageReadDateTime: ago(0) },
       },
       messages: [
-        { id: "p1", from: "Robin Shop", at: ago(200), text: "Agenda for Thursday is in the channel." },
-        {
-          id: "p2",
-          from: "Sam Fabrikam",
-          fromId: FAKE_SAM,
-          at: ago(95),
-          text: "I added the sign-in flow to it.",
-        },
+        fakeMessage("p1", FAKE_ROBIN, "", ago(200), "Agenda for Thursday is in the channel."),
+        fakeMessage("p1b", FAKE_ROBIN, "", ago(199), "(attachment)"),
+        fakeMessage("p2", FAKE_SAM, "Sam Fabrikam", ago(95), "I added the sign-in flow to it."),
       ],
     },
     {
@@ -114,7 +130,7 @@ function fakeChatData() {
         chatType: "oneOnOne",
         members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam")],
       },
-      messages: [{ id: "s1", from: "You", at: ago(26 * 60), text: "Thanks for the review!", mine: true }],
+      messages: [fakeMessage("s1", FAKE_ME, "", ago(26 * 60), "Thanks for the review!")],
     },
   ];
   const find = (chatId: string) => {
@@ -129,23 +145,63 @@ function fakeChatData() {
         return {
           ...chat,
           lastMessagePreview: last && {
-            createdDateTime: last.at,
-            from: { user: { id: last.mine ? FAKE_ME : (last.fromId ?? last.from), displayName: last.from } },
-            body: { contentType: "text", content: last.text },
+            createdDateTime: last.createdDateTime,
+            from: last.from,
+            body: last.body,
           },
         };
       }),
-    messages: (chatId: string) => [...find(chatId).messages],
+    messages: (chatId: string) => {
+      const { chat, messages } = find(chatId);
+      return toChatMessages(messages, FAKE_ME, chatDirectory(chat, FAKE_ME));
+    },
     send(chatId: string, text: string): MeetingChatMessage {
-      const message = { id: `f${Date.now()}`, from: "You", at: new Date().toISOString(), text, mine: true };
+      const message = fakeMessage(`f${Date.now()}`, FAKE_ME, "", new Date().toISOString(), text);
       find(chatId).messages.push(message);
-      return message;
+      return toChatMessages([message], FAKE_ME)[0]!;
     },
     /** Alex and Sam have a chat with you; anyone else hasn't yet. */
     with: (peerId: string) =>
       chats.find((c) => c.chat.chatType === "oneOnOne" && c.chat.members?.some((m) => m.userId === peerId))
         ?.chat.id,
   };
+}
+
+/** A meeting's Teams chat for the test meeting service: several people, one nameless guest, and you. */
+function fakeMeetingChat(): MeetingChatMessage[] {
+  const ago = (seconds: number) => new Date(Date.now() - seconds * 1000).toISOString();
+  const members = {
+    chatType: "meeting",
+    members: [
+      { userId: FAKE_ALEX, displayName: "Alex" },
+      { userId: FAKE_SAM, displayName: "Sam" },
+      { userId: FAKE_ROBIN, displayName: "Robin Shop" },
+    ],
+  };
+  return toChatMessages(
+    [
+      fakeMessage(
+        "fake-1",
+        FAKE_ALEX,
+        "Alex",
+        ago(600),
+        "Here's the Shop API spec: https://example.com/shop-api",
+      ),
+      fakeMessage("fake-2", FAKE_ALEX, "Alex", ago(590), "Section 4 has the error codes."),
+      fakeMessage("fake-3", FAKE_ROBIN, "", ago(420), "Can someone share the Fabrikam dashboard?"),
+      fakeMessage("fake-4", FAKE_ME, "You", ago(300), "Sharing it after this topic."),
+      fakeMessage("fake-5", FAKE_SAM, "Sam", ago(60), "Thanks! I'll read it before Friday."),
+      fakeMessage(
+        "fake-6",
+        FAKE_SAM,
+        "Sam",
+        ago(30),
+        "Do we keep the old endpoints\nuntil the Contoso release?",
+      ),
+    ],
+    FAKE_ME,
+    chatDirectory(members, FAKE_ME),
+  );
 }
 
 const store = new MeetingStore();
@@ -759,23 +815,7 @@ export async function startMeetings(): Promise<void> {
     enabled();
     const record = store.get(id);
     if (fake()) {
-      if (!record.chat?.length)
-        await keepChat(id, [
-          {
-            id: "fake-1",
-            from: "Alex",
-            fromId: "00000000-0000-4000-8000-00000000a1e5",
-            at: new Date(Date.now() - 60_000).toISOString(),
-            text: "Here's the Shop API spec: https://example.com/shop-api",
-          },
-          {
-            id: "fake-2",
-            from: "Sam",
-            fromId: "00000000-0000-4000-8000-0000000005a3",
-            at: new Date(Date.now() - 30_000).toISOString(),
-            text: "Thanks! I'll read it before Friday.",
-          },
-        ]);
+      if (!record.chat?.length) await keepChat(id, fakeMeetingChat());
       return { state: "ok" };
     }
     if (!(await auth.chatReady())) return { state: "consent" };
@@ -788,7 +828,7 @@ export async function startMeetings(): Promise<void> {
           : "This meeting's link doesn't say which chat is its own.",
       };
     try {
-      await keepChat(id, await auth.chatMessages(chatId));
+      await keepChat(id, await auth.chatMessages(chatId, record.call?.peerName));
       return { state: "ok" };
     } catch (error) {
       const code = (error as JigError).code;

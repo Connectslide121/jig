@@ -7,9 +7,12 @@ import { type AccountInfo, PublicClientApplication, type TokenCacheContext } fro
 import { safeStorage } from "electron";
 import { JigError } from "../../shared/ipc";
 import {
+  type ChatDirectory,
+  chatDirectory,
   type GraphChat,
   type GraphChatMessage,
   type MeetingChatMessage,
+  needsDirectory,
   oneOnOneChatIds,
   type TeamsChatSummary,
   toChatMessages,
@@ -54,6 +57,8 @@ export class MeetingAuth {
   private restored?: Promise<void>;
   private persisting?: Promise<void>;
   private cachedFile?: string;
+  /** Each chat's members by id, to name senders Graph leaves nameless; read again after 5 minutes. */
+  private directories = new Map<string, { directory: ChatDirectory; at: number }>();
   constructor(private readonly settings: () => MeetingSettings) {}
   get name(): string | undefined {
     return this.account?.username;
@@ -66,6 +71,7 @@ export class MeetingAuth {
     this.restored = undefined;
     this.client = undefined;
     this.account = undefined;
+    this.directories.clear();
   }
   private cacheFile(): string | undefined {
     const { tenantId, clientId } = this.settings();
@@ -322,14 +328,52 @@ export class MeetingAuth {
       const byId = new Map(members.map((c) => [c.id, c.members]));
       chats = previews.map((c) => ({ ...c, members: byId.get(c.id) ?? [] }));
     }
-    return toChatSummaries(chats, this.account?.localAccountId, readInJig);
+    const self = this.account?.localAccountId;
+    const summaries = toChatSummaries(chats, self, readInJig);
+    // The list already has every chat's members: keep them for its messages' senders.
+    const titles = new Map(summaries.map((c) => [c.id, c.kind === "oneOnOne" ? c.name : undefined]));
+    for (const c of chats)
+      if (c.members?.length)
+        this.directories.set(c.id, { directory: chatDirectory(c, self, titles.get(c.id)), at: Date.now() });
+    return summaries;
   }
-  /** The newest 50 messages of a chat you're in, oldest first. */
-  async chatMessages(chatId: string): Promise<MeetingChatMessage[]> {
+  /**
+   * A chat's members as names by id (D-327), read when a message's sender has no name of its own
+   * and kept per chat. `title` names the other person of a one-to-one chat when nothing else does.
+   */
+  private async directory(
+    chatId: string,
+    messages: GraphChatMessage[],
+    title?: string,
+  ): Promise<ChatDirectory | undefined> {
+    const self = this.account?.localAccountId;
+    const kept = this.directories.get(chatId);
+    if (!needsDirectory(messages, kept?.directory, self) || (kept && Date.now() - kept.at < 5 * 60_000))
+      return kept?.directory && title && !kept.directory.peer
+        ? { ...kept.directory, peer: title }
+        : kept?.directory;
+    try {
+      const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}?$expand=members`);
+      if (!r.ok) throw chatError(r.status);
+      const chat = (await r.json()) as GraphChat;
+      const directory = chatDirectory(chat, self, title);
+      this.directories.set(chatId, { directory, at: Date.now() });
+      return directory;
+    } catch (error) {
+      log.warn("chat members unavailable", { error: (error as Error).message });
+      return kept?.directory;
+    }
+  }
+  /**
+   * The newest 50 messages of a chat you're in, oldest first, every sender named. `title`: the
+   * other person's name in a one-to-one chat or call, the last try before "Someone".
+   */
+  async chatMessages(chatId: string, title?: string): Promise<MeetingChatMessage[]> {
     const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}/messages?$top=50`);
     if (!r.ok) throw chatError(r.status);
     const data = (await r.json()) as { value: GraphChatMessage[] };
-    return toChatMessages(data.value, this.account?.localAccountId);
+    const directory = await this.directory(chatId, data.value, title);
+    return toChatMessages(data.value, this.account?.localAccountId, directory);
   }
   async sendChat(chatId: string, text: string): Promise<MeetingChatMessage | undefined> {
     const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}/messages`, {

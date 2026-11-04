@@ -1,5 +1,16 @@
 # Status
 
+Teams chats as bubbles (2026-11-04, D-327): the lobby's chats and the in-call Chat panel look like a
+chat app: your messages on the right in accent-tinted bubbles, everyone else's on the left with their
+picture and name on the first of a run of messages (grouped within 5 minutes), the time in each
+bubble's corner, and a divider when the day changes (Today, Yesterday, Tuesday, Oct 27). Links are
+clickable. Scrolled up, new or dropped messages don't move what you're reading. Senders Graph leaves
+nameless (people from another organisation, like Jon's one-to-one with a colleague) are named from the
+chat's members, then the one-to-one chat's other person, before "Someone"; the chat list's preview too.
+Checked with screenshots in Jig Dark, Jig Light and an imported theme, lobby wide and narrow and the
+call's narrow panel (test meeting service). Unit tests pass; e2e updated, not run (D-258).
+**Check on your machine:** the one-to-one chat that showed "Someone" now shows the name.
+
 All task queues at a glance (2026-11-04, D-326): the Tasks view has an **All queues** button beside its
 project picker (and the picker's first item) that opens a main-area tab with every project's queue: a
 summary strip (queues running, tasks running, needs you, queued, finished today, cost today) and a card
