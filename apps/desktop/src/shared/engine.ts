@@ -70,7 +70,7 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
   },
   codex: {
     planMode: true,
-    questions: false,
+    questions: true,
     subagents: false,
     rewind: false,
     fork: false,

@@ -51,3 +51,21 @@ test("a Codex chat in Plan only presents its plan on the plan card", async ({ pa
   await expect(page.getByText("Starting on the plan (mode: acceptEdits)")).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId("permission-menu")).toContainText("Accept edits");
 });
+
+// Questions in a Codex chat (D-315): Jig's ask_user tool over MCP raises the same question card as
+// Claude's AskUserQuestion, and Codex gets the answer back.
+test("a Codex chat asks with the question card", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await hostCall(page, "config.update", { engine: { provider: "codex" } });
+  await page.keyboard.press("Control+N");
+
+  await page.getByTestId("composer-input").fill("ask me a question");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("option-Neutral").click({ timeout: 15000 });
+  await page.getByTestId("question-submit").click();
+  await expect(page.getByTestId("assistant-message").last()).toContainText("Neutral it is", {
+    timeout: 15000,
+  });
+});

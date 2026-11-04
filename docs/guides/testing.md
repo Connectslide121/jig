@@ -110,7 +110,7 @@ in this order:
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |
 | contains "run" or "permission" | asks to run `npm test` (permission card) |
 | contains "several questions" | asks three questions in steps (one choice, several choices, one to answer in your own words); the reply lists the answers joined by " \| " |
-| contains "question" | asks a multiple-choice question |
+| contains "question" | asks a multiple-choice question. In a Codex chat both question rows go through Jig's `ask_user` tool over the chat's local MCP server, which raises the same card (D-315) |
 | "write <file>" | writes the file (a file checkpoint: Restore files puts it back) |
 | contains "build" | asks Jig's builder for a tool (`jig_request_build`) |
 | contains "slow" | a long streamed answer (try Stop) |

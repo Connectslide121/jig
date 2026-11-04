@@ -19,7 +19,7 @@ import {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
-import { EXIT_PLAN_TOOL, standInTools, withStandIns } from "./codexTools";
+import { ASK_USER_TOOL, EXIT_PLAN_TOOL, standInTools, withStandIns } from "./codexTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
 import { FakeMcpClient } from "./fakeMcp";
@@ -1173,19 +1173,32 @@ export class FakeEngine implements Engine {
             name: "AskUserQuestion",
             input,
           });
-          const decision = await options.askPermission(
-            {
-              requestId: toolId,
-              toolName: "AskUserQuestion",
-              input,
-              canAlwaysAllow: false,
-            },
-            signal,
-          );
-          const answers = (decision.behavior === "allow" ? decision.updatedInput?.answers : undefined) as
-            | Record<string, string>
-            | undefined;
-          const answer = answers ? Object.values(answers).join(" | ") : undefined;
+          let answer: string | undefined;
+          if (mcpClient && this.provider === "codex") {
+            // A Codex chat asks with Jig's ask_user tool over MCP (D-315): one "- question → answer" line each.
+            const out = await callStandIn(ASK_USER_TOOL, toolId, input);
+            const lines = out.startsWith("The user answered:")
+              ? out
+                  .split("\n")
+                  .filter((l) => l.startsWith("- "))
+                  .map((l) => l.split(" → ").pop())
+              : [];
+            answer = lines.length ? lines.join(" | ") : undefined;
+          } else {
+            const decision = await options.askPermission(
+              {
+                requestId: toolId,
+                toolName: "AskUserQuestion",
+                input,
+                canAlwaysAllow: false,
+              },
+              signal,
+            );
+            const answers = (decision.behavior === "allow" ? decision.updatedInput?.answers : undefined) as
+              | Record<string, string>
+              | undefined;
+            answer = answers ? Object.values(answers).join(" | ") : undefined;
+          }
           onEvent({
             type: "tool_result",
             toolUseId: toolId,

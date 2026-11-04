@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PermissionDecision, PermissionRequest } from "../../shared/engine";
 import {
+  ASK_USER_TOOL,
+  answersText,
   codexToolCardName,
   EXIT_PLAN_TOOL,
   JIG_ADDED_TEXT,
@@ -27,6 +29,7 @@ function tools(decision: PermissionDecision) {
 describe("Codex stand-in tools (D-315)", () => {
   it("show as Claude's cards; other MCP calls keep their names", () => {
     expect(codexToolCardName("jig", "exit_plan")).toBe("ExitPlanMode");
+    expect(codexToolCardName("jig", "ask_user")).toBe("AskUserQuestion");
     expect(codexToolCardName("jig", "jig_get_settings")).toBe("mcp__jig__jig_get_settings");
     expect(codexToolCardName("github", "exit_plan")).toBe("mcp__github__exit_plan");
   });
@@ -47,6 +50,23 @@ describe("Codex stand-in tools (D-315)", () => {
     const { planApproved, tool } = tools({ behavior: "deny", message: "The user wants changes: smaller" });
     expect(await tool(EXIT_PLAN_TOOL).handler({ plan: "x" })).toBe("The user wants changes: smaller");
     expect(planApproved).not.toHaveBeenCalled();
+  });
+
+  it("ask_user asks on the question card and returns the answers", async () => {
+    const questions = [{ question: "Which colour?", options: [{ label: "Red" }, { label: "Blue" }] }];
+    const { asked, tool } = tools({
+      behavior: "allow",
+      updatedInput: { questions, answers: { "Which colour?": "Blue" } },
+    });
+    const out = await tool(ASK_USER_TOOL).handler({ questions });
+    expect(asked[0]).toMatchObject({ toolName: "AskUserQuestion", input: { questions } });
+    expect(out).toBe("The user answered:\n- Which colour? → Blue");
+  });
+
+  it("ask_user passes a skip or a spoken answer back as it came", async () => {
+    const { tool } = tools({ behavior: "deny", message: "The user answered by voice: blue" });
+    expect(await tool(ASK_USER_TOOL).handler({ questions: [] })).toBe("The user answered by voice: blue");
+    expect(answersText({})).toBe("The user didn't answer.");
   });
 
   it("Jig's added text is recognised in a message", () => {

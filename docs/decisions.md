@@ -4287,3 +4287,9 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   planning turn ends Jig starts the next one itself (`PLAN_APPROVED_PROMPT`, hidden) and shows both
   as one turn (`mergeResults`). The stand-ins are pre-approved in Codex's config and run on Jig's
   side, so Codex never asks before calling them.
+- **Questions** (plan): the Jig MCP tool `ask_user` takes AskUserQuestion's input (1-4 questions,
+  2-4 options each) and raises the existing question card under Claude's tool name, so voice mode
+  answers it the same way. The answers come back to Codex as one "question → answer" line each; a
+  skip or a spoken answer comes back as the card's message. Every Codex chat's developer instructions
+  say which Jig tools stand in for ExitPlanMode and AskUserQuestion, so instructions that name
+  Claude's tools (voice mode's) work in Codex chats too.
