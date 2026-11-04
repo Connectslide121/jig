@@ -641,7 +641,8 @@ MSAL sign-in persists only as OS-encrypted safeStorage ciphertext (D-232); no pl
 client secret or resource key is persisted. Only the owned window can obtain a calling credential,
 write captions/status, select a screen, or send questions/actions. The first-party media renderer
 uses the pinned official Calling SDK; this narrow media exception follows the speech/device pattern.
-Its CSP allows SDK HTTPS/WebSocket connections and blob media/workers, while other Jig pages retain
+Its CSP allows SDK HTTPS/WebSocket connections, blob media/workers and blob scripts (the noise
+suppression AudioWorklet of the pinned calling effects package, D-322), while other Jig pages retain
 their existing connect/media policy. No remote scripts are permitted. Microphone/camera permission
 is limited to Jig's own origin/main frame; screen sharing requires an expiring one-use source selected
 in the meeting window. The window is an appWindows member, not a hidden browser helper.

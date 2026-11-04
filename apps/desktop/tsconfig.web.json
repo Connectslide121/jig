@@ -1,5 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2023", "DOM", "DOM.Iterable"], "types": ["vite/client"] },
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    // The calling effects package's "exports" has no types entry, so its typings aren't found (D-322).
+    "paths": {
+      "@azure/communication-calling-effects": [
+        "../../node_modules/@azure/communication-calling-effects/types/communication-calling-effects.d.ts"
+      ]
+    }
+  },
   "include": ["src/renderer", "src/shared"]
 }

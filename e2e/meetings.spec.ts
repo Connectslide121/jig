@@ -490,3 +490,38 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await app.close();
   }
 });
+
+test("Meetings: noise suppression is on in a call and switches from the call's menu (D-322)", async ({
+  jigHome,
+}) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby, room } = await meetingWindows(app);
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    await prejoin.getByLabel("Teams join link").fill("https://teams.microsoft.com/l/meetup-join/test");
+    await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
+    await expect(room.getByTestId("meeting-transcript")).toContainText("We should review the Shop API");
+
+    // On by default, with its state in the menu; switching it off applies at once and is saved.
+    const options = room.getByRole("button", { name: "More call options", exact: true });
+    await options.click();
+    await expect(room.getByTestId("noise-suppression")).toContainText("On");
+    await room.getByTestId("noise-suppression").click();
+    await options.click();
+    await expect(room.getByTestId("noise-suppression")).toContainText("Off");
+    await room.keyboard.press("Escape");
+    const config = (await hostCall(room, "config.get")) as {
+      value: { meetings: { noiseSuppression: boolean } };
+    };
+    expect(config.value.meetings.noiseSuppression).toBe(false);
+
+    await room.getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(room.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});

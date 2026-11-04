@@ -210,6 +210,11 @@ export const ConfigSchema = z.object({
        * (Whisper, the Speech settings' model; D-321). Audio never leaves the meeting window.
        */
       localTranscription: z.boolean().default(true),
+      /**
+       * Noise suppression on your microphone in calls (D-322): Azure Communication Services' deep
+       * noise suppression (keyboard typing, fans), or the browser's own where that isn't supported.
+       */
+      noiseSuppression: z.boolean().default(true),
     })
     .prefault({}),
   /** Azure tenants (D-282). */

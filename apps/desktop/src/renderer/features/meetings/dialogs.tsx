@@ -1,12 +1,12 @@
-import { AppWindow, Info, Mic, Monitor, Phone, PlugZap, Video, VideoOff } from "lucide-react";
+import { AppWindow, AudioLines, Info, Mic, Monitor, Phone, PlugZap, Video, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { MeetingAction, MeetingRecord, MeetingSettings } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { errorMessage } from "../../lib/host";
 import { Badge, Button, Card, cn, Dialog, Input, Select, Spinner, Switch, Textarea } from "../../ui";
 import { ProjectSwatch } from "../projects/colors";
-import { SPEECH_LANGUAGES } from "./format";
-import type { MeetingMedia } from "./media";
+import { NOISE_SUPPRESSION_TEXT, SPEECH_LANGUAGES } from "./format";
+import type { MeetingMedia, NoiseSuppression } from "./media";
 
 type Devices = Awaited<ReturnType<MeetingMedia["prepare"]>>;
 
@@ -77,10 +77,15 @@ function DeviceSelects({
 
 export function DevicePicker({
   media,
+  noiseSuppression,
+  onNoiseSuppression,
   onClose,
   onError,
 }: {
   media: MeetingMedia;
+  /** Noise suppression's state in the call; switching it applies at once, not with the devices. */
+  noiseSuppression: NoiseSuppression;
+  onNoiseSuppression(): void;
   onClose(): void;
   onError(error: unknown): void;
 }) {
@@ -144,6 +149,24 @@ export function DevicePicker({
             [camera, setCamera],
           ]}
         />
+        <Card className="flex h-14 items-center gap-3 px-3 shadow-none">
+          <AudioLines className="size-4 shrink-0 text-muted" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm">Noise suppression</span>
+            <span
+              data-testid="noise-suppression-state"
+              className="block truncate text-xs text-hint"
+              title={NOISE_SUPPRESSION_TEXT[noiseSuppression].detail}
+            >
+              {NOISE_SUPPRESSION_TEXT[noiseSuppression].detail}
+            </span>
+          </span>
+          <Switch
+            label="Noise suppression"
+            checked={noiseSuppression !== "off"}
+            onChange={onNoiseSuppression}
+          />
+        </Card>
         {!devices && <Spinner center />}
       </div>
     </Dialog>

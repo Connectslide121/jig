@@ -73,3 +73,12 @@ export function chatTime(value: string, now = new Date()): string {
   if (now.getTime() - d.getTime() < 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" });
   return d.toLocaleDateString([], { day: "numeric", month: "short" });
 }
+
+/** Noise suppression's state for the call menu's badge and the devices dialog (D-322). */
+export const NOISE_SUPPRESSION_TEXT = {
+  deep: { badge: "On", detail: "On: Azure noise suppression filters typing and background noise" },
+  browser: { badge: "Basic", detail: "Basic: deep suppression isn't supported here, the browser's own runs" },
+  starting: { badge: "Starting", detail: "Starting with the call's audio" },
+  unavailable: { badge: "Unavailable", detail: "Couldn't start here; your microphone works without it" },
+  off: { badge: "Off", detail: "Off: your microphone is sent without noise suppression" },
+} as const;

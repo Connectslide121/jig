@@ -4563,3 +4563,46 @@ made on this computer when Teams captions aren't available.
   this computer with a speaker that may be a guess.
 - **Control (Jon).** `meetings.localTranscription` (Settings through chats, the transcript panel's ⋯
   menu). It isn't an AI call in the background: Whisper runs on this computer (D-208).
+
+## D-322: Noise suppression on your microphone in calls, Azure's deep one by default
+
+Jon, 2026-11-04: in a live meeting colleagues asked "who is typing on their keyboard?". Jon types
+during meetings; with the Teams app nobody notices, and colleagues also find his microphone overall
+worse through Jig than through Teams, with the same microphone (the Logi C270 on the monitor, his
+best one). Asked for noise suppression on by default, a switch, and a check of the whole mic path.
+
+- **What was missing (Claude, from the code).** Jig's calls (start, join, answer) passed only
+  `audioOptions: { muted }`: no audio effects. Teams' own app runs Microsoft's voice processing
+  (noise suppression among it); the ACS web SDK only does so when the app starts it.
+- **The fix (Jon: on by default; how Claude, on my own).** `@azure/communication-calling-effects`
+  1.3.2 (the GA release matching GA calling 2.0.0; Microsoft pairs GA with GA, preview with preview),
+  pinned exactly like the calling SDK. When a call's `localAudioStreams[0]` exists (right after
+  start/join/accept, on Connected, on `localAudioStreamsUpdated`, after Devices… and on the stream's
+  `audioSourceChanged`), the call window runs `Features.AudioEffects` on it: `isSupported` +
+  `startEffects({ noiseSuppression: new DeepNoiseSuppressionEffect() })`. Unsupported or failing:
+  `'BrowserNoiseSuppression'` (Chromium's own, weaker on typing); neither: the call goes on without it.
+  It never throws into the call. One change at a time (`noiseChain`); the state follows the feature's
+  `effectsStarted`/`effectsStopped`/`effectsError` events into `MediaState.noiseSuppression`
+  (`deep`, `browser`, `starting`, `unavailable`, `off`). Echo cancellation's effect was left out on
+  purpose: the browser's echo cancellation stays on, and adding a second effect would only add risk.
+- **Loading (Claude, on my own).** The module is imported dynamically, so its 4.4 MB chunk (the audio
+  part only; Vite tree-shakes the 8 MB video effects) loads in the call window on the first call. Its
+  WebAssembly is inlined (base64, passed as `wasmBinary`) and its AudioWorklet comes from a `blob:`
+  URL: no extra files to package and no download. The call window's CSP (`contentSecurityPolicy(…,
+  meetingRoom)`) therefore adds `blob:` to `script-src` (worklets follow `script-src`); WebAssembly
+  already had `'wasm-unsafe-eval'`. Other windows keep the stricter policy. The package's `exports`
+  has no types entry, so `tsconfig.web.json` maps its typings with `paths`.
+- **Control (Jon).** `meetings.noiseSuppression` (default true; Settings through chats). In a call:
+  the dock's ⋯ menu has **Noise suppression** with a check and its state as a badge (On, Basic,
+  Starting, Unavailable, Off), and Devices… has the same switch with one line saying what runs.
+  Switching applies to the call at once. No layout shift: the menu and dialog keep their rows.
+- **The rest of the mic path (Claude, checked).** The calling SDK opens the microphone itself with
+  `echoCancellation`, `noiseSuppression` and `autoGainControl` all true (it turns them off only on
+  Safari) and sets no `channelCount`/`sampleRate` (WebRTC's 48 kHz mono). Jig passes no constraints,
+  and no Chromium switch touches WebRTC audio processing (only the fake engine's
+  `use-fake-device-for-media-stream`, in tests). The sandboxed window changes nothing there. **But**
+  "System default" was wrong for the microphone: the SDK lists devices as `microphone:<id>` and drops
+  the synthetic `default` entry (marking the real default device `isSystemDefault`), so Jig's lookup
+  of `"default"` never matched and took the *first* microphone, whichever Windows lists first. Jig now
+  takes the `isSystemDefault` microphone. Speakers have the same bug; that fix (and naming the device
+  in the selectors) is the queued "System default picks the wrong device" task.

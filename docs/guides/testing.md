@@ -162,7 +162,9 @@ Teams chats (D-296): an unread one-to-one with Alex, a "Portal planning" group a
 Sam; Call… → Chat finds Alex's and Sam's, anyone else has none. `window.jigTestCaptionsUnavailable()`
 in the call window makes Teams captions "unavailable" in a running test meeting (D-321): the
 transcript gets the policy notice and, with `meetings.localTranscription` on, lines marked Local
-(alternating Alex and You); off, no more lines. Messages you send are kept while Jig runs.
+(alternating Alex and You); off, no more lines. Noise suppression (D-322) reads On in a test call
+while `meetings.noiseSuppression` is on and Off when it is off (no real audio effect runs). Messages
+you send are kept while Jig runs.
 
 ## Screenshots
 

@@ -59,7 +59,8 @@ export function mimeFor(path: string): string {
 export function contentSecurityPolicy(dev: boolean, meetingRoom = false): string {
   return [
     "default-src 'self'",
-    `script-src 'self' jig-addon: 'wasm-unsafe-eval'${dev ? " 'unsafe-inline'" : ""}`,
+    // The meeting window's noise suppression loads its audio worklet from a blob: URL (D-322).
+    `script-src 'self' jig-addon: 'wasm-unsafe-eval'${meetingRoom ? " blob:" : ""}${dev ? " 'unsafe-inline'" : ""}`,
     "style-src 'self' 'unsafe-inline' jig-addon:",
     "img-src 'self' data: blob: https: jig-addon: jig-icons: jig-file:",
     meetingRoom ? "media-src 'self' blob: jig-file:" : "media-src jig-file:",

@@ -1,5 +1,25 @@
 # Status
 
+Noise suppression on your microphone (2026-11-04, D-322): colleagues heard Jon's typing in Jig calls
+(not with the Teams app) and found his microphone worse overall. Jig's calls had no voice processing
+of their own; now every call (join, call, answer) starts **Azure Communication Services' deep noise
+suppression** on your microphone, or the browser's own where that isn't supported. The call's ⋯ menu
+has **Noise suppression** with its state (On, Basic = browser only, Unavailable, Off), and Devices…
+has the same switch; switching applies at once (`meetings.noiseSuppression`, on by default). Also
+fixed: "System default" took the first microphone Windows lists, not the default one. Not tried on a
+real call (no call here); `npm run verify` and a production build pass (the effect is a lazy 4.4 MB
+chunk, nothing extra to package). **Check on your machine (installed app or `npm run dev`):**
+1. Join a call with a colleague (or a meeting with two devices). Open ⋯: **Noise suppression** should
+   show a check and **On** within a few seconds of connecting. "Basic" or "Unavailable": send
+   `~/.jig/logs` and the call window's console (lines "Noise suppression" / "Deep noise suppression").
+2. Talk while typing hard on the keyboard; ask: "Do you hear my keys?" Then turn it off in ⋯ (badge
+   **Off**), type again and ask again: they should hear the keys now. Turn it back on.
+3. Ask how your voice sounds compared with the Teams app (same C270 mic). If still worse, note how
+   (quiet, muffled, robotic, echo) for the next fix.
+4. Devices… with Microphone = System default: the call should use the Windows default microphone
+   (Settings → System → Sound → Input). Pick the C270 by name too and check the colleague still hears you.
+5. Switch microphone in Devices… during the call: ⋯ should still say **On** afterwards.
+
 Meeting captions in group meetings, and a transcript without them (2026-11-04, D-321): in Teams
 meetings with several people, Jig 0.7.0 showed "Captions could not start" right after joining. The
 cause: Jig asked for captions before Teams had said you may start them in that meeting (the meeting's

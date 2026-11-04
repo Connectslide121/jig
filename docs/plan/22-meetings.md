@@ -33,3 +33,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [x] Captions in group meetings: wait for the meeting's capabilities, retry with backoff, keep Teams' real reason (D-321).
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).
+- [x] Noise suppression on your microphone: Azure deep noise suppression by default, browser fallback, switch in the call's ⋯ menu and Devices… (D-322).
+- [ ] Verify noise suppression on a real call: colleagues don't hear typing, voice quality matches Teams (D-322).

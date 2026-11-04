@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  AudioLines,
   Captions,
   Mic,
   MicOff,
@@ -14,7 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { MeetingRecord } from "../../../shared/meetings";
 import { Button, cn, openMenuAt } from "../../ui";
-import { elapsed, initials } from "./format";
+import { elapsed, initials, NOISE_SUPPRESSION_TEXT } from "./format";
 import { type MediaState, type Person, selfPerson } from "./media";
 import { PersonPhoto } from "./photo";
 
@@ -33,6 +34,7 @@ export function Stage({
   onCamera,
   onShare,
   onDevices,
+  onNoiseSuppression,
   onRetryCaptions,
   onLeave,
   leaveLabel = "Leave",
@@ -48,6 +50,8 @@ export function Stage({
   onCamera(): void;
   onShare(): void;
   onDevices(): void;
+  /** Turns noise suppression on or off (`meetings.noiseSuppression`). */
+  onNoiseSuppression(): void;
   onRetryCaptions(): void;
   onLeave(): void;
   /** "Hang up" for a one-to-one call. */
@@ -138,6 +142,14 @@ export function Stage({
                 onClick={(e) =>
                   openMenuAt(e.currentTarget, [
                     { label: "Devices…", icon: Settings2, disabled: fake, onSelect: onDevices },
+                    {
+                      label: "Noise suppression",
+                      icon: AudioLines,
+                      checked: media.noiseSuppression !== "off",
+                      badge: NOISE_SUPPRESSION_TEXT[media.noiseSuppression].badge,
+                      testId: "noise-suppression",
+                      onSelect: onNoiseSuppression,
+                    },
                     { label: "Restart captions", icon: Captions, disabled: fake, onSelect: onRetryCaptions },
                   ])
                 }

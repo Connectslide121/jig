@@ -88,6 +88,13 @@ function Room() {
   useConfigStore();
   const localTranscription = useConfig((s) => s.config?.meetings.localTranscription ?? true);
   useEffect(() => media.current!.setLocalTranscription(localTranscription), [localTranscription]);
+  // Noise suppression on your microphone (D-322); a change applies to the call at once.
+  const noiseSuppression = useConfig((s) => s.config?.meetings.noiseSuppression ?? true);
+  useEffect(() => media.current!.setNoiseSuppression(noiseSuppression), [noiseSuppression]);
+  const toggleNoiseSuppression = () =>
+    void updateConfig({ meetings: { noiseSuppression: !noiseSuppression } }).catch((e) =>
+      setError(errorMessage(e)),
+    );
   useHostEvent("meetings.leaveRequested", () => {
     void run(async () => {
       await media.current!.leave();
@@ -383,6 +390,7 @@ function Room() {
                   })
                 }
                 onDevices={() => setDevicePicker(true)}
+                onNoiseSuppression={toggleNoiseSuppression}
                 leaveLabel={active.call ? "Hang up" : "Leave"}
                 onRetryCaptions={() => void run(() => media.current!.startCaptions())}
                 onLeave={() =>
@@ -463,6 +471,8 @@ function Room() {
       {devicePicker && (
         <DevicePicker
           media={media.current}
+          noiseSuppression={mediaState.noiseSuppression}
+          onNoiseSuppression={toggleNoiseSuppression}
           onClose={() => setDevicePicker(false)}
           onError={(e) => setError(errorMessage(e))}
         />

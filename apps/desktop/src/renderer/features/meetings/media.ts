@@ -1,5 +1,6 @@
 import {
   type AudioDeviceInfo,
+  type AudioEffectsFeature,
   CallClient,
   type CapabilitiesFeature,
   type Captions,
@@ -7,6 +8,7 @@ import {
   type CaptionsInfo,
   type DeviceManager,
   Features,
+  type LocalAudioStream,
   LocalVideoStream,
   type RemoteParticipant,
   type RemoteVideoStream,
@@ -42,6 +44,12 @@ export interface Person {
   muted: boolean;
   speaking: boolean;
 }
+/**
+ * Noise suppression on your microphone (D-322): `deep` is Azure Communication Services' deep noise
+ * suppression (what removes typing), `browser` Chromium's own (the fallback where the deep one isn't
+ * supported), `unavailable` neither could start, `starting` until the call's audio exists.
+ */
+export type NoiseSuppression = "off" | "starting" | "deep" | "browser" | "unavailable";
 export interface MediaState {
   /** Languages Teams can show captions in (empty until captions run). */
   captionLanguages: string[];
@@ -51,6 +59,7 @@ export interface MediaState {
   muted: boolean;
   camera: boolean;
   sharing: boolean;
+  noiseSuppression: NoiseSuppression;
   people: Person[];
 }
 export const INITIAL_MEDIA: MediaState = {
@@ -60,6 +69,7 @@ export const INITIAL_MEDIA: MediaState = {
   muted: true,
   camera: false,
   sharing: false,
+  noiseSuppression: "off",
   people: [],
 };
 const initial = INITIAL_MEDIA;
@@ -148,6 +158,10 @@ export class MeetingMedia {
   private agentStarting?: Promise<TeamsCallAgent>;
   private statusChain: Promise<unknown> = Promise.resolve();
   private captionChain: Promise<unknown> = Promise.resolve();
+  /** Noise suppression wanted (`meetings.noiseSuppression`), and the audio stream it was set up on. */
+  private noiseWanted = true;
+  private noiseStream?: LocalAudioStream;
+  private noiseChain: Promise<unknown> = Promise.resolve();
   /** Test meeting service: Teams captions "unavailable", local transcript on (true) or off (false). */
   private fakeLocal?: boolean;
   constructor(private readonly error: (error: unknown) => void) {}
@@ -200,12 +214,18 @@ export class MeetingMedia {
     const previewVersion = ++this.previewVersion;
     const available = await this.prepare();
     if (previewVersion !== this.previewVersion) return;
+    // "System default" is the microphone the SDK marks as the system's default: it lists real devices
+    // as `microphone:<id>` and drops the synthetic "default" entry, so the first one may be another mic.
     const microphone =
-      available.microphones.find((d) => d.id === (microphoneId || "default")) ?? available.microphones[0];
+      (microphoneId && available.microphones.find((d) => d.id === microphoneId)) ||
+      available.microphones.find((d) => d.isSystemDefault) ||
+      available.microphones[0];
     const speaker =
       available.speakers.find((d) => d.id === (speakerId || "default")) ?? available.speakers[0];
     if (microphone) await this.deviceManager!.selectMicrophone(microphone);
     if (speaker) await this.deviceManager!.selectSpeaker(speaker);
+    // Another microphone in a call: noise suppression follows it.
+    if (this.active) this.applyNoiseSuppression();
     this.preview?.dispose();
     this.preview = undefined;
     if (!this.active && this.video) {
@@ -491,6 +511,7 @@ export class MeetingMedia {
           state: "Connected",
           muted: options.muted,
           camera: false,
+          noiseSuppression: this.noiseWanted ? "deep" : "off",
           people: peer
             ? [
                 {
@@ -574,8 +595,12 @@ export class MeetingMedia {
       const c = this.active;
       this.spokenLanguage = options.language;
       this.watchCaptions(c);
+      this.update({ noiseSuppression: this.noiseWanted ? "starting" : "off" });
+      this.applyNoiseSuppression();
       const state = () => {
         this.sync();
+        if (c.state === "Connected" && this.noiseStream !== c.localAudioStreams[0])
+          this.applyNoiseSuppression();
         if (c.state === "Connected" && !this.teamsActive && !this.captionsStarting && !this.captionRetry) {
           this.status("connected", "Starting captions");
           void this.startCaptions(options.language, false);
@@ -591,6 +616,7 @@ export class MeetingMedia {
       c.on("isMutedChanged", () => this.sync());
       c.on("isScreenSharingOnChanged", () => this.sync());
       c.on("localVideoStreamsUpdated", () => this.sync());
+      c.on("localAudioStreamsUpdated", () => this.applyNoiseSuppression());
       c.on("remoteParticipantsUpdated", (event) => {
         for (const p of event.added) this.watchParticipant(p);
         this.sync();
@@ -990,6 +1016,82 @@ export class MeetingMedia {
       throw error;
     }
   }
+  /** Turns noise suppression on or off (`meetings.noiseSuppression`); a call in progress follows at once. */
+  setNoiseSuppression(on: boolean): void {
+    if (this.noiseWanted === on) return;
+    this.noiseWanted = on;
+    if (this.fakeTimer) this.update({ noiseSuppression: on ? "deep" : "off" });
+    else if (this.active) this.applyNoiseSuppression();
+  }
+  /**
+   * Starts or stops noise suppression on the call's microphone stream: Azure's deep noise suppression
+   * where supported, else the browser's own. One change at a time, and it never fails the call.
+   */
+  private applyNoiseSuppression(): void {
+    this.noiseChain = this.noiseChain
+      .then(() => this.noiseSuppressionNow())
+      .catch((error) => {
+        console.warn("Noise suppression", error);
+        if (this.active) this.update({ noiseSuppression: this.noiseWanted ? "unavailable" : "off" });
+      });
+  }
+  private async noiseSuppressionNow(): Promise<void> {
+    const c = this.active;
+    const stream = c?.localAudioStreams[0];
+    if (!c || !stream || this.leaving) return;
+    const effects = stream.feature(Features.AudioEffects);
+    if (this.noiseStream !== stream) {
+      this.noiseStream = stream;
+      const changed = () => {
+        if (this.active === c && this.noiseStream === stream)
+          this.update({ noiseSuppression: this.noiseState(effects) });
+      };
+      const failed = (error: unknown) => {
+        console.warn("Noise suppression", error);
+        changed();
+      };
+      // The microphone changed under the stream: set suppression up again on the new source.
+      const source = () => this.applyNoiseSuppression();
+      effects.on("effectsStarted", changed);
+      effects.on("effectsStopped", changed);
+      effects.on("effectsError", failed);
+      stream.on("audioSourceChanged", source);
+      this.participantCleanup.push(() => {
+        effects.off("effectsStarted", changed);
+        effects.off("effectsStopped", changed);
+        effects.off("effectsError", failed);
+        stream.off("audioSourceChanged", source);
+      });
+    }
+    const active = effects.activeEffects.noiseSuppression ?? [];
+    if (!this.noiseWanted) {
+      if (active.length) await effects.stopEffects({ noiseSuppression: true });
+    } else if (!active.includes("DeepNoiseSuppression")) {
+      // Calls only: the module (WebAssembly inlined, worklet from a blob: URL) loads when first needed.
+      const { DeepNoiseSuppressionEffect } = await import("@azure/communication-calling-effects");
+      const deep = new DeepNoiseSuppressionEffect();
+      let started = false;
+      try {
+        if (await effects.isSupported(deep)) {
+          await effects.startEffects({ noiseSuppression: deep });
+          started = true;
+        }
+      } catch (error) {
+        console.warn("Deep noise suppression", error);
+      }
+      // Fallback: Chromium's own suppression (the getUserMedia constraint), which is weaker on typing.
+      if (!started && !active.includes("BrowserNoiseSuppression"))
+        if (await effects.isSupported("BrowserNoiseSuppression"))
+          await effects.startEffects({ noiseSuppression: "BrowserNoiseSuppression" });
+    }
+    if (this.active === c) this.update({ noiseSuppression: this.noiseState(effects) });
+  }
+  private noiseState(effects: AudioEffectsFeature): NoiseSuppression {
+    const active = effects.activeEffects.noiseSuppression ?? [];
+    if (active.includes("DeepNoiseSuppression")) return "deep";
+    if (active.includes("BrowserNoiseSuppression")) return "browser";
+    return this.noiseWanted ? "unavailable" : "off";
+  }
   async mute(): Promise<void> {
     if (this.fakeTimer) {
       this.update({ muted: !this.state.muted });
@@ -1084,6 +1186,7 @@ export class MeetingMedia {
     this.captionsFeature = undefined;
     this.capabilities = undefined;
     this.active = undefined;
+    this.noiseStream = undefined;
     this.record = undefined;
     this.captions = undefined;
     if (!this.listeningFor) await this.disposeAgent();
