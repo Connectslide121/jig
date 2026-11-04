@@ -46,7 +46,7 @@ test("an add-on's data per project: each project has its own copy", async ({ pag
     })
     .toBe(true);
   if (!(await page.getByTestId("region-right").isVisible())) {
-    await page.getByTestId("layout-button").click();
+    await page.getByTestId("tools-group-View").click();
     await page.getByRole("menuitem", { name: "Right sidebar" }).click();
   }
   await expect(page.getByTestId("view-tab-addon.notes.main")).toBeVisible({ timeout: 15000 });

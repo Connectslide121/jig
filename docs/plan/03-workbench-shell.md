@@ -27,7 +27,7 @@ the Tools menu lists every action, projects can be added and switched, settings 
 ## Notes
 
 - Regions show one view at a time with a tab per view in the region header (D-030).
-- The top bar's layout button toggles regions and lists every view (show/hide); Settings → Layout
+- The top bar's View menu toggles regions and lists every view (show/hide); Settings → Layout
   shows hidden views and resets the layout.
 - Projects are added through the native folder picker (`projects.add` without a path); e2e tests pass
   a path instead.

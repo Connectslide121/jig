@@ -86,7 +86,7 @@ test("a chat can ask for a build; the card follows it", async ({ page, jigHome }
 });
 
 test("Change this with AI on an add-on view starts a build about that add-on", async ({ page }) => {
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Repos" }).click();
   await page.getByTestId("view-menu-addon.repos.overview").click();

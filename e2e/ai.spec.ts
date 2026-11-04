@@ -130,7 +130,7 @@ test("A failed script offers Ask Claude, with its output in a new chat", async (
     }),
   );
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   const view = page.getByTestId("scripts-view");

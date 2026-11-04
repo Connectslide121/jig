@@ -211,7 +211,7 @@ test("views go anywhere: sidebars, the bottom panel and the main area, by draggi
 test("drag a tab onto a sidebar's lower half to split it; Reset layout puts it back", async ({ page }) => {
   const left = page.getByTestId("region-left");
   const right = page.getByTestId("region-right");
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Right sidebar" }).click();
   await expect(right).toBeVisible();
   await expect(page.getByTestId("region-right2")).toHaveCount(0);
@@ -228,7 +228,7 @@ test("drag a tab onto a sidebar's lower half to split it; Reset layout puts it b
   await expect(page.getByTestId("move-view-right2")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByTestId("reset-layout").click();
   await page.getByRole("button", { name: "Reset", exact: true }).click();
   await expect(left.getByTestId("view-tab-jig.sessions")).toBeVisible();
@@ -237,7 +237,7 @@ test("drag a tab onto a sidebar's lower half to split it; Reset layout puts it b
 
 test("a submenu opens beside its menu, never over it, and stays in the window", async ({ page }) => {
   // The layout button is near the window's right edge.
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   const menus = page.getByRole("menu");
   await expect(menus).toHaveCount(2);

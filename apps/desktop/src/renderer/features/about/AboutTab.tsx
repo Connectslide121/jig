@@ -766,7 +766,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "If Claude changes a file you are editing, Jig asks: keep yours, load theirs, or see the diff",
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
                 "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
-                "Named layouts: save how the views are arranged and switch between them (View → Layout → Layouts)",
+                "View in the top bar shows or hides the sidebars and the bottom panel, opens any view (Views), and switches named layouts: save how the views are arranged and switch between them (Layouts)",
                 "Search in the center of the top bar (Ctrl+P or Ctrl+K): any chat, view, action or file, with results directly below",
                 "Right-click a file to open it in VS Code or ask Claude about it",
               ]}

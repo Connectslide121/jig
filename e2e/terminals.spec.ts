@@ -31,7 +31,7 @@ test("scripts: discovered, run from the Scripts panel, shown in the status bar, 
   jigHome,
 }) => {
   await project(page, jigHome);
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   const view = page.getByTestId("scripts-view");

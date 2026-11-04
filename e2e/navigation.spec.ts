@@ -82,7 +82,7 @@ test("the chats board shows every chat by what it needs from you", async ({ page
 test("named layouts: save one, change things, switch back", async ({ page }) => {
   const left = page.getByTestId("region-left");
   await expect(left.getByTestId("view-tab-jig.sessions")).toBeVisible();
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByTestId("layouts-menu").click();
   await page.getByTestId("save-layout").click();
   await page.getByTestId("dialog-input").fill("Coding");
@@ -94,14 +94,14 @@ test("named layouts: save one, change things, switch back", async ({ page }) => 
   await page.getByTestId("move-view-right").click();
   await expect(page.getByTestId("region-right").getByTestId("view-tab-jig.sessions")).toBeVisible();
 
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByTestId("layouts-menu").click();
   await page.getByRole("menuitem", { name: "Coding" }).click();
   await expect(left.getByTestId("view-tab-jig.sessions")).toBeVisible();
   await expect(page.getByTestId("region-right").getByTestId("view-tab-jig.sessions")).toHaveCount(0);
 
   // Settings → Layout lists it.
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByTestId("layouts-menu").click();
   await page.getByRole("menuitem", { name: "Manage layouts…" }).click();
   await expect(page.getByTestId("saved-layout-Coding")).toBeVisible();

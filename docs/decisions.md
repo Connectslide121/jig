@@ -4992,3 +4992,20 @@ Replaces D-311's Don't-ask sandbox (`never` with workspace-write and network).
   Codex keeps waiting either way; Jig doesn't stop the command. Not in the queue report: the report is
   the chat's own, so the chat's agent would have to mention it. Claude, on my own: the 3 minutes and
   the wording.
+
+## D-335: View is the top bar's one layout menu; no layout or ? button
+
+**Who:** Jon, 2026-11-04. Builds on D-174 (grouped top bar menus).
+
+- **One layout menu.** The top bar had two: View (Reset layout, Save layout as…, Show a hidden view…,
+  three Toggle… actions, Layouts ›) and the layout icon button on the right (the regions as checked
+  entries, Views ›, Layouts ›, Reset layout). They are merged into View: **SHOW** (Left sidebar, Right
+  sidebar, Bottom panel as checked entries with their shortcuts; Views ›), **LAYOUT** (any other layout
+  action, Layouts › with Save layout as… and Manage layouts…, Reset layout last), then **APPEARANCE**.
+- **Nothing twice.** The region entries replace the three Toggle… actions in the menu, Save layout
+  as… lives only in Layouts ›, and Views › covers "Show a hidden view…" (a hidden view shows unchecked
+  and opens from there). Those actions stay registered for search and shortcuts. Claude, on my own:
+  dropping "Show a hidden view…" from the menu, and drawing the region entries without icons so their
+  checks line up in one column.
+- **Fewer icon buttons.** The layout button and the `?` (What Jig can do) are removed from the right
+  of the top bar; What Jig can do stays in the Jig menu (top left).

@@ -43,13 +43,13 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   two-column split (`setPaneSize`). Core panes: `jig.terminals.list`, `jig.settings.nav`; the Git
   add-on's diff uses `addon.git.diff`. Add-ons use `Pane` / `useSplitRatio` from `@jig/sdk/ui`.
 - **hidden**: views that are not in a sidebar or the bottom panel. Showing one (its action in the
-  top bar menus, layout menu → Views) opens it as a **main tab** (`jig.view`, `params.viewId`,
+  top bar menus, View → Views) opens it as a **main tab** (`jig.view`, `params.viewId`,
   `openViewTab`, D-174); the builder's and settings tools' `showView` still put it in a region.
   Views used now and then start here (D-173: Suggestions, Links, Releases, Workflows) so the
   sidebars hold only daily views; a view or add-on view says so with `startHidden` / `"hidden": true`.
   A view is in one place: moving it to a region closes its main tab, and `normalizeLayout` closes
   `jig.view` tabs whose view is in a region.
-- **Reset layout** (top bar layout menu, Settings → Layout, or the "Reset layout" action) asks, then
+- **Reset layout** (View in the top bar, Settings → Layout, or the "Reset layout" action) asks, then
   puts every view back where it started, with default sizes and sidebars. Open tabs stay.
 - Old layouts (before D-173) had `sections`, `closedSections` and `waitingUnder` (views shown below
   another view, D-099). On load, sections move to the lower half of their host's sidebar and the
@@ -162,7 +162,7 @@ Chat tabs report it from the chat's status and the turns seen while the tab show
 
 Every view has a `⋯` menu (and a right-click menu on its tab): Move to left sidebar / right sidebar /
 bottom panel, Hide. **Drag a view's tab** to reorder it, or onto another sidebar's (or the bottom
-panel's) tabs to move it there, before the tab you drop it on (`dropView`); the menus work as before. The top bar's layout button toggles regions and shows/hides views. Main-area tabs:
+panel's) tabs to move it there, before the tab you drop it on (`dropView`); the menus work as before. The top bar's View menu toggles regions and shows views. Main-area tabs:
 middle-click or `×` closes; right-click → Close, Close others, Close all; drag to reorder.
 
 | Shortcut | Action (also in the grouped menus) |
@@ -182,11 +182,15 @@ The separate Tools dropdown is removed (D-190). In this documentation, **Search 
 top-bar search field (Go to), type the item's name and select it. `tools.action` keeps its manifest name for
 compatibility and contributes to the grouped menus and search; it has no exclusive dropdown.
 **Chats** (Chats, Claude, Workflows, Meetings), **Code** (Git, Files, Terminals, Pipelines), **Build** and
-**View** (Layout, Appearance; Reset layout is here). The Projects group's actions are in the project
+**View**, the one layout menu (D-335): SHOW lists Left sidebar, Right sidebar and Bottom panel as
+checked entries with their shortcuts (they replace the three Toggle… actions in the menu; the actions
+stay registered for search and shortcuts) and Views › (every view, checked when shown); LAYOUT holds
+any other layout action, Layouts › (saved layouts, Save layout as…, Manage layouts…) and Reset layout;
+then APPEARANCE. The Projects group's actions are in the project
 switcher; the Jig group is in the Jig menu. Any other group (an add-on's own) keeps its own menu
 (`TOPBAR_MENUS` in `workbench/Topbar.tsx`). The centre holds the search with **New chat** beside it (kept in
 place, invisible, without a project); the right holds icon buttons: add-on `topbar` items (suggestions,
-Meetings), then Layout, What Jig can do and Settings. Groups scroll horizontally on narrow windows; the top-bar search field, Ctrl+P and Ctrl+K provide a single search for chats, files, views and actions. No new view IDs or slots.
+Meetings), then Settings and the tenant chip. What Jig can do is in the Jig menu (D-335). Groups scroll horizontally on narrow windows; the top-bar search field, Ctrl+P and Ctrl+K provide a single search for chats, files, views and actions. No new view IDs or slots.
 
 Top-bar menus form one menu bar: click to open a group, then hovering another group switches the open menu. Hovering while closed leaves menus closed; Escape, selecting an action or clicking outside ends menu-bar navigation. Panel view tabs use `text-sm` labels, `size-4` icons and `h-7` controls; action-group labels in the top bar use `text-sm`.
 

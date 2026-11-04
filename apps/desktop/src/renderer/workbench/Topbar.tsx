@@ -1,6 +1,5 @@
 import {
   ChevronDown,
-  CircleHelp,
   Eye,
   FolderPlus,
   Keyboard,
@@ -8,9 +7,6 @@ import {
   LayoutTemplate,
   MessageSquarePlus,
   Mic,
-  PanelBottom,
-  PanelLeft,
-  PanelRight,
   Puzzle,
   RotateCcw,
   Save,
@@ -64,28 +60,27 @@ function topbarMenus(groups: Array<{ group: string; actions: ActionDef[] }>, liv
       const actions = byGroup.get(name) ?? [];
       return actions.length || liveGroups.has(name) ? [{ name, actions }] : [];
     });
-    // View → Layouts: saved layouts to switch to sit with the layout actions.
     const items = (name: string, actions: ActionDef[]): MenuEntry[] =>
-      name === "Layout"
-        ? [...actionMenu(actions), layoutsEntry()]
-        : name === "Terminals"
-          ? [
-              ...actionMenu(actions),
-              { label: "New terminal in…", icon: SquareTerminal, submenu: newTerminalInEntries() },
-            ]
-          : actionMenu(actions);
+      name === "Terminals"
+        ? [
+            ...actionMenu(actions),
+            { label: "New terminal in…", icon: SquareTerminal, submenu: newTerminalInEntries() },
+          ]
+        : actionMenu(actions);
     const section = (live: LiveEntries, name: string, actions: ActionDef[]) =>
       withLiveEntries(live[name], items(name, actions));
     return {
       menu,
       groups: parts.map((p) => p.name),
       entries: (live) =>
-        parts.length === 1
+        parts.length === 1 && parts[0]!.name !== "Layout"
           ? section(live, parts[0]!.name, parts[0]!.actions)
-          : parts.flatMap(({ name, actions }) => [
-              { heading: name } as const,
-              ...section(live, name, actions),
-            ]),
+          : parts.flatMap(({ name, actions }) =>
+              // View's layout section brings its own headings (Show, Layout).
+              name === "Layout"
+                ? layoutSection(live[name], actions)
+                : [{ heading: name } as const, ...section(live, name, actions)],
+            ),
     };
   }).filter((m) => m.groups.length > 0);
   const taken = new Set([...OWN_MENU, ...TOPBAR_MENUS.flatMap((m) => m.groups)]);
@@ -163,7 +158,7 @@ function projectMenu(): MenuEntry[] {
   ];
 }
 
-/** Layouts: the saved ones to switch to, then save and manage. In View and the layout button's menu. */
+/** Layouts: the saved ones to switch to, then save and manage. */
 function layoutsEntry(): MenuEntry {
   const saved = useWorkbench.getState().layout?.saved ?? [];
   return {
@@ -181,26 +176,49 @@ function layoutsEntry(): MenuEntry {
   };
 }
 
-function layoutMenu(): MenuEntry[] {
+/**
+ * Layout actions View shows in its own form (D-335): the region toggles as checked entries, Save layout
+ * in Layouts ›, a hidden view in Views ›. They stay registered for search and shortcuts.
+ */
+const REGION_ACTIONS = {
+  left: "jig.toggleLeft",
+  right: "jig.toggleRight",
+  bottom: "jig.toggleBottom",
+} as const;
+const SHOWN_AS_LAYOUT_ENTRIES = new Set<string>([
+  ...Object.values(REGION_ACTIONS),
+  "jig.showHiddenViews",
+  "jig.saveLayout",
+  "jig.resetLayout",
+]);
+
+/**
+ * View's layout section: Show (the regions, checked while shown, and every view in Views ›), then
+ * Layout (other layout actions, saved layouts, Reset layout last). Read when the menu opens.
+ */
+function layoutSection(live: MenuEntry[] | undefined, actions: ActionDef[]): MenuEntry[] {
   const layout = useWorkbench.getState().layout;
-  const views = useRegistry.getState().views;
+  const { views, actions: registered } = useRegistry.getState();
   const hidden = hiddenViews();
-  const regionEntries = (["left", "right", "bottom"] as const).map((r) => ({
-    label: { left: "Left sidebar", right: "Right sidebar", bottom: "Bottom panel" }[r],
-    icon: { left: PanelLeft, right: PanelRight, bottom: PanelBottom }[r],
-    checked: layout
-      ? !layout[r].collapsed &&
-        [...layout[r].views, ...(LOWER_HALF[r] ? layout[LOWER_HALF[r]].views : [])].some((v) => views[v])
-      : false,
-    onSelect: () => workbench.toggleRegion(r),
-  }));
+  const regionEntries = (["left", "right", "bottom"] as const).map(
+    (r): MenuEntry => ({
+      label: { left: "Left sidebar", right: "Right sidebar", bottom: "Bottom panel" }[r],
+      shortcut: registered[REGION_ACTIONS[r]]?.shortcut,
+      checked: layout
+        ? !layout[r].collapsed &&
+          [...layout[r].views, ...(LOWER_HALF[r] ? layout[LOWER_HALF[r]].views : [])].some((v) => views[v])
+        : false,
+      testId: `view-region-${r}`,
+      onSelect: () => workbench.toggleRegion(r),
+    }),
+  );
   return [
     { heading: "Show" },
     ...regionEntries,
-    { separator: true },
     {
       label: "Views",
       icon: Eye,
+      testId: "views-menu",
       submenu: Object.values(views)
         .sort((a, b) => a.title.localeCompare(b.title))
         .map((v) => ({
@@ -211,14 +229,12 @@ function layoutMenu(): MenuEntry[] {
           onSelect: () => workbench.showView(v.id),
         })),
     },
-    layoutsEntry(),
-    { separator: true },
-    {
-      label: "Reset layout",
-      icon: RotateCcw,
-      testId: "reset-layout",
-      onSelect: () => void resetLayout(),
-    },
+    { heading: "Layout" },
+    ...withLiveEntries(live, [
+      ...actionMenu(actions.filter((a) => !SHOWN_AS_LAYOUT_ENTRIES.has(a.id))),
+      layoutsEntry(),
+      { label: "Reset layout", icon: RotateCcw, testId: "reset-layout", onSelect: () => void resetLayout() },
+    ]),
   ];
 }
 
@@ -263,8 +279,6 @@ export function Topbar() {
   const project = useActiveProject();
   const mac = navigator.platform.startsWith("Mac");
   const actions = useRegistry((s) => s.actions);
-  // View → Layouts lists the saved layouts, so rebuild the menus when one is saved or removed.
-  useWorkbench((s) => s.layout?.saved);
   const menuGroups = useRegistry((s) => s.menuGroups);
   const menus = topbarMenus(
     filterActions(Object.values(actions), ""),
@@ -348,19 +362,6 @@ export function Topbar() {
       <div className="flex min-w-0 items-center justify-end gap-1">
         <TopbarItems placement="right-start" />
         <TopbarItems />
-        <IconButton
-          icon={PanelLeft}
-          label="Layout and views"
-          data-testid="layout-button"
-          onClick={(e) => openMenuAt(e.currentTarget, layoutMenu(), true, TOPBAR_MENU)}
-          onMouseEnter={(e) => switchMenuAt(e.currentTarget, layoutMenu(), TOPBAR_MENU, true)}
-        />
-        <IconButton
-          icon={CircleHelp}
-          label="What Jig can do"
-          data-testid="about-button"
-          onClick={() => openAbout()}
-        />
         <IconButton
           icon={Settings}
           label="Settings"

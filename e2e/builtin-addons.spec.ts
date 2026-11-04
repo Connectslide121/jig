@@ -174,7 +174,7 @@ test("Repos: the branch is a dropdown that switches branches", async ({ page, ji
 
 test("Scripts add-on lists and runs scripts", async ({ page, jigHome }) => {
   await setup(page, jigHome);
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   await expect(page.getByTestId("scripts-view")).toBeVisible({ timeout: 15000 });
@@ -193,7 +193,7 @@ async function scriptsFolder(page: Page, jigHome: string) {
     JSON.stringify({ scripts: { serve: forever, api: forever, lint: "echo l" } }),
   );
   await hostCall(page, "projects.add", { path: dir });
-  await page.getByTestId("layout-button").click();
+  await page.getByTestId("tools-group-View").click();
   await page.getByRole("menuitem", { name: "Views" }).hover();
   await page.getByRole("menuitem", { name: "Scripts" }).click();
   const view = page.getByTestId("scripts-view");

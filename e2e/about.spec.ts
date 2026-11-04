@@ -54,7 +54,8 @@ test("What Jig can do: slots, add-ons, skills, and Try in a chat", async ({ page
     "Switch to a dark theme that is easy on the eyes",
   );
 
-  // The top bar button opens the same tab again.
-  await page.getByTestId("about-button").click();
+  // The Jig menu opens the same tab again.
+  await page.getByTestId("jig-menu").click();
+  await page.getByTestId("jig-menu-about").click();
   await expect(page.getByTestId("about")).toBeVisible();
 });

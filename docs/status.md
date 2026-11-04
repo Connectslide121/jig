@@ -741,6 +741,12 @@ from the same recurring invite, then open the history.
 Add-on rows (2026-11-02, Jon): Settings → Add-ons rows show Change with AI, Share and the switch;
 History, Restore, Open folder, Reload and Delete are in the row's ⋯ menu.
 
+Top bar View menu (2026-11-04, Jon, D-335): View is the one layout menu. SHOW has Left sidebar, Right
+sidebar and Bottom panel as checked entries with their shortcuts, and Views › (every view, checked when
+shown); LAYOUT has Layouts › (saved layouts, Save layout as…, Manage layouts…) and Reset layout; then
+APPEARANCE. The layout icon button and the `?` button are gone from the right of the top bar; What Jig
+can do is in the Jig menu. Try: open View, toggle the bottom panel, open a hidden view from Views ›.
+
 Top bar (2026-11-02, Jon): New chat sits beside the search in the centre; Meetings is a video icon
 button among the icons on the right (the Meetings add-on's `topbar` item), and still in Chats → Meetings.
 
@@ -1453,7 +1459,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   and %); hover for what fills it (messages, tools, system prompt, …), click for **Compact
   conversation** or **Compact with instructions…** (Claude Code's own `/compact`). From 70% a
   **Compact** button shows next to it; the chat's ⋯ menu has the same entries.
-- **What Jig can do** (the "Jig" menu at the top left, the `?` in the top bar, Tools → What Jig can do,
+- **What Jig can do** (the "Jig" menu at the top left, Tools → What Jig can do,
   Settings → About; it is also what the main area shows when no tab is open): a page with screenshots of each part, a live grid of the 17 extension slots (which of your
   add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
   gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
@@ -1748,7 +1754,7 @@ epos`: a new file showed in ~1.5 s and left ~1.6 s after deletion.
 - **Context meter with your real Claude Code**: after a few turns the % in the chat header should match
   `/context` in the CLI for the same session; Compact should shrink it and show "Conversation compacted
   (… → … tokens)".
-- **The What Jig can do page**: open it with the `?` in the top bar; check your skills from
+- **The What Jig can do page**: open it from the Jig menu (top left); check your skills from
   `~/.claude/skills` are listed and that the screenshots look right on your screen.
 - **Configuring from a real chat**: ask Claude Code (real login) to "switch to a light theme and make it
   compact" and "move the terminals to the right"; check the permission prompts, the change cards and

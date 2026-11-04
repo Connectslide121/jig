@@ -289,7 +289,8 @@ test("screenshots for the About page", async () => {
 
   // What Jig can do: the overview, then the extension slots with one opened.
   await key("Control+Alt+B"); // close the right sidebar: the page needs the room
-  await page.getByTestId("about-button").click();
+  await page.getByTestId("jig-menu").click();
+  await page.getByTestId("jig-menu-about").click();
   await page.getByTestId("tab-jig.about").click({ button: "right" });
   const onePane = page.getByRole("menuitem", { name: "One pane", exact: true });
   if (await onePane.count()) await onePane.click();
