@@ -181,7 +181,7 @@
     },
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
-    { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts"] },
+    { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts", "tasks-dashboard.spec.ts"] },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts", "pipelines.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {

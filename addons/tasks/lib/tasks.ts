@@ -6,6 +6,8 @@
 export type Outcome = "done" | "partial" | "failed" | "blocked";
 export type TaskStatus = "queued" | "running" | "needs_you" | Outcome | "no_report" | "error" | "skipped";
 export type PermissionMode = "default" | "acceptEdits" | "plan";
+/** Why a task's chat waits for you: the kind of card pending in it. */
+export type WaitingFor = "permission" | "question" | "plan";
 
 export interface TaskReport {
   outcome: Outcome;
@@ -60,6 +62,8 @@ export interface Task {
   reportedLate?: boolean;
   /** Jig closed while its chat worked on it (status error); it can still be reported late. */
   interrupted?: boolean;
+  /** While it needs you: what its chat waits for (D-326). */
+  waitingFor?: WaitingFor;
 }
 
 export interface Queue {
@@ -1003,4 +1007,16 @@ export function listing(queue: Queue): string {
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}.`, ...lines].join("\n");
+}
+
+/** One short line per task (id, status, title), for listing every project's queue at once. */
+export function compactListing(queue: Queue): string {
+  const lines = queue.tasks.map(
+    (t) =>
+      `- ${t.id} [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}] ${t.title}`,
+  );
+  return [
+    `${queue.tasks.length} task${queue.tasks.length === 1 ? "" : "s"}, ${queue.running ? "running" : "paused"}.`,
+    ...lines,
+  ].join("\n");
 }

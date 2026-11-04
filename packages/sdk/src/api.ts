@@ -432,6 +432,8 @@ export interface AddonChatInfo {
   background: number;
   /** When you last stopped one of its turns (Stop) or rejected a tool call in it. */
   userStoppedAt?: string;
+  /** While it needs you: what waits for you in it, a question, a plan to approve or a permission. */
+  waitingFor?: "permission" | "question" | "plan";
 }
 
 /** The Azure tenant every `az` Jig runs uses (D-282): `default` is your own az login. */

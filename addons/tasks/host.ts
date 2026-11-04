@@ -1,5 +1,13 @@
 import type { AddonChatInfo, AddonHostApi } from "@jig/sdk";
 import {
+  type Dashboard,
+  finishedToday,
+  type QueueCard,
+  queueCard,
+  sortCards,
+  summarize,
+} from "./lib/dashboard";
+import {
   addTasks,
   afterTurn,
   applyReport,
@@ -7,6 +15,7 @@ import {
   chatFinished,
   chatToContinue,
   closeRun,
+  compactListing,
   type DropSlot,
   editTasks,
   emptyQueue,
@@ -347,6 +356,29 @@ export async function overview(
   return out;
 }
 
+/**
+ * Every project's queue as a card for the all-queues dashboard (D-326), sorted, with the summary across
+ * them. Reads only the stored queues and histories: no chat reads (the running tasks' chats are
+ * followed by `chatChanged` and `tick`), so the tab can ask again on every change.
+ */
+export async function dashboard(_args: unknown, api: AddonHostApi): Promise<Dashboard> {
+  await ready(api);
+  const now = new Date();
+  const since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const cards: QueueCard[] = [];
+  const today = [];
+  let empty = 0;
+  for (const p of await api.projects()) {
+    const q = await load(api, p.id);
+    const card = queueCard(p.id, q);
+    if (card) cards.push(card);
+    else empty++;
+    const runs = (await loadHistory(api, p.id)).filter((r) => !r.finishedAt || r.finishedAt >= since);
+    today.push(finishedToday([...q.tasks, ...runs.flatMap((r) => r.tasks)], now));
+  }
+  return { cards: sortCards(cards), summary: summarize(cards, today), empty };
+}
+
 /** A project's past runs, newest first. */
 export async function history(args: ProjectArgs, api: AddonHostApi): Promise<Run[]> {
   const projectId = await projectArg(api, args?.projectId);
@@ -622,9 +654,13 @@ export async function chatChanged(
   await change(api, projectId, async (q) => {
     const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
     if (!task) return [q, undefined];
-    if (status === "working" || status === "starting")
-      return [replace(q, { ...task, status: "running", sawBusy: true }), undefined];
+    if (status === "working" || status === "starting") {
+      const { waitingFor: _answered, ...rest } = task;
+      return [replace(q, { ...rest, status: "running", sawBusy: true }), undefined];
+    }
     if (status === "needs_you") {
+      // What it waits for, for the dashboard: one read, only when a chat starts needing you.
+      const waitingFor = (await api.chats.get(sessionId).catch(() => undefined))?.waitingFor;
       api.notify({
         title: "A queued task needs you",
         message: task.title,
@@ -632,7 +668,10 @@ export async function chatChanged(
         system: true,
         actions: OPEN,
       });
-      return [replace(q, { ...task, status: "needs_you", sawBusy: true }), undefined];
+      return [
+        replace(q, { ...task, status: "needs_you", sawBusy: true, ...(waitingFor ? { waitingFor } : {}) }),
+        undefined,
+      ];
     }
     const chat = await api.chats.get(sessionId);
     return [await advance(api, await turnEnded(api, q, task, chat)), undefined];
@@ -715,20 +754,27 @@ export async function toolReport(
   });
 }
 
+/** The project a tool names (its name or id); this chat's when it names none. */
+async function projectNamed(
+  api: AddonHostApi,
+  project: string | undefined,
+  chatProject: string | undefined,
+): Promise<string | undefined> {
+  if (!project) return chatProject;
+  const wanted = project.trim().toLowerCase();
+  const found = (await api.projects()).find(
+    (p) => p.name.toLowerCase() === wanted || p.id === project.trim(),
+  );
+  if (!found) throw new Error(`There is no project called ${project}`);
+  return found.id;
+}
+
 export async function toolAdd(
   args: ChatArgs & { tasks?: unknown; project?: string; sameChat?: boolean; start?: boolean },
   api: AddonHostApi,
 ): Promise<string> {
   const tasks = parseNewTasks(args.tasks);
-  let projectId = args.chat?.projectId;
-  if (args.project) {
-    const wanted = args.project.trim().toLowerCase();
-    const found = (await api.projects()).find(
-      (p) => p.name.toLowerCase() === wanted || p.id === args.project,
-    );
-    if (!found) throw new Error(`There is no project called ${args.project}`);
-    projectId = found.id;
-  }
+  const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project the tasks are for (this chat has none)");
   return change(api, projectId, async (q) => {
     let next = addTasks(q, tasks, { projectId, newChat: !args.sameChat, addedBy: args.chat?.sessionId });
@@ -748,15 +794,7 @@ export async function toolEdit(
   api: AddonHostApi,
 ): Promise<string> {
   const edits = parseTaskEdits(args.tasks);
-  let projectId = args.chat?.projectId;
-  if (args.project) {
-    const wanted = args.project.trim().toLowerCase();
-    const found = (await api.projects()).find(
-      (p) => p.name.toLowerCase() === wanted || p.id === args.project,
-    );
-    if (!found) throw new Error(`There is no project called ${args.project}`);
-    projectId = found.id;
-  }
+  const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project's queue to change (this chat has none)");
   return change(api, projectId, (q) => {
     const next = editTasks(q, edits);
@@ -764,11 +802,26 @@ export async function toolEdit(
   });
 }
 
-/** The chat's project's queue, or every project's that has tasks when the chat has none. */
-export async function toolList(args: ChatArgs, api: AddonHostApi): Promise<string> {
+/**
+ * The chat's project's queue, or another project's (`project`: its name or id), or every project's that
+ * has tasks when the chat has none. `all` lists every queue compactly (id, status, title per task) under
+ * its project's name and id, so a chat finds a task anywhere and edits it with addon_tasks_edit.
+ */
+export async function toolList(
+  args: ChatArgs & { project?: string; all?: boolean },
+  api: AddonHostApi,
+): Promise<string> {
   await ready(api);
   const projects = await api.projects();
-  const own = args?.chat?.projectId;
+  if (args?.all) {
+    const parts: string[] = [];
+    for (const p of projects) {
+      const q = await load(api, p.id);
+      if (q.tasks.length) parts.push(`${p.name} (project id ${p.id}): ${compactListing(q)}`);
+    }
+    return parts.join("\n\n") || "Every task queue is empty.";
+  }
+  const own = await projectNamed(api, args?.project, args?.chat?.projectId);
   const shown = own ? projects.filter((p) => p.id === own) : projects;
   const parts: string[] = [];
   for (const p of shown) {

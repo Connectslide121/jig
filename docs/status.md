@@ -1,5 +1,17 @@
 # Status
 
+All task queues at a glance (2026-11-04, D-326): the Tasks view has an **All queues** button beside its
+project picker (and the picker's first item) that opens a main-area tab with every project's queue: a
+summary strip (queues running, tasks running, needs you, queued, finished today, cost today) and a card
+per project with tasks, needing you first, then running, paused, finished. Each card shows the run's
+progress bar, counts, time and cost, the task running now with its chat and why it needs you (a
+question, a plan or a permission), the next two tasks and the last finished one. Click a card for that
+queue in the Tasks view; hover for Start/Pause, right-click or ⋯ for more. `addon_tasks_list` also takes
+`project` and `all`, so a chat in any project can find a task. Checked with screenshots in Jig Dark,
+Jig Light and an imported VS Code theme, narrow and wide (fake data). Unit tests pass; the e2e spec is
+written but not run (D-258). Needs testing on your machine: two real queues running at once, one
+stopping at a permission card (its card should move to the top and say "Waits for a permission").
+
 Screen sharing and sound (2026-11-04, D-324): Jon thought his computer's sound was shared with his
 screen. It isn't: Jig only ever gives the call the picture, and the calling SDK has no supported way to
 send system sound (only Microsoft's own Teams apps get it). So there is no "Share sound" switch; the

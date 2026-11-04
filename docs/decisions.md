@@ -4696,3 +4696,38 @@ rerun.
   commit and nothing since affects it; when they fail it records the new failures for HEAD.
 - Trade-off (Claude, on my own): a change `e2e/affected.json` doesn't map runs its fallback specs, not
   the whole suite, as with `npm run e2e:changed`.
+
+## D-326: An all-queues dashboard in the Tasks add-on, and addon_tasks_list across projects
+
+**Who:** Jon: "I have 2 queues running and keep switching project to see their progress." One overview of
+every queue, opened from the Tasks add-on itself as a main-area tab. Also Jon: a chat in another project
+couldn't find a task in this project's queue (`addon_tasks_list` listed only the chat's own project, and
+the raw data was cut off at 60 KB).
+
+- The Tasks add-on contributes a `dashboard` tab (`workbench.tab`), opened with `ctx.openTab("dashboard")`
+  from an **All queues** button (layout-dashboard) beside the Tasks view's project picker and from the
+  picker's first item. Same params, so opening it again focuses the open tab.
+- A summary strip in six fixed slots (queues running, tasks running, needs you, queued, finished today,
+  cost today), then a card per project with tasks, sorted needs you, running, paused with tasks queued,
+  finished, the rest (projects keep their order within). Every card has the same rows and height: header
+  with the state badge at the far right, a segmented bar, the run's counts, time and cost, the current
+  task (its chat, time, and why it needs you), the next two queued titles and the last finished task.
+  Empty rows keep their slot. A footer counts projects without a queue; with no queue anywhere, one
+  message with Add tasks.
+- Click a card: the Tasks view on that project's queue (a request the view takes when it opens; it
+  overrides the shown project like the picker does). The chat link opens the chat. Start/Pause is a
+  hover action; right-click or ⋯ has Open queue, Open current chat, Start/Pause.
+- Data: the host's `dashboard` builds the cards from the stored queues and histories only (no chat
+  reads); the logic is in `lib/dashboard.ts`. It refreshes on the host's `changed` event, like the view;
+  only elapsed times tick locally.
+- "Why it needs you": `AddonChatInfo.waitingFor` (`question`, `plan` or `permission`, from the chat's
+  pending card). The host reads it once when a task's chat starts needing you and keeps it on the task
+  (`Task.waitingFor`, dropped when it works again). (Claude, on my own: one read on that change rather
+  than none, so the card can say what you're asked.)
+- The run a card counts (Claude, on my own): the open run's tasks plus the ticked queued ones; with no
+  open run, what Start would take, or else the last run's tasks. "Paused" also covers a queue with
+  tasks queued that was never started (Start is what it needs either way). Finished today counts the
+  queues' and history's tasks finished since local midnight, each once.
+- `addon_tasks_list` takes `project` (name or id) and `all` (every queue, one line per task: id,
+  status, title, under the project's name and id), so any chat finds a task and edits it with
+  `addon_tasks_edit` and its `project`.

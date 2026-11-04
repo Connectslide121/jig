@@ -21,6 +21,14 @@
         "component": "TasksView"
       }
     ],
+    "tabs": [
+      {
+        "type": "dashboard",
+        "title": "All queues",
+        "icon": "layout-dashboard",
+        "component": "DashboardTab"
+      }
+    ],
     "actions": [
       {
         "id": "show",
@@ -124,7 +132,19 @@
       },
       {
         "id": "list",
-        "description": "The user's task queue: each task's status and report summary.",
+        "description": "The user's task queue: each task's status and report summary. By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's id, status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
+        "params": {
+          "project": {
+            "type": "string",
+            "description": "The project's name or id; leave out for this chat's project",
+            "optional": true
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Every project's queue, one short line per task (id, status, title)",
+            "optional": true
+          }
+        },
         "readOnly": true,
         "run": "toolList"
       }

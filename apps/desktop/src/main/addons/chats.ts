@@ -39,9 +39,18 @@ function userStoppedAt(items: SessionSnapshot["items"]): string | undefined {
   return last;
 }
 
+/** What a chat that needs you waits for: its last pending card (a question, a plan, a permission). */
+function waitingFor(items: SessionSnapshot["items"]): AddonChatInfo["waitingFor"] {
+  const pending = [...items].reverse().find((i) => i.kind === "permission" && i.status === "pending");
+  if (pending?.kind !== "permission") return undefined;
+  const tool = pending.request.toolName;
+  return tool === "AskUserQuestion" ? "question" : tool === "ExitPlanMode" ? "plan" : "permission";
+}
+
 export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo {
   const answer = [...items].reverse().find((i) => i.kind === "assistant" && !i.parentId);
   const stoppedAt = userStoppedAt(items);
+  const waiting = meta.status === "needs_you" ? waitingFor(items) : undefined;
   return {
     id: meta.id,
     title: meta.title,
@@ -52,6 +61,7 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
     queued: queue?.length ?? 0,
     background: meta.backgroundTasks?.length ?? 0,
     ...(stoppedAt ? { userStoppedAt: stoppedAt } : {}),
+    ...(waiting ? { waitingFor: waiting } : {}),
     ...(answer?.kind === "assistant" ? { lastAnswer: answer.text, lastAnswerAt: answer.at } : {}),
     ...(meta.lastError ? { error: meta.lastError } : {}),
   };

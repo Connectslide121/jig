@@ -1,4 +1,4 @@
-import type { AddonComponentProps, AddonPermissionProps, AddonUiContext } from "@jig/sdk";
+import type { AddonComponentProps, AddonPermissionProps, AddonTabProps, AddonUiContext } from "@jig/sdk";
 import {
   Attachments,
   Badge,
@@ -26,18 +26,13 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
-  CircleAlert,
   CircleCheck,
-  CircleDashed,
-  CircleDot,
-  CircleHelp,
   CircleMinus,
-  CircleX,
   CornerDownRight,
   GripVertical,
   History,
+  LayoutDashboard,
   ListTodo,
-  LoaderCircle,
   MessageSquare,
   MessageSquareReply,
   MoreHorizontal,
@@ -45,10 +40,10 @@ import {
   Pause,
   Play,
   Plus,
-  SkipForward,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { DashboardView } from "./Dashboard";
 import {
   addFiles,
   addStep,
@@ -92,40 +87,13 @@ import {
   type TaskStatus,
   tally,
 } from "./lib/tasks";
-
-type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "info";
-
-const STATUS_TONE: Record<TaskStatus, Tone> = {
-  queued: "neutral",
-  running: "info",
-  needs_you: "warning",
-  done: "success",
-  partial: "warning",
-  failed: "danger",
-  blocked: "warning",
-  no_report: "neutral",
-  error: "danger",
-  skipped: "neutral",
-};
+import { BAR, money, onQueueRequest, STATUS_TONE, StatusIcon, takeRequestedQueue } from "./parts";
 
 const MODES: Array<{ value: PermissionMode; label: string }> = [
   { value: "acceptEdits", label: "Accept file edits" },
   { value: "default", label: "Ask before edits" },
   { value: "plan", label: "Plan only (no changes)" },
 ];
-
-function StatusIcon({ status }: { status: TaskStatus }) {
-  const c = "size-4 shrink-0";
-  if (status === "running") return <LoaderCircle className={cn(c, "animate-spin text-info")} />;
-  if (status === "needs_you") return <CircleAlert className={cn(c, "text-warning")} />;
-  if (status === "done") return <CircleCheck className={cn(c, "text-success")} />;
-  if (status === "partial") return <CircleDot className={cn(c, "text-warning")} />;
-  if (status === "failed" || status === "error") return <CircleX className={cn(c, "text-danger")} />;
-  if (status === "blocked") return <CircleMinus className={cn(c, "text-warning")} />;
-  if (status === "no_report") return <CircleHelp className={cn(c, "text-muted")} />;
-  if (status === "skipped") return <SkipForward className={cn(c, "text-hint")} />;
-  return <CircleDashed className={cn(c, "text-hint")} />;
-}
 
 /**
  * The tick that says whether Start takes a queued task (all ticked by default). `mixed` shows a group
@@ -178,11 +146,6 @@ function tickState(tasks: Task[]): { ids: string[]; checked: boolean; mixed: boo
     checked: queued.length > 0 && ticked === queued.length,
     mixed: ticked > 0 && ticked < queued.length,
   };
-}
-
-/** A cost, $0.00 included; a dash when there's none yet (a task that hasn't finished). */
-function money(usd?: number) {
-  return usd === undefined ? "—" : `$${usd.toFixed(2)}`;
 }
 
 /**
@@ -392,22 +355,45 @@ export function TasksView({ ctx }: AddonComponentProps) {
   const [run, setRun] = useState<string | undefined>();
   const projectId = project?.id;
   useEffect(() => setRun(undefined), [projectId]);
+  // The dashboard asked for a project's queue: show it (now, or when this view mounts).
+  useEffect(() => {
+    const show = (id: string) => {
+      pick(id);
+      setTab("queue");
+      setRun(undefined);
+    };
+    const asked = takeRequestedQueue();
+    if (asked) show(asked);
+    return onQueueRequest(() => {
+      const id = takeRequestedQueue();
+      if (id) show(id);
+    });
+  }, []);
 
   const showProjects = async (at: HTMLElement) => {
     const all = await ctx.host.call<QueueOverview[]>("overview").catch(() => []);
     ctx.menu(
-      projects.map((p) => {
-        const o = all.find((x) => x.projectId === p.id);
-        const busy = o ? o.queued + o.active : 0;
-        return {
-          label: p.name,
-          project: p.id,
-          checked: p.id === projectId,
-          testId: `tasks-project-${p.name}`,
-          badge: o?.needsYou ? "Needs you" : o?.running ? "Running" : busy ? `${busy} queued` : undefined,
-          onSelect: () => pick(p.id),
-        };
-      }),
+      [
+        {
+          label: "All queues",
+          icon: "layout-dashboard",
+          testId: "tasks-project-all",
+          onSelect: () => openDashboard(ctx),
+        },
+        { separator: true as const },
+        ...projects.map((p) => {
+          const o = all.find((x) => x.projectId === p.id);
+          const busy = o ? o.queued + o.active : 0;
+          return {
+            label: p.name,
+            project: p.id,
+            checked: p.id === projectId,
+            testId: `tasks-project-${p.name}`,
+            badge: o?.needsYou ? "Needs you" : o?.running ? "Running" : busy ? `${busy} queued` : undefined,
+            onSelect: () => pick(p.id),
+          };
+        }),
+      ],
       at,
     );
   };
@@ -434,9 +420,17 @@ export function TasksView({ ctx }: AddonComponentProps) {
             setRun(undefined);
           }}
         />
+        <IconButton
+          size="sm"
+          icon={LayoutDashboard}
+          label="All queues"
+          className="ml-auto"
+          data-testid="tasks-all-queues"
+          onClick={() => openDashboard(ctx)}
+        />
         <button
           type="button"
-          className="ml-auto flex h-7 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
+          className="flex h-7 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
           title="Each project has its own task queue: show another"
           data-testid="tasks-project"
           onClick={(e) => void showProjects(e.currentTarget)}
@@ -695,30 +689,22 @@ function QueuePanel({
           </Button>
         </Empty>
       ) : (
-        <>
-          <TaskTable
-            ctx={ctx}
-            queue={queue}
-            projectName={projectName}
-            onOpen={setOpen}
-            onMenu={menuFor}
-            onTick={(ids, on) => void call("select", { ids, on })}
-            onMove={(ids, move) => void call("move", { ids, ...move })}
-          />
-        </>
+        <TaskTable
+          ctx={ctx}
+          queue={queue}
+          projectName={projectName}
+          onOpen={setOpen}
+          onMenu={menuFor}
+          onTick={(ids, on) => void call("select", { ids, on })}
+          onMove={(ids, move) => void call("move", { ids, ...move })}
+        />
       )}
       {adding && (
         <AddDialog
           projectId={projectId}
           onClose={() => setAdding(false)}
           onSave={async (chats, permissionMode) => {
-            for (const chat of chats)
-              await call("add", {
-                prompts: chat.tasks,
-                projectId: chat.projectId,
-                newChat: true,
-                permissionMode,
-              });
+            await queueChats(ctx, chats, permissionMode);
             const elsewhere = [...new Set(chats.map((c) => c.projectId))].filter((id) => id !== projectId);
             if (elsewhere.length)
               ctx.notify({
@@ -1288,15 +1274,6 @@ function QueueSummary({ tasks, inline }: { tasks: Task[]; inline?: boolean }) {
     </div>
   );
 }
-
-const BAR: Record<Tone, string> = {
-  neutral: "bg-line",
-  accent: "bg-accent",
-  success: "bg-success",
-  warning: "bg-warning",
-  danger: "bg-danger",
-  info: "bg-info",
-};
 
 /** One chat of the queue: its link, project and totals, and its tasks in order. */
 function ChatCard({
@@ -2212,6 +2189,42 @@ function EditDialog({
 
 export function showTasks(ctx: AddonUiContext) {
   ctx.showView("tasks");
+}
+
+/** The all-queues dashboard: one tab (opening it again focuses it). */
+function openDashboard(ctx: AddonUiContext) {
+  ctx.openTab("dashboard");
+}
+
+/** Queues the Add tasks dialog's chats, each in its project's queue. */
+async function queueChats(
+  ctx: AddonUiContext,
+  chats: Array<{ projectId: string; tasks: NewTask[] }>,
+  permissionMode: PermissionMode,
+): Promise<void> {
+  for (const chat of chats)
+    await ctx.host
+      .call("add", { prompts: chat.tasks, projectId: chat.projectId, newChat: true, permissionMode })
+      .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }));
+}
+
+/** Every project's queue at a glance (the `dashboard` tab, D-326); its empty state adds tasks. */
+export function DashboardTab({ ctx }: AddonTabProps) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <>
+      <DashboardView ctx={ctx} onAdd={() => setAdding(true)} />
+      {adding && (
+        <AddDialog
+          onClose={() => setAdding(false)}
+          onSave={async (chats, permissionMode) => {
+            await queueChats(ctx, chats, permissionMode);
+            setAdding(false);
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 interface ReviewItem {

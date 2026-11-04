@@ -38,6 +38,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **Late reports, and no moving on while a chat still works** (added 2026-11-04, D-318): background
       work keeps a task open, one request from the queue for a missing report (none after you stopped
       the turn), `addon_tasks_report` with `taskId` for this chat's No report tasks, Ask for a report.
+- [x] **All queues dashboard** (added 2026-11-04, D-326): a main-area tab from the Tasks view with a
+      card per project's queue (state, progress, current task and why it needs you, up next, last) and
+      a summary strip; `addon_tasks_list` takes `project` and `all`.
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

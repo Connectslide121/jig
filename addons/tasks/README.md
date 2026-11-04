@@ -75,7 +75,10 @@ went, so you read the results as a table instead of scrolling one long chat.
   `{ ids, slot }` (a drop) or `{ ids, to: -1 | 1 | "top" | "bottom" }` (a step).
 - **Claude can queue tasks** (`addon_tasks_add`): "make a task for each spec in docs/specs" in any
   chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
-  the tasks first (it isn't read-only). `addon_tasks_list` shows the queue.
+  the tasks first (it isn't read-only). `addon_tasks_list` shows the queue: this chat's project's,
+  another's with `project` (name or id), or with `all` every project's, one line per task (id, status,
+  title) under the project's name and id (D-326), so a chat anywhere finds a task and changes it with
+  `addon_tasks_edit` and its `project`.
 - **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
   to the prompt, or left out. Also (D-317) whether a task continues the previous task's chat
   (`newChat`; the first task in the queue can't, the one right after a task that ran can) and where it
@@ -98,6 +101,20 @@ went, so you read the results as a table instead of scrolling one long chat.
   shows, until the global project changes again. Queues run
   independently; the badge and "needs you" count every project. The old global queue is split by
   project the first time the host runs.
+- **All queues** (D-326): the **All queues** button beside the project picker (and the picker's first
+  item) opens the `dashboard` tab (`workbench.tab`; opening it again focuses it). A summary strip in
+  fixed slots (queues running · tasks running · needs you · queued · finished today · cost today), then
+  a card per project with tasks, in a grid sized by the container (1, 2 or 3 columns): needs you first,
+  then running, paused with tasks queued, finished, the rest. Every card has the same rows: the project
+  and its state badge (far right), a bar of the run (done, failed or blocked, needs you, running,
+  queued), "4 of 12 finished · 1h 5m · $6.98", the task now (its chat, its time, and why it needs you:
+  a question, a plan or a permission), the next two queued titles ("+N more") and the last finished
+  task with its status; empty rows keep their place. Click a card for its queue in this view; the chat
+  link opens the chat; Start/Pause on hover; right-click or ⋯: Open queue, Open current chat,
+  Start/Pause. A footer says how many projects have no queue. The host's `dashboard` reads only the
+  stored queues and histories (`lib/dashboard.ts` has the logic and its tests), and the tab reloads on
+  `changed`. Why a task needs you comes from `chats.get`'s `waitingFor`, read once when its chat starts
+  needing you and kept as the task's `waitingFor`.
 - **Columns:** the queue and history tables share fixed-width, one-line, right-aligned columns
   (`COL` in `ui.tsx`), sized for their longest values ("10h 59m", "12:59 PM", "$99.99", "4 of 12
   finished"); the title takes the rest and truncates. Narrow containers drop Started, Notes,

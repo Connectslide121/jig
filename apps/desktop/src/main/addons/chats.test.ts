@@ -87,6 +87,23 @@ describe("chatInfo", () => {
       error: "boom",
     });
   });
+
+  it("says what a chat that needs you waits for: its last pending card", () => {
+    const pending = (toolName: string, status: "pending" | "allowed" = "pending") => ({
+      kind: "permission" as const,
+      id: toolName,
+      at: "2025-01-01T10:03:00Z",
+      status,
+      request: { requestId: toolName, toolName, input: {}, canAlwaysAllow: false },
+    });
+    const info = (items: SessionSnapshot["items"], status: SessionMeta["status"] = "needs_you") =>
+      chatInfo({ meta: meta({ status }), items, queue: [] });
+    expect(info([pending("Bash")]).waitingFor).toBe("permission");
+    expect(info([pending("Bash", "allowed"), pending("AskUserQuestion")]).waitingFor).toBe("question");
+    expect(info([pending("ExitPlanMode")]).waitingFor).toBe("plan");
+    expect(info([pending("Bash")], "working").waitingFor).toBeUndefined();
+    expect(info([pending("Bash", "allowed")]).waitingFor).toBeUndefined();
+  });
 });
 
 describe("addonChats", () => {

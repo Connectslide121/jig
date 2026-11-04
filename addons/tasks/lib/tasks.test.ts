@@ -10,6 +10,7 @@ import {
   chatGroups,
   chatToContinue,
   closeRun,
+  compactListing,
   counts,
   currentSlot,
   dropSlots,
@@ -622,6 +623,12 @@ describe("taskContext, counts, duration, listing", () => {
     expect(listing(emptyQueue())).toMatch(/empty/);
     const q = queued(["a"]);
     expect(listing(q)).toContain("1. [Queued] a (id t1)");
+  });
+  it("lists a queue compactly: id, status and title per task", () => {
+    const q = queued(["a", "b"]);
+    q.tasks[0]!.status = "done";
+    q.tasks[1]!.leftOut = true;
+    expect(compactListing(q)).toBe("2 tasks, paused.\n- t1 [Done] a\n- t2 [Queued, left out] b");
   });
 });
 
