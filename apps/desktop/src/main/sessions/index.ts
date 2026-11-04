@@ -34,7 +34,7 @@ import { routinesChanged } from "../routines";
 import { selectedSkillPlugins, skillLibrary } from "../skills";
 import { VOICE_GUIDANCE } from "../speech/voice";
 import { paths } from "../state/paths";
-import { usageService } from "../usage";
+import { chatGptChatUsed, usageService } from "../usage";
 import { APP_ICON } from "../window";
 import { SessionManager } from "./manager";
 import { notificationFor, notificationsAllowed } from "./notify";
@@ -215,8 +215,9 @@ export function startSessions(): void {
     },
     onTurnEnd: (meta) => {
       kindHooks.get(meta.kind ?? "")?.onTurnEnd?.(meta);
-      // A chat used some of the plan: refresh the usage meter (at most once a minute).
-      usageService().refreshIfOlder(60_000);
+      // A chat used some of its plan: refresh that provider's usage meter (D-298).
+      if (chatProvider(meta) === "codex") chatGptChatUsed();
+      else usageService().refreshIfOlder(60_000);
     },
     onRateLimit: (event) => usageService().rateLimit(event),
     runShell: (cwd, command) => runShellCommand(cwd, command),

@@ -16,6 +16,11 @@ export function usageService(): UsageService {
   return claude;
 }
 
+/** A Codex chat used some of the ChatGPT plan: ask Codex again (a burst of turns asks once). */
+export function chatGptChatUsed(): void {
+  chatgpt?.refreshIfOlder(15_000);
+}
+
 /** Asks Codex again soon (after its sign-in ended, say). */
 export function refreshChatGptUsage(): void {
   void chatgpt?.refresh();
