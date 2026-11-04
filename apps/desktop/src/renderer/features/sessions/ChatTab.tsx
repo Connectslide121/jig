@@ -1,6 +1,7 @@
-import { ChartColumn, Clock, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { chatProvider } from "../../../shared/engine";
+import { ChartColumn, ChevronDown, Clock, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { chatProvider, type SessionMeta } from "../../../shared/engine";
+import type { ProjectInfo } from "../../../shared/projects";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { MOTION_MS } from "../../ui/motion";
@@ -8,6 +9,7 @@ import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { TenantTagLabel } from "../azure/TenantTag";
+import { ProjectSwatch } from "../projects/colors";
 import { ChatChanges } from "./ChatChanges";
 import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
@@ -15,7 +17,7 @@ import { Composer } from "./Composer";
 import { ContextMeter } from "./ContextMeter";
 import { fillComposer } from "./drafts";
 import { renameSession, sessionMenu } from "./menus";
-import { showProjectOf } from "./project";
+import { canChangeProject, showProjectOf, switchChatProject } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { ensureTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
@@ -51,6 +53,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
   const transcript = useSessions((s) => s.transcripts[id]);
   const loaded = useSessions((s) => s.loaded);
   const project = useProjects((s) => s.projects.find((p) => p.id === meta?.projectId));
+  const activeProjectId = useProjects((s) => s.activeId);
   const [finding, setFinding] = useState(false);
   const [details, setDetails] = useState(false);
   const overview = useConfig((s) => s.config?.chat.overview ?? true);
@@ -80,6 +83,20 @@ export function ChatTab({ params, active, focused }: TabProps) {
   useEffect(() => {
     if (focused) showProjectOf(meta?.projectId);
   }, [focused, id, known]);
+  // A new chat nobody has written in yet follows the project you pick in the top bar (D-341), when it
+  // is the one in front. Only a change of the active project moves it: bringing the chat to the front
+  // makes its own project the active one (above), which never moves anything.
+  const canMove = meta
+    ? canChangeProject(meta, transcript?.items.length ?? 0, transcript?.queue.length ?? 0)
+    : false;
+  const lastActive = useRef(activeProjectId);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a change of the active project only.
+  useEffect(() => {
+    const was = lastActive.current;
+    lastActive.current = activeProjectId;
+    if (!focused || !canMove || !activeProjectId || was === activeProjectId) return;
+    if (meta?.projectId !== activeProjectId) void switchChatProject(id, activeProjectId);
+  }, [activeProjectId]);
   // What you have seen: the tab's dot shows a finished turn you haven't looked at yet.
   useEffect(() => {
     if (active && meta) markSeen(id, meta.turns);
@@ -118,7 +135,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
         >
           {meta.title}
         </button>
-        {project && <span className="truncate text-xs text-muted">{project.name}</span>}
+        {project && <ChatProject meta={meta} project={project} canMove={canMove} />}
         {meta.kind === "builder" && <Badge tone="accent">Builder</Badge>}
         <span className="text-xs text-hint" data-testid="chat-status">
           {meta.limit ? "Limit reached" : STATUS_LABEL[meta.status]}
@@ -202,6 +219,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
               <ChatWelcome
                 title={`New chat${project ? ` in ${project.name}` : ""}`}
                 cwd={meta.cwd}
+                starters={project?.starters}
                 provider={chatProvider(meta)}
                 onPick={(text) => fillComposer(id, text)}
               />
@@ -244,6 +262,65 @@ export function ChatTab({ params, active, focused }: TabProps) {
         onClose={() => setDetails(false)}
       />
     </div>
+  );
+}
+
+/**
+ * The chat's project beside its title. Until the first message it is a picker that moves the chat
+ * to another project (D-341); afterwards the same box as plain text, its chevron slot kept empty, so
+ * nothing beside it moves when the chat starts.
+ */
+function ChatProject({
+  meta,
+  project,
+  canMove,
+}: {
+  meta: SessionMeta;
+  project: ProjectInfo;
+  canMove: boolean;
+}) {
+  const content = (
+    <>
+      <ProjectSwatch color={project.color} />
+      <span className="truncate">{project.name}</span>
+      <ChevronDown className={cn("size-3.5 shrink-0 text-muted", !canMove && "invisible")} />
+    </>
+  );
+  const box = "flex h-7 min-w-0 shrink items-center gap-1.5 rounded-md px-1.5 text-xs text-muted";
+  if (!canMove)
+    return (
+      <span className={box} data-testid="chat-project">
+        {content}
+      </span>
+    );
+  const pick = (at: HTMLElement) => {
+    const { projects } = useProjects.getState();
+    openMenuAt(at, [
+      { heading: "Start this chat in" },
+      ...projects.map((p) => ({
+        label: p.name,
+        checked: p.id === meta.projectId,
+        leading: <ProjectSwatch color={p.color} />,
+        testId: `chat-project-item-${p.name}`,
+        onSelect: () => {
+          if (p.id === meta.projectId) return;
+          // The chat in front decides the active project (D-163): the top bar follows it.
+          void switchChatProject(meta.id, p.id).then((moved) => moved && showProjectOf(p.id));
+        },
+      })),
+    ]);
+  };
+  return (
+    <button
+      type="button"
+      aria-haspopup="menu"
+      className={cn(box, "hover:bg-hover hover:text-fg")}
+      title="Start this chat in another project: its folder, model and permissions follow"
+      data-testid="chat-project"
+      onClick={(e) => pick(e.currentTarget)}
+    >
+      {content}
+    </button>
   );
 }
 

@@ -88,6 +88,9 @@ resolved active model is recorded separately and never replaces the selected ali
   becomes a warning notice (`timedOut` on the item). With 0 it declines at once with that notice.
   Questions (`AskUserQuestion`, `ExitPlanMode`) just wait for you.
 
+- **Project** (beside the title in the header, D-341): until the first message a picker that moves the
+  new chat to another project with that project's folder and defaults; the chat in front also follows
+  the top bar's project. Afterwards plain text in the same box.
 - **Times** (clock button in the header, setting `chat.times`, D-306): every message and step gets its
   time in a fixed column at the left, with the day when it changes; a turn's "Done" line has none. The
   tooltip gives the time to the second and how long after the previous step. Off, the time shows in a

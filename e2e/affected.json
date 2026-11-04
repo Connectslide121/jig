@@ -86,7 +86,8 @@
         "saved-chats.spec.ts",
         "usage.spec.ts",
         "codex-tools.spec.ts",
-        "chat-provider.spec.ts"
+        "chat-provider.spec.ts",
+        "chat-project.spec.ts"
       ]
     },
     {

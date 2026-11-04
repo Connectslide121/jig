@@ -1,5 +1,14 @@
 # Status
 
+A new chat changes project until its first message (2026-11-04, D-341, Jon): in a new chat, the
+project beside the title (swatch, name, chevron) opens a **Start this chat in** menu; switching the
+project in the top bar takes the chat in front along too. Its folder, provider, model, effort,
+permission mode and the empty chat's text and starter prompts (now the project's own, else Jig's)
+follow. After the first message the label is plain text in the same box and the top bar no longer
+moves it. Checked in Jig Dark with the fake engine. To try on a real machine: switch a new chat
+between two projects with different default models and check the first message runs in the new
+folder.
+
 No provider in the chat header (2026-11-04, D-340, Jon): the chat tab's top bar no longer shows
 Claude or ChatGPT; the composer's provider picker already says who runs the chat. The header's
 right-hand group (context meter, tokens, buttons) closes up; nothing else moves. Checked in Jig Dark

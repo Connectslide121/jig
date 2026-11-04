@@ -61,6 +61,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       "Claude → ChatGPT" divider; `sessions.handOverPlan` / `sessions.handOver`, `e2e/handover.spec.ts`.
 - [ ] Hand a real chat over both ways (Claude → ChatGPT → Claude) and check the new provider picks up
       from the handoff with the mapped model (D-339).
+- [x] **A new chat changes project until its first message** (added 2026-11-04, D-341): the project
+      beside the chat's title is a picker while the chat is unstarted, the chat in front follows the
+      top bar's project, folder, provider, model, effort, permission mode and starter prompts follow;
+      `sessions.switchProject`, `e2e/chat-project.spec.ts`.
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

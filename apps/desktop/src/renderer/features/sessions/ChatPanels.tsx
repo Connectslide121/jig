@@ -212,18 +212,24 @@ const TIPS: Array<[string, string]> = [
 /** ChatGPT chats have no plan mode (D-309): Shift+Tab goes between asking and accepting edits. */
 const CODEX_TIPS: Array<[string, string]> = [...TIPS.slice(0, -1), ["Shift+Tab", "ask or accept edits"]];
 
-/** An empty chat: where it runs, things to ask, and the message box's shortcuts. */
+/**
+ * An empty chat: where it runs, things to ask (the project's starter prompts, else Jig's), and the
+ * message box's shortcuts.
+ */
 export function ChatWelcome({
   title,
   cwd,
   provider,
+  starters,
   onPick,
 }: {
   title: string;
   cwd: string;
   provider: ChatProvider;
+  starters?: string[];
   onPick: (text: string) => void;
 }) {
+  const prompts = starters?.some((s) => s.trim()) ? starters.filter((s) => s.trim()) : STARTERS;
   return (
     <div
       className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8"
@@ -242,7 +248,7 @@ export function ChatWelcome({
           </div>
         </div>
         <div className="flex flex-wrap justify-center gap-1.5">
-          {STARTERS.map((s) => (
+          {prompts.map((s) => (
             <button
               key={s}
               type="button"

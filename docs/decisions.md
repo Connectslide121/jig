@@ -5177,3 +5177,28 @@ provider, capabilities and Claude as the default still hold.
 - **Layout** (Claude, on my own): nothing takes the freed slot; the tenant spacer before the context
   meter absorbs it, so the header's right-hand group simply starts one item later. This also ends the
   slide D-339's status noted (the mark moving while the context meter is hidden after a handover).
+
+## D-341: A new chat changes project until its first message
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: a new chat that hasn't started should be able to change its project, from
+  the top bar's project picker and from a dropdown on the project name in the chat header; once the
+  first message is sent it stays in its project.
+- **What:** `sessions.switchProject` moves an unstarted chat (`meta.draft`, no turns, items or queue)
+  to another project as if it had been created there: the project's default workspace as its folder,
+  and the provider, model, effort and permission mode `createChat` would give it (`chatDefaults`,
+  `modeFor`). Any engine a model list started goes; the first message starts one in the new folder.
+  After the first message it is `not_allowed`; "Move to project" (`sessions.setProject`) still files a
+  started chat elsewhere without touching its folder or settings.
+- **Following the top bar** (Claude, on my own): only the chat in front (its tab showing in the pane
+  you work in) follows, and only on a change of the active project, never when a chat comes to the
+  front (that makes its own project active, D-163). Two new chats in different projects therefore
+  never pull each other along. Picking a project in the chat header also makes it the active project.
+- **Defaults win** (Claude, on my own): the new project's provider replaces one picked by hand on the
+  empty chat, as starting the chat there would have.
+- **Header** (Claude, on my own): the project shows as a swatch and name in a fixed box (`h-7`, chevron
+  slot). Unstarted it is a button like the top bar's project switcher and the Tasks queue's project
+  picker, opening a "Start this chat in" menu of projects with their swatches; started it is the same
+  box as plain text with the chevron slot kept empty, so nothing beside it (the status) moves.
+- **Starter prompts:** the empty chat now shows the project's starter prompts (Settings of the
+  project), else Jig's; they follow the switch.

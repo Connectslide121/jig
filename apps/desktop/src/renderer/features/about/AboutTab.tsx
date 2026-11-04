@@ -611,6 +611,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "New chats name themselves: the quick model gives each a short name from its first message (Settings → Chats → Name new chats)",
                 "Chats lists ten per group including pins; Show more adds ten, while all pinned chats stay visible. Change grouping in Chats options → View type",
                 "Model and permission mode per chat",
+                "Start a new chat in another project: until its first message, the project beside its title is a picker, and switching the project in the top bar takes the chat along (its folder, model, permissions and starter prompts follow)",
                 "Chats on Claude or ChatGPT: pick it beside the model picker, set the default in Settings → Chats and per project in its settings; each chat shows its mark",
                 "Hand a chat over to the other provider whenever you want, from the provider picker or the chat's ⋯ menu: a dialog says what carries over (a summary, your files, the model's tier and effort), what doesn't and what's different there, and a divider marks the change",
                 "ChatGPT chats work like Claude's: Plan only with the plan card, question cards, a suggested next message, Claude Code's skills next to Codex's own, and their saved Codex chats in Open a saved chat",
