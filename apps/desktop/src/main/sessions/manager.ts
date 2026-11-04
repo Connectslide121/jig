@@ -948,12 +948,28 @@ export class SessionManager {
     this.scheduleSave(live, true);
   }
 
-  /** Changes a queued message's text before it is sent (it keeps its place and attachments). */
-  async editQueued(id: string, queuedId: string, text: string): Promise<void> {
+  /**
+   * Changes a queued message before it is sent: its text, and with `attachments` its files too (left
+   * out, it keeps them). It keeps its place in the queue.
+   */
+  async editQueued(
+    id: string,
+    queuedId: string,
+    text: string,
+    attachments?: ChatAttachment[],
+  ): Promise<void> {
     const live = await this.live(id);
     const queued = live.queue.find((q) => q.id === queuedId);
     if (!queued) throw new JigError("not_found", "That message has already been sent");
-    live.queue = live.queue.map((q) => (q.id === queuedId ? { ...q, text } : q));
+    const trimmed = text.trim();
+    const files = attachments ?? queued.attachments ?? [];
+    if (!trimmed && files.length === 0) throw new JigError("invalid_args", "The message is empty");
+    const edited: QueuedMessage = {
+      id: queued.id,
+      text: trimmed,
+      ...(files.length ? { attachments: files } : {}),
+    };
+    live.queue = live.queue.map((q) => (q.id === queuedId ? edited : q));
     this.emit(live, [{ op: "queue", queue: live.queue }]);
   }
 

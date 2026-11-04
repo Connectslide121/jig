@@ -20,6 +20,15 @@ describe("IPC checks", () => {
       /^hints:/,
     );
     expect(invalidArgs("terminals.resize", { id: "t", cols: 80.5, rows: 24 })).toMatch(/^cols:/);
+    // A queued message may lose its text when it keeps a file, not both.
+    const shot = { path: "/home/.jig/attachments/s/a.png", mime: "image/png" };
+    expect(
+      invalidArgs("sessions.editQueued", { id: "s", queuedId: "q", text: "", attachments: [shot] }),
+    ).toBe(undefined);
+    expect(invalidArgs("sessions.editQueued", { id: "s", queuedId: "q", text: " " })).toMatch(/empty/);
+    expect(
+      invalidArgs("sessions.editQueued", { id: "s", queuedId: "q", text: "x", attachments: [{ path: 1 }] }),
+    ).toMatch(/^attachments/);
     // Methods without a schema only need plain data.
     expect(invalidArgs("config.get", undefined)).toBeUndefined();
     expect(invalidArgs("layout.set", { main: {} } as never)).toBeUndefined();

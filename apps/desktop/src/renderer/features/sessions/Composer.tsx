@@ -1,6 +1,5 @@
 import {
   ArrowUp,
-  AtSign,
   AudioLines,
   BookmarkPlus,
   Bot,
@@ -12,71 +11,40 @@ import {
   MessageSquareShare,
   Paperclip,
   Plug,
-  Plus,
   Shield,
-  Slash,
   Sparkles,
   Split,
   Square,
   SquarePlus,
   SquareTerminal,
-  Video,
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ChatAttachment,
   PERMISSION_MODE_LABELS,
   type QueuedMessage,
   type SessionMeta,
-  type SlashCommandInfo,
 } from "../../../shared/engine";
-import { fuzzyFilter } from "../../../shared/fuzzy";
-import type { MethodResult } from "../../../shared/ipc";
 import { call, errorMessage } from "../../lib/host";
-import { Button, cn, ErrorBoundary, FileIcon, IconButton, type MenuEntry, openMenuAt } from "../../ui";
+import { Button, cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { takeTalkRequest, useTalkRequest } from "../speech/commands/talk";
-import { DictationButton, toggleDictation } from "../speech/DictationButton";
-import { cancelDictation, useDictation } from "../speech/dictation";
-import { type DictationSpan, placeDictation } from "../speech/protocol";
 import { VoiceButton } from "../speech/VoiceButton";
 import { startVoice, toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
 import { newSession } from "./actions";
-import { addFiles, ChatAttachments } from "./ChatAttachments";
-import { MentionChips, MentionHighlights, openMention, useLiveMentions } from "./ComposerMentions";
-import { ComposerPicker, type PickerItem } from "./ComposerPicker";
-import { chatCommands, TERMINAL_ONLY } from "./commands";
-import {
-  historyStep,
-  inputMode,
-  mentionsIn,
-  nextPermissionMode,
-  removeMention,
-  replaceToken,
-  tokenAt,
-} from "./composerInput";
+import { type BoxCommand, ComposerBox, useComposerText } from "./ComposerBox";
+import { historyStep, inputMode, nextPermissionMode, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
 import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
 import { usePrompts } from "./prompts";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { openEditQueuedDialog, openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
-
-/** Files Claude Code reads itself when mentioned with @. */
-const TEXT_FILE =
-  /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|md|txt|css|scss|html|cs|csproj|sln|py|go|rs|java|kt|rb|php|sh|ps1|yml|yaml|toml|xml|sql|vue|svelte|env|ini|cfg|config|props|targets|bicep|tf)$/i;
-
-function relativeTo(cwd: string, path: string): string {
-  const norm = (p: string) => p.replaceAll("\\", "/");
-  const base = norm(cwd).replace(/\/$/, "");
-  const p = norm(path);
-  return p.toLowerCase().startsWith(`${base.toLowerCase()}/`) ? p.slice(base.length + 1) : p;
-}
 
 /**
  * Claude Code commands that Jig answers with its own menus (they need Claude Code's terminal UI
@@ -113,29 +81,6 @@ const LOCAL_COMMANDS: LocalCommand[] = [
   },
 ];
 
-function commandItems(commands: SlashCommandInfo[] | undefined, query: string): PickerItem[] {
-  const local = LOCAL_COMMANDS.map((c) => ({
-    id: `jig:${c.name}`,
-    name: c.name,
-    value: `/${c.name}`,
-    label: `/${c.name}`,
-    description: c.description,
-    icon: <Slash className="size-3.5 text-accent" />,
-  }));
-  const remote = (commands ?? [])
-    .filter((c) => !TERMINAL_ONLY.has(c.name) && !LOCAL_COMMANDS.some((l) => l.name === c.name))
-    .map((c) => ({
-      id: `cc:${c.name}`,
-      name: [c.name, ...(c.aliases ?? [])].join(" "),
-      value: `/${c.name}`,
-      label: `/${c.name}`,
-      hint: c.argumentHint || undefined,
-      description: c.description,
-      icon: c.builtin ? <Slash className="size-3.5" /> : <Sparkles className="size-3.5" />,
-    }));
-  return fuzzyFilter([...remote, ...local], query, (c) => c.name, 60);
-}
-
 export function Composer({
   meta,
   queue,
@@ -145,21 +90,11 @@ export function Composer({
   queue: QueuedMessage[];
   active: boolean;
 }) {
-  const [text, setTextState] = useState(() => takeDraft(meta.id));
-  /** The text as last set: the field shows it only after the next render. */
-  const latestText = useRef(text);
+  const input = useComposerText(() => takeDraft(meta.id));
+  const { text, setText, ref } = input;
   const modelName = useModelLabel(meta);
-  const [caret, setCaret] = useState(0);
   const [files, setFiles] = useState<ChatAttachment[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const [selected, setSelected] = useState(0);
-  const [closedAt, setClosedAt] = useState<string>();
-  const [commands, setCommands] = useState<SlashCommandInfo[]>();
-  const [found, setFound] = useState<{ query: string; files: string[] }>();
-  const [meetings, setMeetings] = useState<{ query: string; list: MethodResult<"meetings.mentions"> }>();
   const [history, setHistory] = useState<{ index: number; draft: string }>({ index: -1, draft: "" });
-  const [scrollTop, setScrollTop] = useState(0);
-  const ref = useRef<HTMLTextAreaElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const prompts = Object.values(usePrompts());
   const toolbar = Object.values(useRegistry((s) => s.chatToolbar));
@@ -167,130 +102,33 @@ export function Composer({
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
   const suggestion = busy ? undefined : meta.suggestion;
   const mode = inputMode(text);
-  // Mentioned files, folders and meetings: highlighted in the text and shown as chips above it.
-  const allMentions = useMemo(() => (mode ? [] : mentionsIn(text)), [text, mode]);
-  const mentions = useLiveMentions(meta.cwd, allMentions);
-  const dictating = useDictation((s) => s.target === meta.id && s.phase === "recording");
   const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
-
-  const setText = (value: string, at = value.length) => {
-    latestText.current = value;
-    setTextState(value);
-    setCaret(at);
-    requestAnimationFrame(() => ref.current?.setSelectionRange(at, at));
-  };
-
-  // The `/` and `@` pickers follow the word at the caret.
-  const token = tokenAt(text, caret);
-  const tokenKey = token ? `${token.kind}:${token.start}` : undefined;
-  const pickerOpen = Boolean(token) && closedAt !== tokenKey;
-  // Asked again each time the menu opens (cached for a moment), so new skills show and an error retries.
-  useEffect(() => {
-    if (!pickerOpen) setCommands(undefined);
-  }, [pickerOpen]);
-  useEffect(() => {
-    if (pickerOpen && token?.kind === "command" && !commands)
-      void chatCommands(meta.id)
-        .then(setCommands)
-        .catch(() => setCommands([]));
-  }, [pickerOpen, token?.kind, commands, meta.id]);
-  const fileQuery = pickerOpen && token?.kind === "file" ? token.query : undefined;
-  useEffect(() => {
-    if (fileQuery === undefined) return;
-    const timer = setTimeout(() => {
-      void call("files.search", { root: meta.cwd, query: fileQuery, limit: 40 })
-        .then((list) => setFound({ query: fileQuery, files: list }))
-        .catch(() => setFound({ query: fileQuery, files: [] }));
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [fileQuery, meta.cwd]);
-  // Meetings Jig kept can be mentioned too (D-250); none while the Meetings add-on is off.
-  useEffect(() => {
-    if (fileQuery === undefined) return;
-    const timer = setTimeout(() => {
-      void call("meetings.mentions", { query: fileQuery })
-        .then((list) => setMeetings({ query: fileQuery, list }))
-        .catch(() => setMeetings({ query: fileQuery, list: [] }));
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [fileQuery]);
-  const items: PickerItem[] = useMemo(() => {
-    if (!pickerOpen || !token) return [];
-    if (token.kind === "command") return commandItems(commands, token.query);
-    const files: PickerItem[] = (found?.files ?? []).map((f) => ({
-      id: f,
-      value: `@${f}`,
-      label: f,
-      icon: <FileIcon path={f} folder={f.endsWith("/")} className="size-3.5" />,
-    }));
-    const kept: PickerItem[] = (meetings?.list ?? []).map((m) => ({
-      id: `meeting:${m.id}`,
-      value: m.mention,
-      label: m.title,
-      description: `Meeting · ${new Date(m.startedAt).toLocaleDateString()}`,
-      plain: true,
-      icon: <Video className="size-3.5 text-muted" />,
-    }));
-    // Asking for a meeting by name puts meetings first; otherwise files lead and a few meetings follow.
-    return token.query.toLowerCase().startsWith("meeting") ? [...kept, ...files] : [...files, ...kept];
-  }, [pickerOpen, token, commands, found, meetings]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: back to the first item when the list changes.
-  useEffect(() => setSelected(0), [tokenKey, token?.query]);
+  const localCommands = useMemo<BoxCommand[]>(
+    () => LOCAL_COMMANDS.map((c) => ({ ...c, run: (anchor) => c.run(meta, anchor) })),
+    [meta],
+  );
 
   useEffect(() => {
     if (active) ref.current?.focus();
-  }, [active]);
+  }, [active, ref]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setTyped only sets state and a ref.
   useEffect(
     () =>
       registerComposer(meta.id, (value) => {
-        latestText.current = value;
-        setTextState(value);
-        setCaret(value.length);
+        input.setTyped(value, value.length);
         requestAnimationFrame(() => ref.current?.focus());
       }),
     [meta.id],
   );
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resize whenever the text changes.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-  }, [text]);
 
-  /** Where the words being dictated are, replaced as they come in. */
-  const spoken = useRef<{ span: DictationSpan; text: string }>(undefined);
-  /**
-   * What you say goes where the caret is (read from the field: it may have changed meanwhile), and
-   * is replaced as Whisper hears more; `final` is the last time.
-   */
-  const dictated = (words: string, final: boolean) => {
-    const el = ref.current;
-    // Not the field's value: a word that just came in may not be on screen yet.
-    const value = latestText.current;
-    const last = spoken.current;
-    let span = last?.span;
-    if (last && value.slice(last.span.start, last.span.end) !== last.text) {
-      // You typed meanwhile: find the words again, or start over at the caret.
-      const at = last.text ? value.indexOf(last.text) : -1;
-      span = at >= 0 ? { start: at, end: at + last.text.length } : undefined;
-    }
-    span ??= { start: el?.selectionStart ?? caret, end: el?.selectionEnd ?? caret };
-    const next = placeDictation(value, span, words);
-    setText(next.text, next.caret);
-    spoken.current = final
-      ? undefined
-      : { span: next.span, text: next.text.slice(next.span.start, next.span.end) };
-    el?.focus();
-  };
-  // Dictation and talking keep these for as long as they run: always call this render's functions.
-  const latest = useRef({ dictated, send: (_value: string) => {} });
+  // Talking keeps these for as long as it runs: always call this render's send.
+  const latest = useRef({ send: (_value: string) => {} });
   const speechHooks = useMemo<VoiceHooks>(
     () => ({
-      onText: (words, final) => latest.current.dictated(words, final),
-      send: () => latest.current.send(latestText.current),
+      onText: input.onDictation,
+      send: () => latest.current.send(input.latestText.current),
     }),
-    [],
+    [input.onDictation, input.latestText],
   );
   // "Hey Jig, new chat": a voice command asks this chat to start talking (D-278).
   const talkRequested = useTalkRequest((s) => s.target === meta.id);
@@ -303,25 +141,6 @@ export function Composer({
         void call("sessions.send", { id: meta.id, text: request.send }).catch(() => undefined);
     });
   }, [talkRequested, meta.id, speechHooks]);
-
-  const pick = (item: PickerItem) => {
-    if (!token) return;
-    const local =
-      token.kind === "command" ? LOCAL_COMMANDS.find((c) => `/${c.name}` === item.value) : undefined;
-    if (local) {
-      setText("");
-      if (box.current) local.run(meta, box.current);
-      return;
-    }
-    // A command without arguments runs right away, as in Claude Code.
-    if (token.kind === "command" && !item.hint && !text.slice(token.end).trim()) {
-      void send(item.value, files);
-      return;
-    }
-    const next = replaceToken(text, token, item.value);
-    setText(next.text, next.caret);
-    ref.current?.focus();
-  };
 
   const send = async (value = text, withFiles = files, now = false) => {
     const trimmed = value.trim();
@@ -337,7 +156,7 @@ export function Composer({
       notify({ title: "Not sent", message: errorMessage(error), tone: "danger" });
     }
   };
-  latest.current = { dictated, send: (value) => void send(value) };
+  latest.current = { send: (value) => void send(value) };
   const runShell = async () => {
     const command = text.trim().replace(/^!\s*/, "");
     setText("");
@@ -379,68 +198,18 @@ export function Composer({
     else void send(text, files, now);
   };
 
-  /** Adds attachments one by one, so one unsupported file doesn't drop the others. */
-  const keep = async (adds: Array<() => Promise<ChatAttachment>>) => {
-    for (const add of adds) {
-      try {
-        const added = await add();
-        setFiles((list) => [...list, added]);
-      } catch (error) {
-        notify({ title: "Couldn't attach the file", message: errorMessage(error), tone: "danger" });
-      }
-    }
-  };
-  /** Pasted or dropped files (screenshots, PDFs, Office files…) become attachments of the next message. */
-  const takeFiles = (list: FileList | File[]): boolean => {
-    const dropped = [...list];
-    if (dropped.length === 0) return false;
-    void keep(dropped.map((file) => () => addFiles(meta.id, [file]).then((r) => r[0]!)));
-    return true;
-  };
-  const attach = async () => {
-    const picked = await call("app.pickFiles", { title: "Attach files", defaultPath: meta.cwd });
-    if (!picked.length) return;
-    // Code and text files inside the project are mentioned (Claude Code reads the current version and
-    // can edit it); everything else — images, PDFs, Office files, files from elsewhere — is attached.
-    const inProject = (f: string) => relativeTo(meta.cwd, f) !== f.replaceAll("\\", "/");
-    const mention = picked.filter((f) => inProject(f) && TEXT_FILE.test(f));
-    const attachments = picked.filter((f) => !mention.includes(f));
-    if (mention.length) {
-      const mentions = mention.map((f) => `@${relativeTo(meta.cwd, f)}`).join(" ");
-      setText(text ? `${text.trimEnd()} ${mentions} ` : `${mentions} `);
-    }
-    void keep(attachments.map((path) => () => call("sessions.addAttachment", { id: meta.id, path })));
-    ref.current?.focus();
-  };
-  const startWith = (prefix: string) => {
-    setText(prefix);
-    setClosedAt(undefined);
-    ref.current?.focus();
-  };
-  const moreMenu = (): MenuEntry[] => [
-    {
-      label: "Commands and skills",
-      icon: Slash,
-      shortcut: "/",
-      onSelect: () => startWith("/"),
-      testId: "more-commands",
-    },
-    {
-      label: "Mention a file or folder",
-      icon: AtSign,
-      shortcut: "@",
-      onSelect: () => startWith(text ? `${text.trimEnd()} @` : "@"),
-      testId: "more-mention",
-    },
+  const moreMenu = (base: { commands: MenuEntry; mention: MenuEntry; attach: MenuEntry }): MenuEntry[] => [
+    base.commands,
+    base.mention,
     {
       label: "Run a shell command",
       icon: SquareTerminal,
       shortcut: "!",
-      onSelect: () => startWith("! "),
+      onSelect: () => input.start("! "),
       testId: "more-shell",
     },
-    { label: "Remember in CLAUDE.md", icon: BookmarkPlus, shortcut: "#", onSelect: () => startWith("# ") },
-    { label: "Attach files…", icon: Paperclip, onSelect: () => void attach() },
+    { label: "Remember in CLAUDE.md", icon: BookmarkPlus, shortcut: "#", onSelect: () => input.start("# ") },
+    base.attach,
     {
       label: talking ? "Stop talking with Claude" : "Talk with Claude",
       icon: AudioLines,
@@ -466,6 +235,47 @@ export function Composer({
     { label: "Open a Claude Code chat…", icon: MessageSquareShare, onSelect: openSavedChatsDialog },
   ];
   const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text && !i.from ? [i.text] : []));
+
+  /** The chat's own keys: send or queue, the mode, Claude Code's suggestion, earlier messages. */
+  const keys = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    if (e.key === "Tab" && e.shiftKey) {
+      e.preventDefault();
+      void call("sessions.setPermissionMode", {
+        id: meta.id,
+        mode: nextPermissionMode(meta.permissionMode),
+      });
+    } else if (e.key === "Tab" && !text && suggestion) {
+      e.preventDefault();
+      setText(suggestion);
+    } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      submit(busy && (e.ctrlKey || e.metaKey));
+    } else if (e.key === "Escape" && busy) {
+      e.preventDefault();
+      void call("sessions.interrupt", { id: meta.id });
+    } else if (
+      (e.key === "ArrowUp" || e.key === "ArrowDown") &&
+      !e.shiftKey &&
+      (e.key === "ArrowUp"
+        ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
+        : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
+    ) {
+      const step = historyStep(
+        userHistory,
+        history.index,
+        e.key === "ArrowUp" ? "up" : "down",
+        history.index === -1 ? text : history.draft,
+      );
+      if (!step) return;
+      e.preventDefault();
+      setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
+      setText(step.text);
+      // A recalled "/command" doesn't open the picker; typing does.
+      const recalled = tokenAt(step.text, step.text.length);
+      input.setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
+    }
+  };
 
   return (
     <div
@@ -584,255 +394,118 @@ export function Composer({
             )}
           </div>
         )}
-        <div
-          ref={box}
-          className={cn(
-            "relative flex flex-col gap-2 rounded-lg border bg-raised p-1.5 focus-within:border-focus",
-            dragging
-              ? "border-accent"
-              : mode === "shell"
-                ? "border-warning"
-                : meta.permissionMode === "plan"
-                  ? "border-accent"
-                  : "border-line-strong",
-          )}
-          data-testid="composer"
-          onDragOver={(e) => {
-            if ([...e.dataTransfer.items].some((i) => i.kind === "file")) {
-              e.preventDefault();
-              setDragging(true);
-            }
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            setDragging(false);
-            if (takeFiles(e.dataTransfer.files)) e.preventDefault();
-          }}
-        >
-          {pickerOpen && token && (
-            <ComposerPicker
-              title={
-                token.kind === "command"
-                  ? "Commands and skills"
-                  : meetings?.list.length
-                    ? `Files in ${meta.cwd.split(/[\\/]/).pop()} and meetings`
-                    : `Files in ${meta.cwd.split(/[\\/]/).pop()}`
-              }
-              items={items}
-              selected={selected}
-              loading={token.kind === "command" ? !commands : found?.query !== token.query}
-              empty={token.kind === "command" ? "No command matches" : "No file matches"}
-              onPick={pick}
-              onHover={setSelected}
-            />
-          )}
-          <ChatAttachments
-            files={files}
-            className="px-1 pt-1"
-            onRemove={(file) => setFiles((list) => list.filter((f) => f !== file))}
-          />
-          <MentionChips
-            cwd={meta.cwd}
-            mentions={mentions}
-            onRemove={(m) => {
-              const next = removeMention(text, m);
-              setText(next.text, next.caret);
-              ref.current?.focus();
-            }}
-          />
-          <div className="relative">
-            <MentionHighlights text={text} mentions={mentions} scrollTop={scrollTop} />
-            <textarea
-              ref={ref}
-              rows={1}
-              value={text}
-              data-testid="composer-input"
-              placeholder={
-                busy
-                  ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
-                  : suggestion
-                    ? `${suggestion}  (Tab to use)`
-                    : "Message Claude…  / commands · @ files · ! shell · # remember"
-              }
-              onChange={(e) => {
-                latestText.current = e.target.value;
-                setTextState(e.target.value);
-                setCaret(e.target.selectionStart);
-                setClosedAt(undefined);
-              }}
-              onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-              onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
-              onClick={(e) => {
-                // Ctrl/Cmd+click on a mention opens it, like a link in an editor.
-                if (!(e.ctrlKey || e.metaKey)) return;
-                const at = e.currentTarget.selectionStart;
-                const hit = mentions.find((m) => at >= m.start && at <= m.end);
-                if (hit) openMention(meta.cwd, hit);
-              }}
-              onPaste={(e) => {
-                if (takeFiles(e.clipboardData.files)) e.preventDefault();
-              }}
-              onKeyDown={(e) => {
-                const el = e.currentTarget;
-                if (e.code === "Space" && e.shiftKey && (e.ctrlKey || e.metaKey) && !e.altKey) {
-                  e.preventDefault();
-                  if (!e.repeat) toggleDictation(meta.id, speechHooks.onText);
-                  return;
-                }
-                if (e.key === "Escape" && dictating) {
-                  e.preventDefault();
-                  cancelDictation();
-                  return;
-                }
-                if (pickerOpen && (items.length > 0 || e.key === "Escape")) {
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                    e.preventDefault();
-                    const step = e.key === "ArrowDown" ? 1 : -1;
-                    setSelected((i) => (i + step + items.length) % Math.max(items.length, 1));
-                    return;
-                  }
-                  if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey)) {
-                    e.preventDefault();
-                    const item = items[selected];
-                    if (item) pick(item);
-                    return;
-                  }
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    setClosedAt(tokenKey);
-                    return;
-                  }
-                }
-                if (e.key === "Tab" && e.shiftKey) {
-                  e.preventDefault();
-                  void call("sessions.setPermissionMode", {
-                    id: meta.id,
-                    mode: nextPermissionMode(meta.permissionMode),
-                  });
-                } else if (e.key === "Tab" && !text && suggestion) {
-                  e.preventDefault();
-                  setText(suggestion);
-                } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submit(busy && (e.ctrlKey || e.metaKey));
-                } else if (e.key === "Escape" && busy) {
-                  e.preventDefault();
-                  void call("sessions.interrupt", { id: meta.id });
-                } else if (
-                  (e.key === "ArrowUp" || e.key === "ArrowDown") &&
-                  !e.shiftKey &&
-                  (e.key === "ArrowUp"
-                    ? !text.slice(0, el.selectionStart).includes("\n") && (!text || history.index >= 0)
-                    : history.index >= 0 && !text.slice(el.selectionEnd).includes("\n"))
-                ) {
-                  const step = historyStep(
-                    userHistory,
-                    history.index,
-                    e.key === "ArrowUp" ? "up" : "down",
-                    history.index === -1 ? text : history.draft,
-                  );
-                  if (!step) return;
-                  e.preventDefault();
-                  setHistory({ index: step.index, draft: history.index === -1 ? text : history.draft });
-                  setText(step.text);
-                  // A recalled "/command" doesn't open the picker; typing does.
-                  const recalled = tokenAt(step.text, step.text.length);
-                  setClosedAt(recalled ? `${recalled.kind}:${recalled.start}` : undefined);
-                }
-              }}
-              className="relative block max-h-80 min-h-7 w-full resize-none bg-transparent px-1.5 py-1 text-sm text-fg outline-none placeholder:text-hint"
-            />
-          </div>
-          <div className="flex min-w-0 items-center gap-1" data-testid="composer-toolbar">
-            <IconButton
-              icon={Plus}
-              label="Commands, files, shell, memory and chat settings"
-              data-testid="composer-more"
-              onClick={(e) => openMenuAt(e.currentTarget, moreMenu())}
-            />
-            <IconButton
-              icon={Paperclip}
-              label="Attach files (images, PDF, Word, Excel, PowerPoint, text)"
-              onClick={() => void attach()}
-            />
-            <DictationButton target={meta.id} onText={speechHooks.onText} />
-            <VoiceButton target={meta.id} hooks={speechHooks} />
-            {meta.kind !== "builder" && (
-              <IconButton
-                icon={Split}
-                label="Try several ways: this task in parallel chats, each in its own copy of the repo"
-                data-testid="composer-attempts"
-                onClick={() => openAttemptsDialog({ task: text, projectId: meta.projectId })}
-              />
-            )}
-            <div className="flex-1" />
-            <button
-              type="button"
-              data-testid="model-menu"
-              onClick={(e) => void openModelMenu(e.currentTarget, meta)}
-              className="flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
-              title={
-                meta.activeModel
-                  ? `Model and effort · Claude Code reports: ${meta.activeModel}`
-                  : `Model and effort · ${modelName}`
-              }
-            >
-              <span className="truncate">{modelName}</span>{" "}
-              <ChevronDown className="block size-3.5 shrink-0" />
-            </button>
-            <button
-              type="button"
-              data-testid="permission-menu"
-              onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
-              className={cn(
-                "flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
-                meta.permissionMode === "bypassPermissions"
-                  ? "text-danger"
-                  : meta.permissionMode === "default"
-                    ? "text-muted hover:text-fg"
-                    : "text-accent",
+        <ComposerBox
+          input={input}
+          files={files}
+          onFiles={setFiles}
+          sessionId={meta.id}
+          cwd={meta.cwd}
+          dictationTarget={meta.id}
+          boxRef={box}
+          testId="composer"
+          inputTestId="composer-input"
+          borderClass={
+            mode === "shell"
+              ? "border-warning"
+              : meta.permissionMode === "plan"
+                ? "border-accent"
+                : "border-line-strong"
+          }
+          placeholder={
+            busy
+              ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
+              : suggestion
+                ? `${suggestion}  (Tab to use)`
+                : "Message Claude…  / commands · @ files · ! shell · # remember"
+          }
+          localCommands={localCommands}
+          onRunCommand={(value) => void send(value, files)}
+          moreMenu={moreMenu}
+          moreLabel="Commands, files, shell, memory and chat settings"
+          onKeyDown={keys}
+          toolbarStart={
+            <>
+              <VoiceButton target={meta.id} hooks={speechHooks} />
+              {meta.kind !== "builder" && (
+                <IconButton
+                  icon={Split}
+                  label="Try several ways: this task in parallel chats, each in its own copy of the repo"
+                  data-testid="composer-attempts"
+                  onClick={() => openAttemptsDialog({ task: text, projectId: meta.projectId })}
+                />
               )}
-              title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What Claude may do without asking (Shift+Tab to switch)`}
-            >
-              {meta.permissionMode === "plan" ? (
-                <ListChecks className="block size-3.5 shrink-0" />
-              ) : (
-                <Shield className="block size-3.5 shrink-0" />
+            </>
+          }
+          toolbarEnd={
+            <>
+              <button
+                type="button"
+                data-testid="model-menu"
+                onClick={(e) => void openModelMenu(e.currentTarget, meta)}
+                className="flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
+                title={
+                  meta.activeModel
+                    ? `Model and effort · Claude Code reports: ${meta.activeModel}`
+                    : `Model and effort · ${modelName}`
+                }
+              >
+                <span className="truncate">{modelName}</span>{" "}
+                <ChevronDown className="block size-3.5 shrink-0" />
+              </button>
+              <button
+                type="button"
+                data-testid="permission-menu"
+                onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
+                className={cn(
+                  "flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none hover:bg-hover",
+                  meta.permissionMode === "bypassPermissions"
+                    ? "text-danger"
+                    : meta.permissionMode === "default"
+                      ? "text-muted hover:text-fg"
+                      : "text-accent",
+                )}
+                title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What Claude may do without asking (Shift+Tab to switch)`}
+              >
+                {meta.permissionMode === "plan" ? (
+                  <ListChecks className="block size-3.5 shrink-0" />
+                ) : (
+                  <Shield className="block size-3.5 shrink-0" />
+                )}
+                <span className="truncate">{PERMISSION_MODE_LABELS[meta.permissionMode]}</span>{" "}
+                <ChevronDown className="block size-3.5 shrink-0" />
+              </button>
+              {busy && (
+                <Button
+                  size="md"
+                  variant="secondary"
+                  icon={Square}
+                  data-testid="composer-stop"
+                  onClick={() => void call("sessions.interrupt", { id: meta.id })}
+                >
+                  Stop
+                </Button>
               )}
-              <span className="truncate">{PERMISSION_MODE_LABELS[meta.permissionMode]}</span>{" "}
-              <ChevronDown className="block size-3.5 shrink-0" />
-            </button>
-            {busy && (
+              {busy && (text.trim() || files.length > 0) && !mode && (
+                <IconButton
+                  icon={Zap}
+                  label={`Send now: Claude reads it at its next step (${formatShortcut("Mod+Enter")})`}
+                  data-testid="composer-send-now"
+                  onClick={() => void send(text, files, true)}
+                />
+              )}
               <Button
                 size="md"
-                variant="secondary"
-                icon={Square}
-                data-testid="composer-stop"
-                onClick={() => void call("sessions.interrupt", { id: meta.id })}
+                variant="primary"
+                icon={mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : ArrowUp}
+                disabled={!text.trim() && files.length === 0}
+                data-testid="composer-send"
+                onClick={() => submit()}
               >
-                Stop
+                {mode === "shell" ? "Run" : mode === "memory" ? "Remember" : busy ? "Queue" : "Send"}
               </Button>
-            )}
-            {busy && (text.trim() || files.length > 0) && !mode && (
-              <IconButton
-                icon={Zap}
-                label={`Send now: Claude reads it at its next step (${formatShortcut("Mod+Enter")})`}
-                data-testid="composer-send-now"
-                onClick={() => void send(text, files, true)}
-              />
-            )}
-            <Button
-              size="md"
-              variant="primary"
-              icon={mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : ArrowUp}
-              disabled={!text.trim() && files.length === 0}
-              data-testid="composer-send"
-              onClick={() => submit()}
-            >
-              {mode === "shell" ? "Run" : mode === "memory" ? "Remember" : busy ? "Queue" : "Send"}
-            </Button>
-          </div>
-        </div>
+            </>
+          }
+        />
         <div className="flex items-center gap-1 text-2xs text-hint">
           <History className="size-3" />
           {busy

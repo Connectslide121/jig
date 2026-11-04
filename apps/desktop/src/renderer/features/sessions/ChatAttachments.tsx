@@ -72,15 +72,18 @@ function DocumentChip({ file, onRemove }: { file: ChatAttachment; onRemove?: () 
 export function ChatAttachments({
   files,
   onRemove,
+  row = false,
   className,
 }: {
   files: ChatAttachment[];
   onRemove?: (file: ChatAttachment) => void;
+  /** On one line that scrolls sideways, instead of wrapping (a box with a fixed height). */
+  row?: boolean;
   className?: string;
 }) {
   if (files.length === 0) return null;
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex gap-2", row ? "overflow-x-auto overflow-y-hidden" : "flex-wrap", className)}>
       {files.map((file) =>
         (file.kind ?? "image") === "image" ? (
           <Thumb key={file.path} file={file} onRemove={onRemove && (() => onRemove(file))} />

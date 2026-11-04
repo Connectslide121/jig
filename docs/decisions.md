@@ -4046,3 +4046,33 @@ one swap at a time, which also ignored chats and could swap a queued task above 
   of the queue). Add-on menu items gained `shortcut` for this.
 - Status: accepted. Asked for by Jon, 2026-11-04; the rule for tasks moved out of their chat is
   Claude's, on my own.
+
+## D-308: Editing a queued message in the chat's own message box
+
+Jon, 2026-11-04: the "Edit queued message" dialog was a plain text box: no pasting screenshots, no
+files, no `@` mentions or `/` commands, and the message's attachments were neither shown nor editable.
+He wants the chat's message box there, reused rather than rebuilt, without the chat-level controls.
+
+- **One message box, two places.** The box itself (text with the `/` and `@` pickers and mention
+  highlights and chips, attachments pasted, dropped or attached, the + menu, the paperclip and the
+  microphone) is `ComposerBox` with `useComposerText` (`features/sessions/ComposerBox.tsx`). The chat's
+  `Composer` adds its own keys (Enter sends or queues, history, Shift+Tab, Tab for the suggestion, Esc
+  stops Claude), the `!`/`#` modes, talking, attempts, model, permission mode, Stop and Send; the dialog
+  adds only Ctrl+Enter to save.
+- **In the dialog (Claude, on my own):** the + menu has only Commands and skills, Mention a file or
+  folder and Attach files: shell (`!`) and memory (`#`) run at once rather than being queued, talking
+  sends by itself, and the rest of + is chat settings. Jig's own commands (`/model`, `/mcp`…) are left
+  out of its `/` list, and a picked command without arguments goes into the text instead of being sent.
+  Plain Enter is a new line; Ctrl+Enter saves, also while a picker is open (in the chat it now sends
+  now there too, instead of taking the picker's item). Dictation writes for the dialog
+  (`<chat>:queued`), not the chat's box.
+- **A stable dialog.** The box has a fixed height (`fill`), with a row kept for attachments (a dashed
+  "paste, drop or attach" placeholder when there are none, one sideways-scrolling line when there are)
+  and the mention chips below the text, so nothing moves when a file comes or goes. The `@`/`/` list
+  floats above the box over the window (`ComposerPicker` `anchor`, a portal) so the dialog's edges don't
+  cut it off.
+- **The contract.** `sessions.editQueued` takes optional `attachments` (the same schema as
+  `sessions.send`): given, they replace the message's files; left out, it keeps them. The text may be
+  empty when files remain (as when sending); both empty is `invalid_args`. Files are still checked to
+  be the chat's attachments when the message is sent.
+

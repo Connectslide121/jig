@@ -17,6 +17,9 @@ it, plus what a window can do better (D-091, `docs/reference/chat.md`).
       as Markdown, rewind / edit and resend
 - [x] Tests: unit (normalizer, manager, fuzzy, file search, composer input, export), e2e
       (`e2e/chat-parity.spec.ts`)
+- [x] Editing a queued message in the chat's own message box: attachments, paste and drop, + menu,
+      paperclip, dictation, `@` and `/`; Ctrl+Enter saves text and files in place (Jon, 2026-11-04,
+      D-308)
 
 ## Later
 

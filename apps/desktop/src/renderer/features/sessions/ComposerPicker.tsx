@@ -1,4 +1,5 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn, Spinner } from "../../ui";
 
 export interface PickerItem {
@@ -16,7 +17,8 @@ export interface PickerItem {
 /**
  * The list above the message box for `/` (Claude Code's commands and skills) and `@` (files and
  * meetings): ↑/↓
- * choose, Enter or Tab takes it, Esc closes. The message box keeps the focus.
+ * choose, Enter or Tab takes it, Esc closes. The message box keeps the focus. With `anchor` (a box in a
+ * dialog) it floats above that element over the whole window, so the dialog's edges don't cut it off.
  */
 export function ComposerPicker({
   title,
@@ -26,6 +28,7 @@ export function ComposerPicker({
   empty,
   onPick,
   onHover,
+  anchor,
 }: {
   title: string;
   items: PickerItem[];
@@ -34,16 +37,39 @@ export function ComposerPicker({
   empty: string;
   onPick: (item: PickerItem) => void;
   onHover: (index: number) => void;
+  anchor?: HTMLElement | null;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect>();
+  useLayoutEffect(() => {
+    if (!anchor) return;
+    const update = () => setRect(anchor.getBoundingClientRect());
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [anchor]);
   useEffect(() => {
     list.current
       ?.querySelector<HTMLElement>(`[data-index="${selected}"]`)
       ?.scrollIntoView({ block: "nearest" });
   }, [selected]);
-  return (
+  if (anchor && !rect) return null;
+  const panel = (
     <div
-      className="absolute right-0 bottom-full left-0 z-30 mb-1 flex max-h-72 flex-col overflow-hidden rounded-lg border border-line bg-elevated shadow-popover"
+      className={cn(
+        "flex max-h-72 flex-col overflow-hidden rounded-lg border border-line bg-elevated shadow-popover",
+        rect ? "no-drag fixed z-50" : "absolute right-0 bottom-full left-0 z-30 mb-1",
+      )}
+      style={
+        rect
+          ? {
+              left: rect.left,
+              width: rect.width,
+              bottom: window.innerHeight - rect.top + 4,
+              maxHeight: Math.min(288, rect.top - 8),
+            }
+          : undefined
+      }
       data-testid="composer-picker"
     >
       <div className="flex shrink-0 items-center gap-2 border-b border-line px-2 py-1 text-2xs text-hint">
@@ -83,4 +109,5 @@ export function ComposerPicker({
       </div>
     </div>
   );
+  return rect ? createPortal(panel, document.body) : panel;
 }

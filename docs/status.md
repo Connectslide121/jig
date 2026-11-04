@@ -1,5 +1,14 @@
 # Status
 
+Editing a queued message (2026-11-04, D-308): clicking a message waiting in the queue opens a dialog
+with the chat's own message box: its attachments as thumbnails and chips with ×, paste a screenshot or
+drop files, the paperclip, the + menu (commands, mention a file, attach), dictation, and the `@` and `/`
+lists while typing. The model, permission mode, attempts, Stop and Send stay in the chat. Ctrl+Enter
+or Save writes the text and the files back to the same message in the same place in the queue. The
+dialog keeps its size: attachments have their own row. Checked on Windows with screenshots in Jig
+Dark and Jig Light (fake engine). Needs testing on your machine: dictating into the dialog, and
+dropping a file from Explorer onto it.
+
 Task queue reordering (2026-11-04, D-307): drag a queued task's row, or a chat card's header for the
 whole chat, to a new place in the Queue tab; a line shows where it lands and nothing else moves until
 the drop. A task dropped inside a chat continues that chat; dropped between chats it starts its own.

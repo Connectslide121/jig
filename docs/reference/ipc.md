@@ -118,7 +118,7 @@ settings, add-on permissions.
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |
 | `sessions.removeQueued` | `{ id, queuedId }` | — | |
-| `sessions.editQueued` | `{ id, queuedId, text }` | — | changes a queued message's text (same place, same attachments); `not_found` once it has been sent (schema: prompt text) |
+| `sessions.editQueued` | `{ id, queuedId, text, attachments? }` | — | changes a queued message in the same place in the queue: its text, and with `attachments` (files kept by `sessions.addAttachment`; left out, it keeps its own) its files; text may be empty only when files remain; `invalid_args` when both are empty, `not_found` once it has been sent (schema: prompt text, attachments) |
 | `sessions.setModel` / `sessions.setPermissionMode` | `{ id, model }` / `{ id, mode }` | — | applied live |
 | `sessions.setVoice` | `{ id, voice }` | — | you are talking with Claude in this chat: each turn tells it to answer briefly for reading aloud (D-209) |
 | `sessions.rename` / `sessions.archive` | `{ id, title }` / `{ id, archived }` | — | |

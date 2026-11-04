@@ -1,7 +1,7 @@
 import { FolderPlus, Plug, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
-import type { McpServerInfo, QueuedMessage } from "../../../shared/engine";
+import type { ChatAttachment, McpServerInfo, QueuedMessage } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import {
   Badge,
@@ -10,12 +10,14 @@ import {
   Dialog,
   FileIcon,
   IconButton,
+  type MenuEntry,
   Spinner,
   Switch,
-  Textarea,
 } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { notify } from "../../workbench/toasts";
+import { ComposerBox, useComposerText } from "./ComposerBox";
+import { tokenAt } from "./composerInput";
 import { useSessions } from "./store";
 
 type OpenDialog =
@@ -192,26 +194,47 @@ function EditQueuedDialog({
   queued: QueuedMessage;
   onClose: () => void;
 }) {
-  const [value, setValue] = useState(queued.text);
+  const meta = useSessions((s) => s.metas[sessionId]);
+  const input = useComposerText(queued.text);
+  const [files, setFiles] = useState<ChatAttachment[]>(queued.attachments ?? []);
   const [saving, setSaving] = useState(false);
+  const empty = !input.text.trim() && files.length === 0;
+  // The caret at the end, as you left it; a queued "/command" doesn't open its list until you type.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the dialog opens.
+  useEffect(() => {
+    const token = tokenAt(queued.text, queued.text.length);
+    input.setClosedAt(token ? `${token.kind}:${token.start}` : undefined);
+    input.setText(queued.text);
+  }, []);
   const save = async () => {
-    if (!value.trim() || saving) return;
+    if (empty || saving) return;
     setSaving(true);
     try {
-      await call("sessions.editQueued", { id: sessionId, queuedId: queued.id, text: value.trim() });
+      await call("sessions.editQueued", {
+        id: sessionId,
+        queuedId: queued.id,
+        text: input.latestText.current.trim(),
+        attachments: files,
+      });
       onClose();
     } catch (e) {
       notify({ title: "Couldn't change the message", message: errorMessage(e), tone: "danger" });
       onClose();
     }
   };
-  const attached = queued.attachments?.length ?? 0;
+  // Only what changes the message: the chat's own settings and actions stay in the chat's composer.
+  const moreMenu = (base: { commands: MenuEntry; mention: MenuEntry; attach: MenuEntry }): MenuEntry[] => [
+    base.commands,
+    base.mention,
+    base.attach,
+  ];
   return (
     <Dialog
       open
       onClose={onClose}
       title="Edit queued message"
       testId="edit-queued-dialog"
+      width="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -220,7 +243,7 @@ function EditQueuedDialog({
           <Button
             variant="primary"
             busy={saving}
-            disabled={!value.trim()}
+            disabled={empty}
             onClick={() => void save()}
             data-testid="edit-queued-save"
           >
@@ -230,25 +253,32 @@ function EditQueuedDialog({
       }
     >
       <p className="mb-2 text-xs text-muted">
-        It sends after Claude's current turn, in the same place in the queue
-        {attached ? `, with its ${attached === 1 ? "attachment" : `${attached} attachments`}` : ""}.{" "}
-        {formatShortcut("Mod+Enter")} saves.
+        It sends after Claude's current turn, in the same place in the queue. {formatShortcut("Mod+Enter")}{" "}
+        saves.
       </p>
-      <Textarea
-        data-autofocus
-        rows={8}
-        value={value}
-        aria-label="Queued message"
-        data-testid="edit-queued-text"
-        className="w-full resize-none"
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            void save();
-          }
-        }}
-      />
+      <div className="h-80">
+        <ComposerBox
+          input={input}
+          files={files}
+          onFiles={setFiles}
+          sessionId={sessionId}
+          cwd={meta?.cwd ?? ""}
+          dictationTarget={`${sessionId}:queued`}
+          fill
+          testId="edit-queued-box"
+          inputTestId="edit-queued-text"
+          inputLabel="Queued message"
+          placeholder="Message Claude…  / commands · @ files"
+          moreMenu={moreMenu}
+          moreLabel="Commands, files and attachments"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void save();
+            }
+          }}
+        />
+      </div>
     </Dialog>
   );
 }

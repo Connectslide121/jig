@@ -208,6 +208,18 @@ describe("SessionManager", () => {
       "after that",
     ]);
     expect((await m.snapshot(session.id)).queue[1]!.id).toBe(second!.id);
+    // Its files change with it; left out, it keeps them; text and files can't both go.
+    const shot = { path: "shot.png", mime: "image/png", name: "shot.png", kind: "image" as const };
+    await m.editQueued(session.id, second!.id, " with a screenshot ", [shot]);
+    await m.editQueued(session.id, second!.id, "with a screenshot, again");
+    expect((await m.snapshot(session.id)).queue[1]).toEqual({
+      id: second!.id,
+      text: "with a screenshot, again",
+      attachments: [shot],
+    });
+    await m.editQueued(session.id, second!.id, "no files", []);
+    expect((await m.snapshot(session.id)).queue[1]).toEqual({ id: second!.id, text: "no files" });
+    await expect(m.editQueued(session.id, second!.id, " ", [])).rejects.toThrow("empty");
     await expect(m.editQueued(session.id, "gone", "x")).rejects.toThrow("already been sent");
     await m.interrupt(session.id);
   });

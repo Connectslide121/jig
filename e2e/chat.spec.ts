@@ -3,6 +3,10 @@ import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, hostCall, launchJig, test } from "./fixtures";
 
+/** A 1×1 PNG, base64. */
+const TINY_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
 async function withProject(page: Page, jigHome: string, name = "demo") {
   const path = join(jigHome, name);
   await mkdir(path, { recursive: true });
@@ -127,14 +131,29 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
   await page.getByTestId("queue-item").click();
   const dialog = page.getByTestId("edit-queued-dialog");
   await expect(page.getByTestId("edit-queued-text")).toHaveValue("and then this");
+  // The chat's message box, without the chat's own controls.
+  await expect(dialog.getByTestId("composer-more")).toBeVisible();
+  await expect(dialog.getByTestId("composer-attach")).toBeVisible();
+  await expect(dialog.getByTestId("model-menu")).toHaveCount(0);
+  await expect(dialog.getByTestId("composer-send")).toHaveCount(0);
+  // A screenshot pasted into it goes with the message; Ctrl+Enter saves.
+  await page.getByTestId("edit-queued-text").evaluate((el, b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const data = new DataTransfer();
+    data.items.add(new File([bytes], "image.png", { type: "image/png" }));
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  }, TINY_PNG);
+  await expect(dialog.getByTestId("chat-attachment")).toHaveCount(1);
   await page.getByTestId("edit-queued-text").fill("and then this, edited");
-  await page.getByTestId("edit-queued-save").click();
+  await page.getByTestId("edit-queued-text").press("Control+Enter");
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId("queue")).toContainText("and then this, edited");
+  await expect(page.getByTestId("queue-item")).toContainText("1");
   await page.getByTestId("composer-stop").click();
   await expect(page.getByTestId("turn-result").first()).toContainText("Interrupted");
-  // The queued message is sent after the interrupted turn.
+  // The queued message is sent after the interrupted turn, with its screenshot.
   await expect(page.getByTestId("user-message-text").last()).toHaveText("and then this, edited");
+  await expect(page.getByTestId("user-message").last().getByTestId("chat-attachment")).toHaveCount(1);
   await expect(page.getByTestId("queue")).toHaveCount(0);
 });
 

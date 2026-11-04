@@ -495,8 +495,14 @@ export interface HostMethods {
     result: void;
   };
   "sessions.removeQueued": { args: { id: string; queuedId: string }; result: void };
-  /** Changes a queued message's text before it is sent; fails when it has already been sent. */
-  "sessions.editQueued": { args: { id: string; queuedId: string; text: string }; result: void };
+  /**
+   * Changes a queued message before it is sent, in the same place in the queue: its text, and with
+   * `attachments` (files kept by `sessions.addAttachment`) its files; fails once it has been sent.
+   */
+  "sessions.editQueued": {
+    args: { id: string; queuedId: string; text: string; attachments?: ChatAttachment[] };
+    result: void;
+  };
   "sessions.setModel": { args: { id: string; model: string }; result: void };
   "sessions.setPermissionMode": { args: { id: string; mode: PermissionMode }; result: void };
   "sessions.rename": { args: { id: string; title: string }; result: void };
