@@ -6,6 +6,7 @@ import {
   DEFAULT_TENANT,
   DEFAULT_TENANT_LABEL,
   defaultLabel,
+  deviceCodePrompt,
   emptyTenantsFile,
   errorLine,
   failedCheck,
@@ -166,6 +167,28 @@ describe("loginArgs", () => {
       "none",
     ]);
     expect(loginArgs(undefined)).toEqual(["login", "--allow-no-subscriptions", "--output", "none"]);
+  });
+
+  it("signs in with a code when asked", () => {
+    expect(loginArgs("contoso.com", "code")).toEqual([
+      "login",
+      "--tenant",
+      "contoso.com",
+      "--use-device-code",
+      "--allow-no-subscriptions",
+      "--output",
+      "none",
+    ]);
+  });
+});
+
+describe("deviceCodePrompt", () => {
+  it("finds the page and the code in az's line, with or without WARNING:", () => {
+    const line =
+      "To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code ABC123XYZ to authenticate.";
+    expect(deviceCodePrompt(line)).toEqual({ url: "https://microsoft.com/devicelogin", code: "ABC123XYZ" });
+    expect(deviceCodePrompt(`WARNING: ${line}`)?.code).toBe("ABC123XYZ");
+    expect(deviceCodePrompt("Opening the browser…")).toBeUndefined();
   });
 });
 

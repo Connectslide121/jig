@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, LogIn, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Copy, ExternalLink, Globe, KeyRound, LogIn, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TENANT_LABEL,
@@ -17,6 +17,7 @@ import {
   Dialog,
   IconButton,
   Input,
+  openMenuAt,
   promptDialog,
   Spinner,
   Switch,
@@ -311,18 +312,31 @@ export function ManageTenantsDialog() {
       .finally(() => setChecking(false));
   }, [open]);
 
-  const signInAgain = async (t: TenantView) => {
+  const [withCode, setWithCode] = useState<TenantView>();
+  const signInAgain = async (t: TenantView, method: SignInMethod) => {
     setSigningIn(t.key);
     setError(undefined);
     clearLines();
+    if (method === "code") setWithCode(t);
     try {
-      await call("azure.signInAgain", { key: t.key });
+      await call("azure.signInAgain", { key: t.key, method });
     } catch (e) {
       setError(signInError(e));
     } finally {
       setSigningIn(undefined);
+      setWithCode(undefined);
     }
   };
+  const signInMenu = (t: TenantView, anchor: HTMLElement) =>
+    openMenuAt(
+      anchor,
+      [
+        { heading: needsSignIn(t) ? "Sign in again" : "Sign in again (another account)" },
+        { label: "In the browser", icon: Globe, onSelect: () => void signInAgain(t, "browser") },
+        { label: "With a code…", icon: KeyRound, onSelect: () => void signInAgain(t, "code") },
+      ],
+      true,
+    );
   const rename = async (t: TenantView) => {
     const label = await promptDialog({
       title: t.isDefault ? "Rename your az login" : "Rename tenant",
@@ -355,7 +369,9 @@ export function ManageTenantsDialog() {
   const status = error
     ? error
     : signingIn
-      ? (lines.at(-1) ?? "Waiting for the sign-in in your browser…")
+      ? withCode
+        ? "Signing in with a code…"
+        : (lines.at(-1) ?? "Waiting for the sign-in in your browser…")
       : checking
         ? "Checking the sign-ins…"
         : "Click a tenant to use it for Azure and Azure DevOps.";
@@ -401,7 +417,7 @@ export function ManageTenantsDialog() {
               onSwitch={() => void switchTenant(t.key).catch((e) => setError(errorMessage(e)))}
               onRename={() => void rename(t)}
               onResetName={() => resetName(t)}
-              onSignIn={() => void signInAgain(t)}
+              onSignIn={(anchor) => signInMenu(t, anchor)}
               onRemove={() => void remove(t)}
             />
           ))
@@ -409,6 +425,19 @@ export function ManageTenantsDialog() {
           <Spinner center />
         )}
       </div>
+      <Dialog
+        open={Boolean(withCode)}
+        onClose={() => void call("azure.cancelSignIn")}
+        title={`Sign in to ${withCode?.label ?? ""}`}
+        testId="tenant-code-dialog"
+        footer={
+          <Button variant="ghost" onClick={() => void call("azure.cancelSignIn")}>
+            Cancel
+          </Button>
+        }
+      >
+        <SignInLog busy lines={lines} idle="" waiting="Getting a sign-in code…" />
+      </Dialog>
     </Dialog>
   );
 }
@@ -436,7 +465,7 @@ function TenantRow({
   onSwitch: () => void;
   onRename: () => void;
   onResetName: () => void;
-  onSignIn: () => void;
+  onSignIn: (anchor: HTMLElement) => void;
   onRemove: () => void;
 }) {
   return (
@@ -491,7 +520,7 @@ function TenantRow({
               label={needsSignIn(t) ? "Sign in again" : "Sign in again (another account)"}
               disabled={busy}
               className={cn(needsSignIn(t) && "text-warning")}
-              onClick={onSignIn}
+              onClick={(e) => onSignIn(e.currentTarget)}
             />
           )}
         </span>

@@ -4330,3 +4330,51 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   file change, and the approved command writes (checked with Codex 0.166.0 on Windows). Plan only
   keeps the read-only sandbox. The developer instructions also tell Codex to ask for escalation
   instead of giving up when the sandbox stops a command it was asked to run.
+
+## D-316: Adding a tenant in the browser or with a code, never Windows' account window
+
+Jon, 2026-11-04: a colleague couldn't add a tenant. Sign in opened Windows' own Microsoft account
+window, not the browser, and his browser was signed in to another account anyway. "Let's see how we
+can make this better."
+
+- **Never Windows' account window.** On Windows the Azure CLI signs in through WAM (the account
+  broker) by default; it offers the accounts Windows knows. Every sign-in Jig runs sets
+  `AZURE_CORE_ENABLE_BROKER_ON_WINDOWS=false` (`LOGIN_ENV` in `@jig/azure`, with
+  `AZURE_CORE_LOGIN_EXPERIENCE_V2=off` and `AZURE_CORE_NO_COLOR=1`), so `az login` opens the
+  default browser, where you pick or add any account. An environment variable, not `az config set`:
+  it changes only Jig's runs and nothing in the user's own `~/.azure` (az 2.85 reads it: `az config get
+  core.enable_broker_on_windows` reports the variable as the source).
+- **Or with a code** (`method: "code"` on `azure.addTenant` / `azure.signInAgain`): `az login
+  --use-device-code`. The page and code come from az's own line (`deviceCodePrompt`, with or
+  without a `WARNING:` prefix). The Add dialog has a "Sign in" switch (In the browser / With a code);
+  the code shows large in the dialog's fixed-height sign-in box with Copy and Open page, and a hint to
+  paste the link into a private window to use another account. Sign in again (Manage tenants) opens
+  a small menu with both ways; the code shows in a small modal over the list, so nothing moves.
+- **Claude, on my own:** the browser stays the default (the usual case and one click less); the
+  code is the way out when the browser holds another account. Jig still never sees passwords or
+  tokens: the code is a public one-time code the Azure CLI prints for you to type at Microsoft.
+
+## D-317: Claude moves queued tasks and sets their chat with addon_tasks_edit
+
+Jon, 2026-11-04: Claude couldn't mark a queued task as continuing the previous chat; the only way was
+rewriting the whole stored queue with `jig_set_addon_data`, a 60 KB copy one typo would corrupt.
+
+- **`newChat` on an edit** (Jon): false continues the chat of the task before it, true starts a new
+  one, as the edit dialog's switch does. Only queued tasks. The first task in the queue can't continue
+  (no chat before it); the one right after a running or finished task can continue that chat, since a
+  drag may drop it there too (D-307). The tasks after it that continue its chat go along with it.
+- **`moveTo` on an edit** (Jon): `"top"`, `"bottom"`, `{ after: id }` or `{ before: id }`, resolved
+  to one of `dropSlots` (D-307), so Claude and the Queue tab follow one set of rules: never above or
+  between tasks that ran. **Claude, on my own:** the move takes one task, as dragging its row does (it
+  leaves its chat; a chat's first task hands the chat to the next one); `wholeChat: true` takes its
+  whole chat, as dragging the card's header does, and only lands between chats. A task landing inside
+  a chat continues it (`newChat: true` there is refused, since it would split that chat); between
+  chats it starts its own unless `newChat` is false, which then continues the chat above. "top" with
+  `newChat: false` means right below the tasks that ran, joining the last one's chat, or is refused when
+  nothing ran. Why: matches the drop line's two choices, and a refused call says what went wrong
+  instead of guessing.
+- **All or nothing, in order (Claude, on my own):** a call's edits apply one after another on the
+  same queue (so a move can refer to where an earlier edit put a task); any refused edit throws and
+  nothing is saved. The queue's running state and other tasks are never touched, so it stays safe while
+  the queue runs. The tool's description now names these options and says to use it instead of
+  `jig_set_addon_data`; the tasks guidance lives in the tool descriptions, not in `jigContext`.

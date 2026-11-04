@@ -67,6 +67,13 @@ dialog keeps its size: attachments have their own row. Checked on Windows with s
 Dark and Jig Light (fake engine). Needs testing on your machine: dictating into the dialog, and
 dropping a file from Explorer onto it.
 
+Claude moves and regroups queued tasks (2026-11-04, D-317): `addon_tasks_edit` can now make a queued
+task continue the previous task's chat or start its own (`newChat`), and move it (`moveTo`: top,
+bottom, before or after a task; `wholeChat` for its whole chat), by the same rules as dragging in the
+Queue tab. A move or chat change the rules don't allow is refused with the reason, changing nothing;
+only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
+continue the chat before it" or "move t5 to the top". Unit tests cover the rules (not run yet, D-258).
+
 Task queue reordering (2026-11-04, D-307): drag a queued task's row, or a chat card's header for the
 whole chat, to a new place in the Queue tab; a line shows where it lands and nothing else moves until
 the drop. A task dropped inside a chat continues that chat; dropped between chats it starts its own.
@@ -682,8 +689,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   Jig's `az` uses (initials; tooltip with name, user, domain; a warning dot when its sign-in
   expired). Its menu lists your az login and the tenants you added (user and domain in columns,
   ✓ for the one in use, ⚠ for an expired sign-in) to switch, plus Add tenant… (a modal: tenant id or
-  domain, Sign in opens the browser through `az login`, progress and errors in the modal, Cancel)
-  and Manage tenants… (switch, rename, sign in again, remove). Also in Settings → Azure. Claude can
+  domain, Sign in in the browser or with a code (D-316: never Windows' account window; the code
+  shows in the modal with Copy and Open page, for a private window when the browser holds another
+  account), progress and errors in the modal, Cancel) and Manage tenants… (switch, rename, sign in
+  again in the browser or with a code, remove). Also in Settings → Azure. Claude can
   list tenants and, with your approval, switch (`jig_azure_tenants`, `jig_azure_switch_tenant`).
   On a switch (D-284) Pipelines shows a spinner in its list's place and then that tenant's
   pipelines (its organisations setting is per tenant), Boards reloads and a board followed in another
@@ -1239,6 +1248,10 @@ Things the cloud build environment couldn't verify:
 
 - **Azure tenants (phase 24, D-282–D-286)**, only tried with a fake `az`. With a real second tenant
   (another account, or another Entra tenant of yours):
+  - Add tenant… In the browser (D-316): your default browser opens, not Windows' Microsoft account
+    window, and its page lets you pick or add the account. With a code: the code shows in the modal,
+    Open page and Copy work, and entering it in a private window signs in another account. Sign in
+    again → With a code in Manage tenants shows the code in a small modal.
   - Add it from the avatar's Add tenant…: the browser opens, the modal shows progress, and it lands
     named after the tenant with your user and domain. Cancel one sign-in halfway; Sign in again and
     Remove from Manage tenants…; `~/.jig/azure/<key>/` appears and goes with Remove, and your own

@@ -238,10 +238,45 @@ export function pinnedTenant(
   return state.tenants.some((t) => t.key === pin) ? { key: pin, removed: false } : { removed: true };
 }
 
-/** The arguments of a sign-in: in the system browser, to that tenant, also without subscriptions. */
-export function loginArgs(requested: string | undefined): string[] {
+/**
+ * How a sign-in happens: `browser` opens the system browser; `code` shows a code to enter at
+ * microsoft.com/devicelogin in any browser (a private window, another browser or device), for when the
+ * default browser is signed in to another account.
+ */
+export type SignInMethod = "browser" | "code";
+
+/** The arguments of a sign-in: in the system browser or with a code, to that tenant, also without subscriptions. */
+export function loginArgs(requested: string | undefined, method: SignInMethod = "browser"): string[] {
   const tenant = requested?.trim();
-  return ["login", ...(tenant ? ["--tenant", tenant] : []), "--allow-no-subscriptions", "--output", "none"];
+  return [
+    "login",
+    ...(tenant ? ["--tenant", tenant] : []),
+    ...(method === "code" ? ["--use-device-code"] : []),
+    "--allow-no-subscriptions",
+    "--output",
+    "none",
+  ];
+}
+
+/**
+ * The environment of a sign-in: never Windows' own account window (WAM, the Azure CLI's default on
+ * Windows), which offers only the accounts Windows knows; the browser lets you pick or add any account.
+ */
+export const LOGIN_ENV: Readonly<Record<string, string>> = {
+  AZURE_CORE_ENABLE_BROKER_ON_WINDOWS: "false",
+  // The code line plain, without colour codes around it.
+  AZURE_CORE_NO_COLOR: "1",
+  // The newer login asks which subscription to use in the terminal; there is none here.
+  AZURE_CORE_LOGIN_EXPERIENCE_V2: "off",
+};
+
+/**
+ * The page and code in `az login --use-device-code`'s line ("To sign in, use a web browser to open the
+ * page https://microsoft.com/devicelogin and enter the code ABC123XYZ to authenticate."), or undefined.
+ */
+export function deviceCodePrompt(line: string): { url: string; code: string } | undefined {
+  const m = /(https:\/\/\S*devicelogin\S*?)[.,]?\s.*?\bcode\s+([A-Z0-9-]{6,})\b/i.exec(line);
+  return m ? { url: m[1]!, code: m[2]! } : undefined;
 }
 
 /**

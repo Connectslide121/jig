@@ -148,4 +148,7 @@ tenant's organisations, projects, pipelines and boards, without restarting Jig.
       `tenants.json`'s `default.label`, "Reset name" in the slot where added tenants have Remove; the
       name shows everywhere a tenant's name does (avatar initials, menu, tooltip, Settings, tags,
       project picker, Boards, `jig_azure_tenants`, `jigContext`).
+- [x] Sign in in the browser or with a code, never Windows' account window (D-316): `LOGIN_ENV`
+      turns off WAM for Jig's `az login`; a "Sign in" switch in Add tenant and a menu on Sign in again;
+      the code with Copy and Open page in a fixed box or a small modal; unit and e2e tests.
 - [ ] Needs a real machine: everything under `docs/status.md` → Needs testing → Azure tenants.
