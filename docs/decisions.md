@@ -4197,3 +4197,43 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   the same rules in both) or `off`. When Codex's own `AGENTS.md` already holds the same text, it isn't
   sent twice. The setting shows in Settings with the Codex chat settings (task D).
 
+
+## D-313: Jig's tools reach Codex chats over a local MCP server, with the same names
+
+- Status: accepted. Task Codex chat C (Jon's plan "Codex chats in Jig", phase C, 2026-11-04): Codex
+  chats get Jig's MCP tools with exactly the names Claude chats see (`addon_boards_*`,
+  `addon_tasks_add`, `jig_*`), because Jon's personal rules call them by name. The choices below are
+  Claude's, on my own, unless they come from the plan.
+- **One engine-neutral registry** (plan): a tool is a `ChatTool` (name, zod shape, handler,
+  `readOnly`, `alwaysLoad`), bound to a chat by `jigToolServer(meta)` (the builder: `toolsFor`), and
+  reaches the engine as `StartOptions.toolServers`. Only the Claude engine turns it into the Agent
+  SDK's in-process servers (`engine/sdkMcp.ts`); `readOnly` is read from the chat's own tools. The
+  fake engine's handlers come from the same servers, so `mcpServers` and `toolHandlers` are gone.
+- **Streamable HTTP on 127.0.0.1, not a stdio shim:** the plan allowed either. A stdio shim would be a
+  second program Codex starts, which then has to reach Jig's main process anyway (a pipe or a port),
+  and would need its own packaging; an HTTP server inside main serves the handlers directly. One
+  server per chat, random port, started before `thread/start`/`thread/resume` and closed with the chat
+  or when Codex exits. Stateless JSON responses (no SSE, no MCP sessions) keep it small.
+- **A token per chat, sent as a header** (security check): 32 random bytes, compared in constant
+  time. The first version passed it through `bearer_token_env_var`; a live check showed Codex hands
+  its whole environment to the commands it runs, so a command could read the token and call Jig's
+  write tools without the approval card. The token now goes in the thread's `config` as the server's
+  `Authorization` header: Codex doesn't write the thread's config into its rollout (checked: the token
+  is nowhere in `~/.codex` after a turn), and it dies with the chat. The server also refuses any
+  `Host` but its own address (DNS rebinding), any `Origin` (browsers), unknown servers and non-POST
+  requests, before a tool sees the request. It never logs tokens, and no Claude or Codex credential
+  goes near it.
+- **Approvals as in Claude chats:** read-only tools are pre-approved in Codex's config
+  (`tools.<name>.approval_mode = "approve"`) and their approval requests are accepted; other tools'
+  approvals (Codex sends them as MCP elicitations with `codex_approval_kind: "mcp_tool_call"`) are the
+  usual permission card on that tool's card, Always = Codex's "session" persistence. Don't ask mode
+  accepts them. Checked live with Codex 0.166.0.
+- **Dotted config keys** (`mcp_servers.jig`), so the user's own Codex MCP servers stay as they are.
+- **Project `.mcp.json` passes only what Claude Code may start** (plan: pass project servers through):
+  a repository's `.mcp.json` can name any program, and Claude Code starts its servers only after you
+  approve them. Codex chats get the same set: `enableAllProjectMcpServers` / `enabledMcpjsonServers`
+  minus `disabledMcpjsonServers` from the user's and the project's settings and Claude Code's
+  per-project state in `~/.claude.json` (only those flags are read). Values are expanded like Claude
+  Code (`${VAR}`, `${VAR:-default}`); SSE servers are skipped because Codex has no SSE transport.
+- **Tool timeout 30 minutes** in Codex's config: a test run or a release through a Jig tool can take
+  long, and Codex's default would cut it off.

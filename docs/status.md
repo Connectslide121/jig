@@ -1,5 +1,14 @@
 # Status
 
+Jig's tools in Codex chats (2026-11-04, D-313): a Codex chat now has the same Jig tools as a Claude
+chat, under the same names (`addon_boards_*`, `addon_tasks_add`, `jig_*`), so instructions that name
+them work in both. They come from a small server only that chat can reach (on this computer, with a
+secret of its own, gone when the chat ends). Tools that only read run without asking; the others show
+the usual permission card; screenshots from tools show on the tool card. The project's `.mcp.json`
+servers that Claude Code is allowed to start there come along too. Checked against Codex 0.166.0 with
+a script (the server connects, a read-only tool runs unasked, another asks, commands Codex runs can't
+see the secret). Needs testing in the app once the provider picker exists (task D).
+
 Codex chat engine (2026-11-04, D-311, D-312): a chat whose provider is Codex now runs on OpenAI's
 Codex (`codex app-server`, your ChatGPT sign-in) instead of failing: replies stream, commands show on
 the Bash card, file changes on the Edit/Write cards with their diffs, MCP calls on the tool card, and

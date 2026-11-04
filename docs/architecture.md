@@ -182,14 +182,20 @@ terminal and browser tools).
 The session's permission mode (default, acceptEdits, plan, bypassPermissions) is set per session from
 a menu or with Shift+Tab.
 
-**Jig tools in every session.** Each session gets an in-process MCP server named `jig`
-(`createSdkMcpServer`). Its tools are the only ones Jig adds:
+**Jig tools in every session.** Each session gets an MCP server named `jig`. Its tools are the only
+ones Jig adds:
 - `jig_request_build`, so saying "make me a button that…" in any chat starts the builder;
 - the configuration tools (`docs/reference/configure.md`);
 - the terminal tools (`jig_terminal_*`);
 - Browser (`jig_browser_*`).
 
-Read-only tools run without a prompt.
+Read-only tools run without a prompt. The tools are defined once, engine-neutral (`ChatTool` in
+`engine/types.ts`, bound to a chat by `jigToolServer`), and reach the engine as
+`StartOptions.toolServers` (D-313). Claude Code gets them as the Agent SDK's in-process servers
+(`engine/sdkMcp.ts`); a Codex chat gets them from its own local MCP server (`engine/localMcp.ts`:
+streamable HTTP on 127.0.0.1, a random token per chat, closed with the chat), so the names are the
+same in both (`mcp__jig__addon_tasks_add`). Codex chats also get the project's `.mcp.json` servers
+that Claude Code is allowed to start there (`engine/projectMcp.ts`).
 
 **Plan usage.** Your subscription's 5-hour and weekly windows are always visible (status bar, chat
 header ring, card on hover). Jig asks Claude Code for the data behind `/usage` (a prompt-less Claude Code

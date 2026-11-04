@@ -94,7 +94,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   - Lists Claude Code owns (commands, skills, models, MCP servers) come from the running Claude Code,
     not hard-coded lists.
   - The chat should keep matching Claude Code's terminal (`docs/reference/chat.md`).
-- **Jig's tools for Claude** are registered with `registerJigTools` on the `jig` MCP server.
+- **Jig's tools for Claude and Codex** are registered with `registerJigTools` on the `jig` MCP server.
+  - They are engine-neutral (`ChatTool`, D-313): never import the Agent SDK's `tool()` /
+    `createSdkMcpServer` outside `engine/sdkMcp.ts`. Codex chats get the same tools, same names, from
+    the chat's local MCP server (127.0.0.1, its own token, never in Codex's environment).
   - Mark tools that only read with `readOnly`, so they run without a prompt.
   - A tool may return images (`ToolOutput`); they show in the chat.
   - Tell Claude when to use a tool in `jigContext` (`main/engine/jigTools.ts`).

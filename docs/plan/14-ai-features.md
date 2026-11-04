@@ -48,8 +48,14 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   Claude's cards, protocol types generated from Codex 0.166.0, personal instructions from CLAUDE.md
   (D-311, D-312; unit tests in `codexNormalize.test.ts` with recorded fixtures,
   `codexInstructions.test.ts`, `engine/index.test.ts`).
-- [ ] Codex chats C–E: Jig's tools as a local MCP server, the provider picker and Codex-aware chat UI
-  (with the `engine.codexInstructions` / `engine.codexAllowApiKey` settings), plan mode/questions/
+- [x] Codex chats C: Jig's tools in an engine-neutral registry (`ChatTool`, `toolServers`), served to
+  Codex chats by a local MCP server per chat (127.0.0.1, random token, read-only tools unasked, MCP
+  approvals as permission cards), the project's approved `.mcp.json` servers passed to Codex, the
+  fake engine's `call <tool> over mcp` (D-313; unit tests in `localMcp.test.ts`, `codexMcp.test.ts`,
+  `projectMcp.test.ts`, `fakeMcp.test.ts`, `jigTools.test.ts`, `codexNormalize.test.ts`; e2e in
+  `codex-tools.spec.ts`).
+- [ ] Codex chats D–E: the provider picker and Codex-aware chat UI (with the
+  `engine.codexInstructions` / `engine.codexAllowApiKey` settings), plan mode/questions/
   history/skills (queued tasks).
 
 ## Later

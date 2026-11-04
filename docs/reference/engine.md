@@ -29,7 +29,8 @@ interface EngineSession {
   plugins, hooks, MCP servers work as in the CLI), `systemPrompt: { type: "preset", preset:
   "claude_code", append: <Jig context> }`, `includePartialMessages: true` (streaming),
   `resume: <Claude Code session id>`, `pathToClaudeCodeExecutable` from `engine.claudePath`,
-  `canUseTool` → the permission prompt, `mcpServers: { jig }`, `effort`, `additionalDirectories`, and
+  `canUseTool` → the permission prompt, `mcpServers` (the chat's `toolServers` as in-process SDK
+  servers, `sdkMcp.ts`), `effort`, `additionalDirectories`, and
   `resumeSessionAt` after a rewind. Messages carry `origin: { kind: "human" }`; one sent while Claude
   works with `priority: "next"` joins the running turn.
 - **`CodexEngine`** (`codex.ts`): OpenAI's Codex over `codex app-server` (JSON-RPC on stdio), one
@@ -67,8 +68,8 @@ controls a provider doesn't have instead of showing dead buttons:
 | `effortLevels` | low, medium, high, xhigh, max | low, medium, high, xhigh, max, ultra | the effort picker's levels (Codex's from `codex debug models`) |
 | `promptSuggestions` | yes | no | suggesting the next message after a turn |
 
-Jig's in-process tools (`mcpServers: { jig }`) go to Claude chats only; Codex chats get them as a
-local MCP server later. Routines and Artifacts stay on Claude (Claude's cloud).
+Jig's tools (`toolServers`) go to both: in-process for Claude, over a local MCP server for Codex (see
+Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude (Claude's cloud).
 
 ## Codex chats (D-311)
 
@@ -109,8 +110,12 @@ MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads it
 - **Approvals:** `item/commandExecution/requestApproval` and `item/fileChange/requestApproval` become
   permission cards through `askPermission` (Bash, or Edit/Write with the file). Allow → `accept`,
   always → `acceptForSession`, deny → `decline`. `serverRequest/resolved` (Codex settled it, e.g. the
-  turn ended) cancels the card. MCP elicitations are declined and other requests refused until the
+  turn ended) cancels the card. An MCP tool approval (an `mcpServer/elicitation/request` with
+  `_meta.codex_approval_kind: "mcp_tool_call"`, `mcpToolApproval`) is the permission card of that
+  tool's card (`mcp__<server>__<tool>`; always → `persist: "session"`); Jig's read-only tools and Don't
+  ask mode accept it unasked. Other elicitations are declined and other requests refused until the
   later phases handle them.
+- **Jig's tools** (D-313): see Jig's tools in Codex chats below.
 - **Events** (`codexNormalize.ts`, `CodexNormalizer`, pure; unknown messages are ignored):
 
   | Codex | `EngineEvent` |
@@ -247,9 +252,47 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
 - Activity (prompts, tool calls with their commands) is reported to `onSessionActivity` listeners for
   the learning log.
 
+## Jig's tools in Codex chats (D-313)
+
+Codex can't take in-process tools, so each Codex chat with `toolServers` gets a local MCP server:
+
+- **Server** (`localMcp.ts`, `startLocalMcp`): Node `http` on `127.0.0.1`, port 0 (random), one
+  `newMcpToken()` (32 random bytes, base64url) per chat. Each tool server is at `/mcp/<name>`
+  (`/mcp/jig`), stateless streamable HTTP with JSON answers (`@modelcontextprotocol/sdk`'s
+  `McpServer` + `StreamableHTTPServerTransport`, built per request). Tools carry
+  `annotations.readOnlyHint`. `close()` with the chat (`session.close()` and when Codex exits).
+- **Refused before any tool runs** (`refuseMcpRequest`): a `Host` other than `127.0.0.1:<port>` /
+  `localhost:<port>` (DNS rebinding) or any `Origin` header (a browser) → 403; a missing or wrong
+  `Authorization: Bearer <token>` (constant-time compare) → 401; an unknown server → 404; anything
+  but POST → 405.
+- **Codex's config** (`codexMcp.ts`, `jigMcpConfig`): `thread/start` / `thread/resume` `config`
+  gets one dotted key per server, `mcp_servers.<name>` = `{ url, http_headers: { Authorization },
+  startup_timeout_sec: 20, tool_timeout_sec: 1800, tools: { <read-only tool>: { approval_mode:
+  "approve" } } }`, so the user's own Codex MCP servers stay. The token is a header in the thread's
+  config, never in Codex's environment: Codex passes its environment to the commands it runs (checked
+  with 0.166.0), and it doesn't write the thread's config into its rollout. Codex then lists the tools
+  as `mcp__jig__<tool>`; their results (text and images) show on the tool card as in Claude chats.
+- **Approvals:** read-only tools run unasked (pre-approved in the config, and an approval request for
+  one is accepted); others ask with the permission card, like Claude chats.
+- **Project servers** (`projectMcp.ts`, `projectMcpConfig`): the folder's `.mcp.json` `mcpServers`
+  that Claude Code may start there (`enableAllProjectMcpServers` or `enabledMcpjsonServers`, minus
+  `disabledMcpjsonServers`, in `~/.claude/settings.json`, the project's `.claude/settings.json` and
+  `settings.local.json`, and the folder's entry in `~/.claude.json`; only those flags are read) go in
+  the same `config` as `mcp_servers.<name>`: stdio → `command`, `args`, `env`; `http` → `url`,
+  `http_headers`. `${VAR}` and `${VAR:-default}` are expanded from the chat's environment. SSE servers
+  are skipped (Codex has none); names `jig` and `jig-builder` are Jig's.
+- **A server that can't start** leaves the chat running without Jig's tools, with a notice.
+- **Fake engine:** `call <tool> over mcp [with {json}]` calls a tool through this path
+  (`fakeMcp.ts`, the official MCP client); see `docs/guides/testing.md`.
+
 ## The `jig` MCP server (`main/engine/jigTools.ts`)
 
-Attached to every real session. Tools: `jig_list_addons` (the add-on catalog) and
+Attached to every real session, through the engine-neutral registry (D-313): `registerJigTools` /
+`setAddonTools` keep the tools, `jigToolServer(meta)` binds them to a chat as a `ChatToolServer`
+(`{ instructions, tools: ChatTool[] }`: name, zod shape, handler, `readOnly`, `alwaysLoad`), and the
+session hands `{ jig: … }` (a builder chat: `{ "jig-builder": … }`) to the engine as
+`StartOptions.toolServers`. Helpers in `chatTools.ts`: `runChatTool` (output → MCP text and image
+blocks, a thrown error → an error result), `isReadOnlyChatTool`, `toolHandlersOf` (the fake engine). Tools: `jig_list_addons` (the add-on catalog) and
 `jig_request_build { goal, addonId? }` (starts the builder). Handlers are set with
 `setJigToolHandlers()` by the add-on host (phase 6) and the builder (phase 8). The appended system
 prompt tells Claude to use `jig_request_build` instead of editing Jig's files itself. It also tells Claude what an add-on can be (a whole module, with the D-215 abilities), so the goal it
