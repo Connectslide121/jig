@@ -124,6 +124,8 @@ export interface MeetingOverview {
   records: MeetingRecord[];
   /** Your meeting history folders (D-295). */
   folders: import("./meetingFolders").MeetingFolder[];
+  /** The Teams chats you pinned in Jig's Chats, in pin order (D-332); not synced with Teams. */
+  chatPins: string[];
   /** Where the live room's panels sit; the room uses the defaults until one is saved. */
   layout?: import("./meetingLayout").MeetingLayout;
 }

@@ -3,6 +3,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
+import { normalizePins, setPin } from "../../shared/meetingChatList";
 import type { RememberedDevices } from "../../shared/meetingDevices";
 import { folderName, type MeetingFolder, type MeetingPlace, placeFolder } from "../../shared/meetingFolders";
 import { type MeetingLayout, normalizeMeetingLayout } from "../../shared/meetingLayout";
@@ -86,6 +87,8 @@ const schema = z.object({
   records: z.array(record).default([]),
   folders: z.array(folder).default([]),
   layout: z.unknown().optional(),
+  /** Teams chats pinned in Jig's Chats (D-332), in pin order; Teams' own pins aren't in Graph. */
+  chatPins: z.array(z.string().max(300)).max(500).default([]),
 });
 
 /** Global meeting data; one serialized owner prevents caption, note and queue updates racing. */
@@ -148,6 +151,17 @@ export class MeetingStore {
   setLayout(layout: MeetingLayout): Promise<void> {
     return this.change(() => {
       this.data.layout = normalizeMeetingLayout(layout);
+    });
+  }
+  /** The chats you pinned in Jig (D-332), in pin order. */
+  chatPins(): string[] {
+    return normalizePins(this.data.chatPins);
+  }
+  /** Pins (added last) or unpins a chat; returns the pins after it. */
+  pinChat(chatId: string, pinned: boolean): Promise<string[]> {
+    return this.change(() => {
+      this.data.chatPins = setPin(normalizePins(this.data.chatPins), chatId, pinned);
+      return [...this.data.chatPins];
     });
   }
   records(): MeetingRecord[] {

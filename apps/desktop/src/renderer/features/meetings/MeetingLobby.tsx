@@ -12,13 +12,14 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { setPin } from "../../../shared/meetingChatList";
 import {
   type MeetingLayout,
   type MeetingSizeKey,
   normalizeMeetingLayout,
   resizeSlot,
 } from "../../../shared/meetingLayout";
-import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../../shared/meetings";
+import type { MeetingEvent, MeetingPerson, MeetingRecord, MeetingStart } from "../../../shared/meetings";
 import { call, errorMessage, useHostEvent } from "../../lib/host";
 import { Badge, Button, CountBadge, cn, confirmDialog, IconButton, openMenuAt, Spinner } from "../../ui";
 import { CallDialog } from "./Calls";
@@ -26,6 +27,7 @@ import { type ChatList, ChatsView, type OpenChat } from "./Chats";
 import { Ask, Connection, Review } from "./dialogs";
 import { clock, dayAndTime } from "./format";
 import { Lobby, STATUS } from "./Lobby";
+import { NewChatDialog } from "./NewChat";
 import { NotesPanel, TranscriptPanel } from "./Panels";
 import { AccountLabel, MeetingsShell, StatusBar, useMeetingsData } from "./Shell";
 import { SizedBox } from "./Slots";
@@ -60,6 +62,8 @@ function LobbyWindow() {
   const [chatList, setChatList] = useState<ChatList>();
   const [chatsLoading, setChatsLoading] = useState(false);
   const [teamsChat, setTeamsChat] = useState<OpenChat>();
+  /** New chat (D-332), open with the people it starts with. */
+  const [newChat, setNewChat] = useState<MeetingPerson[]>();
   // A call that just ended: its review opens here (main brings this window to the front).
   useHostEvent("meetings.review", ({ id }) => {
     setSection("meetings");
@@ -289,6 +293,7 @@ function LobbyWindow() {
             connected={connected}
             layout={layout}
             open={teamsChat}
+            pins={overview.chatPins}
             onResize={resize}
             onOpen={(c) => {
               setTeamsChat(c);
@@ -298,6 +303,15 @@ function LobbyWindow() {
                   l && { ...l, chats: l.chats.map((x) => (x.id === c.id ? { ...x, unread: false } : x)) },
               );
             }}
+            onPin={(chatId, pinned) => {
+              // At once here; main keeps them and tells the call window (meetings.changed).
+              setOverview((o) => o && { ...o, chatPins: setPin(o.chatPins, chatId, pinned) });
+              void call("meetings.chatPin", { chatId, pinned }).catch((e) => {
+                setError(errorMessage(e));
+                void reload();
+              });
+            }}
+            onNewChat={() => setNewChat([])}
             onRefresh={() => void loadChats()}
             onConnectAccount={() => setSettings(true)}
             onConnectChat={async () => {
@@ -398,9 +412,26 @@ function LobbyWindow() {
           records={overview.records}
           onClose={() => setCalling(false)}
           onChat={chatWith}
+          onNewChat={(person) => {
+            setCalling(false);
+            setSection("chats");
+            setNewChat([person]);
+          }}
           onCall={async (person, options) => {
             setCalling(false);
             await start({ kind: "call", peerId: person.id, peerName: person.name, camera: options.camera });
+          }}
+        />
+      )}
+      {newChat && (
+        <NewChatDialog
+          initial={newChat}
+          onClose={() => setNewChat(undefined)}
+          onStarted={(chat) => {
+            setNewChat(undefined);
+            setSection("chats");
+            setTeamsChat(chat);
+            void loadChats();
           }}
         />
       )}

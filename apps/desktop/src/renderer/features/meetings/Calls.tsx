@@ -17,7 +17,7 @@ export function recentPeople(records: MeetingRecord[]): MeetingPerson[] {
   return out.slice(0, 8);
 }
 
-function Avatar({ name, id, ringing }: { name: string; id?: string; ringing?: boolean }) {
+export function Avatar({ name, id, ringing }: { name: string; id?: string; ringing?: boolean }) {
   return (
     <span
       className={cn(
@@ -32,29 +32,12 @@ function Avatar({ name, id, ringing }: { name: string; id?: string; ringing?: bo
 }
 
 /**
- * Call someone in your organisation: the people you called recently, the ones you work with most,
- * or a search of the directory. A whole row places the call; the camera switch decides video.
+ * People in your organisation for a query (the ones you work with most when it's empty), read as you
+ * type (D-254); Call… and New chat share it (D-332). `loading` holds until the query's answer is in.
  */
-export function CallDialog({
-  records,
-  onClose,
-  onCall,
-  onChat,
-}: {
-  records: MeetingRecord[];
-  onClose(): void;
-  onCall(person: MeetingPerson, options: { camera: boolean }): Promise<void>;
-  /** Opens your one-to-one chat with them (D-296); false when you have none yet. */
-  onChat?(person: MeetingPerson): Promise<boolean>;
-}) {
-  const [query, setQuery] = useState("");
+export function usePeopleSearch(query: string) {
   const [found, setFound] = useState<{ query: string; people: MeetingPerson[] }>();
   const [error, setError] = useState("");
-  const [camera, setCamera] = useState(false);
-  const [busy, setBusy] = useState<string>();
-  /** Someone you have no Teams chat with yet: Jig can't start one (that needs Chat.Create). */
-  const [noChat, setNoChat] = useState<MeetingPerson>();
-  const recent = useMemo(() => recentPeople(records), [records]);
   const asked = useRef(0);
   useEffect(() => {
     const version = ++asked.current;
@@ -75,6 +58,35 @@ export function CallDialog({
     );
     return () => clearTimeout(timer);
   }, [query]);
+  return { found, error, setError, loading: found?.query !== query };
+}
+
+/**
+ * Call someone in your organisation: the people you called recently, the ones you work with most,
+ * or a search of the directory. A whole row places the call; the camera switch decides video.
+ */
+export function CallDialog({
+  records,
+  onClose,
+  onCall,
+  onChat,
+  onNewChat,
+}: {
+  records: MeetingRecord[];
+  onClose(): void;
+  onCall(person: MeetingPerson, options: { camera: boolean }): Promise<void>;
+  /** Opens your one-to-one chat with them (D-296); false when you have none yet. */
+  onChat?(person: MeetingPerson): Promise<boolean>;
+  /** Starts a chat with someone you have none with yet, in New chat (D-332). */
+  onNewChat?(person: MeetingPerson): void;
+}) {
+  const [query, setQuery] = useState("");
+  const { found, error, setError, loading } = usePeopleSearch(query);
+  const [camera, setCamera] = useState(false);
+  const [busy, setBusy] = useState<string>();
+  /** Someone you have no Teams chat with yet: New chat starts one (D-332), or Teams. */
+  const [noChat, setNoChat] = useState<MeetingPerson>();
+  const recent = useMemo(() => recentPeople(records), [records]);
   const searching = Boolean(query.trim());
   const sections: Array<[string, MeetingPerson[]]> = searching
     ? [["People", found?.people ?? []]]
@@ -82,7 +94,6 @@ export function CallDialog({
         ["Recent calls", recent],
         ["People you work with", (found?.people ?? []).filter((p) => !recent.some((r) => r.id === p.id))],
       ];
-  const loading = found?.query !== query;
   const chat = async (person: MeetingPerson) => {
     if (!onChat) return;
     setBusy(person.id);
@@ -201,7 +212,17 @@ export function CallDialog({
           {error ||
             (noChat ? (
               <>
-                You and {noChat.name} have no Teams chat yet, and Jig can't start one.{" "}
+                You and {noChat.name} have no Teams chat yet.{" "}
+                {onNewChat && (
+                  <button
+                    type="button"
+                    className="text-accent hover:underline"
+                    onClick={() => onNewChat(noChat)}
+                  >
+                    Start one…
+                  </button>
+                )}
+                {onNewChat && noChat.email && " · "}
                 {noChat.email && (
                   <button
                     type="button"

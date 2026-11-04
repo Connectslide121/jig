@@ -17,6 +17,17 @@ async function setup() {
   return { store, file };
 }
 describe("global meeting persistence", () => {
+  it("keeps Jig's chat pins in pin order across restarts (D-332)", async () => {
+    const { store, file } = await setup();
+    const a = "19:a@thread.v2";
+    const b = "19:b@thread.v2";
+    await Promise.all([store.pinChat(a, true), store.pinChat(b, true)]);
+    expect(await store.pinChat(a, true)).toEqual([b, a]);
+    const next = new MeetingStore(file);
+    await next.load();
+    expect(next.chatPins()).toEqual([b, a]);
+    expect(await next.pinChat(b, false)).toEqual([a]);
+  });
   it("serializes caption and note updates and marks an active call interrupted on restart", async () => {
     const { store, file } = await setup();
     const record = await store.create("https://teams.microsoft.com/l/meetup-join/test", "Weekly products");

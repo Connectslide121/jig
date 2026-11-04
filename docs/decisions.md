@@ -4829,6 +4829,48 @@ the raw data was cut off at 60 KB).
 - The test meeting service gives its people different statuses (Alex Available, Sam Away, Taylor
   Busy in a meeting, Kim Do not disturb, Morgan Offline) through three more one-to-one chats.
 
+## D-332: A toolbar for the lobby's Chats: search, filters, New chat and Jig's own pins
+
+**Jon** asked for Teams' chat list toolbar (search, filters, new chat, pinned chats); the details
+are **Claude, on my own**.
+
+- **Toolbar:** a fixed-height row under the Chats header, always there (disabled until the list can
+  be read), so nothing moves. Narrow list (under 28rem): search and New chat on one line, the filter
+  chips under them; wide: all three on one line (`@container`, `@md:`). The pure part is
+  `shared/meetingChatList.ts`.
+- **Search** narrows the loaded chats as you type: every word must be in the chat's name, its other
+  members' names (`TeamsChatSummary.members`, group and meeting chats) or its last message, case and
+  accents ignored. From 2 characters, half a second after typing stops, **Microsoft Search** (`POST
+  /search/query`, `entityTypes: ["chatMessage"]`, 25 hits) adds a **Messages** section under the
+  chats: it works with the Chat.Read Jig already has (delegated only), so it finds messages in chats
+  beyond the 50 loaded at no extra consent. Hits without a `chatId` (channel posts) are left out; a
+  hit opens its chat. Microsoft's `<c0>` marks are shown as plain text.
+- **Filters** like Teams': Unread, Chats (one-to-one and group), Meetings (Graph's `chatType:
+  meeting`). One at a time; pressing the pressed one turns it off. An empty result says so in the
+  list's space.
+- **New chat** is a modal (`NewChat.tsx`) reusing Call…'s people search (`usePeopleSearch`): pick
+  one or more people (a fixed-height line of chips, a fixed-height list), an optional group name for
+  3+ people, and a first message. Main (`meetings.chatCreate`) first opens the one-to-one chat you
+  already have with one person (no new permission needed); otherwise `POST /chats` (oneOnOne or
+  group, every member, you included, an owner; Graph also returns an existing one-to-one), then
+  sends the first message with ChatMessage.Send. Call…'s "no Teams chat yet" now offers
+  **Start one…**, which opens New chat with that person.
+- **Permission:** Chat.Create is asked for on its own (`meetings.chatCreateConnect`, like presence
+  in D-329), never bundled into the chat sign-in. Silently, Jig takes a token for Chat.ReadWrite
+  first (it covers creating chats, and is what Jon asked his administrator for), then Chat.Create.
+  Until either is approved the modal says an administrator has to approve it, with Connect…, and
+  Start chat works only for one person you already chat with.
+- **Pins are Jig's own.** Microsoft Graph has no API for the chats a user pinned in Teams: checked on
+  2026-11-04, `chatViewpoint` has only `isHidden` and `lastMessageReadDateTime` in v1.0 and beta, and
+  `pinnedChatMessageInfo` is pinned messages inside a chat. So Pin/Unpin (a row's hover action over
+  its time column, and its context menu) keeps Jig's pins in `meetings.json` (`chatPins`, chat ids in
+  pin order, at most 50, typed and atomic through `MeetingStore`, host-managed like the other
+  meetings data). A **Pinned** section sits above the rest ("In Jig only"; its tooltip says pins
+  don't sync with Teams). Pinned chats older than the 50 newest are read one by one (up to 10) and
+  count as read up to their last message (Graph gives no read time outside the list).
+- The test meeting service has 9 chats (5 one-to-one, 2 groups, 2 meeting chats), message search,
+  chat creation, and `JIG_MEETINGS_CHAT_CREATE=consent` for the approval-missing state.
+
 ## D-330: Claude or ChatGPT per task queue, and per task
 
 **Jon:** "I would like to select the provider in the task queues, like ChatGPT in Podium and Claude in

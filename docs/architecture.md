@@ -656,7 +656,10 @@ and shows only prejoin, the live call and ringing; the lobby asks main to bring 
 the lobby opens that meeting's review. Main's guards: `own()` for the call window's media, credential,
 captions, status and chat, `lobbyOrCall()` for what both windows show. The lobby also lists your
 Teams chats (D-296: `/me/chats` with Chat.Read, read on demand, never stored or logged) and opens one
-beside the list with the same chat panel as the call.
+beside the list with the same chat panel as the call. Its toolbar (D-332) filters the loaded list in
+the window, asks main for Microsoft Search's message hits (`meetings.chatSearch`, Chat.Read) and
+starts chats through main (`meetings.chatCreate`, Chat.Create or Chat.ReadWrite asked for on its
+own); Jig's own pins live in meetings.json (`meetings.chatPin`), since Graph has no pinned chats.
 
 The window is independent of workbench mounts and project selection; CallClient, TeamsCallAgent and
 caption listeners live in its media owner. Teams captions start only once the meeting's capabilities

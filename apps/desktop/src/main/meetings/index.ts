@@ -22,9 +22,11 @@ import {
   type MeetingChatState,
   meetingChatId,
   mergeChat,
+  senderName,
   toChatMessages,
   toChatSummaries,
 } from "../../shared/meetingChat";
+import { type ChatSearchHit, chatKindOf, newChatName } from "../../shared/meetingChatList";
 import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../../shared/meetingPresence";
 import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
@@ -219,6 +221,61 @@ function fakeChatData() {
       },
       messages: [fakeMessage("m1", FAKE_ME, "", ago(9 * 24 * 60), "Have a good holiday!")],
     },
+    // Meeting chats and another group, for the toolbar's filters and search (D-332).
+    {
+      chat: {
+        id: "19:meeting_contoso-weekly@thread.v2",
+        chatType: "meeting",
+        topic: "Contoso weekly sync",
+        members: [
+          person(FAKE_ME, "You"),
+          person(FAKE_TAYLOR, "Taylor Contoso"),
+          person(FAKE_ALEX, "Alex Contoso"),
+        ],
+      },
+      messages: [
+        fakeMessage(
+          "w1",
+          FAKE_TAYLOR,
+          "Taylor Contoso",
+          ago(5 * 24 * 60 + 720),
+          "Notes from the sync are in the wiki.",
+        ),
+      ],
+    },
+    {
+      chat: {
+        id: "19:shop-support@thread.v2",
+        chatType: "group",
+        topic: "Shop support",
+        members: [
+          person(FAKE_ME, "You"),
+          person(FAKE_KIM, "Kim Fabrikam"),
+          person(FAKE_MORGAN, "Morgan Shop"),
+        ],
+        viewpoint: { lastMessageReadDateTime: ago(4 * 24 * 60) },
+      },
+      messages: [
+        fakeMessage(
+          "h1",
+          FAKE_MORGAN,
+          "Morgan Shop",
+          ago(6 * 24 * 60 + 30),
+          "Two tickets about invoices today.",
+        ),
+        fakeMessage("h2", FAKE_KIM, "Kim Fabrikam", ago(6 * 24 * 60), "I'll answer the invoice ones."),
+      ],
+    },
+    {
+      chat: {
+        id: "19:meeting_fabrikam-review@thread.v2",
+        chatType: "meeting",
+        topic: "Fabrikam sprint review",
+        members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam"), person(FAKE_KIM, "Kim Fabrikam")],
+        viewpoint: { lastMessageReadDateTime: ago(0) },
+      },
+      messages: [fakeMessage("r1", FAKE_ME, "", ago(12 * 24 * 60), "Thanks all, the demo recording is up.")],
+    },
   ];
   const find = (chatId: string) => {
     const found = chats.find((c) => c.chat.id === chatId);
@@ -246,6 +303,43 @@ function fakeChatData() {
       const message = fakeMessage(`f${Date.now()}`, FAKE_ME, "", new Date().toISOString(), text);
       find(chatId).messages.push(message);
       return toChatMessages([message], FAKE_ME)[0]!;
+    },
+    /** Every message with all the words, newest first, as Microsoft Search returns them (D-332). */
+    search(query: string): ChatSearchHit[] {
+      const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+      return chats
+        .flatMap(({ chat, messages }) =>
+          messages
+            .filter((m) => words.every((w) => (m.body?.content ?? "").toLowerCase().includes(w)))
+            .map((m) => ({
+              chatId: chat.id,
+              messageId: m.id,
+              from: senderName(m.from!.user!, chatDirectory(chat, FAKE_ME), FAKE_ME),
+              at: m.createdDateTime,
+              text: m.body?.content ?? "",
+            })),
+        )
+        .sort((a, b) => b.at.localeCompare(a.at));
+    },
+    /** Starts a chat as Teams does: a one-to-one one you already have comes back as it is. */
+    create(people: Array<{ id: string; name: string }>, topic?: string): string {
+      const kind = people.length > 1 ? "group" : "oneOnOne";
+      const existing = kind === "oneOnOne" ? this.with(people[0]!.id) : undefined;
+      if (existing) return existing;
+      const id =
+        kind === "oneOnOne"
+          ? `19:${FAKE_ME}_${people[0]!.id}@unq.gbl.spaces`
+          : `19:new-${Date.now()}@thread.v2`;
+      chats.unshift({
+        chat: {
+          id,
+          chatType: kind,
+          ...(kind === "group" && topic?.trim() ? { topic: topic.trim() } : {}),
+          members: [person(FAKE_ME, "You"), ...people.map((p) => person(p.id, p.name))],
+        },
+        messages: [],
+      });
+      return id;
     },
     /** Alex and Sam have a chat with you; anyone else hasn't yet. */
     with: (peerId: string) =>
@@ -712,6 +806,7 @@ export async function startMeetings(): Promise<void> {
       ringing: store.ringing(),
       records: store.records(),
       folders: store.folders(),
+      chatPins: store.chatPins(),
       layout: store.layout(),
       lobbyView: store.lobbyView(),
       captionLanguage: store.captionLanguage(),
@@ -976,7 +1071,7 @@ export async function startMeetings(): Promise<void> {
       return { state: "unavailable" as const, chats: [], error: "Connect Microsoft to see your chats." };
     if (!(await auth.chatReady())) return { state: "consent" as const, chats: [] };
     try {
-      return { state: "ok" as const, chats: await auth.chats(readInJig) };
+      return { state: "ok" as const, chats: await auth.chats(readInJig, store.chatPins()) };
     } catch (error) {
       return { ...chatFailure(error), chats: [] };
     }
@@ -1035,6 +1130,64 @@ export async function startMeetings(): Promise<void> {
     if (new URL(url).protocol !== "https:")
       throw new JigError("invalid_url", "Only https links can be opened");
     await openExternal(url);
+  });
+  // The Chats toolbar (D-332): Jig's own pins, Microsoft Search's message hits and starting a chat.
+  handle("meetings.chatPin", async ({ chatId, pinned }, ctx) => {
+    lobbyOrCall(ctx);
+    const pins = await store.pinChat(chatId, pinned);
+    changed();
+    return pins;
+  });
+  handle("meetings.chatSearch", async ({ query }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    if (fake()) return { state: "ok" as const, hits: fakeChats.search(query) };
+    if (!(await auth.chatReady())) return { state: "consent" as const, hits: [] };
+    try {
+      return { state: "ok" as const, hits: await auth.searchChats(query) };
+    } catch (error) {
+      return { ...chatFailure(error), hits: [] };
+    }
+  });
+  const fakeCreate = () => process.env.JIG_MEETINGS_CHAT_CREATE !== "consent";
+  handle("meetings.chatCreateReady", async (_args, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    if (fake()) return { state: fakeCreate() ? ("ok" as const) : ("consent" as const) };
+    if (!auth.name) return { state: "unavailable" as const };
+    return { state: (await auth.chatCreateReady()) ? ("ok" as const) : ("consent" as const) };
+  });
+  handle("meetings.chatCreateConnect", async (_args, ctx) => {
+    lobbyOrCall(ctx);
+    if (!fake()) await auth.connectChatCreate();
+  });
+  handle("meetings.chatCreate", async ({ people, topic, text }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    const one = people.length === 1 ? people[0] : undefined;
+    // One person you already chat with: that chat, which needs no permission to start chats.
+    const existing = one && (fake() ? fakeChats.with(one.id) : await auth.callChatId(one.id));
+    let chatId = existing;
+    if (!chatId) {
+      if (fake() && !fakeCreate())
+        throw new JigError(
+          "meeting_chat_create_consent",
+          "Your administrator has to approve starting chats.",
+        );
+      chatId = fake()
+        ? fakeChats.create(people, topic)
+        : await auth.createChat(
+            people.map((p) => p.id),
+            topic,
+          );
+    }
+    const sent = fake() ? fakeChats.send(chatId, text.trim()) : await auth.sendChat(chatId, text.trim());
+    if (sent) readInJig.set(chatId, sent.at);
+    const kind = one ? "oneOnOne" : chatKindOf(chatId);
+    return {
+      chat: { id: chatId, name: newChatName(people, topic), kind, ...(one ? { peerId: one.id } : {}) },
+      existed: Boolean(existing),
+    };
   });
   handle("meetings.chatWith", async ({ peerId }, ctx) => {
     lobbyOrCall(ctx);

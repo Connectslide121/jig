@@ -736,6 +736,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Profile pictures of the people in your meetings and calls",
                 "The meeting's or call's Teams chat in its own panel: read it, write in it, and Claude's notes include it",
                 "Your Teams chats in the meetings lobby: read and reply, and open your chat with someone from Call…",
+                "Search your Teams chats and their messages, filter Unread, Chats or Meetings, start a new chat, and pin chats on top (in Jig)",
                 "Live captions in your language (Teams translates, or Claude without Teams Premium), with what was said under each line",
                 "No Teams captions in a meeting? Jig transcribes it on this computer (Whisper), marked Local",
                 "Noise suppression on your microphone, like Teams: typing and background noise are filtered out of your audio",

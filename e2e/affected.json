@@ -155,6 +155,8 @@
         "apps/desktop/src/renderer/features/meetings/**",
         "apps/desktop/src/main/meetings/**",
         "apps/desktop/src/shared/meetings.ts",
+        "apps/desktop/src/shared/meetingChat.ts",
+        "apps/desktop/src/shared/meetingChatList.ts",
         "apps/desktop/src/shared/meetingLayout.ts",
         "apps/desktop/src/shared/meetingTranscript.ts",
         "apps/desktop/src/shared/meetingDevices.ts",

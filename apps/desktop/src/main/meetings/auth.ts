@@ -14,10 +14,17 @@ import {
   type MeetingChatMessage,
   needsDirectory,
   oneOnOneChatIds,
+  TEAMS_CHAT_ID,
   type TeamsChatSummary,
   toChatMessages,
   toChatSummaries,
 } from "../../shared/meetingChat";
+import {
+  type ChatSearchHit,
+  chatSearchRequest,
+  newChatRequest,
+  toChatSearchHits,
+} from "../../shared/meetingChatList";
 import { presenceBatches, type TeamsPresence, toPresence } from "../../shared/meetingPresence";
 import type { MeetingEvent, MeetingPerson, MeetingSettings } from "../../shared/meetings";
 import { openExternal } from "../appWindows";
@@ -47,6 +54,15 @@ export const CHAT_SCOPES = [
   "https://graph.microsoft.com/Chat.Read",
   "https://graph.microsoft.com/ChatMessage.Send",
 ];
+
+/**
+ * Starting a Teams chat (D-332): Chat.Create, the least Microsoft asks for. Chat.ReadWrite covers it
+ * too, so a tenant that approved that instead works without asking again.
+ */
+export const CHAT_CREATE_SCOPES = ["https://graph.microsoft.com/Chat.Create"];
+const CHAT_READWRITE_SCOPES = ["https://graph.microsoft.com/Chat.ReadWrite"];
+/** Pinned chats outside the 50 newest that Jig reads one by one (D-332). */
+const PINNED_EXTRA = 10;
 
 /** People's Teams status (D-329): delegated, users can consent to it themselves. */
 export const PRESENCE_SCOPES = ["https://graph.microsoft.com/Presence.Read.All"];
@@ -198,7 +214,7 @@ export class MeetingAuth {
       } catch {
         throw new JigError(
           "meeting_signin",
-          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All, People.Read, Chat.Read, ChatMessage.Send and Presence.Read.All permissions, then try again.",
+          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All, People.Read, Chat.Read, ChatMessage.Send, Chat.Create and Presence.Read.All permissions, then try again.",
         );
       } finally {
         this.interactive = undefined;
@@ -326,7 +342,10 @@ export class MeetingAuth {
    * Your 50 most recent chats (D-296), with members and the last message's preview: Chat.Read is
    * enough. Where Graph refuses both expansions in one request, the two are read and merged.
    */
-  async chats(readInJig: ReadonlyMap<string, string>): Promise<TeamsChatSummary[]> {
+  async chats(
+    readInJig: ReadonlyMap<string, string>,
+    pins: readonly string[] = [],
+  ): Promise<TeamsChatSummary[]> {
     const recent = "/me/chats?$top=50&$orderby=lastMessagePreview/createdDateTime%20desc";
     const read = async (path: string) => {
       const r = await this.chatFetch(path);
@@ -345,6 +364,10 @@ export class MeetingAuth {
       const byId = new Map(members.map((c) => [c.id, c.members]));
       chats = previews.map((c) => ({ ...c, members: byId.get(c.id) ?? [] }));
     }
+    // Pinned chats older than the newest 50 are read one by one, so the Pinned section has them.
+    const missing = pins.filter((id) => !chats.some((c) => c.id === id)).slice(0, PINNED_EXTRA);
+    const extra = await Promise.all(missing.map((id) => this.chat(id).catch(() => undefined)));
+    chats = [...chats, ...extra.filter((c): c is GraphChat => Boolean(c))];
     const self = this.account?.localAccountId;
     const summaries = toChatSummaries(chats, self, readInJig);
     // The list already has every chat's members: keep them for its messages' senders.
@@ -353,6 +376,70 @@ export class MeetingAuth {
       if (c.members?.length)
         this.directories.set(c.id, { directory: chatDirectory(c, self, titles.get(c.id)), at: Date.now() });
     return summaries;
+  }
+  /**
+   * One chat with its members and last message. Graph gives no read time outside the list, so it
+   * counts as read up to its last message (it's older than your 50 newest chats).
+   */
+  private async chat(chatId: string): Promise<GraphChat> {
+    const path = `/chats/${encodeURIComponent(chatId)}`;
+    let r = await this.chatFetch(`${path}?$expand=members,lastMessagePreview`);
+    if (!r.ok && r.status !== 401 && r.status !== 403 && r.status !== 404)
+      r = await this.chatFetch(`${path}?$expand=members`);
+    if (!r.ok) throw chatError(r.status);
+    const chat = (await r.json()) as GraphChat;
+    const last = chat.lastMessagePreview?.createdDateTime;
+    return { ...chat, viewpoint: { lastMessageReadDateTime: last ?? chat.lastUpdatedDateTime ?? null } };
+  }
+  /**
+   * Messages in your chats that Microsoft Search finds (D-332): Chat.Read is enough, delegated only.
+   * The 25 best hits; channel posts are left out (Jig opens chats only).
+   */
+  async searchChats(query: string): Promise<ChatSearchHit[]> {
+    const r = await this.chatFetch("/search/query", {
+      method: "POST",
+      body: JSON.stringify(chatSearchRequest(query)),
+    });
+    if (r.status === 401 || r.status === 403) throw chatError(r.status);
+    if (!r.ok) throw new JigError("meeting_chat_search", `Microsoft Search didn't answer (${r.status}).`);
+    return toChatSearchHits(await r.json());
+  }
+  /** A token to start chats with, silently: Chat.ReadWrite when the tenant approved it, else Chat.Create. */
+  private async createToken(): Promise<string | undefined> {
+    for (const scopes of [CHAT_READWRITE_SCOPES, CHAT_CREATE_SCOPES]) {
+      const token = await this.access(scopes, false).catch(() => undefined);
+      if (token) return token;
+    }
+    return undefined;
+  }
+  /** Whether Jig may start chats now, without asking (D-332). */
+  async chatCreateReady(): Promise<boolean> {
+    return Boolean(await this.createToken());
+  }
+  /** Asks Microsoft to let Jig start chats (a browser page; where an admin must approve, it says so). */
+  async connectChatCreate(): Promise<void> {
+    await this.access(CHAT_CREATE_SCOPES, true);
+  }
+  /**
+   * Starts a Teams chat with people (D-332): one is a one-to-one chat (Graph returns the one you
+   * already have), more a group chat with an optional name. Returns its id.
+   */
+  async createChat(people: readonly string[], topic?: string): Promise<string> {
+    const me = this.account?.localAccountId;
+    const token = await this.createToken();
+    if (!me || !token) throw chatCreateConsent();
+    const r = await fetch("https://graph.microsoft.com/v1.0/chats", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(newChatRequest(me, people, topic)),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (r.status === 401 || r.status === 403) throw chatCreateConsent();
+    if (!r.ok) throw new JigError("meeting_chat_create", `Teams didn't start the chat (${r.status}).`);
+    const id = ((await r.json()) as { id?: string }).id;
+    if (!id || !TEAMS_CHAT_ID.test(id))
+      throw new JigError("meeting_chat_create", "Teams didn't say which chat it started.");
+    return id;
   }
   /**
    * A chat's members as names by id (D-327), read when a message's sender has no name of its own
@@ -536,6 +623,13 @@ export class MeetingAuth {
     }
     return events;
   }
+}
+
+function chatCreateConsent(): JigError {
+  return new JigError(
+    "meeting_chat_create_consent",
+    "Starting chats needs Microsoft's Chat.Create permission (or Chat.ReadWrite) for Jig, which your administrator has to approve.",
+  );
 }
 
 function chatError(status: number): JigError {

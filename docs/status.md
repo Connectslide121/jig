@@ -1,5 +1,24 @@
 # Status
 
+Chats toolbar in Meetings (2026-11-04, D-332): the lobby's Chats list has a toolbar like Teams': a
+search that narrows your chats by name, people and last message as you type and, under them, the
+**Messages** Microsoft Search finds in all your chats; filter chips **Unread**, **Chats** and
+**Meetings**; and **New chat** (the pen icon): pick people, name a group, write the first message.
+Picking one person you already chat with opens that chat. Point at a chat for **Pin** (or
+right-click it): pinned chats sit in a **Pinned** section on top, in pin order. Those pins are Jig's
+own: Microsoft doesn't share Teams' pins, so they don't sync either way. Starting new chats needs
+Microsoft's **Chat.Create** (or **Chat.ReadWrite**) permission for Jig: until your administrator
+approves it, New chat says so (with Connect…). Search and pins need nothing new. Checked with
+screenshots in Jig Dark and Jig Light, narrow and wide (test meeting service); unit tests and the
+meetings chats e2e pass.
+**Check on your real chats:** search for a word from an old message: it should appear under
+Messages and open its chat. Try the three filters (Meetings = your meeting chats). Pin two chats and
+restart Jig: they stay on top in that order. Once Chat.ReadWrite is approved, start a group chat of
+three with a name and a one-to-one with someone new: both should appear in Teams with your first
+message; New chat with someone you already chat with should open that chat. Tell Claude if Search
+finds nothing (some tenants turn Microsoft Search off for Teams) or Start chat says it needs approval
+after it was approved (press Connect… once).
+
 Claude or ChatGPT per task queue (2026-11-04, D-330): each project's queue picks who runs its chats:
 the Queue tab's header has **Runs on** beside the project picker (Project default, Claude, ChatGPT),
 so Podium's queue can run on ChatGPT and Jig's on Claude. A task can override it in **Add tasks** (per

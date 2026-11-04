@@ -456,16 +456,21 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     expect((await hostCall(main, "meetings.chats")).ok).toBe(false);
 
     // Your chats, newest first: name, last message, time, and the unread mark.
-    await lobby.getByRole("button", { name: "Chats", exact: true }).click();
+    await lobby
+      .getByRole("navigation", { name: "Sections" })
+      .getByRole("button", { name: "Chats", exact: true })
+      .click();
     const rows = lobby.getByTestId("teams-chat");
-    await expect(rows).toHaveCount(6);
+    await expect(rows).toHaveCount(9);
     // Each person's Teams status on their picture (D-329); a group chat has none.
     await expect(rows.first().getByRole("img", { name: "Alex Contoso: Available" })).toBeVisible();
     await expect(rows.nth(1).getByTestId("presence")).toHaveCount(0);
     await expect(rows.nth(2).getByRole("img", { name: "Sam Fabrikam: Away" })).toBeVisible();
     await expect(rows.nth(3).getByRole("img", { name: "Taylor Contoso: Busy, in a meeting" })).toBeVisible();
     await expect(rows.nth(4).getByRole("img", { name: "Kim Fabrikam: Do not disturb" })).toBeVisible();
-    await expect(rows.nth(5).getByRole("img", { name: "Morgan Shop: Offline" })).toBeVisible();
+    await expect(
+      rows.filter({ hasText: "Morgan Shop" }).getByRole("img", { name: "Morgan Shop: Offline" }),
+    ).toBeVisible();
     await expect(rows.first()).toContainText("Alex Contoso");
     await expect(rows.first()).toContainText("Almost: can you look at the error codes?");
     await expect(rows.first()).toContainText("Unread");
@@ -492,7 +497,10 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     });
 
     // Call… has a Chat action per person: it opens your one-to-one chat with them.
-    await lobby.getByRole("button", { name: "Meetings", exact: true }).click();
+    await lobby
+      .getByRole("navigation", { name: "Sections" })
+      .getByRole("button", { name: "Meetings", exact: true })
+      .click();
     await lobby.getByRole("button", { name: "Call…", exact: true }).click();
     const dialog = lobby.getByTestId("call-dialog");
     await dialog.getByPlaceholder("Search people by name or e-mail").fill("sam");
@@ -500,7 +508,7 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await expect(dialog).toHaveCount(0);
     await expect(chat.getByTestId("meeting-chat")).toContainText("Thanks for the review!");
 
-    // Nobody to chat with yet: Jig can't start a chat, so it offers Teams instead.
+    // Nobody to chat with yet: Start one… opens New chat with them (D-332), or Teams.
     await lobby.getByRole("button", { name: "Call…", exact: true }).click();
     await dialog.getByPlaceholder("Search people by name or e-mail").fill("robin");
     await dialog.getByRole("button", { name: "Chat with Robin Shop", exact: true }).click();
@@ -510,7 +518,182 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/chat-none.png",
     });
-    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await dialog.getByRole("button", { name: "Start one…", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const newChat = lobby.getByTestId("new-chat-dialog");
+    await expect(newChat.getByTestId("new-chat-picked")).toContainText("Robin Shop");
+    await newChat.getByRole("button", { name: "Cancel", exact: true }).click();
+  } finally {
+    await app.close();
+  }
+});
+
+test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async ({ jigHome }) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby } = await meetingWindows(app);
+    const shots = ".jig-test-home-meeting-screenshots";
+    await lobby
+      .getByRole("navigation", { name: "Sections" })
+      .getByRole("button", { name: "Chats", exact: true })
+      .click();
+    const rows = lobby.getByTestId("teams-chat");
+    await expect(rows).toHaveCount(9);
+    const toolbar = lobby.getByTestId("chats-toolbar");
+    const list = lobby.getByTestId("teams-chats");
+    const before = { toolbar: await toolbar.boundingBox(), list: await list.boundingBox() };
+
+    // Search: names, members and last messages of the loaded chats, then Microsoft Search's messages.
+    const search = lobby.getByRole("textbox", { name: "Search chats" });
+    await search.fill("fabrikam");
+    await expect(rows).toHaveCount(5);
+    await expect(rows.filter({ hasText: "Shop support" })).toHaveCount(1);
+    const hits = lobby.getByTestId("chat-search-hit");
+    await expect(hits.filter({ hasText: "The Fabrikam invoices are sent." })).toHaveCount(1);
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-search-narrow-dark.png` });
+    await search.fill("zzz");
+    await expect(list).toContainText("No chat matches “zzz”.");
+    await expect(list).toContainText("No messages with “zzz”.");
+    // A message only Microsoft Search finds opens its chat.
+    await search.fill("error codes");
+    await expect(rows).toHaveCount(1);
+    await search.fill("release notes");
+    await expect(list).toContainText("No chat matches");
+    await hits.first().click();
+    await expect(lobby.getByRole("region", { name: "Chat" }).getByTestId("meeting-chat")).toContainText(
+      "Release notes:",
+    );
+    await search.press("Escape");
+    await expect(search).toHaveValue("");
+
+    // Filters like Teams': meeting chats, chats with people, unread; again turns it off.
+    const filters = lobby.getByRole("group", { name: "Filter chats" });
+    await filters.getByRole("button", { name: "Meetings", exact: true }).click();
+    await expect(rows).toHaveCount(2);
+    await filters.getByRole("button", { name: "Chats", exact: true }).click();
+    await expect(rows).toHaveCount(7);
+    await filters.getByRole("button", { name: "Unread", exact: true }).click();
+    await expect(filters.getByRole("button", { name: "Unread", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(rows).toHaveCount(3);
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-filter-narrow-dark.png` });
+    await filters.getByRole("button", { name: "Unread", exact: true }).click();
+    await expect(rows).toHaveCount(9);
+    // The toolbar never moves the list.
+    expect({ toolbar: await toolbar.boundingBox(), list: await list.boundingBox() }).toEqual(before);
+
+    // Jig's own pins: the hover action and the context menu, in pin order above the rest.
+    const kim = rows.filter({ hasText: "The Fabrikam invoices are sent." });
+    await kim.hover();
+    await lobby.getByRole("button", { name: "Pin in Jig (not synced with Teams)" }).click();
+    const pinned = lobby.getByTestId("chats-pinned");
+    await expect(pinned.getByTestId("teams-chat")).toHaveText([/Kim Fabrikam/]);
+    await expect(pinned).toContainText("In Jig only");
+    await rows.filter({ hasText: "Portal planning" }).click({ button: "right" });
+    await lobby.getByRole("menuitem", { name: /^Pin/ }).click();
+    await expect(pinned.getByTestId("teams-chat")).toHaveText([/Kim Fabrikam/, /Portal planning/]);
+    await expect(rows).toHaveCount(9);
+    const pins = async () => {
+      const result = await hostCall(lobby, "meetings.overview");
+      return result.ok ? (result.value as MeetingOverview).chatPins : undefined;
+    };
+    await expect
+      .poll(pins)
+      .toEqual([
+        "19:00000000-0000-4000-8000-0000000000ee_00000000-0000-4000-8000-0000000000c1@unq.gbl.spaces",
+        "19:portal-planning@thread.v2",
+      ]);
+    await lobby.mouse.move(0, 0);
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-pinned-narrow-dark.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-light" } });
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-pinned-narrow-light.png` });
+    // Wide: the search, filters and New chat on one line.
+    await lobby.getByRole("separator", { name: "Resize chat list" }).focus();
+    for (let i = 0; i < 3; i++) await lobby.keyboard.press("Shift+ArrowRight");
+    await expect.poll(async () => (await toolbar.boundingBox())?.height).toBeLessThan(50);
+    await filters.getByRole("button", { name: "Chats", exact: true }).click();
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-filter-wide-light.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-dark" } });
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/chats-filter-wide-dark.png` });
+    await filters.getByRole("button", { name: "Chats", exact: true }).click();
+    await pinned.getByTestId("teams-chat").first().click({ button: "right" });
+    await lobby.getByRole("menuitem", { name: /^Unpin/ }).click();
+    await expect(pinned.getByTestId("teams-chat")).toHaveText([/Portal planning/]);
+
+    // New chat: one person you already chat with opens that chat, with your message in it.
+    await lobby.getByTestId("new-chat").click();
+    const dialog = lobby.getByTestId("new-chat-dialog");
+    const people = dialog.getByTestId("new-chat-person");
+    await dialog.getByPlaceholder("Search people by name or e-mail").fill("sam");
+    await people.filter({ hasText: "Sam Fabrikam" }).click();
+    await expect(dialog.getByLabel("Group name")).toBeDisabled();
+    await dialog.getByLabel("First message").fill("Lunch on Friday?");
+    await dialog.getByRole("button", { name: "Start chat", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const chat = lobby.getByRole("region", { name: "Chat" });
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Thanks for the review!");
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Lunch on Friday?");
+    await expect(rows).toHaveCount(9);
+
+    // More people make a group chat with its name.
+    await lobby.getByTestId("new-chat").click();
+    await people.filter({ hasText: "Alex Contoso" }).click();
+    await people.filter({ hasText: "Robin Shop" }).click();
+    await expect(dialog.getByTestId("new-chat-picked")).toContainText("Alex Contoso");
+    await dialog.getByLabel("Group name").fill("Launch crew");
+    await dialog.getByLabel("First message").fill("Welcome to the launch chat");
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/new-chat-dark.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-light" } });
+    await lobby.screenshot({ animations: "disabled", path: `${shots}/new-chat-light.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-dark" } });
+    await dialog.getByRole("button", { name: "Start chat", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(chat.getByRole("heading", { name: "Launch crew" })).toBeVisible();
+    await expect(chat.getByTestId("meeting-chat")).toContainText("Welcome to the launch chat");
+    await expect(rows).toHaveCount(10);
+    await expect(rows.filter({ hasText: "Launch crew" })).toContainText("You: Welcome to the launch chat");
+  } finally {
+    await app.close();
+  }
+});
+
+test("Meetings chats: New chat says an administrator has to approve starting chats (D-332)", async ({
+  jigHome,
+}) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake", JIG_MEETINGS_CHAT_CREATE: "consent" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby } = await meetingWindows(app);
+    await lobby
+      .getByRole("navigation", { name: "Sections" })
+      .getByRole("button", { name: "Chats", exact: true })
+      .click();
+    await lobby.getByTestId("new-chat").click();
+    const dialog = lobby.getByTestId("new-chat-dialog");
+    await expect(dialog.getByTestId("new-chat-status")).toContainText("An administrator has to approve");
+    const people = dialog.getByTestId("new-chat-person");
+    await people.filter({ hasText: "Alex Contoso" }).click();
+    await people.filter({ hasText: "Sam Fabrikam" }).click();
+    await dialog.getByLabel("First message").fill("Hello both");
+    await expect(dialog.getByRole("button", { name: "Start chat", exact: true })).toBeDisabled();
+    await lobby.screenshot({
+      animations: "disabled",
+      path: ".jig-test-home-meeting-screenshots/new-chat-consent.png",
+    });
+    // A chat you already have still opens.
+    await people.filter({ hasText: "Alex Contoso" }).click();
+    await dialog.getByRole("button", { name: "Start chat", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(lobby.getByRole("region", { name: "Chat" }).getByTestId("meeting-chat")).toContainText(
+      "Hello both",
+    );
   } finally {
     await app.close();
   }

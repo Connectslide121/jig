@@ -249,7 +249,33 @@ export interface HostMethods {
   "meetings.presenceConnect": { args: void; result: void };
   /** Opens a file or link shared in a Teams chat (https only) in your browser (D-328). */
   "meetings.openChatFile": { args: { url: string }; result: void };
-  /** Your one-to-one chat with someone, if you have one (Jig can't start one: no Chat.Create). */
+  /** Pins (added last) or unpins a chat in Jig's Chats (D-332); returns the pins. Not synced with Teams. */
+  "meetings.chatPin": { args: { chatId: string; pinned: boolean }; result: string[] };
+  /** Messages in your chats that Microsoft Search finds (D-332), with Chat.Read; channel posts left out. */
+  "meetings.chatSearch": {
+    args: { query: string };
+    result: {
+      state: import("./meetingChat").MeetingChatState;
+      hits: import("./meetingChatList").ChatSearchHit[];
+      error?: string;
+    };
+  };
+  /** Whether Jig may start chats (Chat.Create or Chat.ReadWrite), without asking (D-332). */
+  "meetings.chatCreateReady": { args: void; result: { state: "ok" | "consent" | "unavailable" } };
+  /** Asks Microsoft to let Jig start chats (opens the browser, D-332). */
+  "meetings.chatCreateConnect": { args: void; result: void };
+  /**
+   * Starts a Teams chat with people and sends its first message (D-332). With one person, the chat
+   * you already have with them is opened instead (`existed`).
+   */
+  "meetings.chatCreate": {
+    args: { people: Array<{ id: string; name: string }>; topic?: string; text: string };
+    result: {
+      chat: Pick<import("./meetingChat").TeamsChatSummary, "id" | "name" | "kind" | "peerId">;
+      existed: boolean;
+    };
+  };
+  /** Your one-to-one chat with someone, if you have one (starting one is `meetings.chatCreate`). */
   "meetings.chatWith": {
     args: { peerId: string };
     result: { state: import("./meetingChat").MeetingChatState; chatId?: string };

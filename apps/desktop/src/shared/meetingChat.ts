@@ -402,6 +402,8 @@ export interface TeamsChatSummary {
   name: string;
   /** The other person's Entra object id in a one-to-one chat, for the picture. */
   peerId?: string;
+  /** The other members' names in a group or meeting chat, for searching the list (D-332). */
+  members?: string[];
   /** The newest message, as one line. */
   preview?: { from: string; text: string; mine?: boolean };
   /** When the chat last had a message (or changed). */
@@ -479,6 +481,7 @@ export function toChatSummaries(
         kind,
         name,
         ...(peer?.userId ? { peerId: peer.userId } : {}),
+        ...(kind !== "oneOnOne" && names.length ? { members: names.slice(0, 50) } : {}),
         ...(preview ? { preview } : {}),
         at: new Date(at).toISOString(),
         unread,

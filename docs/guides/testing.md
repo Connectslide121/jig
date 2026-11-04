@@ -189,7 +189,9 @@ Settings model discovery uses the fake engine’s canned model list (now includi
 ## Meetings
 
 Set both JIG_ENGINE=fake and JIG_MEETINGS=fake for the isolated meeting service; fake engine alone
-never authorises a real meeting. e2e/meetings.spec.ts creates temporary Shop/Portal projects, joins
+never authorises a real meeting. Its Teams chats (9: one-to-one, group and meeting chats) answer the
+Chats toolbar's message search and New chat; add `JIG_MEETINGS_CHAT_CREATE=consent` to show New chat
+without the permission to start chats (D-332). e2e/meetings.spec.ts creates temporary Shop/Portal projects, joins
 a fake calendar meeting, verifies capture across project switches, modal geometry, caption revision
 merging, credential sender restrictions, sharing controls, notes and paused cross-project queueing.
 The join-by-link regression checks joining without an acknowledgement, invalid-link errors inside the modal and

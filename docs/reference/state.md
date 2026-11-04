@@ -175,6 +175,8 @@ with a gap on restart. Immutable question snapshots live in addon-data/meeting-s
 The lobby's `lobbyView` is `agenda` or `week` (default `agenda`), independent of the live room layout.
 `devices` {microphone?, speaker?, camera?: {id, name}} are the devices picked for meetings (calling SDK ids); a
 missing kind means System default, Windows' default device (D-323).
+`chatPins` are the Teams chat ids pinned in the lobby's Chats, in pin order (at most 50, D-332): Jig's own,
+since Graph doesn't expose Teams' pinned chats; changed only through `meetings.chatPin`.
 No audio/video file is created. MSAL sign-in persists as safeStorage-encrypted base64 ciphertext in
 `cache/microsoft/<sha256(tenantId:clientId)>.cache`. Windows uses DPAPI; Linux's `basic_text` backend
 is refused. Disconnect or changing connection settings deletes the cache. Calling tokens stay in

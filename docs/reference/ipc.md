@@ -312,10 +312,15 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.chat | Room only: reads the active meeting's or call's Teams chat (Graph Chat.Read) into its record; `{state: ok/consent/unavailable, error?}` (D-270) |
 | meetings.chatSend | Room only: writes in that chat as you (Graph ChatMessage.Send) |
 | meetings.chatConnect | Lobby or room: asks Microsoft for the chat permissions (browser sign-in) |
-| meetings.chats | Lobby or room: your 50 newest Teams chats (`TeamsChatSummary`: id, kind, name, peerId?, preview?, at, unread) with `{state, error?}`; Chat.Read, no new consent (D-296) |
+| meetings.chats | Lobby or room: your 50 newest Teams chats (`TeamsChatSummary`: id, kind, name, peerId?, members?, preview?, at, unread) with `{state, error?}`, plus pinned chats outside them (up to 10, D-332); Chat.Read, no new consent (D-296) |
 | meetings.chatThread | `{chatId}` (a Teams chat id, `TEAMS_CHAT_ID`): the chat's newest 50 messages, not kept; marks it read in Jig; lobby or room |
 | meetings.chatThreadSend | `{chatId, text}`: write in that chat as you (ChatMessage.Send); returns the sent message; lobby or room |
-| meetings.chatWith | `{peerId}`: your one-to-one chat id with someone, if you have one (Jig can't start one: no Chat.Create); `{state, chatId?}`; lobby or room |
+| meetings.chatWith | `{peerId}`: your one-to-one chat id with someone, if you have one (starting one is `meetings.chatCreate`); `{state, chatId?}`; lobby or room |
+| meetings.chatPin | `{chatId, pinned}`: pins (added last) or unpins a chat in Jig's Chats; returns the pins; kept in meetings.json, not synced with Teams; emits `meetings.changed`; lobby or room (D-332) |
+| meetings.chatSearch | `{query}` (2–200 characters): messages in your chats found by Microsoft Search (`POST /search/query`, chatMessage, 25 hits) with Chat.Read: `{state, hits: [{chatId, messageId, from, at, text}], error?}`; channel posts left out; lobby or room (D-332) |
+| meetings.chatCreateReady | Whether Jig may start chats (a Chat.ReadWrite or Chat.Create token, silently): `{state: ok/consent/unavailable}`; lobby or room (D-332) |
+| meetings.chatCreateConnect | Asks Microsoft to let Jig start chats (Chat.Create; opens the browser); lobby or room (D-332) |
+| meetings.chatCreate | `{people: [{id, name}] (1–50), topic?, text}`: opens your one-to-one chat with one person if you have one, else starts the chat (`POST /chats`, oneOnOne or group with its name) and sends `text` (ChatMessage.Send); `{chat: {id, name, kind, peerId?}, existed}`; `meeting_chat_create_consent` until approved; lobby or room (D-332) |
 | meetings.chatImage | `{chatId, messageId, contentId}`: a picture in a Teams message, read by main from Graph's hosted content (Chat.Read) and returned as a data URL (PNG/JPEG/GIF/WebP, ≤ 10 MB, cached in memory up to 64 MB) or null; lobby or room (D-328) |
 | meetings.presence | `{ids}` (Entra object ids, ≤ 650): people's Teams status `{state: ok/consent/unavailable, presence: {id: {availability, activity}}}`, read by main with Presence.Read.All silently (30 s reuse); refused or failed = no presence, not an error; lobby or room (D-329) |
 | meetings.presenceConnect | Asks Microsoft to let Jig read people's Teams status (Presence.Read.All; opens the browser); lobby or room (D-329) |

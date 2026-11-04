@@ -5,6 +5,7 @@ import { ANY_EFFORT_LEVELS, CHAT_PROVIDERS, PERMISSION_MODES } from "../../share
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { CHAT_MESSAGE_ID, HOSTED_CONTENT_ID, TEAMS_CHAT_ID } from "../../shared/meetingChat";
+import { CHAT_SEARCH_MIN, CHAT_TOPIC_MAX, NEW_CHAT_MAX_PEOPLE } from "../../shared/meetingChatList";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PRESENCE_BATCH } from "../../shared/meetingPresence";
 import { PROJECT_COLORS } from "../../shared/projects";
@@ -110,6 +111,18 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .object({ chatId: teamsChatId, text: z.string().trim().min(1).max(4000) })
     .strict(),
   "meetings.chatWith": z.object({ peerId: z.uuid() }).strict(),
+  "meetings.chatPin": z.object({ chatId: teamsChatId, pinned: z.boolean() }).strict(),
+  "meetings.chatSearch": z.object({ query: z.string().trim().min(CHAT_SEARCH_MIN).max(200) }).strict(),
+  "meetings.chatCreate": z
+    .object({
+      people: z
+        .array(z.object({ id: z.uuid(), name: z.string().trim().min(1).max(300) }).strict())
+        .min(1)
+        .max(NEW_CHAT_MAX_PEOPLE),
+      topic: z.string().max(CHAT_TOPIC_MAX).optional(),
+      text: z.string().trim().min(1).max(4000),
+    })
+    .strict(),
   "meetings.chatImage": z
     .object({
       chatId: teamsChatId,
