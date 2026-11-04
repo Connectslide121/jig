@@ -1,14 +1,14 @@
-import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { tenantContext } from "@jig/azure";
 import { z } from "zod";
 import type { SessionMeta } from "../../shared/engine";
 import { azureContext } from "../azure/env";
-import type { ToolOutput } from "./types";
+import type { ChatToolServer, ToolOutput } from "./types";
 
 /**
- * The `jig` MCP server attached to every session: the only tools Jig adds to Claude Code. They let
- * any chat see the add-ons and ask Jig's builder for a new or changed tool. Handlers are provided by
- * the add-on host (phase 6) and the builder (phase 8); until then they answer that it isn't available.
+ * The `jig` MCP server attached to every chat: the only tools Jig adds to Claude Code or Codex. They
+ * let any chat see the add-ons and ask Jig's builder for a new or changed tool. This registry is
+ * engine-neutral (D-313): `jigToolServer` binds the tools to one chat, and each engine serves them
+ * under the same names (Claude in-process, Codex over a local MCP server).
  */
 export interface JigToolHandlers {
   listAddons: () => Promise<string>;
@@ -46,12 +46,6 @@ export function setAddonTools(tools: JigTool[]): void {
   const core = new Set(coreTools.map((t) => t.name));
   addonTools = tools.filter((t) => !core.has(t.name));
   extraTools = [...coreTools, ...addonTools];
-}
-
-/** True for `jig` tools that only read (`mcp__jig__jig_get_settings`, …): Jig doesn't ask before them. */
-export function isReadOnlyJigTool(toolName: string): boolean {
-  const name = /^mcp__jig__(.+)$/.exec(toolName)?.[1];
-  return name === "jig_list_addons" || extraTools.some((t) => t.name === name && t.readOnly);
 }
 
 /** One line per switched-on add-on (name: what it does), for Claude's context. */
@@ -102,74 +96,46 @@ export function setJigToolHandlers(next: Partial<JigToolHandlers>): void {
   handlers = { ...handlers, ...next };
 }
 
-export function jigMcpServer(meta: SessionMeta) {
-  const text = (value: string) => ({ content: [{ type: "text" as const, text: value }] });
-  return createSdkMcpServer({
-    name: "jig",
-    version: "1.0.0",
-    instructions:
-      "Tools of Jig, the desktop app this session runs in. To change how Jig looks or behaves where it is already configurable (settings, theme, fonts, file icons, layout, add-ons on/off, project names and colours) use the jig_get_*/jig_list_* tools to look and the jig_update_*/jig_change_*/jig_set_* tools to change it directly. Use jig_request_build only for something new: anything from a button to a whole module (a work-item board, a PR review queue).",
+const JIG_INSTRUCTIONS =
+  "Tools of Jig, the desktop app this session runs in. To change how Jig looks or behaves where it is already configurable (settings, theme, fonts, file icons, layout, add-ons on/off, project names and colours) use the jig_get_*/jig_list_* tools to look and the jig_update_*/jig_change_*/jig_set_* tools to change it directly. Use jig_request_build only for something new: anything from a button to a whole module (a work-item board, a PR review queue).";
+
+/** The `jig` server's tools bound to one chat: the built-in two, then every registered tool. */
+export function jigToolServer(meta: SessionMeta): ChatToolServer {
+  return {
+    instructions: JIG_INSTRUCTIONS,
     tools: [
-      tool(
-        "jig_list_addons",
-        "List Jig's add-ons (built-in and the user's) with what they do and which slots they use.",
-        {},
-        async () => text(await handlers.listAddons()),
-      ),
-      tool(
-        "jig_request_build",
-        "Ask Jig's builder to create or change a tool in Jig (an add-on, or when no extension point exists, a proposal for one). The user sees a preview and accepts or discards it. For settings, themes and layout use the jig_update_settings / jig_change_layout tools instead. Describe the goal in the user's words plus any detail you know.",
-        {
+      {
+        name: "jig_list_addons",
+        description:
+          "List Jig's add-ons (built-in and the user's) with what they do and which slots they use.",
+        shape: {},
+        readOnly: true,
+        handler: () => handlers.listAddons(),
+      },
+      {
+        name: "jig_request_build",
+        description:
+          "Ask Jig's builder to create or change a tool in Jig (an add-on, or when no extension point exists, a proposal for one). The user sees a preview and accepts or discards it. For settings, themes and layout use the jig_update_settings / jig_change_layout tools instead. Describe the goal in the user's words plus any detail you know.",
+        shape: {
           goal: z.string().describe("What the user wants, in plain language"),
           addonId: z.string().optional().describe("An existing add-on to change, if the user named one"),
         },
-        async ({ goal, addonId }) => text(await handlers.requestBuild({ goal, addonId, sessionId: meta.id })),
-      ),
-      ...extraTools.map((t) =>
-        tool(
-          t.name,
-          t.description,
-          t.shape,
-          async (args) => {
-            try {
-              const out = await t.handler(args as Record<string, unknown>, meta);
-              if (typeof out === "string") return text(out);
-              return {
-                content: [
-                  { type: "text" as const, text: out.text },
-                  ...(out.images ?? []).map((i) => ({
-                    type: "image" as const,
-                    data: i.data,
-                    mimeType: i.mime,
-                  })),
-                ],
-              };
-            } catch (error) {
-              return { ...text(`Error: ${(error as Error).message}`), isError: true };
-            }
-          },
-          t.alwaysLoad ? { alwaysLoad: true } : undefined,
-        ),
-      ),
+        handler: (args) =>
+          handlers.requestBuild({
+            goal: String(args.goal ?? ""),
+            addonId: args.addonId as string | undefined,
+            sessionId: meta.id,
+          }),
+      },
+      ...extraTools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        shape: t.shape,
+        readOnly: t.readOnly,
+        alwaysLoad: t.alwaysLoad,
+        handler: (args: Record<string, unknown>) => t.handler(args, meta),
+      })),
     ],
-  });
-}
-
-/** The jig tools as plain functions (for the fake engine's scripted sessions). */
-export function jigToolHandlers(
-  meta: SessionMeta,
-): Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> {
-  return {
-    jig_list_addons: () => handlers.listAddons(),
-    jig_request_build: (args) =>
-      handlers.requestBuild({
-        goal: String(args.goal ?? ""),
-        addonId: args.addonId as string | undefined,
-        sessionId: meta.id,
-      }),
-    ...Object.fromEntries(
-      extraTools.map((t) => [t.name, (args: Record<string, unknown>) => t.handler(args, meta)]),
-    ),
   };
 }
 

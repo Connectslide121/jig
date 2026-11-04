@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import type {
   ChatProvider,
   ContextUsage,
@@ -31,6 +32,28 @@ export type ToolOutput = string | { text: string; images?: Array<{ mime: string;
 export const outputText = (o: ToolOutput): string => (typeof o === "string" ? o : o.text);
 export const outputImages = (o: ToolOutput) => (typeof o === "string" ? undefined : o.images);
 
+/**
+ * A tool Jig offers one chat, the same for every engine (D-313): Claude Code gets it from an
+ * in-process SDK server, Codex from the chat's local MCP server, the fake engine calls it directly.
+ * The name is what the model sees (`mcp__<server>__<name>`), so it is the same in every chat.
+ */
+export interface ChatTool {
+  name: string;
+  description: string;
+  shape: z.ZodRawShape;
+  /** Only reads: runs without asking the user (D-077), in every engine. */
+  readOnly?: boolean;
+  /** Claude Code: always in the prompt, never behind its tool search (D-158). */
+  alwaysLoad?: boolean;
+  handler: (args: Record<string, unknown>) => Promise<ToolOutput>;
+}
+
+/** One MCP server's worth of Jig tools for a chat (`jig`, `jig-builder`). */
+export interface ChatToolServer {
+  instructions?: string;
+  tools: ChatTool[];
+}
+
 export interface StartOptions {
   cwd: string;
   /** Model alias or id; empty = Claude Code's default. */
@@ -61,14 +84,15 @@ export interface StartOptions {
   effort?: EffortLevel;
   /** Folders Claude may use besides `cwd`. */
   additionalDirectories?: string[];
-  /** In-process MCP servers (the `jig` tools). Opaque to the engine interface. */
-  mcpServers?: Record<string, unknown>;
+  /**
+   * Jig's tools for this chat by MCP server name (`jig`, `jig-builder`). Every engine offers them
+   * under the same names (D-313); how is the engine's business.
+   */
+  toolServers?: Record<string, ChatToolServer>;
   /** Reviewed, local skill-only plugins selected for this chat. */
   plugins?: Array<{ type: "local"; path: string }>;
   /** Subagents Claude can hand work to (Agent SDK `AgentDefinition`s, e.g. `jig-tester`). */
   agents?: Record<string, unknown>;
-  /** The same tools as plain functions, for the fake engine's scripted sessions. */
-  toolHandlers?: Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>>;
   /** Asks the user; resolves with their decision. */
   askPermission: (request: PermissionRequest, signal: AbortSignal) => Promise<PermissionDecision>;
 }

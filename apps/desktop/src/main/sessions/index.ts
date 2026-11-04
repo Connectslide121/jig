@@ -23,8 +23,8 @@ import { appWindows, focusJig } from "../appWindows";
 import { azureTag, withAzureEnv } from "../azure/env";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
-import { jigContext, jigMcpServer, jigToolHandlers, turnContext } from "../engine/jigTools";
-import type { ToolOutput } from "../engine/types";
+import { jigContext, jigToolServer, turnContext } from "../engine/jigTools";
+import type { ChatToolServer } from "../engine/types";
 import { emit, handle } from "../ipc/router";
 import { persistCurrentLayout } from "../layout";
 import { logger } from "../log";
@@ -47,10 +47,8 @@ let manager: SessionManager | undefined;
  */
 export interface SessionKindHooks {
   appendSystemPrompt: (meta: SessionMeta) => string;
-  mcpServers: (meta: SessionMeta) => Record<string, unknown> | undefined;
-  toolHandlers: (
-    meta: SessionMeta,
-  ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
+  /** Its tools by MCP server name, instead of the `jig` server (D-313). */
+  toolServers: (meta: SessionMeta) => Record<string, ChatToolServer> | undefined;
   onTurnEnd?: (meta: SessionMeta) => void;
   onWorking?: (meta: SessionMeta) => void;
 }
@@ -200,11 +198,10 @@ export function startSessions(): void {
       );
       return answer.text;
     },
-    mcpServers: (meta) => {
+    // Every engine offers the same tools under the same names (D-313).
+    toolServers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
-      if (hooks) return hooks.mcpServers(meta);
-      // In-process tools reach Claude Code only (the Agent SDK's own MCP servers).
-      return getEngine(chatProvider(meta)).kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
+      return hooks ? hooks.toolServers(meta) : { jig: jigToolServer(meta) };
     },
     // Chats with Jig's tools get the tester and the searcher, which run on small models.
     agents: (meta) => {
@@ -215,10 +212,6 @@ export function startSessions(): void {
         [TESTER_AGENT]: testerAgent(testerModel),
         ...(searchModel ? { [SEARCH_AGENT]: searchAgent(searchModel) } : {}),
       };
-    },
-    toolHandlers: (meta) => {
-      const hooks = kindHooks.get(meta.kind ?? "");
-      return hooks ? hooks.toolHandlers(meta) : jigToolHandlers(meta);
     },
     onTurnEnd: (meta) => {
       kindHooks.get(meta.kind ?? "")?.onTurnEnd?.(meta);

@@ -16,9 +16,10 @@ import {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
-import { isReadOnlyJigTool } from "./jigTools";
+import { isReadOnlyChatTool } from "./chatTools";
 import { commandFrom, contextFrom, Normalizer, toolOutputText } from "./normalize";
 import { AsyncQueue } from "./queue";
+import { sdkMcpServers } from "./sdkMcp";
 import { isRequestedCall, type ToolCallRequest, type ToolCallResult, toolCallPrompt } from "./toolCall";
 import type {
   Completer,
@@ -132,14 +133,15 @@ export class ClaudeEngine implements Engine {
         env: options.env,
         pathToClaudeCodeExecutable: options.claudePath || undefined,
         // biome-ignore lint/suspicious/noExplicitAny: the SDK's MCP server config type is opaque here.
-        mcpServers: options.mcpServers as any,
+        mcpServers: options.toolServers ? (sdkMcpServers(options.toolServers) as any) : undefined,
         // biome-ignore lint/suspicious/noExplicitAny: Agent SDK AgentDefinitions, opaque to the engine interface.
         agents: options.agents as any,
         abortController: abort,
         stderr: (data) => log.debug(`claude stderr: ${data.trimEnd()}`),
         canUseTool: async (toolName, toolInput, ctx) => {
           // Jig's own read-only tools (settings, themes, layout) don't need the user's OK.
-          if (isReadOnlyJigTool(toolName)) return { behavior: "allow", updatedInput: toolInput };
+          if (isReadOnlyChatTool(options.toolServers, toolName))
+            return { behavior: "allow", updatedInput: toolInput };
           const decision = await options.askPermission(
             {
               requestId: ctx.toolUseID ?? randomUUID(),

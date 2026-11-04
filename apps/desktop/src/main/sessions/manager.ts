@@ -26,7 +26,7 @@ import {
   type SlashCommandInfo,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import type { Engine, EngineSession, ToolOutput } from "../engine/types";
+import type { ChatToolServer, Engine, EngineSession } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
 import {
@@ -102,11 +102,9 @@ export interface SessionManagerOptions {
   /** Text that goes with each message to Claude, not shown in the transcript (add-ons' context). */
   /** Context for one message (`text` is what you wrote). */
   turnContext?: (meta: SessionMeta, text: string) => Promise<string>;
-  mcpServers?: (meta: SessionMeta) => Record<string, unknown> | undefined;
+  /** Jig's tools for the chat by MCP server name (`jig`, `jig-builder`), for any engine (D-313). */
+  toolServers?: (meta: SessionMeta) => Record<string, ChatToolServer> | undefined;
   agents?: (meta: SessionMeta) => Record<string, unknown> | undefined;
-  toolHandlers?: (
-    meta: SessionMeta,
-  ) => Record<string, (args: Record<string, unknown>) => Promise<ToolOutput>> | undefined;
   /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
   onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
   /**
@@ -347,10 +345,9 @@ export class SessionManager {
         promptSuggestions: settings.promptSuggestions,
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
-        mcpServers: this.options.mcpServers?.(meta),
+        toolServers: this.options.toolServers?.(meta),
         agents: this.options.agents?.(meta),
         plugins: this.options.plugins?.(meta),
-        toolHandlers: this.options.toolHandlers?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {
             // "Don't ask" never waits: Claude Code's own safety checks (rm -rf on a drive root…)

@@ -1,4 +1,3 @@
-import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import type { PermissionMode } from "../../shared/engine";
 import { addonService } from "../addons";
 import { getConfig, updateConfig } from "../config";
@@ -82,26 +81,9 @@ ${goal.slice(0, 4000)}
 
   registerSessionKind("builder", {
     appendSystemPrompt: () => BUILDER_PROMPT,
-    mcpServers: (meta) => {
-      if (getEngine().kind !== "claude" || !meta.buildId) return undefined;
-      const tools = s.toolsFor(meta.buildId).map((t) =>
-        tool(t.name, t.description, t.shape, async (args) => {
-          try {
-            return {
-              content: [{ type: "text" as const, text: await t.handler(args as Record<string, unknown>) }],
-            };
-          } catch (error) {
-            return {
-              content: [{ type: "text" as const, text: `Error: ${(error as Error).message}` }],
-              isError: true,
-            };
-          }
-        }),
-      );
-      return { "jig-builder": createSdkMcpServer({ name: "jig-builder", version: "1.0.0", tools }) };
-    },
-    toolHandlers: (meta) =>
-      meta.buildId ? Object.fromEntries(s.toolsFor(meta.buildId).map((t) => [t.name, t.handler])) : undefined,
+    // The builder's tools, served like the jig tools by whichever engine runs the chat (D-313).
+    toolServers: (meta) =>
+      meta.buildId ? { "jig-builder": { tools: s.toolsFor(meta.buildId) } } : undefined,
     onTurnEnd: (meta) => s.sessionTurnEnded(meta),
     onWorking: (meta) => s.sessionResumed(meta),
   });

@@ -17,6 +17,7 @@ import {
   type SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
+import { toolHandlersOf } from "./chatTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
 import { contextFrom, patchText } from "./normalize";
@@ -109,6 +110,8 @@ export class FakeEngine implements Engine {
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     // A fork continues the conversation under a new id, like Claude Code's forkSession.
     const engineSessionId = options.resume && !options.forkSession ? options.resume : `fake-${randomUUID()}`;
+    // Jig's tools as plain functions; scripts call them directly like Claude Code's in-process server.
+    const toolHandlers = options.toolServers ? toolHandlersOf(options.toolServers) : undefined;
     let model = options.model || "fake-model";
     let permissionMode: PermissionMode = options.permissionMode;
     let initialised = false;
@@ -221,7 +224,7 @@ export class FakeEngine implements Engine {
         // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
         const isTestChat = lower.startsWith("test this in claude's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
-        if (options.toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
+        if (toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
           const match = /\(([a-f\d-]{36})\), captured through ([^\n]+)\.\n/.exec(text);
           if (!match) throw new Error("Missing meeting snapshot");
           const id = match[1]!;
@@ -233,9 +236,9 @@ export class FakeEngine implements Engine {
             name: "mcp__jig__jig_meeting_read",
             input: { id, through },
           });
-          const output = outputText(await options.toolHandlers.jig_meeting_read({ id, through }));
+          const output = outputText(await toolHandlers.jig_meeting_read({ id, through }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
-          if (/Write (concise )?meeting notes/.test(text) && options.toolHandlers.jig_meeting_save_notes) {
+          if (/Write (concise )?meeting notes/.test(text) && toolHandlers.jig_meeting_save_notes) {
             const projects = JSON.parse(
               /optional projectId from (\[.*?\])\./.exec(text)?.[1] ?? "[]",
             ) as Array<{ id: string }>;
@@ -263,7 +266,7 @@ export class FakeEngine implements Engine {
             };
             const saveId = `tool-${randomUUID()}`;
             onEvent({ type: "tool_use", id: saveId, name: "mcp__jig__jig_meeting_save_notes", input });
-            const saved = outputText(await options.toolHandlers.jig_meeting_save_notes(input));
+            const saved = outputText(await toolHandlers.jig_meeting_save_notes(input));
             onEvent({ type: "tool_result", toolUseId: saveId, output: saved, isError: false });
             await stream(`${msg}:text:0`, saved, signal);
           } else
@@ -273,18 +276,18 @@ export class FakeEngine implements Engine {
               signal,
             );
         } else if (
-          options.toolHandlers?.jig_meeting_read &&
+          toolHandlers?.jig_meeting_read &&
           /with jig_meeting_read, id "([a-f\d-]{36})"/.test(sent)
         ) {
           // A message that mentions a meeting (`@meeting:…`, D-250): Jig's context names it; read it.
           const id = /with jig_meeting_read, id "([a-f\d-]{36})"/.exec(sent)![1]!;
           const readId = `tool-${randomUUID()}`;
           onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_meeting_read", input: { id } });
-          const output = outputText(await options.toolHandlers.jig_meeting_read({ id }));
+          const output = outputText(await toolHandlers.jig_meeting_read({ id }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
           await stream(`${msg}:text:0`, `From the mentioned meeting:\n\n${output.slice(0, 500)}`, signal);
         } else if (
-          options.toolHandlers?.jig_knowledge_read &&
+          toolHandlers?.jig_knowledge_read &&
           /knowledge/i.test(text) &&
           /Documents the user keeps[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
         ) {
@@ -292,11 +295,11 @@ export class FakeEngine implements Engine {
           const name = /Documents the user keeps[^\n]*\n- (.+?) \(\d+k characters\)/.exec(sent)![1]!;
           const readId = `tool-${randomUUID()}`;
           onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_knowledge_read", input: { name } });
-          const output = outputText(await options.toolHandlers.jig_knowledge_read({ name }));
+          const output = outputText(await toolHandlers.jig_knowledge_read({ name }));
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
           await stream(`${msg}:text:0`, `From the project's knowledge:\n\n${output.slice(0, 500)}`, signal);
-        } else if (options.toolHandlers?.catalog) {
-          await runFakeBuilder(text, options.toolHandlers, onEvent);
+        } else if (toolHandlers?.catalog) {
+          await runFakeBuilder(text, toolHandlers, onEvent);
         } else if (/^\/\S/.test(text.trim())) {
           // A Claude Code command or skill: built-ins print something, skills answer like Claude.
           const name = /^\/(\S+)/.exec(text.trim())![1]!;
@@ -315,7 +318,7 @@ export class FakeEngine implements Engine {
             });
           else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
         } else if (
-          options.toolHandlers?.addon_tasks_report &&
+          toolHandlers?.addon_tasks_report &&
           sent.includes("addon_tasks_report") &&
           !/skip the report/.test(lower)
         ) {
@@ -337,7 +340,7 @@ export class FakeEngine implements Engine {
             input,
           });
           const output = outputText(
-            await options.toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
+            await toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
           );
           onEvent({
             type: "tool_result",
@@ -346,7 +349,7 @@ export class FakeEngine implements Engine {
             isError: output.startsWith("Error"),
           });
           await stream(`${msg}:text:1`, "Reported.", signal);
-        } else if (options.toolHandlers?.addon_tasks_add && /\bqueue tasks for\b/.test(lower)) {
+        } else if (toolHandlers?.addon_tasks_add && /\bqueue tasks for\b/.test(lower)) {
           // "queue tasks for the specs": Claude fills the Tasks add-on's queue.
           const toolId = `tool-${randomUUID()}`;
           const input = {
@@ -379,7 +382,7 @@ export class FakeEngine implements Engine {
             await stream(`${msg}:text:0`, "OK, I didn't queue them.", signal);
           } else {
             const output = outputText(
-              await options.toolHandlers
+              await toolHandlers
                 .addon_tasks_add(decision.updatedInput ?? input)
                 .catch((e: Error) => `Error: ${e.message}`),
             );
@@ -748,14 +751,14 @@ export class FakeEngine implements Engine {
             }),
           });
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
-        } else if (options.toolHandlers?.jig_azure_tenants && /\bazure tenants?\b/.test(lower)) {
+        } else if (toolHandlers?.jig_azure_tenants && /\bazure tenants?\b/.test(lower)) {
           // "which azure tenants…" lists them; "switch the azure tenant to X" also switches (asks first).
           const listId = `tool-${randomUUID()}`;
           onEvent({ type: "tool_use", id: listId, name: "mcp__jig__jig_azure_tenants", input: {} });
-          const list = outputText(await options.toolHandlers.jig_azure_tenants({}));
+          const list = outputText(await toolHandlers.jig_azure_tenants({}));
           onEvent({ type: "tool_result", toolUseId: listId, output: list, isError: false });
           const wanted = /\bswitch\b.*\bto\s+(.+?)[.!?]?$/i.exec(text.trim())?.[1];
-          if (!wanted || !options.toolHandlers.jig_azure_switch_tenant) {
+          if (!wanted || !toolHandlers.jig_azure_switch_tenant) {
             await stream(`${msg}:text:0`, "These are the Azure tenants Jig knows.", signal);
           } else {
             const toolId = `tool-${randomUUID()}`;
@@ -783,9 +786,7 @@ export class FakeEngine implements Engine {
               await stream(`${msg}:text:0`, "OK, I kept the tenant.", signal);
             } else {
               const output = outputText(
-                await options.toolHandlers
-                  .jig_azure_switch_tenant(input)
-                  .catch((e: Error) => `Error: ${e.message}`),
+                await toolHandlers.jig_azure_switch_tenant(input).catch((e: Error) => `Error: ${e.message}`),
               );
               onEvent({
                 type: "tool_result",
@@ -797,7 +798,7 @@ export class FakeEngine implements Engine {
             }
           }
         } else if (
-          options.toolHandlers?.jig_update_settings &&
+          toolHandlers?.jig_update_settings &&
           /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal)\b/.test(
             lower,
           )
@@ -812,7 +813,7 @@ export class FakeEngine implements Engine {
               input,
             });
             const output = outputText(
-              await options.toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`),
+              await toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`),
             );
             onEvent({
               type: "tool_result",
@@ -910,7 +911,7 @@ export class FakeEngine implements Engine {
               path: options.cwd,
               permissionMode: "plan",
             });
-            const created = (await options.toolHandlers!.jig_list_projects!({}).then(outputText)).match(
+            const created = (await toolHandlers!.jig_list_projects!({}).then(outputText)).match(
               /Fake project \[([^\]]+)\]/,
             )?.[1];
             await call("jig_move_chat", { projectId: created, pinned: true });
@@ -953,7 +954,7 @@ export class FakeEngine implements Engine {
               signal,
             );
           }
-        } else if (options.toolHandlers?.jig_browser_open && /^browse\s+\S+/i.test(text.trim())) {
+        } else if (toolHandlers?.jig_browser_open && /^browse\s+\S+/i.test(text.trim())) {
           // "browse <url>": Claude opens the page in its browser, reads it and takes a screenshot.
           const url = /^browse\s+(\S+)/i.exec(text.trim())![1]!;
           const call = async (name: string, input: Record<string, unknown>) => {
@@ -964,9 +965,7 @@ export class FakeEngine implements Engine {
               name: `mcp__jig__${name}`,
               input,
             });
-            const result = await options.toolHandlers![name]!(input).catch(
-              (e: Error) => `Error: ${e.message}`,
-            );
+            const result = await toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`);
             const output = outputText(result);
             const images = outputImages(result);
             onEvent({
@@ -1146,8 +1145,8 @@ export class FakeEngine implements Engine {
             name: "mcp__jig__jig_request_build",
             input: { goal },
           });
-          const output = options.toolHandlers?.jig_request_build
-            ? outputText(await options.toolHandlers.jig_request_build({ goal }))
+          const output = toolHandlers?.jig_request_build
+            ? outputText(await toolHandlers.jig_request_build({ goal }))
             : "Build requested.";
           onEvent({
             type: "tool_result",
