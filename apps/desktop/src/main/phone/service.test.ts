@@ -1,0 +1,280 @@
+import { afterEach, describe, expect, it } from "vitest";
+import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
+import type { PhoneState } from "../../shared/phone";
+import type { PermissionItem } from "./messages";
+import { PhoneService, type PhoneSettings, type SavedPhone } from "./service";
+import { type TelegramApi, TelegramError, type TelegramUpdate } from "./telegram";
+
+const OWNER = 42;
+const NOW = 1_700_000_000;
+
+const meta = (over: Partial<SessionMeta> = {}) =>
+  ({ id: "s1", title: "Shop", status: "needs_you", updatedAt: "2025-01-01", ...over }) as SessionMeta;
+
+const bash = (status: PermissionItem["status"] = "pending") =>
+  ({
+    kind: "permission",
+    id: "p1",
+    request: { requestId: "r1", toolName: "Bash", input: { command: "npm test" }, canAlwaysAllow: false },
+    status,
+    at: "2025-01-01T00:00:00Z",
+  }) as PermissionItem;
+
+function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; away?: boolean } = {}) {
+  const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
+  let messageId = 100;
+  const api: TelegramApi = {
+    async call<T>(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal) {
+      if (method === "getUpdates")
+        return new Promise<T>((_, reject) =>
+          signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+        );
+      calls.push({ method, params });
+      if (method === "getMe") {
+        if (params && (api as { bad?: boolean }).bad) throw new TelegramError("Unauthorized", 401);
+        return { id: 1, is_bot: true, first_name: "Bot", username: "shop_bot" } as T;
+      }
+      if (method === "sendMessage") return { message_id: ++messageId } as T;
+      return true as T;
+    },
+  };
+  const items = new Map<string, ChatItem[]>([["s1", [bash()]]]);
+  const metas = new Map<string, SessionMeta>([["s1", meta()]]);
+  const answers: Array<{ id: string; requestId: string; decision: PermissionDecision }> = [];
+  const sent: Array<{ id: string; text: string }> = [];
+  const saves: Array<SavedPhone | undefined> = [];
+  const states: PhoneState[] = [];
+  let enabled = false;
+  const settings: PhoneSettings = {
+    enabled: true,
+    when: "always",
+    awayMinutes: 5,
+    finished: true,
+    ...opts.settings,
+  };
+  const service = new PhoneService({
+    chats: {
+      list: async () => [...metas.values()],
+      snapshot: async (id) => {
+        const m = metas.get(id);
+        if (!m) throw new Error("not_found");
+        return { meta: m, items: items.get(id) ?? [] };
+      },
+      send: async (id, text) => void sent.push({ id, text }),
+      answer: async (id, requestId, decision) => void answers.push({ id, requestId, decision }),
+    },
+    store: { load: async () => opts.saved, save: async (s) => void saves.push(s), remembered: true },
+    api: () => api,
+    settings: () => settings,
+    away: () => opts.away ?? false,
+    enable: async () => {
+      enabled = true;
+    },
+    onChange: (s) => states.push(s),
+    code: () => "123456",
+    now: () => NOW * 1000,
+    pause: async () => undefined,
+  });
+  const handle = (update: Omit<TelegramUpdate, "update_id">) =>
+    (service as unknown as { handle(u: TelegramUpdate): Promise<void> }).handle({ update_id: 1, ...update });
+  const text = (body: string, over: Record<string, unknown> = {}) =>
+    handle({
+      message: {
+        message_id: 1,
+        date: NOW,
+        chat: { id: OWNER, type: "private" },
+        from: { id: OWNER, is_bot: false, first_name: "Alex" },
+        text: body,
+        ...over,
+      },
+    } as Omit<TelegramUpdate, "update_id">);
+  const tap = (data: string, from = OWNER) =>
+    handle({ callback_query: { id: "cb", from: { id: from, is_bot: false, first_name: "X" }, data } } as Omit<
+      TelegramUpdate,
+      "update_id"
+    >);
+  const messages = () => calls.filter((c) => c.method === "sendMessage").map((c) => String(c.params.text));
+  return {
+    service,
+    api,
+    calls,
+    items,
+    metas,
+    answers,
+    sent,
+    saves,
+    states,
+    settings,
+    handle,
+    text,
+    tap,
+    messages,
+    enabled: () => enabled,
+  };
+}
+
+const paired: SavedPhone = { token: "t", bot: "shop_bot", owner: { chatId: OWNER, name: "Alex" } };
+let current: PhoneService | undefined;
+afterEach(() => current?.stop());
+
+describe("PhoneService pairing", () => {
+  it("connects with a token, then pairs with the code and turns sending on", async () => {
+    const t = setup();
+    current = t.service;
+    await t.service.start();
+    expect(t.service.state().status).toBe("off");
+    const state = await t.service.connect(" 123:abc ");
+    expect(state).toMatchObject({ status: "pairing", bot: "shop_bot", code: "123456" });
+    expect(t.saves.at(-1)).toEqual({ token: "123:abc", bot: "shop_bot" });
+
+    await t.text("000000");
+    expect(t.service.state().status).toBe("pairing");
+    await t.text("123 456");
+    expect(t.service.state()).toMatchObject({ status: "connected", owner: "Alex" });
+    expect(t.saves.at(-1)?.owner).toEqual({ chatId: OWNER, name: "Alex" });
+    expect(t.enabled()).toBe(true);
+    expect(t.messages().at(-1)).toContain("Paired with Jig");
+  });
+
+  it("refuses a token Telegram doesn't know", async () => {
+    const t = setup();
+    current = t.service;
+    (t.api as { bad?: boolean }).bad = true;
+    await expect(t.service.connect("1:x")).rejects.toMatchObject({ code: "invalid_token" });
+  });
+
+  it("makes a new code after five wrong ones", async () => {
+    const t = setup();
+    current = t.service;
+    let n = 0;
+    (t.service as unknown as { deps: { code(): string } }).deps.code = () => `11111${n++}`;
+    await t.service.connect("1:x");
+    for (let i = 0; i < 5; i++) await t.text("999999");
+    expect(t.service.state().code).toBe("111111");
+  });
+
+  it("forgets everything on disconnect", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.disconnect();
+    expect(t.service.state().status).toBe("off");
+    expect(t.saves.at(-1)).toBeUndefined();
+  });
+});
+
+describe("PhoneService Jig → phone", () => {
+  it("sends a waiting request with buttons, and edits it once answered on the computer", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    await t.service.permission(meta(), bash());
+    expect(t.messages()).toHaveLength(1);
+    expect(t.messages()[0]).toContain("npm test");
+    await t.service.permission(meta(), bash("allowed"));
+    const edit = t.calls.find((c) => c.method === "editMessageText");
+    expect(edit?.params.text).toContain("Allowed</b> on the computer");
+  });
+
+  it("stays quiet while you're at the computer, and sends what waits once you're away", async () => {
+    const t = setup({ saved: paired, settings: { when: "away" } });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    expect(t.messages()).toHaveLength(0);
+    (t.service as unknown as { deps: { away(): boolean } }).deps.away = () => true;
+    await t.service.sweep();
+    expect(t.messages()).toHaveLength(1);
+  });
+
+  it("sends nothing while turned off", async () => {
+    const t = setup({ saved: paired, settings: { enabled: false } });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    expect(t.messages()).toHaveLength(0);
+    expect(await t.service.fromChat(meta(), "hi")).toContain("turned off");
+  });
+
+  it("tells a finished turn with Claude's reply", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", [{ kind: "assistant", id: "a", text: "All tests pass." } as ChatItem]);
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.messages()).toEqual([expect.stringContaining("All tests pass.")]);
+  });
+});
+
+describe("PhoneService phone → Jig", () => {
+  it("answers a request from a tap and marks it answered from the phone", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    await t.tap("p:0:a");
+    expect(t.answers).toEqual([{ id: "s1", requestId: "r1", decision: { behavior: "allow" } }]);
+    await t.service.permission(meta(), bash("allowed"));
+    const edit = t.calls.find((c) => c.method === "editMessageText");
+    expect(edit?.params.text).toMatch(/Allowed<\/b>\.$/);
+  });
+
+  it("ignores taps from anyone else", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    await t.tap("p:0:a", 7);
+    expect(t.answers).toHaveLength(0);
+  });
+
+  it("turns a reply into the waiting request's answer", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    await t.text("use pnpm", {
+      reply_to_message: { message_id: 101, date: NOW, chat: { id: OWNER, type: "private" } },
+    });
+    expect(t.answers[0]?.decision).toMatchObject({
+      behavior: "deny",
+      message: expect.stringContaining("use pnpm"),
+    });
+  });
+
+  it("sends text to the last chat it told you about", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.service.fromChat(meta(), "Deploy?");
+    await t.text("yes, deploy");
+    expect(t.sent).toEqual([{ id: "s1", text: "yes, deploy" }]);
+  });
+
+  it("asks which chat when there is none yet, and /chats picks one", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.text("hello");
+    expect(t.messages().at(-1)).toContain("Pick a chat first");
+    t.items.set("s1", []);
+    await t.tap("c:s1");
+    await t.text("hello");
+    expect(t.sent).toEqual([{ id: "s1", text: "hello" }]);
+  });
+
+  it("ignores strangers, groups and old messages", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.service.fromChat(meta(), "Deploy?");
+    await t.text("a", { chat: { id: 7, type: "private" } });
+    await t.text("b", { chat: { id: OWNER, type: "group" } });
+    await t.text("c", { date: NOW - 3600 });
+    expect(t.sent).toHaveLength(0);
+  });
+});

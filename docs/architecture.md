@@ -120,6 +120,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
 | `suggestions.json` | the suggestion inbox and the user's past answers |
+| `phone.json` | your phone's Telegram bot: its token encrypted with the OS, and who it's paired with (D-337) |
 | `logs/` | host logs |
 | `window-state.json`, `builds.json`, `scripts.json`, `addons-state.json`, `addon-data/`, `cache/`, `app-builds/`, `launcher/` | see `docs/reference/state.md` |
 
@@ -680,3 +681,14 @@ See addons/meetings/README.md for the UI, setup, persistence and known SDK limit
 message context gives Claude the notes in full and the document names; `jig_notes_*` keep the
 notes, `jig_knowledge_read` reads a document. The renderer shows them on the project's Home
 (`features/knowledge/KnowledgeCard.tsx`) and in the `jig.notes` view (`Notes.tsx`).
+
+## Jig on your phone (D-337)
+
+`main/phone/` connects Jig to a Telegram bot of the user's own. `telegram.ts` is the Bot API client
+(POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API` only with the fake engine);
+`messages.ts` is pure (what to send for a status change or a permission card, buttons, and the
+`PermissionDecision` a tap or reply gives); `service.ts` (`PhoneService`, injected dependencies,
+unit-tested) pairs by a code, polls, routes replies to chats and edits answered messages; `index.ts`
+wires it to Electron (safeStorage, `powerMonitor` idle, `phone.*` IPC, `onSessionStatus`,
+`onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send`. The
+renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, never the token.

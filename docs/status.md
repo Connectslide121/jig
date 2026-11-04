@@ -954,6 +954,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Jig on your phone (D-337): Settings → Phone → Set up… connects a Telegram bot you make with
+  @BotFather (paste its token, then send the 6-digit code to the bot from your phone). While you're
+  away from the computer (or always), the bot tells you when a chat needs you (Allow / Deny, a
+  question's options, a plan's Approve / Keep planning as buttons), finishes (with the end of
+  Claude's reply) or stops. Reply to a message to answer that chat; plain text goes to the last chat
+  it told you about; /chats picks one. A request answered on the computer is marked so on the phone.
+  Claude can text you itself (`jig_phone_send`). The token is encrypted with the OS.
 - Azure tenants (D-282, D-283): the round avatar at the far right of the top bar shows the tenant
   Jig's `az` uses (initials; tooltip with name, user, domain; a warning dot when its sign-in
   expired). Its menu lists your az login and the tenants you added (user and domain in columns,
@@ -1510,6 +1517,8 @@ npm run dev          # opens Jig
 - Move a view: `⋯` in the sidebar header → Move to right sidebar.
 - Try a proposal without Claude: `JIG_ENGINE=fake npm run dev`, Tools → Build something… → "change Jig
   itself: …" → the build shows the proposed extension point.
+- Jig on your phone: Settings → Phone → Set up… (needs Telegram on your phone and a bot from
+  @BotFather; free). Then Send a test, and leave a chat asking for a permission while you're away.
 - Everything the fake engine can play (todo lists, plans, subagents, edits, the browser…):
   `docs/guides/testing.md` → The fake engine.
 
@@ -1517,6 +1526,12 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
+- **Jig on your phone (D-337).** Covered against a fake Telegram server (`e2e/phone.spec.ts`).
+  Check with a real bot on your iPhone: pairing by the code, the buttons (Allow, an option,
+  Approve), a reply going to the right chat, "Send a test", that "When I'm away" waits for 5 idle
+  minutes or a locked screen on Windows, that the token is remembered after restarting Jig, and what
+  happens when the PC sleeps (nothing arrives until it wakes: set Windows not to sleep while Jig
+  works if you need it).
 - **Claude's browser never hangs (D-319).** Covered by `e2e/browser-hangs.spec.ts` (a load that never
   finishes, `alert`/`confirm` on load, a page stuck in a loop). Watch for, in real chats:
   - A browser call that waits on a rebuilding dev server ends after about 30 s with "The page didn't

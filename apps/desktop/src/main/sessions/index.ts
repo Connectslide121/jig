@@ -7,6 +7,7 @@ import { app, BrowserWindow, dialog, Notification } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
 import {
+  type ChatItem,
   type ChatProvider,
   chatProvider,
   type EffortLevel,
@@ -78,6 +79,14 @@ const statusListeners = new Set<(meta: SessionMeta) => void>();
 export function onSessionStatus(listener: (meta: SessionMeta) => void): () => void {
   statusListeners.add(listener);
   return () => statusListeners.delete(listener);
+}
+
+/** Called when a permission, question or plan card is added or answered in a chat (your phone, D-337). */
+type PermissionCard = Extract<ChatItem, { kind: "permission" }>;
+const permissionListeners = new Set<(sessionId: string, item: PermissionCard) => void>();
+export function onPermissionCard(listener: (sessionId: string, item: PermissionCard) => void): () => void {
+  permissionListeners.add(listener);
+  return () => permissionListeners.delete(listener);
 }
 
 /**
@@ -303,6 +312,9 @@ export function startSessions(): void {
             for (const listener of statusListeners) listener(u.meta);
           }
         }
+      for (const u of updates)
+        if (u.op === "upsert" && u.item.kind === "permission")
+          for (const listener of permissionListeners) listener(sessionId, u.item);
       // Claude changed a routine from the chat: the Routines tab reloads.
       if (
         updates.some(

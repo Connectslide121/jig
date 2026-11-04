@@ -247,6 +247,18 @@ export const ConfigSchema = z.object({
       desktop: z.boolean().default(true),
     })
     .prefault({}),
+  /** Jig on your phone through your own Telegram bot (D-337); the bot itself is set up in Settings → Phone. */
+  phone: z
+    .object({
+      /** Send messages to your phone (the bot stays paired when it's off). */
+      enabled: z.boolean().default(false),
+      /** `away`: only while this computer has been idle for `awayMinutes` or is locked; `always`. */
+      when: z.enum(["away", "always"]).default("away"),
+      awayMinutes: z.number().int().min(1).max(60).default(5),
+      /** Also when a chat finishes (needing you and stopping with an error always go). */
+      finished: z.boolean().default(true),
+    })
+    .prefault({}),
   browser: z
     .object({
       /** Open the Claude's browser view when Claude starts using it (off: it stays out of sight). */
@@ -343,7 +355,8 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
 /**
  * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
- * commands Jig runs (updates), and where add-on code comes from (the gallery's sources). D-077.
+ * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
+ * this computer for your phone (D-337). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "ai",
@@ -359,6 +372,7 @@ export const PROTECTED_SETTINGS = [
   "meetings.translationModel",
   "azure.activeTenant",
   "speech.wake",
+  "phone",
   "terminal.shell",
   "updates",
   "addonGallery",

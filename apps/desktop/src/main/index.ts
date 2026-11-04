@@ -25,6 +25,7 @@ import { registerLinkHandlers } from "./links";
 import { logger } from "./log";
 import { startLanguageServers, stopLanguageServers } from "./lsp";
 import { startMeetings } from "./meetings";
+import { startPhone, stopPhone } from "./phone";
 import { startProjects } from "./projects";
 import { installAppProtocol, registerSchemes } from "./protocols";
 import { registerProviderHandlers } from "./providers";
@@ -81,6 +82,7 @@ async function start() {
   startProjects();
   await startSkills();
   startSessions();
+  await startPhone();
   startAttempts();
   startWorktrees();
   startTerminals();
@@ -128,6 +130,7 @@ app.on("will-quit", () => {
   stopTerminals();
   stopBrowser();
   stopUsage();
+  stopPhone();
   stopCompletion();
   stopLanguageServers();
 });

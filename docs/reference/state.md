@@ -101,6 +101,10 @@ A new state file is documented here in the same commit that adds it.
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
+| `phone.enabled` | `false` | Jig on your phone (D-337): message your paired Telegram bot and read your replies; turned on by pairing; protected |
+| `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
+| `phone.awayMinutes` | `5` | 1–60; protected |
+| `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
 | `speech.engine` | `"natural"` | what reads aloud: `natural` (Kokoro on this computer, ~330 MB downloaded once; D-243) or `system` (the system's voices) |
@@ -159,6 +163,14 @@ in every project and projectless chat. Global off wins; project exclusions are r
 re-enabling. New projects are included automatically. Selections affect the next message, using
 the chat's project even if another project is selected in the UI. Catalogue/instructions are
 read-only application resources, not user state. Personal/project Claude skills remain independent.
+
+## Phone (D-337)
+
+`phone.json`: `{ token, bot, owner? }`. `token` is the Telegram bot token encrypted with the OS
+(Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written
+and the token lives only until Jig closes. `bot` is its username; `owner` (`{ chatId, name }`) the
+Telegram account it is paired with. Disconnect deletes the file. Which messages map to which chat
+is kept in memory only.
 
 ## Meetings (D-217)
 

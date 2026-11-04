@@ -260,6 +260,8 @@ And more:
   - Ask Claude when a script fails.
   - A standup written from your commits and chats.
   - Desktop notifications when a chat needs you.
+  - **Jig on your phone:** your own Telegram bot tells you when a chat needs you, finishes or stops
+    while you're away; allow, answer or talk to the chat from there.
 - **The workbench:**
   - **Go to** (Ctrl+P): jump to any chat, view, action or file.
   - Resizable panes, split sidebars (a lower half with its own tabs), named layouts to switch
