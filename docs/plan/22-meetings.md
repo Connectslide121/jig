@@ -30,6 +30,9 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify both windows with a real meeting and a real call on the target machine (D-292).
 - [x] Your Teams chats in the lobby (list, read, reply) and Chat per person in Call… (D-296).
 - [ ] Verify the chat list, unread state and Chat from Call… in a real tenant (D-296).
+- [x] Chats as bubbles, senders named from the chat's members (D-327).
+- [x] Pictures and shared files in chats: thumbnails read by main, a viewer, file rows that open in the browser (D-328).
+- [ ] Verify pictures, files and names in a real chat and meeting chat (D-327, D-328).
 - [x] Captions in group meetings: wait for the meeting's capabilities, retry with backoff, keep Teams' real reason (D-321).
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).

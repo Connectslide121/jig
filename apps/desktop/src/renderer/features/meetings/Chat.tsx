@@ -1,13 +1,27 @@
-import { MessagesSquare, SendHorizontal, ShieldCheck } from "lucide-react";
-import { Fragment, type ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ImageOff, MessagesSquare, SendHorizontal, ShieldCheck, SquareArrowOutUpRight } from "lucide-react";
+import { Fragment, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
+  type ChatFile,
   type ChatGroup,
+  type ChatImage,
   chatTimeline,
   type MeetingChatMessage,
   type MeetingChatState,
 } from "../../../shared/meetingChat";
 import { call } from "../../lib/host";
-import { Button, cn, Empty, IconButton, Input, type MenuEntry, Spinner } from "../../ui";
+import {
+  Button,
+  cn,
+  Dialog,
+  Empty,
+  FileIcon,
+  IconButton,
+  ImagePreview,
+  Input,
+  type MenuEntry,
+  Spinner,
+} from "../../ui";
 import { clock, dayAndTime, initials } from "./format";
 import { PanelHeader } from "./Panels";
 import { PersonPhoto } from "./photo";
@@ -53,40 +67,141 @@ function MessageText({ text }: { text: string }) {
   );
 }
 
+/** Pictures asked for in this window (main keeps them too): the newest few dozen. */
+const pictures = new Map<string, Promise<string | null>>();
+function pictureOf(image: ChatImage): Promise<string | null> {
+  const key = `${image.chatId}\n${image.messageId}\n${image.contentId}`;
+  let picture = pictures.get(key);
+  if (!picture) {
+    const { chatId, messageId, contentId } = image;
+    picture = call("meetings.chatImage", { chatId, messageId, contentId }).catch(() => null);
+    picture.then((url) => url === null && pictures.delete(key));
+    pictures.set(key, picture);
+    for (const old of pictures.keys()) {
+      if (pictures.size <= 40) break;
+      pictures.delete(old);
+    }
+  }
+  return picture;
+}
+
+/**
+ * A thumbnail's shape: Teams' own size when it gives one (a small picture stays small, px), else a
+ * 4:3 box. It fills the media column (`w-60`), so pictures and files line up.
+ */
+function thumbBox(image: ChatImage): { maxWidth?: number; aspectRatio: number } {
+  if (!image.width || !image.height) return { aspectRatio: 4 / 3 };
+  const aspectRatio = Math.min(2.4, Math.max(0.6, image.width / image.height));
+  return { maxWidth: Math.max(96, image.width), aspectRatio };
+}
+
+/**
+ * A picture in a message (D-328): its box has its final size from the start (from the message), so
+ * nothing moves when it loads; the whole thumbnail opens it larger.
+ */
+function Picture({ image, onOpen }: { image: ChatImage; onOpen(src: string): void }) {
+  const [src, setSrc] = useState<string | null>();
+  useEffect(() => {
+    let live = true;
+    void pictureOf(image).then((p) => live && setSrc(p));
+    return () => {
+      live = false;
+    };
+  }, [image]);
+  return (
+    <button
+      type="button"
+      data-testid="chat-image"
+      aria-label={src ? "Open picture" : src === null ? "Picture unavailable" : "Loading picture"}
+      disabled={!src}
+      onClick={() => src && onOpen(src)}
+      style={thumbBox(image)}
+      className="relative block w-full overflow-hidden rounded-lg bg-surface enabled:cursor-zoom-in"
+    >
+      {src ? (
+        <img src={src} alt="" draggable={false} className="size-full object-cover" />
+      ) : src === null ? (
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-xs text-hint">
+          <ImageOff className="size-5" />
+          Picture unavailable
+        </span>
+      ) : (
+        <Spinner center />
+      )}
+    </button>
+  );
+}
+
+/** A shared file or link (D-328): its icon and name in one row; the whole row opens it in your browser. */
+function FileRow({ file }: { file: ChatFile }) {
+  return (
+    <button
+      type="button"
+      data-testid="chat-file"
+      title={`Open ${file.name} in your browser`}
+      onClick={() => void call("meetings.openChatFile", { url: file.url }).catch(() => undefined)}
+      className="flex h-10 w-full items-center gap-2 rounded-lg border border-line bg-surface px-2.5 text-left hover:bg-hover"
+    >
+      <FileIcon path={file.kind === "file" ? file.name : "link.url"} />
+      <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
+      <SquareArrowOutUpRight aria-hidden className="size-3.5 shrink-0 text-muted" />
+    </button>
+  );
+}
+
 /**
  * One sender's run of messages as bubbles (D-327): yours on the right in the accent's tint, everyone
  * else's on the left in the surface's, with their picture and name on the first one only. The corner
  * toward the sender is squared on the first bubble and softened between bubbles of one group.
  */
-function Group({ group }: { group: ChatGroup }) {
+function Group({ group, onOpenImage }: { group: ChatGroup; onOpenImage(src: string, at: string): void }) {
   const { mine } = group;
   const count = group.messages.length;
-  const bubbles = group.messages.map((m, i) => (
-    <div
-      key={m.id}
-      data-message-id={m.id}
-      className={cn(
-        "selectable relative min-w-0 rounded-2xl px-3 py-1.5 text-sm leading-relaxed text-fg",
-        mine ? "max-w-17/20 bg-accent-soft @md:max-w-7/10" : "max-w-full bg-raised @md:max-w-7/10",
-        mine
-          ? cn(i === 0 ? "rounded-tr-sm" : "rounded-tr-md", i < count - 1 && "rounded-br-md")
-          : cn(i === 0 ? "rounded-tl-sm" : "rounded-tl-md", i < count - 1 && "rounded-bl-md"),
-      )}
-    >
-      <p className="wrap-anywhere whitespace-pre-wrap">
-        <MessageText text={m.text} />
-        {/* Room on the last line for the time, which sits in the bubble's bottom corner. */}
-        <span aria-hidden className="inline-block w-10" />
-      </p>
-      <time
-        dateTime={m.at}
-        title={dayAndTime(m.at)}
-        className="absolute right-2.5 bottom-1.5 text-2xs leading-none text-hint tabular-nums"
+  const bubbles = group.messages.map((m, i) => {
+    const media = Boolean(m.images?.length || m.files?.length);
+    return (
+      <div
+        key={m.id}
+        data-message-id={m.id}
+        className={cn(
+          "selectable relative min-w-0 rounded-2xl px-3 py-1.5 text-sm leading-relaxed text-fg",
+          mine ? "max-w-17/20 bg-accent-soft @md:max-w-7/10" : "max-w-full bg-raised @md:max-w-7/10",
+          mine
+            ? cn(i === 0 ? "rounded-tr-sm" : "rounded-tr-md", i < count - 1 && "rounded-br-md")
+            : cn(i === 0 ? "rounded-tl-sm" : "rounded-tl-md", i < count - 1 && "rounded-bl-md"),
+        )}
       >
-        {clock(m.at)}
-      </time>
-    </div>
-  ));
+        {m.text && (
+          <p className="wrap-anywhere whitespace-pre-wrap">
+            <MessageText text={m.text} />
+            {/* Room on the last line for the time, which sits in the bubble's bottom corner. */}
+            {!media && <span aria-hidden className="inline-block w-10" />}
+          </p>
+        )}
+        {media && (
+          // Pictures and files under the words, in one column, then a line of their own for the time.
+          <>
+            <div className="flex w-60 max-w-full min-w-0 flex-col gap-1.5 pt-1.5">
+              {m.images?.map((image) => (
+                <Picture key={image.contentId} image={image} onOpen={(src) => onOpenImage(src, m.at)} />
+              ))}
+              {m.files?.map((file) => (
+                <FileRow key={file.url} file={file} />
+              ))}
+            </div>
+            <div aria-hidden className="h-5" />
+          </>
+        )}
+        <time
+          dateTime={m.at}
+          title={dayAndTime(m.at)}
+          className="absolute right-2.5 bottom-1.5 text-2xs leading-none text-hint tabular-nums"
+        >
+          {clock(m.at)}
+        </time>
+      </div>
+    );
+  });
   if (mine)
     return (
       <li className="mt-3 flex flex-col items-end gap-0.5 first:mt-0" aria-label="You">
@@ -145,6 +260,8 @@ export function ChatPanel({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [viewing, setViewing] = useState<{ src: string; at: string }>();
+  const openImage = (src: string, at: string) => setViewing({ src, at });
   const timeline = useMemo(() => chatTimeline(messages), [messages]);
   const remember = () => {
     const element = container.current;
@@ -251,7 +368,7 @@ export function ChatPanel({
                   <span aria-hidden className="h-px flex-1 bg-line" />
                 </li>
               ) : (
-                <Group key={item.key} group={item.group} />
+                <Group key={item.key} group={item.group} onOpenImage={openImage} />
               ),
             )}
           </ol>
@@ -282,6 +399,23 @@ export function ChatPanel({
           data-testid="meeting-chat-send"
         />
       </form>
+      {/* On the page itself, so no panel's overflow or stacking can clip or cover the overlay. */}
+      {createPortal(
+        <Dialog
+          open={Boolean(viewing)}
+          onClose={() => setViewing(undefined)}
+          title={viewing ? `Picture · ${dayAndTime(viewing.at)}` : "Picture"}
+          width="lg"
+          testId="chat-image-viewer"
+        >
+          {viewing && (
+            <div className="h-112">
+              <ImagePreview src={viewing.src} alt="Picture from the chat" />
+            </div>
+          )}
+        </Dialog>,
+        document.body,
+      )}
     </section>
   );
 }

@@ -1,5 +1,16 @@
 # Status
 
+Pictures and files in Teams chats (2026-11-04, D-328): in the call's Chat panel and the lobby's
+Chats, a picture pasted into a message shows as a thumbnail in the bubble (its space is kept while it
+loads) and opens larger when you click it; a shared file shows as a row with its icon and name that
+opens it in your browser (SharePoint/OneDrive). Emoji show as emoji. With no words, the chat list says
+"Sent an image" or "Sent a file". Jig reads the pictures with the Chat.Read permission it already
+has, so there is nothing new to approve. Checked with screenshots in Jig Dark, Jig Light and an
+imported theme, wide and narrow (test meeting service). Unit tests pass; e2e updated, not run (D-258).
+**Check on a real chat:** paste a screenshot and share a Word file in a Teams chat and in a meeting
+chat; both should show, the picture should open, the file should open in the browser. Tell Claude if
+a picture says "Picture unavailable" (Graph may refuse some older pictures) or a file has no row.
+
 Teams chats as bubbles (2026-11-04, D-327): the lobby's chats and the in-call Chat panel look like a
 chat app: your messages on the right in accent-tinted bubbles, everyone else's on the left with their
 picture and name on the first of a run of messages (grouped within 5 minutes), the time in each

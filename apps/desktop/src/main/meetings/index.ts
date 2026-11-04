@@ -35,6 +35,7 @@ import {
   mainWindow,
   markBackgroundWindow,
   markSecondaryWindow,
+  openExternal,
   revealWindow,
 } from "../appWindows";
 import { getConfig } from "../config";
@@ -72,6 +73,7 @@ const FAKE_ME = "00000000-0000-4000-8000-0000000000ee";
 const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
 const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
 const FAKE_ROBIN = "00000000-0000-4000-8000-0000000000b0";
+const FAKE_MEETING_CHAT = "19:meeting_contoso@thread.v2";
 /**
  * A message as Graph sends it. `name` "" is a sender Graph leaves nameless (a guest or someone from
  * another organisation): the chat's members name them (D-327).
@@ -84,6 +86,43 @@ function fakeMessage(id: string, user: string, name: string, at: string, text: s
     body: { contentType: "text", content: text },
   };
 }
+
+/**
+ * A message with a picture Graph hosts and a shared file (D-328), as Teams sends it: the picture as an
+ * `<img>` of the message's hosted content, the file as a `reference` attachment marked in the body.
+ */
+function fakeMediaMessage(
+  chatId: string,
+  id: string,
+  user: string,
+  name: string,
+  at: string,
+  html: string,
+): GraphChatMessage {
+  const src = `https://graph.microsoft.com/v1.0/chats/${encodeURIComponent(chatId)}/messages/${id}/hostedContents/${FAKE_DIAGRAM_ID}/$value`;
+  return {
+    id,
+    createdDateTime: at,
+    from: { user: { id: user, displayName: name } },
+    body: {
+      contentType: "html",
+      content: `<p>${html}</p><p><img src="${src}" width="640" height="400" alt="image"></p><attachment id="spec"></attachment>`,
+    },
+    attachments: [
+      {
+        id: "spec",
+        contentType: "reference",
+        name: "Shop spec.docx",
+        contentUrl: "https://contoso.sharepoint.com/sites/shop/Shared%20Documents/Shop%20spec.docx",
+      },
+    ],
+  };
+}
+/** The test meeting service's one hosted picture: a small Contoso diagram. */
+const FAKE_DIAGRAM_ID = "Y29udG9zby1kaWFncmFt";
+const FAKE_DIAGRAM = `data:image/svg+xml;base64,${Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400"><rect width="640" height="400" fill="#eef2f8"/><rect x="40" y="150" width="150" height="100" rx="14" fill="#4a7bd0"/><rect x="245" y="60" width="150" height="100" rx="14" fill="#3f9d6b"/><rect x="245" y="240" width="150" height="100" rx="14" fill="#d08a4a"/><rect x="450" y="150" width="150" height="100" rx="14" fill="#7a5bc4"/><path d="M190 200h55M395 110l55 70M395 290l55-70M320 160v80" stroke="#55627a" stroke-width="6" fill="none"/></svg>`,
+).toString("base64")}`;
 
 function fakeChatData() {
   const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
@@ -120,7 +159,14 @@ function fakeChatData() {
       },
       messages: [
         fakeMessage("p1", FAKE_ROBIN, "", ago(200), "Agenda for Thursday is in the channel."),
-        fakeMessage("p1b", FAKE_ROBIN, "", ago(199), "(attachment)"),
+        fakeMediaMessage(
+          "19:portal-planning@thread.v2",
+          "p1b",
+          FAKE_ROBIN,
+          "",
+          ago(199),
+          "The Contoso diagram and the spec:",
+        ),
         fakeMessage("p2", FAKE_SAM, "Sam Fabrikam", ago(95), "I added the sign-in flow to it."),
       ],
     },
@@ -187,7 +233,14 @@ function fakeMeetingChat(): MeetingChatMessage[] {
         ago(600),
         "Here's the Shop API spec: https://example.com/shop-api",
       ),
-      fakeMessage("fake-2", FAKE_ALEX, "Alex", ago(590), "Section 4 has the error codes."),
+      fakeMediaMessage(
+        FAKE_MEETING_CHAT,
+        "fake-2",
+        FAKE_ALEX,
+        "Alex",
+        ago(590),
+        "Section 4 has the error codes.",
+      ),
       fakeMessage("fake-3", FAKE_ROBIN, "", ago(420), "Can someone share the Fabrikam dashboard?"),
       fakeMessage("fake-4", FAKE_ME, "You", ago(300), "Sharing it after this topic."),
       fakeMessage("fake-5", FAKE_SAM, "Sam", ago(60), "Thanks! I'll read it before Friday."),
@@ -905,6 +958,20 @@ export async function startMeetings(): Promise<void> {
     const sent = fake() ? fakeChats.send(chatId, text.trim()) : await auth.sendChat(chatId, text.trim());
     if (sent) readInJig.set(chatId, sent.at);
     return sent ?? null;
+  });
+  // Pictures and files in chat messages (D-328): main reads pictures with the sign-in, the windows
+  // get a data URL; files open in the browser, https only.
+  handle("meetings.chatImage", async ({ chatId, messageId, contentId }, ctx) => {
+    lobbyOrCall(ctx);
+    enabled();
+    if (fake()) return contentId === FAKE_DIAGRAM_ID ? FAKE_DIAGRAM : null;
+    return auth.chatImage(chatId, messageId, contentId);
+  });
+  handle("meetings.openChatFile", async ({ url }, ctx) => {
+    lobbyOrCall(ctx);
+    if (new URL(url).protocol !== "https:")
+      throw new JigError("invalid_url", "Only https links can be opened");
+    await openExternal(url);
   });
   handle("meetings.chatWith", async ({ peerId }, ctx) => {
     lobbyOrCall(ctx);

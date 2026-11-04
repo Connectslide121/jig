@@ -316,6 +316,8 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.chatThread | `{chatId}` (a Teams chat id, `TEAMS_CHAT_ID`): the chat's newest 50 messages, not kept; marks it read in Jig; lobby or room |
 | meetings.chatThreadSend | `{chatId, text}`: write in that chat as you (ChatMessage.Send); returns the sent message; lobby or room |
 | meetings.chatWith | `{peerId}`: your one-to-one chat id with someone, if you have one (Jig can't start one: no Chat.Create); `{state, chatId?}`; lobby or room |
+| meetings.chatImage | `{chatId, messageId, contentId}`: a picture in a Teams message, read by main from Graph's hosted content (Chat.Read) and returned as a data URL (PNG/JPEG/GIF/WebP, ≤ 10 MB, cached in memory up to 64 MB) or null; lobby or room (D-328) |
+| meetings.openChatFile | `{url}` (https only): opens a file or link shared in a Teams chat in the browser; lobby or room (D-328) |
 | meetings.photo | Someone's Microsoft profile picture (48×48 data URL) or null, by Teams id, object id or `local`; silent sign-in only, cached per run (D-263) |
 | people.photo | The same by e-mail / user principal name `{ email }`, for add-ons (`ctx.people.photo`, `PersonAvatar`; D-291); null without Meetings on or its sign-in (no request then), after a refused people token for 10 minutes, or for anything not e-mail-shaped; cached per run |
 | meetings.people | People to call (D-254): `/me/people` suggestions or a directory search (Graph User.ReadBasic.All, People.Read); lobby or room |

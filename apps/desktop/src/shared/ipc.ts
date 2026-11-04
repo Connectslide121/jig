@@ -228,6 +228,17 @@ export interface HostMethods {
     args: { chatId: string; text: string };
     result: import("./meetingChat").MeetingChatMessage | null;
   };
+  /**
+   * A picture in a Teams message (D-328): main reads the message's hosted content with your
+   * Microsoft sign-in (Chat.Read) and returns it as a data URL (PNG, JPEG, GIF or WebP, at most
+   * 10 MB, kept in memory while Jig runs), or null when it can't. The windows never get the token.
+   */
+  "meetings.chatImage": {
+    args: { chatId: string; messageId: string; contentId: string };
+    result: string | null;
+  };
+  /** Opens a file or link shared in a Teams chat (https only) in your browser (D-328). */
+  "meetings.openChatFile": { args: { url: string }; result: void };
   /** Your one-to-one chat with someone, if you have one (Jig can't start one: no Chat.Create). */
   "meetings.chatWith": {
     args: { peerId: string };

@@ -135,6 +135,14 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     // The meeting's Teams chat (D-270): on the left, readable and writable; kept with the meeting.
     const chat = room.getByRole("region", { name: "Chat" });
     await expect(chat.getByTestId("meeting-chat")).toContainText("Here's the Shop API spec");
+    // Pictures and files in it (D-328): the picture in its box, opened larger; the file by name.
+    const picture = chat.getByRole("button", { name: "Open picture" });
+    await expect(picture).toBeVisible();
+    await expect(chat.getByTestId("chat-file")).toContainText("Shop spec.docx");
+    await picture.click();
+    await expect(room.getByTestId("chat-image-viewer")).toBeVisible();
+    await room.keyboard.press("Escape");
+    await expect(room.getByTestId("chat-image-viewer")).toHaveCount(0);
     await chat.getByTestId("meeting-chat-input").fill("I'll review it today");
     await chat.getByTestId("meeting-chat-send").click();
     await expect(chat.getByTestId("meeting-chat")).toContainText("I'll review it today");
@@ -467,6 +475,10 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     await expect(chat.getByTestId("meeting-chat")).toContainText("On it");
     await expect(rows.first()).toContainText("You: On it");
     await expect(rows.first()).not.toContainText("Unread");
+    // A picture and a file in a group chat (D-328).
+    await rows.nth(1).click();
+    await expect(chat.getByTestId("chat-file")).toContainText("Shop spec.docx");
+    await expect(chat.getByRole("button", { name: "Open picture" })).toBeVisible();
     await lobby.screenshot({
       animations: "disabled",
       path: ".jig-test-home-meeting-screenshots/chat-open.png",

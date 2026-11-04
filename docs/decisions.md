@@ -4767,3 +4767,35 @@ the raw data was cut off at 60 KB).
   list's last-message preview uses the same lookup. Pictures keep coming from `meetings.photo` by the
   sender's id, which Graph gives even when the name is missing.
 - `chatChanged` also compares senders, so a meeting's kept chat picks up a name found later.
+
+## D-328: Pictures and shared files in Teams chats
+
+**Jon** asked for images and attachments in the meeting chat and the lobby's Chats; the details are
+**Claude, on my own**.
+
+- The message model (`MeetingChatMessage` in `shared/meetingChat.ts`) keeps where things are, never
+  their bytes: `images` (a picture Graph hosts: chat id, message id, hosted content id and, when the
+  `<img>` gives it, width and height) and `files` (`reference` attachments, i.e. SharePoint/OneDrive
+  files, and other attachments with an https address as links; name and URL). `chatImages` only
+  accepts `https://graph.microsoft.com/…/chats/{chat}/messages/{message}/hostedContents/{id}/$value`
+  with a valid Teams chat id and safe ids; Teams emoji (`<img itemtype=…Emoji>`) become their
+  character; other pictures still read "(image)". Replies (`messageReference`) are left out; cards
+  without an address read "(attachment)". A message that is only pictures or files has `text` "".
+- Pictures are read by main (`meetings.chatImage`, lobby or call window): `GET
+  /chats/{id}/messages/{id}/hostedContents/{id}/$value` with the Chat.Read token Jig already has, so
+  **no new consent**. Only PNG, JPEG, GIF and WebP (no SVG: it can carry scripts), at most 10 MB,
+  returned as a data URL and kept in memory (64 MB, oldest out first; cleared on sign-out). The
+  windows never see the token; each window also keeps its last 40 pictures.
+- In the bubble the words come first, then the pictures and files in one `w-60` column, then a line
+  for the time. A thumbnail's box has its final shape from the start (Teams' width/height, the ratio
+  held between 0.6 and 2.4; a 4:3 box when Teams gives none), with a spinner while it loads and
+  "Picture unavailable" when it can't, so nothing moves. The whole thumbnail opens a viewer
+  (`Dialog` + `ImagePreview`, rendered on the page so no panel clips it).
+- Files are one row each: `FileIcon` by name (a link gets the link icon), the name, an open-outside
+  mark at the far right; the whole row opens it with `meetings.openChatFile`, which accepts https only
+  (schema and handler) and uses `openExternal`.
+- The chat list's preview says "Sent an image" or "Sent a file" when a message has no words. Graph's
+  `lastMessagePreview` has no attachment names, so "Sent a file: name" would need reading every chat's
+  last message; not done.
+- The test meeting service has a Contoso diagram (a picture it serves itself) and Shop spec.docx in
+  the meeting chat and in Portal planning.

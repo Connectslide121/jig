@@ -10,10 +10,118 @@ export interface MeetingChatMessage {
   /** Their Microsoft Entra object id, for the profile picture. */
   fromId?: string;
   at: string;
+  /** The words; "" when the message is only pictures or files. */
   text: string;
   /** You wrote it. */
   mine?: boolean;
+  /** Pictures pasted into it (D-328): where Graph keeps them, never their bytes. */
+  images?: ChatImage[];
+  /** Files shared in it (SharePoint/OneDrive links) and link cards. */
+  files?: ChatFile[];
 }
+
+/** A picture in a message, kept by Teams as the message's hosted content (read with Chat.Read). */
+export interface ChatImage {
+  chatId: string;
+  messageId: string;
+  contentId: string;
+  /** Its size as Teams gives it in the message, for the thumbnail's shape before it loads. */
+  width?: number;
+  height?: number;
+}
+
+/** A file or link shared in a message: opened in your browser (https only). */
+export interface ChatFile {
+  name: string;
+  url: string;
+  kind: "file" | "link";
+}
+
+/** The parts of a hosted content's Graph address: `…/chats/{chat}/messages/{message}/hostedContents/{id}/$value`. */
+const HOSTED_CONTENT = /\/chats\/([^/?#]+)\/messages\/([^/?#]+)\/hostedContents\/([^/?#]+)\/\$value/i;
+/** A message id (Teams' are numbers) and a hosted content id (base64), as Jig accepts them. */
+export const CHAT_MESSAGE_ID = /^[\w-]{1,64}$/;
+export const HOSTED_CONTENT_ID = /^[\w+=-]{1,4000}$/;
+
+const attribute = (tag: string, name: string) =>
+  new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i")
+    .exec(tag)
+    ?.slice(2)
+    .find((v) => v !== undefined);
+const isEmoji = (tag: string) => /itemtype\s*=\s*["'][^"']*emoji/i.test(tag);
+const decode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+};
+
+/** An `<img>` tag's picture when Graph hosts it (so Jig can read it), else undefined. */
+function hostedImage(tag: string): ChatImage | undefined {
+  if (isEmoji(tag)) return undefined;
+  const src = attribute(tag, "src")?.replaceAll("&amp;", "&");
+  const m = src && /^https:\/\/graph\.microsoft\.com\//i.test(src) ? HOSTED_CONTENT.exec(src) : null;
+  if (!m) return undefined;
+  const [chatId, messageId, contentId] = [decode(m[1]!), decode(m[2]!), decode(m[3]!)];
+  if (!chatId || !TEAMS_CHAT_ID.test(chatId) || !messageId || !CHAT_MESSAGE_ID.test(messageId))
+    return undefined;
+  if (!contentId || !HOSTED_CONTENT_ID.test(contentId)) return undefined;
+  const size = (name: string) => {
+    const n = Number(attribute(tag, name));
+    return Number.isFinite(n) && n > 0 && n < 100_000 ? Math.round(n) : undefined;
+  };
+  const width = size("width");
+  const height = size("height");
+  return { chatId, messageId, contentId, ...(width && height ? { width, height } : {}) };
+}
+
+/** The pictures of a Teams message body that Graph hosts, in order (emoji left out). */
+export function chatImages(html: string): ChatImage[] {
+  return (html.match(/<img\b[^>]*>/gi) ?? []).map(hostedImage).filter((i): i is ChatImage => Boolean(i));
+}
+
+/** A message's attachments as Graph returns them (the fields Jig reads). */
+export interface GraphChatAttachment {
+  id?: string;
+  contentType?: string;
+  contentUrl?: string | null;
+  name?: string | null;
+}
+
+const httpsUrl = (url: string | null | undefined) => {
+  if (!url || url.length > 8192) return undefined;
+  try {
+    return new URL(url).protocol === "https:" ? url : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Shared files (`reference`: SharePoint/OneDrive) and other attachments with an https address, as
+ * files to open. Replies (`messageReference`) and cards without an address are left out.
+ */
+export function chatFiles(attachments: unknown[] | undefined): ChatFile[] {
+  const out: ChatFile[] = [];
+  for (const a of (attachments ?? []) as GraphChatAttachment[]) {
+    if (!a || typeof a !== "object" || a.contentType === "messageReference") continue;
+    const url = httpsUrl(a.contentUrl);
+    if (!url) continue;
+    const name =
+      (typeof a.name === "string" && a.name.trim()) ||
+      decode(new URL(url).pathname.split("/").pop() ?? "") ||
+      url;
+    out.push({ name: name.slice(0, 300), url, kind: a.contentType === "reference" ? "file" : "link" });
+  }
+  return out;
+}
+
+/** Attachments Jig can't show (cards, files without an address), for the "(attachment)" placeholder. */
+const otherAttachments = (attachments: unknown[] | undefined) =>
+  ((attachments ?? []) as GraphChatAttachment[]).filter(
+    (a) => a && typeof a === "object" && a.contentType !== "messageReference" && !httpsUrl(a.contentUrl),
+  ).length;
 
 /** How the chat panel stands: messages, Microsoft's approval missing, or no chat for this meeting. */
 export type MeetingChatState = "ok" | "consent" | "unavailable";
@@ -45,11 +153,17 @@ export function oneOnOneChatIds(me: string, peer: string): string[] {
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
-/** A Teams message body (HTML) as plain text: line breaks kept, tags and entities resolved. */
+/**
+ * A Teams message body (HTML) as plain text: line breaks kept, tags and entities resolved. Emoji
+ * become their character; pictures Graph hosts and attachment marks are left out (the message keeps
+ * them as `images` and `files`); other pictures read "(image)".
+ */
 export function chatText(html: string): string {
   return html
-    .replace(/<attachment[^>]*><\/attachment>/gi, "(attachment)")
-    .replace(/<img[^>]*>/gi, "(image)")
+    .replace(/<attachment[^>]*><\/attachment>/gi, "")
+    .replace(/<img\b[^>]*>/gi, (tag) =>
+      isEmoji(tag) ? (attribute(tag, "alt") ?? "") : hostedImage(tag) ? "" : "(image)",
+    )
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|h\d)>/gi, "\n")
     .replace(/<[^>]+>/g, "")
@@ -73,7 +187,7 @@ export interface GraphChatMessage {
   deletedDateTime?: string | null;
   from?: { user?: { id?: string; displayName?: string } | null } | null;
   body?: { contentType?: string; content?: string };
-  attachments?: unknown[];
+  attachments?: GraphChatAttachment[];
 }
 
 /**
@@ -145,18 +259,24 @@ export function toChatMessages(
     .filter((m) => (m.messageType ?? "message") === "message" && !m.deletedDateTime && m.from?.user)
     .map((m) => {
       const body = m.body?.content ?? "";
-      const text = m.body?.contentType === "text" ? body.trim() : chatText(body);
+      const html = m.body?.contentType !== "text";
+      const text = html ? chatText(body) : body.trim();
+      const images = html ? chatImages(body) : [];
+      const files = chatFiles(m.attachments);
       const user = m.from!.user!;
       return {
         id: m.id,
         from: senderName(user, directory, self),
         ...(user.id ? { fromId: user.id } : {}),
         at: new Date(m.createdDateTime).toISOString(),
-        text: text || (m.attachments?.length ? "(attachment)" : ""),
+        text:
+          text || (!images.length && !files.length && otherAttachments(m.attachments) ? "(attachment)" : ""),
         ...(self && user.id === self ? { mine: true } : {}),
-      };
+        ...(images.length ? { images } : {}),
+        ...(files.length ? { files } : {}),
+      } satisfies MeetingChatMessage;
     })
-    .filter((m) => m.text)
+    .filter((m) => m.text || m.images?.length || m.files?.length)
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
@@ -252,6 +372,8 @@ export function mergeChat(kept: MeetingChatMessage[], fresh: MeetingChatMessage[
 /** Whether merging changed anything (so the room isn't told about nothing every few seconds), a sender's name too. */
 export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMessage[]): boolean {
   if (before.length !== after.length) return true;
+  const media = (m: MeetingChatMessage) => `${m.images?.length ?? 0}/${m.files?.length ?? 0}`;
+  if (after.some((m, i) => media(m) !== media(before[i]!))) return true;
   return after.some(
     (m, i) => m.id !== before[i]!.id || m.text !== before[i]!.text || m.from !== before[i]!.from,
   );
@@ -259,6 +381,18 @@ export function chatChanged(before: MeetingChatMessage[], after: MeetingChatMess
 
 /** A Teams chat id: a thread (`19:…@thread.v2`) or a one-to-one chat (`19:…@unq.gbl.spaces`). */
 export const TEAMS_CHAT_ID = /^19:[\w.-]+@(thread\.(v2|tacv2|skype)|unq\.gbl\.spaces)$/i;
+
+/**
+ * A message as one line for the chat list: its words, else "Sent an image" or "Sent a file" (Graph's
+ * preview has no attachment names, D-328).
+ */
+export function chatPreviewText(content: string, contentType?: string): string {
+  const html = contentType !== "text";
+  const text = (html ? chatText(content) : content).replace(/\s+/g, " ").trim();
+  if (text) return text;
+  if (html && /<img\b/i.test(content)) return "Sent an image";
+  return "Sent a file";
+}
 
 /** One of your Teams chats in the lobby's Chats list (D-296). */
 export interface TeamsChatSummary {
@@ -324,14 +458,12 @@ export function toChatSummaries(
       const fromId = last?.from?.user?.id;
       const mine = Boolean(self && fromId === self);
       const content = last?.body?.content ?? "";
-      const text = (last?.body?.contentType === "text" ? content : chatText(content))
-        .replace(/\s+/g, " ")
-        .trim();
+      const text = chatPreviewText(content, last?.body?.contentType);
       const preview =
         last && !last.isDeleted && (last.messageType ?? "message") === "message" && last.from?.user
           ? {
               from: mine ? "You" : senderName(last.from.user, directory, self),
-              text: text || "(attachment)",
+              text,
               ...(mine ? { mine } : {}),
             }
           : undefined;

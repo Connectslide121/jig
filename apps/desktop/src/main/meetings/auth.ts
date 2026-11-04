@@ -47,6 +47,11 @@ export const CHAT_SCOPES = [
   "https://graph.microsoft.com/ChatMessage.Send",
 ];
 
+/** Chat pictures Jig shows (no SVG: it can carry scripts), the largest one, and the memory they may use. */
+const CHAT_IMAGE_TYPES = /^image\/(png|jpeg|gif|webp)$/;
+const CHAT_IMAGE_BYTES = 10 * 1024 * 1024;
+const IMAGE_CACHE_BYTES = 64 * 1024 * 1024;
+
 /** Microsoft sign-in persists only through OS-protected encryption; calling tokens stay in memory. */
 export class MeetingAuth {
   private client?: PublicClientApplication;
@@ -59,6 +64,8 @@ export class MeetingAuth {
   private cachedFile?: string;
   /** Each chat's members by id, to name senders Graph leaves nameless; read again after 5 minutes. */
   private directories = new Map<string, { directory: ChatDirectory; at: number }>();
+  /** Pictures in chat messages as data URLs, oldest first, at most `IMAGE_CACHE_BYTES` (D-328). */
+  private images = new Map<string, { url: Promise<string | null>; bytes: number }>();
   constructor(private readonly settings: () => MeetingSettings) {}
   get name(): string | undefined {
     return this.account?.username;
@@ -72,6 +79,7 @@ export class MeetingAuth {
     this.client = undefined;
     this.account = undefined;
     this.directories.clear();
+    this.images.clear();
   }
   private cacheFile(): string | undefined {
     const { tenantId, clientId } = this.settings();
@@ -374,6 +382,50 @@ export class MeetingAuth {
     const data = (await r.json()) as { value: GraphChatMessage[] };
     const directory = await this.directory(chatId, data.value, title);
     return toChatMessages(data.value, this.account?.localAccountId, directory);
+  }
+  /**
+   * A picture in a chat message (D-328): its hosted content from Graph with Chat.Read, as a data
+   * URL, or null when it isn't a picture Jig shows, is too big or can't be read. Kept in memory.
+   */
+  chatImage(chatId: string, messageId: string, contentId: string): Promise<string | null> {
+    const key = `${chatId}\n${messageId}\n${contentId}`;
+    const kept = this.images.get(key);
+    if (kept) {
+      // Used again: newest, so it is evicted last.
+      this.images.delete(key);
+      this.images.set(key, kept);
+      return kept.url;
+    }
+    const entry = { url: Promise.resolve<string | null>(null), bytes: 0 };
+    entry.url = (async () => {
+      const path = `/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/hostedContents/${encodeURIComponent(contentId)}/$value`;
+      const r = await this.chatFetch(path);
+      if (!r.ok) throw chatError(r.status);
+      const type = r.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+      if (!CHAT_IMAGE_TYPES.test(type)) return null;
+      if (Number(r.headers.get("content-length") ?? 0) > CHAT_IMAGE_BYTES) return null;
+      const bytes = Buffer.from(await r.arrayBuffer());
+      if (bytes.length > CHAT_IMAGE_BYTES) return null;
+      entry.bytes = bytes.length;
+      this.trimImages();
+      return `data:${type};base64,${bytes.toString("base64")}`;
+    })().catch((error) => {
+      log.warn("chat image unavailable", { error: (error as Error).message });
+      this.images.delete(key);
+      return null;
+    });
+    this.images.set(key, entry);
+    return entry.url;
+  }
+  private trimImages(): void {
+    let total = 0;
+    for (const e of this.images.values()) total += e.bytes;
+    for (const [key, e] of this.images) {
+      if (total <= IMAGE_CACHE_BYTES) break;
+      if (!e.bytes) continue;
+      this.images.delete(key);
+      total -= e.bytes;
+    }
   }
   async sendChat(chatId: string, text: string): Promise<MeetingChatMessage | undefined> {
     const r = await this.chatFetch(`/chats/${encodeURIComponent(chatId)}/messages`, {

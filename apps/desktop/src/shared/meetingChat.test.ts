@@ -4,6 +4,9 @@ import {
   chatChanged,
   chatDayLabel,
   chatDirectory,
+  chatFiles,
+  chatImages,
+  chatPreviewText,
   chatText,
   chatTimeline,
   type MeetingChatMessage,
@@ -45,7 +48,115 @@ describe("meeting chat", () => {
     expect(chatText('<p>Hi <at id="0">Alex</at>,</p><p>see&nbsp;&lt;this&gt; &amp; that&#33;</p>')).toBe(
       "Hi Alex,\nsee <this> & that!",
     );
-    expect(chatText('<div>Look</div><attachment id="1"></attachment>')).toBe("Look\n(attachment)");
+    expect(chatText('<div>Look</div><attachment id="1"></attachment>')).toBe("Look");
+    expect(chatText('<p>Nice <img itemtype="http://schema.skype.com/Emoji" alt="😀" src="x"></p>')).toBe(
+      "Nice 😀",
+    );
+    expect(chatText('<p>See <img src="https://example.com/a.png"></p>')).toBe("See (image)");
+  });
+
+  describe("pictures and files (D-328)", () => {
+    const CHAT = "19:meeting_abc@thread.v2";
+    const hosted = (message: string, content: string) =>
+      `https://graph.microsoft.com/v1.0/chats/${encodeURIComponent(CHAT)}/messages/${message}/hostedContents/${content}/$value`;
+
+    it("finds the pictures Graph hosts, with their size, and leaves out emoji and others", () => {
+      const html = `<p>Diagram</p><img src="${hosted("1700", "aWQ9eA==")}" width="640" height="400"><img src="https://evil.example/chats/${CHAT}/messages/1/hostedContents/x/$value"><img itemtype="http://schema.skype.com/Emoji" alt="👍" src="${hosted("1700", "ZW1vamk=")}"><img src='${hosted("1700", "Yg==")}'>`;
+      expect(chatImages(html)).toEqual([
+        { chatId: CHAT, messageId: "1700", contentId: "aWQ9eA==", width: 640, height: 400 },
+        { chatId: CHAT, messageId: "1700", contentId: "Yg==" },
+      ]);
+      expect(chatText(html)).toBe("Diagram\n(image)👍");
+      // A path that isn't a chat, or an id with a slash, isn't read.
+      expect(
+        chatImages(`<img src="https://graph.microsoft.com/v1.0/chats/x/messages/1/hostedContents/a/$value">`),
+      ).toEqual([]);
+    });
+
+    it("keeps shared files and https links, and leaves out replies and other addresses", () => {
+      expect(
+        chatFiles([
+          {
+            id: "1",
+            contentType: "reference",
+            name: "Shop spec.docx",
+            contentUrl: "https://contoso.sharepoint.com/Shop%20spec.docx",
+          },
+          {
+            id: "2",
+            contentType: "reference",
+            contentUrl: "https://contoso.sharepoint.com/sites/x/Plan%20B.xlsx",
+          },
+          { id: "3", contentType: "messageReference", contentUrl: "https://contoso.sharepoint.com/x" },
+          {
+            id: "4",
+            contentType: "reference",
+            name: "Old.txt",
+            contentUrl: "http://contoso.example/Old.txt",
+          },
+          { id: "5", contentType: "application/vnd.microsoft.card.adaptive", contentUrl: null },
+          { id: "6", contentType: "text/html", name: "Fabrikam", contentUrl: "https://fabrikam.example" },
+        ]),
+      ).toEqual([
+        { name: "Shop spec.docx", url: "https://contoso.sharepoint.com/Shop%20spec.docx", kind: "file" },
+        { name: "Plan B.xlsx", url: "https://contoso.sharepoint.com/sites/x/Plan%20B.xlsx", kind: "file" },
+        { name: "Fabrikam", url: "https://fabrikam.example", kind: "link" },
+      ]);
+      expect(chatFiles(undefined)).toEqual([]);
+    });
+
+    it("keeps a message that is only a picture or a file, and says (attachment) for what it can't show", () => {
+      const [picture, file, card] = toChatMessages([
+        {
+          id: "1",
+          createdDateTime: "2026-11-03T10:01:00Z",
+          from: { user: { id: ALEX, displayName: "Alex" } },
+          body: { contentType: "html", content: `<img src="${hosted("1", "YQ==")}">` },
+        },
+        {
+          id: "2",
+          createdDateTime: "2026-11-03T10:02:00Z",
+          from: { user: { id: ALEX, displayName: "Alex" } },
+          body: { contentType: "html", content: '<attachment id="f"></attachment>' },
+          attachments: [
+            {
+              id: "f",
+              contentType: "reference",
+              name: "a.pdf",
+              contentUrl: "https://contoso.sharepoint.com/a.pdf",
+            },
+          ],
+        },
+        {
+          id: "3",
+          createdDateTime: "2026-11-03T10:03:00Z",
+          from: { user: { id: ALEX, displayName: "Alex" } },
+          body: { contentType: "html", content: '<attachment id="c"></attachment>' },
+          attachments: [{ id: "c", contentType: "application/vnd.microsoft.card.adaptive" }],
+        },
+      ]);
+      expect(picture).toMatchObject({
+        text: "",
+        images: [{ chatId: CHAT, messageId: "1", contentId: "YQ==" }],
+      });
+      expect(picture!.files).toBeUndefined();
+      expect(file).toMatchObject({ text: "", files: [{ name: "a.pdf", kind: "file" }] });
+      expect(card).toMatchObject({ text: "(attachment)" });
+    });
+
+    it("says what a picture or file message is in the chat list", () => {
+      expect(chatPreviewText("<p>Hi\nthere</p>")).toBe("Hi there");
+      expect(chatPreviewText(`<img src="${hosted("1", "YQ==")}">`)).toBe("Sent an image");
+      expect(chatPreviewText('<attachment id="1"></attachment>')).toBe("Sent a file");
+      expect(chatPreviewText("Done", "text")).toBe("Done");
+    });
+
+    it("counts a picture or file arriving as a change", () => {
+      const before = [{ id: "1", from: "Alex", at: "2026-11-03T10:01:00.000Z", text: "Look" }];
+      const file = { name: "a.pdf", url: "https://contoso.sharepoint.com/a.pdf", kind: "file" as const };
+      expect(chatChanged(before, [{ ...before[0]!, files: [file] }])).toBe(true);
+      expect(chatChanged(before, [{ ...before[0]! }])).toBe(false);
+    });
   });
 
   it("keeps people's messages, oldest first, and marks yours", () => {
