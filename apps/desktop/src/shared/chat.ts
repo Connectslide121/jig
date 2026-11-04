@@ -171,12 +171,14 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
         request: event.request,
         status: "pending",
         at: now(),
+        ...(event.declineAt ? { declineAt: event.declineAt } : {}),
       });
       meta({ status: "needs_you" });
       break;
     case "permission_resolved": {
       const item = get(permissionItemId(event.requestId));
-      if (item?.kind === "permission") upsert({ ...item, status: event.status });
+      if (item?.kind === "permission")
+        upsert({ ...item, status: event.status, ...(event.timedOut ? { timedOut: true } : {}) });
       const stillWaiting = state.items.some((i) => i.kind === "permission" && i.status === "pending");
       if (!stillWaiting && state.meta.status === "needs_you") meta({ status: "working" });
       break;

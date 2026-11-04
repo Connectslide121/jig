@@ -47,6 +47,8 @@ const MAX_ITEMS = 3000;
 const SAVE_MAX_WAIT_MS = 2000;
 /** Requests that still wait for the user in "Don't ask" mode: they are questions, not checks. */
 const WAITS_IN_DONT_ASK = new Set(["AskUserQuestion", "ExitPlanMode"]);
+/** How long a request waits in "Don't ask" mode when no setting says (D-336). */
+const DONT_ASK_WAIT_SECONDS = 60;
 /** What Claude reads when Jig declines a request in "Don't ask" mode (D-293). */
 const DONT_ASK_DENIAL =
   "Declined automatically: this chat runs in Don't ask mode, so nobody is there to approve it. Don't retry the same call; do it a safer way (for an rm -rf safety check, use a folder under the repository's .tmp/ or the system temp folder, never a drive root or the home folder) or skip it and say so in your reply.";
@@ -93,6 +95,8 @@ export interface SessionManagerOptions {
     env: Record<string, string | undefined>;
     promptSuggestions?: boolean;
     fileCheckpoints?: boolean;
+    /** Seconds a request waits for you in "Don't ask" mode before it's declined; 0 = at once (D-336). */
+    dontAskWaitSeconds?: number;
     /** The Azure tenant `env` points at (recorded on the chat while its process runs). */
     azureTenant?: TenantTag;
   };
@@ -139,11 +143,18 @@ export interface SessionManagerOptions {
   }) => void;
 }
 
+interface PendingPermission {
+  resolve: (d: PermissionDecision) => void;
+  request: PermissionRequest;
+  /** "Don't ask": declines the request when nobody answered in time (D-336). */
+  timer?: NodeJS.Timeout;
+}
+
 interface Live {
   state: ChatState;
   queue: QueuedMessage[];
   engine?: EngineSession;
-  permissions: Map<string, { resolve: (d: PermissionDecision) => void; request: PermissionRequest }>;
+  permissions: Map<string, PendingPermission>;
   saveTimer?: NodeJS.Timeout;
   loaded: boolean;
   /** Identifies the current Claude Code process: events from a stopped or replaced one are ignored. */
@@ -172,6 +183,12 @@ export class SessionManager {
   private modelCache = new Map<ChatProvider, ModelInfo[]>();
 
   constructor(private readonly options: SessionManagerOptions) {}
+
+  /** How long a request waits in "Don't ask" mode before Jig declines it (D-336). */
+  private dontAskWaitMs(): number {
+    const seconds = this.options.engineSettings().dontAskWaitSeconds ?? DONT_ASK_WAIT_SECONDS;
+    return Math.max(0, seconds) * 1000;
+  }
 
   private load(): Promise<void> {
     this.ready ??= (async () => {
@@ -360,12 +377,14 @@ export class SessionManager {
         plugins: this.options.plugins?.(meta),
         askPermission: (request, signal) =>
           new Promise<PermissionDecision>((resolve) => {
-            // "Don't ask" never waits: Claude Code's own safety checks (rm -rf on a drive root…)
-            // still ask, so Jig declines them and Claude carries on. Questions still wait (D-293).
-            if (
+            // "Don't ask": Claude Code's own safety checks (rm -rf on a drive root…) still ask. Jig
+            // shows them for a while (`engine.dontAskWaitSeconds`) and declines them when nobody
+            // answers, so Claude carries on; 0 declines at once. Questions just wait (D-293, D-336).
+            const dontAsk =
               live.state.meta.permissionMode === "bypassPermissions" &&
-              !WAITS_IN_DONT_ASK.has(request.toolName)
-            ) {
+              !WAITS_IN_DONT_ASK.has(request.toolName);
+            const waitMs = dontAsk ? this.dontAskWaitMs() : 0;
+            if (dontAsk && waitMs <= 0) {
               this.handleEvent(live, {
                 type: "notice",
                 tone: "warning",
@@ -374,10 +393,30 @@ export class SessionManager {
               resolve({ behavior: "deny", message: DONT_ASK_DENIAL });
               return;
             }
-            live.permissions.set(request.requestId, { resolve, request });
-            this.handleEvent(live, { type: "permission", request });
+            const pending: PendingPermission = { resolve, request };
+            live.permissions.set(request.requestId, pending);
+            if (dontAsk) {
+              pending.timer = setTimeout(() => {
+                if (live.permissions.get(request.requestId) !== pending) return;
+                live.permissions.delete(request.requestId);
+                this.handleEvent(live, {
+                  type: "permission_resolved",
+                  requestId: request.requestId,
+                  status: "denied",
+                  timedOut: true,
+                });
+                resolve({ behavior: "deny", message: DONT_ASK_DENIAL });
+              }, waitMs);
+            }
+            this.handleEvent(live, {
+              type: "permission",
+              request,
+              ...(dontAsk ? { declineAt: new Date(Date.now() + waitMs).toISOString() } : {}),
+            });
             signal.addEventListener("abort", () => {
-              if (!live.permissions.delete(request.requestId)) return;
+              if (live.permissions.get(request.requestId) !== pending) return;
+              live.permissions.delete(request.requestId);
+              clearTimeout(pending.timer);
               this.handleEvent(live, {
                 type: "permission_resolved",
                 requestId: request.requestId,
@@ -429,6 +468,7 @@ export class SessionManager {
         this.emit(live, [{ op: "meta", meta: live.state.meta }]);
       }
       for (const [requestId, pending] of live.permissions) {
+        clearTimeout(pending.timer);
         pending.resolve({ behavior: "deny", message: "Session ended" });
         live.permissions.delete(requestId);
       }
@@ -1063,6 +1103,7 @@ export class SessionManager {
     const pending = live.permissions.get(requestId);
     if (!pending) throw new JigError("not_found", "This request is no longer waiting");
     live.permissions.delete(requestId);
+    clearTimeout(pending.timer);
     const status = decision.behavior === "deny" ? "denied" : decision.always ? "always" : "allowed";
     if (status === "denied") this.friction(live, "denied", `denied ${pending.request.toolName}`);
     this.handleEvent(live, { type: "permission_resolved", requestId, status });

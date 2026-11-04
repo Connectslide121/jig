@@ -1,5 +1,18 @@
 # Status
 
+Don't ask asks you for a minute first (2026-11-04, D-336): in a **Don't ask** chat, the safety checks
+Claude Code still asks about (such as "Dangerous rm operation on critical path") show the usual
+permission card with Allow / Deny and a countdown, "Declines in 0:59", instead of being declined at
+once. The chat shows "Needs you" (with the usual notification when Jig isn't in front). Answer in
+time and your answer counts; otherwise Jig declines it after the minute, the card becomes the
+"Declined automatically in Don't ask mode … (no answer within a minute)" notice, and Claude carries
+on. A task-queue chat waits at most that minute per check and the queue goes on as usual. How long
+it waits is **Settings → Chats → Don't ask: wait for you** (decline at once, 30 seconds, 1, 2 or 5
+minutes; `engine.dontAskWaitSeconds`). Checked in Jig Dark and Light with the fake engine ("do the
+safety check"); unit tests pass, `e2e/dont-ask.spec.ts` written but not run (D-258).
+**Check on your machine:** in a Don't ask chat, ask Claude to `rm -rf` a new empty folder at a drive
+root: the card should count down, notify you, and decline after a minute if you leave it.
+
 ChatGPT chats and one-shots hold up better (2026-11-04): a chat whose Codex crashes or is killed now
 says so (exit code or signal, with Codex's last log line) instead of ending silently, and its last
 lines are read first. A message sent just as a turn ends starts the next turn instead of "Codex
@@ -1010,9 +1023,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   ends and Claude works as in any chat, with a soft note every 1.17 s and a chime when it finishes
   or needs you (Settings → Speech → Sound while Claude works). "Bye" ends only talking; Claude's
   work goes on, and the chat returns to its own permission mode when idle.
-- **"Don't ask" never waits (D-293):** a safety check Claude Code still asks for in that mode
-  (`rm -rf` on a drive root…) is declined at once with a warning notice in the chat, and Claude
-  carries on another way. Questions still wait. Try it: a "Don't ask" chat, ask Claude to
+- **"Don't ask" waits a minute, then declines (D-293, D-336):** a safety check Claude Code still
+  asks for in that mode (`rm -rf` on a drive root…) shows its permission card with a countdown; when
+  nobody answers in time (Settings → Chats → Don't ask: wait for you, default 1 minute; "decline at
+  once" as before) it is declined with a warning notice, and Claude carries on another way. Questions
+  still wait. Try it: a "Don't ask" chat, ask Claude to
   `rm -rf` a new empty folder at a drive root.
 - Navigation and layouts (D-175, D-176): **Ctrl+P** (or the search field in the top bar) opens Go to:
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches

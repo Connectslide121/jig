@@ -361,6 +361,10 @@ export type ChatItem =
       request: PermissionRequest;
       status: "pending" | "allowed" | "always" | "denied" | "cancelled";
       at: string;
+      /** "Don't ask" mode: Jig declines it at this time when nobody answered (D-336). */
+      declineAt?: string;
+      /** Declined because nobody answered in time, not by you (D-336). */
+      timedOut?: boolean;
     }
   | {
       kind: "result";
@@ -498,11 +502,18 @@ export type EngineEvent =
       images?: ChatAttachment[];
       diff?: string;
     }
-  | { type: "permission"; request: PermissionRequest }
+  | {
+      type: "permission";
+      request: PermissionRequest;
+      /** "Don't ask" mode: when Jig declines it if nobody answered (D-336). */
+      declineAt?: string;
+    }
   | {
       type: "permission_resolved";
       requestId: string;
       status: "allowed" | "always" | "denied" | "cancelled";
+      /** Declined because nobody answered in time (D-336). */
+      timedOut?: boolean;
     }
   | {
       type: "result";

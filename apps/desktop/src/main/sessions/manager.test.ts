@@ -10,6 +10,7 @@ let dir: string;
 let updates: Array<{ id: string; updates: ChatUpdate[] }>;
 let activity: string[];
 let sharedFiles: Array<{ images: number; files: number }>;
+let dontAskWaitSeconds: number | undefined;
 
 function manager(engine = new FakeEngine(1)) {
   return new SessionManager({
@@ -20,7 +21,7 @@ function manager(engine = new FakeEngine(1)) {
     dir,
     attachmentsDir: join(dir, "attachments"),
     engine,
-    engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {} }),
+    engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {}, dontAskWaitSeconds }),
     appendSystemPrompt: () => "You are inside Jig.",
     onUpdate: (id, u) => updates.push({ id, updates: u }),
     onActivity: (e) => {
@@ -52,6 +53,7 @@ beforeEach(async () => {
   updates = [];
   activity = [];
   sharedFiles = [];
+  dontAskWaitSeconds = undefined;
 });
 
 describe("SessionManager", () => {
@@ -334,6 +336,72 @@ describe("SessionManager", () => {
     await until(async () => (await metaOf(m, session.id)).status === "idle");
     expect((await m.snapshot(session.id)).items.find((i) => i.kind === "tool")).toMatchObject({
       status: "error",
+    });
+  });
+
+  it("Don't ask: a safety check waits for you, then is declined unanswered (D-336)", async () => {
+    dontAskWaitSeconds = 0.2;
+    const m = manager();
+    const session = await m.create({
+      projectId: "p1",
+      cwd: dir,
+      model: "",
+      permissionMode: "bypassPermissions",
+    });
+    await m.send(session.id, "do the safety check");
+    const pending = await until(async () =>
+      (await m.snapshot(session.id)).items.find((i) => i.kind === "permission" && i.status === "pending"),
+    );
+    expect(pending).toMatchObject({ declineAt: expect.any(String) });
+    expect((await metaOf(m, session.id)).status).toBe("needs_you");
+    await until(async () => (await metaOf(m, session.id)).status === "idle");
+    const items = (await m.snapshot(session.id)).items;
+    expect(items.find((i) => i.kind === "permission")).toMatchObject({ status: "denied", timedOut: true });
+    expect(items.find((i) => i.kind === "tool")).toMatchObject({
+      status: "error",
+      output: expect.stringContaining("Declined automatically"),
+    });
+    expect(activity.some((a) => a.startsWith("friction:denied"))).toBe(false);
+  });
+
+  it("Don't ask: your answer in time wins and the timer is cleared (D-336)", async () => {
+    dontAskWaitSeconds = 0.2;
+    const m = manager();
+    const session = await m.create({
+      projectId: "p1",
+      cwd: dir,
+      model: "",
+      permissionMode: "bypassPermissions",
+    });
+    await m.send(session.id, "do the safety check");
+    const pending = await until(async () =>
+      (await m.snapshot(session.id)).items.find((i) => i.kind === "permission" && i.status === "pending"),
+    );
+    await m.answerPermission(session.id, pending.kind === "permission" ? pending.request.requestId : "", {
+      behavior: "allow",
+    });
+    await until(async () => (await metaOf(m, session.id)).status === "idle");
+    await new Promise((r) => setTimeout(r, 300));
+    const permission = (await m.snapshot(session.id)).items.find((i) => i.kind === "permission");
+    expect(permission).toMatchObject({ status: "allowed" });
+    expect(permission).not.toHaveProperty("timedOut");
+  });
+
+  it("Don't ask with no wait declines at once with a notice (D-293)", async () => {
+    dontAskWaitSeconds = 0;
+    const m = manager();
+    const session = await m.create({
+      projectId: "p1",
+      cwd: dir,
+      model: "",
+      permissionMode: "bypassPermissions",
+    });
+    await m.send(session.id, "do the safety check");
+    await until(async () => (await metaOf(m, session.id)).status === "idle");
+    const items = (await m.snapshot(session.id)).items;
+    expect(items.some((i) => i.kind === "permission")).toBe(false);
+    expect(items.find((i) => i.kind === "notice")).toMatchObject({
+      text: expect.stringContaining("Declined automatically in Don't ask mode"),
     });
   });
 

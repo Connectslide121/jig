@@ -14,6 +14,14 @@ import { SegmentedSwitch, SettingRow, SettingsGroup, SettingsSection } from "./p
 
 /** One width for every picker in the groups, so their right edges and texts line up. */
 const PICKER = "w-64";
+/** The waits offered for Don't ask mode's safety checks, in seconds (D-336). */
+const DONT_ASK_WAITS = [0, 30, 60, 120, 300];
+
+function waitLabel(seconds: number): string {
+  if (seconds === 0) return "Don't wait: decline at once";
+  if (seconds % 60 === 0) return seconds === 60 ? "1 minute" : `${seconds / 60} minutes`;
+  return `${seconds} seconds`;
+}
 
 /** The group that new chats run on gets this badge at the far right of its header. */
 const DefaultBadge = () => (
@@ -386,6 +394,26 @@ function AllChats() {
               {mode === "bypassPermissions" ? "Don't ask (bypass)" : PERMISSION_MODE_LABELS[mode]}
             </option>
           ))}
+        </Select>
+      </SettingRow>
+      <SettingRow
+        label="Don't ask: wait for you"
+        description="In Don't ask mode Claude Code still asks about its own safety checks (such as rm -rf on a critical folder). Jig shows them for this long and declines them when you don't answer, so Claude carries on."
+      >
+        <Select
+          className={PICKER}
+          value={String(e.dontAskWaitSeconds)}
+          aria-label="Don't ask: wait for you"
+          data-testid="settings-dont-ask-wait"
+          onChange={(ev) => void updateConfig({ engine: { dontAskWaitSeconds: Number(ev.target.value) } })}
+        >
+          {[...new Set([...DONT_ASK_WAITS, e.dontAskWaitSeconds])]
+            .sort((a, b) => a - b)
+            .map((seconds) => (
+              <option key={seconds} value={seconds}>
+                {waitLabel(seconds)}
+              </option>
+            ))}
         </Select>
       </SettingRow>
       <SettingRow

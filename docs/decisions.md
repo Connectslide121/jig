@@ -3692,7 +3692,7 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
 
 ## D-293: "Don't ask" chats never wait for a permission prompt
 
-- Status: accepted. Asked for by Jon, 2026-11-03: "I don't want a chat to stop because it's waiting
+- Status: accepted; declining at once superseded by D-336 (the request waits a minute for you first). Asked for by Jon, 2026-11-03: "I don't want a chat to stop because it's waiting
   for me." Claude Code still asks for its own safety checks under `bypassPermissions` (here
   `rm -rf /e/scratch-…`, a "critical path"), and the chat stopped until someone clicked.
 - In "Don't ask" mode `askPermission` declines such requests at once instead of showing the card.
@@ -5009,3 +5009,36 @@ Replaces D-311's Don't-ask sandbox (`never` with workspace-write and network).
   checks line up in one column.
 - **Fewer icon buttons.** The layout button and the `?` (What Jig can do) are removed from the right
   of the top bar; What Jig can do stays in the Jig menu (top left).
+
+## D-336: "Don't ask" safety checks wait a minute for you, then are declined
+
+**Who:** Jon, 2026-11-04 ("I'd rather have it ask me, but wait only for a minute max; if I don't
+answer, then decline"). Supersedes the "declines at once" part of D-293; the rest of D-293 stays
+(deny, not allow; the denial message; questions and plans just wait).
+
+- **Ask, then decline.** In "Don't ask" mode a request Claude Code still sends (its own safety
+  checks, e.g. "Dangerous rm operation on critical path") shows the normal permission card with a
+  countdown ("Declines in 0:42", a fixed slot at the right of the Allow/Deny row, tabular figures, so
+  nothing moves). The chat is "Needs you" meanwhile, which raises the usual desktop notification and
+  taskbar flash. An answer in time is used as is. Without one, Jig resolves it with D-293's denial
+  message, sends `permission_resolved` with `timedOut: true`, and the card turns into the warning
+  notice "Declined automatically in Don't ask mode: … (no answer within a minute)". Claude carries on.
+- **The wait is a setting:** `engine.dontAskWaitSeconds` (default 60, 0–600; 0 = decline at once
+  with D-293's notice, as before), in Settings → Chats → All chats ("Don't ask: wait for you").
+  Read when the request arrives. **Not protected** (D-077): it never approves anything, it only
+  decides how long a request waits before it's declined. Claude, on my own: the name and place
+  (`engine.` beside `defaultPermissionMode` rather than a new `permissions` section), the 600 s
+  cap and the choices in Settings (decline at once, 30 s, 1, 2, 5 minutes).
+- **Timers never leak:** the pending request keeps its timer; answering, an aborted request (Stop,
+  interrupt), the process exiting (stop, archive, delete, quit) all clear it, and the timer itself
+  does nothing once the request is gone.
+- **The task queue keeps going.** The Tasks add-on already treats a chat that needs you as
+  `needs_you` (an active task, not blocked, not skipped; "A queued task needs you" notification);
+  when the request times out the chat works again, the task is running again and the queue waits for
+  the turn as usual. A timed-out denial is not "you rejected a tool call": `userStoppedAt`
+  (`main/addons/chats.ts`) ignores it, so a turn that ends without a report still gets the queue's
+  request for one (D-318). A queue chat in Don't ask can lose at most the wait per safety check.
+- **Codex chats unchanged:** in Don't ask, Codex runs with approval policy `never` and has no
+  equivalent safety prompt (D-334); should one ever reach `askPermission`, it gets the same wait.
+- Tested with the fake engine's "safety check" message (asks in every mode), unit tests in
+  `manager.test.ts` and `e2e/dont-ask.spec.ts` (2 s wait).

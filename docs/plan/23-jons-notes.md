@@ -45,6 +45,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       (project default, Claude, ChatGPT), a per-task provider and model in Add tasks and Edit, the
       mark on every row, the details and the dashboard card; `chats.create({ provider, model })` for
       add-ons; `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model` and `runsOn`.
+- [x] **Don't ask safety checks wait a minute, then decline** (added 2026-11-04, D-336): the card
+      with a countdown and "Needs you", declined unanswered after `engine.dontAskWaitSeconds` (default
+      60, 0 = at once); a queue chat goes on afterwards and still gets asked for its report.
+- [ ] Try a real "Dangerous rm operation" check in a Don't ask chat and in a queue task (D-336).
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

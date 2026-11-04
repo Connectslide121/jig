@@ -79,6 +79,11 @@ export const ConfigSchema = z.object({
       /** Short, simple answers from add-ons that ask for `quick` (commit messages): a small model. */
       quickModel: z.string().default("haiku"),
       defaultPermissionMode: z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]).default("plan"),
+      /**
+       * "Don't ask" mode: how many seconds a request Claude Code still asks (its own safety checks)
+       * waits for you before Jig declines it; 0 = declined at once (D-336).
+       */
+      dontAskWaitSeconds: z.number().int().min(0).max(600).default(60),
       /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
       promptSuggestions: z.boolean().default(true),
       /** The quick model names a new chat from its first message (a few words; D-288). */

@@ -43,12 +43,16 @@ const PROVIDERS: Record<string, ChatProvider> = { claude: "claude", chatgpt: "co
 /** A model alias (`opus`, `sol`) or an exact id (`claude-opus-5-5[1m]`, `gpt-6.1-sol`). */
 const MODEL = /^[\w.:[\]-]{1,80}$/;
 
-/** When you last stopped a turn of the chat (Stop) or rejected a tool call in it. */
+/**
+ * When you last stopped a turn of the chat (Stop) or rejected a tool call in it. A request Jig declined
+ * because nobody answered in "Don't ask" mode isn't you (D-336): the task queue still asks for a report.
+ */
 function userStoppedAt(items: SessionSnapshot["items"]): string | undefined {
   let last: string | undefined;
   for (const item of items) {
     const stopped =
-      (item.kind === "result" && item.stopped) || (item.kind === "permission" && item.status === "denied");
+      (item.kind === "result" && item.stopped) ||
+      (item.kind === "permission" && item.status === "denied" && !item.timedOut);
     if (stopped && (!last || item.at > last)) last = item.at;
   }
   return last;

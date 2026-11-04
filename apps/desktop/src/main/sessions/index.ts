@@ -202,6 +202,7 @@ export function startSessions(): void {
         },
         promptSuggestions: engine.promptSuggestions,
         fileCheckpoints: engine.fileCheckpoints,
+        dontAskWaitSeconds: engine.dontAskWaitSeconds,
         azureTenant: azureTag(),
       };
     },

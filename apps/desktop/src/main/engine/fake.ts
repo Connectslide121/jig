@@ -1213,6 +1213,32 @@ ${output.slice(0, 600)}`,
             isError: false,
           });
           await stream(`${msg}:text:0`, "I looked at the image.", signal);
+        } else if (lower.includes("safety check")) {
+          // Claude Code's own safety check: it asks even in Don't ask mode (D-293, D-336).
+          const toolId = `tool-${randomUUID()}`;
+          const input = { command: "rm -rf /fake-root/build", description: "Remove the build folder" };
+          onEvent({ type: "tool_use", id: toolId, name: "Bash", input });
+          const decision = await options.askPermission(
+            {
+              requestId: toolId,
+              toolName: "Bash",
+              input,
+              title: "Dangerous rm operation on critical path",
+              canAlwaysAllow: false,
+            },
+            signal,
+          );
+          onEvent({
+            type: "tool_result",
+            toolUseId: toolId,
+            output: decision.behavior === "allow" ? "Removed." : (decision.message ?? "Denied"),
+            isError: decision.behavior !== "allow",
+          });
+          await stream(
+            `${msg}:text:0`,
+            decision.behavior === "allow" ? "Removed the build folder." : "OK, I skipped removing it.",
+            signal,
+          );
         } else if (lower.includes("run") || lower.includes("permission")) {
           const toolId = `tool-${randomUUID()}`;
           const input = { command: "npm test", description: "Run the tests" };

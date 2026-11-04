@@ -80,10 +80,13 @@ resolved active model is recorded separately and never replaces the selected ali
   it can replace later edits. Review and commit the resulting diff to record a restoration.
 - **A tool waiting for your permission** says "waiting for you" instead of a spinner, and can't go to
   the background until it runs.
-- **"Don't ask" never waits (D-293):** Claude Code still asks for its own safety checks in that mode
-  (`rm -rf` on a drive root or the home folder…). Jig declines them at once (`askPermission` in
-  `main/sessions/manager.ts`), tells Claude to do it a safer way or skip it, and shows a warning
-  notice in the chat. Questions (`AskUserQuestion`, `ExitPlanMode`) still wait for you.
+- **"Don't ask" waits a minute, then declines (D-293, D-336):** Claude Code still asks for its own
+  safety checks in that mode (`rm -rf` on a drive root or the home folder…). Jig shows the permission
+  card with a countdown (`declineAt` on the item; the chat is "Needs you") for
+  `engine.dontAskWaitSeconds` (default 60). Unanswered, `askPermission` in
+  `main/sessions/manager.ts` declines it, tells Claude to do it a safer way or skip it, and the card
+  becomes a warning notice (`timedOut` on the item). With 0 it declines at once with that notice.
+  Questions (`AskUserQuestion`, `ExitPlanMode`) just wait for you.
 
 - **Times** (clock button in the header, setting `chat.times`, D-306): every message and step gets its
   time in a fixed column at the left, with the day when it changes; a turn's "Done" line has none. The

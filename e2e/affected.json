@@ -91,6 +91,18 @@
     },
     {
       "files": [
+        "apps/desktop/src/main/sessions/manager.ts",
+        "apps/desktop/src/main/engine/fake.ts",
+        "apps/desktop/src/shared/chat.ts",
+        "apps/desktop/src/shared/engine.ts",
+        "apps/desktop/src/shared/config.ts",
+        "apps/desktop/src/renderer/features/sessions/PermissionCard.tsx",
+        "apps/desktop/src/renderer/features/settings/ChatSettings.tsx"
+      ],
+      "specs": ["dont-ask.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/renderer/features/settings/ChatSettings.tsx",
         "apps/desktop/src/renderer/features/settings/parts.tsx",
         "apps/desktop/src/renderer/stores/providers.ts"
