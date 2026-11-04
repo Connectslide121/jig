@@ -105,7 +105,10 @@ test("Tenants: Claude lists the tenants and switches after you approve", async (
   await expect(page.getByTestId("tenant-switcher")).toHaveAttribute("aria-label", "Azure tenant: Northwind");
 });
 
-test("Tenants: sign in with a code shows the code, in Add and in Sign in again", async ({ page, jigHome }) => {
+test("Tenants: sign in with a code shows the code, in Add and in Sign in again", async ({
+  page,
+  jigHome,
+}) => {
   const bin = join(jigHome, "fake-bin");
   await writeFile(join(bin, "az-signed-out.cjs"), FAKE_AZ);
   await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${FAKE_AZ}`);
@@ -129,7 +132,10 @@ test("Tenants: sign in with a code shows the code, in Add and in Sign in again",
   await page.getByTestId("settings-nav-azure").click();
   await page.getByTestId("settings-tenant-manage").click();
   const manage = page.getByTestId("tenant-manage-dialog");
-  await manage.getByTestId("tenant-row-default").getByRole("button", { name: /Sign in again/ }).click();
+  await manage
+    .getByTestId("tenant-row-default")
+    .getByRole("button", { name: /Sign in again/ })
+    .click();
   await page.getByRole("menuitem", { name: "With a code…" }).click();
   const code = page.getByTestId("tenant-code-dialog");
   await expect(code.getByTestId("tenant-device-code")).toHaveText("FAKE2CODE");
