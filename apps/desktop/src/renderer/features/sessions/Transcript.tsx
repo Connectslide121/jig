@@ -206,7 +206,9 @@ const Item = memo(function Item({
         <div className="group/message relative flex flex-col items-end gap-1.5" data-testid="user-message">
           <ChatAttachments files={item.attachments ?? item.images ?? []} className="justify-end" />
           {item.text && (
-            <div className="selectable max-w-[var(--jig-chat-bubble)] min-w-0 rounded-lg bg-active px-3 py-2 text-sm wrap-anywhere whitespace-pre-wrap text-fg">
+            <div className="selectable max-w-[var(--jig-chat-bubble)] min-w-0 rounded-lg bg-active px-3 py-2 text-sm wrap-anywhere whitespace-pre-wrap text-fg"
+              data-testid="user-message-text"
+            >
               {item.text}
             </div>
           )}

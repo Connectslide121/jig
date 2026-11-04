@@ -238,7 +238,7 @@ test("Boards: cards stay on screen while the board refreshes in the background (
   const listed = (await hostCall(page, "addons.call", {
     id: "boards",
     method: "toolCards",
-    args: { chat: { projectId: projects.value.projects[0]!.id } },
+    args: { chat: { projectId: projects.value.projects[0]!.id }, board: "Web · Stories" },
   })) as { value: string };
   expect(listed.value).toContain("#104");
 });

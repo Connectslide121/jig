@@ -22,7 +22,7 @@ test("chat: send, stream a markdown reply with highlighted code, show usage", as
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");
   await say(page, "Hello Claude");
-  await expect(page.getByTestId("user-message")).toHaveText("Hello Claude");
+  await expect(page.getByTestId("user-message-text")).toHaveText("Hello Claude");
   await expect(page.getByTestId("turn-result")).toContainText("Done");
   await expect(page.getByTestId("assistant-message")).toContainText("You said: Hello Claude");
   await expect(page.locator(".jig-code .shiki")).toHaveCount(1);
@@ -134,7 +134,7 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
   await page.getByTestId("composer-stop").click();
   await expect(page.getByTestId("turn-result").first()).toContainText("Interrupted");
   // The queued message is sent after the interrupted turn.
-  await expect(page.getByTestId("user-message").last()).toHaveText("and then this, edited");
+  await expect(page.getByTestId("user-message-text").last()).toHaveText("and then this, edited");
   await expect(page.getByTestId("queue")).toHaveCount(0);
 });
 
@@ -172,7 +172,7 @@ test("chat: sessions list across projects and survive a restart", async ({ app, 
   await app.close();
   const again = await launchJig(jigHome);
   const page2 = await again.firstWindow();
-  await expect(page2.getByTestId("user-message")).toHaveText("first in two");
+  await expect(page2.getByTestId("user-message-text")).toHaveText("first in two");
   await expect(page2.getByTestId("assistant-message")).toContainText("You said");
   await again.close();
 });
