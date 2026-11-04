@@ -26,6 +26,7 @@ import {
   replyDecision,
   statusMessage,
   tapDecision,
+  usedBrowser,
 } from "./messages";
 import {
   keyboard,
@@ -66,6 +67,7 @@ export interface PhoneSettings {
   awayMinutes: number;
   finished: boolean;
   keepAwake: boolean;
+  screenshots: boolean;
 }
 
 export interface PhoneDeps {
@@ -85,6 +87,12 @@ export interface PhoneDeps {
   project?(id: string): Promise<{ name: string; color?: string } | undefined>;
   /** Jig itself (D-348): sends what you wrote to today's chat with Jig; returns that chat's id. */
   concierge?: { ask(text: string): Promise<string> };
+  /** Pictures for the phone: Jig's window, a chat's browser page, a file a chat names. */
+  screens?: {
+    window(): Promise<Buffer | undefined>;
+    browser(sessionId: string): Promise<Buffer | undefined>;
+    file(meta: SessionMeta, path: string): Promise<Buffer>;
+  };
   /** Your projects, in order (for /status and /queue). */
   projects?(): Promise<ProjectInfo[]>;
   /** The Tasks add-on's queues; they throw when it's switched off. */
@@ -113,6 +121,8 @@ export interface PhoneDeps {
 const STALE_SECONDS = 10 * 60;
 const MAX_WRONG_CODES = 5;
 const MAX_REMEMBERED = 300;
+/** Telegram's longest caption under a picture. */
+const CAPTION_MAX = 1024;
 
 interface SentRequest {
   key: string;
@@ -187,6 +197,7 @@ export class PhoneService {
           { command: "queue", description: "A project's task queue (/queue podium)" },
           { command: "pause", description: "Pause a project's queue" },
           { command: "resume", description: "Resume a project's queue" },
+          { command: "screen", description: "A screenshot of Jig on your computer" },
           { command: "chats", description: "Pick the chat your messages go to" },
           { command: "help", description: "What Jig on your phone does" },
         ],
@@ -341,7 +352,12 @@ export class PhoneService {
     const items =
       meta.status === "idle" ? (await this.deps.chats.snapshot(meta.id).catch(() => undefined))?.items : [];
     const message = statusMessage(previous, meta, items && lastReply(items), settings.finished);
-    if (message) await this.send(message, { sessionId: meta.id, thread: await this.threadFor(meta) });
+    if (!message) return;
+    const photo =
+      settings.screenshots && items && usedBrowser(items)
+        ? await this.deps.screens?.browser(meta.id).catch(() => undefined)
+        : undefined;
+    await this.send(message, { sessionId: meta.id, thread: await this.threadFor(meta) }, photo);
   }
 
   /** A permission card changed in a chat: send it when it waits; update the phone's copy when answered. */
@@ -403,16 +419,41 @@ export class PhoneService {
   }
 
   /** Claude's `jig_phone_send`: a message from a chat; your reply goes back to it. */
-  async fromChat(meta: SessionMeta, text: string): Promise<string> {
+  async fromChat(
+    meta: SessionMeta,
+    text: string,
+    image: { path?: string; browser?: boolean } = {},
+  ): Promise<string> {
     if (!this.saved?.owner)
       return "The user hasn't connected Jig to their phone (Settings → Phone), so nothing was sent.";
     if (!this.connected())
       return "The user has turned off messages to their phone in Settings → Phone, so nothing was sent.";
-    await this.send(
+    let photo: Buffer | undefined;
+    let note = "";
+    try {
+      if (image.path) photo = await this.deps.screens?.file(meta, image.path);
+      else if (image.browser) {
+        photo = await this.deps.screens?.browser(meta.id);
+        if (!photo) note = " This chat has no browser page open, so it went without a screenshot.";
+      }
+    } catch (error) {
+      return `Nothing was sent: ${(error as Error).message}`;
+    }
+    const id = await this.send(
       { text: `💬 ${chatTitle(meta)}\n\n${excerpt(text, 3000)}\n\n<i>Reply to this message to answer.</i>` },
       { sessionId: meta.id, thread: await this.threadFor(meta) },
+      photo,
     );
-    return "Sent to the user's phone. Their reply, if any, arrives in this chat as their next message.";
+    if (id === undefined) return "Telegram didn't take the message; nothing was sent.";
+    return `Sent to the user's phone${photo ? " with the picture" : ""}.${note} Their reply, if any, arrives in this chat as their next message.`;
+  }
+
+  /** /screen: what Jig's window shows right now. */
+  private async screen(here: number | undefined): Promise<void> {
+    const photo = await this.deps.screens?.window().catch(() => undefined);
+    if (!photo)
+      return void (await this.send({ text: "Jig's window can't be captured right now." }, { thread: here }));
+    await this.send({ text: "🖥 Jig on your computer, now." }, { thread: here }, photo);
   }
 
   /**
@@ -484,32 +525,43 @@ export class PhoneService {
   private async send(
     message: OutMessage,
     to: { sessionId?: string; thread?: number } = {},
+    photo?: Buffer,
   ): Promise<number | undefined> {
     const chatId = this.saved?.owner?.chatId;
-    if (!this.api || chatId === undefined) return undefined;
+    const api = this.api;
+    if (!api || chatId === undefined) return undefined;
     const { sessionId } = to;
     let thread = to.thread;
-    try {
-      const params = {
+    const deliver = async (thread: number | undefined) => {
+      const common = {
         chat_id: chatId,
-        text: message.text,
         parse_mode: "HTML",
-        link_preview_options: { is_disabled: true },
+        ...(thread ? { message_thread_id: thread } : {}),
         ...(message.silent ? { disable_notification: true } : {}),
         ...(message.buttons?.length ? { reply_markup: keyboard(message.buttons) } : {}),
       };
-      const sent = await this.api
-        .call<{ message_id: number }>("sendMessage", {
-          ...params,
-          ...(thread ? { message_thread_id: thread } : {}),
-        })
-        .catch(async (error) => {
-          if (!thread || !(error instanceof TelegramError) || !/thread not found/i.test(error.message))
-            throw error;
-          this.forgetTopic(thread);
-          thread = undefined;
-          return this.api!.call<{ message_id: number }>("sendMessage", params);
-        });
+      if (photo && message.text.length <= CAPTION_MAX)
+        return api.photo<{ message_id: number }>("sendPhoto", { ...common, caption: message.text }, photo);
+      if (photo)
+        await api.photo(
+          "sendPhoto",
+          { chat_id: chatId, ...(thread ? { message_thread_id: thread } : {}), disable_notification: true },
+          photo,
+        );
+      return api.call<{ message_id: number }>("sendMessage", {
+        ...common,
+        text: message.text,
+        link_preview_options: { is_disabled: true },
+      });
+    };
+    try {
+      const sent = await deliver(thread).catch(async (error) => {
+        if (!thread || !(error instanceof TelegramError) || !/thread not found/i.test(error.message))
+          throw error;
+        this.forgetTopic(thread);
+        thread = undefined;
+        return deliver(undefined);
+      });
       if (sessionId) {
         this.remember(sent.message_id, sessionId);
         this.persist();
@@ -605,6 +657,7 @@ export class PhoneService {
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
     if (command === "chats") return void (await this.send(await this.picker(here), { thread: here }));
+    if (command === "screen") return this.screen(here);
     if (command === "status") return void (await this.send(await this.overview(), { thread: here }));
     if (command === "queue" || command === "pause" || command === "resume")
       return this.queueCommand(command, text.replace(/^\/\w+(@\w+)?/, ""), here);

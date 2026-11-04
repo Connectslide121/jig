@@ -1,8 +1,11 @@
 import { randomInt } from "node:crypto";
-import { rm } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
 import { z } from "zod";
 import { addonService } from "../addons";
+import { mainWindow } from "../appWindows";
+import { chatPageScreenshot } from "../browser";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
@@ -102,6 +105,24 @@ export async function startPhone(): Promise<void> {
         return chat.id;
       },
     },
+    screens: {
+      window: async () => {
+        const win = mainWindow();
+        if (!win || win.isDestroyed()) return undefined;
+        const image = await win.webContents.capturePage();
+        const size = image.getSize();
+        return (size.width > 1600 ? image.resize({ width: 1600 }) : image).toJPEG(85);
+      },
+      browser: (sessionId) => chatPageScreenshot(sessionId),
+      file: async (meta, path) => {
+        const full = isAbsolute(path) ? path : join(meta.cwd, path);
+        if (!/\.(png|jpe?g)$/i.test(full)) throw new Error("only PNG and JPEG pictures can be sent.");
+        const info = await stat(full).catch(() => undefined);
+        if (!info?.isFile()) throw new Error(`there is no file at ${full}.`);
+        if (info.size > 10_000_000) throw new Error("the picture is over Telegram's 10 MB.");
+        return readFile(full);
+      },
+    },
     projects: async () => (await projectStore().list()).map((p) => ({ id: p.id, name: p.name })),
     queues: {
       overview: async () => (await addonService().call("tasks", "overview", {})) as QueueCounts[],
@@ -145,9 +166,23 @@ export async function startPhone(): Promise<void> {
       name: "jig_phone_send",
       description:
         "Send a short message to the user's phone (Telegram, through Jig). Use it only when the user asked you to tell them on their phone, or when you're blocked on them during long work they left running. Their reply comes back to this chat as their next message. Jig already tells their phone by itself when this chat needs them, finishes or stops, so don't repeat those.",
-      shape: { text: z.string().min(1).max(3000).describe("The message, in plain text") },
+      shape: {
+        text: z.string().min(1).max(3000).describe("The message, in plain text"),
+        image: z
+          .string()
+          .optional()
+          .describe("A PNG or JPEG to send with it: a path, absolute or relative to this chat's folder"),
+        browserScreenshot: z
+          .boolean()
+          .optional()
+          .describe("Send a screenshot of this chat's page in Claude's browser with it"),
+      },
       readOnly: true,
-      handler: (args, meta) => s.fromChat(meta, String(args.text ?? "")),
+      handler: (args, meta) =>
+        s.fromChat(meta, String(args.text ?? ""), {
+          ...(typeof args.image === "string" && args.image ? { path: args.image } : {}),
+          ...(args.browserScreenshot === true ? { browser: true } : {}),
+        }),
     },
   ]);
 

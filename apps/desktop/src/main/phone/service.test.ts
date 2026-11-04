@@ -43,7 +43,12 @@ function setup(
   const goneTopics = new Set<number>();
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   let messageId = 100;
+  const photos: Array<{ method: string; params: Record<string, unknown>; bytes: number }> = [];
   const api: TelegramApi = {
+    async photo<T>(method: string, params: Record<string, unknown>, photo: Buffer) {
+      photos.push({ method, params, bytes: photo.length });
+      return { message_id: ++messageId } as T;
+    },
     async call<T>(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal) {
       if (method === "getUpdates")
         return new Promise<T>((_, reject) =>
@@ -83,6 +88,7 @@ function setup(
     awayMinutes: 5,
     finished: true,
     keepAwake: true,
+    screenshots: true,
     ...opts.settings,
   };
   const service = new PhoneService({
@@ -109,6 +115,14 @@ function setup(
           },
         }
       : {}),
+    screens: {
+      window: async () => Buffer.from("window"),
+      browser: async (id: string) => (id === "s1" ? Buffer.from("page") : undefined),
+      file: async (_meta: SessionMeta, path: string) => {
+        if (path !== "shot.png") throw new Error("there is no file at shot.png.");
+        return Buffer.from("file");
+      },
+    },
     projects: async () => [
       { id: "p1", name: "Podium" },
       { id: "p2", name: "Jig" },
@@ -192,6 +206,7 @@ function setup(
     goneTopics,
     queue,
     asked,
+    photos,
   };
 }
 
@@ -596,5 +611,85 @@ describe("PhoneService Jig itself", () => {
     await t.service.chatStatus({ ...jig, status: "working" });
     await t.service.chatStatus({ ...jig, status: "idle" });
     expect(t.messages().some((m) => m.includes("Finished"))).toBe(false);
+  });
+});
+
+describe("PhoneService pictures", () => {
+  const tool = (name: string) =>
+    ({ kind: "tool", id: "t", name, input: {}, status: "done", at: "" }) as ChatItem;
+
+  it("a chat sends its browser page with its message, as the caption", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    const result = await t.service.fromChat(meta(), "Here's the new page. OK?", { browser: true });
+    expect(result).toContain("with the picture");
+    expect(t.photos).toEqual([
+      {
+        method: "sendPhoto",
+        params: expect.objectContaining({ caption: expect.stringContaining("Here's the new page") }),
+        bytes: 4,
+      },
+    ]);
+  });
+
+  it("a chat sends a picture file, and says when there is none", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.fromChat(meta(), "The chart", { path: "shot.png" });
+    expect(t.photos).toHaveLength(1);
+    expect(await t.service.fromChat(meta(), "Missing", { path: "nope.png" })).toContain("Nothing was sent");
+    expect(t.photos).toHaveLength(1);
+  });
+
+  it("sends a long text after its picture", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.fromChat(meta(), "x".repeat(1500), { browser: true });
+    expect(t.photos[0]?.params).not.toHaveProperty("caption");
+    expect(t.messages().at(-1)).toContain("xxxx");
+  });
+
+  it("/screen sends Jig's window", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.text("/screen");
+    expect(t.photos[0]?.params.caption).toContain("Jig on your computer");
+  });
+
+  it("a finished turn that used the browser comes with its page; others don't", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", [
+      { kind: "user", id: "u", text: "fix it" } as ChatItem,
+      tool("mcp__jig__jig_browser_screenshot"),
+      { kind: "assistant", id: "a", text: "Fixed." } as ChatItem,
+    ]);
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.photos[0]?.params.caption).toContain("Finished");
+
+    t.items.set("s1", [{ kind: "user", id: "u", text: "again" } as ChatItem, tool("Bash")]);
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.photos).toHaveLength(1);
+  });
+
+  it("leaves the page out when screenshots are off", async () => {
+    const t = setup({ saved: paired, settings: { screenshots: false } });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", [
+      tool("mcp__jig__jig_browser_open"),
+      { kind: "assistant", id: "a", text: "Done." } as ChatItem,
+    ]);
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.photos).toHaveLength(0);
+    expect(t.messages().at(-1)).toContain("Finished");
   });
 });

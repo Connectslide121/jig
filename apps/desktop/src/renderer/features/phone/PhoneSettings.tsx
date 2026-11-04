@@ -171,6 +171,16 @@ export function PhoneSettings() {
         />
       </SettingRow>
       <SettingRow
+        label="Screenshots"
+        description="When a chat that used Claude's browser finishes, a screenshot of its page comes with the message. /screen on your phone sends Jig's window any time."
+      >
+        <Switch
+          label="Screenshots"
+          checked={phone.screenshots}
+          onChange={(screenshots) => void updateConfig({ phone: { screenshots } })}
+        />
+      </SettingRow>
+      <SettingRow
         label="Keep the computer awake"
         description="While a chat works or waits for you, this computer doesn't go to sleep, so messages keep arriving. The screen can still turn off."
       >

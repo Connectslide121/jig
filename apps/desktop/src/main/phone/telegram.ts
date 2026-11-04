@@ -54,6 +54,8 @@ export class TelegramError extends Error {
 
 export interface TelegramApi {
   call<T>(method: string, params?: Record<string, unknown>, signal?: AbortSignal): Promise<T>;
+  /** Sends a picture (multipart): `params` as form fields, the PNG or JPEG as `photo`. */
+  photo<T>(method: string, params: Record<string, unknown>, photo: Buffer): Promise<T>;
 }
 
 /** The API's address; only the fake engine (tests) may point it elsewhere. */
@@ -64,29 +66,46 @@ export function telegramBase(env: Record<string, string | undefined> = process.e
 }
 
 export function telegramApi(token: string, base = telegramBase()): TelegramApi {
+  const post = async <T>(method: string, init: RequestInit, signal?: AbortSignal): Promise<T> => {
+    let response: Response;
+    try {
+      response = await fetch(`${base}/bot${token}/${method}`, {
+        ...init,
+        method: "POST",
+        signal: signal ?? AbortSignal.timeout(60_000),
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      // Never the URL: it holds the token.
+      throw new TelegramError("Telegram can't be reached.");
+    }
+    const body = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      result?: T;
+      description?: string;
+    };
+    if (!response.ok || !body.ok)
+      throw new TelegramError(body.description ?? `Telegram answered ${response.status}.`, response.status);
+    return body.result as T;
+  };
   return {
-    async call<T>(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
-      let response: Response;
-      try {
-        response = await fetch(`${base}/bot${token}/${method}`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(params),
-          signal: signal ?? AbortSignal.timeout(20_000),
-        });
-      } catch (error) {
-        if (signal?.aborted) throw error;
-        // Never the URL: it holds the token.
-        throw new TelegramError("Telegram can't be reached.");
-      }
-      const body = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        result?: T;
-        description?: string;
-      };
-      if (!response.ok || !body.ok)
-        throw new TelegramError(body.description ?? `Telegram answered ${response.status}.`, response.status);
-      return body.result as T;
+    call: <T>(method: string, params: Record<string, unknown> = {}, signal?: AbortSignal) =>
+      post<T>(
+        method,
+        { headers: { "content-type": "application/json" }, body: JSON.stringify(params) },
+        signal ?? AbortSignal.timeout(20_000),
+      ),
+    photo: <T>(method: string, params: Record<string, unknown>, photo: Buffer) => {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(params))
+        if (value !== undefined) form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+      const jpeg = photo[0] === 0xff && photo[1] === 0xd8;
+      form.append(
+        "photo",
+        new Blob([new Uint8Array(photo)], { type: jpeg ? "image/jpeg" : "image/png" }),
+        jpeg ? "screenshot.jpg" : "screenshot.png",
+      );
+      return post<T>(method, { body: form });
     },
   };
 }

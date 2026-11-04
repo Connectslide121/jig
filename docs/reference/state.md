@@ -110,6 +110,7 @@ A new state file is documented here in the same commit that adds it.
 | `phone.awayMinutes` | `5` | 1–60; protected |
 | `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
 | `phone.keepAwake` | `true` | while a chat works or waits for you and the phone is connected, the computer doesn't sleep (`powerSaveBlocker`, the screen may still turn off); protected |
+| `phone.screenshots` | `true` | a finished turn that used Claude's browser comes with a screenshot of its page; protected |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
 | `speech.engine` | `"natural"` | what reads aloud: `natural` (Kokoro on this computer, ~330 MB downloaded once; D-243) or `system` (the system's voices) |

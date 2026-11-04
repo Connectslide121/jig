@@ -5400,6 +5400,10 @@ choice of Telegram and everything below: Claude, on my own.
   writing into a running chat does. Its answers are marked as AI. This replaces "plain text goes to the
   last chat that wrote": a question about how things are going could otherwise land in a working chat
   as an instruction.
+- **Pictures:** a chat can send its browser page or a picture file with `jig_phone_send`, `/screen`
+  sends Jig's window, and a finished turn that used Claude's browser comes with its page. Pictures
+  can't be masked like text; Jon: "there is no privacy to worry about", so the page comes by default
+  (`phone.screenshots`, which turns it off).
 - **Commands without Claude:** `/status`, `/queue`, `/pause`, `/resume` read the Tasks add-on
   (`overview`, `list`, `start`, `pause` through `addonService().call`) and the chats, and answer at
   once: asking how things are going costs nothing from the plan.

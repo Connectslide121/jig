@@ -273,6 +273,8 @@ export const ConfigSchema = z.object({
       finished: z.boolean().default(true),
       /** Keep this computer from sleeping while a chat works or waits for you (only when connected). */
       keepAwake: z.boolean().default(true),
+      /** A finished turn that used Claude's browser comes with a screenshot of the page. */
+      screenshots: z.boolean().default(true),
     })
     .prefault({}),
   browser: z

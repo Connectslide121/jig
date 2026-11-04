@@ -13,14 +13,19 @@ async function fakeTelegram() {
   const sent: Array<Record<string, unknown>> = [];
   const edits: Array<Record<string, unknown>> = [];
   const queue: Array<Record<string, unknown>> = [];
+  const photos: number[] = [];
   let nextUpdate = 1;
   let nextMessage = 1;
   const server: Server = createServer((req, res) => {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", async () => {
-      const params = body ? JSON.parse(body) : {};
       const method = req.url?.split("/").pop();
+      if (method === "sendPhoto" && req.url?.startsWith(`/bot${TOKEN}/`)) {
+        photos.push(body.length);
+        return res.end(JSON.stringify({ ok: true, result: { message_id: nextMessage++ } }));
+      }
+      const params = body ? JSON.parse(body) : {};
       const reply = (result: unknown) => res.end(JSON.stringify({ ok: true, result }));
       if (!req.url?.startsWith(`/bot${TOKEN}/`)) {
         res.statusCode = 401;
@@ -50,6 +55,7 @@ async function fakeTelegram() {
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
     sent,
     edits,
+    photos,
     texts: () => sent.map((m) => String(m.text)),
     write: (text: string, replyTo?: number) =>
       queue.push({
@@ -198,6 +204,10 @@ test("phone: plain text goes to Jig itself, and its answer comes back", async ({
       value: Array<{ kind?: string; title: string }>;
     };
     expect(chats.value.find((c) => c.kind === "concierge")?.title).toMatch(/^Jig on your phone/);
+
+    // /screen sends a picture of Jig's window.
+    telegram.write("/screen");
+    await expect.poll(() => telegram.photos.length, { timeout: 15000 }).toBe(1);
   } finally {
     await telegram.close();
   }

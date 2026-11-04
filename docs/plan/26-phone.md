@@ -122,6 +122,11 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       button, "🤖 Jig itself", goes back).
 - [ ] Check the concierge on a real bot: that `tools: ["ToolSearch"]` leaves the add-on tools
       reachable, how well it starts chats from loose wording, and the cost of the helper model.
+- [x] Pictures (Jon: "can Jig send me screenshots? … there is no privacy to worry about"):
+      `jig_phone_send` takes `browserScreenshot` (the chat's page) or `image` (a PNG/JPEG path);
+      `/screen` sends Jig's window (JPEG, at most 1600 wide); a finished turn that used Claude's
+      browser comes with its page (`phone.screenshots`, default on). The text is the caption, or
+      follows the picture when longer than Telegram's 1,024 characters.
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

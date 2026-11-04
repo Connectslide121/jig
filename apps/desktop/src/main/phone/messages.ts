@@ -60,6 +60,16 @@ export function lastReply(items: ChatItem[]): string | undefined {
   return undefined;
 }
 
+/** This turn (since your last message) used Claude's browser: its page is worth a screenshot. */
+export function usedBrowser(items: ChatItem[]): boolean {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i]!;
+    if (item.kind === "user") return false;
+    if (item.kind === "tool" && item.name.includes("jig_browser_")) return true;
+  }
+  return false;
+}
+
 /**
  * The message for a chat whose turn ended: finished (with its last reply) or stopped with an error.
  * Only for changes away from working, as desktop notifications (never on loading or restarting).
@@ -392,11 +402,11 @@ export function projectPicker(projects: ProjectInfo[], action: "q" | "p" | "r", 
 }
 
 export const HELP =
-  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers: how things are going, or start a chat in a project (\"Podium: look at card 29992 and make a plan\").\n• /chats sends what you write to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
+  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers: how things are going, or start a chat in a project (\"Podium: look at card 29992 and make a plan\").\n• /chats sends what you write to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue\n/screen a screenshot of Jig on your computer";
 
 /** The help when your bot has topics: one per project, and Jig's own. */
 export const HELP_TOPICS =
-  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers, in that topic: how things are going, or start a chat (\"look at card 29992 and make a plan\"). In a project's topic it means that project.\n• /chats in a topic sends what you write there to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
+  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers, in that topic: how things are going, or start a chat (\"look at card 29992 and make a plan\"). In a project's topic it means that project.\n• /chats in a topic sends what you write there to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue\n/screen a screenshot of Jig on your computer";
 
 /** The digits in what you sent ("123456", "123 456"). */
 export const codeIn = (text: string) => text.replace(/\D/g, "");
