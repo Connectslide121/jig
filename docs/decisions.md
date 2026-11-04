@@ -5387,3 +5387,26 @@ provider, capabilities and Claude as the default still hold.
   `<ProviderMark provider={chatProvider(m)} iconOnly />`: Claude's asterisk or ChatGPT's aperture, in
   the provider's colour, its name in the tooltip. On hover the pin button still takes the slot's place
   (`group-hover:hidden`), so the columns stay aligned. The `mixedProviders` gate is gone.
+
+## D-349: Claude's browser doesn't take over the panel you are working in
+
+- Status: accepted. Amends the `browser.showWhenUsed` behaviour (the view opens by itself).
+- **Who:** Jon, 2026-11-05: switching the panel to Claude's browser every time a chat browses is
+  disruptive while he works on another tab of that same panel. Details below are Claude, on my own.
+- **Rule:** when a chat uses its page (`browser.reveal`), the renderer asks
+  `revealAction(layout, view, focusedPanel())` (`shared/layout.ts`):
+  - the view is already on screen → nothing;
+  - its panel is the one you are working in (and is open) → no switch; its tab or icon gets a badge
+    instead, counting the chats that browsed meanwhile, cleared as soon as the view is on screen;
+  - anything else (another panel, a chat, Jig's window not focused, the view not open) → it shows
+    itself as before.
+- **"The panel you are working in"** is one shared helper, `useFocusedPanel` / `focusedPanel()`
+  (`renderer/workbench/focusedPanel.ts`): the closest `data-panel` of the last `focusin` or
+  `pointerdown`, cleared when Jig's window loses focus. Panels are a sidebar or its lower half, the
+  bottom panel and each main-area pane (`main-left`, `main-right`; `WorkbenchPanel`). A chat marks
+  itself `data-panel="chat"`, which counts as no panel: typing in a chat isn't working in the
+  browser's panel, so the view still shows itself while you talk to the chat that browses.
+- **The badge** is the existing view badge (`ViewBadge`, laid over the icon, no layout shift): Jig's
+  own badges live in `workbench/viewBadges.ts` (`setViewBadge`) beside add-ons' `ctx.setBadge`, which
+  win when both set one.
+

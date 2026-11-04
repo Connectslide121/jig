@@ -150,7 +150,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
     meta.usage.cacheWriteTokens +
     meta.usage.outputTokens;
   return (
-    <div className="flex h-full flex-col" data-testid="chat">
+    <div className="flex h-full flex-col" data-testid="chat" data-panel="chat">
       <header className="@container flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
         <StatusDot status={meta.status} />
         <button

@@ -7,6 +7,7 @@ import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle
 import { MOTION_MS, reducedMotion, usePresence } from "../ui/motion";
 import { useRegistry } from "./registry";
 import { startViewDrag, useViewDrag, useWorkbench, VIEW_DRAG, workbench } from "./store";
+import { useViewBadges } from "./viewBadges";
 
 const regionNames: Record<SideRegion, string> = {
   left: "left sidebar",
@@ -148,6 +149,7 @@ export function Region({ region }: { region: SideRegion }) {
       inert={!open}
       aria-hidden={!open}
       data-testid={`region-${region}`}
+      data-panel={region}
       aria-label={regionNames[region]}
       style={horizontal ? { width: open ? state.size : 0 } : { height: open ? state.size : 0 }}
       className={cn(
@@ -180,6 +182,7 @@ export function Region({ region }: { region: SideRegion }) {
       {lowerId && lower && split && (
         <section
           data-testid={`region-${lowerId}`}
+          data-panel={lowerId}
           aria-label={regionNames[lowerId]}
           style={upper ? { height: lower.size } : undefined}
           className={cn("relative flex min-h-0 flex-col", upper ? "shrink-0 border-t border-line" : "flex-1")}
@@ -297,9 +300,11 @@ function Stack({ region }: { region: SideRegion }) {
   );
 }
 
-/** An add-on's badge on a view's icon (`ctx.setBadge`), laid over it so nothing moves. */
+/** A badge on a view's icon (an add-on's `ctx.setBadge`, or Jig's own), laid over it so nothing moves. */
 export function ViewBadge({ viewId }: { viewId: string }) {
-  const text = useBadges((s) => s.badges[viewId]);
+  const addon = useBadges((s) => s.badges[viewId]);
+  const own = useViewBadges((s) => s.badges[viewId]);
+  const text = addon ?? own;
   if (!text) return null;
   return (
     <span

@@ -88,11 +88,18 @@ that is reloading or switched off) are kept in place but never shown; duplicates
 | `openTab(layout, { type, params })` → `{ layout, tabId }` | open or focus a tab |
 | `closeTab`, `closeOtherTabs`, `closeTabsWhere(predicate)`, `activateTab`, `cycleTab(±1)`, `moveTab`, `updateTabParams` | tab housekeeping (split-aware: activating a tab focuses its pane) |
 | `moveTabToPane(layout, tabId, "left" \| "right")`, `unsplit`, `paneOf`, `paneTabs`, `paneActive` | split view |
+| `panelOfView(layout, viewId)`, `viewVisible(layout, viewId)`, `revealAction(layout, viewId, focused)` | the panel (`WorkbenchPanel`: a region or `main-left`/`main-right`) a view is in, whether it is on screen, and what a view that wants attention does: `none`, `badge` (you work in its panel) or `show` (D-349) |
 
 All operations are pure (they return a new layout). In the renderer, `updateLayout(fn)`
 (`renderer/workbench/store.ts`) applies one, normalises and saves (debounced `layout.set`). Host code
 (the builder, level 1) writes with `setLayout()` (`main/layout`) and the renderer follows the
 `layout.changed` event.
+
+The panel you are working in is `focusedPanel()` / `useFocusedPanel` (`renderer/workbench/focusedPanel.ts`):
+the `data-panel` of the last focus or click (regions, lower halves and main-area panes set it; a chat
+sets `chat`, which counts as none), undefined while Jig's window isn't focused. Jig's own view badges
+go through `setViewBadge(viewId, text?)` (`renderer/workbench/viewBadges.ts`), shown by the same
+`ViewBadge` as add-ons' badges (D-349).
 
 ## Registered ids
 

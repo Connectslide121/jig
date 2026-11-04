@@ -35,11 +35,12 @@ Claude checks its own web work in a real Chromium page inside Jig. **Each chat h
 (D-320), so chats browsing at the same time never get in each other's way. A page is offscreen with
 its own size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a
 scaled picture of it, so the view's size never limits Claude, and resizing never moves anything on
-screen. The view opens by itself when a chat starts browsing; turn off Settings → Chats → **Show
+screen. The view opens by itself when a chat starts browsing, except while you work on another tab
+of its panel: then its tab gets a badge (the number of chats that browsed) until you look (D-349). Turn off Settings → Chats → **Show
 Claude’s browser when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can
 take over inside a page for sign-ins and other steps Claude needs your help with. The address is
 read-only; there are no user Back/Forward, Reload, viewport or test-launch controls in this view.
-A permanent hint explains who controls it and links to **open Browser** for personal browsing.
+A permanent hint at the bottom explains who controls it and links to **open Browser** for personal browsing.
 Console and Network remain available for inspection (D-226).
 
 ## One page per chat (D-320)

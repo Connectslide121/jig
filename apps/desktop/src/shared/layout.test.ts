@@ -20,8 +20,10 @@ import {
   openTab,
   openViewTab,
   paneActive,
+  panelOfView,
   paneTabs,
   reorderView,
+  revealAction,
   saveNamedLayout,
   setPaneSize,
   setRegion,
@@ -31,6 +33,7 @@ import {
   toggleRegion,
   updateTabParams,
   VIEW_TAB,
+  viewVisible,
 } from "./layout";
 
 const views = [
@@ -418,5 +421,52 @@ describe("dropView", () => {
     l = dropView(l, "jig.sessions", "right");
     expect(l.right.views).toEqual(["jig.sessions"]);
     expect(dropView(l, "jig.terminal", "left", "jig.terminal")).toBe(l);
+  });
+});
+
+describe("revealAction (a view that wants attention, D-349)", () => {
+  // Projects and Sessions share the left sidebar; Projects is the shown one.
+  const layout = () => setRegion(base(), "left", { collapsed: false });
+
+  it("finds the panel a view is in: a region or the main-area pane of its tab", () => {
+    expect(panelOfView(layout(), "jig.sessions")).toBe("left");
+    expect(panelOfView(layout(), "jig.terminal")).toBe("bottom");
+    const tab = openViewTab(layout(), "jig.sessions");
+    expect(panelOfView(tab.layout, "jig.sessions")).toBe("main-left");
+    const two = openTab(tab.layout, { type: "jig.chat", params: { sessionId: "a" } }).layout;
+    expect(panelOfView(moveTabToPane(two, tab.tabId, "right"), "jig.sessions")).toBe("main-right");
+    expect(panelOfView(hideView(layout(), "jig.sessions"), "jig.sessions")).toBeUndefined();
+  });
+
+  it("knows whether a view is on screen", () => {
+    expect(viewVisible(layout(), "jig.projects")).toBe(true);
+    expect(viewVisible(layout(), "jig.sessions")).toBe(false);
+    expect(viewVisible(setRegion(layout(), "left", { collapsed: true }), "jig.projects")).toBe(false);
+    const tab = openViewTab(layout(), "jig.sessions");
+    expect(viewVisible(tab.layout, "jig.sessions")).toBe(true);
+    const behind = openTab(tab.layout, { type: "jig.chat", params: { sessionId: "a" } }).layout;
+    expect(viewVisible(behind, "jig.sessions")).toBe(false);
+  });
+
+  it("does nothing when the view is on screen", () => {
+    expect(revealAction(layout(), "jig.projects", "left")).toBe("none");
+    expect(revealAction(layout(), "jig.projects", undefined)).toBe("none");
+  });
+
+  it("badges instead of switching when you work in the view's panel", () => {
+    expect(revealAction(layout(), "jig.sessions", "left")).toBe("badge");
+    const tab = openViewTab(layout(), "jig.sessions");
+    const behind = openTab(tab.layout, { type: "jig.chat", params: { sessionId: "a" } }).layout;
+    expect(revealAction(behind, "jig.sessions", "main-left")).toBe("badge");
+  });
+
+  it("shows the view when you work elsewhere, in a chat or outside Jig", () => {
+    expect(revealAction(layout(), "jig.sessions", "bottom")).toBe("show");
+    expect(revealAction(layout(), "jig.sessions", "main-left")).toBe("show");
+    expect(revealAction(layout(), "jig.sessions", undefined)).toBe("show");
+    expect(revealAction(setRegion(layout(), "left", { collapsed: true }), "jig.projects", "left")).toBe(
+      "show",
+    );
+    expect(revealAction(hideView(layout(), "jig.sessions"), "jig.sessions", "main-left")).toBe("show");
   });
 });

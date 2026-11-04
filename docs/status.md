@@ -330,6 +330,14 @@ test was run once for its screenshot). **Check in the next daily (Sprinta Daily,
 6. The New Podium Daily (external organiser) may refuse captions for real: its orange line should now
    say so, and the local transcript should cover it.
 
+Claude's browser stays out of your way (2026-11-05, D-349): when a chat browses while you work on
+another tab of the panel the browser is in (a sidebar, the bottom panel or a main-area pane), the panel
+no longer switches; the browser's tab gets a badge with the number of chats that browsed, cleared when
+you show it. In any other case (you're in another panel, in a chat, or outside Jig) it still shows
+itself. Covered by `e2e/browser-reveal.spec.ts` and the `revealAction` unit tests. Needs testing on
+your machine: a queue chat browsing while you read Pipelines in the browser's sidebar (badge, no
+switch), and while you type in another chat (switches).
+
 Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.

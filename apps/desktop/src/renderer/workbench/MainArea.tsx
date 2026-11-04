@@ -289,6 +289,7 @@ function TabPane({
     <div
       className="flex h-full min-w-0 flex-1 flex-col"
       data-testid={`main-pane-${pane}`}
+      data-panel={`main-${pane}`}
       // A click anywhere in a pane gives it the focus (where new tabs open).
       onMouseDownCapture={() => {
         if (split && !focused && active) workbench.activateTab(active);

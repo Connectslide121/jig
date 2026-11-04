@@ -28,6 +28,7 @@ import { call, useHostEvent } from "../lib/host";
 import { useConfig } from "../stores/config";
 import { useUsageSync } from "../stores/usage";
 import { DialogHost, ErrorBoundary, MenuHost } from "../ui";
+import { useTrackFocusedPanel } from "./focusedPanel";
 import { MainArea } from "./MainArea";
 import { useProjects } from "./projects";
 import { Region, ViewDropEdges } from "./Region";
@@ -92,6 +93,7 @@ export function Workbench() {
   useShellState();
   useSessionsSync();
   useTerminalsSync();
+  useTrackFocusedPanel();
   useBrowserReveal();
   useAddonsSync();
   useBuildsSync();
