@@ -250,6 +250,24 @@ is the same target as a toast button (`{ view }`, `{ tab, params? }`, `{ run, ar
 `{ file }`). Results show after the files, one group per provider titled `title`; a provider gets
 1.5 s, then it's left out of that search. Queries are debounced as you type.
 
+## Asking before Jig quits (D-343)
+
+`contributes.quitGuards` (`[{ id, run }]`): when Jig is about to quit (menu, Alt+F4, closing the last
+window, an update's restart), Jig calls `run(undefined, api)` and waits up to 2 s. Return `null` when
+there is nothing to ask, or an `AddonQuitAnswer`:
+
+```ts
+{ message: "A timer is running: Checkout · Shop · 1:23",
+  detail: "Kept running, it goes on counting from 09:05.",
+  actions: [{ id: "stop", label: "Stop timer and quit", run: "stop" },   // host.ts export, called with args
+            { id: "keep", label: "Keep it running and quit" }] }         // no run: only quits
+```
+
+Jig lists every answer (its own, such as an active meeting, and other add-ons') in one modal with your
+icon and name, with Cancel and Quit anyway. An action calls its `run` export with `args`, then Jig
+quits; if it throws, Jig stays open and shows the error. A guard that throws or is slow is skipped. At
+most 3 actions; ask only for something the user would lose or forget. Hidden Jig (tests) never asks.
+
 ## Add-ons working together (D-215)
 
 An add-on lists host functions others may call in its manifest's top-level `exports`; they call them

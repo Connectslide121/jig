@@ -96,6 +96,20 @@ export interface AddonSearchQuery {
   cwd?: string;
 }
 
+/**
+ * A quit guard's answer (`contributes.quitGuards`, slot `app.quitGuard`): why Jig should ask before it
+ * quits. Return `null` when there is nothing to ask. Jig lists every answer in one modal with Cancel and
+ * "Quit anyway"; an action runs its host.ts export (`run`, with `args`) and then Jig quits.
+ */
+export interface AddonQuitAnswer {
+  /** One line, e.g. "A timer is running: Shop · Contoso · 1:23". */
+  message: string;
+  /** A second line: what happens if you quit. */
+  detail?: string;
+  /** Up to 3 buttons; `run` is optional (a button without it only quits). */
+  actions?: Array<{ id: string; label: string; run?: string; args?: unknown }>;
+}
+
 /** Another add-on, as other add-ons see it: `exports` are the host methods it lets them call. */
 export interface AddonPublicInfo {
   id: string;

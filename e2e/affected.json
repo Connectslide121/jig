@@ -32,6 +32,18 @@
   "rules": [
     {
       "files": [
+        "apps/desktop/src/main/quit/**",
+        "apps/desktop/src/shared/quit.ts",
+        "apps/desktop/src/renderer/features/quit/**",
+        "apps/desktop/src/main/appWindows.ts",
+        "apps/desktop/src/main/window.ts",
+        "apps/desktop/src/main/addons/**",
+        "packages/sdk/src/manifest.ts"
+      ],
+      "specs": ["quit-guard.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/renderer/features/about/**",
         "apps/desktop/src/main/about/**",
         "packages/sdk/src/slots.ts"

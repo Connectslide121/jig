@@ -394,7 +394,7 @@ A contribution targets a **slot**. Slot ids are defined in `packages/sdk` (`SLOT
 | Chat | `chat.toolRenderer` (custom card for a tool result), `chat.permissionRenderer` (an add-on's own approval card for its tool, which can change the input), `prompt` (a reusable prompt shown as a button) |
 | Background | `watcher` (host-side job on an interval or schedule), `jig.event` (host code when a chat finishes, a commit lands, the project changes; D-215) |
 | Claude | `claude.tool`, `claude.context` |
-| Other | `search.provider` (results in Go to), `settings.page`, `theme` |
+| Other | `search.provider` (results in Go to), `app.quitGuard` (asks before Jig quits, D-343), `settings.page`, `theme` |
 
 Besides slots, the API gives add-ons toasts with buttons, system notifications, badges on their
 views, live program output (`spawn`), file watching, and calling each other's shared host methods
@@ -554,6 +554,25 @@ extension) and `code` — never a login. Updates: from a git clone, pull + build
 launcher (`apps/launcher`: waits for Jig's "ready" file, falls back to the previous build, then safe
 mode with your add-ons off, and Jig shows a banner); installed, the latest GitHub release page. Guide: `docs/guides/packaging.md`; reference:
 `docs/reference/setup.md`.
+
+### 12.1 Quitting (D-343)
+
+Everything that closes Jig goes through `main/quit`: the app menu's Quit (`app.quit()`), Alt+F4 or the
+window's × on the last window (`guardWindowClose` cancels that close and asks), `window-all-closed`,
+and installing an update (`updates.apply` calls `requestQuit(then, "update")`).
+
+1. `requestQuit` asks every guard at once: core ones from `registerQuitGuard` (Meetings) and the
+   add-ons' `contributes.quitGuards` (through `AddonService.quitGuards`). Each gets 2 s; a slow or
+   failing one is skipped and logged. Hidden Jig (`JIG_HIDDEN`) skips this unless `JIG_ASK_BEFORE_QUIT`.
+2. No answers: the quit is confirmed and goes on. Answers: the quit is cancelled and the workbench gets
+   `quit.ask` (purpose and reasons) and shows the quit modal (`features/quit/QuitDialog.tsx`); with no
+   workbench window a system message box asks instead.
+3. The modal answers with `quit.decide`: Cancel ends it; an action runs (an add-on's host export) and
+   then quits; Quit anyway quits. Quitting runs the waiting continuation (`app.quit()`, or the update's
+   installer/restart).
+4. The flow's prepended `before-quit` listener then runs the flushes from `beforeQuitting` once (the
+   sessions' last writes) and quits for real. Other `before-quit` listeners (Meetings marks the call
+   window as closing) act only when the event isn't `defaultPrevented`.
 
 ## 13. Testing
 

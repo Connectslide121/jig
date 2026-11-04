@@ -8,8 +8,8 @@ import { getEngine, sessionEnv } from "../engine";
 import { codexSessionEnv } from "../engine/types";
 import { handle } from "../ipc/router";
 import { logger } from "../log";
-import { hasActiveMeeting } from "../meetings";
 import { codexBinary } from "../providers";
+import { requestQuit } from "../quit";
 import { sessionManager } from "../sessions";
 import { paths } from "../state/paths";
 import { claudeBinary } from "../terminals/claudeBinary";
@@ -120,14 +120,14 @@ export function registerSetupHandlers(): void {
         await downloadWindowsUpdate();
         return { restarting: false };
       }
-      if (hasActiveMeeting())
-        throw new JigError("meeting_active", "Leave the meeting before restarting Jig to install an update.");
       if ((await sessionManager().list()).some((chat) => chat.status === "working"))
         throw new JigError(
           "chats_active",
           "Wait for your running chats to finish before installing the update.",
         );
-      return { restarting: installWindowsUpdate() };
+      // A meeting or an add-on that asks before quitting gets the quit modal first (D-343); the update
+      // installs from its choice, never silently blocked.
+      return { restarting: await requestQuit(() => void installWindowsUpdate(), "update") };
     }
     const info = await checkForUpdates();
     if (info.mode === "release") {
@@ -145,8 +145,12 @@ export function registerSetupHandlers(): void {
       );
       log.info(`Updated ${result.from.slice(0, 8)} → ${result.to.slice(0, 8)}`);
       const restart = restarter();
-      if (restart) setTimeout(() => restart(join(repo, "apps", "desktop"), result.previous), 300);
-      return { restarting: Boolean(restart) };
+      if (!restart) return { restarting: false };
+      const restarting = await requestQuit(
+        () => setTimeout(() => restart(join(repo, "apps", "desktop"), result.previous), 300),
+        "update",
+      );
+      return { restarting };
     } catch (error) {
       throw new JigError("update_failed", (error as Error).message);
     }

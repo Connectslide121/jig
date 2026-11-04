@@ -313,6 +313,7 @@ They can plug into 20 places:
 | `settings.page` | a page in Settings | `theme` | a colour theme |
 | `claude.tool` | a tool Claude can use in every chat | `claude.context` | what Claude knows in every turn |
 | `jig.event` | host code when a chat finishes, a commit lands… | `search.provider` | results in Jig's search (Ctrl+P) |
+| `app.quitGuard` | asks before Jig quits (a running timer…) | | |
 
 Built in: **Git**, **Repos**, **Files**, **Scripts**, **Pipelines** and **Boards** (Azure DevOps), **Releases**,
 **Workflows** and **Tasks** are add-ons too, written against the same API. Add-ons can also stream a

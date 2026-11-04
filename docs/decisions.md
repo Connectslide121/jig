@@ -5242,3 +5242,39 @@ provider, capabilities and Claude as the default still hold.
   visible while you edit it.
 - **Claude's `card` tool** stays plain text: images as `[image: name]`, rich fields as text, comments
   as text; `descriptionHtml` / `acceptanceHtml` only when they hold images (so an edit can keep them).
+
+## D-343: One quit flow, and add-ons can ask before Jig quits
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: "Time tracker: warn if it's running when I close Jig. Show a modal if I try
+  to close Jig while the time tracker is tracking." Per AGENTS.md this starts as an add-on API, not
+  one-off core code; Meetings' own native "Quit Jig and leave the active meeting?" box is folded into it.
+- **Slot `app.quitGuard`** (manifest `contributes.quitGuards: [{ id, run }]`): `run` is a host.ts export
+  called with no arguments when Jig is about to quit, answering `null` or an `AddonQuitAnswer`
+  `{ message, detail?, actions?: [{ id, label, run?, args? }] }` (at most 3 actions). A manifest
+  contribution, like `search`, rather than a host API to register at runtime (Claude, on my own): Jig
+  knows which add-ons can ask without starting anything, the builder's check sees the export, and an
+  older Jig simply ignores the key.
+- **One flow in main** (`main/quit`): quitting from a menu, Alt+F4 or the window's ×, closing the last
+  window, and installing an update all go through `requestQuit`. Core features register with
+  `registerQuitGuard` (Meetings: "You're in a meeting"), add-ons through their guards. Every guard is
+  asked at once, given 2 s (add-ons 1.75 s each, so one slow add-on is skipped and logged on its own);
+  one that throws is skipped and logged. When any answers, the quit is cancelled and the workbench
+  shows one modal.
+- **The modal** (Claude, on my own on the layout): "Quit Jig?" (or "Restart Jig to install the
+  update?"), one row per reason: the add-on's icon in a fixed slot, its name, the message and detail,
+  and its actions as small buttons under the text. Footer: Cancel (focused, the default; Escape and ×
+  too) and Quit anyway / Restart anyway. An action runs, then Jig quits; a failing action keeps the
+  modal open and shows a toast. Without a workbench window (only the Meetings lobby left open), the
+  system's own question box lists the reasons instead.
+- **Flushes after the choice:** work that must end before quitting (the last chat writes, which
+  sessions used to do in its own `before-quit`) registers with `beforeQuitting` and runs once, after
+  the user agreed. The flow's `before-quit` listener is prepended, so later listeners see an asked or
+  cancelled quit as `defaultPrevented`.
+- **Updates are never blocked silently:** "Install and restart" asks the same guards first (the
+  installer starts only on the choice); the old "Leave the meeting before restarting" error is gone.
+  Running chats still block an install with a message, as before.
+- **Hidden (tests):** `JIG_HIDDEN` never asks; e2e opts in with `JIG_ASK_BEFORE_QUIT=1`.
+- **Time add-on (Jon's own, 1.1.0):** while a timer runs it answers "A timer is running: description ·
+  project · 1:23", with "Stop timer and quit" (kept as an entry when it lasted a minute) and "Keep it
+  running and quit"; its detail says it goes on counting from its start time while Jig is closed.

@@ -2,7 +2,7 @@
 
 Source of truth: `packages/sdk/src/slots.ts` (`SLOTS`, `MANIFEST_KEY`). A contribution names a slot by
 its manifest key in `addon.json` → `contributes`. Components and handlers are named exports of the
-add-on's `ui.tsx`; watchers, tools, context, events and search providers are named exports of
+add-on's `ui.tsx`; watchers, tools, context, events, search providers and quit guards are named exports of
 `host.ts` (the builder's check fails when one is missing). Ids are namespaced by Jig
 (`addon.<addon-id>.<id>`), so they never collide. Claude tools are named `addon_<addon-id>_<id>` with
 `-` turned into `_`; if two add-ons end up with the same name, the first one loaded keeps it.
@@ -26,6 +26,7 @@ add-on's `ui.tsx`; watchers, tools, context, events and search providers are nam
 | `claude.tool` | `tools` | `id` (`a-z0-9_`), `description` (when to use it), `params?` (`{ name: { type?, description?, optional?, enum? } }`), `readOnly?`, `alwaysLoad?` (always in Claude's prompt, never deferred behind Claude Code's tool search; D-158), `run` | host: `run({ ...args, chat: { cwd, projectId, sessionId } }, api)` (`sessionId`: the chat that called), returns text or JSON | a tool Claude can use in every new chat, `mcp__jig__addon_<add-on>_<id>`; read-only tools run without asking (D-115) |
 | `jig.event` | `events` | `on` (`chat.finished`, `chat.needsYou`, `chat.failed`, `git.commit`, `git.branch`, `project.active`, `azure.tenant`), `run` | host: `run(payload, api)` (`docs/reference/addon-api.md` → Jig events) | background, in the add-on's host process, whenever it happens (D-215) |
 | `search.provider` | `search` | `id`, `title`, `icon?`, `run` | host: `run({ query, projectId?, cwd? }, api)` → up to 8 `{ id, label, detail?, icon?, open }` within 1.5 s | Jig's search (top bar, Ctrl+P), a group after the files (D-215) |
+| `app.quitGuard` | `quitGuards` | `id`, `run` | host: `run(undefined, api)` → `null` or `{ message, detail?, actions?: [{ id, label, run?, args? }] }` within 2 s | Jig's quit modal: one row per answer; an action runs `run(args)`, then Jig quits (D-343) |
 | `settings.page` | `settings` | `title`, `component` | `{ ctx }` | Settings, as its own page |
 | `theme` | `themes` | `path`, `label?` | — | Settings → Appearance (Jig or VS Code theme JSON) |
 

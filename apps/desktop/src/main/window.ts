@@ -5,6 +5,7 @@ import { z } from "zod";
 import { closeHelpersIfAlone, hiddenMode, openExternal } from "./appWindows";
 import { getConfig, onConfigChange } from "./config";
 import { logger } from "./log";
+import { guardWindowClose } from "./quit";
 import { readJson, writeJson } from "./state/jsonStore";
 import { paths } from "./state/paths";
 
@@ -117,6 +118,8 @@ export async function createMainWindow(): Promise<BrowserWindow> {
   window.on("unmaximize", saveState);
   // Hidden helper windows (Claude's browser) must not keep Jig running after its last window closes.
   window.on("closed", closeHelpersIfAlone);
+  // Closing the last window quits Jig, so it asks first like quitting does (D-343).
+  guardWindowClose(window);
   // "Hey Jig" listens while Jig is minimized or behind other windows (D-278): its audio and
   // timers must not be slowed down then. Otherwise Chromium's usual saving applies.
   const throttle = (wake: boolean) => {

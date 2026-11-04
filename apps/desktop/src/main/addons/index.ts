@@ -26,6 +26,7 @@ import { logger } from "../log";
 import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
 import { providerStatus } from "../providers";
+import { GUARD_TIMEOUT_MS, registerQuitGuard } from "../quit";
 import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { notificationsAllowed } from "../sessions/notify";
@@ -371,6 +372,24 @@ export async function startAddons(): Promise<void> {
     .catch(() => undefined);
   projectStore().onChange(followProjects);
   app.on("will-quit", () => git.stop());
+  // Add-ons' quit guards (`contributes.quitGuards`, D-343): their answers join Jig's quit modal.
+  registerQuitGuard("addons", async () =>
+    // Each add-on gets a little less than the whole flow, so a slow one is skipped on its own.
+    (await s.quitGuards(GUARD_TIMEOUT_MS - 250)).map((g) => ({
+      reason: {
+        key: `addon:${g.addonId}:${g.guard}`,
+        source: g.name,
+        icon: g.icon,
+        message: g.answer.message,
+        detail: g.answer.detail,
+        actions: (g.answer.actions ?? []).map((a) => ({ id: a.id, label: a.label })),
+      },
+      run: async (actionId: string) => {
+        const action = g.answer.actions?.find((a) => a.id === actionId);
+        if (action?.run) await s.call(g.addonId, action.run, action.args);
+      },
+    })),
+  );
   handle("addons.addAttachment", ({ id, ...input }) => addAddonAttachment(paths.attachments(), id, input));
   handle("addons.storageGet", ({ id, key }) => s.storageGet(id, key));
   handle("addons.storageSet", ({ id, key, value }) => s.storageSet(id, key, value));

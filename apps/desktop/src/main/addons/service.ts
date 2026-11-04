@@ -2,6 +2,7 @@ import { type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import {
+  type AddonQuitAnswer,
   type AddonSearchQuery,
   type AddonSearchResult,
   addonActionId,
@@ -331,6 +332,48 @@ export class AddonService {
     return (await Promise.all(jobs)).filter((g) => g !== undefined);
   }
 
+  /**
+   * Asks every quit guard (`contributes.quitGuards`) at once. One that fails or takes longer than
+   * `timeoutMs` is skipped and logged; answers that aren't an `AddonQuitAnswer` are dropped.
+   */
+  async quitGuards(
+    timeoutMs = 2_000,
+  ): Promise<
+    Array<{ addonId: string; guard: string; name: string; icon?: string; answer: AddonQuitAnswer }>
+  > {
+    const jobs = [...this.loaded.values()].flatMap((l) =>
+      l.info.enabled && l.host && !l.info.errors.length
+        ? (l.record.manifest?.contributes.quitGuards ?? []).map(async (g) => {
+            let timer: NodeJS.Timeout | undefined;
+            const late = new Promise<"late">((resolve) => {
+              timer = setTimeout(() => resolve("late"), timeoutMs);
+            });
+            const value = await Promise.race([
+              l.host!.call(g.run, undefined, timeoutMs).catch((error: Error) => {
+                log.warn(`Quit guard ${l.info.id}.${g.id} failed, skipped: ${error.message}`);
+                return undefined;
+              }),
+              late,
+            ]);
+            clearTimeout(timer);
+            if (value === "late")
+              log.warn(`Quit guard ${l.info.id}.${g.id} took over ${timeoutMs} ms, skipped`);
+            const answer = quitAnswer(value);
+            return answer
+              ? {
+                  addonId: l.info.id,
+                  guard: g.id,
+                  name: l.info.name,
+                  icon: l.record.manifest?.icon,
+                  answer,
+                }
+              : undefined;
+          })
+        : [],
+    );
+    return (await Promise.all(jobs)).filter((a) => a !== undefined);
+  }
+
   /** Calls another add-on's shared host method (its manifest's `exports`) for `from` (D-215). */
   async callShared(from: string, id: string, method: string, args: unknown): Promise<unknown> {
     const target = this.get(id);
@@ -544,6 +587,27 @@ export class AddonService {
     this.reloadTimers.clear();
     for (const l of this.loaded.values()) this.unload(l);
   }
+}
+
+/** A quit guard's answer, checked and trimmed (at most 3 actions), or undefined for "nothing to ask". */
+export function quitAnswer(value: unknown): AddonQuitAnswer | undefined {
+  const x = value as AddonQuitAnswer | null | undefined;
+  if (!x || typeof x !== "object" || typeof x.message !== "string" || !x.message.trim()) return undefined;
+  const actions = (Array.isArray(x.actions) ? x.actions : [])
+    .filter(
+      (a) =>
+        !!a &&
+        typeof a.id === "string" &&
+        typeof a.label === "string" &&
+        (a.run === undefined || typeof a.run === "string"),
+    )
+    .slice(0, 3)
+    .map((a) => ({ id: a.id, label: a.label, run: a.run, args: a.args }));
+  return {
+    message: x.message,
+    detail: typeof x.detail === "string" ? x.detail : undefined,
+    actions,
+  };
 }
 
 function validResult(r: unknown): r is AddonSearchResult {

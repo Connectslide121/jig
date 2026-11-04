@@ -57,6 +57,7 @@ import type { AzureItem } from "./links";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { AiProvider, ProviderStatus } from "./providers";
+import type { QuitQuestion } from "./quit";
 import type { Routine, RoutineLogEntry, RoutineRun } from "./routines";
 import type { SetupCheck, UpdateInfo } from "./setup";
 import type { LibrarySkill, SkillDetails } from "./skills";
@@ -397,6 +398,11 @@ export interface HostMethods {
   "updates.check": { args: void; result: UpdateInfo };
   /** From a git clone: pull, build, restart. Installed Windows: download (on request), or install/restart. */
   "updates.apply": { args: void; result: { restarting: boolean } };
+  /**
+   * The answer to `quit.ask` (D-343): `quit: false` keeps Jig open; `quit: true` runs the chosen
+   * reason's action first (`reason` + `action`; a failing action keeps the question open) and quits.
+   */
+  "quit.decide": { args: { quit: boolean; reason?: string; action?: string }; result: void };
   "app.openExternal": { args: { url: string }; result: void };
   "app.showItemInFolder": { args: { path: string }; result: void };
   /** Opens a folder in Explorer/Finder or a file with its default app. */
@@ -857,6 +863,8 @@ export interface HostEvents {
   /** The host changed the layout (e.g. an accepted level-1 build). */
   "layout.changed": Layout;
   "updates.state": UpdateInfo;
+  /** Jig was about to quit and something asks first (D-343): the workbench shows the quit modal. */
+  "quit.ask": QuitQuestion;
   "projects.changed": ProjectsState;
   /** Transcript and metadata changes of one session. */
   "sessions.update": { sessionId: string; updates: ChatUpdate[] };

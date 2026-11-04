@@ -172,6 +172,12 @@ export const ManifestSchema = z.object({
        * given 1.5 s). `title` heads its group of results.
        */
       search: z.array(z.object({ id: Id, title: z.string(), icon: Icon, run: ExportName })).default([]),
+      /**
+       * Asks before Jig quits (slot `app.quitGuard`): a named export of `host.ts` called with no
+       * arguments when Jig is about to quit, returning `null` or an `AddonQuitAnswer` within 2 s (slower
+       * or failing guards are skipped). Jig shows every answer in one modal and quits only on a choice.
+       */
+      quitGuards: z.array(z.object({ id: Id, run: ExportName })).default([]),
       settings: z.object({ title: z.string(), component: ExportName }).optional(),
       themes: z.array(z.object({ label: z.string().optional(), path: z.string() })).default([]),
     })
@@ -226,6 +232,10 @@ function duplicateIds(m: AddonManifest): string[] {
     "search",
     c.search.map((t) => t.id),
   );
+  check(
+    "quitGuards",
+    c.quitGuards.map((g) => g.id),
+  );
   return errors;
 }
 
@@ -256,7 +266,7 @@ export function uiExports(m: AddonManifest): string[] {
   ];
 }
 
-/** host.ts export names the manifest refers to (watchers, tools, context, events, search, exports). */
+/** host.ts export names the manifest refers to (watchers, tools, context, events, search, quit guards, exports). */
 export function hostExports(m: AddonManifest): string[] {
   const c = m.contributes;
   return [
@@ -266,6 +276,7 @@ export function hostExports(m: AddonManifest): string[] {
       ...(c.context ? [c.context.run] : []),
       ...c.events.map((e) => e.run),
       ...c.search.map((x) => x.run),
+      ...c.quitGuards.map((g) => g.run),
       ...m.exports,
     ]),
   ];

@@ -78,7 +78,8 @@ settings, add-on permissions.
 | `usage.get` / `usage.refresh` | — | `UsageByProvider` | your plans' usage per provider: `claude` (5-hour and weekly windows from Claude Code) and `chatgpt` (from the Codex CLI's app-server, D-298; `docs/reference/usage.md`) |
 | `setup.check` | — | `SetupCheck[]` | first-run checks (`docs/reference/setup.md`) |
 | `updates.check` | — | `UpdateInfo` | git clone: commits behind upstream; installed: latest GitHub release |
-| `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236; `updates.state` says `download: "installing"` 2 s before Jig closes, D-252); source: pull/build/restart; other platforms: release page. Refuses active meetings/working chats; progress via `updates.state` |
+| `updates.apply` | — | `{ restarting }` | Windows: start the download when none is ready, else install the downloaded update with the installer's window shown and restart (D-236; `updates.state` says `download: "installing"` 2 s before Jig closes, D-252); source: pull/build/restart; other platforms: release page. Refuses working chats; asks the quit guards first (D-343: `restarting: false` while the quit modal asks, the install runs on its choice); progress via `updates.state` |
+| `quit.decide` | `{ quit, reason?, action? }` | — | the answer to `quit.ask` (D-343): `quit: false` keeps Jig open; `quit: true` runs the reason's action first (a failing action rejects and the question stays open), then quits or installs the update |
 | `app.openExternal` | `{ url }` | — | http(s)/mailto only, opens the default browser |
 | `app.showItemInFolder` | `{ path }` | — | reveals a file in Explorer/Finder |
 | `app.openPath` | `{ path }` | — | opens a folder in Explorer/Finder or a file with its default app; `open_failed` |
@@ -238,6 +239,7 @@ settings, add-on permissions.
 | `themes.changed` | — | a theme was installed/removed or a file in `~/.jig/themes` changed |
 | `layout.changed` | `Layout` | the host changed the layout (e.g. an accepted level-1 build) |
 | `projects.changed` | `ProjectsState` | after any project change |
+| `quit.ask` | `{ purpose: "quit" \| "update", reasons: QuitReason[] }` | Jig was about to quit and a quit guard asks first (D-343); only the workbench window gets it. `QuitReason` is `{ key, source, icon?, message, detail?, actions: [{ id, label }] }` (`shared/quit.ts`) |
 | `notify` | `{ title, message?, tone?, timeout?, addonId?, actions? }` | a host notification, shown as a toast; from an add-on's host code, `actions` (`{ label } & AddonTarget`) become buttons that open that add-on's view/tab, call its host, open a URL or preview a file |
 | `sessions.update` | `{ sessionId, updates: ChatUpdate[] }` | transcript/metadata/queue changes of a session |
 | `attempts.changed` | `AttemptRun` | a run started, was judged, kept or discarded |

@@ -66,6 +66,11 @@ export function mainWindow(): BrowserWindow | undefined {
   );
 }
 
+/** The workbench window (not the Meetings lobby or a waiting call window), when one is open. */
+export function workbenchWindow(): BrowserWindow | undefined {
+  return appWindows().find((w) => !background.has(w) && !secondary.has(w));
+}
+
 /**
  * Brings Jig's main window to the front, from a clicked notification or a second launch. Windows
  * refuses focus to a process that isn't in the foreground, so the window is briefly put on top to take it.
@@ -94,6 +99,13 @@ const background = new WeakMap<BrowserWindow, () => boolean>();
 
 export function markBackgroundWindow(window: BrowserWindow, idle: () => boolean): void {
   background.set(window, idle);
+}
+
+/** Closing `window` quits Jig: every other window of Jig's is an idle one waiting hidden. */
+export function closingQuits(window: BrowserWindow): boolean {
+  return appWindows()
+    .filter((w) => w !== window)
+    .every((w) => !w.isVisible() && Boolean(background.get(w)?.()));
 }
 
 /** When the last app window closes, the helpers (and idle background windows) go too, so the app can quit. */

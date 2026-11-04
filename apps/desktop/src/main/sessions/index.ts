@@ -43,6 +43,7 @@ import { logger } from "../log";
 import { projectStore } from "../projects";
 import { featureOneShot } from "../providers";
 import { codexHelperTools } from "../providers/helpers";
+import { beforeQuitting } from "../quit";
 import { routinesChanged } from "../routines";
 import { selectedSkillPlugins, skillLibrary } from "../skills";
 import { VOICE_GUIDANCE } from "../speech/voice";
@@ -576,17 +577,8 @@ export function startSessions(): void {
   handle("sessions.rewindFiles", ({ id, itemId, dryRun }) => m.rewindFiles(id, itemId, dryRun));
   handle("sessions.delete", ({ id }) => m.delete(id));
 
-  // Wait for the last session writes before quitting (once; the second quit goes through).
-  let quitting = false;
-  app.on("before-quit", (event) => {
-    if (quitting) return;
-    quitting = true;
-    event.preventDefault();
-    void m
-      .shutdown()
-      .catch(() => {})
-      .finally(() => app.quit());
-  });
+  // Wait for the last session writes before quitting (the quit flow runs it once, D-343).
+  beforeQuitting(() => m.shutdown());
 }
 
 /** `git diff --stat` against HEAD in a folder, for a limit handoff (D-338); "" outside a repository. */

@@ -28,6 +28,8 @@ export const SLOTS = {
     "Host code that runs when something happens in Jig: a chat finished or needs you, a commit, a branch switch, another active project.",
   "search.provider":
     "Results in Jig's search (top bar, Ctrl+P), e.g. work items or pipelines by name or number.",
+  "app.quitGuard":
+    "Host code Jig asks before it quits: a reason to wait (a running timer, unsaved work) with buttons such as Stop and quit.",
   "settings.page": "A page in Settings.",
   theme: "A colour theme (Jig or VS Code format JSON).",
 } as const;
@@ -55,6 +57,7 @@ export const MANIFEST_KEY: Record<SlotId, string> = {
   "claude.context": "context",
   "jig.event": "events",
   "search.provider": "search",
+  "app.quitGuard": "quitGuards",
   "settings.page": "settings",
   theme: "themes",
 };

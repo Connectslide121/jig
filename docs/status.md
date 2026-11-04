@@ -1,5 +1,17 @@
 # Status
 
+Jig asks before it quits (2026-11-04, D-343, Jon): when something would be lost or forgotten, quitting
+(the menu, Alt+F4, the window's ×, an update's restart) shows one **Quit Jig?** modal listing each
+reason as a row (icon, name, message, its own buttons), with Cancel (the default) and Quit anyway.
+Add-ons ask through the new `app.quitGuard` slot (`contributes.quitGuards`); an active meeting now asks
+in the same modal instead of a system message box, and installing an update asks the same way instead
+of refusing during a meeting. Your Time add-on (1.1.0) asks while a timer runs: "A timer is running:
+description · project · 1:23", with **Stop timer and quit** and **Keep it running and quit** (it keeps
+counting from its start time). How to try it: start a timer from the top bar, close Jig with the ×;
+try Cancel, then each button. Checked with the fake engine in Jig Dark and Light. Needs testing on
+your machine: Alt+F4, quitting from the taskbar's Close window, an update install while a timer runs,
+and a meeting plus a timer together (two rows).
+
 A board card like Azure DevOps' form (2026-11-04, D-342, Jon): opening a card in Code → Boards shows
 tabs **Details · Links (n) · Attachments (n)**. Details shows the description, acceptance criteria, repro
 steps, system info and custom HTML fields as rich text with their images (pasted screenshots

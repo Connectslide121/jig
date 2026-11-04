@@ -112,6 +112,10 @@ export const SLOT_EXAMPLES: Record<SlotId, { idea: string; snippet: string }> = 
     idea: "Find work items, pipelines or runbooks from Go to (Ctrl+P)",
     snippet: '"search": [{ "id": "cards", "title": "Work items", "icon": "kanban", "run": "searchCards" }]',
   },
+  "app.quitGuard": {
+    idea: "Ask before Jig closes while a timer runs or a deploy is still being watched",
+    snippet: '"quitGuards": [{ "id": "timer", "run": "beforeQuit" }]',
+  },
   "claude.context": {
     idea: "Project decisions and dependencies shared across chats: with every message",
     snippet: '"context": { "run": "context" }',

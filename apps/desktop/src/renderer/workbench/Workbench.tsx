@@ -14,6 +14,7 @@ import { NoteEditorHost } from "../features/knowledge/Notes";
 import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
+import { QuitDialogHost } from "../features/quit/QuitDialog";
 import { useSessionsSync } from "../features/sessions";
 import { HandoverDialogHost } from "../features/sessions/HandoverDialog";
 import { SavedChatsDialogHost } from "../features/sessions/SavedChatsDialog";
@@ -136,6 +137,7 @@ export function Workbench() {
         <StandupHost />
         <DialogHost />
         <UpdateInstallingHost />
+        <QuitDialogHost />
       </ErrorBoundary>
       <ErrorBoundary label="Notifications">
         <ToastHost />

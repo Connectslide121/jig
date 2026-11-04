@@ -7,7 +7,7 @@ import type { AddonInfo } from "../../shared/addons";
 import { setTokensFile } from "./css";
 import type { HostChannel } from "./hostProcess";
 import { createHostRuntime, type FromHost } from "./hostRuntime";
-import { AddonService } from "./service";
+import { AddonService, quitAnswer } from "./service";
 
 setTokensFile(fileURLToPath(new URL("../../renderer/styles/tokens.css", import.meta.url)));
 
@@ -283,5 +283,28 @@ export async function secret() { return "no"; }`,
       true,
     );
     s.stop();
+  });
+});
+
+describe("quitAnswer", () => {
+  it("keeps a message with its detail and up to 3 valid actions", () => {
+    expect(quitAnswer(null)).toBeUndefined();
+    expect(quitAnswer({ message: " " })).toBeUndefined();
+    const actions = [
+      { id: "stop", label: "Stop and quit", run: "stop", args: { x: 1 } },
+      { id: "bad", label: 3 },
+      { id: "keep", label: "Keep it" },
+      { id: "c", label: "C" },
+      { id: "d", label: "D" },
+    ];
+    expect(quitAnswer({ message: "A timer is running", detail: "1:23", actions })).toEqual({
+      message: "A timer is running",
+      detail: "1:23",
+      actions: [
+        { id: "stop", label: "Stop and quit", run: "stop", args: { x: 1 } },
+        { id: "keep", label: "Keep it", run: undefined, args: undefined },
+        { id: "c", label: "C", run: undefined, args: undefined },
+      ],
+    });
   });
 });

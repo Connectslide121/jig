@@ -44,8 +44,9 @@ Keep tests short and focused (under ~30 s): the slowest single test sets how lon
 - `JIG_HIDDEN=1`, so the windows never show: on a desktop they would take focus and the mouse could
   cancel a hover (`JIG_HIDDEN=` with an empty value to watch them). A hidden Jig sends no system
   notifications either (`notificationsAllowed`), which it otherwise would, being "in the background" Nor
-  does it ask before closing or quitting during a meeting: it leaves the meeting, because a native
-  question would pop up on the user's screen while agents run tests.
+  does it ask before closing or quitting (an active meeting, add-ons' quit guards, D-343): it just
+  quits. `JIG_ASK_BEFORE_QUIT=1` makes a hidden Jig ask in its quit modal anyway
+  (`e2e/quit-guard.spec.ts`).
 
 Tests that fake a home folder set `USERPROFILE`/`APPDATA` as well as `HOME` (Windows takes the home
 folder from them), and fake programs on `PATH` also get a `.cmd` next to them (Windows runs no

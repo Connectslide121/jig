@@ -59,6 +59,7 @@ import { addMessageContext, registerJigTools } from "../engine/jigTools";
 import { type CallContext, emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
+import { registerQuitGuard } from "../quit";
 import { createChat, sessionManager } from "../sessions";
 import { jigHome } from "../state/paths";
 import { APP_ICON } from "../window";
@@ -705,10 +706,6 @@ function ring(name: string | undefined): void {
   note.show();
 }
 
-export function hasActiveMeeting(): boolean {
-  return Boolean(activeId);
-}
-
 export async function startMeetings(): Promise<void> {
   await store.load();
   if (!store.settings().clientId && !process.env.JIG_HOME) {
@@ -761,25 +758,28 @@ export async function startMeetings(): Promise<void> {
       callback({});
     }
   });
+  // In a meeting, quitting asks first, in Jig's one quit modal (D-343).
+  registerQuitGuard("meetings", () =>
+    activeId && !quitting
+      ? [
+          {
+            reason: {
+              key: "meetings",
+              source: "Meetings",
+              icon: "video",
+              message: "You're in a meeting",
+              detail: "Quitting Jig leaves it.",
+              actions: [],
+            },
+          },
+        ]
+      : [],
+  );
+  // Runs only once the quit flow has let the quit through (an asked or cancelled quit is prevented).
   app.on("before-quit", (event) => {
-    if (!activeId || quitting) return;
-    // Hidden (tests): quit and leave without a question on the user's screen.
-    if (hiddenMode()) {
-      quitting = true;
-      return;
-    }
-    const choice = dialog.showMessageBoxSync({
-      type: "question",
-      message: "Quit Jig and leave the active meeting?",
-      buttons: ["Cancel", "Quit and leave"],
-      defaultId: 0,
-      cancelId: 0,
-    });
-    if (choice === 0) event.preventDefault();
-    else quitting = true;
-  });
-  app.on("before-quit", (event) => {
-    if (!event.defaultPrevented) appQuitting = true;
+    if (event.defaultPrevented) return;
+    appQuitting = true;
+    if (activeId) quitting = true;
   });
   // Meetings opens the lobby; the call window waits hidden beside it, ready to ring and to join (D-292).
   handle("meetings.open", async () => {

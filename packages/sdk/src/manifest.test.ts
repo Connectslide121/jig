@@ -108,6 +108,26 @@ describe("parseManifest", () => {
     expect(parseManifest("nope").errors.length).toBe(1);
   });
 
+  it("reads quit guards and lists their host functions", () => {
+    const { manifest, errors } = parseManifest({
+      ...minimal,
+      contributes: { quitGuards: [{ id: "timer", run: "beforeQuit" }] },
+    });
+    expect(errors).toEqual([]);
+    expect(hostExports(manifest!)).toEqual(["beforeQuit"]);
+    expect(
+      parseManifest({
+        ...minimal,
+        contributes: {
+          quitGuards: [
+            { id: "a", run: "x" },
+            { id: "a", run: "y" },
+          ],
+        },
+      }).errors,
+    ).toEqual(['contributes.quitGuards: "a" is used twice']);
+  });
+
   it("reads events, search providers and shared methods, and lists the host functions they name", () => {
     const { manifest, errors } = parseManifest({
       ...minimal,

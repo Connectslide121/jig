@@ -67,7 +67,7 @@ export async function validateAddon(dir: string, nodePaths: string[]): Promise<V
       }
     } else if (hostExports(manifest).length)
       problems.push(
-        "addon.json refers to host functions (watchers, tools, context, events, search or exports) but there is no host.ts.",
+        "addon.json refers to host functions (watchers, tools, context, events, search, quit guards or exports) but there is no host.ts.",
       );
   }
   return {
