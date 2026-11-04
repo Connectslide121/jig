@@ -3737,7 +3737,7 @@ network calls without the meeting sign-in; add-ons reach it through the SDK, not
   to Teams' two shapes (`TEAMS_CHAT_ID`) because they go into Graph paths. `meetings.chatConnect` is
   now allowed from the lobby too.
 
-## D-294: Claude Code stays the chat engine; ChatGPT (Codex) is a second provider for non-chat AI
+## D-294: Claude Code stays the chat engine; ChatGPT (Codex) is a second provider for non-chat AI _(chat engine part superseded by D-309)_
 
 - Status: accepted. Decided by Jon, 2026-11-03: he wrote "Claude Code is the only engine" (D-002,
   principle 1, D-124, D-247) and is dropping it. **New rule:** Claude Code stays the engine for chats
@@ -4076,3 +4076,38 @@ He wants the chat's message box there, reused rather than rebuilt, without the c
   empty when files remain (as when sending); both empty is `invalid_args`. Files are still checked to
   be the chat's attachments when the message is sent.
 
+## D-309: Two chat engines: Claude Code the default, Codex optional
+
+Supersedes the chat part of D-294 ("Claude Code stays the engine for chats"), and with it the
+"Claude Code is the only engine" wording of D-002 and principle 1 for chats. The non-chat parts of
+D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
+
+- Status: accepted. Decided by Jon, 2026-11-04 (plan "Codex chats in Jig", task Codex chat A): chats
+  may run on OpenAI's official Codex, signed in with his ChatGPT plan, beside Claude Code. **Claude
+  stays the default**; Codex is optional. A chat is Claude or Codex for its whole life, never mixed:
+  you pick at creation and can't switch later. This phase only makes room for the second engine;
+  nothing changes for Claude chats.
+- **One `Engine` interface, one engine per provider.** `getEngine(provider = "claude")` keeps a
+  singleton per provider; without a provider it is Claude's, so the existing callers (one-shots,
+  `callTool`, usage, saved conversations, completion) keep working unchanged. `Engine.kind` is
+  `claude | codex | fake`; `Engine.provider` says whose chats it runs. Each engine drives an official,
+  unmodified CLI: Jig still never runs an agent loop of its own.
+- **Capabilities, not provider checks** (Claude, on my own): `Engine.capabilities` /
+  `ENGINE_CAPABILITIES` in `shared/engine.ts` (planMode, questions, subagents, rewind, fork, history,
+  effortLevels, promptSuggestions), so the renderer can hide controls a provider lacks from the
+  chat's `provider` alone. Codex starts with all of them off except its own effort levels (low to
+  ultra, from `codex debug models`); a flag flips when its engine gains the feature.
+- **Where the provider lives** (Claude, on my own): `SessionMeta.provider` on every new chat (missing
+  = Claude, so every chat from before reads as a Claude chat); `engine.provider` for new chats, a
+  project's `provider` overriding it, and `sessions.create { provider }` for the new-chat picker. The
+  project's `model` and `effort` belong to its own provider: a chat on the other provider gets
+  `engine.defaultModel` or `engine.codexModel` (default `sol`, a family alias, D-310). Forks keep the
+  provider; builder, attempt, worktree and opened Claude Code chats stay on Claude.
+- **Names** (Claude, on my own): the chat provider is `codex` (the engine that runs), while the
+  one-shot provider stays `chatgpt` (the plan that answers, D-294). Change both together if you'd
+  rather have one word.
+- **Settings:** `engine.provider` and `engine.codexPath` are protected (they decide which plan pays
+  and which program runs); `engine.codexModel` isn't. `codexBinary()` prefers `engine.codexPath`.
+- **Tests:** `JIG_ENGINE=fake` stands in for both: `getEngine("codex")` is a `FakeEngine` with
+  `provider: "codex"` and Codex's capabilities. Until the Codex engine exists, `getEngine("codex")`
+  throws `codex_unavailable` outside the fake engine.

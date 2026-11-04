@@ -2,16 +2,19 @@ import { randomUUID } from "node:crypto";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
-import type {
-  BackgroundTask,
-  EffortLevel,
-  EngineEvent,
-  McpServerInfo,
-  PermissionMode,
-  SavedClaudeMessage,
-  SavedClaudeSession,
-  SavedToolUse,
-  SlashCommandInfo,
+import {
+  type BackgroundTask,
+  type ChatProvider,
+  type EffortLevel,
+  ENGINE_CAPABILITIES,
+  type EngineCapabilities,
+  type EngineEvent,
+  type McpServerInfo,
+  type PermissionMode,
+  type SavedClaudeMessage,
+  type SavedClaudeSession,
+  type SavedToolUse,
+  type SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { runFakeBuilder } from "./fakeBuilder";
@@ -94,7 +97,14 @@ export const FAKE_SAVED_ID = "saved-1";
  */
 export class FakeEngine implements Engine {
   readonly kind = "fake" as const;
-  constructor(private readonly delayMs = Number(process.env.JIG_FAKE_DELAY ?? 15)) {}
+  /** What the provider it stands in for can do (`JIG_ENGINE=fake` runs Codex chats on it too). */
+  readonly capabilities: EngineCapabilities;
+  constructor(
+    private readonly delayMs = Number(process.env.JIG_FAKE_DELAY ?? 15),
+    readonly provider: ChatProvider = "claude",
+  ) {
+    this.capabilities = ENGINE_CAPABILITIES[provider];
+  }
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     // A fork continues the conversation under a new id, like Claude Code's forkSession.

@@ -5,23 +5,25 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { TenantTag } from "../../shared/azure";
 import { type ChatState, reduceEvent } from "../../shared/chat";
-import type {
-  ChatAttachment,
-  ChatItem,
-  ChatUpdate,
-  EffortLevel,
-  EngineEvent,
-  McpServerInfo,
-  ModelInfo,
-  PermissionDecision,
-  PermissionMode,
-  PermissionRequest,
-  QueuedMessage,
-  RewindResult,
-  SavedClaudeSession,
-  SessionMeta,
-  SessionSnapshot,
-  SlashCommandInfo,
+import {
+  type ChatAttachment,
+  type ChatItem,
+  type ChatProvider,
+  type ChatUpdate,
+  chatProvider,
+  type EffortLevel,
+  type EngineEvent,
+  type McpServerInfo,
+  type ModelInfo,
+  type PermissionDecision,
+  type PermissionMode,
+  type PermissionRequest,
+  type QueuedMessage,
+  type RewindResult,
+  type SavedClaudeSession,
+  type SessionMeta,
+  type SessionSnapshot,
+  type SlashCommandInfo,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import type { Engine, EngineSession, ToolOutput } from "../engine/types";
@@ -75,10 +77,14 @@ export interface SessionManagerOptions {
   dir: string;
   /** Images sent in chats (`~/.jig/attachments`). */
   attachmentsDir: string;
+  /** Claude's engine: Claude chats, and saved Claude Code conversations. */
   engine: Engine;
+  /** The engine for a chat's provider (D-309); without it every chat runs on `engine`. */
+  engineFor?: (provider: ChatProvider) => Engine;
   /** Settings at the time a Claude Code process starts. */
   engineSettings: () => {
     claudePath: string;
+    codexPath?: string;
     allowApiKey: boolean;
     env: Record<string, string | undefined>;
     promptSuggestions?: boolean;
@@ -155,9 +161,9 @@ interface Live {
 export class SessionManager {
   private sessions = new Map<string, Live>();
   private ready: Promise<void> | undefined;
-  /** Slash commands and skills by folder, and the model list, from the last Claude Code that told us. */
+  /** Slash commands and skills by provider and folder, and each provider's model list, as last told. */
   private commandCache = new Map<string, SlashCommandInfo[]>();
-  private modelCache: ModelInfo[] | undefined;
+  private modelCache = new Map<ChatProvider, ModelInfo[]>();
 
   constructor(private readonly options: SessionManagerOptions) {}
 
@@ -261,6 +267,8 @@ export class SessionManager {
     title?: string;
     model: string;
     permissionMode: PermissionMode;
+    /** Who runs it, for its whole life (D-309); default Claude. */
+    provider?: ChatProvider;
     kind?: SessionMeta["kind"];
     buildId?: string;
     effort?: SessionMeta["effort"];
@@ -270,6 +278,7 @@ export class SessionManager {
     const at = new Date().toISOString();
     const meta: SessionMeta = {
       id: randomUUID(),
+      provider: input.provider ?? "claude",
       draft: !input.kind,
       projectId: input.projectId,
       cwd: input.cwd,
@@ -300,6 +309,11 @@ export class SessionManager {
     return { meta: live.state.meta, items: live.state.items, queue: live.queue };
   }
 
+  /** The engine that runs this chat: its provider's (D-309). */
+  private engineOf(meta: SessionMeta): Engine {
+    return this.options.engineFor?.(chatProvider(meta)) ?? this.options.engine;
+  }
+
   private startEngine(live: Live): EngineSession {
     if (live.engine) return live.engine;
     const token = {};
@@ -313,7 +327,7 @@ export class SessionManager {
       live.state.meta = { ...live.state.meta, azureTenant: tenant };
       this.emit(live, [{ op: "meta", meta: live.state.meta }]);
     }
-    const session = this.options.engine.start(
+    const session = this.engineOf(meta).start(
       {
         cwd: meta.cwd,
         model: meta.model,
@@ -325,6 +339,7 @@ export class SessionManager {
         appendSystemPrompt: this.options.appendSystemPrompt(meta),
         env: settings.env,
         claudePath: settings.claudePath,
+        codexPath: settings.codexPath,
         promptSuggestions: settings.promptSuggestions,
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
@@ -647,6 +662,7 @@ export class SessionManager {
       title: `${source.meta.title} (fork)`,
       model: source.meta.model,
       permissionMode: source.meta.permissionMode,
+      provider: chatProvider(source.meta),
     });
     const live = await this.live(meta.id);
     live.state.items = source.items
@@ -850,6 +866,7 @@ export class SessionManager {
   async commands(id: string): Promise<SlashCommandInfo[]> {
     const live = await this.live(id);
     const key = JSON.stringify([
+      chatProvider(live.state.meta),
       live.state.meta.cwd,
       live.engine ? live.configurationKey : this.options.configurationKey?.(live.state.meta),
     ]);
@@ -865,12 +882,15 @@ export class SessionManager {
     }
   }
 
-  /** The models Claude Code offers (asked once, then remembered). */
+  /** The models the chat's provider offers (asked once per provider, then remembered). */
   async models(id: string): Promise<ModelInfo[]> {
-    if (this.modelCache) return this.modelCache;
     const live = await this.live(id);
-    this.modelCache = await withTimeout(this.startEngine(live).models(), 20_000);
-    return this.modelCache;
+    const provider = chatProvider(live.state.meta);
+    const cached = this.modelCache.get(provider);
+    if (cached) return cached;
+    const list = await withTimeout(this.startEngine(live).models(), 20_000);
+    this.modelCache.set(provider, list);
+    return list;
   }
 
   async setEffort(id: string, effort: EffortLevel | undefined): Promise<void> {

@@ -27,7 +27,7 @@ import {
 /**
  * Providers for Jig's non-chat AI calls (D-294): one text in, one text out, no tools. `claude` goes
  * through Claude Code's `oneShot`; `chatgpt` through OpenAI's Codex CLI (`codex exec`) with the user's
- * ChatGPT sign-in. Chats always run on Claude Code. Documented in docs/reference/engine.md.
+ * ChatGPT sign-in. Chats pick their engine separately (D-309). Documented in docs/reference/engine.md.
  */
 
 const log = logger("providers");
@@ -35,8 +35,10 @@ const log = logger("providers");
 /** Same limit as Claude Code's one-shot. */
 export const ONE_SHOT_TIMEOUT = 180_000;
 
-/** The Codex CLI the user installed (PATH), or undefined. */
+/** The Codex CLI: the user's own (`engine.codexPath`), else the one on PATH, or undefined. */
 export function codexBinary(): string | undefined {
+  const own = getConfig().engine.codexPath.trim();
+  if (own) return own;
   return findCodex({
     platform: process.platform,
     arch: process.arch,

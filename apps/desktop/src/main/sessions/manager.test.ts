@@ -2,7 +2,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ChatUpdate, SessionMeta } from "../../shared/engine";
+import { type ChatUpdate, chatProvider, type SessionMeta } from "../../shared/engine";
 import { FakeEngine } from "../engine/fake";
 import { cleanTitle, SessionManager, summarize } from "./manager";
 
@@ -103,6 +103,54 @@ describe("SessionManager", () => {
       const file = JSON.parse(await readFile(join(dir, `${session.id}.json`), "utf8").catch(() => "{}"));
       return file.items?.length === 4;
     });
+  });
+
+  it("runs each chat on its provider's engine and keeps the provider on forks (D-309)", async () => {
+    const claude = new FakeEngine(1);
+    const codex = new FakeEngine(1, "codex");
+    const started: string[] = [];
+    for (const engine of [claude, codex]) {
+      const start = engine.start.bind(engine);
+      engine.start = (options, onEvent) => {
+        started.push(engine.provider);
+        return start(options, onEvent);
+      };
+    }
+    const m = new SessionManager({
+      dir,
+      attachmentsDir: join(dir, "attachments"),
+      engine: claude,
+      engineFor: (provider) => (provider === "codex" ? codex : claude),
+      engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {} }),
+      appendSystemPrompt: () => "",
+      onUpdate: () => {},
+    });
+    const plain = await create(m);
+    expect(plain.provider).toBe("claude");
+    const chat = await m.create({ cwd: dir, model: "sol", permissionMode: "default", provider: "codex" });
+    expect(chat.provider).toBe("codex");
+    await m.send(chat.id, "Hello Codex");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    expect(started).toEqual(["codex"]);
+    expect((await m.fork(chat.id)).provider).toBe("codex");
+    await m.shutdown();
+  });
+
+  it("reads chats saved without a provider as Claude chats", async () => {
+    const m = manager();
+    const old = await create(m);
+    await m.send(old.id, "Hello");
+    await until(async () => (await metaOf(m, old.id)).turns === 1);
+    await m.shutdown();
+    const file = join(dir, `${old.id}.json`);
+    const saved = JSON.parse(await readFile(file, "utf8"));
+    delete saved.meta.provider;
+    await writeFile(file, JSON.stringify(saved));
+    const again = manager();
+    const meta = await metaOf(again, old.id);
+    expect(meta.provider).toBeUndefined();
+    expect(chatProvider(meta)).toBe("claude");
+    await again.shutdown();
   });
 
   it("sends add-ons' context with each message, without showing it in the transcript", async () => {

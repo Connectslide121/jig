@@ -1,7 +1,8 @@
 # Engine and sessions reference
 
-Claude Code is the chat engine (principle 1); non-chat one-shot calls may also run on ChatGPT through
-the Codex CLI (D-294, see Providers below). Code: `apps/desktop/src/main/engine/` (engine),
+Chats run on one of two engines (principle 1, D-309): Claude Code, the default, or OpenAI's Codex
+(optional, signed in with ChatGPT; see Chat providers below). Non-chat one-shot calls may also run on
+ChatGPT through the Codex CLI (D-294, see Providers below). Code: `apps/desktop/src/main/engine/` (engine),
 `apps/desktop/src/main/sessions/` (session manager), `apps/desktop/src/shared/engine.ts` (types) and
 `apps/desktop/src/shared/chat.ts` (transcript reducer).
 
@@ -9,7 +10,9 @@ the Codex CLI (D-294, see Providers below). Code: `apps/desktop/src/main/engine/
 
 ```ts
 interface Engine {
-  kind: "claude" | "fake";
+  kind: "claude" | "codex" | "fake"; // fake: the scripted engine, for either provider
+  provider: "claude" | "codex";      // whose chats it runs
+  capabilities: EngineCapabilities;  // what its chats can do (table below)
   start(options: StartOptions, onEvent: (e: EngineEvent) => void): EngineSession;
   oneShot(prompt: string, options: OneShotOptions): Promise<string>; // no tools, one turn (phase 9)
 }
@@ -33,6 +36,38 @@ interface EngineSession {
   process and no quota. The trigger words and environment variables are in `docs/guides/testing.md`
   → The fake engine.
 - `normalize.ts` turns SDK messages into `EngineEvent`s and ignores anything it doesn't know.
+- **`getEngine(provider = "claude")`** (`index.ts`): one engine per provider for the run. Without a
+  provider it is Claude's, which also answers Jig's non-chat calls (one-shots, `callTool`, usage,
+  saved conversations). `JIG_ENGINE=fake` gives a `FakeEngine` for both, the Codex one with
+  `provider: "codex"` and Codex's capabilities. Until the Codex engine exists, `getEngine("codex")`
+  throws `codex_unavailable`.
+
+## Chat providers (D-309)
+
+A chat runs on Claude Code (the default) or on OpenAI's Codex, and keeps that provider for its whole
+life (`SessionMeta.provider`; missing = `claude`, so chats from before read as Claude chats,
+`chatProvider(meta)`). New chats take the provider asked for (`sessions.create { provider }`), else
+the project's `provider`, else `engine.provider`. The project's `model` and `effort` are for its own
+provider's chats; a chat on the other provider gets `engine.defaultModel` (Claude) or
+`engine.codexModel` (Codex). Forks keep the provider; builder, attempt, worktree and opened Claude
+Code chats stay on Claude. The session manager starts each chat on `engineFor(provider)`.
+
+`ENGINE_CAPABILITIES` (`shared/engine.ts`) says what each provider's chats can do, so the UI hides
+controls a provider doesn't have instead of showing dead buttons:
+
+| Capability | Claude | Codex (at first) | What it covers |
+|---|---|---|---|
+| `planMode` | yes | no | Plan mode and the approve-the-plan card (ExitPlanMode) |
+| `questions` | yes | no | questions with choices (AskUserQuestion) |
+| `subagents` | yes | no | jig-tester, jig-search (no `agents` are passed to Codex chats) |
+| `rewind` | yes | no | restoring files and the conversation (file checkpoints) |
+| `fork` | yes | no | forking a chat into a new branch |
+| `history` | yes | no | opening conversations the CLI saved on this machine |
+| `effortLevels` | low, medium, high, xhigh, max | low, medium, high, xhigh, max, ultra | the effort picker's levels (Codex's from `codex debug models`) |
+| `promptSuggestions` | yes | no | suggesting the next message after a turn |
+
+Jig's in-process tools (`mcpServers: { jig }`) go to Claude chats only; Codex chats get them as a
+local MCP server later. Routines and Artifacts stay on Claude (Claude's cloud).
 
 - **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
   an exact input, for Jig's routines and artifacts tabs.

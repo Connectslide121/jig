@@ -5,13 +5,14 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { getSessionMessages, listSessions, query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type {
-  EngineEvent,
-  ModelInfo,
-  PermissionMode,
-  SavedClaudeMessage,
-  SavedClaudeSession,
-  SavedToolUse,
+import {
+  ENGINE_CAPABILITIES,
+  type EngineEvent,
+  type ModelInfo,
+  type PermissionMode,
+  type SavedClaudeMessage,
+  type SavedClaudeSession,
+  type SavedToolUse,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { logger } from "../log";
@@ -39,6 +40,8 @@ const log = logger("engine");
  */
 export class ClaudeEngine implements Engine {
   readonly kind = "claude" as const;
+  readonly provider = "claude" as const;
+  readonly capabilities = ENGINE_CAPABILITIES.claude;
 
   /** Claude Code's saved conversations through the Agent SDK (it reads its own transcripts). */
   async savedSessions({ limit }: { limit: number }): Promise<SavedClaudeSession[]> {

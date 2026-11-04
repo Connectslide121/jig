@@ -6,7 +6,14 @@ import { aiLineHashes, correctionSignal } from "@jig/learning";
 import { app, BrowserWindow, dialog, Notification } from "electron";
 import { chatToMarkdown } from "../../shared/chatExport";
 import { toolUse } from "../../shared/chatStats";
-import type { PermissionMode, SessionMeta, SessionStatus } from "../../shared/engine";
+import {
+  type ChatProvider,
+  chatProvider,
+  ENGINE_CAPABILITIES,
+  type PermissionMode,
+  type SessionMeta,
+  type SessionStatus,
+} from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import { SEARCH_AGENT, SEARCH_GUIDANCE, searchAgent } from "../../shared/searcher";
 import { aiTransparencyGuidance } from "../../shared/skills";
@@ -65,12 +72,17 @@ export function onSessionStatus(listener: (meta: SessionMeta) => void): () => vo
   return () => statusListeners.delete(listener);
 }
 
-/** A new chat with the project's defaults first, then Jig's (`cwd`: a folder inside it, or no project). */
+/**
+ * A new chat with the project's defaults first, then Jig's (`cwd`: a folder inside it, or no project).
+ * Its provider: the one asked for, else the project's, else `engine.provider` (D-309). The project's
+ * model and effort are for its own provider's chats; a chat on the other one gets Jig's default.
+ */
 export async function createChat(input: {
   projectId?: string;
   cwd?: string;
   title?: string;
   permissionMode?: PermissionMode;
+  provider?: ChatProvider;
   meetingNotes?: string;
 }): Promise<SessionMeta> {
   const project = input.projectId ? await projectStore().get(input.projectId) : undefined;
@@ -79,14 +91,18 @@ export async function createChat(input: {
   const info = await stat(folder).catch(() => undefined);
   if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
   const { engine } = getConfig();
+  const projectProvider = project?.provider ?? engine.provider;
+  const provider = input.provider ?? projectProvider;
+  const ownDefaults = provider === projectProvider ? project : undefined;
   return sessionManager().create({
     projectId: input.projectId,
     cwd: folder,
     title: input.title,
-    model: project?.model ?? engine.defaultModel,
+    provider,
+    model: ownDefaults?.model ?? (provider === "codex" ? engine.codexModel : engine.defaultModel),
     permissionMode:
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
-    effort: project?.effort,
+    effort: ownDefaults?.effort,
     meetingNotes: input.meetingNotes,
   });
 }
@@ -127,10 +143,12 @@ export function startSessions(): void {
     dir: paths.sessions(),
     attachmentsDir: paths.attachments(),
     engine: getEngine(),
+    engineFor: (provider) => getEngine(provider),
     engineSettings: () => {
       const { engine } = getConfig();
       return {
         claudePath: engine.claudePath,
+        codexPath: engine.codexPath,
         allowApiKey: engine.allowApiKey,
         // Claude's az runs with the active tenant's sign-in (D-285); API keys stay stripped.
         env: {
@@ -183,11 +201,13 @@ export function startSessions(): void {
     mcpServers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
       if (hooks) return hooks.mcpServers(meta);
-      return getEngine().kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
+      // In-process tools reach Claude Code only (the Agent SDK's own MCP servers).
+      return getEngine(chatProvider(meta)).kind === "claude" ? { jig: jigMcpServer(meta) } : undefined;
     },
     // Chats with Jig's tools get the tester and the searcher, which run on small models.
     agents: (meta) => {
-      if (kindHooks.has(meta.kind ?? "")) return undefined;
+      if (kindHooks.has(meta.kind ?? "") || !ENGINE_CAPABILITIES[chatProvider(meta)].subagents)
+        return undefined;
       const { testerModel, searchModel } = getConfig().engine;
       return {
         [TESTER_AGENT]: testerAgent(testerModel),
@@ -323,7 +343,9 @@ export function startSessions(): void {
 
   handle("sessions.list", () => m.list());
   handle("sessions.get", ({ id }) => m.snapshot(id));
-  handle("sessions.create", ({ projectId, title, cwd }) => createChat({ projectId, title, cwd }));
+  handle("sessions.create", ({ projectId, title, cwd, provider }) =>
+    createChat({ projectId, title, cwd, provider }),
+  );
   handle("sessions.setProject", async ({ id, projectId }) => {
     if (projectId) await projectStore().get(projectId);
     await m.setProject(id, projectId);

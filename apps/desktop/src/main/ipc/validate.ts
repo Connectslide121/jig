@@ -1,7 +1,7 @@
 import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
 import { ADDON_AI_FEATURES } from "../../shared/aiFeatures";
-import { EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
+import { CHAT_PROVIDERS, EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { TEAMS_CHAT_ID } from "../../shared/meetingChat";
@@ -55,6 +55,7 @@ const projectPatch = z.object({
   name: z.string().max(200).optional(),
   color: z.enum(PROJECT_COLORS).optional(),
   path: path.optional(),
+  provider: z.union([z.enum(CHAT_PROVIDERS), z.literal("")]).optional(),
   model: z.string().max(200).optional(),
   effort: z.union([z.enum(EFFORT_LEVELS), z.literal("")]).optional(),
   permissionMode: z.union([z.enum(PERMISSION_MODES), z.literal("")]).optional(),
@@ -308,6 +309,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     projectId: id.optional(),
     title: z.string().max(500).optional(),
     cwd: path.optional(),
+    provider: z.enum(CHAT_PROVIDERS).optional(),
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
   "sessions.openSaved": z.object({ sessionId: z.string().regex(/^[\w-]{1,100}$/) }),

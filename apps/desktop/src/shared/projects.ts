@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { EFFORT_LEVELS, type EffortLevel, PERMISSION_MODES, type PermissionMode } from "./engine";
+import {
+  CHAT_PROVIDERS,
+  type ChatProvider,
+  EFFORT_LEVELS,
+  type EffortLevel,
+  PERMISSION_MODES,
+  type PermissionMode,
+} from "./engine";
 import { LinkGroupSchema } from "./links";
 
 /** Project colours are token names, so a project's colour follows the theme. */
@@ -32,6 +39,8 @@ export const ProjectSchema = z.object({
   /** The default Git repository of the project (absolute path), shown first in the Git panel. */
   focusRepo: z.string().optional(),
   /** Defaults for new chats in this project; empty = Jig's own defaults. */
+  /** Who runs its new chats (D-309); empty = `engine.provider`. `model` and `effort` are for it. */
+  provider: z.enum(CHAT_PROVIDERS).optional(),
   model: z.string().optional(),
   effort: z.enum(EFFORT_LEVELS).optional(),
   permissionMode: z.enum(PERMISSION_MODES).optional(),
@@ -53,7 +62,7 @@ export type Project = z.infer<typeof ProjectSchema>;
 /** What `projects.update` can change; an empty string or list clears a preference. */
 export type ProjectPatch = Partial<
   Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters" | "links" | "azureTenant">
-> & { effort?: EffortLevel | ""; permissionMode?: PermissionMode | "" };
+> & { effort?: EffortLevel | ""; permissionMode?: PermissionMode | ""; provider?: ChatProvider | "" };
 
 export const ProjectsFileSchema = z.object({
   workspaces: z.array(WorkspaceSchema).default([]),

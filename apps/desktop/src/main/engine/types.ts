@@ -1,6 +1,8 @@
 import type {
+  ChatProvider,
   ContextUsage,
   EffortLevel,
+  EngineCapabilities,
   EngineEvent,
   McpServerInfo,
   ModelInfo,
@@ -18,9 +20,10 @@ import type { EnginePart } from "../sessions/attachments";
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 
 /**
- * The one engine contract. `ClaudeEngine` runs the official Claude Code through the Agent SDK;
- * `FakeEngine` replays scripted events for tests and `JIG_ENGINE=fake`. Nothing else may implement
- * an agent loop (AGENTS.md: Claude Code is the only engine).
+ * The one engine contract. `ClaudeEngine` runs the official Claude Code through the Agent SDK; a
+ * Codex engine will run OpenAI's official Codex CLI (D-309); `FakeEngine` replays scripted events for
+ * tests and `JIG_ENGINE=fake`, standing in for either provider. Jig never implements an agent loop of
+ * its own: every engine drives an official CLI.
  */
 /** What a Jig tool returns: text, or text with images (a browser screenshot). */
 export type ToolOutput = string | { text: string; images?: Array<{ mime: string; data: string }> };
@@ -41,6 +44,8 @@ export interface StartOptions {
   env: Record<string, string | undefined>;
   /** Path to the user's own `claude` binary; empty = the one shipped with the SDK. */
   claudePath: string;
+  /** Path to the user's own `codex` binary (Codex chats); empty = the one on PATH. */
+  codexPath?: string;
   /** Claude Code suggests the next message after each turn (`suggestion` events). */
   promptSuggestions?: boolean;
   /** Claude Code keeps copies of files before editing them (`rewindFiles`). */
@@ -129,7 +134,12 @@ export interface ToolCallOptions {
 }
 
 export interface Engine {
-  readonly kind: "claude" | "fake";
+  /** `fake` is the scripted engine, whichever provider it stands in for. */
+  readonly kind: "claude" | "codex" | "fake";
+  /** Whose chats it runs (the fake engine: the provider it stands in for). */
+  readonly provider: ChatProvider;
+  /** What its chats can do; the UI hides the rest (D-309). */
+  readonly capabilities: EngineCapabilities;
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession;
   /** A single non-interactive query with no tools (pattern reflection, phase 9). Returns the text. */
   oneShot(prompt: string, options: OneShotOptions): Promise<string>;

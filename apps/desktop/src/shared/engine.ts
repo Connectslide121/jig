@@ -19,6 +19,63 @@ export const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
 export const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type EffortLevel = (typeof EFFORT_LEVELS)[number];
 
+/**
+ * Which agent runs a chat (D-309): Claude Code (the default) or OpenAI's Codex. A chat keeps its
+ * provider for its whole life; a chat saved without one runs on Claude.
+ */
+export const CHAT_PROVIDERS = ["claude", "codex"] as const;
+export type ChatProvider = (typeof CHAT_PROVIDERS)[number];
+
+/** A chat's provider; chats from before D-309 have none and run on Claude. */
+export const chatProvider = (meta: { provider?: ChatProvider }): ChatProvider => meta.provider ?? "claude";
+
+/** What a chat engine can do, so the UI hides controls a provider doesn't have (D-309). */
+export interface EngineCapabilities {
+  /** Plan mode and its approve-the-plan card (ExitPlanMode). */
+  planMode: boolean;
+  /** Questions with choices (AskUserQuestion). */
+  questions: boolean;
+  /** Subagents Jig defines (jig-tester, jig-search). */
+  subagents: boolean;
+  /** Restoring files and the conversation to an earlier message (file checkpoints). */
+  rewind: boolean;
+  /** Forking a chat into a new branch of the conversation. */
+  fork: boolean;
+  /** Opening conversations the provider's CLI saved on this machine. */
+  history: boolean;
+  /** The effort (reasoning) levels it accepts; empty = no effort picker. */
+  effortLevels: readonly string[];
+  /** It suggests the next message after a turn. */
+  promptSuggestions: boolean;
+}
+
+/**
+ * Each provider's capabilities. Codex starts with the basics (D-309); flip a flag when its engine
+ * gains the feature. Codex's reasoning levels are the ones `codex debug models` lists.
+ */
+export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
+  claude: {
+    planMode: true,
+    questions: true,
+    subagents: true,
+    rewind: true,
+    fork: true,
+    history: true,
+    effortLevels: EFFORT_LEVELS,
+    promptSuggestions: true,
+  },
+  codex: {
+    planMode: false,
+    questions: false,
+    subagents: false,
+    rewind: false,
+    fork: false,
+    history: false,
+    effortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+    promptSuggestions: false,
+  },
+};
+
 /** A Claude Code slash command or skill (built in, or from the user, project, a plugin or an MCP server). */
 export interface SlashCommandInfo {
   name: string;
@@ -136,6 +193,8 @@ export interface SavedClaudeMessage {
 
 export interface SessionMeta {
   id: string;
+  /** Which agent runs it, for its whole life (D-309); missing = Claude (chats from before). */
+  provider?: ChatProvider;
   /** New regular chat with no submitted prompt yet: memory-only, absent from saved layout/history. */
   draft?: boolean;
   /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */

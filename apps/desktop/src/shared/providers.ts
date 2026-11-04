@@ -1,6 +1,7 @@
 /**
- * AI providers for Jig's non-chat features (D-294). Chats always run on Claude Code; one-shot
- * text-in/text-out calls may also run on OpenAI's Codex CLI signed in with the user's ChatGPT account.
+ * AI providers for Jig's non-chat features (D-294): one-shot text-in/text-out calls run on Claude Code
+ * or on OpenAI's Codex CLI signed in with the user's ChatGPT account. Chats pick their engine
+ * separately (`ChatProvider`, D-309).
  * Documented in docs/reference/engine.md → Providers.
  */
 import type { ModelInfo } from "./engine";

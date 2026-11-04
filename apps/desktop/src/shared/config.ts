@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AI_FEATURE_IDS, type AiFeatureId } from "./aiFeatures";
+import { CHAT_PROVIDERS } from "./engine";
 import { AI_PROVIDERS } from "./providers";
 
 /** One AI feature's provider and model (D-297). */
@@ -40,6 +41,15 @@ export const ConfigSchema = z.object({
     .object({
       /** Path to the user's own `claude` binary; empty = the one shipped with the Claude Agent SDK. */
       claudePath: z.string().default(""),
+      /**
+       * Who runs new chats (D-309): Claude Code, or OpenAI's Codex signed in with ChatGPT. A project
+       * can override it (`Project.provider`); a chat keeps the provider it started with.
+       */
+      provider: z.enum(CHAT_PROVIDERS).default("claude"),
+      /** Path to the user's own `codex` binary; empty = the one on PATH (D-294). */
+      codexPath: z.string().default(""),
+      /** Model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`; D-310) or an exact slug. */
+      codexModel: z.string().max(100).default("sol"),
       /** Keep ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in session environments (pay-as-you-go). */
       allowApiKey: z.boolean().default(false),
       /** Model alias or id for new sessions; opusplan = Opus only in Plan mode, Sonnet otherwise. */
@@ -300,6 +310,8 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
 export const PROTECTED_SETTINGS = [
   "ai",
   "engine.claudePath",
+  "engine.codexPath",
+  "engine.provider",
   "engine.allowApiKey",
   "editor.claudeCompletion",
   "editor.claudeCompletionModel",

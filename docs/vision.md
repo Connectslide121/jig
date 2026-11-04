@@ -35,11 +35,13 @@ projects, and wants:
 These are durable. Every feature follows them; `docs/architecture.md` explains how the structure
 enforces them.
 
-1. **Claude Code is the chat engine.** Jig runs the official, unmodified Claude Code through the Claude
-   Agent SDK for chats and everything agentic. Jig never assembles its own agent loop. The user's
-   Claude Code setup (CLAUDE.md files, skills, plugins, MCP servers, settings) keeps working inside Jig.
-   For non-chat AI features (one text in, one text out, no tools) the user's **ChatGPT** plan is a
-   second provider, through OpenAI's official, unmodified Codex CLI (D-294).
+1. **Official agents run the chats; Claude Code is the default.** Jig runs the official, unmodified
+   Claude Code through the Claude Agent SDK for chats and everything agentic. A chat can instead run
+   on OpenAI's official, unmodified **Codex** signed in with the user's ChatGPT plan (D-309): optional,
+   chosen per chat or project, never mixed within a chat. Jig never assembles its own agent loop. The
+   user's Claude Code setup (CLAUDE.md files, skills, plugins, MCP servers, settings) keeps working
+   inside Jig. Non-chat AI features (one text in, one text out, no tools) can run on either plan
+   (D-294).
 2. **Your subscription, your login — never touched.** Usage draws on the user's own Claude plan because
    Jig launches Claude Code, which is signed in through Anthropic's own flow. Jig has **no login
    screen**, and never reads, copies, stores or forwards Claude credentials or tokens. The same holds

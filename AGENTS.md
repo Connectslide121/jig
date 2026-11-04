@@ -73,12 +73,16 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Pure logic goes in `packages/*`** (no Electron imports) so it can be unit-tested.
 - **State lives in `JIG_HOME`** (`~/.jig`); write files atomically through the state module, never
   with ad-hoc `fs.writeFile` on state files.
-- **Claude Code is the chat engine (D-294).** Chats and everything agentic (tools, the builder,
-  routines, Claude's browser) run on Claude Code: never add another agent runtime, never call the
-  Anthropic API directly for agent work, never assemble the system prompt yourself (only `append` to
-  the `claude_code` preset). **OpenAI's Codex CLI** (signed in with ChatGPT) is a second provider only
-  for non-chat, text-in/text-out AI calls, through `main/providers/` (`oneShot(provider, ...)`): no
-  tools, read-only sandbox. Never call the OpenAI API directly. A new one-shot AI feature gets a row
+- **Two chat engines, Claude the default (D-309).** Chats run on Claude Code or, optionally, on
+  OpenAI's Codex (signed in with ChatGPT), behind the one `Engine` interface (`getEngine(provider)`).
+  A chat keeps its provider for life (`SessionMeta.provider`; missing = Claude). Everything else
+  agentic (the builder, attempts, worktree chats, routines, artifacts, Claude's browser) stays on
+  Claude Code. Never add an agent runtime of Jig's own (each engine drives an official CLI), never call
+  the Anthropic or OpenAI API directly, never assemble Claude's system prompt yourself (only `append`
+  to the `claude_code` preset). A chat feature a provider lacks is a flag in `ENGINE_CAPABILITIES`
+  (`shared/engine.ts`) and is hidden, not shown dead, for that provider. **OpenAI's Codex CLI** is also
+  a provider for non-chat, text-in/text-out AI calls, through `main/providers/`
+  (`oneShot(provider, ...)`): no tools, read-only sandbox. A new one-shot AI feature gets a row
   in `shared/aiFeatures.ts` and calls `featureOneShot`, so the user picks its provider and model in
   Settings → AI features (D-297).
 - **Follow Claude Code, don't reimplement it.**

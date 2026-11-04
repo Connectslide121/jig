@@ -124,7 +124,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 
 Writes are atomic (write temp file + rename). Formats are documented in `docs/reference/state.md`.
 
-## 4. The engine — Claude Code via the Claude Agent SDK
+## 4. The engine — Claude Code via the Claude Agent SDK (and Codex, D-309)
 
 - `apps/desktop/src/main/engine/` defines an `Engine` interface. It can:
   - start a session (cwd, model, permission mode, effort, extra folders, resume id or a rewind
@@ -141,7 +141,12 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
 
   They go through `main/providers/` (`oneShot(provider, model, prompt, timeoutMs)`, D-294): `claude`
   is the engine's `oneShot`; `chatgpt` runs OpenAI's Codex CLI (`codex exec`, read-only sandbox, no
-  tools) from the user's PATH, signed in with their ChatGPT account. Chats always use Claude Code.
+  tools) from the user's PATH, signed in with their ChatGPT account.
+- **Two chat engines** (D-309): `getEngine(provider)` keeps one engine per provider. Claude Code is the
+  default; a chat can run on OpenAI's Codex instead (`SessionMeta.provider`, chosen per chat or
+  project, `engine.provider`) and keeps it for life. `Engine.capabilities` (`ENGINE_CAPABILITIES`)
+  says what each provider's chats can do, so the UI hides what a provider lacks. Both drive an
+  official, unmodified CLI; Jig never runs an agent loop of its own.
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.

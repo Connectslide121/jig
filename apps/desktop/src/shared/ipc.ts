@@ -28,6 +28,7 @@ import type { DeepPartial, JigConfig } from "./config";
 import type { DevRequestInfo, DevRequestStatus } from "./devRequest";
 import type {
   ChatAttachment,
+  ChatProvider,
   ChatUpdate,
   EffortLevel,
   McpServerInfo,
@@ -398,9 +399,10 @@ export interface HostMethods {
    * A new chat, in a project or none. `cwd`: the folder it runs in, which can be any folder (another
    * workspace, one repository of a workspace). Default: the project's default workspace; without a
    * project, `cwd` is required. The project's model, effort and permission mode are the chat's defaults.
+   * `provider`: who runs it (D-309); default the project's, else `engine.provider`.
    */
   "sessions.create": {
-    args: { projectId?: string; title?: string; cwd?: string };
+    args: { projectId?: string; title?: string; cwd?: string; provider?: ChatProvider };
     result: SessionMeta;
   };
   /**

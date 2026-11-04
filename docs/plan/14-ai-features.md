@@ -36,6 +36,13 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   in; JSON answers checked with a clear error (D-297; `shared/aiFeatures.ts`, `featureOneShot`, unit
   tests in `aiFeatures.test.ts`, `tour.test.ts`, `judge.test.ts`, e2e in `e2e/ai.spec.ts`).
 
+- [x] Codex chats A: room for a second chat engine without changing behaviour: `getEngine(provider)`,
+  `Engine.provider` / `capabilities` (`ENGINE_CAPABILITIES`), `SessionMeta.provider`,
+  `engine.provider` with a project override, the fake engine as Codex (D-309; unit tests in
+  `engine/index.test.ts`, `sessions/manager.test.ts`).
+- [ ] Codex chats B–E: the Codex engine over `codex app-server`, Jig's tools as a local MCP server,
+  the provider picker and Codex-aware chat UI, plan mode/questions/history/skills (queued tasks).
+
 ## Later
 
 - Browser: several tabs, recording a session as a GIF, network requests in the console pane.
