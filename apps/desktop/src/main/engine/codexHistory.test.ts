@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { EngineEvent } from "../../shared/engine";
 import { savedThread, structuredPatch, threadMessages } from "./codexHistory";
+import { CodexNormalizer } from "./codexNormalize";
 import { PLAN_APPROVED_PROMPT, PLAN_MODE_PROMPT } from "./codexTools";
+import { Normalizer } from "./normalize";
 
 describe("Codex history (D-315)", () => {
   it("lists a thread like a saved Claude Code chat", () => {
@@ -87,5 +90,110 @@ describe("Codex history (D-315)", () => {
     expect(messages.at(-1)).toMatchObject({ type: "assistant", message: { content: [{ text: "Done." }] } });
     // The turn Jig started itself has nothing you typed.
     expect(messages.filter((m) => m.type === "user" && m.uuid === "u2")).toHaveLength(0);
+  });
+
+  it("replays tool items on the same cards as the live chat showed", () => {
+    const hunk = "@@ -1 +1 @@\n-a\n+b\n";
+    const update = (path: string) => ({ path, kind: { type: "update", move_path: null }, diff: hunk });
+    const items = [
+      { type: "commandExecution", id: "c1", command: "bash -lc 'rm -rf build'", status: "declined" },
+      { type: "commandExecution", id: "c2", command: "npm test", status: "failed", aggregatedOutput: "boom" },
+      {
+        type: "commandExecution",
+        id: "c3",
+        command: "ls",
+        status: "completed",
+        exitCode: 2,
+        aggregatedOutput: "x",
+      },
+      { type: "mcpToolCall", id: "m1", server: "jig", tool: "run", arguments: { a: 1 }, success: false },
+      {
+        type: "mcpToolCall",
+        id: "m2",
+        server: "jig",
+        tool: "shot",
+        arguments: {},
+        result: {
+          content: [
+            { type: "text", text: "Done" },
+            { type: "image", data: "AAAA", mimeType: "image/png" },
+          ],
+        },
+      },
+      {
+        type: "dynamicToolCall",
+        id: "d1",
+        namespace: "x",
+        tool: "draw",
+        arguments: {},
+        success: true,
+        contentItems: [
+          { type: "inputText", text: "Here" },
+          { type: "inputImage", imageUrl: "data:image/jpeg;base64,BBBB" },
+        ],
+      },
+      { type: "imageView", id: "i1", path: "/shop/logo.png" },
+      { type: "webSearch", id: "w1", query: "codex" },
+      {
+        type: "fileChange",
+        id: "f1",
+        status: "completed",
+        changes: [
+          { path: "/shop/new.ts", kind: { type: "add" }, diff: "export {};\n" },
+          { path: "/shop/old.ts", kind: { type: "delete" }, diff: "gone\n" },
+          { path: "/shop/a.ts", kind: { type: "update", move_path: "/shop/b.ts" }, diff: hunk },
+        ],
+      },
+      { type: "fileChange", id: "f2", status: "declined", changes: [update("/shop/c.ts")] },
+    ];
+
+    const cards = (events: EngineEvent[]): Record<string, unknown>[] =>
+      events.flatMap((e): Record<string, unknown>[] =>
+        e.type === "tool_use"
+          ? [{ use: e.id, name: e.name, input: e.input }]
+          : e.type === "tool_result"
+            ? [
+                {
+                  result: e.toolUseId,
+                  output: e.output,
+                  isError: e.isError,
+                  images: e.imageData ?? [],
+                  diff: e.diff ? structuredPatch(e.diff) : [],
+                },
+              ]
+            : [],
+      );
+
+    const live = new CodexNormalizer();
+    const liveEvents = items.flatMap((item) => [
+      ...live.handle({ method: "item/started", params: { item } }),
+      ...live.handle({ method: "item/completed", params: { item } }),
+    ]);
+    const saved = new Normalizer();
+    const savedEvents = threadMessages({ turns: [{ items }] }).flatMap((m) => saved.handle(m));
+
+    expect(cards(savedEvents)).toEqual(cards(liveEvents));
+    // What used to be lost: statuses, dropped items, Write's content, Edit's delete and move.
+    expect(cards(savedEvents)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ result: "c1", isError: true }),
+        expect.objectContaining({ result: "c2", isError: true }),
+        expect.objectContaining({ result: "m1", isError: true }),
+        expect.objectContaining({
+          result: "d1",
+          output: "Here\n[image]",
+          images: [{ mime: "image/jpeg", data: "BBBB" }],
+        }),
+        expect.objectContaining({ result: "m2", images: [{ mime: "image/png", data: "AAAA" }] }),
+        expect.objectContaining({ use: "i1", name: "Read" }),
+        expect.objectContaining({
+          use: "f1:0",
+          name: "Write",
+          input: { file_path: "/shop/new.ts", content: "export {};\n" },
+        }),
+        expect.objectContaining({ use: "f1:1", input: { file_path: "/shop/old.ts", delete: true } }),
+        expect.objectContaining({ use: "f1:2", input: { file_path: "/shop/a.ts", new_path: "/shop/b.ts" } }),
+      ]),
+    );
   });
 });

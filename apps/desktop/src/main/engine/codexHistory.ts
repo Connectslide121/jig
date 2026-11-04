@@ -1,6 +1,6 @@
 import type { SavedClaudeMessage, SavedClaudeSession } from "../../shared/engine";
-import { changeDiff, displayCommand } from "./codexNormalize";
-import { codexToolCardName, JIG_ADDED_TEXT } from "./codexTools";
+import { CodexNormalizer } from "./codexNormalize";
+import { JIG_ADDED_TEXT } from "./codexTools";
 
 /**
  * Codex's saved threads (`thread/list`, `thread/read`) in the shape Claude Code's saved conversations
@@ -64,38 +64,86 @@ function typed(content: unknown): string {
     .trim();
 }
 
-function mcpText(result: Msg): string {
-  const content = result?.content;
-  if (!Array.isArray(content)) return "";
-  return content
-    .map((b: Msg) => (b?.type === "text" ? String(b.text ?? "") : b?.type === "image" ? "[image]" : ""))
-    .filter(Boolean)
-    .join("\n");
+/**
+ * A tool result's output and images as Claude's content blocks, so the saved chat's normalizer reads
+ * back the same text and images: each `[image]` line the live mapping wrote stands for the next image.
+ */
+function resultContent(output: string, images: Array<{ mime: string; data: string }> = []): unknown {
+  if (!images.length) return output;
+  const blocks: unknown[] = [];
+  let text: string[] = [];
+  let next = 0;
+  const flush = () => {
+    if (text.length) blocks.push({ type: "text", text: text.join("\n") });
+    text = [];
+  };
+  for (const line of output.split("\n")) {
+    const image = line === "[image]" ? images[next] : undefined;
+    if (!image) {
+      text.push(line);
+      continue;
+    }
+    next++;
+    flush();
+    blocks.push({ type: "image", source: { type: "base64", media_type: image.mime, data: image.data } });
+  }
+  flush();
+  return blocks;
 }
+
+/** Items that show as tool cards: replayed through the live mapping (`CodexNormalizer`). */
+const TOOL_ITEMS = new Set([
+  "commandExecution",
+  "fileChange",
+  "mcpToolCall",
+  "dynamicToolCall",
+  "webSearch",
+  "imageView",
+]);
 
 /** A read thread's turns as Claude Code transcript messages, in order. */
 export function threadMessages(thread: Msg): SavedClaudeMessage[] {
   const out: SavedClaudeMessage[] = [];
   const assistant = (uuid: string, content: unknown[]) =>
     out.push({ type: "assistant", uuid, parent_tool_use_id: null, message: { role: "assistant", content } });
-  const result = (uuid: string, toolUseId: string, output: string, isError: boolean, patch?: unknown) =>
-    out.push({
-      type: "user",
-      uuid: `${uuid}:result`,
-      parent_tool_use_id: null,
-      message: {
-        role: "user",
-        content: [{ type: "tool_result", tool_use_id: toolUseId, content: output, is_error: isError }],
-      },
-      ...(patch ? { tool_use_result: patch } : {}),
-    });
-  const tool = (id: string, name: string, input: Record<string, unknown>) =>
-    assistant(id, [{ type: "tool_use", id, name, input }]);
+  // Tool cards come from the live mapping, so a saved chat shows what the live one did.
+  const live = new CodexNormalizer();
+  const replay = (item: Msg) => {
+    for (const event of [
+      ...live.handle({ method: "item/started", params: { item } }),
+      ...live.handle({ method: "item/completed", params: { item } }),
+    ]) {
+      if (event.type === "tool_use")
+        assistant(event.id, [{ type: "tool_use", id: event.id, name: event.name, input: event.input }]);
+      else if (event.type === "tool_result")
+        out.push({
+          type: "user",
+          uuid: `${event.toolUseId}:result`,
+          parent_tool_use_id: null,
+          message: {
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: event.toolUseId,
+                content: resultContent(event.output, event.imageData),
+                is_error: event.isError,
+              },
+            ],
+          },
+          ...(event.diff ? { tool_use_result: { structuredPatch: structuredPatch(event.diff) } } : {}),
+        });
+    }
+  };
 
   for (const turn of Array.isArray(thread?.turns) ? thread.turns : []) {
     for (const item of Array.isArray(turn?.items) ? turn.items : []) {
       const id = str(item?.id);
       if (!id) continue;
+      if (TOOL_ITEMS.has(item.type)) {
+        replay(item);
+        continue;
+      }
       switch (item.type) {
         case "userMessage": {
           const text = typed(item.content);
@@ -118,42 +166,6 @@ export function threadMessages(thread: Msg): SavedClaudeMessage[] {
           if (text) assistant(id, [{ type: "thinking", thinking: text }]);
           break;
         }
-        case "commandExecution": {
-          tool(id, "Bash", { command: displayCommand(str(item.command) ?? "") });
-          const exit = typeof item.exitCode === "number" ? item.exitCode : 0;
-          const output = str(item.aggregatedOutput) ?? "";
-          result(id, id, exit ? `${output}${output ? "\n" : ""}Exit code ${exit}` : output, Boolean(exit));
-          break;
-        }
-        case "fileChange": {
-          const changes: Msg[] = Array.isArray(item.changes) ? item.changes : [];
-          const failed = item.status === "failed" || item.status === "declined";
-          changes.forEach((change, i) => {
-            const toolId = changes.length === 1 ? id : `${id}:${i}`;
-            const kind = str(change?.kind?.type) ?? "update";
-            const diff = changeDiff(kind, str(change?.diff) ?? "");
-            tool(toolId, kind === "add" ? "Write" : "Edit", { file_path: str(change?.path) ?? "" });
-            result(
-              toolId,
-              toolId,
-              item.status === "declined" ? "You declined this change." : "",
-              failed,
-              diff && !failed ? { structuredPatch: structuredPatch(diff) } : undefined,
-            );
-          });
-          break;
-        }
-        case "mcpToolCall": {
-          const args = item.arguments && typeof item.arguments === "object" ? item.arguments : {};
-          tool(id, codexToolCardName(String(item.server ?? "mcp"), String(item.tool ?? "tool")), args);
-          if (item.error) result(id, id, str(item.error?.message) ?? "The tool call failed.", true);
-          else result(id, id, mcpText(item.result), false);
-          break;
-        }
-        case "webSearch":
-          tool(id, "WebSearch", { query: str(item.query) ?? "" });
-          result(id, id, "", false);
-          break;
         default:
           break;
       }
