@@ -3,19 +3,24 @@ import { FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { create } from "zustand";
 import {
-  EFFORT_LEVELS,
+  type ChatProvider,
   type EffortLevel,
+  ENGINE_CAPABILITIES,
   PERMISSION_MODE_LABELS,
   PERMISSION_MODES,
   type PermissionMode,
 } from "../../../shared/engine";
+import { modelOptions } from "../../../shared/models";
 import { PROJECT_COLORS, type ProjectColor, type ProjectInfo } from "../../../shared/projects";
+import { chatGptModelChoices } from "../../../shared/providers";
 import { call, errorMessage } from "../../lib/host";
+import { useConfig } from "../../stores/config";
+import { useChatGptStatus, useProviderModels } from "../../stores/providers";
 import { Button, cn, Dialog, Input, Select, Textarea } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { workbench } from "../../workbench/store";
 import { startTenants, useTenants } from "../azure/store";
-import { modelChoices } from "../sessions/menus";
+import { CHAT_PROVIDER_NAMES } from "../sessions/provider";
 import { projectColorLabel, projectDotClass } from "./colors";
 
 const useProjectDialog = create<{ open: { projectId?: string } | undefined }>(() => ({ open: undefined }));
@@ -55,6 +60,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
   const [color, setColor] = useState<ProjectColor | undefined>(project?.color);
   const [path, setPath] = useState(project?.path ?? workspaces[0]?.path ?? "");
   const [repo, setRepo] = useState(project?.focusRepo ?? "");
+  const [provider, setProvider] = useState<ChatProvider | "">(project?.provider ?? "");
   const [model, setModel] = useState(project?.model ?? "");
   const [effort, setEffort] = useState<EffortLevel | "">(project?.effort ?? "");
   const [mode, setMode] = useState<PermissionMode | "">(project?.permissionMode ?? "");
@@ -67,6 +73,22 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
   const [tenant, setTenant] = useState(removedPin ? "" : (project?.azureTenant ?? ""));
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const globalProvider = useConfig((s) => s.config?.engine.provider) ?? "claude";
+  const chatgpt = useChatGptStatus();
+  // The model and effort lists are those of the provider this project's chats run on (D-314).
+  const runsOn = provider || globalProvider;
+  const models = useProviderModels(runsOn);
+  const modelItems: Array<{ id: string; label: string } | null> =
+    runsOn === "codex"
+      ? (() => {
+          const { families, versions } = chatGptModelChoices(models ?? []);
+          return [
+            ...families.map((f) => ({ id: f.value, label: f.label })),
+            null,
+            ...versions.map((v) => ({ id: v.value, label: v.label })),
+          ];
+        })()
+      : modelOptions(models).filter((m) => m.id);
   const workspace = workspaces.find((w) => w.path === path);
   const repos = workspace?.repos ?? [];
 
@@ -92,6 +114,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
       const settings = {
         name,
         path,
+        provider,
         model,
         effort,
         permissionMode: mode,
@@ -232,20 +255,51 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
             </span>
           )}
         </Field>
+        <Field
+          label="Chats run on"
+          hint="Who runs new chats in this project. A chat keeps it for its whole life; a new chat can still pick the other one."
+        >
+          <Select
+            value={provider}
+            onChange={(e) => {
+              // The model and effort belong to the provider, so they start again at its defaults.
+              setProvider(e.target.value as ChatProvider | "");
+              setModel("");
+              setEffort("");
+            }}
+            data-testid="project-provider"
+          >
+            <option value="">Jig's default ({CHAT_PROVIDER_NAMES[globalProvider]})</option>
+            <option value="claude">Claude</option>
+            <option value="codex" disabled={provider !== "codex" && chatgpt?.ready !== true}>
+              {chatgpt?.ready === false ? "ChatGPT (sign in on Get started)" : "ChatGPT"}
+            </option>
+          </Select>
+        </Field>
         <div className="grid grid-cols-3 gap-2">
           <Field label="Model">
             <Select value={model} onChange={(e) => setModel(e.target.value)} data-testid="project-model">
-              {modelChoices().map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id ? m.label : "Jig's default"}
-                </option>
-              ))}
+              <option value="">Jig's default</option>
+              {modelItems.map((m, i) =>
+                m ? (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ) : (
+                  <hr key={`divider-${i}`} />
+                ),
+              )}
+              {model && !modelItems.some((m) => m?.id === model) && <option value={model}>{model}</option>}
             </Select>
           </Field>
           <Field label="Effort">
-            <Select value={effort} onChange={(e) => setEffort(e.target.value as EffortLevel | "")}>
+            <Select
+              value={effort}
+              onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
+              data-testid="project-effort"
+            >
               <option value="">Model's default</option>
-              {EFFORT_LEVELS.map((level) => (
+              {ENGINE_CAPABILITIES[runsOn].effortLevels.map((level) => (
                 <option key={level} value={level}>
                   {level}
                 </option>
@@ -259,11 +313,13 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
               data-testid="project-mode"
             >
               <option value="">Jig's default</option>
-              {PERMISSION_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {PERMISSION_MODE_LABELS[m]}
-                </option>
-              ))}
+              {PERMISSION_MODES.filter((m) => m !== "plan" || ENGINE_CAPABILITIES[runsOn].planMode).map(
+                (m) => (
+                  <option key={m} value={m}>
+                    {PERMISSION_MODE_LABELS[m]}
+                  </option>
+                ),
+              )}
             </Select>
           </Field>
         </div>
