@@ -222,6 +222,10 @@ settings, add-on permissions.
 | `azure.cancelSignIn` | — | — | stops the running `az login` (its process tree); the waiting call rejects with `cancelled` |
 | `azure.renameTenant` | `{ key, label? }` | `TenantsState` | any tenant, `default` (your az login) too: it keeps its key and behaviour, only its name is stored (D-301). No `label` goes back to the first name ("Your az login", an added tenant's display name); `not_found` for an unknown key (schema) |
 | `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
+| `phone.state` | — | `PhoneState` | Jig on your phone (D-348): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error` |
+| `phone.connect` | `{ token }` | `PhoneState` | checks a @BotFather token with Telegram (`getMe`), keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable` (schema: the token's shape) |
+| `phone.test` | — | — | sends the paired phone a test message; `not_connected` |
+| `phone.disconnect` | — | `PhoneState` | tells the phone, forgets the token and pairing (deletes `phone.json`) |
 | `azure.setActiveTenant` | `{ key }` | `TenantsState` | sets `azure.activeTenant` (`default` → empty); the renderer may also change the setting directly (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |
@@ -260,6 +264,7 @@ settings, add-on permissions.
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |
 | `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
 | `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project, Azure tenant; D-215) |
+| `phone.changed` | `PhoneState` | pairing finished, a new code, connected/disconnected, or Telegram became (un)reachable |
 | `azure.tenantChanged` | `TenantsState` | a tenant was added, checked, renamed or removed, or another became active (then add-ons also get `azure.tenant`, D-282) |
 | `azure.signInProgress` | `{ key, text, done? }` | a line of `az login`'s output (WARNING lines left out; never tokens: `--output none`), then `done` |
 | `usage.changed` | `UsageByProvider` | either provider's usage refreshed, or Claude Code reported a rate limit |

@@ -42,6 +42,8 @@ export const paths = {
   /** Azure tenants (D-282): one Azure CLI folder per added tenant, and `tenants.json`. */
   azure: () => join(jigHome(), "azure"),
   azureTenants: () => join(jigHome(), "azure", "tenants.json"),
+  /** Your phone's Telegram bot (D-348): its token encrypted with the OS, and who it is paired with. */
+  phone: () => join(jigHome(), "phone.json"),
   /** The build that ran before the last update from source (launcher fallback). */
   appBuilds: () => join(jigHome(), "app-builds"),
 };

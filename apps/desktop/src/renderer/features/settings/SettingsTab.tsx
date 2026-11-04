@@ -10,6 +10,7 @@ import {
   Mic,
   Palette,
   Puzzle,
+  Smartphone,
   Sparkles,
   SquareTerminal,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { Pane } from "../../workbench/Pane";
 import type { TabProps } from "../../workbench/registry";
 import { updateLayout } from "../../workbench/store";
 import { AzureSettings } from "../azure/AzureSettings";
+import { PhoneSettings } from "../phone/PhoneSettings";
 import { SpeechSettings } from "../speech/SpeechSettings";
 import { AddonsSettings } from "./AddonsSettings";
 import { AiFeaturesSettings } from "./AiFeatures";
@@ -73,6 +75,7 @@ export const useSettingsPages = create<{ pages: Record<string, SettingsPage> }>(
       component: TerminalSettings,
       order: 3,
     },
+    phone: { id: "phone", title: "Phone", icon: Smartphone, component: PhoneSettings, order: 3.6 },
     azure: { id: "azure", title: "Azure", icon: Cloud, component: AzureSettings, order: 3.7 },
     updates: { id: "updates", title: "Updates", icon: Download, component: UpdatesSettings, order: 90 },
     speech: { id: "speech", title: "Speech", icon: Mic, component: SpeechSettings, order: 3.5 },

@@ -347,6 +347,14 @@
     {
       "files": ["apps/desktop/src/renderer/ui/**"],
       "specs": ["workbench.spec.ts", "navigation.spec.ts", "ux.spec.ts", "chat.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/phone/**",
+        "apps/desktop/src/renderer/features/phone/**",
+        "apps/desktop/src/shared/phone.ts"
+      ],
+      "specs": ["phone.spec.ts"]
     }
   ]
 }

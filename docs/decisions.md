@@ -5354,3 +5354,37 @@ provider, capabilities and Claude as the default still hold.
 - **One height in the row:** Send now (`IconButton`) moved from `md` (32 px) to `sm` (28 px), so Stop,
   Send now and Send are the same square in one line; the row's height doesn't change when Send now
   appears, and Send keeps its slot in every mode and busy state.
+## D-348: Jig on your phone through a Telegram bot of your own
+
+**Who:** Jon asked, 2026-11 ("I want something like a message bot or even emails … I want Jig to be
+able to reach me if needed and vice versa", from his iPhone, for free, not remote desktop). The
+choice of Telegram and everything below: Claude, on my own.
+
+- **Telegram, not email or a push service.** Free, works on iPhone, two-way, inline buttons for
+  Allow/Deny and answers, edits to mark an answered message, and long polling from the PC: no open
+  port, router change or server. Email would need a stored app password and mailbox polling and has
+  no buttons; ntfy is one-way without a server of your own. Telegram's servers see the messages: the
+  page in Settings says so ("through a Telegram bot of your own").
+- **Your own bot, paired by a code.** You make the bot with @BotFather and paste its token; Jig shows
+  a 6-digit code you send it from your phone, and from then on reads only that account's private
+  chat (other people, groups and messages older than 10 minutes are ignored; five wrong codes make a
+  new one). Only one Telegram program may read a bot; a conflict is shown.
+- **The token is a credential:** encrypted with the OS (safeStorage, only with a real keyring on
+  Linux, as D-232) in `phone.json`, otherwise kept in memory until Jig closes ("Kept until Jig
+  closes"). It never reaches the renderer, logs or add-ons; the client never logs the URL.
+- **What is sent:** requests, questions and plans waiting for you (always, when sending is on), and
+  finished/stopped chats with the end of Claude's reply (`phone.finished`). Builder chats are left
+  out. Text from chats goes through `maskSecrets` and is cut to 1,500 characters. `phone.when`:
+  `away` (default; the PC idle for `phone.awayMinutes`, default 5, or locked) or `always`. When you
+  become away, requests already waiting are sent (a 30 s sweep).
+- **What comes back:** a button answers its request (answered elsewhere: "This is no longer
+  waiting"); a reply to a message goes to its chat: it answers a one-choice question, declines other
+  waiting requests with your words (as typing instead of approving does in Claude Code), or is sent
+  as a message into the running turn. Plain text goes to the last chat Jig told you about; /chats
+  picks one.
+- **`phone.*` is protected** (D-077): it decides what leaves the computer. Polling only runs while
+  pairing or while `phone.enabled` is on; pairing turns it on.
+- **Claude can text you** with `jig_phone_send` (read-only for permissions: it only sends, to you),
+  told in `jigContext` to use it only when asked or blocked on you. Your reply arrives in that chat.
+- Tests: unit tests for the messages and the service with fakes; `e2e/phone.spec.ts` runs the app
+  against a fake Telegram server (`JIG_TELEGRAM_API`, honoured only with `JIG_ENGINE=fake`).

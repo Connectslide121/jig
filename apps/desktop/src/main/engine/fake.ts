@@ -1016,7 +1016,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone)\b/.test(
             lower,
           )
         ) {
@@ -1060,6 +1060,10 @@ ${output.slice(0, 600)}`,
           } else if (/since the last release/.test(lower)) {
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
+          } else if (/text my phone/.test(lower)) {
+            // Jig on your phone (D-348): a message to the user's phone; their reply comes back here.
+            await call("jig_phone_send", { text: "The build is done. Shall I deploy it?" });
+            await stream(`${msg}:text:0`, "I sent it to your phone.", signal);
           } else if (/in a jig terminal/.test(lower)) {
             // A command in a terminal the user sees: when it exits, Jig tells this chat (a new turn).
             await call("jig_terminal_run", { command: "echo build finished", title: "Build" });

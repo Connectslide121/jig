@@ -8,6 +8,7 @@ import { CHAT_MESSAGE_ID, HOSTED_CONTENT_ID, TEAMS_CHAT_ID } from "../../shared/
 import { CHAT_SEARCH_MIN, CHAT_TOPIC_MAX, NEW_CHAT_MAX_PEOPLE } from "../../shared/meetingChatList";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
 import { PRESENCE_BATCH } from "../../shared/meetingPresence";
+import { TELEGRAM_TOKEN } from "../../shared/phone";
 import { PROJECT_COLORS } from "../../shared/projects";
 import { AI_PROVIDERS } from "../../shared/providers";
 import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
@@ -479,6 +480,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     gallerySource: z.string().min(1).max(2000).optional(),
   }),
   "azure.tenants": z.object({ check: z.boolean().optional() }).strict(),
+  "phone.connect": z.object({ token: z.string().trim().regex(TELEGRAM_TOKEN) }).strict(),
   "azure.addTenant": z
     .object({ tenant: tenantInput, label: z.string().max(80).optional(), method: signInMethod.optional() })
     .strict(),

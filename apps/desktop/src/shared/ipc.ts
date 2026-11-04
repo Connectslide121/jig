@@ -54,6 +54,7 @@ import type {
   WorkedState,
 } from "./learning";
 import type { AzureItem } from "./links";
+import type { PhoneState } from "./phone";
 import type { FilePreview } from "./preview";
 import type { Project, ProjectPatch, ProjectsState, Workspace } from "./projects";
 import type { AiProvider, ProviderStatus } from "./providers";
@@ -519,6 +520,21 @@ export interface HostMethods {
   "azure.removeTenant": { args: { key: string }; result: TenantsState };
   /** Makes a tenant the one `az` uses (`default` = your own az login); the `azure.activeTenant` setting. */
   "azure.setActiveTenant": { args: { key: string }; result: TenantsState };
+  /**
+   * Jig on your phone (D-348): your Telegram bot, whether it is paired with you, and the code to send
+   * it while pairing. The bot's token never comes back to the renderer.
+   */
+  "phone.state": { args: void; result: PhoneState };
+  /**
+   * Checks a bot token with Telegram, keeps it (encrypted on this computer, or until Jig closes when it
+   * can't encrypt) and starts pairing: send the bot the code in the state. Errors: `invalid_token`,
+   * `unreachable`.
+   */
+  "phone.connect": { args: { token: string }; result: PhoneState };
+  /** Sends a test message to your phone (`not_connected` before pairing). */
+  "phone.test": { args: void; result: void };
+  /** Forgets the bot and your Telegram account; nothing more goes to your phone. */
+  "phone.disconnect": { args: void; result: PhoneState };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /**
@@ -903,6 +919,8 @@ export interface HostEvents {
   "azure.tenantChanged": TenantsState;
   /** A line of `az login`'s output while a tenant signs in (`done` once it ended). */
   "azure.signInProgress": { key: string; text: string; done?: boolean };
+  /** Your phone's bot was set up, paired, lost its connection or was forgotten (D-348). */
+  "phone.changed": PhoneState;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };
   /** The add-on views' badges changed (all of them, by full view id). */
