@@ -742,7 +742,9 @@ on wide screens and still fill narrow panels.
 Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
 Claude’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
 controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available
-for sign-ins. A permanent hint links directly to your own Browser.
+for sign-ins. A permanent hint links directly to your own Browser; since 2026-11-04 it is the view's
+footer (tabs and address at the top, the page in the middle, the hint as the last row, below Console
+and Network, which only resize the page). Covered by `e2e/browser.spec.ts`.
 
 Native user browser (2026-11-02, D-225): Tools → Open Browser opens a Browser tab in the main panel,
 with direct Chromium rendering/input, navigation, stop/reload, zoom, developer tools and opening in

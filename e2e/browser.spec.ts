@@ -65,8 +65,15 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await expect(view.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
   await expect(view.getByRole("button", { name: "Reload", exact: true })).toHaveCount(0);
   await expect(view.getByRole("button", { name: /Window size/ })).toHaveCount(0);
-  await expect(view.getByTestId("claude-browser-hint")).toContainText("sign-ins");
+  const hint = view.getByTestId("claude-browser-hint");
+  await expect(hint).toContainText("sign-ins");
+  // The hint is the view's footer: its last row, and closing the console doesn't move it.
+  expect(await hint.evaluate((el) => el === el.parentElement?.lastElementChild)).toBe(true);
+  const hintBefore = (await hint.boundingBox())!;
   await view.getByTestId("browser-console-toggle").click();
+  await expect(view.getByTestId("browser-console")).toHaveCount(0);
+  expect(await hint.evaluate((el) => el === el.parentElement?.lastElementChild)).toBe(true);
+  expect((await hint.boundingBox())!.y).toBe(hintBefore.y);
   const target = (await app.evaluate(async ({ webContents }, url) => {
     const c = webContents.getAllWebContents().find((c) => c.getURL() === url)!;
     return c.executeJavaScript(

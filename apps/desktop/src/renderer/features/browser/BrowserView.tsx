@@ -322,22 +322,6 @@ export function BrowserView(_props: ViewProps) {
           {Boolean(state?.errors) && <Badge tone="danger">{state?.errors}</Badge>}
         </span>
       </div>
-      <div
-        className="shrink-0 border-b border-line px-2 py-2 text-xs text-muted"
-        data-testid="claude-browser-hint"
-      >
-        Claude controls this browser. You can click and type in the page to help with sign-ins. For your own
-        browsing,{" "}
-        <button
-          type="button"
-          className="text-accent underline hover:text-fg"
-          onClick={() => workbench.openViewTab("jig.userBrowser")}
-          data-testid="claude-browser-open-browser"
-        >
-          open Browser
-        </button>
-        .
-      </div>
       <div className="relative min-h-0 flex-1 bg-canvas">
         {open && frame ? (
           <div
@@ -408,6 +392,22 @@ export function BrowserView(_props: ViewProps) {
           <NetworkList chatId={selected} entries={requests} />
         </Pane>
       )}
+      <div
+        className="shrink-0 border-t border-line px-2 py-2 text-xs text-muted"
+        data-testid="claude-browser-hint"
+      >
+        Claude controls this browser. You can click and type in the page to help with sign-ins. For your own
+        browsing,{" "}
+        <button
+          type="button"
+          className="text-accent underline hover:text-fg"
+          onClick={() => workbench.openViewTab("jig.userBrowser")}
+          data-testid="claude-browser-open-browser"
+        >
+          open Browser
+        </button>
+        .
+      </div>
     </div>
   );
 }
