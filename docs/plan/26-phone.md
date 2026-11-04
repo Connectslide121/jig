@@ -106,6 +106,10 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       `/chats` in a topic lists that project's chats; a deleted topic is made again. Settings → Phone →
       Topics says whether they're on and how to turn them on (Check again). Renaming a project doesn't
       rename its topic yet.
+- [x] Fixed commands: `/status` (per project: chats working, needing you, the queue), `/queue [name]`
+      (a project's tasks with their outcome, Pause / Resume), `/pause`, `/resume`; in a project's
+      topic they mean that project, elsewhere a name or a picker. Telegram's "/" menu lists them
+      (`setMyCommands`). The voice commands' status answers stay in the renderer for now.
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

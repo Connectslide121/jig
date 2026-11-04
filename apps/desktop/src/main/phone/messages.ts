@@ -155,7 +155,8 @@ export function permissionMessage(
 export type Tap =
   | { kind: "permission"; key: string; allow: boolean }
   | { kind: "option"; key: string; index: number }
-  | { kind: "chat"; sessionId: string };
+  | { kind: "chat"; sessionId: string }
+  | { kind: "queue"; action: "q" | "p" | "r"; projectId: string };
 
 export function parseTap(data: string): Tap | undefined {
   const permission = /^p:([\w-]+):([ad])$/.exec(data);
@@ -164,6 +165,8 @@ export function parseTap(data: string): Tap | undefined {
   if (option) return { kind: "option", key: option[1]!, index: Number(option[2]) };
   const chat = /^c:([\w-]+)$/.exec(data);
   if (chat) return { kind: "chat", sessionId: chat[1]! };
+  const queue = /^k:([qpr]):([\w-]+)$/.exec(data);
+  if (queue) return { kind: "queue", action: queue[1] as "q" | "p" | "r", projectId: queue[2]! };
   return undefined;
 }
 
@@ -252,12 +255,132 @@ export function chatPicker(chats: SessionMeta[], current: string | undefined, ma
   };
 }
 
+/** A project's Tasks queue as the phone shows it (the Tasks add-on's `list`). */
+export interface QueueView {
+  running: boolean;
+  tasks: Array<{ title: string; status: string; report?: { summary?: string } }>;
+}
+
+export interface ProjectInfo {
+  id: string;
+  name: string;
+}
+
+/** A project's queue counts (the Tasks add-on's `overview`). */
+export interface QueueCounts {
+  projectId: string;
+  queued: number;
+  active: number;
+  needsYou: number;
+  running: boolean;
+}
+
+const TASK_MARK: Record<string, string> = {
+  done: "✅",
+  partial: "◐",
+  failed: "❌",
+  error: "❌",
+  blocked: "⛔",
+  no_report: "✅",
+  running: "⏳",
+  needs_you: "❓",
+  queued: "▫️",
+  skipped: "⏭",
+};
+const FINISHED = new Set(["done", "partial", "failed", "error", "blocked", "no_report", "skipped"]);
+
+/** What each project is doing: its chats working or waiting for you, and its queue. */
+export function overviewMessage(
+  projects: ProjectInfo[],
+  chats: SessionMeta[],
+  queues: QueueCounts[],
+): OutMessage {
+  const live = chats.filter((m) => !m.draft && m.kind !== "builder");
+  const lines: string[] = [];
+  const buttons: Button[][] = [];
+  const rows = [...projects, { id: "", name: "No project" }];
+  for (const p of rows) {
+    const mine = live.filter((m) => (m.projectId ?? "") === p.id);
+    const working = mine.filter((m) => m.status === "working" || m.status === "starting").length;
+    const waiting = mine.filter((m) => m.status === "needs_you");
+    const queue = queues.find((q) => q.projectId === p.id);
+    const queued = queue ? queue.queued + queue.active : 0;
+    if (!working && !waiting.length && !queued) continue;
+    const parts = [
+      working ? `${working} working` : "",
+      waiting.length ? `❓ ${waiting.length} need${waiting.length === 1 ? "s" : ""} you` : "",
+      queued ? `queue ${queue!.running ? "▶" : "⏸"} ${queued} left` : "",
+    ].filter(Boolean);
+    lines.push(`<b>${escapeHtml(p.name)}</b> · ${parts.join(" · ")}`);
+    for (const m of waiting) lines.push(`   ❓ ${chatTitle(m)}`);
+    if (queued && p.id) buttons.push([{ text: `Queue · ${p.name.slice(0, 40)}`, data: `k:q:${p.id}` }]);
+  }
+  if (!lines.length) return { text: "😴 Nothing is running and nothing waits for you." };
+  return { text: `📊 <b>Status</b>\n\n${lines.join("\n")}`, buttons };
+}
+
+/** A project's queue: where it is, each task with its outcome, and Pause or Resume. */
+export function queueMessage(project: ProjectInfo, queue: QueueView, max = 15): OutMessage {
+  const tasks = queue.tasks;
+  if (!tasks.length) return { text: `The queue of <b>${escapeHtml(project.name)}</b> is empty.` };
+  const done = tasks.filter((t) => FINISHED.has(t.status)).length;
+  const head = `📋 <b>Queue · ${escapeHtml(project.name)}</b> · ${queue.running ? "running" : "paused"}, ${done} of ${tasks.length} done`;
+  // The finished ones last in, the rest in order: what matters now first.
+  const shown =
+    tasks.length > max
+      ? [
+          ...tasks.filter((t) => !FINISHED.has(t.status)),
+          ...tasks.filter((t) => FINISHED.has(t.status)).slice(-3),
+        ].slice(0, max)
+      : tasks;
+  const lines = shown.map((t) => {
+    const summary =
+      t.report?.summary && t.status !== "done" ? `\n      ${excerpt(t.report.summary, 160)}` : "";
+    return `${TASK_MARK[t.status] ?? "•"} ${escapeHtml(t.title.slice(0, 80))}${summary}`;
+  });
+  const more = tasks.length > shown.length ? `\n…and ${tasks.length - shown.length} more` : "";
+  const open = tasks.some((t) => !FINISHED.has(t.status));
+  return {
+    text: `${head}\n\n${lines.join("\n")}${more}`,
+    ...(open
+      ? {
+          buttons: [
+            [
+              queue.running
+                ? { text: "⏸ Pause", data: `k:p:${project.id}` }
+                : { text: "▶ Resume", data: `k:r:${project.id}` },
+            ],
+          ],
+        }
+      : {}),
+  };
+}
+
+/** Which project you meant: the topic you wrote in, else a name you typed ("/queue podium"). */
+export function findProject(projects: ProjectInfo[], words: string): ProjectInfo | undefined {
+  const w = words.trim().toLowerCase();
+  if (!w) return undefined;
+  return (
+    projects.find((p) => p.name.toLowerCase() === w) ??
+    projects.find((p) => p.name.toLowerCase().startsWith(w)) ??
+    projects.find((p) => p.name.toLowerCase().includes(w))
+  );
+}
+
+/** Buttons to pick a project for a command (`k:q:`, `k:p:`, `k:r:`). */
+export function projectPicker(projects: ProjectInfo[], action: "q" | "p" | "r", text: string): OutMessage {
+  return {
+    text,
+    buttons: projects.slice(0, 10).map((p) => [{ text: p.name.slice(0, 50), data: `k:${action}:${p.id}` }]),
+  };
+}
+
 export const HELP =
-  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write: it goes to the last chat Jig told you about.\n• /chats picks the chat your messages go to.";
+  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write: it goes to the last chat Jig told you about.\n• /chats picks the chat your messages go to.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
 
 /** The help when your bot has topics: one per project, and Jig's own. */
 export const HELP_TOPICS =
-  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project and Jig itself write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write in the topic: it goes to the last chat that wrote there.\n• /chats in a topic picks the chat your messages there go to.";
+  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project and Jig itself write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write in the topic: it goes to the last chat that wrote there.\n• /chats in a topic picks the chat your messages there go to.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
 
 /** The digits in what you sent ("123456", "123 456"). */
 export const codeIn = (text: string) => text.replace(/\D/g, "");

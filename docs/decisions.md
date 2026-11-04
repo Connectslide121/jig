@@ -5390,6 +5390,9 @@ choice of Telegram and everything below: Claude, on my own.
   one topic per project and Jig's own, so a running queue doesn't become one wall of messages. Without
   them everything stays in one thread. Plain text goes to the last chat that wrote in that topic, never
   to a chat of another project. Finished turns arrive silently; only what waits for you buzzes.
+- **Commands without Claude:** `/status`, `/queue`, `/pause`, `/resume` read the Tasks add-on
+  (`overview`, `list`, `start`, `pause` through `addonService().call`) and the chats, and answer at
+  once: asking how things are going costs nothing from the plan.
 - **Replies survive a restart:** which message belongs to which chat (last 300) is kept in
   `phone.json`. **The PC stays awake** (`powerSaveBlocker`, `phone.keepAwake`) while a chat works or
   waits for you and the phone is connected: a sleeping PC sends nothing.

@@ -7,14 +7,21 @@ import {
   chatTitle,
   codeIn,
   excerpt,
+  findProject,
   HELP,
   HELP_TOPICS,
   lastReply,
   type OutMessage,
   optionDecision,
+  overviewMessage,
   type PermissionItem,
+  type ProjectInfo,
   parseTap,
   permissionMessage,
+  projectPicker,
+  type QueueCounts,
+  type QueueView,
+  queueMessage,
   replyDecision,
   statusMessage,
   tapDecision,
@@ -75,6 +82,15 @@ export interface PhoneDeps {
   api(token: string): TelegramApi;
   /** A project's name and colour, for its topic. */
   project?(id: string): Promise<{ name: string; color?: string } | undefined>;
+  /** Your projects, in order (for /status and /queue). */
+  projects?(): Promise<ProjectInfo[]>;
+  /** The Tasks add-on's queues; they throw when it's switched off. */
+  queues?: {
+    overview(): Promise<QueueCounts[]>;
+    list(projectId: string): Promise<QueueView>;
+    start(projectId: string): Promise<void>;
+    pause(projectId: string): Promise<void>;
+  };
   settings(): PhoneSettings;
   /** This computer has been idle for `minutes` or is locked. */
   away(minutes: number): boolean;
@@ -153,6 +169,23 @@ export class PhoneService {
     for (const [thread, sessionId] of this.saved?.targets ?? []) this.targets.set(thread, sessionId);
     this.refresh();
     if (this.saved) await this.checkTopics().catch(() => undefined);
+    if (this.saved?.owner) await this.setCommands();
+  }
+
+  /** The commands Telegram offers in its menu when you type "/". */
+  private async setCommands(): Promise<void> {
+    await this.api
+      ?.call("setMyCommands", {
+        commands: [
+          { command: "status", description: "What every project is doing" },
+          { command: "queue", description: "A project's task queue (/queue podium)" },
+          { command: "pause", description: "Pause a project's queue" },
+          { command: "resume", description: "Resume a project's queue" },
+          { command: "chats", description: "Pick the chat your messages go to" },
+          { command: "help", description: "What Jig on your phone does" },
+        ],
+      })
+      .catch((error) => this.deps.log?.warn("Setting the bot's commands failed", error));
   }
 
   /** Asks Telegram whether your bot has topics turned on (you can switch it in @BotFather any time). */
@@ -564,6 +597,9 @@ export class PhoneService {
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
     if (command === "chats") return void (await this.send(await this.picker(here), { thread: here }));
+    if (command === "status") return void (await this.send(await this.overview(), { thread: here }));
+    if (command === "queue" || command === "pause" || command === "resume")
+      return this.queueCommand(command, text.replace(/^\/\w+(@\w+)?/, ""), here);
     const replyTo = message.reply_to_message?.message_id;
     const sessionId =
       (replyTo !== undefined ? this.replies.get(replyTo) : undefined) ?? this.targets.get(here ?? 0);
@@ -575,6 +611,64 @@ export class PhoneService {
       ));
     }
     await this.toChat(sessionId, text, replyTo, here);
+  }
+
+  /** /status: what every project is doing. */
+  private async overview() {
+    const [projects, chats, queues] = await Promise.all([
+      this.deps.projects?.() ?? Promise.resolve([]),
+      this.deps.chats.list(),
+      this.deps.queues?.overview().catch(() => []) ?? Promise.resolve([]),
+    ]);
+    return overviewMessage(projects, chats, queues);
+  }
+
+  /** /queue, /pause, /resume: for the topic's project, or the one named ("/queue podium"). */
+  private async queueCommand(
+    command: "queue" | "pause" | "resume",
+    words: string,
+    here: number | undefined,
+  ): Promise<void> {
+    const projects = (await this.deps.projects?.()) ?? [];
+    const topicProject = this.projectOfThread(here);
+    const project =
+      findProject(projects, words) ?? projects.find((p) => p.id === topicProject && !words.trim());
+    const action = command === "queue" ? "q" : command === "pause" ? "p" : "r";
+    if (!project) {
+      const withQueues = await this.projectsWithQueues(projects);
+      const text = words.trim()
+        ? `No project is called “${words.trim()}”. Which one?`
+        : "Which project's queue?";
+      return void (await this.send(
+        withQueues.length
+          ? projectPicker(withQueues, action, text)
+          : { text: "No project has tasks in its queue." },
+        { thread: here },
+      ));
+    }
+    await this.queueAction(action, project, here);
+  }
+
+  private async projectsWithQueues(projects: ProjectInfo[]): Promise<ProjectInfo[]> {
+    const counts = (await this.deps.queues?.overview().catch(() => [])) ?? [];
+    return projects.filter((p) => counts.some((c) => c.projectId === p.id && c.queued + c.active > 0));
+  }
+
+  /** Shows a project's queue, after pausing or resuming it if asked. */
+  private async queueAction(action: "q" | "p" | "r", project: ProjectInfo, here: number | undefined) {
+    const queues = this.deps.queues;
+    if (!queues)
+      return void (await this.send({ text: "The Tasks add-on isn't available." }, { thread: here }));
+    try {
+      if (action === "p") await queues.pause(project.id);
+      if (action === "r") await queues.start(project.id);
+      await this.send(queueMessage(project, await queues.list(project.id)), { thread: here });
+    } catch (error) {
+      await this.send(
+        { text: `Couldn't reach the queue: ${excerpt((error as Error).message, 200)}` },
+        { thread: here },
+      );
+    }
   }
 
   private help(): string {
@@ -602,6 +696,7 @@ export class PhoneService {
     this.code = undefined;
     await this.deps.store.save(this.saved);
     await this.deps.enable();
+    await this.setCommands();
     await this.send({ text: `✅ Paired with Jig.\n\n${this.help()}` }, { thread: await this.threadFor() });
     this.changed();
   }
@@ -665,6 +760,13 @@ export class PhoneService {
     const parsed = tap.data ? parseTap(tap.data) : undefined;
     if (!owner || tap.from.id !== owner.chatId || !parsed) return void (await answer());
     const here = tap.message?.is_topic_message ? tap.message.message_thread_id : undefined;
+    if (parsed.kind === "queue") {
+      await answer();
+      const project = ((await this.deps.projects?.()) ?? []).find((p) => p.id === parsed.projectId);
+      if (!project)
+        return void (await this.send({ text: "That project no longer exists." }, { thread: here }));
+      return this.queueAction(parsed.action, project, here);
+    }
     if (parsed.kind === "chat") {
       const snapshot = await this.deps.chats.snapshot(parsed.sessionId).catch(() => undefined);
       await answer();

@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
 import { z } from "zod";
+import { addonService } from "../addons";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
@@ -10,6 +11,7 @@ import { projectStore } from "../projects";
 import { onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
+import type { QueueCounts, QueueView } from "./messages";
 import { PhoneService, type SavedPhone } from "./service";
 import { telegramApi } from "./telegram";
 
@@ -90,6 +92,13 @@ export async function startPhone(): Promise<void> {
     project: async (id) => {
       const project = await projectStore().get(id);
       return { name: project.name, color: project.color };
+    },
+    projects: async () => (await projectStore().list()).map((p) => ({ id: p.id, name: p.name })),
+    queues: {
+      overview: async () => (await addonService().call("tasks", "overview", {})) as QueueCounts[],
+      list: async (projectId) => (await addonService().call("tasks", "list", { projectId })) as QueueView,
+      start: async (projectId) => void (await addonService().call("tasks", "start", { projectId })),
+      pause: async (projectId) => void (await addonService().call("tasks", "pause", { projectId })),
     },
     settings: () => getConfig().phone,
     away: (minutes) => powerMonitor.getSystemIdleState(minutes * 60) !== "active",

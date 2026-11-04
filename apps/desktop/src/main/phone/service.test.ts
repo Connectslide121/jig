@@ -24,6 +24,15 @@ function setup(
   opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; away?: boolean; topics?: boolean } = {},
 ) {
   let topicId = 500;
+  const queue = {
+    running: true,
+    tasks: [
+      { title: "Fix rounding", status: "done" },
+      { title: "Card 29992 plan", status: "failed", report: { summary: "The build broke." } },
+      { title: "Update docs", status: "running" },
+      { title: "Release notes", status: "queued" },
+    ],
+  };
   const goneTopics = new Set<number>();
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   let messageId = 100;
@@ -83,6 +92,26 @@ function setup(
     store: { load: async () => opts.saved, save: async (s) => void saves.push(s), remembered: true },
     api: () => api,
     project: async (id) => (id === "p1" ? { name: "Podium", color: "info" } : undefined),
+    projects: async () => [
+      { id: "p1", name: "Podium" },
+      { id: "p2", name: "Jig" },
+    ],
+    queues: {
+      overview: async () => [
+        { projectId: "p1", queued: 2, active: 1, needsYou: 0, running: queue.running },
+        { projectId: "p2", queued: 0, active: 0, needsYou: 0, running: false },
+      ],
+      list: async (projectId) => {
+        if (projectId !== "p1") throw new Error("not_found");
+        return queue;
+      },
+      start: async () => {
+        queue.running = true;
+      },
+      pause: async () => {
+        queue.running = false;
+      },
+    },
     settings: () => settings,
     away: () => opts.away ?? false,
     keepAwake: (on) => void awake.push(on),
@@ -131,6 +160,7 @@ function setup(
     enabled: () => enabled,
     awake,
     goneTopics,
+    queue,
   };
 }
 
@@ -410,5 +440,56 @@ describe("PhoneService topics", () => {
     await t.service.fromChat(meta({ projectId: "p1" }), "Deploy?");
     expect(t.calls.some((c) => c.method === "createForumTopic")).toBe(false);
     expect(sends(t)[0]?.params).not.toHaveProperty("message_thread_id");
+  });
+});
+
+describe("PhoneService commands", () => {
+  const last = (t: ReturnType<typeof setup>) => t.calls.filter((c) => c.method === "sendMessage").at(-1);
+
+  it("/status tells what each project is doing", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    t.metas.set("s1", meta({ projectId: "p1", status: "needs_you", title: "Card 29992" }));
+    await t.text("/status");
+    const text = String(last(t)?.params.text);
+    expect(text).toContain("<b>Podium</b>");
+    expect(text).toContain("1 needs you");
+    expect(text).toContain("queue ▶ 3 left");
+    expect(text).toContain("❓ Card 29992");
+    expect(text).not.toContain("<b>Jig</b>");
+  });
+
+  it("/queue podium shows its tasks, and Pause pauses it", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.text("/queue pod");
+    const message = last(t)?.params;
+    expect(String(message?.text)).toContain("Queue · Podium</b> · running, 2 of 4 done");
+    expect(String(message?.text)).toContain("❌ Card 29992 plan\n      The build broke.");
+    const markup = message?.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> };
+    expect(markup.inline_keyboard[0]?.[0]?.callback_data).toBe("k:p:p1");
+    await t.tap("k:p:p1");
+    expect(t.queue.running).toBe(false);
+    expect(String(last(t)?.params.text)).toContain("paused");
+  });
+
+  it("/queue without a project asks which, from those with tasks", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.text("/resume");
+    const markup = last(t)?.params.reply_markup as { inline_keyboard: Array<Array<{ text: string }>> };
+    expect(markup.inline_keyboard.map((r) => r[0]?.text)).toEqual(["Podium"]);
+  });
+
+  it("/queue in a project's topic is that project's", async () => {
+    const t = setup({ saved: { ...paired, topics: { projects: { p1: 501 } } }, topics: true });
+    current = t.service;
+    await t.service.start();
+    await t.text("/queue", { message_thread_id: 501, is_topic_message: true });
+    expect(String(last(t)?.params.text)).toContain("Queue · Podium");
+    expect(last(t)?.params.message_thread_id).toBe(501);
   });
 });
