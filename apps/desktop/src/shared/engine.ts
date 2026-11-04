@@ -308,7 +308,8 @@ export interface SessionMeta {
   needsLogin?: boolean;
   archived?: boolean;
   /** `builder` sessions run a build job (hidden from the Sessions list, opened from the build). */
-  kind?: "chat" | "builder";
+  /** `concierge`: Jig itself, answering you on your phone (D-348). */
+  kind?: "chat" | "builder" | "concierge";
   buildId?: string;
   /** A fork not started yet: the first start resumes `engineSessionId` as a new branch. */
   forkPending?: boolean;

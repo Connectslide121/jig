@@ -127,6 +127,8 @@ export interface SessionManagerOptions {
   turnContext?: (meta: SessionMeta, text: string) => Promise<string>;
   /** Jig's tools for the chat by MCP server name (`jig`, `jig-builder`), for any engine (D-313). */
   toolServers?: (meta: SessionMeta) => Record<string, ChatToolServer> | undefined;
+  /** Claude Code's built-in tools a chat may use; undefined: all. */
+  builtinTools?: (meta: SessionMeta) => string[] | undefined;
   agents?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
   onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
@@ -414,6 +416,7 @@ export class SessionManager {
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
         toolServers: this.options.toolServers?.(meta),
+        tools: this.options.builtinTools?.(meta),
         agents: this.options.agents?.(meta),
         plugins: this.options.plugins?.(meta),
         askPermission: (request, signal) =>

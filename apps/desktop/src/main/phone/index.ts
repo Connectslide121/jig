@@ -11,6 +11,7 @@ import { projectStore } from "../projects";
 import { onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
+import { conciergeChat, registerConcierge } from "./concierge";
 import type { QueueCounts, QueueView } from "./messages";
 import { PhoneService, type SavedPhone } from "./service";
 import { telegramApi } from "./telegram";
@@ -80,6 +81,7 @@ function keepAwake(on: boolean): void {
 /** Jig on your phone through your own Telegram bot (D-348). */
 export async function startPhone(): Promise<void> {
   const m = sessionManager();
+  registerConcierge();
   const s = new PhoneService({
     chats: {
       list: () => m.list(),
@@ -92,6 +94,13 @@ export async function startPhone(): Promise<void> {
     project: async (id) => {
       const project = await projectStore().get(id);
       return { name: project.name, color: project.color };
+    },
+    concierge: {
+      ask: async (text) => {
+        const chat = await conciergeChat();
+        await m.send(chat.id, text, [], true);
+        return chat.id;
+      },
     },
     projects: async () => (await projectStore().list()).map((p) => ({ id: p.id, name: p.name })),
     queues: {

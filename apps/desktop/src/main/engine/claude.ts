@@ -131,6 +131,7 @@ export class ClaudeEngine implements Engine {
         resume: options.resume,
         settingSources: ["user", "project", "local"],
         plugins: options.plugins,
+        tools: options.tools,
         systemPrompt: { type: "preset", preset: "claude_code", append: options.appendSystemPrompt },
         includePartialMessages: true,
         promptSuggestions: options.promptSuggestions,

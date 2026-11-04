@@ -5390,6 +5390,16 @@ choice of Telegram and everything below: Claude, on my own.
   one topic per project and Jig's own, so a running queue doesn't become one wall of messages. Without
   them everything stays in one thread. Plain text goes to the last chat that wrote in that topic, never
   to a chat of another project. Finished turns arrive silently; only what waits for you buzzes.
+- **Jig itself answers what isn't for a chat** (Jon: "not only talk to a chat but to Jig itself …
+  go to the Podium project, start a new chat, tell it to look at card 29992 and prepare a plan, then
+  send it to me for approval"). A chat of its own kind, `concierge`, one a day, visible in the chat
+  list, on the helper model, with Jig's tools and four chat tools and none of Claude Code's own: it
+  can't touch files or run commands, only start or talk to chats that do, so everything that changes
+  something still goes through a chat's own permission requests and plans, which reach the phone with
+  their buttons. Starting a chat doesn't ask (it starts in plan mode unless you say otherwise);
+  writing into a running chat does. Its answers are marked as AI. This replaces "plain text goes to the
+  last chat that wrote": a question about how things are going could otherwise land in a working chat
+  as an instruction.
 - **Commands without Claude:** `/status`, `/queue`, `/pause`, `/resume` read the Tasks add-on
   (`overview`, `list`, `start`, `pause` through `addonService().call`) and the chats, and answer at
   once: asking how things are going costs nothing from the plan.

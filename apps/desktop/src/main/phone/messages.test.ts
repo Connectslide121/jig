@@ -168,5 +168,8 @@ describe("chatPicker", () => {
     expect(m.buttons?.[1]?.[0]?.text).toBe("• Old");
   });
 
-  it("says when there are none", () => expect(chatPicker([], undefined).buttons).toBeUndefined());
+  it("says when there are none", () => expect(chatPicker([], undefined).buttons).toEqual([]));
+
+  it("offers Jig itself first when it can answer", () =>
+    expect(chatPicker([], "s1", 8, true).buttons).toEqual([[{ text: "🤖 Jig itself", data: "c:jig" }]]));
 });

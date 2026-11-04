@@ -110,6 +110,18 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       (a project's tasks with their outcome, Pause / Resume), `/pause`, `/resume`; in a project's
       topic they mean that project, elsewhere a name or a picker. Telegram's "/" menu lists them
       (`setMyCommands`). The voice commands' status answers stay in the renderer for now.
+- [x] Jig itself (`main/phone/concierge.ts`): a chat of the new kind `concierge` ("Jig on your phone ·
+      date", one a day, cwd `~/.jig/phone`, the helper model, permission mode default), visible in
+      the chat list so you can read it on the computer. Its prompt says what it is and its limits; it
+      has Jig's tools (add-ons included) plus `jig_chats_list`, `jig_chat_read`, `jig_chat_start`
+      (plan mode unless asked; runs without asking: the new chat asks for itself) and
+      `jig_chat_send` (asks you), and no built-in tools but the tool search (`StartOptions.tools`).
+      Plain text goes to it with the topic it was written in; its answer comes back to that topic,
+      marked "🤖 Jig · AI", also while you're at the computer. Plain text never goes to a chat on its
+      own any more: only a reply to a chat's message, or a chat picked with /chats (whose first
+      button, "🤖 Jig itself", goes back).
+- [ ] Check the concierge on a real bot: that `tools: ["ToolSearch"]` leaves the add-on tools
+      reachable, how well it starts chats from loose wording, and the cost of the helper model.
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

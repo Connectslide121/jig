@@ -133,8 +133,9 @@ test("phone: pair a Telegram bot, then answer a chat from the phone", async ({ j
       .toContain("Allowed");
     await expect.poll(() => telegram.texts().join("\n"), { timeout: 15000 }).toContain("Finished");
 
-    // A message from the phone goes to that chat.
-    telegram.write("hello from the phone");
+    // A reply to its message from the phone goes to that chat.
+    const finished = telegram.sent.findIndex((m) => String(m.text).includes("Finished")) + 1;
+    telegram.write("hello from the phone", finished);
     await expect(page.getByTestId("user-message-text").last()).toHaveText("hello from the phone", {
       timeout: 15000,
     });
@@ -169,6 +170,34 @@ test("phone: Claude texts the phone and the reply comes back to the chat", async
 
     telegram.write("yes, deploy", asked);
     await expect(page.getByTestId("user-message-text").last()).toHaveText("yes, deploy", { timeout: 15000 });
+  } finally {
+    await telegram.close();
+  }
+});
+
+// Anything else you write goes to Jig itself (D-348): its own chat answers, and the answer reaches
+// the phone even while you're at the computer.
+test("phone: plain text goes to Jig itself, and its answer comes back", async ({ jigHome }) => {
+  const telegram = await fakeTelegram();
+  try {
+    const page = await start(jigHome, telegram);
+    const connected = (await hostCall(page, "phone.connect", { token: TOKEN })) as {
+      value: { code: string };
+    };
+    telegram.write(connected.value.code);
+    await expect
+      .poll(
+        async () => ((await hostCall(page, "phone.state")) as { value: { status: string } }).value.status,
+        { timeout: 15000 },
+      )
+      .toBe("connected");
+
+    telegram.write("how is everything going?");
+    await expect.poll(() => telegram.texts().join("\n"), { timeout: 20000 }).toContain("<b>Jig</b> · AI");
+    const chats = (await hostCall(page, "sessions.list")) as {
+      value: Array<{ kind?: string; title: string }>;
+    };
+    expect(chats.value.find((c) => c.kind === "concierge")?.title).toMatch(/^Jig on your phone/);
   } finally {
     await telegram.close();
   }

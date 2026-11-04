@@ -718,3 +718,6 @@ unit-tested) pairs by a code, polls, routes replies to chats and edits answered 
 wires it to Electron (safeStorage, `powerMonitor` idle, `phone.*` IPC, `onSessionStatus`,
 `onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send`. The
 renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, never the token.
+`concierge.ts` registers the `concierge` session kind (`registerSessionKind`: its prompt, Jig's tool
+server plus the chat tools, `builtinTools: ["ToolSearch"]`, passed to the SDK as `tools`) and finds or
+makes today's concierge chat; the service sends it plain text and relays its answers by topic.

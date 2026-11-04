@@ -57,6 +57,8 @@ export interface ChatToolServer {
 
 export interface StartOptions {
   cwd: string;
+  /** Claude Code's built-in tools it may use; undefined: all of them (`[]`: only `toolServers`). */
+  tools?: string[];
   /** Model alias or id; empty = Claude Code's default. */
   model: string;
   permissionMode: PermissionMode;

@@ -64,6 +64,8 @@ export interface SessionKindHooks {
   appendSystemPrompt: (meta: SessionMeta) => string;
   /** Its tools by MCP server name, instead of the `jig` server (D-313). */
   toolServers: (meta: SessionMeta) => Record<string, ChatToolServer> | undefined;
+  /** Claude Code's built-in tools it may use; undefined: all of them. */
+  builtinTools?: string[];
   onTurnEnd?: (meta: SessionMeta) => void;
   onWorking?: (meta: SessionMeta) => void;
 }
@@ -328,6 +330,7 @@ export function startSessions(): void {
       );
       return { jig: { ...jig, tools: [...jig.tools, ...helpers] } };
     },
+    builtinTools: (meta) => kindHooks.get(meta.kind ?? "")?.builtinTools,
     // Chats with Jig's tools get the tester and the searcher, which run on small models.
     agents: (meta) => {
       if (kindHooks.has(meta.kind ?? "") || !ENGINE_CAPABILITIES[chatProvider(meta)].subagents)

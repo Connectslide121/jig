@@ -41,6 +41,12 @@ export function excerpt(text: string, max = MAX_EXCERPT): string {
   return escapeHtml(cut);
 }
 
+/** The user's own chats: not the builder's, not Jig's own chat on the phone. */
+export const isUserChat = (m: Pick<SessionMeta, "kind">) => !m.kind || m.kind === "chat";
+
+/** Jig's own answer on the phone, marked as AI. */
+export const conciergeReply = (text: string) => `🤖 <b>Jig</b> · AI\n\n${excerpt(text, 3500)}`;
+
 export const chatTitle = (meta: Pick<SessionMeta, "title">) =>
   escapeHtml(meta.title.length > 80 ? `${meta.title.slice(0, 79)}…` : meta.title);
 
@@ -64,7 +70,7 @@ export function statusMessage(
   reply: string | undefined,
   finished: boolean,
 ): OutMessage | undefined {
-  if (meta.kind === "builder" || previous === meta.status) return undefined;
+  if (!isUserChat(meta) || previous === meta.status) return undefined;
   if (previous !== "working" && previous !== "starting") return undefined;
   if (meta.status === "idle" && finished)
     return {
@@ -236,22 +242,32 @@ const STATUS_MARK: Partial<Record<SessionMeta["status"], string>> = {
 };
 
 /** The chats you can talk to from the phone: needing you first, then working, then the latest. */
-export function chatPicker(chats: SessionMeta[], current: string | undefined, max = 8): OutMessage {
+export function chatPicker(
+  chats: SessionMeta[],
+  current: string | undefined,
+  max = 8,
+  jig = false,
+): OutMessage {
   const rank = (m: SessionMeta) =>
     m.status === "needs_you" ? 0 : m.status === "working" || m.status === "starting" ? 1 : 2;
   const list = chats
-    .filter((m) => !m.draft && m.kind !== "builder")
+    .filter((m) => !m.draft && isUserChat(m))
     .sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, max);
-  if (!list.length) return { text: "No chats yet. Start one in Jig on your computer." };
+  const back = jig ? [[{ text: `${current ? "" : "• "}🤖 Jig itself`, data: "c:jig" }]] : [];
+  if (!list.length)
+    return { text: "No chats yet. Start one in Jig on your computer, or ask Jig to.", buttons: back };
   return {
-    text: "Which chat? Your next messages go to the one you pick.",
-    buttons: list.map((m) => [
-      {
-        text: `${m.id === current ? "• " : ""}${STATUS_MARK[m.status] ? `${STATUS_MARK[m.status]} ` : ""}${m.title.slice(0, 50)}`,
-        data: `c:${m.id}`,
-      },
-    ]),
+    text: "Which chat? Your next messages here go to the one you pick.",
+    buttons: [
+      ...back,
+      ...list.map((m) => [
+        {
+          text: `${m.id === current ? "• " : ""}${STATUS_MARK[m.status] ? `${STATUS_MARK[m.status]} ` : ""}${m.title.slice(0, 50)}`,
+          data: `c:${m.id}`,
+        },
+      ]),
+    ],
   };
 }
 
@@ -295,7 +311,7 @@ export function overviewMessage(
   chats: SessionMeta[],
   queues: QueueCounts[],
 ): OutMessage {
-  const live = chats.filter((m) => !m.draft && m.kind !== "builder");
+  const live = chats.filter((m) => !m.draft && isUserChat(m));
   const lines: string[] = [];
   const buttons: Button[][] = [];
   const rows = [...projects, { id: "", name: "No project" }];
@@ -376,11 +392,11 @@ export function projectPicker(projects: ProjectInfo[], action: "q" | "p" | "r", 
 }
 
 export const HELP =
-  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write: it goes to the last chat Jig told you about.\n• /chats picks the chat your messages go to.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
+  "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers: how things are going, or start a chat in a project (\"Podium: look at card 29992 and make a plan\").\n• /chats sends what you write to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
 
 /** The help when your bot has topics: one per project, and Jig's own. */
 export const HELP_TOPICS =
-  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project and Jig itself write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write in the topic: it goes to the last chat that wrote there.\n• /chats in a topic picks the chat your messages there go to.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
+  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers, in that topic: how things are going, or start a chat (\"look at card 29992 and make a plan\"). In a project's topic it means that project.\n• /chats in a topic sends what you write there to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue";
 
 /** The digits in what you sent ("123456", "123 456"). */
 export const codeIn = (text: string) => text.replace(/\D/g, "");

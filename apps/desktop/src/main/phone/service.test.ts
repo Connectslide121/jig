@@ -21,9 +21,16 @@ const bash = (status: PermissionItem["status"] = "pending") =>
   }) as PermissionItem;
 
 function setup(
-  opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; away?: boolean; topics?: boolean } = {},
+  opts: {
+    saved?: SavedPhone;
+    settings?: Partial<PhoneSettings>;
+    away?: boolean;
+    topics?: boolean;
+    concierge?: boolean;
+  } = {},
 ) {
   let topicId = 500;
+  const asked: string[] = [];
   const queue = {
     running: true,
     tasks: [
@@ -92,6 +99,16 @@ function setup(
     store: { load: async () => opts.saved, save: async (s) => void saves.push(s), remembered: true },
     api: () => api,
     project: async (id) => (id === "p1" ? { name: "Podium", color: "info" } : undefined),
+    ...(opts.concierge
+      ? {
+          concierge: {
+            ask: async (text: string) => {
+              asked.push(text);
+              return "jig1";
+            },
+          },
+        }
+      : {}),
     projects: async () => [
       { id: "p1", name: "Podium" },
       { id: "p2", name: "Jig" },
@@ -136,11 +153,24 @@ function setup(
         ...over,
       },
     } as Omit<TelegramUpdate, "update_id">);
-  const tap = (data: string, from = OWNER) =>
-    handle({ callback_query: { id: "cb", from: { id: from, is_bot: false, first_name: "X" }, data } } as Omit<
-      TelegramUpdate,
-      "update_id"
-    >);
+  const tap = (data: string, from = OWNER, thread?: number) =>
+    handle({
+      callback_query: {
+        id: "cb",
+        from: { id: from, is_bot: false, first_name: "X" },
+        data,
+        ...(thread
+          ? {
+              message: {
+                message_id: 1,
+                chat: { id: OWNER },
+                message_thread_id: thread,
+                is_topic_message: true,
+              },
+            }
+          : {}),
+      },
+    } as Omit<TelegramUpdate, "update_id">);
   const messages = () => calls.filter((c) => c.method === "sendMessage").map((c) => String(c.params.text));
   return {
     service,
@@ -161,6 +191,7 @@ function setup(
     awake,
     goneTopics,
     queue,
+    asked,
   };
 }
 
@@ -338,14 +369,15 @@ describe("PhoneService phone → Jig", () => {
     });
   });
 
-  it("sends text to the last chat it told you about", async () => {
+  it("never sends plain text to the last chat that wrote, only to one you picked", async () => {
     const t = setup({ saved: paired });
     current = t.service;
     await t.service.start();
     t.items.set("s1", []);
     await t.service.fromChat(meta(), "Deploy?");
-    await t.text("yes, deploy");
-    expect(t.sent).toEqual([{ id: "s1", text: "yes, deploy" }]);
+    await t.text("how is it going?");
+    expect(t.sent).toEqual([]);
+    expect(t.messages().at(-1)).toContain("Pick a chat first");
   });
 
   it("asks which chat when there is none yet, and /chats picks one", async () => {
@@ -404,12 +436,13 @@ describe("PhoneService topics", () => {
     expect(sends(t).map((c) => c.params.message_thread_id)).toEqual([501, 501]);
   });
 
-  it("sends what you write in a topic to the last chat there, and answers in that topic", async () => {
+  it("sends what you write in a topic to the chat you picked there, and answers in that topic", async () => {
     const t = setup({ saved: paired, topics: true });
     current = t.service;
     await t.service.start();
     t.items.set("s1", []);
     await t.service.fromChat(meta({ projectId: "p1" }), "Deploy?");
+    await t.tap("c:s1", OWNER, 501);
     await t.text("yes", { message_thread_id: 501, is_topic_message: true });
     expect(t.sent).toEqual([{ id: "s1", text: "yes" }]);
     expect(sends(t).at(-1)?.params.message_thread_id).toBe(501);
@@ -491,5 +524,77 @@ describe("PhoneService commands", () => {
     await t.text("/queue", { message_thread_id: 501, is_topic_message: true });
     expect(String(last(t)?.params.text)).toContain("Queue · Podium");
     expect(last(t)?.params.message_thread_id).toBe(501);
+  });
+});
+
+describe("PhoneService Jig itself", () => {
+  const sends = (t: ReturnType<typeof setup>) => t.calls.filter((c) => c.method === "sendMessage");
+
+  it("sends plain text to Jig itself, saying where it was written, and its answer back there", async () => {
+    const t = setup({
+      saved: { ...paired, topics: { projects: { p1: 501 } } },
+      topics: true,
+      concierge: true,
+    });
+    current = t.service;
+    await t.service.start();
+    await t.text("look at card 29992 and make a plan", { message_thread_id: 501, is_topic_message: true });
+    expect(t.asked).toEqual([
+      "[Written on the phone, in the topic of project “Podium” (id p1)]\n\nlook at card 29992 and make a plan",
+    ]);
+    expect(t.calls.at(-1)).toMatchObject({ method: "sendChatAction", params: { message_thread_id: 501 } });
+
+    const jig = meta({ id: "jig1", kind: "concierge", title: "Jig on your phone" });
+    t.metas.set("jig1", jig);
+    t.items.set("jig1", [{ kind: "assistant", id: "a", text: "Started “Card 29992 plan”." } as ChatItem]);
+    await t.service.chatStatus({ ...jig, status: "working" });
+    await t.service.chatStatus({ ...jig, status: "idle" });
+    const answer = sends(t).at(-1)?.params;
+    expect(String(answer?.text)).toContain("🤖 <b>Jig</b> · AI");
+    expect(String(answer?.text)).toContain("Card 29992 plan");
+    expect(answer?.message_thread_id).toBe(501);
+    expect(answer).not.toHaveProperty("disable_notification");
+  });
+
+  it("answers even while you're at the computer, and a reply to its answer goes back to it", async () => {
+    const t = setup({ saved: paired, settings: { when: "away" }, away: false, concierge: true });
+    current = t.service;
+    await t.service.start();
+    await t.text("how is everything going?");
+    const jig = meta({ id: "jig1", kind: "concierge" });
+    t.metas.set("jig1", jig);
+    t.items.set("jig1", [{ kind: "assistant", id: "a", text: "All quiet." } as ChatItem]);
+    await t.service.chatStatus({ ...jig, status: "working" });
+    await t.service.chatStatus({ ...jig, status: "idle" });
+    expect(t.messages().at(-1)).toContain("All quiet.");
+    await t.text("and podium?", {
+      reply_to_message: { message_id: 101, date: NOW, chat: { id: OWNER, type: "private" } },
+    });
+    expect(t.asked).toHaveLength(2);
+    expect(t.sent).toEqual([]);
+  });
+
+  it("goes back to Jig itself from /chats", async () => {
+    const t = setup({ saved: paired, concierge: true });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.tap("c:s1");
+    await t.text("to the chat");
+    expect(t.sent).toEqual([{ id: "s1", text: "to the chat" }]);
+    await t.tap("c:jig");
+    await t.text("to Jig");
+    expect(t.asked).toEqual(["[Written on the phone, in the bot's chat]\n\nto Jig"]);
+  });
+
+  it("doesn't tell finished turns of Jig's own chat as a chat's", async () => {
+    const t = setup({ saved: paired, concierge: true });
+    current = t.service;
+    await t.service.start();
+    const jig = meta({ id: "jig1", kind: "concierge" });
+    t.items.set("jig1", []);
+    await t.service.chatStatus({ ...jig, status: "working" });
+    await t.service.chatStatus({ ...jig, status: "idle" });
+    expect(t.messages().some((m) => m.includes("Finished"))).toBe(false);
   });
 });
