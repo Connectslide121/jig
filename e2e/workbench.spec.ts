@@ -260,7 +260,7 @@ test("action groups are merged into a few top bar menus and model defaults remai
   await expect(page.getByTestId("tools-group-Projects")).toHaveCount(0);
   await expect(page.getByTestId("tools-group-Layout")).toHaveCount(0);
   await page.getByTestId("tools-group-View").click();
-  await expect(page.getByRole("menuitem", { name: /Toggle bottom panel/ })).toBeVisible();
+  await expect(page.getByTestId("view-region-bottom")).toBeVisible();
   await expect(page.getByText("Appearance", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   // Project actions are in the project switcher.

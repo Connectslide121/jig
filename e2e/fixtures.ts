@@ -104,9 +104,18 @@ export async function browserPageChat(page: Page): Promise<string> {
 
 /**
  * An element's box once it has stopped moving (two equal reads 100 ms apart): measure layout after
- * panels finish their opening motion (D-200), not in the middle of it.
+ * panels finish their opening motion (D-200), not in the middle of it. Finite animations are awaited
+ * first: on a loaded machine frames can stall mid-animation long enough for two equal reads.
  */
 export async function settledBox(locator: Locator) {
+  await locator.page().evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Number.POSITIVE_INFINITY)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   let last = "";
   let box: Awaited<ReturnType<Locator["boundingBox"]>> = null;
   await expect
