@@ -4,7 +4,10 @@ import { expect, hostCall, test } from "./fixtures";
 
 // A new chat picks Claude or ChatGPT beside its model picker, until its first message (D-314).
 // The fake engine stands in for Codex and reports ChatGPT as signed in.
-test("a new chat switches to ChatGPT before its first message, then keeps it", async ({ page, jigHome }) => {
+test("a new chat switches to ChatGPT before its first message, then hands over through the dialog", async ({
+  page,
+  jigHome,
+}) => {
   const dir = join(jigHome, "shop");
   await mkdir(dir, { recursive: true });
   await hostCall(page, "projects.add", { path: dir });
@@ -24,10 +27,13 @@ test("a new chat switches to ChatGPT before its first message, then keeps it", a
   await page.getByTestId("composer-input").fill("Hello");
   await page.keyboard.press("Enter");
   await expect(page.getByText("You said:")).toBeVisible({ timeout: 15000 });
-  // Started: the provider is the chat's mark now, and nothing opens from it.
-  await expect(picker).toHaveAttribute("aria-disabled", "true");
-  await picker.click({ force: true });
-  await expect(page.getByTestId("provider-claude")).toHaveCount(0);
+  // Started: picking the other provider is a handover now, through its dialog (D-339).
+  await picker.click();
+  await expect(page.getByText("Hand this chat over to", { exact: true })).toBeVisible();
+  await page.getByTestId("provider-claude").click();
+  await expect(page.getByTestId("handover-dialog")).toBeVisible();
+  await page.getByTestId("handover-dialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(picker).toContainText("ChatGPT");
   await expect(page.getByTestId("user-message-edit")).toHaveCount(0);
 });
 

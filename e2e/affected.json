@@ -217,6 +217,20 @@
       ],
       "specs": ["limit-handoff.spec.ts"]
     },
+    {
+      "files": [
+        "apps/desktop/src/main/sessions/**",
+        "apps/desktop/src/main/ipc/validate.ts",
+        "apps/desktop/src/shared/handoff.ts",
+        "apps/desktop/src/shared/engine.ts",
+        "apps/desktop/src/renderer/features/sessions/HandoverDialog.tsx",
+        "apps/desktop/src/renderer/features/sessions/ProviderPicker.tsx",
+        "apps/desktop/src/renderer/features/sessions/LimitCard.tsx",
+        "apps/desktop/src/renderer/features/sessions/menus.ts",
+        "apps/desktop/src/renderer/stores/providers.ts"
+      ],
+      "specs": ["handover.spec.ts", "chat-provider.spec.ts"]
+    },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts", "pipelines.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {

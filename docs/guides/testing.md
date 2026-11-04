@@ -83,7 +83,7 @@ in this order:
 | --- | --- |
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | contains "hit the limit" | says "Starting on it.", then the chat's provider reports its plan limit (Claude's "You've hit your limit…", ChatGPT's "ChatGPT's limit is reached…"), resetting in 2 h 13 min: the limit card (D-338) |
-| starts with Jig's handoff (`<jig-handoff>`, a chat that continued with the other provider) | first says "Picked up from the handoff: “<the goal>”." (the handoff is left out of the matching, like add-ons' context) |
+| starts with Jig's handoff (`<jig-handoff>`, a chat that continued with the other provider) | first says "Picked up from the handoff: “<the goal>”." (the handoff is left out of the matching, like add-ons' context). After a limit (D-338, `e2e/limit-handoff.spec.ts`) or a handover by hand: the first message you send after Hand over in the handover dialog (D-339, `e2e/handover.spec.ts`) |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
 | a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |

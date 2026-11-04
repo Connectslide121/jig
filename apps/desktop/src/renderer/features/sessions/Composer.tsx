@@ -446,7 +446,7 @@ export function Composer({
               {meta.kind !== "builder" && (
                 <ProviderPicker
                   meta={meta}
-                  changeable={canChangeProvider(meta, sent?.length ?? 0, queue.length)}
+                  fresh={canChangeProvider(meta, sent?.length ?? 0, queue.length)}
                 />
               )}
               <button

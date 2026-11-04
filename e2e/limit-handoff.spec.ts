@@ -42,7 +42,8 @@ test("the limit card: continue with ChatGPT, a divider, and ChatGPT picks up the
   await expect(card.getByTestId("limit-outcome")).toContainText("Continued with ChatGPT");
   expect((await card.boundingBox())?.height).toBe(box?.height);
   const divider = page.getByTestId("handoff-divider");
-  await expect(divider).toContainText("Continued with");
+  await expect(divider).toHaveAttribute("data-reason", "limit");
+  await expect(divider.getByTestId("provider-mark-claude")).toBeVisible();
   await expect(divider.getByTestId("provider-mark-chatgpt")).toBeVisible();
   await expect(divider).toContainText("Claude's limit reached");
   await expect(page.getByTestId("jig-message").last()).toContainText("Continued with ChatGPT");

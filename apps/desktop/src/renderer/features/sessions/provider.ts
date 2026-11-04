@@ -23,8 +23,8 @@ export function useChatCapabilities(sessionId: string): EngineCapabilities {
 }
 
 /**
- * A chat can still change provider while nothing has been sent (D-314): no turn, no queued message,
- * nothing in its transcript. After that it keeps its provider for life (D-309).
+ * A chat can still simply switch provider while nothing has been sent (D-314): no turn, no queued
+ * message, nothing in its transcript. After that it changes provider through a handover (D-339).
  */
 export const canChangeProvider = (meta: SessionMeta, itemCount: number, queued: number): boolean =>
   !meta.kind && meta.turns === 0 && !meta.engineSessionId && itemCount === 0 && queued === 0;

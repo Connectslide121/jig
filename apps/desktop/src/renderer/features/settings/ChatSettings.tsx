@@ -40,7 +40,8 @@ const DefaultBadge = () => (
 /**
  * Settings → Chats (D-314): which provider new chats run on, then one fixed group per provider (both
  * always shown, so switching never reshapes the page), then what applies to every chat. A chat keeps
- * its provider for life (D-309); projects and the new-chat picker can choose the other one.
+ * its provider until you hand it over or a limit does (D-339, D-338); projects and the new-chat picker
+ * can choose the other one.
  */
 export function ChatSettings() {
   const config = useConfig((s) => s.config);

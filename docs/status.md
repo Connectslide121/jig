@@ -1,5 +1,22 @@
 # Status
 
+Hand a chat over to the other provider whenever you want (2026-11-04, D-339): after the first message
+the composer's provider picker reads **Hand this chat over to**, and the chat's ⋯ menu has **Hand over
+to ChatGPT…** (or Claude…). Both open a confirmation dialog: Claude → ChatGPT, the model and
+permission mode before → after (opus ⇄ Sol, sonnet ⇄ Terra, haiku ⇄ Luna, the effort kept; Ultra is
+Max on Claude), what carries over (a summary Jig writes from the chat without AI, your files and
+changes on disk), what doesn't (the old provider's full conversation, rewinding before the handover)
+and what's different (features ChatGPT chats lack, whose plan pays, a warning when the other plan's
+meter has no room), then Cancel or Hand over. While a turn runs both entries are greyed out with
+"After this turn". Handing over sends nothing: a divider "Claude → ChatGPT · handed over by you"
+appears and your next message brings the handoff. The limit divider now reads the same way ("· Claude's
+limit reached"), and a limit handover maps the model tier too. Checked in Jig Dark and Light with the
+fake engine; unit tests, `e2e/handover.spec.ts` and the affected specs pass.
+**Check on your machine:** hand a real chat over both ways and check the new provider picks up from
+the handoff with the mapped model.
+**Known gap:** the header's context meter disappears after a handover until the new provider's first
+turn, so the provider mark beside it slides (as on a new chat's first turn).
+
 A chat that hits its plan's limit carries on with the other provider (2026-11-04, D-338): when
 Claude's (or ChatGPT's) limit stops a chat, the plain error is now a **limit card**: "Claude's limit
 is reached", when it resets ("Resets 14:00 · in 2 h 13 min"), and **Continue with ChatGPT** (only when

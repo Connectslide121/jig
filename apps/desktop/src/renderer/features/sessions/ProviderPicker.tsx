@@ -1,48 +1,55 @@
 import { ChevronDown, LogIn } from "lucide-react";
-import { type ChatProvider, chatProvider, type SessionMeta } from "../../../shared/engine";
+import { type ChatProvider, chatProvider, otherProvider, type SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { useChatGptStatus } from "../../stores/providers";
-import { cn, type MenuEntry, openMenuAt } from "../../ui";
+import { type MenuEntry, openMenuAt } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { ProviderMark } from "../usage/ProviderMark";
+import { handoverState, openHandoverDialog } from "./HandoverDialog";
 import { CHAT_PROVIDER_NAMES } from "./provider";
 
 /**
- * Who runs the chat (D-314), beside the model picker: Claude or ChatGPT, until the first message is
- * sent. After that the same button is the chat's mark (no chevron, nothing to open): a chat keeps its
- * provider for life (D-309), and the slot keeps its size so nothing beside it moves. In a narrow
- * message box it is the icon alone, in both states, so the model and permission pickers keep room.
+ * Who runs the chat (D-314, D-339), beside the model picker: Claude or ChatGPT. Before the first
+ * message picking one just switches; after it, picking the other one opens the handover dialog (the
+ * chat carries on with it, D-339), and while a turn runs that entry waits for the turn to finish. In a
+ * narrow message box it is the icon alone, so the model and permission pickers keep room.
  */
-export function ProviderPicker({ meta, changeable }: { meta: SessionMeta; changeable: boolean }) {
+export function ProviderPicker({ meta, fresh }: { meta: SessionMeta; fresh: boolean }) {
   const chatgpt = useChatGptStatus();
   const provider = chatProvider(meta);
   const name = CHAT_PROVIDER_NAMES[provider];
+  const other = CHAT_PROVIDER_NAMES[otherProvider(provider)];
   const choose = async (next: ChatProvider) => {
+    if (next === provider) return;
+    if (!fresh) return openHandoverDialog(meta, next);
     try {
       await call("sessions.setProvider", { id: meta.id, provider: next });
     } catch (error) {
       notify({ title: "Couldn't change who runs this chat", message: errorMessage(error), tone: "danger" });
     }
   };
+  // A started chat hands over between turns only; the entry says when it can.
+  const wait = (to: ChatProvider) => (!fresh && to !== provider ? handoverState(meta, to) : { ok: true });
   const menu = (): MenuEntry[] => {
     const ready = chatgpt?.ready === true;
     return [
-      { heading: "Run this chat on" },
+      { heading: fresh ? "Run this chat on" : "Hand this chat over to" },
       {
         label: "Claude",
         avatar: <ProviderMark provider="claude" iconOnly />,
-        detail: "Claude Code",
+        detail: wait("claude").why ?? "Claude Code",
         checked: provider === "claude",
+        disabled: !wait("claude").ok,
         testId: "provider-claude",
         onSelect: () => void choose("claude"),
       },
       {
         label: "ChatGPT",
         avatar: <ProviderMark provider="codex" iconOnly />,
-        detail: ready ? "Codex" : (chatgpt?.detail ?? "Checking Codex…"),
+        detail: ready ? (wait("codex").why ?? "Codex") : (chatgpt?.detail ?? "Checking Codex…"),
         checked: provider === "codex",
-        disabled: !ready,
+        disabled: !ready || !wait("codex").ok,
         testId: "provider-codex",
         onSelect: () => void choose("codex"),
       },
@@ -63,16 +70,12 @@ export function ProviderPicker({ meta, changeable }: { meta: SessionMeta; change
     <button
       type="button"
       data-testid="provider-menu"
-      aria-disabled={!changeable}
-      onClick={(e) => changeable && openMenuAt(e.currentTarget, menu(), true)}
-      className={cn(
-        "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md text-sm leading-none @max-sm/toolbar:px-1.5 @sm/toolbar:px-2",
-        changeable ? "hover:bg-hover" : "cursor-default",
-      )}
+      onClick={(e) => openMenuAt(e.currentTarget, menu(), true)}
+      className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md text-sm leading-none hover:bg-hover @max-sm/toolbar:px-1.5 @sm/toolbar:px-2"
       title={
-        changeable
-          ? `Runs on ${name} · choose Claude or ChatGPT before the first message`
-          : `This chat runs on ${name} for its whole life · start a new chat for the other`
+        fresh
+          ? `Runs on ${name} · choose Claude or ChatGPT`
+          : `Runs on ${name} · hand this chat over to ${other}`
       }
     >
       {/* Container variants on both sides: a plain display utility would win over them (D-297). */}
@@ -82,12 +85,7 @@ export function ProviderPicker({ meta, changeable }: { meta: SessionMeta; change
       <span className="@max-sm/toolbar:flex @sm/toolbar:hidden">
         <ProviderMark provider={provider} iconOnly />
       </span>
-      <ChevronDown
-        className={cn(
-          "size-3.5 shrink-0 text-muted @max-sm/toolbar:hidden @sm/toolbar:block",
-          !changeable && "invisible",
-        )}
-      />
+      <ChevronDown className="size-3.5 shrink-0 text-muted @max-sm/toolbar:hidden @sm/toolbar:block" />
     </button>
   );
 }

@@ -63,7 +63,7 @@ export function chatToMarkdown(meta: SessionMeta, items: ChatItem[]): string {
         out.push(
           `---`,
           "",
-          `_Continued with ${names[item.to]}${item.reason === "limit" ? ` · ${names[item.from]}'s limit reached` : ""}_`,
+          `_${names[item.from]} → ${names[item.to]} · ${item.reason === "limit" ? `${names[item.from]}'s limit reached` : "handed over"}_`,
           "",
         );
         break;

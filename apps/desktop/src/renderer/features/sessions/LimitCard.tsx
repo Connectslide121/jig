@@ -1,11 +1,11 @@
-import { ArrowRightLeft, Clock, Gauge } from "lucide-react";
+import { ArrowRight, ArrowRightLeft, Clock, Gauge } from "lucide-react";
 import { useState } from "react";
 import { type ChatItem, type ChatProvider, otherProvider } from "../../../shared/engine";
 import { formatResetIn, planHasRoom } from "../../../shared/usage";
 import { call, errorMessage } from "../../lib/host";
 import { clockTime, sameDay, shortDay } from "../../lib/time";
 import { useUsage } from "../../stores/usage";
-import { Button, cn } from "../../ui";
+import { Button } from "../../ui";
 import { notify } from "../../workbench/toasts";
 import { ProviderMark } from "../usage/ProviderMark";
 import { CHAT_PROVIDER_NAMES } from "./provider";
@@ -154,18 +154,22 @@ export function LimitCard({ item, sessionId }: { item: LimitItem; sessionId: str
 
 /** Where the chat carried on with another provider (D-338): a divider with the new provider's mark. */
 export function HandoffDivider({ item }: { item: Extract<ChatItem, { kind: "handoff" }> }) {
+  // One line between two rules, like a day divider: who ran the chat, who runs it from here, and why.
   return (
-    <div className="flex items-center gap-2 py-1 text-xs text-muted" data-testid="handoff-divider">
+    <div
+      className="flex items-center gap-2 py-1 text-xs text-muted"
+      data-testid="handoff-divider"
+      data-reason={item.reason}
+    >
       <div className="h-px flex-1 bg-line" />
-      <ArrowRightLeft className="size-3.5 shrink-0" />
-      <span className="flex shrink-0 items-center gap-1">
-        Continued with <ProviderMark provider={item.to} />
+      <span className="flex shrink-0 items-center gap-1.5">
+        <ProviderMark provider={item.from} />
+        <ArrowRight className="size-3 shrink-0 text-hint" />
+        <ProviderMark provider={item.to} />
       </span>
-      <span className={cn("shrink-0 text-hint")}>
+      <span className="shrink-0 text-hint">
         ·{" "}
-        {item.reason === "limit"
-          ? `${CHAT_PROVIDER_NAMES[item.from]}'s limit reached`
-          : `moved from ${CHAT_PROVIDER_NAMES[item.from]}`}
+        {item.reason === "limit" ? `${CHAT_PROVIDER_NAMES[item.from]}'s limit reached` : "handed over by you"}
       </span>
       <div className="h-px flex-1 bg-line" />
     </div>

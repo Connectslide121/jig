@@ -1,6 +1,7 @@
 import {
   Archive,
   ArchiveRestore,
+  ArrowRightLeft,
   Bot,
   Check,
   Download,
@@ -22,6 +23,7 @@ import {
   chatProvider,
   type EffortLevel,
   type ModelInfo,
+  otherProvider,
   PERMISSION_MODE_LABELS,
   PERMISSION_MODES,
   type PermissionMode,
@@ -45,7 +47,8 @@ import { openBuildDialog } from "../builder/BuildDialog";
 import { startTour } from "../tour/actions";
 import { worktreeMenu } from "../worktrees";
 import { compactMenu } from "./ContextMeter";
-import { capabilitiesOf, providerName } from "./provider";
+import { handOverToOther, handoverState } from "./HandoverDialog";
+import { CHAT_PROVIDER_NAMES, capabilitiesOf, providerName } from "./provider";
 import { chatRecipe } from "./recipe";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { ensureTranscript, forgetSession, useSessions } from "./store";
@@ -271,6 +274,12 @@ function organiseMenu(meta: SessionMeta): MenuEntry[] {
   ];
 }
 
+/** The ⋯ menu's handover entry: greyed out with the reason while it can't happen (a turn runs). */
+function handoverEntryState(meta: SessionMeta): { disabled: boolean; detail?: string } {
+  const state = handoverState(meta, otherProvider(chatProvider(meta)));
+  return { disabled: !state.ok, detail: state.why };
+}
+
 export function sessionMenu(meta: SessionMeta): MenuEntry[] {
   return [
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
@@ -304,6 +313,18 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       onSelect: () => void exportChat(meta),
       testId: "session-export",
     },
+    // Claude ⇄ ChatGPT between turns, through the handover dialog (D-339); builder chats stay on Claude.
+    ...(meta.kind
+      ? []
+      : [
+          {
+            label: `Hand over to ${CHAT_PROVIDER_NAMES[otherProvider(chatProvider(meta))]}…`,
+            icon: ArrowRightLeft,
+            ...handoverEntryState(meta),
+            onSelect: () => void handOverToOther(meta),
+            testId: "session-handover",
+          },
+        ]),
     // Codex chats can't fork (D-309): the entry isn't there rather than greyed out.
     ...(capabilitiesOf(meta).fork
       ? [

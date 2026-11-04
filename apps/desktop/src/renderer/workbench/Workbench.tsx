@@ -15,6 +15,7 @@ import { useLearningSync } from "../features/learning";
 import { LinkDialogHost } from "../features/links/LinksView";
 import { ProjectDialogHost } from "../features/projects/ProjectDialog";
 import { useSessionsSync } from "../features/sessions";
+import { HandoverDialogHost } from "../features/sessions/HandoverDialog";
 import { SavedChatsDialogHost } from "../features/sessions/SavedChatsDialog";
 import { SessionDialogsHost } from "../features/sessions/SessionDialogs";
 import { useFirstRun } from "../features/setup";
@@ -129,6 +130,7 @@ export function Workbench() {
         <ProjectDialogHost />
         <LinkDialogHost />
         <SessionDialogsHost />
+        <HandoverDialogHost />
         <SavedChatsDialogHost />
         <VoiceDialogHost />
         <StandupHost />
