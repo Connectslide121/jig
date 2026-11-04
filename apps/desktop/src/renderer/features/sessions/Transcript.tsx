@@ -31,6 +31,7 @@ import { ChatAttachments } from "./ChatAttachments";
 import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
 import { chatInlineCode } from "./FileLink";
 import { PermissionCard } from "./PermissionCard";
+import { useChatCapabilities } from "./provider";
 import { restoreFiles, rewindChat } from "./restore";
 import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
@@ -65,7 +66,13 @@ function ReadAloudButton({ id, text }: { id: string; text: string }) {
  * Your message's menu: Edit and resend (rewind to before it), Rewind the chat (and the files) to
  * before it, or only Restore files (Claude Code's rewind and file checkpoints).
  */
-function userMessageMenu(sessionId: string, item: Extract<ChatItem, { kind: "user" }>): MenuEntry[] {
+function userMessageMenu(
+  sessionId: string,
+  item: Extract<ChatItem, { kind: "user" }>,
+  rewind: boolean,
+): MenuEntry[] {
+  // A provider without rewind (Codex, D-309) keeps only Copy and add-ons' entries.
+  if (!rewind) return messageMenu(sessionId, item.text);
   return messageMenu(sessionId, item.text, [
     {
       label: "Edit and send again…",
@@ -185,6 +192,7 @@ const Item = memo(function Item({
 }) {
   // Paths Claude writes in inline code are links to the files, from the chat's folder (D-261).
   const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
+  const rewind = useChatCapabilities(sessionId).rewind;
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
@@ -215,20 +223,22 @@ const Item = memo(function Item({
           )}
           <div className="absolute -top-3 right-0 hidden items-center rounded-md border border-line bg-elevated shadow-card group-focus-within/message:flex group-hover/message:flex">
             <ToolbarTime at={item.at} prevAt={prevAt} />
-            <IconButton
-              icon={Pencil}
-              size="sm"
-              label="Edit and send again (Claude forgets what came after)"
-              data-testid="user-message-edit"
-              onClick={() => void rewindChat(sessionId, item.id, false)}
-            />
+            {rewind && (
+              <IconButton
+                icon={Pencil}
+                size="sm"
+                label="Edit and send again (Claude forgets what came after)"
+                data-testid="user-message-edit"
+                onClick={() => void rewindChat(sessionId, item.id, false)}
+              />
+            )}
             <IconButton icon={Copy} size="sm" label="Copy" onClick={() => void copyText(item.text)} />
             <IconButton
               icon={MoreHorizontal}
               size="sm"
               label="Message options"
               data-testid="user-message-menu"
-              onClick={(e) => openMenuAt(e.currentTarget, userMessageMenu(sessionId, item), true)}
+              onClick={(e) => openMenuAt(e.currentTarget, userMessageMenu(sessionId, item, rewind), true)}
             />
           </div>
         </div>

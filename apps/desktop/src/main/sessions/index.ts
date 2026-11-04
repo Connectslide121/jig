@@ -9,12 +9,14 @@ import { toolUse } from "../../shared/chatStats";
 import {
   type ChatProvider,
   chatProvider,
+  type EffortLevel,
   ENGINE_CAPABILITIES,
   type PermissionMode,
   type SessionMeta,
   type SessionStatus,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import type { Project } from "../../shared/projects";
 import { SEARCH_AGENT, SEARCH_GUIDANCE, searchAgent } from "../../shared/searcher";
 import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
@@ -75,6 +77,36 @@ export function onSessionStatus(listener: (meta: SessionMeta) => void): () => vo
  * Its provider: the one asked for, else the project's, else `engine.provider` (D-309). The project's
  * model and effort are for its own provider's chats; a chat on the other one gets Jig's default.
  */
+/**
+ * A chat's provider and its defaults: the one asked for, else the project's, else `engine.provider`.
+ * The project's model and effort belong to the project's provider; the other one gets Jig's.
+ */
+function chatDefaults(
+  project: Project | undefined,
+  asked: ChatProvider | undefined,
+): { provider: ChatProvider; model: string; effort?: EffortLevel } {
+  const { engine } = getConfig();
+  const projectProvider = project?.provider ?? engine.provider;
+  const provider = asked ?? projectProvider;
+  if (provider === projectProvider && project?.model)
+    return { provider, model: project.model, effort: project.effort };
+  if (provider === "codex")
+    return {
+      provider,
+      model: engine.codexModel,
+      effort: project?.provider === "codex" ? project.effort : engine.codexEffort || undefined,
+    };
+  return {
+    provider,
+    model: engine.defaultModel,
+    effort: provider === projectProvider ? project?.effort : undefined,
+  };
+}
+
+/** Plan only where the provider has plan mode; elsewhere it asks before changes instead (D-314). */
+const modeFor = (provider: ChatProvider, mode: PermissionMode): PermissionMode =>
+  mode === "plan" && !ENGINE_CAPABILITIES[provider].planMode ? "default" : mode;
+
 export async function createChat(input: {
   projectId?: string;
   cwd?: string;
@@ -89,18 +121,18 @@ export async function createChat(input: {
   const info = await stat(folder).catch(() => undefined);
   if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
   const { engine } = getConfig();
-  const projectProvider = project?.provider ?? engine.provider;
-  const provider = input.provider ?? projectProvider;
-  const ownDefaults = provider === projectProvider ? project : undefined;
+  const defaults = chatDefaults(project, input.provider);
   return sessionManager().create({
     projectId: input.projectId,
     cwd: folder,
     title: input.title,
-    provider,
-    model: ownDefaults?.model ?? (provider === "codex" ? engine.codexModel : engine.defaultModel),
-    permissionMode:
+    provider: defaults.provider,
+    model: defaults.model,
+    permissionMode: modeFor(
+      defaults.provider,
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
-    effort: ownDefaults?.effort,
+    ),
+    effort: defaults.effort,
     meetingNotes: input.meetingNotes,
   });
 }
@@ -391,6 +423,15 @@ export function startSessions(): void {
     m.editQueued(id, queuedId, text, attachments),
   );
   handle("sessions.setModel", ({ id, model }) => m.setModel(id, model));
+  handle("sessions.setProvider", async ({ id, provider }) => {
+    const meta = (await m.snapshot(id)).meta;
+    const project = meta.projectId ? await projectStore().get(meta.projectId) : undefined;
+    const { model, effort } = chatDefaults(project, provider);
+    // The new provider's default mode, as a new chat would get it (Plan only becomes Ask on Codex).
+    const fallback = project?.permissionMode ?? getConfig().engine.defaultPermissionMode;
+    const permissionMode = modeFor(provider, fallback as PermissionMode);
+    return m.setProvider(id, provider, { model, effort, permissionMode });
+  });
   handle("sessions.setPermissionMode", ({ id, mode }) => m.setPermissionMode(id, mode));
   handle("sessions.rename", ({ id, title }) => m.rename(id, title));
   handle("sessions.archive", ({ id, archived }) => m.setArchived(id, archived));

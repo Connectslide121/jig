@@ -1029,6 +1029,32 @@ export class SessionManager {
     this.setMeta(live, { model });
   }
 
+  /**
+   * Another provider for a chat that hasn't started (D-314), with that provider's model and effort.
+   * A chat that has sent a message keeps its provider for life (D-309).
+   */
+  async setProvider(
+    id: string,
+    provider: ChatProvider,
+    defaults: { model: string; effort?: EffortLevel; permissionMode: PermissionMode },
+  ): Promise<SessionMeta> {
+    const live = await this.live(id);
+    const meta = live.state.meta;
+    if (chatProvider(meta) === provider) return meta;
+    if (
+      meta.kind ||
+      meta.turns > 0 ||
+      meta.engineSessionId ||
+      live.state.items.length > 0 ||
+      live.queue.length > 0
+    )
+      throw new JigError("not_allowed", "A chat keeps the provider it started with");
+    // A model list may have started the old provider's engine: it goes, the next message starts the new one.
+    this.stop(live);
+    this.setMeta(live, { provider, ...defaults, activeModel: undefined });
+    return live.state.meta;
+  }
+
   async setPermissionMode(id: string, permissionMode: PermissionMode): Promise<void> {
     const live = await this.live(id);
     await live.engine?.setPermissionMode(permissionMode);

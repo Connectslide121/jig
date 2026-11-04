@@ -506,6 +506,12 @@ export interface HostMethods {
     result: void;
   };
   "sessions.setModel": { args: { id: string; model: string }; result: void };
+  /**
+   * Who runs a chat that hasn't sent anything yet (the new-chat picker, D-314): it takes that
+   * provider's default model and effort. `not_allowed` once the chat has started: a chat keeps its
+   * provider for life (D-309).
+   */
+  "sessions.setProvider": { args: { id: string; provider: ChatProvider }; result: SessionMeta };
   "sessions.setPermissionMode": { args: { id: string; mode: PermissionMode }; result: void };
   "sessions.rename": { args: { id: string; title: string }; result: void };
   "sessions.archive": { args: { id: string; archived: boolean }; result: void };

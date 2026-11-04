@@ -43,9 +43,9 @@ export function inputMode(text: string): "shell" | "memory" | undefined {
 }
 
 /** Shift+Tab goes through the modes like Claude Code does: ask → accept edits → plan → ask. */
-export function nextPermissionMode(mode: PermissionMode): PermissionMode {
+export function nextPermissionMode(mode: PermissionMode, planMode = true): PermissionMode {
   if (mode === "default") return "acceptEdits";
-  if (mode === "acceptEdits") return "plan";
+  if (mode === "acceptEdits" && planMode) return "plan";
   return "default";
 }
 

@@ -18,19 +18,25 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
-import { useEffect } from "react";
-import { create } from "zustand";
 import {
-  EFFORT_LEVELS,
+  chatProvider,
   type EffortLevel,
   type ModelInfo,
   PERMISSION_MODE_LABELS,
   PERMISSION_MODES,
+  type PermissionMode,
   type SessionMeta,
 } from "../../../shared/engine";
 import { closeTabsWhere } from "../../../shared/layout";
 import { modelName, modelOptions } from "../../../shared/models";
+import {
+  CHATGPT_FAMILIES,
+  CHATGPT_FAMILY_LABELS,
+  chatGptModelChoices,
+  resolveChatGptModel,
+} from "../../../shared/providers";
 import { call, errorMessage } from "../../lib/host";
+import { loadProviderModels, useProviderModels, useProviders } from "../../stores/providers";
 import { confirmDialog, type MenuEntry, openMenuAt, promptDialog } from "../../ui";
 import { useProjects } from "../../workbench/projects";
 import { updateLayout, workbench } from "../../workbench/store";
@@ -39,64 +45,40 @@ import { openBuildDialog } from "../builder/BuildDialog";
 import { startTour } from "../tour/actions";
 import { worktreeMenu } from "../worktrees";
 import { compactMenu } from "./ContextMeter";
+import { capabilitiesOf, providerName } from "./provider";
 import { chatRecipe } from "./recipe";
 import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { ensureTranscript, forgetSession, useSessions } from "./store";
 
-/** The models Claude Code offers, asked once (it starts Claude Code for the chat if needed). */
-let models: ModelInfo[] | undefined;
-let loadingModels: Promise<ModelInfo[] | undefined> | undefined;
-/** The same list for components, so a label re-renders when it comes. */
-const useModelList = create<{ list?: ModelInfo[] }>(() => ({}));
-const keep = (list: ModelInfo[] | undefined) => {
-  if (!list?.length) return list;
-  models = list;
-  useModelList.setState({ list });
-  return list;
-};
-let askedApp = false;
-/**
- * Claude Code's model list for the whole app, asked once at the first message box: a no-prompt
- * request (as Settings does), so no chat's Claude Code is started for it.
- */
-function ensureModels(): void {
-  if (models || askedApp) return;
-  askedApp = true;
-  void call("engine.models")
-    .then(keep)
-    .catch(() => {
-      askedApp = false;
-    });
-}
+/** The chat's model list: its provider's (Claude Code's own, or the one Codex reports). */
+const modelsOf = (meta: SessionMeta): ModelInfo[] | undefined =>
+  useProviders.getState().models[chatProvider(meta)];
 
-/** The chat's model as the picker names it ("Opus Plan Mode", not `opusplan`), with its effort. */
+/** The chat's model as the picker names it ("Opus Plan Mode", "Sol", not `opusplan`), with its effort. */
 export function useModelLabel(meta: SessionMeta): string {
-  useModelList((s) => s.list);
-  useEffect(ensureModels, []);
+  useProviderModels(chatProvider(meta));
   return modelLabel(meta);
-}
-
-function loadModels(sessionId: string): Promise<ModelInfo[] | undefined> {
-  if (models) return Promise.resolve(models);
-  loadingModels ??= call("sessions.models", { id: sessionId })
-    .then(keep)
-    .catch(() => undefined)
-    .finally(() => {
-      loadingModels = undefined;
-    });
-  return loadingModels;
 }
 
 /** "default" is how Claude Code names its default; Jig stores it as an empty model. */
 const modelId = (value: string) => (value === "default" ? "" : value);
 
-/** Stable family aliases plus Claude Code's discovered explicit versions. */
+/** Stable family aliases plus Claude Code's discovered explicit versions (Claude chats' picker lists). */
 export function modelChoices(): Array<{ id: string; label: string }> {
-  return modelOptions(models);
+  return modelOptions(useProviders.getState().models.claude);
+}
+
+/** A ChatGPT model's name: the family ("Sol"), else the version's display name, else the slug. */
+function chatGptModelName(model: string, models: ModelInfo[] = []): string {
+  const family = CHATGPT_FAMILIES.find((f) => f === model.toLowerCase());
+  if (family) return CHATGPT_FAMILY_LABELS[family];
+  return models.find((m) => m.value === model)?.displayName ?? (model || "Codex's default");
 }
 
 export function modelLabel(meta: SessionMeta): string {
-  const name = modelName(meta.model, models);
+  const models = modelsOf(meta);
+  const name =
+    chatProvider(meta) === "codex" ? chatGptModelName(meta.model, models) : modelName(meta.model, models);
   return meta.effort ? `${name} · ${meta.effort}` : name;
 }
 
@@ -106,26 +88,61 @@ const EFFORT_LABELS: Record<EffortLevel, string> = {
   high: "High",
   xhigh: "Extra high",
   max: "Max — thinks the longest",
+  ultra: "Ultra — longer than Max",
 };
+/** A level Jig has no words for (a new Codex level) shows as Codex names it. */
+const effortLabel = (level: string) => EFFORT_LABELS[level as EffortLevel] ?? level;
 
-export function modelMenu(meta: SessionMeta): MenuEntry[] {
+/** The models a chat can pick: Claude's aliases and versions, or ChatGPT's families then versions. */
+function modelEntries(meta: SessionMeta, models: ModelInfo[] | undefined): MenuEntry[] {
+  const pick = (model: string) => () => void call("sessions.setModel", { id: meta.id, model });
+  if (chatProvider(meta) === "codex") {
+    const { families, versions } = chatGptModelChoices(models ?? []);
+    const known = [...families, ...versions].some((m) => m.value === meta.model);
+    return [
+      ...families.map((f) => ({
+        label: f.label,
+        checked: f.value === meta.model,
+        testId: `model-${f.value}`,
+        onSelect: pick(f.value),
+      })),
+      { separator: true } as const,
+      ...versions.map((v) => ({
+        label: v.label,
+        checked: v.value === meta.model,
+        testId: `model-${v.value}`,
+        onSelect: pick(v.value),
+      })),
+      ...(known || !meta.model ? [] : [{ label: meta.model, checked: true, icon: Check }]),
+    ];
+  }
   const choices = modelOptions(models);
-  const known = choices.some((m) => m.id === meta.model);
-  const current = models?.find((m) => modelId(m.value) === meta.model);
-  const efforts = current ? (current.efforts ?? []) : [...EFFORT_LEVELS];
   return [
-    { heading: "Model" },
     ...choices.map((m) => ({
       label: m.label,
       checked: m.id === meta.model,
       testId: `model-${m.id || "default"}`,
-      onSelect: () => void call("sessions.setModel", { id: meta.id, model: m.id }),
+      onSelect: pick(m.id),
     })),
     // A model of your own (Other model…): its id, as you gave it.
-    ...(known ? [] : [{ label: meta.model, checked: true, icon: Check }]),
+    ...(choices.some((m) => m.id === meta.model) ? [] : [{ label: meta.model, checked: true, icon: Check }]),
+  ];
+}
+
+export function modelMenu(meta: SessionMeta): MenuEntry[] {
+  const models = modelsOf(meta);
+  const codex = chatProvider(meta) === "codex";
+  // A ChatGPT family takes the efforts of the version it runs on now; any other model its own.
+  const resolved = codex ? resolveChatGptModel(meta.model, models ?? []).model : meta.model;
+  const current = models?.find((m) => modelId(m.value) === resolved);
+  const efforts: readonly string[] =
+    current?.efforts ?? (current && !codex ? [] : capabilitiesOf(meta).effortLevels);
+  return [
+    { heading: "Model" },
+    ...modelEntries(meta, models),
     { separator: true },
     {
-      label: `Effort: ${meta.effort ? EFFORT_LABELS[meta.effort].split(" —")[0] : "model default"}`,
+      label: `Effort: ${meta.effort ? effortLabel(meta.effort).split(" —")[0] : "model default"}`,
       icon: Gauge,
       disabled: efforts.length === 0,
       testId: "effort-menu",
@@ -136,10 +153,10 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
           onSelect: () => void call("sessions.setEffort", { id: meta.id }),
         },
         ...efforts.map((level) => ({
-          label: EFFORT_LABELS[level],
+          label: effortLabel(level),
           checked: meta.effort === level,
           testId: `effort-${level}`,
-          onSelect: () => void call("sessions.setEffort", { id: meta.id, effort: level }),
+          onSelect: () => void call("sessions.setEffort", { id: meta.id, effort: level as EffortLevel }),
         })),
       ],
     },
@@ -149,7 +166,9 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
       onSelect: async () => {
         const model = await promptDialog({
           title: "Model",
-          message: "A model alias or full model id, as Claude Code accepts it.",
+          message: codex
+            ? "A ChatGPT model family (sol, terra, luna) or an exact model, as Codex lists it."
+            : "A model alias or full model id, as Claude Code accepts it.",
           initial: meta.model,
           confirmLabel: "Use",
         });
@@ -159,11 +178,18 @@ export function modelMenu(meta: SessionMeta): MenuEntry[] {
   ];
 }
 
-/** Opens the model menu with Claude Code's own model list (waits briefly for it the first time). */
+/** Opens the model menu with the provider's own model list (waits briefly for it the first time). */
 export async function openModelMenu(anchor: HTMLElement, meta: SessionMeta): Promise<void> {
-  await Promise.race([loadModels(meta.id), new Promise((r) => setTimeout(r, 2500))]);
+  await Promise.race([
+    loadProviderModels(chatProvider(meta), meta.id),
+    new Promise((r) => setTimeout(r, 2500)),
+  ]);
   openMenuAt(anchor, modelMenu(useSessions.getState().metas[meta.id] ?? meta), true);
 }
+
+/** The permission modes a chat offers: Plan only only where its provider has plan mode. */
+export const permissionModesOf = (meta: Pick<SessionMeta, "provider">): PermissionMode[] =>
+  PERMISSION_MODES.filter((mode) => mode !== "plan" || capabilitiesOf(meta).planMode);
 
 /** Saves the chat as a Markdown file. */
 export async function exportChat(meta: SessionMeta): Promise<void> {
@@ -183,8 +209,8 @@ export async function exportChat(meta: SessionMeta): Promise<void> {
 
 export function permissionMenu(meta: SessionMeta): MenuEntry[] {
   return [
-    { heading: "When Claude wants to change things" },
-    ...PERMISSION_MODES.map((mode) => ({
+    { heading: `When ${providerName(meta)} wants to change things` },
+    ...permissionModesOf(meta).map((mode) => ({
       label: PERMISSION_MODE_LABELS[mode],
       icon: Shield,
       checked: mode === meta.permissionMode,
@@ -278,16 +304,21 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       onSelect: () => void exportChat(meta),
       testId: "session-export",
     },
-    {
-      label: "Fork chat",
-      icon: GitFork,
-      disabled: !meta.engineSessionId,
-      onSelect: () => void forkSession(meta),
-      testId: "session-fork",
-    },
+    // Codex chats can't fork (D-309): the entry isn't there rather than greyed out.
+    ...(capabilitiesOf(meta).fork
+      ? [
+          {
+            label: "Fork chat",
+            icon: GitFork,
+            disabled: !meta.engineSessionId,
+            onSelect: () => void forkSession(meta),
+            testId: "session-fork",
+          },
+        ]
+      : []),
     ...worktreeMenu(meta),
     {
-      label: "Stop Claude Code process",
+      label: chatProvider(meta) === "codex" ? "Stop Codex process" : "Stop Claude Code process",
       icon: Power,
       onSelect: () => void call("sessions.stop", { id: meta.id }),
     },

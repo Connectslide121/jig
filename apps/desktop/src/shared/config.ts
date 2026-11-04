@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AI_FEATURE_IDS, type AiFeatureId } from "./aiFeatures";
-import { CHAT_PROVIDERS } from "./engine";
+import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS } from "./engine";
 import { AI_PROVIDERS } from "./providers";
 
 /** One AI feature's provider and model (D-297). */
@@ -50,6 +50,8 @@ export const ConfigSchema = z.object({
       codexPath: z.string().default(""),
       /** Model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`; D-310) or an exact slug. */
       codexModel: z.string().max(100).default("sol"),
+      /** Reasoning effort for new Codex chats; "" = the model's own default. */
+      codexEffort: z.enum([...CODEX_EFFORT_LEVELS, ""]).default(""),
       /**
        * Your personal instructions in Codex chats (D-312): `claude` follows Claude Code's
        * `~/.claude/CLAUDE.md` and its @imports, so one file stays the source; `off` leaves Codex with

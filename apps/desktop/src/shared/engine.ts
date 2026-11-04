@@ -17,7 +17,11 @@ export const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
 
 /** Claude Code's effort levels (how hard the model thinks), for models that support them. */
 export const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
-export type EffortLevel = (typeof EFFORT_LEVELS)[number];
+/** Codex's reasoning levels (`codex debug models`): Claude's and one more. */
+export const CODEX_EFFORT_LEVELS = [...EFFORT_LEVELS, "ultra"] as const;
+/** Every engine's levels; a chat's picker offers only its provider's (`ENGINE_CAPABILITIES`). */
+export const ANY_EFFORT_LEVELS = CODEX_EFFORT_LEVELS;
+export type EffortLevel = (typeof ANY_EFFORT_LEVELS)[number];
 
 /**
  * Which agent runs a chat (D-309): Claude Code (the default) or OpenAI's Codex. A chat keeps its
@@ -71,7 +75,7 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
     rewind: false,
     fork: false,
     history: false,
-    effortLevels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+    effortLevels: CODEX_EFFORT_LEVELS,
     promptSuggestions: false,
   },
 };

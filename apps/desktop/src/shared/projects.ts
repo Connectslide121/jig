@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
+  ANY_EFFORT_LEVELS,
   CHAT_PROVIDERS,
   type ChatProvider,
-  EFFORT_LEVELS,
   type EffortLevel,
   PERMISSION_MODES,
   type PermissionMode,
@@ -42,7 +42,7 @@ export const ProjectSchema = z.object({
   /** Who runs its new chats (D-309); empty = `engine.provider`. `model` and `effort` are for it. */
   provider: z.enum(CHAT_PROVIDERS).optional(),
   model: z.string().optional(),
-  effort: z.enum(EFFORT_LEVELS).optional(),
+  effort: z.enum(ANY_EFFORT_LEVELS).optional(),
   permissionMode: z.enum(PERMISSION_MODES).optional(),
   /** Appended to Claude's system prompt in this project's chats (never replacing it). */
   instructions: z.string().max(20_000).optional(),

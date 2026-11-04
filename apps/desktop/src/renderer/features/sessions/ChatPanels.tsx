@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChatItem, SessionMeta } from "../../../shared/engine";
+import type { ChatItem, ChatProvider, SessionMeta } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { cn, IconButton, Kbd, Spinner } from "../../ui";
 import { notify } from "../../workbench/toasts";
@@ -207,15 +207,19 @@ const TIPS: Array<[string, string]> = [
   ["#", "remember in CLAUDE.md"],
   ["Shift+Tab", "plan or accept edits"],
 ];
+/** ChatGPT chats have no plan mode (D-309): Shift+Tab goes between asking and accepting edits. */
+const CODEX_TIPS: Array<[string, string]> = [...TIPS.slice(0, -1), ["Shift+Tab", "ask or accept edits"]];
 
 /** An empty chat: where it runs, things to ask, and the message box's shortcuts. */
 export function ChatWelcome({
   title,
   cwd,
+  provider,
   onPick,
 }: {
   title: string;
   cwd: string;
+  provider: ChatProvider;
   onPick: (text: string) => void;
 }) {
   return (
@@ -226,9 +230,13 @@ export function ChatWelcome({
       <div className="flex max-w-xl flex-col items-center gap-4 text-center">
         <div>
           <div className="text-base font-medium text-fg">{title}</div>
+          {/* About as long for both, so switching the provider of an empty chat moves nothing. */}
           <div className="mt-1 text-sm text-muted">
-            Claude Code runs in <span className="font-mono text-xs">{cwd}</span> with your CLAUDE.md files,
-            skills and MCP servers.
+            {provider === "codex" ? "Codex" : "Claude Code"} runs in{" "}
+            <span className="font-mono text-xs">{cwd}</span>
+            {provider === "codex"
+              ? " with your personal instructions, Jig's tools and MCP servers."
+              : " with your CLAUDE.md files, skills and MCP servers."}
           </div>
         </div>
         <div className="flex flex-wrap justify-center gap-1.5">
@@ -245,7 +253,7 @@ export function ChatWelcome({
           ))}
         </div>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-2xs text-hint">
-          {TIPS.map(([key, what]) => (
+          {(provider === "codex" ? CODEX_TIPS : TIPS).map(([key, what]) => (
             <span key={key} className="flex items-center gap-1">
               <Kbd>{key}</Kbd> {what}
             </span>

@@ -41,7 +41,9 @@ import { type BoxCommand, ComposerBox, useComposerText } from "./ComposerBox";
 import { historyStep, inputMode, nextPermissionMode, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
 import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
+import { ProviderPicker } from "./ProviderPicker";
 import { usePrompts } from "./prompts";
+import { canChangeProvider, capabilitiesOf, providerName } from "./provider";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
 import { openEditQueuedDialog, openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
@@ -100,7 +102,10 @@ export function Composer({
   const toolbar = Object.values(useRegistry((s) => s.chatToolbar));
   const sent = useSessions((s) => s.transcripts[meta.id]?.items);
   const busy = meta.status === "working" || meta.status === "needs_you" || meta.status === "starting";
-  const suggestion = busy ? undefined : meta.suggestion;
+  const caps = capabilitiesOf(meta);
+  const who = providerName(meta);
+  // Suggestions are Claude Code's; a provider without them never shows the chip (D-309).
+  const suggestion = busy || !caps.promptSuggestions ? undefined : meta.suggestion;
   const mode = inputMode(text);
   const talking = useVoice((s) => s.target === meta.id && s.phase !== "off");
   const localCommands = useMemo<BoxCommand[]>(
@@ -211,7 +216,7 @@ export function Composer({
     { label: "Remember in CLAUDE.md", icon: BookmarkPlus, shortcut: "#", onSelect: () => input.start("# ") },
     base.attach,
     {
-      label: talking ? "Stop talking with Claude" : "Talk with Claude",
+      label: talking ? `Stop talking with ${who}` : `Talk with ${who}`,
       icon: AudioLines,
       onSelect: () => toggleVoice(meta.id, speechHooks),
       testId: "more-voice",
@@ -243,7 +248,7 @@ export function Composer({
       e.preventDefault();
       void call("sessions.setPermissionMode", {
         id: meta.id,
-        mode: nextPermissionMode(meta.permissionMode),
+        mode: nextPermissionMode(meta.permissionMode, caps.planMode),
       });
     } else if (e.key === "Tab" && !text && suggestion) {
       e.preventDefault();
@@ -315,7 +320,7 @@ export function Composer({
                   <IconButton
                     icon={Zap}
                     size="sm"
-                    label="Send now: Claude reads it at its next step"
+                    label={`Send now: ${who} reads it at its next step`}
                     data-testid="queue-send-now"
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -413,10 +418,10 @@ export function Composer({
           }
           placeholder={
             busy
-              ? `Claude is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
+              ? `${who} is working — Enter queues your message, ${formatShortcut("Mod+Enter")} sends it now`
               : suggestion
                 ? `${suggestion}  (Tab to use)`
-                : "Message Claude…  / commands · @ files · ! shell · # remember"
+                : `Message ${who}…  / commands · @ files · ! shell · # remember`
           }
           localCommands={localCommands}
           onRunCommand={(value) => void send(value, files)}
@@ -438,6 +443,12 @@ export function Composer({
           }
           toolbarEnd={
             <>
+              {meta.kind !== "builder" && (
+                <ProviderPicker
+                  meta={meta}
+                  changeable={canChangeProvider(meta, sent?.length ?? 0, queue.length)}
+                />
+              )}
               <button
                 type="button"
                 data-testid="model-menu"
@@ -445,7 +456,7 @@ export function Composer({
                 className="flex h-7 min-w-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-sm leading-none text-muted hover:bg-hover hover:text-fg"
                 title={
                   meta.activeModel
-                    ? `Model and effort · Claude Code reports: ${meta.activeModel}`
+                    ? `Model and effort · ${who === "Claude" ? "Claude Code" : "Codex"} reports: ${meta.activeModel}`
                     : `Model and effort · ${modelName}`
                 }
               >
@@ -464,7 +475,7 @@ export function Composer({
                       ? "text-muted hover:text-fg"
                       : "text-accent",
                 )}
-                title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What Claude may do without asking (Shift+Tab to switch)`}
+                title={`${PERMISSION_MODE_LABELS[meta.permissionMode]} · What ${who} may do without asking (Shift+Tab to switch)`}
               >
                 {meta.permissionMode === "plan" ? (
                   <ListChecks className="block size-3.5 shrink-0" />
@@ -488,7 +499,7 @@ export function Composer({
               {busy && (text.trim() || files.length > 0) && !mode && (
                 <IconButton
                   icon={Zap}
-                  label={`Send now: Claude reads it at its next step (${formatShortcut("Mod+Enter")})`}
+                  label={`Send now: ${who} reads it at its next step (${formatShortcut("Mod+Enter")})`}
                   data-testid="composer-send-now"
                   onClick={() => void send(text, files, true)}
                 />
@@ -509,7 +520,7 @@ export function Composer({
         <div className="flex items-center gap-1 text-2xs text-hint">
           <History className="size-3" />
           {busy
-            ? `Enter queues · ${formatShortcut("Mod+Enter")} sends now · Esc stops Claude`
+            ? `Enter queues · ${formatShortcut("Mod+Enter")} sends now · Esc stops ${who}`
             : "Enter to send · Shift+Enter new line · / commands · @ files · ! shell · # remember · ↑ earlier messages · Shift+Tab mode"}
         </div>
       </div>

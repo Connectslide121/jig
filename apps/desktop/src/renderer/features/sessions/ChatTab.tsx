@@ -1,5 +1,6 @@
 import { ChartColumn, Clock, LogIn, MessageSquareX, MoreHorizontal, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { chatProvider } from "../../../shared/engine";
 import { updateConfig, useConfig } from "../../stores/config";
 import { Badge, Button, cn, Empty, IconButton, openMenuAt, Spinner } from "../../ui";
 import { MOTION_MS } from "../../ui/motion";
@@ -7,6 +8,7 @@ import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { TenantTagLabel } from "../azure/TenantTag";
+import { ProviderMark } from "../usage/ProviderMark";
 import { ChatChanges } from "./ChatChanges";
 import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
@@ -126,6 +128,8 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <div className="flex min-w-0 flex-1 justify-end">
           <TenantTagLabel tag={meta.azureTenant} />
         </div>
+        {/* Who runs this chat, for its whole life (D-309, D-314): always there, so nothing moves. */}
+        <ProviderMark provider={chatProvider(meta)} className="text-xs" />
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
         {meta.turns > 0 && (
@@ -201,6 +205,7 @@ export function ChatTab({ params, active, focused }: TabProps) {
               <ChatWelcome
                 title={`New chat${project ? ` in ${project.name}` : ""}`}
                 cwd={meta.cwd}
+                provider={chatProvider(meta)}
                 onPick={(text) => fillComposer(id, text)}
               />
             ) : (

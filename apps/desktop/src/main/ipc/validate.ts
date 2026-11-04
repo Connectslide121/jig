@@ -1,7 +1,7 @@
 import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
 import { ADDON_AI_FEATURES } from "../../shared/aiFeatures";
-import { CHAT_PROVIDERS, EFFORT_LEVELS, PERMISSION_MODES } from "../../shared/engine";
+import { ANY_EFFORT_LEVELS, CHAT_PROVIDERS, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { TEAMS_CHAT_ID } from "../../shared/meetingChat";
@@ -57,7 +57,7 @@ const projectPatch = z.object({
   path: path.optional(),
   provider: z.union([z.enum(CHAT_PROVIDERS), z.literal("")]).optional(),
   model: z.string().max(200).optional(),
-  effort: z.union([z.enum(EFFORT_LEVELS), z.literal("")]).optional(),
+  effort: z.union([z.enum(ANY_EFFORT_LEVELS), z.literal("")]).optional(),
   permissionMode: z.union([z.enum(PERMISSION_MODES), z.literal("")]).optional(),
   instructions: z.string().max(20_000).optional(),
   starters: z.array(z.string().max(500)).max(12).optional(),
@@ -312,6 +312,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     provider: z.enum(CHAT_PROVIDERS).optional(),
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
+  "sessions.setProvider": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
   "sessions.openSaved": z.object({ sessionId: z.string().regex(/^[\w-]{1,100}$/) }),
   "links.azure": z.object({
     subscription: z

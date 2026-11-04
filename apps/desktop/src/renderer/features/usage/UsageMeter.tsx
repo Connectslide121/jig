@@ -1,5 +1,4 @@
-import { Aperture, Asterisk, LogIn, RefreshCw, TriangleAlert } from "lucide-react";
-import type { ComponentType } from "react";
+import { LogIn, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AiProvider } from "../../../shared/providers";
 import {
@@ -17,22 +16,11 @@ import { timeAgo } from "../../lib/time";
 import { refreshUsage, useUsage } from "../../stores/usage";
 import { Badge, Button, cn, IconButton, Tooltip } from "../../ui";
 import { workbench } from "../../workbench/store";
+import { PROVIDER_MARKS, ProviderMark } from "./ProviderMark";
 
 const TONE_TEXT = { ok: "text-muted", warning: "text-warning", danger: "text-danger" } as const;
 /** Green while there is room, amber from 60 %, red from 85 %, for every provider. */
 const TONE_BAR = { ok: "bg-success", warning: "bg-warning", danger: "bg-danger" } as const;
-
-/**
- * Who a usage group is about (D-298): a small icon and a short name in the provider's own colour. Only
- * the mark says who it is; the bars keep meaning room / near / limit for both.
- */
-export const PROVIDER_MARKS: Record<
-  AiProvider,
-  { label: string; icon: ComponentType<{ className?: string }>; text: string; source: string }
-> = {
-  claude: { label: "Claude", icon: Asterisk, text: "text-provider-claude", source: "Claude Code" },
-  chatgpt: { label: "ChatGPT", icon: Aperture, text: "text-provider-chatgpt", source: "Codex" },
-};
 
 /** Re-renders every 30 s so "resets in …" and "updated … ago" stay true. */
 function useTick() {
@@ -60,14 +48,7 @@ function worst(usage: PlanUsage): number | null {
 }
 
 function Mark({ provider, className }: { provider: AiProvider; className?: string }) {
-  const mark = PROVIDER_MARKS[provider];
-  const Icon = mark.icon;
-  return (
-    <span className={cn("flex items-center gap-1 font-medium", mark.text, className)}>
-      <Icon className="size-3.5 shrink-0" />
-      {mark.label}
-    </span>
-  );
+  return <ProviderMark provider={provider} className={className} />;
 }
 
 function WindowRow({ w, testId }: { w: UsageWindow; testId: string }) {

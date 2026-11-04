@@ -53,6 +53,9 @@ describe("nextPermissionMode", () => {
     expect(nextPermissionMode("plan")).toBe("default");
     expect(nextPermissionMode("bypassPermissions")).toBe("default");
   });
+  it("skips Plan only for a provider without plan mode (Codex)", () => {
+    expect(nextPermissionMode("acceptEdits", false)).toBe("default");
+  });
 });
 
 describe("historyStep", () => {

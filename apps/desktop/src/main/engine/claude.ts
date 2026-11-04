@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { getSessionMessages, listSessions, query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
+  EFFORT_LEVELS,
+  type EffortLevel,
   ENGINE_CAPABILITIES,
   type EngineEvent,
   type ModelInfo,
@@ -39,6 +41,15 @@ const log = logger("engine");
  * touches credentials. User/project/local settings load, so CLAUDE.md files, skills, plugins, hooks and
  * MCP servers work as in the CLI. The system prompt is Claude Code's preset with Jig's context appended.
  */
+
+/** Claude's own effort levels; a Codex-only level ("ultra") never reaches Claude Code. */
+function claudeEffort(effort: EffortLevel | null | undefined): ClaudeEffort | undefined {
+  return effort && (EFFORT_LEVELS as readonly string[]).includes(effort)
+    ? (effort as ClaudeEffort)
+    : undefined;
+}
+type ClaudeEffort = (typeof EFFORT_LEVELS)[number];
+
 export class ClaudeEngine implements Engine {
   readonly kind = "claude" as const;
   readonly provider = "claude" as const;
@@ -126,7 +137,7 @@ export class ClaudeEngine implements Engine {
         enableFileCheckpointing: options.fileCheckpoints,
         forkSession: options.resume ? options.forkSession : undefined,
         resumeSessionAt: options.resume ? options.resumeSessionAt : undefined,
-        effort: options.effort,
+        effort: claudeEffort(options.effort),
         additionalDirectories: options.additionalDirectories?.length
           ? options.additionalDirectories
           : undefined,
@@ -229,7 +240,7 @@ export class ClaudeEngine implements Engine {
             : {}),
         }));
       },
-      setEffort: (effort) => q.applyFlagSettings({ effortLevel: effort }),
+      setEffort: (effort) => q.applyFlagSettings({ effortLevel: claudeEffort(effort) ?? null }),
       async mcpStatus() {
         return (await q.mcpServerStatus()).map((s) => ({
           name: s.name,

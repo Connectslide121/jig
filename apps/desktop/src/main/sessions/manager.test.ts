@@ -136,6 +136,29 @@ describe("SessionManager", () => {
     await m.shutdown();
   });
 
+  it("changes the provider of a chat only until its first message (D-314)", async () => {
+    const m = manager();
+    const chat = await create(m);
+    const switched = await m.setProvider(chat.id, "codex", {
+      model: "sol",
+      effort: "high",
+      permissionMode: "default",
+    });
+    expect(switched).toMatchObject({
+      provider: "codex",
+      model: "sol",
+      effort: "high",
+      permissionMode: "default",
+    });
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    await expect(
+      m.setProvider(chat.id, "claude", { model: "opus", permissionMode: "plan" }),
+    ).rejects.toMatchObject({ code: "not_allowed" });
+    expect((await metaOf(m, chat.id)).provider).toBe("codex");
+    await m.shutdown();
+  });
+
   it("reads chats saved without a provider as Claude chats", async () => {
     const m = manager();
     const old = await create(m);
