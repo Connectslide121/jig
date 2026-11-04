@@ -9,9 +9,9 @@ test("plan usage is always in the status bar and on the chat header, with a card
 }) => {
   // The fake engine reports 42 % of the 5-hour window and 18 % of the week.
   const status = page.getByTestId("usage-status");
-  await expect(status.getByTestId("usage-mini-five_hour")).toContainText(/5h\s*42%\s*2h 1[23]m/, {
-    timeout: 15000,
-  });
+  await expect(status.getByTestId("usage-mini-five_hour")).toContainText(/5h\s*42%/, { timeout: 15000 });
+  // When it resets is only in the card, so the footer stays calm.
+  await expect(status.getByTestId("usage-mini-five_hour")).not.toContainText("2h");
   await expect(status.getByTestId("usage-mini-seven_day")).toContainText("18%");
   await status.hover();
   const card = page.getByTestId("usage-card");

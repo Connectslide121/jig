@@ -4,7 +4,6 @@ import type { AiProvider } from "../../../shared/providers";
 import {
   FOOTER_WINDOWS,
   formatResetIn,
-  formatResetShort,
   formatUsageAmount,
   type PlanUsage,
   planName,
@@ -155,8 +154,20 @@ export function UsageCard() {
 }
 
 /**
- * One window in the status bar: its short name, a bar, the share used and the time left, each in a
- * fixed slot with tabular numbers, so nothing moves when the numbers change. `na`: limits don't apply.
+ * Quiet in the status bar: the number and bar take the bar's own text colour until a window is near
+ * its limit, then amber from 60 % and red from 85 %. On any status bar background, imported themes too.
+ */
+const MINI_TEXT = {
+  ok: undefined,
+  warning: "font-medium text-warning",
+  danger: "font-medium text-danger",
+} as const;
+const MINI_BAR = { ok: "bg-current opacity-50", warning: "bg-warning", danger: "bg-danger" } as const;
+
+/**
+ * One window in the status bar: its short name, a bar and the share used, each in a fixed slot with
+ * tabular numbers, so the meter is the same width at 9 % and 78 %. When it resets is in the card.
+ * `na`: limits don't apply.
  */
 function MiniWindow({
   label,
@@ -170,20 +181,18 @@ function MiniWindow({
   na?: boolean;
 }) {
   const tone = usageTone(w?.percent);
-  const left = formatResetShort(w?.resetsAt);
   return (
-    <span className="flex items-center gap-1.5" data-testid={testId}>
-      <span className="w-4 whitespace-nowrap text-hint">{windowShort(w, label)}</span>
-      <span className="relative h-2 w-12 overflow-hidden rounded-full bg-active">
+    <span className="flex shrink-0 items-center gap-1.5" data-testid={testId}>
+      <span className="w-5 whitespace-nowrap text-hint">{windowShort(w, label)}</span>
+      <span className="relative h-1.5 w-10 overflow-hidden rounded-full bg-active">
         <span
-          className={cn("absolute inset-y-0 left-0 rounded-full", TONE_BAR[tone])}
+          className={cn("absolute inset-y-0 left-0 rounded-full", MINI_BAR[tone])}
           style={{ width: `${Math.min(100, Math.max(0, w?.percent ?? 0))}%` }}
         />
       </span>
-      <span className={cn("w-8 text-right font-medium", tone === "ok" ? "text-fg" : TONE_TEXT[tone])}>
+      <span className={cn("w-8 text-right", MINI_TEXT[tone])}>
         {na ? "n/a" : percentText(w?.percent ?? null)}
       </span>
-      <span className="w-14 whitespace-nowrap text-hint">{left}</span>
     </span>
   );
 }
@@ -191,7 +200,8 @@ function MiniWindow({
 /**
  * One provider in the status bar. Wide footer: the mark and two windows (session, week). Narrow
  * footer (a container query on the status bar, not the window): the mark and the highest share.
- * The width-dependent display is set only through @max-5xl/@5xl variants (D-297).
+ * The width-dependent display is set only through @max-5xl/@5xl variants (D-297). Gaps: 8 px after
+ * the mark, 12 px between meters, the same as between providers.
  */
 function UsageGroup({ provider, usage }: { provider: AiProvider; usage: PlanUsage }) {
   const [first, second] = FOOTER_WINDOWS[provider];
@@ -203,15 +213,12 @@ function UsageGroup({ provider, usage }: { provider: AiProvider; usage: PlanUsag
   return (
     <span className="flex items-center gap-2" data-testid={`usage-group-${provider}`}>
       <Mark provider={provider} />
-      <span className="items-center gap-2.5 @max-5xl/statusbar:hidden @5xl/statusbar:flex">
+      <span className="items-center gap-3 @max-5xl/statusbar:hidden @5xl/statusbar:flex">
         <MiniWindow label="5h" w={window(first)} testId={`${prefix}-${first}`} na={na} />
         <MiniWindow label="wk" w={window(second)} testId={`${prefix}-${second}`} na={na} />
       </span>
       <span
-        className={cn(
-          "w-8 text-right font-medium @max-5xl/statusbar:inline @5xl/statusbar:hidden",
-          tone === "ok" ? "text-fg" : TONE_TEXT[tone],
-        )}
+        className={cn("w-8 text-right @max-5xl/statusbar:inline @5xl/statusbar:hidden", MINI_TEXT[tone])}
         data-testid={`usage-top-${provider}`}
       >
         {na ? "n/a" : percentText(top)}
@@ -244,7 +251,7 @@ export function UsageStatusItem() {
         <UsageGroup provider="claude" usage={usage.claude} />
         {chatgptShown && (
           <>
-            <span className="h-3 w-px bg-line-strong" aria-hidden />
+            <span className="h-3 w-px bg-current opacity-25" aria-hidden />
             <UsageGroup provider="chatgpt" usage={usage.chatgpt} />
           </>
         )}

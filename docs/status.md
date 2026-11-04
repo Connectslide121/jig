@@ -85,9 +85,15 @@ which add-on. The builder knows both. Try it: give an add-on a `menuGroups` entr
 group and open that menu twice after changing its state. Needs testing on your machine: the Time
 add-on once it's rebuilt to use both (see D-305).
 
+Calmer usage footer (2026-11-04): the status bar no longer shows when each limit resets (the hover
+card still does, for every window of both plans). Every meter is a fixed-width label, bar and
+percentage with tabular numbers, 12 px apart within and between providers, with a faint divider
+between Claude and ChatGPT. Bars and numbers stay in the status bar's own text colour and turn amber
+from 60 % and red from 85 % only. Checked in Jig Dark and Jig Light, narrow and wide.
+
 ChatGPT usage in the footer (2026-11-03, D-298): the status bar shows Claude's plan usage, then
 ChatGPT's after a thin divider, each behind its own mark (an icon and the name, in its own colour).
-The bars keep green/amber/red for room/near/limit for both. Hover for a card with both plans (plan
+The bars turn amber/red near/at the limit for both. Hover for a card with both plans (plan
 badge, every window, when it resets, when it was updated) and one refresh button. ChatGPT's numbers
 come from OpenAI's Codex CLI, refreshed after every ChatGPT answer and every 5 minutes; without a
 Codex sign-in only Claude's shows. When the status bar is narrow each group shrinks to its name and
@@ -981,7 +987,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 - **Compact chats** (D-159): each run of Claude's steps folds into one line ("Ran 3 commands, edited 1
   file"); click it for the cards, or switch the chat's top bar to Detailed for every card.
 - **Plan usage, always visible:** the status bar shows a bar per window like the usage plugin
-  (`5h ▰▱ 26% 2h 55m · wk ▰▱ 69% 4d 22h`, green, amber from 60 %, red from 85 %; D-152); hover it for a card with every window, a bar each and when it resets (click
+  (`5h ▰▱ 26%  wk ▰▱ 69%`, neutral, amber from 60 %, red from 85 %; D-152); hover it for a card with every window, a bar each and when it resets (click
   to refresh). The numbers come from Claude Code's own `/usage` data.
 - **Projects you manage** (D-101, D-102): a project groups chats; folders never decide which chats are
   in it.
