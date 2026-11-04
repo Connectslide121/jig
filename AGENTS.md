@@ -46,8 +46,8 @@ npm run build          # production build into apps/desktop/dist
 npm start              # run the production build
 npm run verify         # typecheck + lint + design-token check (no tests) — run before every commit
 npm run check          # verify + unit tests — when releasing
-npm run e2e:changed    # the e2e specs a change needs — only when Jon asks
-npm run e2e            # the whole e2e suite in parallel (~4-5 min): when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
+npm run e2e:changed    # the e2e specs a change needs — before committing a change to the app or a spec (D-331)
+npm run e2e            # the whole e2e suite in parallel (~4-5 min): only when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
@@ -227,11 +227,14 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - End-to-end tests in `e2e/` run the real app with `JIG_ENGINE=fake` and a temp `JIG_HOME`. A new
   fake-engine behaviour gets a row in the table in `docs/guides/testing.md`.
 - Never use real Claude credentials in tests.
-- **Tests run only when releasing (Jon, D-258).** Write and update unit and e2e tests with each change
-  as before, but don't run them while working: waiting for tests cost most of the time. Before a commit
-  run `npm run verify` (typecheck, lint, tokens; seconds). The release runs `npm run check` and the
-  whole `npm run e2e`, and fixes what fails then. Run tests earlier only when Jon asks, or a single
-  quick unit test file (`npx vitest run <file>`) when a pure function's logic is tricky.
+- **A change runs the e2e specs it affects; the whole suite runs only when releasing (Jon, D-258,
+  D-331).** Write and update unit and e2e tests with each change. Before a commit run `npm run verify`
+  (typecheck, lint, tokens; seconds) and, when the change touches the app or an e2e spec, `npm run
+  e2e:changed` (only the specs it needs, usually under a minute; in Jig through the Tests add-on's
+  `addon_tests_run`, so Jon sees it). Fix what fails before committing. Docs-only and unit-test-only
+  changes run nothing. The whole `npm run e2e` and `npm run check` run at release, never at other
+  moments: only a run on the release's own source proves it clean. Run a single quick unit test file
+  (`npx vitest run <file>`) when a pure function's logic is tricky, and anything else when Jon asks.
 - A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or
   timing; keep each test short (the slowest sets the suite's time).
 - **UI is still looked at before it's done:** a screenshot in Claude's browser or a quick `npm run dev`
@@ -264,6 +267,8 @@ GitHub release publication. This is the only exception to the normal no-push rul
 or silently include unfinished/unrelated work. A request to create the skill, explain releases,
 prepare a release or build a local installer does not authorize publication. When authorized,
 complete preparation, validation, packaging and publication without adding a redundant confirmation.
+Tests that fail during a release are the release's to fix, within the skill's "When tests fail"
+(D-331): it stops and reports only beyond those limits.
 
 ## What NOT to do
 

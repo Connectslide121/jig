@@ -4872,3 +4872,20 @@ Jig queues." The details are **Claude, on my own**.
   optional); listings say who runs each task and the queue's Runs on.
 - The fallback-provider task (carry on with the other provider when a chat hits its limit) hadn't
   landed; it should keep `ranOn` true to the chat that actually ran.
+
+## D-331: A change runs its affected e2e specs; the release fixes the tests that fail
+
+**Who:** Jon, 2026-11-04, after the 0.9.0 release met three failing specs that the changes in it had
+written or changed but never run. Extends D-258 and D-325.
+
+- **Before committing** a change to the app or an e2e spec: `npm run verify` and `npm run e2e:changed`
+  (the specs `e2e/affected.json` picks; in Jig through the Tests add-on, so Jon sees it); fix what fails.
+  Docs-only and unit-test-only changes run nothing. Unit tests still run at release (`npm run check`).
+- **The whole suite runs only at release**, never at other moments (Jon): only a run on the release's
+  own source proves it clean. D-272's skip stays, since it needs a full pass on that same source.
+- **Failing tests in a release are the release's to fix** (the jig-release skill's "When tests fail"):
+  sort each one (outdated test, test bug, regression in the released changes, environment), never skip
+  or delete a test or loosen the suite's retries/timeouts, prove the fix on the failed specs, commit and
+  resume. Stop and report after two rounds or when a fix needs more than a small app change. Flaky tests
+  don't block; they're reported with a task offered. Claude, on my own: the two-round limit and the
+  four kinds.

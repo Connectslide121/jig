@@ -367,8 +367,10 @@ Lost? The `?` and the **Jig menu** (top left) show everything Jig can do.
 ## Develop
 
 ```bash
-npm run check    # typecheck, lint, unit tests, design-token check — before every commit
-npm run e2e      # build, then Playwright drives the real app (Linux: xvfb-run)
+npm run verify       # typecheck, lint, design-token check — before every commit
+npm run e2e:changed  # the end-to-end specs a change needs — before committing it
+npm run check        # verify + unit tests — when releasing
+npm run e2e          # the whole end-to-end suite, Playwright driving the real app — when releasing (Linux: xvfb-run)
 ```
 
 Electron + React + TypeScript, Tailwind with design tokens, Vitest and Playwright. Start with

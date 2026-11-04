@@ -30,7 +30,8 @@ the notes. (Jon starts it with one click: the **Release Jig** workflow in Jig's 
    test, writes SHA256SUMS, tags and pushes atomically, uploads a draft, verifies the downloaded
    installer, publishes it as latest, checks the unauthenticated latest-release API, feed and
    installer, records the publication in docs/status.md and pushes that commit.
-5. On failure it stops and says why; commit the fix and run it again: once the version is set it
+5. On failure it stops and says why. Failing tests: follow "When tests fail" below. Otherwise fix
+   what's yours to fix (see Scope), commit the fix and run it again: once the version is set it
    continues from HEAD (fix commits after the release commit are fine) and an existing draft. Report the version, the reason for the bump, the link and notes.
 
 The sections below are what the script does and checks, for reviewing it or recovering by hand.
@@ -46,7 +47,8 @@ The sections below are what the script does and checks, for reviewing it or reco
   resulting app on the user's machine unless separately requested.
 - Work on `main`. Preserve unfinished work; never sweep someone else's changes into a release.
   Resolve only routine release failures. Stop on conflicting release/tag identity, unexpected
-  remote history or a failed required check; explain the concrete blocker. Retry a transient
+  remote history or a failed check that "When tests fail" doesn't let you fix; explain the
+  concrete blocker. Retry a transient
   network/upload failure at most twice, inspecting remote state before each retry.
 
 ## Prepare the release
@@ -88,7 +90,7 @@ The sections below are what the script does and checks, for reviewing it or reco
 ## Validate and package
 
 - Run `npm run check`, then the whole e2e suite with `npm run e2e` (parallel, a few minutes; it builds
-  first when stale). Every test must pass: fix failures in scope before proceeding; don't skip checks.
+  first when stale). Every test must pass; when one doesn't, follow "When tests fail" below.
 - Run `npm run build` before packaging.
 - Build the NSIS installer on Windows without opening Explorer:
 
@@ -115,6 +117,33 @@ The sections below are what the script does and checks, for reviewing it or reco
   build input changes after checks/packaging, rerun the affected checks and rebuild.
 - Recheck that HEAD is the release commit and the working tree has no unfinished tracked work.
   For prepare-only requests, finish here with the version, artifact/hash, notes and checks.
+
+## When tests fail (D-331)
+
+The whole e2e suite runs only at release (D-258), so the release is where a batch of changes first
+meets it, and failures there are expected. Fix them; don't hand them back. When `npm run release`
+stops on failing unit or e2e tests:
+
+1. **Sort each failure** and name its kind in the fix's commit and the final report:
+   - **Outdated test:** the app changed on purpose and the test expects the old behaviour. Update
+     the test to the new behaviour.
+   - **Test bug:** an ambiguous locator, a timeout too short for what the test now does, a race in
+     the test. Fix the test and say what caused it.
+   - **Regression in the released changes:** fix the app when the fix is small and inside those
+     changes, with its test; otherwise stop and report.
+   - **Environment:** network, a file Windows holds, gh. Rerun once; then stop and report.
+2. **Never** skip (`test.skip`, `.fixme`) or delete a test, weaken an assertion you don't
+   understand, or raise retries or timeouts for the whole suite. A longer timeout for one test is
+   fine when a comment says why.
+3. **Prove it before resuming:** run the failed specs (`npx playwright test <spec>` with
+   `JIG_HIDDEN=1`, or `npx vitest run <file>`), run `npm run verify`, commit, then run
+   `npm run release` again. It reruns only the failed specs and those the fixes need (D-325).
+4. **Limits:** stop and report after two fix rounds, or when a fix needs more than a small change
+   to the app.
+5. **Flaky tests** (passed on retry) don't block. Name them in the final report and offer a task to
+   fix each.
+6. **Report** every failure with its kind and fix next to the release link. A request that only asks
+   to say where a release failed doesn't override this; Jon wants failures fixed (D-331).
 
 ## Publish when authorized
 

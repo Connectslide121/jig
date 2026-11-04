@@ -17,7 +17,8 @@ npm run verify       # typecheck + lint + design-token check (run before committ
 npm run check        # verify + unit tests (releases)
 npm run build        # production build into apps/desktop/dist
 npm start            # run the production build
-npm run e2e          # build + Playwright end-to-end tests
+npm run e2e:changed  # the end-to-end specs a change needs (before committing it, D-331)
+npm run e2e          # the whole end-to-end suite (releases)
 ```
 
 Useful environment variables:

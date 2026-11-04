@@ -11,11 +11,13 @@
 
 ## End-to-end tests
 
-**When they run (D-258):** when releasing, or when Jon asks; not after each change.
+**When they run (D-258, D-331):** the specs a change affects before committing it (`npm run
+e2e:changed`, when it touches the app or a spec); the whole suite only when releasing; anything
+else when Jon asks.
 
 **Two ways to run them (D-242).**
 
-- `npm run e2e:changed` after a change: only the specs it needs, usually well under a minute. The
+- `npm run e2e:changed` before committing a change: only the specs it needs, usually well under a minute. The
   changed files are your uncommitted ones plus commits not yet pushed (`-- --since <ref>` for another
   base; `-- --list` prints the choice without running). `scripts/e2e-select.ts` picks specs by the
   rules in `e2e/affected.json` (source folders → specs), by the `data-testid`s a changed view renders
@@ -23,7 +25,8 @@
   nothing; fixtures, the Playwright config, the preload and the IPC router run everything; a file no
   rule covers runs `fallback` and is named, so you can add a rule. A new spec needs a rule
   (`scripts/e2e-select.test.ts` fails otherwise, and when a rule's glob matches no file).
-- `npm run e2e`, the whole suite: when releasing Jig (the release skill runs it). About 3–4 minutes.
+- `npm run e2e`, the whole suite: only when releasing Jig (the release skill runs it; failures are
+  fixed there, by its "When tests fail"). About 3–4 minutes.
   When it fails on a clean checkout it records the failed specs; `npm run e2e -- --resume` (what the
   release runs) then reruns only those and the specs the commits since need (D-325).
 
