@@ -1,4 +1,4 @@
-import { ArrowDownUp, MessageSquare, MonitorCog, MoreHorizontal, SquareTerminal, X } from "lucide-react";
+import { ArrowDownUp, MessageSquare, MonitorCog, SquareTerminal, X } from "lucide-react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState, type WheelEvent } from "react";
 import {
   type BrowserInput,
@@ -9,17 +9,7 @@ import {
 } from "../../../shared/browser";
 import { useActiveChat } from "../../addons/context";
 import { call, useHostEvent } from "../../lib/host";
-import {
-  Badge,
-  cn,
-  contextMenu,
-  Empty,
-  IconButton,
-  Input,
-  type MenuEntry,
-  OverlayScrollbar,
-  openMenuAt,
-} from "../../ui";
+import { Badge, cn, contextMenu, Empty, IconButton, Input, type MenuEntry, OverlayScrollbar } from "../../ui";
 import { Pane } from "../../workbench/Pane";
 import { useProjects } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
@@ -132,7 +122,7 @@ function PageTab({
       }}
       onContextMenu={contextMenu(pageMenu(page.chatId))}
       className={cn(
-        "group relative flex h-full shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs outline-none focus-visible:ring-1 focus-visible:ring-focus @max-md:w-36 @md:w-48",
+        "group relative flex h-full shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs outline-none focus-visible:ring-1 focus-visible:ring-focus @max-md:w-40 @md:w-48",
         selected ? "bg-canvas text-fg" : "bg-surface text-muted hover:text-fg",
       )}
     >
@@ -146,23 +136,57 @@ function PageTab({
           <span title="Claude is using this page" className="size-2 animate-pulse rounded-full bg-info" />
         )}
       </span>
-      <button
-        type="button"
-        aria-label={`Options for ${name}'s page`}
-        title="Options"
-        data-testid="browser-tab-menu"
-        onClick={(e) => {
-          e.stopPropagation();
-          openMenuAt(e.currentTarget, pageMenu(page.chatId), true);
-        }}
+      {/* Always laid out (opacity only), so the name and the dot never move on hover. */}
+      <span
         className={cn(
-          "flex size-5 shrink-0 items-center justify-center rounded-sm hover:bg-hover",
+          "flex shrink-0 items-center",
           selected ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
         )}
       >
-        <MoreHorizontal className="size-3.5" />
-      </button>
+        <TabButton
+          icon={MessageSquare}
+          label={`Open ${name}`}
+          testId="browser-tab-open-chat"
+          onClick={() => openChat(page.chatId)}
+        />
+        <TabButton
+          icon={X}
+          label={`Close ${name}'s page`}
+          testId="browser-tab-close"
+          onClick={() => void call("browser.close", { chatId: page.chatId }).catch(() => {})}
+        />
+      </span>
     </div>
+  );
+}
+
+/** A small action on a page tab; its click never selects the tab. */
+function TabButton({
+  icon: Icon,
+  label,
+  testId,
+  onClick,
+}: {
+  icon: typeof X;
+  label: string;
+  testId: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      data-testid={testId}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="flex size-5 items-center justify-center rounded-sm hover:bg-hover"
+    >
+      <Icon className="size-3" />
+    </button>
   );
 }
 

@@ -343,7 +343,7 @@ gets its own page, so two chats (a task queue chat and yours) can browse at once
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.
 The **Claude's browser** view has a one-line tab per page (the chat's name and project, a dot while
 Claude drives it, the page title in its tooltip); click one to watch that page with its Console and
-Network, ⋯ → Open chat or Close page. Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
+Network; hover a tab for its Open chat and Close page buttons (always shown on the selected tab, or right-click it). Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
 are open. Logins are shared between the pages by default (sign in once); Settings → Chats → **Chats’
 pages in Claude’s browser** → Separate keeps each chat's cookies apart. Covered by
 `e2e/browser-pages.spec.ts` (not run in this change, D-258). Needs testing on your machine: two
