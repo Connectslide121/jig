@@ -34,7 +34,8 @@ same commit.
   calls the host through a single typed bridge (`window.jig`).
 - **Preload** exposes that bridge with `contextBridge`. The renderer runs with `contextIsolation: true`,
   `nodeIntegration: false`, `sandbox: true`.
-- **Helper windows.** Browser is a hidden offscreen window owned by the main process.
+- **Helper windows.** Claude's browser is a hidden offscreen window per chat, owned by the main process
+  (D-320).
   `main/appWindows.ts` keeps such helpers out of everything that means "Jig's windows" (events,
   focus, notifications, quitting).
 - **Pure packages** hold logic with no Electron dependency so it can be unit-tested:
@@ -230,8 +231,11 @@ reserved slot never changes size for loading/status. It is independent of Claude
 
 **Claude's terminals and browser.** Claude runs long commands in Jig terminals the user sees
 (`jig_terminal_*`, `docs/reference/terminals.md`) and checks web UI in the browser: one offscreen
-Chromium page owned by the main process (its own session, sandboxed), driven by `jig_browser_*` tools
-with real input events and shown live in a view the user can click/type in for sign-ins.
+Chromium page per chat owned by the main process (`main/browser/pages.ts`, D-320; sandboxed, in a
+session apart from Jig's that the pages share by default), driven by that chat's `jig_browser_*`
+tools with real input events and shown live in a view, one tab per chat's page, that the user can
+click/type in for sign-ins. Every `browser.*` IPC method names the chat (`chatId`); a chat archived
+or deleted closes its page (`onSessionClosed` in `main/sessions`).
 The address is read-only; Claude owns browser navigation/viewport controls. A hint links to the
 user Browser, also reachable from the top-right globe icon (D-226). Hidden helper windows are kept
 out of "all windows" by `main/appWindows.ts`. Reference: `docs/reference/browser.md`.

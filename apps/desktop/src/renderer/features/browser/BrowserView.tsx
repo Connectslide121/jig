@@ -1,17 +1,31 @@
-import { ArrowDownUp, MonitorCog, SquareTerminal } from "lucide-react";
+import { ArrowDownUp, MessageSquare, MonitorCog, MoreHorizontal, SquareTerminal, X } from "lucide-react";
 import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState, type WheelEvent } from "react";
 import {
   type BrowserInput,
-  type BrowserState,
+  type BrowserPageInfo,
   type ConsoleEntry,
   isNetworkError,
   type NetworkEntry,
 } from "../../../shared/browser";
+import { useActiveChat } from "../../addons/context";
 import { call, useHostEvent } from "../../lib/host";
-import { Badge, cn, Empty, IconButton, Input } from "../../ui";
+import {
+  Badge,
+  cn,
+  contextMenu,
+  Empty,
+  IconButton,
+  Input,
+  type MenuEntry,
+  OverlayScrollbar,
+  openMenuAt,
+} from "../../ui";
 import { Pane } from "../../workbench/Pane";
+import { useProjects } from "../../workbench/projects";
 import type { ViewProps } from "../../workbench/registry";
-import { workbench } from "../../workbench/store";
+import { useWorkbench, workbench } from "../../workbench/store";
+import { ProjectSwatch } from "../projects/colors";
+import { useSessions } from "../sessions/store";
 
 const LEVEL_TONE: Record<ConsoleEntry["level"], string> = {
   log: "text-muted",
@@ -20,41 +34,219 @@ const LEVEL_TONE: Record<ConsoleEntry["level"], string> = {
   error: "text-danger",
 };
 
-const send = (event: BrowserInput) => void call("browser.input", event).catch(() => {});
-
-function useBrowser() {
-  const [state, setState] = useState<BrowserState>();
-  const [frame, setFrame] = useState<string>();
+/** The open pages of Claude's browser, one per chat (D-320). */
+export function useBrowserPages(): BrowserPageInfo[] {
+  const [pages, setPages] = useState<BrowserPageInfo[]>([]);
   useEffect(() => {
-    void call("browser.state").then(setState);
-    void call("browser.watch", { on: true });
-    return () => void call("browser.watch", { on: false }).catch(() => {});
+    void call("browser.pages").then(setPages);
   }, []);
-  useHostEvent("browser.state", setState);
-  useHostEvent("browser.frame", (f) => setFrame(`data:image/jpeg;base64,${f.data}`));
-  return { state, frame };
+  useHostEvent("browser.pages", setPages);
+  return pages;
 }
 
 /**
- * Browser: the live page Claude opens with its jig_browser_* tools. You watch it work and can
- * take over at any time: clicks, scrolling and typing on the picture go to the page.
+ * The page shown: the one you clicked, else the chat in front's, else the one used last. A clicked
+ * tab holds until another chat comes to the front.
+ */
+function useSelectedPage(pages: BrowserPageInfo[]) {
+  const front = useActiveChat()?.sessionId;
+  const [picked, setPicked] = useState<string>();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new chat in front resets your pick.
+  useEffect(() => setPicked(undefined), [front]);
+  const has = (id?: string) => Boolean(id && pages.some((p) => p.chatId === id));
+  const latest = [...pages].sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0]?.chatId;
+  const selected = has(picked) ? picked : has(front) ? front : latest;
+  return { selected, select: setPicked };
+}
+
+/** Frames of the shown page only: the view watches one page at a time. */
+function useFrame(chatId: string | undefined, open: boolean) {
+  const [frames, setFrames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!chatId || !open) return;
+    void call("browser.watch", { chatId, on: true });
+    return () => void call("browser.watch", { chatId, on: false }).catch(() => {});
+  }, [chatId, open]);
+  useHostEvent("browser.frame", (f) =>
+    setFrames((all) => ({ ...all, [f.chatId]: `data:image/jpeg;base64,${f.data}` })),
+  );
+  return chatId ? frames[chatId] : undefined;
+}
+
+/** A chat's tab in front, or a new tab for it when it isn't open. */
+function openChat(sessionId: string): void {
+  const tab = useWorkbench
+    .getState()
+    .layout?.main.tabs.find((t) => t.type === "jig.chat" && t.params.sessionId === sessionId);
+  if (tab) workbench.activateTab(tab.id);
+  else workbench.openTab("jig.chat", { sessionId });
+}
+
+const pageMenu = (chatId: string): MenuEntry[] => [
+  {
+    label: "Open chat",
+    icon: MessageSquare,
+    onSelect: () => openChat(chatId),
+    testId: "browser-tab-open-chat",
+  },
+  {
+    label: "Close page",
+    icon: X,
+    onSelect: () => void call("browser.close", { chatId }).catch(() => {}),
+    testId: "browser-tab-close",
+  },
+];
+
+/**
+ * One chat's page: the chat's name and project, the page title muted below it, a dot while the chat
+ * drives it. Fixed width, so tabs coming and going never move anything else.
+ */
+function PageTab({
+  page,
+  selected,
+  onSelect,
+}: {
+  page: BrowserPageInfo;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const meta = useSessions((s) => s.metas[page.chatId]);
+  const project = useProjects((s) => s.projects.find((p) => p.id === meta?.projectId));
+  const name = meta?.title || "Chat";
+  const title = page.state.title || page.state.url || "Blank page";
+  return (
+    <div
+      role="tab"
+      aria-selected={selected}
+      tabIndex={0}
+      title={`${name}\n${title}`}
+      data-testid="browser-tab"
+      data-chat={page.chatId}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      onContextMenu={contextMenu(pageMenu(page.chatId))}
+      className={cn(
+        "group relative flex h-full shrink-0 cursor-default items-center gap-1 border-r border-line pr-1 pl-2.5 outline-none focus-visible:ring-1 focus-visible:ring-focus @max-md:w-36 @md:w-48",
+        selected ? "bg-canvas text-fg" : "bg-surface text-muted hover:text-fg",
+      )}
+    >
+      {selected && <span className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {project ? <ProjectSwatch color={project.color} /> : <span className="size-2.5 shrink-0" />}
+          <span className="min-w-0 flex-1 truncate text-xs font-medium" data-testid="browser-tab-chat">
+            {name}
+          </span>
+          <span className="flex size-2 shrink-0 items-center" data-testid="browser-tab-driving">
+            {page.driving && (
+              <span title="Claude is using this page" className="size-2 animate-pulse rounded-full bg-info" />
+            )}
+          </span>
+        </div>
+        <span className="min-w-0 truncate pl-4 text-xs text-hint" data-testid="browser-tab-title">
+          {title}
+        </span>
+      </div>
+      <button
+        type="button"
+        aria-label={`Options for ${name}'s page`}
+        title="Options"
+        data-testid="browser-tab-menu"
+        onClick={(e) => {
+          e.stopPropagation();
+          openMenuAt(e.currentTarget, pageMenu(page.chatId), true);
+        }}
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-sm hover:bg-hover",
+          selected ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+        )}
+      >
+        <MoreHorizontal className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** The tabs, one per open page. The strip keeps its height when there are none. */
+function PageTabs({
+  pages,
+  selected,
+  onSelect,
+}: {
+  pages: BrowserPageInfo[];
+  selected?: string;
+  onSelect: (chatId: string) => void;
+}) {
+  const strip = useRef<HTMLDivElement>(null);
+  return (
+    <div className="group/strip relative shrink-0">
+      <div
+        ref={strip}
+        role="tablist"
+        aria-label="Chats’ pages"
+        data-testid="browser-tabs"
+        // No scrollbar squeezing the tabs: a thin one is drawn over their bottom edge on hover.
+        className="tab-strip flex h-11 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
+        {pages.length === 0 && (
+          <span className="flex items-center px-3 text-xs text-hint">
+            Each chat that browses gets its own page here.
+          </span>
+        )}
+        {pages.map((p) => (
+          <PageTab
+            key={p.chatId}
+            page={p}
+            selected={p.chatId === selected}
+            onSelect={() => onSelect(p.chatId)}
+          />
+        ))}
+      </div>
+      <OverlayScrollbar target={strip} />
+    </div>
+  );
+}
+
+/**
+ * Claude's browser: the live pages Claude opens with its jig_browser_* tools, one tab per chat
+ * (D-320). You watch a chat's page and can take over at any time: clicks, scrolling and typing on the
+ * picture go to that page.
  */
 export function BrowserView(_props: ViewProps) {
-  const { state, frame } = useBrowser();
+  const pages = useBrowserPages();
+  const { selected, select } = useSelectedPage(pages);
+  const state = pages.find((p) => p.chatId === selected)?.state;
+  const frame = useFrame(selected, Boolean(state?.open));
   const [panel, setPanel] = useState<"console" | "network">();
   const showConsole = panel === "console";
   const [entries, setEntries] = useState<ConsoleEntry[]>([]);
   const [requests, setRequests] = useState<NetworkEntry[]>([]);
   const image = useRef<HTMLImageElement>(null);
+  const send = (input: BrowserInput) => {
+    if (selected) void call("browser.input", { chatId: selected, input }).catch(() => {});
+  };
 
+  // The lists follow the shown page: its state changes when its console or requests do.
+  const errors = state?.errors;
+  const requestCount = state?.requests;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: errors and requestCount trigger a reload.
   useEffect(() => {
-    if (panel === "console") void call("browser.console", {}).then(setEntries);
-    if (panel === "network") void call("browser.network", {}).then(setRequests);
-  }, [panel]);
-  useHostEvent("browser.state", () => {
-    if (panel === "console") void call("browser.console", {}).then(setEntries);
-    if (panel === "network") void call("browser.network", {}).then(setRequests);
-  });
+    if (!selected) {
+      setEntries([]);
+      setRequests([]);
+      return;
+    }
+    if (panel === "console") void call("browser.console", { chatId: selected }).then(setEntries);
+    if (panel === "network") void call("browser.network", { chatId: selected }).then(setRequests);
+  }, [panel, selected, errors, requestCount]);
 
   /** Mouse position → page pixels, through the letterboxing of object-contain. */
   const toPage = (e: { clientX: number; clientY: number }) => {
@@ -97,9 +289,22 @@ export function BrowserView(_props: ViewProps) {
   const open = state?.open && state.url && state.url !== "about:blank";
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden" data-testid="browser-view">
+    <div
+      className="@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+      data-testid="browser-view"
+    >
+      <PageTabs pages={pages} selected={selected} onSelect={select} />
       <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">Claude’s browser</span>
+        <div className="min-w-0 flex-1">
+          <Input
+            value={state?.url ?? ""}
+            readOnly
+            aria-label="Claude’s browser address"
+            data-testid="browser-address"
+            placeholder="Waiting for Claude to open a page"
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </div>
         <IconButton
           size="sm"
           icon={SquareTerminal}
@@ -122,16 +327,6 @@ export function BrowserView(_props: ViewProps) {
         <span className="w-8 shrink-0 text-right" data-testid="browser-errors">
           {Boolean(state?.errors) && <Badge tone="danger">{state?.errors}</Badge>}
         </span>
-      </div>
-      <div className="shrink-0 border-b border-line px-2 py-1">
-        <Input
-          value={state?.url ?? ""}
-          readOnly
-          aria-label="Claude’s browser address"
-          data-testid="browser-address"
-          placeholder="Waiting for Claude to open a page"
-          onFocus={(event) => event.currentTarget.select()}
-        />
       </div>
       <div
         className="shrink-0 border-b border-line px-2 py-2 text-xs text-muted"
@@ -181,7 +376,8 @@ export function BrowserView(_props: ViewProps) {
         ) : (
           <Empty title="Claude’s browser" icon={MonitorCog}>
             Claude opens pages here to check its work: it clicks, types, takes screenshots and reads the
-            console. Ask a chat to "open the app and check the login form".
+            console. Each chat has its own page, in its own tab. Ask a chat to "open the app and check the
+            login form".
           </Empty>
         )}
       </div>
@@ -215,7 +411,7 @@ export function BrowserView(_props: ViewProps) {
       )}
       {panel === "network" && (
         <Pane id="jig.browser.console" edge="top" defaultSize={160} min={60} max={600}>
-          <NetworkList entries={requests} />
+          <NetworkList chatId={selected} entries={requests} />
         </Pane>
       )}
     </div>
@@ -223,20 +419,20 @@ export function BrowserView(_props: ViewProps) {
 }
 
 /** The page's requests (Claude reads the same log with jig_browser_network). Click one for detail. */
-function NetworkList({ entries }: { entries: NetworkEntry[] }) {
+function NetworkList({ chatId, entries }: { chatId?: string; entries: NetworkEntry[] }) {
   const [open, setOpen] = useState<string>();
   const [detail, setDetail] = useState<NetworkEntry & { body?: string; bodyNote?: string }>();
   useEffect(() => {
     setDetail(undefined);
-    if (!open) return;
+    if (!open || !chatId) return;
     let current = true;
-    void call("browser.networkDetail", { id: open })
+    void call("browser.networkDetail", { chatId, id: open })
       .then((d) => current && setDetail(d))
       .catch(() => {});
     return () => {
       current = false;
     };
-  }, [open]);
+  }, [open, chatId]);
   return (
     <div
       className="h-full overflow-auto border-t border-line font-mono text-xs"

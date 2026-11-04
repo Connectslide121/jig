@@ -27,35 +27,76 @@ by [Electron](https://www.electronjs.org/docs/latest/api/web-contents-view).
 
 Claude’s browser uses the MonitorCog icon in its tab, menu and empty state; your browser uses Globe.
 
-Code: `apps/desktop/src/main/browser/` (service, tools, page scripts),
+Code: `apps/desktop/src/main/browser/` (pages, service, tools, page scripts),
 `apps/desktop/src/shared/browser.ts` (types), `apps/desktop/src/renderer/features/browser/` (the view).
-Decisions: D-090, D-095.
+Decisions: D-090, D-095, D-319, D-320.
 
-Claude checks its own web work in a real Chromium page inside Jig. The page is offscreen with its own
-size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a scaled
-picture of it, so the view's size never limits Claude, and resizing never moves anything on screen.
-The view opens by itself when Claude starts browsing; turn off Settings → Chats → **Show Claude’s browser
-when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can take over
-inside the page for sign-ins and other steps Claude needs your help with. The address is
+Claude checks its own web work in a real Chromium page inside Jig. **Each chat has its own page**
+(D-320), so chats browsing at the same time never get in each other's way. A page is offscreen with
+its own size: the **Claude’s browser** view (right sidebar; Search → Open Claude’s browser) only shows a
+scaled picture of it, so the view's size never limits Claude, and resizing never moves anything on
+screen. The view opens by itself when a chat starts browsing; turn off Settings → Chats → **Show
+Claude’s browser when it's used** (`browser.showWhenUsed`, on by default) to keep it closed. You can
+take over inside a page for sign-ins and other steps Claude needs your help with. The address is
 read-only; there are no user Back/Forward, Reload, viewport or test-launch controls in this view.
 A permanent hint explains who controls it and links to **open Browser** for personal browsing.
 Console and Network remain available for inspection (D-226).
 
+## One page per chat (D-320)
+
+- **Made on first use, keyed by the chat.** A chat's first `jig_browser_*` call makes its page
+  (`main/browser/pages.ts`, `BrowserPages`); every later call of that chat acts on it. A jig-tester
+  subagent calls through its parent chat's tools, so it uses the parent's page. Test something… starts a
+  new chat, which opens the address in a page of its own.
+- **Per page:** the element numbers from `jig_browser_read`/`open`, the console and network lists,
+  the window size, the crash/recovery notice and the live frames.
+- **Closed** when the chat is archived or deleted, from the tab's ⋯ → **Close page**, after
+  **15 minutes** without a tool call or your input while no view watches it (`IDLE_MS`), and when a
+  fifth chat needs a page: at most **4** are open (`MAX_PAGES`), so the one used least recently (and not
+  being driven) closes. The chat's next browser call starts with a note saying why ("Your page of
+  Claude's browser was closed after 15 minutes unused; open it again with jig_browser_open"), and
+  works on a new blank page.
+- **Sessions** (`browser.pageSessions`, Settings → Chats → **Chats’ pages in Claude’s browser**):
+  - `shared` (the default): every page uses the `persist:jig-browser` session, so cookies, logins
+    and storage are shared. You sign in to your dev server once and every chat (and test chat) is
+    signed in. **A logout in one chat logs out the others**, and two chats signed in as different
+    users replace each other's session cookie; Claude is told not to log out unless the task needs it.
+  - `separate`: each page gets an in-memory session of its own (`jig-browser-chat-<id>`), fully apart
+    and gone when the page closes. Applies to pages opened after the change.
+- **Requests reach their page:** a session takes one `webRequest` listener per event, so `pages.ts`
+  installs one set per session (with the download and permission refusals) and hands each request to
+  the page whose WebContents made it (`webContentsId`); one without an id goes to the session's only
+  page, or nowhere when several share it.
+
+## The view: one tab per page
+
+A fixed-height strip of tabs sits above the address row, one per open page: the chat's name with its
+project swatch, the page title muted below it, and a pulsing dot at the right while the chat drives
+the page (a tool call runs, or ended less than 5 s ago). Tabs have a fixed width (narrower in a
+sidebar than in the bottom panel or a main-area tab, by the view's container width) and truncate;
+the strip keeps its height when there are none ("Each chat that browses gets its own page here"), so
+opening or closing a page never moves the picture below. The strip scrolls sideways with an overlay
+scrollbar like the main tab strip. Clicking a tab shows that page's live picture, address, Console and
+Network. The tab of the chat in front is selected by default, else the page used last; a clicked tab
+stays until another chat comes to the front. A tab's ⋯ (and its context menu) has **Open chat** and
+**Close page**. The view watches only the shown page, so only that page makes frames.
+
 ## How it works
 
-- **One page, owned by the main process:** a hidden, offscreen `BrowserWindow` created on first use.
+- **A page, owned by the main process:** a hidden, offscreen `BrowserWindow` per chat, created on first
+  use.
   - It is marked as a helper window (`main/appWindows.ts`), so it never receives Jig's events, never
     counts for focus, notifications or "all windows closed", and is destroyed with the last real
     window.
-  - It has its own session (`persist:jig-browser`), so cookies and storage are apart from Jig's, and
-    `sandbox`, `contextIsolation`, no Node and no preload.
+  - Its session (`persist:jig-browser`, or the chat's own with `browser.pageSessions: separate`)
+    keeps cookies and storage apart from Jig's; `sandbox`, `contextIsolation`, no Node and no preload.
   - Downloads are cancelled and permission requests (camera, microphone, location, notifications…)
     are denied. Pop-ups (`window.open`, `target=_blank`) open in the same page.
   - It opens only `http:`, `https:` and `file:` URLs. `localhost:5173` becomes `http://localhost:5173`;
     a host name without a scheme becomes `https://`.
-- **Live view:** while a view is mounted (`browser.watch {on:true}`), painted frames go to it as JPEG
-  (`browser.frame`), at most 10 per second and always the last one. Nothing is encoded while nobody
-  watches.
+- **Live view:** while a view shows a chat's page (`browser.watch {chatId, on:true}`), that page's
+  painted frames go to it as JPEG (`browser.frame {chatId,…}`), at most 10 per second and always the
+  last one. Nothing is encoded for a page nobody watches.
 - **Taking over:** clicks, the wheel and keys on the picture are mapped to page pixels (through the
   letterboxing) and sent as real input events (`browser.input`). Printable characters are inserted as
   text, and Ctrl/Cmd shortcuts stay Jig's.
@@ -63,7 +104,7 @@ Console and Network remain available for inspection (D-226).
   errors; the terminal icon opens the list in a resizable pane. Electron's own development warnings
   are left out.
 - **Network** (Learning 2f, D-111): the page's requests from the browser session's `webRequest`
-  events (every request, whatever renderer process the page is in): method, URL, type, status, time,
+  events (every request, whatever renderer process the page is in, routed to its page as above): method, URL, type, status, time,
   size and headers, the last 300. Response bodies come from Chromium's DevTools protocol
   (`webContents.debugger`, `Network.getResponseBody`), enabled on a blank page before the first
   navigation so the first page's requests are seen from their start. Credential headers (`Authorization`, `Cookie`, `Set-Cookie`, API keys) are replaced by
@@ -111,8 +152,10 @@ Read-only tools run without asking (D-077); the others follow the chat's permiss
 numbers are `data-jig-ref` attributes written by `jig_browser_read`/`open`; they are renewed on every
 read, so Claude reads again after the page changes.
 
+Every tool acts on the calling chat's own page; names and arguments are the same as before D-320.
 Jig's system prompt addition (`jigContext`) tells Claude to use these tools to check web UI it builds,
-together with `jig_terminal_run` for the dev server.
+together with `jig_terminal_run` for the dev server, that the page is the chat's own (its jig-tester
+subagents share it), and that pages share logins by default, so it shouldn't log out unless needed.
 
 ## Fake engine
 
@@ -120,4 +163,6 @@ together with `jig_terminal_run` for the dev server.
 one, and takes a screenshot; with "phone" in the message it also takes `sizes: ["phone","desktop"]`
 (`e2e/browser.spec.ts`). With "read it again" it also reads the page after the click
 (`e2e/browser-hangs.spec.ts`: a load that never finishes, `alert`/`confirm` on load, a click that
-loops for ever, with `JIG_BROWSER_TIMEOUT_SCALE=0.2`).
+loops for ever, with `JIG_BROWSER_TIMEOUT_SCALE=0.2`). `read the browser page` reads the chat's page
+again and answers "My page: Page: …": two chats on separate pages, their tabs, Close page and a
+deleted chat's page closing (`e2e/browser-pages.spec.ts`).

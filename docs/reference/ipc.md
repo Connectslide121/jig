@@ -154,15 +154,16 @@ settings, add-on permissions.
 | `userBrowser.present` | `{ bounds: { x, y, width, height }, visible }` | — | native slot in CSS pixels; hidden for menus, dialogs and inactive tabs |
 | `userBrowser.navigate` | `{ url?, action? }` | — | http(s)/file URL or back/forward/reload/stop; starts without awaiting page load |
 | `userBrowser.devtools` | — | — | detached native page developer tools |
-| `browser.state` | — | `BrowserState` | Browser: open, url, title, loading, back/forward, size, error count (`docs/reference/browser.md`) |
-| `browser.watch` | `{ on }` | — | start/stop `browser.frame` events for a view |
-| `browser.navigate` | `{ url? , action? }` | `BrowserState` | open a URL (http, https, file), or `back` / `forward` / `reload` |
-| `browser.input` | `BrowserInput` | — | mouse, wheel, key or text from the live view, in page pixels |
-| `browser.resize` | `{ width, height }` | `BrowserState` | 200–4000 px |
-| `browser.console` | `{ clear? }` | `ConsoleEntry[]` | console messages and load errors |
-| `browser.network` | `{ clear? }` | `NetworkEntry[]` | the page's requests, credentials redacted |
-| `browser.networkDetail` | `{ id }` | `NetworkEntry & { body?, bodyNote? }` | one request with its response body |
-| `browser.close` | — | — | closes the page |
+| `browser.pages` | — | `BrowserPageInfo[]` | Claude's browser, one page per chat (D-320): each page's `chatId`, `state`, `driving` (a tool call runs or ended < 5 s ago) and `lastUsedAt` (`docs/reference/browser.md`) |
+| `browser.state` | `{ chatId }` | `BrowserState` | the chat's page: open, url, title, loading, back/forward, size, error count (`open: false` without a page) |
+| `browser.watch` | `{ chatId, on }` | — | start/stop `browser.frame` events of the chat's page for a view |
+| `browser.navigate` | `{ chatId, url? , action? }` | `BrowserState` | open a URL (http, https, file) in the chat's page (made if it has none), or `back` / `forward` / `reload` |
+| `browser.input` | `{ chatId, input: BrowserInput }` | — | mouse, wheel, key or text from the live view, in page pixels |
+| `browser.resize` | `{ chatId, width, height }` | `BrowserState` | 200–4000 px |
+| `browser.console` | `{ chatId, clear? }` | `ConsoleEntry[]` | the chat's page's console messages and load errors |
+| `browser.network` | `{ chatId, clear? }` | `NetworkEntry[]` | the chat's page's requests, credentials redacted |
+| `browser.networkDetail` | `{ chatId, id }` | `NetworkEntry & { body?, bodyNote? }` | one request with its response body |
+| `browser.close` | `{ chatId }` | — | closes the chat's page (Close page in its tab's ⋯) |
 | `scripts.list` | `{ projectId }` | `ProjectScripts` | discovered scripts + saved groups |
 | `scripts.run` / `scripts.stop` / `scripts.restart` | `{ projectId, scriptId }` | `TerminalInfo` / — / `TerminalInfo` | |
 | `scripts.saveGroup` | `{ projectId, group: { id?, name, scriptIds } }` | `ProjectScripts` | create or update |
@@ -245,9 +246,9 @@ settings, add-on permissions.
 | `routines.changed` | — | routines changed (from the tab or a chat): reload when shown |
 | `userBrowser.state` | `UserBrowserState` | owner window only: URL, title, loading, history and load error |
 | `userBrowser.address` | — | owner window only: native Ctrl/Cmd+L focuses its address field |
-| `browser.state` | `BrowserState` | Browser loaded, navigated, resized or logged an error |
-| `browser.frame` | `{ data, width, height }` | a JPEG of the page (base64), only while a view watches |
-| `browser.reveal` | — | Claude opened a page: show the browser view |
+| `browser.pages` | `BrowserPageInfo[]` | a page opened, closed, loaded, navigated, was resized, logged an error or started/stopped being driven |
+| `browser.frame` | `{ chatId, data, width, height }` | a JPEG of a chat's page (base64), only while a view watches that page |
+| `browser.reveal` | `{ chatId }` | a chat used its page: show the browser view |
 | `scripts.changed` | `ProjectScripts` | a project's script groups changed, or its scripts did (files added, removed, renamed; watched from the first `scripts.list`, D-238) |
 | `addons.changed` | `AddonInfo[]` | an add-on was added, changed, switched on/off or failed to build |
 | `addons.event` | `{ id, topic, payload }` | an add-on's host code called `api.emit` |

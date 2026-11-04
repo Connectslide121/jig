@@ -7,32 +7,32 @@ import { LIMITS, secs, TimeoutError, withTimeout } from "./deadline";
 import { DIALOG_MARK, DIALOG_SCRIPT, focusScript, locateScript, SNAPSHOT_SCRIPT } from "./pageScripts";
 
 const log = logger("browser");
-const PARTITION = "persist:jig-browser";
 /** Frames sent to a watching view at most this often (ms). */
 const FRAME_MS = 100;
-const guardedSessions = new WeakSet<Electron.Session>();
 const MAX_CONSOLE = 300;
 const MAX_NETWORK = 300;
 /** Bodies Claude gets, at most (characters). */
 const MAX_BODY = 20_000;
 
-export interface BrowserEvents {
+export interface PageEvents {
   state(state: BrowserState): void;
   frame(frame: { data: string; width: number; height: number }): void;
-  /** Claude used the browser: show the view. */
-  reveal(): void;
 }
 
+/** Electron's `webRequest` details, the fields a page's network log uses. */
+type RequestDetails = { id: number; webContentsId?: number; timestamp: number };
+
 /**
- * Claude's browser: one offscreen page in its own session (cookies and storage apart from Jig),
- * rendered to frames for the Browser view, driven with real input events so pages behave as with a
- * person. Pop-ups open in place; downloads and permission requests (camera, location…) are refused.
+ * One chat's page of Claude's browser (D-320; `pages.ts` keeps one per chat): an offscreen page in
+ * the browser's session (cookies and storage apart from Jig), rendered to frames for the Browser view,
+ * driven with real input events so pages behave as with a person. Pop-ups open in place; downloads and
+ * permission requests (camera, location…) are refused.
  *
  * Nothing here waits for ever (D-319): loads, page scripts and captures have time limits; page dialogs
  * answer themselves; a page that crashes or stops responding is recreated, and the next tool call
  * hears about it (`takeNotice`).
  */
-export class BrowserService {
+export class BrowserPage {
   private window: BrowserWindow | undefined;
   private watchers = 0;
   private lastFrame = 0;
@@ -47,10 +47,24 @@ export class BrowserService {
   private notice: string | undefined;
   private lastRecovery: { url: string; at: number } | undefined;
 
-  constructor(private readonly events: BrowserEvents) {}
+  constructor(
+    /** The session partition (shared by every page, or this chat's own: `browser.pageSessions`). */
+    readonly partition: string,
+    private readonly events: PageEvents,
+  ) {}
 
   private get contents(): WebContents | undefined {
     return this.window && !this.window.isDestroyed() ? this.window.webContents : undefined;
+  }
+
+  /** The page's WebContents id, for the session's request log to find its page. */
+  contentsId(): number | undefined {
+    return this.contents?.id;
+  }
+
+  /** Someone is watching its live view (frames are made only then). */
+  watched(): boolean {
+    return this.watchers > 0;
   }
 
   state(): BrowserState {
@@ -82,7 +96,7 @@ export class BrowserService {
       useContentSize: true,
       webPreferences: {
         offscreen: true,
-        partition: PARTITION,
+        partition: this.partition,
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
@@ -96,12 +110,7 @@ export class BrowserService {
     /** Events of a page that was replaced since (one we crashed while recreating it) don't count. */
     const current = () => this.window === window;
     c.setFrameRate(15);
-    c.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    // The session outlives the window (a reopened browser uses it again): one listener is enough.
-    if (!guardedSessions.has(c.session)) {
-      guardedSessions.add(c.session);
-      c.session.on("will-download", (event) => event.preventDefault());
-    }
+    // Downloads and permission requests are refused for the whole session (`pages.ts`, `route`).
     c.setWindowOpenHandler(({ url }) => {
       // A page's popup opens in the same tab, but never as a file or another scheme.
       if (/^https?:/i.test(url)) void c.loadURL(url).catch(() => {});
@@ -189,64 +198,59 @@ export class BrowserService {
     this.addConsole({ level: "warning", message: message.slice(0, 2000), at: new Date().toISOString() });
   }
 
+  private find = (id: number) => this.network.find((e) => e.id === String(id));
+
   /**
-   * The page's requests: the log comes from the session's `webRequest` events (every request, whatever
-   * renderer process the page is in): method, URL, type, status, time, headers with credentials
-   * redacted. Chromium's DevTools protocol (`webContents.debugger`) is only used to fetch a response
-   * body when asked, and to answer page dialogs.
+   * The page's requests: the session's `webRequest` events (every request, whatever renderer process
+   * the page is in) reach the page they belong to through `pages.ts` (a session takes one listener per
+   * event, and pages may share it): method, URL, type, status, time, headers with credentials redacted.
+   */
+  requestStarted(details: Electron.OnBeforeRequestListenerDetails): void {
+    const TYPES: Record<string, string> = { mainFrame: "document", subFrame: "iframe", xhr: "fetch" };
+    this.network.push({
+      id: String(details.id),
+      method: details.method,
+      url: details.url,
+      type: TYPES[details.resourceType] ?? details.resourceType,
+      startedAt: new Date(details.timestamp).toISOString(),
+      postData: details.uploadData?.[0]?.bytes?.toString("utf8").slice(0, MAX_BODY),
+    });
+    if (this.network.length > MAX_NETWORK) this.network.splice(0, this.network.length - MAX_NETWORK);
+    this.networkChanged();
+  }
+
+  requestHeaders(details: Electron.OnBeforeSendHeadersListenerDetails): void {
+    const e = this.find(details.id);
+    if (e) e.requestHeaders = redactHeaders(details.requestHeaders);
+  }
+
+  responseHeaders(details: Electron.OnHeadersReceivedListenerDetails): void {
+    const e = this.find(details.id);
+    if (!e) return;
+    e.status = details.statusCode;
+    e.statusText = details.statusLine.replace(/^HTTP\/[\d.]+\s+\d+\s*/, "");
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(details.responseHeaders ?? {})) headers[k] = v.join(", ");
+    e.responseHeaders = redactHeaders(headers);
+    e.mimeType = (headers["content-type"] ?? headers["Content-Type"] ?? "").split(";")[0];
+  }
+
+  requestEnded(details: RequestDetails & { statusCode?: number; error?: string }): void {
+    const e = this.find(details.id);
+    if (!e) return;
+    if (details.statusCode !== undefined) e.status = details.statusCode;
+    if (details.error) e.error = details.error;
+    e.durationMs = details.timestamp - new Date(e.startedAt).getTime();
+    const length = Number(e.responseHeaders?.["content-length"] ?? e.responseHeaders?.["Content-Length"]);
+    if (!details.error && Number.isFinite(length)) e.size = length;
+    this.networkChanged();
+  }
+
+  /**
+   * Response bodies come from Chromium's DevTools protocol (`webContents.debugger`), used only to
+   * fetch a body when asked, and to answer page dialogs.
    */
   private captureNetwork(c: WebContents): void {
-    const web = c.session.webRequest;
-    const find = (id: number) => this.network.find((e) => e.id === String(id));
-    const TYPES: Record<string, string> = { mainFrame: "document", subFrame: "iframe", xhr: "fetch" };
-    web.onBeforeRequest((details, callback) => {
-      if (details.webContentsId === c.id || details.webContentsId === undefined) {
-        this.network.push({
-          id: String(details.id),
-          method: details.method,
-          url: details.url,
-          type: TYPES[details.resourceType] ?? details.resourceType,
-          startedAt: new Date(details.timestamp).toISOString(),
-          postData: details.uploadData?.[0]?.bytes?.toString("utf8").slice(0, MAX_BODY),
-        });
-        if (this.network.length > MAX_NETWORK) this.network.splice(0, this.network.length - MAX_NETWORK);
-        this.networkChanged();
-      }
-      callback({});
-    });
-    web.onBeforeSendHeaders((details, callback) => {
-      const e = find(details.id);
-      if (e) e.requestHeaders = redactHeaders(details.requestHeaders);
-      callback({});
-    });
-    web.onHeadersReceived((details, callback) => {
-      const e = find(details.id);
-      if (e) {
-        e.status = details.statusCode;
-        e.statusText = details.statusLine.replace(/^HTTP\/[\d.]+\s+\d+\s*/, "");
-        const headers: Record<string, string> = {};
-        for (const [k, v] of Object.entries(details.responseHeaders ?? {})) headers[k] = v.join(", ");
-        e.responseHeaders = redactHeaders(headers);
-        e.mimeType = (headers["content-type"] ?? headers["Content-Type"] ?? "").split(";")[0];
-      }
-      callback({});
-    });
-    web.onCompleted((details) => {
-      const e = find(details.id);
-      if (!e) return;
-      e.status = details.statusCode;
-      e.durationMs = details.timestamp - new Date(e.startedAt).getTime();
-      const length = Number(e.responseHeaders?.["content-length"] ?? e.responseHeaders?.["Content-Length"]);
-      if (Number.isFinite(length)) e.size = length;
-      this.networkChanged();
-    });
-    web.onErrorOccurred((details) => {
-      const e = find(details.id);
-      if (!e) return;
-      e.error = details.error;
-      e.durationMs = details.timestamp - new Date(e.startedAt).getTime();
-      this.networkChanged();
-    });
     // Bodies: DevTools remembers the request id of each URL's latest response.
     try {
       c.debugger.attach("1.3");
@@ -399,7 +403,6 @@ export class BrowserService {
   async open(input: string): Promise<{ state: BrowserState; timedOut: boolean; url: string }> {
     const url = normalizeUrl(input);
     const c = this.ensure();
-    this.events.reveal();
     await this.bodiesReady;
     const finished = await this.load(c, url);
     if (finished) await this.settle();
@@ -694,6 +697,5 @@ export class BrowserService {
     this.console = [];
     this.network = [];
     this.bodyIds.clear();
-    this.changed();
   }
 }

@@ -18,6 +18,7 @@ import type { SignInMethod, TenantsState } from "./azure";
 import type {
   BrowserBounds,
   BrowserInput,
+  BrowserPageInfo,
   BrowserState,
   ConsoleEntry,
   NetworkEntry,
@@ -558,26 +559,32 @@ export interface HostMethods {
   "terminals.claudeLogin": { args: { projectId?: string }; result: TerminalInfo };
   /** Opens a private terminal running the Codex CLI's ChatGPT sign-in (`codex login`), D-294. */
   "terminals.codexLogin": { args: { projectId?: string }; result: TerminalInfo };
-  /** Claude's browser: an offscreen page Claude (and you) drive; see docs/reference/browser.md. */
-  "browser.state": { args: void; result: BrowserState };
-  /** Starts (`on`) or stops sending `browser.frame` events to this view. */
-  "browser.watch": { args: { on: boolean }; result: void };
-  /** Opens `url`, or goes back/forward/reloads. */
+  /**
+   * Claude's browser: one offscreen page per chat that Claude (and you) drive (D-320); see
+   * docs/reference/browser.md. Every method names the chat whose page it means.
+   */
+  "browser.pages": { args: void; result: BrowserPageInfo[] };
+  /** The chat's page (`open: false` when it has none). */
+  "browser.state": { args: { chatId: string }; result: BrowserState };
+  /** Starts (`on`) or stops sending `browser.frame` events of the chat's page to this view. */
+  "browser.watch": { args: { chatId: string; on: boolean }; result: void };
+  /** Opens `url`, or goes back/forward/reloads, in the chat's page (made if it has none). */
   "browser.navigate": {
-    args: { url?: string; action?: "back" | "forward" | "reload" };
+    args: { chatId: string; url?: string; action?: "back" | "forward" | "reload" };
     result: BrowserState;
   };
   /** Mouse, wheel and keyboard input from the live view, in page pixels. */
-  "browser.input": { args: BrowserInput; result: void };
-  "browser.resize": { args: { width: number; height: number }; result: BrowserState };
-  "browser.console": { args: { clear?: boolean }; result: ConsoleEntry[] };
+  "browser.input": { args: { chatId: string; input: BrowserInput }; result: void };
+  "browser.resize": { args: { chatId: string; width: number; height: number }; result: BrowserState };
+  "browser.console": { args: { chatId: string; clear?: boolean }; result: ConsoleEntry[] };
   /** The page's requests (credentials redacted); `networkDetail` adds the response body if still there. */
-  "browser.network": { args: { clear?: boolean }; result: NetworkEntry[] };
+  "browser.network": { args: { chatId: string; clear?: boolean }; result: NetworkEntry[] };
   "browser.networkDetail": {
-    args: { id: string };
+    args: { chatId: string; id: string };
     result: NetworkEntry & { body?: string; bodyNote?: string };
   };
-  "browser.close": { args: void; result: void };
+  /** Closes the chat's page (Close page in its tab's ⋯). */
+  "browser.close": { args: { chatId: string }; result: void };
   "userBrowser.state": { args: void; result: UserBrowserState };
   "userBrowser.present": { args: { bounds: BrowserBounds; visible: boolean }; result: void };
   "userBrowser.navigate": {
@@ -778,13 +785,14 @@ export interface HostEvents {
   "terminals.data": { id: string; data: string };
   "userBrowser.state": UserBrowserState;
   "userBrowser.address": void;
-  "browser.state": BrowserState;
+  /** The open pages of Claude's browser, one per chat, whenever one opens, closes or changes. */
+  "browser.pages": BrowserPageInfo[];
   /** Routines changed (from Jig or a chat): reload them. */
   "routines.changed": void;
-  /** A JPEG of the page (base64), sent only while a view watches. */
-  "browser.frame": { data: string; width: number; height: number };
-  /** Show Claude's browser (Claude started using it). */
-  "browser.reveal": void;
+  /** A JPEG of a chat's page (base64), sent only while a view watches that page. */
+  "browser.frame": { chatId: string; data: string; width: number; height: number };
+  /** Show Claude's browser on this chat's page (the chat started using it). */
+  "browser.reveal": { chatId: string };
   "terminals.changed": TerminalInfo[];
   "scripts.changed": ProjectScripts;
   "addons.changed": AddonInfo[];

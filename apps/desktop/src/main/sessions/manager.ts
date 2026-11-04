@@ -118,6 +118,8 @@ export interface SessionManagerOptions {
   suggestNext?: (meta: SessionMeta, turn: { message: string; reply: string }) => Promise<string | undefined>;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
+  /** A chat was archived or deleted (what it holds open elsewhere, like its browser page, closes). */
+  onClosed?: (id: string) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
   /** Runs a shell command you typed with `!` in the chat's folder. */
   runShell?: (cwd: string, command: string) => Promise<{ output: string; exitCode: number }>;
@@ -1138,6 +1140,7 @@ export class SessionManager {
     const live = await this.live(id);
     if (archived) this.stop(live);
     this.setMeta(live, { archived });
+    if (archived) this.options.onClosed?.(id);
   }
 
   /** Ends the Claude Code process (the conversation can continue later; it resumes). */
@@ -1164,6 +1167,7 @@ export class SessionManager {
     await live.saving;
     await rm(this.file(id), { force: true });
     await removeAttachments(this.options.attachmentsDir, id).catch(() => {});
+    this.options.onClosed?.(id);
   }
 
   /** Ends every Claude Code process and writes what isn't saved yet (app quit). */

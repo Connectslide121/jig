@@ -1152,6 +1152,15 @@ export class FakeEngine implements Engine {
             await call("jig_browser_network", { errorsOnly: true });
           }
           await stream(`${msg}:text:0`, "I opened the page in my browser and took a screenshot.", signal);
+        } else if (toolHandlers?.jig_browser_read && /^read the browser page\b/i.test(text.trim())) {
+          // "read the browser page": Claude reads its chat's page again (each chat has its own, D-320).
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__jig_browser_read", input: {} });
+          const output = outputText(
+            await toolHandlers.jig_browser_read({}, signal).catch((e: Error) => `Error: ${e.message}`),
+          );
+          onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+          await stream(`${msg}:text:0`, `My page: ${output.split("\n")[0]}`, signal);
         } else if (/\S+\.(png|jpe?g|gif|webp|svg)\b/i.test(text)) {
           // "look at /path/shot.png": Claude reads the image (the card shows a thumbnail).
           const file = /(\S+\.(?:png|jpe?g|gif|webp|svg))\b/i.exec(text)![1]!;

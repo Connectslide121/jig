@@ -55,7 +55,7 @@ export function registerBrowser(): void {
   });
 }
 
-/** Mounted once: Claude started using its browser, so show it. */
+/** Mounted once: a chat started using its page of Claude's browser, so show the view. */
 export function useBrowserReveal(): void {
   useHostEvent("browser.reveal", () => workbench.showView(BROWSER_VIEW));
 }

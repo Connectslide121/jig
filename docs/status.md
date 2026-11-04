@@ -1,5 +1,18 @@
 # Status
 
+Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
+gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
+element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.
+The **Claude's browser** view has a tab per page (the chat's name and project, the page title, a dot
+while Claude drives it); click one to watch that page with its Console and Network, ⋯ → Open chat or
+Close page. Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
+are open. Logins are shared between the pages by default (sign in once); Settings → Chats → **Chats’
+pages in Claude’s browser** → Separate keeps each chat's cookies apart. Covered by
+`e2e/browser-pages.spec.ts` (not run in this change, D-258). Needs testing on your machine: two
+queue or side-by-side chats browsing the same dev server at once (each keeps its page, a sign-in in
+one carries to the other), the tabs in the right sidebar, the bottom panel and a main-area tab, and
+an idle page closing after 15 minutes with the note on the chat's next call.
+
 ChatGPT chats close the gaps (2026-11-04, D-315): a ChatGPT chat now has **Plan only** (Codex looks
 around read-only, then shows its plan on the same plan card as Claude; approving switches the mode and
 Codex carries the plan out), **question cards** (Codex asks with choices on the same card, which voice

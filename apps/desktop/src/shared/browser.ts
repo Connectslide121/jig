@@ -15,6 +15,19 @@ export interface BrowserState {
   failedRequests: number;
 }
 
+/** One chat's page of Claude's browser (D-320): each chat that browses has its own. */
+export interface BrowserPageInfo {
+  /** The chat whose page it is (its jig-tester subagents use it too). */
+  chatId: string;
+  state: BrowserState;
+  /** The chat is driving it: a tool call runs, or ended a few seconds ago. */
+  driving: boolean;
+  lastUsedAt: string;
+}
+
+/** `browser.pageSessions`: one cookie jar for every chat's page, or one each (D-320). */
+export type BrowserPageSessions = "shared" | "separate";
+
 export interface ConsoleEntry {
   level: "log" | "info" | "warning" | "error";
   message: string;

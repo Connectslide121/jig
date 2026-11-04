@@ -66,6 +66,13 @@ export function registerSessionKind(kind: NonNullable<SessionMeta["kind"]>, hook
   kindHooks.set(kind, hooks);
 }
 
+/** Called when a chat is archived or deleted. */
+const closedListeners = new Set<(sessionId: string) => void>();
+export function onSessionClosed(listener: (sessionId: string) => void): () => void {
+  closedListeners.add(listener);
+  return () => closedListeners.delete(listener);
+}
+
 /** Called when a chat's status changes (add-ons that run chats follow them this way). */
 const statusListeners = new Set<(meta: SessionMeta) => void>();
 export function onSessionStatus(listener: (meta: SessionMeta) => void): () => void {
@@ -270,6 +277,9 @@ export function startSessions(): void {
       // A chat used some of its plan: refresh that provider's usage meter (D-298).
       if (chatProvider(meta) === "codex") chatGptChatUsed();
       else usageService().refreshIfOlder(60_000);
+    },
+    onClosed: (id) => {
+      for (const listener of closedListeners) listener(id);
     },
     onRateLimit: (event) => usageService().rateLimit(event),
     runShell: (cwd, command) => runShellCommand(cwd, command),

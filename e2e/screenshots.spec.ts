@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { strToU8, zipSync } from "fflate";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { browserPageChat, expect, hostCall, launchJig, test } from "./fixtures";
 
 const OUT = fileURLToPath(new URL("../apps/desktop/src/renderer/features/about/shots/", import.meta.url));
 const ICON = fileURLToPath(new URL("../apps/desktop/build/icon.png", import.meta.url));
@@ -395,7 +395,6 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
 <div class="card"><div>Cart</div><div class="total" id="total">€0.00</div><input placeholder="Discount code" style="padding:8px;border:1px solid #ccc;border-radius:6px;width:90%"></div>
 </main><script>let t=0;function add(p){t+=p;document.getElementById('total').textContent='€'+t.toFixed(2)}</script></body></html>`,
   );
-  await hostCall(page, "browser.resize", { width: 390, height: 844 });
   await page.keyboard.press("Control+N");
   await page
     .locator("[data-tab-id]:not(.hidden)")
@@ -405,6 +404,8 @@ main{padding:20px}.card{background:#fff;border-radius:12px;padding:16px;margin-b
   await expect(page.locator("[data-tab-id]:not(.hidden)").getByTestId("tool-images").first()).toBeVisible({
     timeout: 20000,
   });
+  // The chat's own page (D-320) at phone size.
+  await hostCall(page, "browser.resize", { chatId: await browserPageChat(page), width: 390, height: 844 });
   await expect(page.getByTestId("browser-frame")).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(800);
   await shot("browser");

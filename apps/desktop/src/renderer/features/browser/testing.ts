@@ -1,16 +1,22 @@
 import { testChatMessage } from "../../../shared/tester";
 import { call, errorMessage } from "../../lib/host";
 import { promptDialog } from "../../ui";
+import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { newSession } from "../sessions/actions";
 
 /**
  * Tools → Test something… (D-124): a new chat on the tester model (Haiku by default) that tests
- * what you describe in Claude's browser, on the page already open there unless you give a URL.
+ * what you describe in Claude's browser, on the address of the chat in front's page (or the page
+ * used last) unless you give a URL. The new chat opens it in a page of its own (D-320).
  */
 export async function testSomething(): Promise<void> {
-  const page = await call("browser.state").catch(() => undefined);
-  const url = page?.open && page.url ? page.url : undefined;
+  const pages = await call("browser.pages").catch(() => []);
+  const front = workbench.activeTab()?.params.sessionId;
+  const page =
+    pages.find((p) => p.chatId === front) ??
+    [...pages].sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0];
+  const url = page?.state.open && page.state.url !== "about:blank" ? page.state.url : undefined;
   const what = await promptDialog({
     title: "Test something",
     message: url

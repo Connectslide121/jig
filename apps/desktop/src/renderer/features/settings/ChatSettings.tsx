@@ -418,6 +418,21 @@ function AllChats() {
           onChange={(showWhenUsed) => void updateConfig({ browser: { showWhenUsed } })}
         />
       </SettingRow>
+      <SettingRow
+        label="Chats’ pages in Claude’s browser"
+        description="Each chat that browses has its own page. Shared: the pages share cookies and logins, so you sign in to your dev server once, and a logout in one chat logs out the others. Separate: each page has its own, gone when the page closes. Applies to pages opened from now on."
+      >
+        <SegmentedSwitch
+          label="Chats’ pages in Claude’s browser"
+          testId="settings-browser-sessions"
+          value={config.browser.pageSessions}
+          onChange={(pageSessions) => void updateConfig({ browser: { pageSessions } })}
+          options={[
+            { id: "shared", label: "Shared logins" },
+            { id: "separate", label: "Separate" },
+          ]}
+        />
+      </SettingRow>
       <AiFeaturesLink description="Commit messages, checks, tours, chat names and add-ons' questions each pick Claude or ChatGPT and a model there, whatever runs your chats." />
     </SettingsGroup>
   );

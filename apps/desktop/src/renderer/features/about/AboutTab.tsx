@@ -709,6 +709,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Ask a chat to “open the app and check the login form”",
                 "Settings → Chats: chats use Opus by default and hand code searches to the jig-search helper (Haiku); change chat, subagent fallback, helper, tester and search models there",
                 "Testing runs on a small model: chats hand it to the jig-tester helper (Haiku), and Search → Test something… (or the flask in the browser view) starts a test chat on it",
+                "Each chat has its own page, so chats can browse at the same time: Claude’s browser shows one tab per chat's page (its name, project and page title, a dot while it drives it), with Open chat and Close page in the tab's ⋯",
                 "Screenshots come back to Claude and show as thumbnails in the chat",
                 "Console errors are counted in the view, and Claude reads them too",
                 "Desktop, tablet and phone sizes for responsive checks",

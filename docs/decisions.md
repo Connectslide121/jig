@@ -4465,3 +4465,45 @@ window; page dialogs, `beforeunload`, crashes and hangs weren't handled, and no 
   browser is usable for the next call.
 - **main.log (Jon):** calls of 10 s or more, every timeout, crash, recreated page and dialog, never the
   page's text.
+
+## D-320: Claude's browser has one page per chat
+
+Jon, 2026-11-04: Claude's browser was one offscreen page every chat drove. When two task chats used it
+at once, one chat's element numbers pointed at elements that had gone ("No such element"), and a login
+in one chat sent the other back to the login page. Asked for a page per chat, a decision on sessions,
+and tabs in the view.
+
+- **One page per chat (Jon).** `main/browser/pages.ts` (`BrowserPages`) keeps a `BrowserPage`
+  (`service.ts`, the page that was the whole service) per chat id, made on a chat's first
+  `jig_browser_*` call. Element numbers, console, network log, window size, recovery notices and
+  frames are per page. The tools keep their names and arguments; the handler's `SessionMeta.id`
+  picks the page. A jig-tester subagent runs inside its parent chat and calls the parent's tools, so
+  it shares the parent's page (Jon). The safety settings are unchanged (helper window, sandbox,
+  contextIsolation, no preload, downloads cancelled, permissions denied, http/https/file only).
+- **Closing pages (Claude, on my own: the limits).** A page closes when its chat is archived or
+  deleted (`onSessionClosed`, from the session manager), from Close page in the view, after 15 minutes
+  without a tool call or your input while no view watches it, and when a fifth chat needs one: at most
+  4 are open, the least recently used one not being driven closes. Why: each page is a Chromium
+  renderer (often 100–300 MB); four covers a queue task, its user's own chat and two more, and 15
+  minutes outlasts a dev server rebuild or a sign-in you are helping with. A chat whose page Jig
+  closed hears why on its next call, so Claude opens the page again instead of guessing.
+- **Sessions: shared by default, separate as a setting (Claude, on my own, recommended).** Pages share
+  `persist:jig-browser` (`browser.pageSessions: "shared"`), so one sign-in to the dev server serves
+  every chat and Test something… chat; the incident came from sharing the page, not the cookies.
+  The cost: a logout in one chat logs out the others, and chats signed in as different users replace
+  each other's cookie; the docs say so and `jigContext` tells Claude not to log out unless the task
+  needs it. `"separate"` (Settings → Chats) gives each page an in-memory session of its own, fully
+  apart and gone with the page, for work that needs different users side by side.
+- **Requests are routed per session (Claude, on my own).** A session takes only one `webRequest`
+  listener per event, so with pages sharing one, each page installing its own (as before) would have
+  replaced the others'. `pages.ts` installs one set per session and hands each request to the page
+  with that `webContentsId`.
+- **The view (Jon; details Claude, on my own).** A fixed-height strip of fixed-width tabs above the
+  address row: the chat's name and project swatch, the page title muted below, a pulsing dot while the
+  chat drives the page (a call runs or ended under 5 s ago). The chat in front's tab is selected by
+  default, else the page used last; a clicked tab holds until another chat comes to the front. Its ⋯
+  (and context menu) has Open chat and Close page. The view's title row was merged into the address row
+  (Console, Network and the badges sit beside the address) to keep the page tall.
+- **IPC:** every `browser.*` method takes `chatId`; `browser.pages` (method and event) replaces the
+  `browser.state` event; `browser.frame` and `browser.reveal` carry `chatId`; `browser.input` is
+  `{ chatId, input }`.

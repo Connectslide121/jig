@@ -94,6 +94,14 @@ export function hostCall(page: Page, method: string, args?: unknown) {
   return page.evaluate(([m, a]) => window.jig.invoke(m as string, a), [method, args] as const);
 }
 
+/** The chat whose page of Claude's browser was used last (each chat has its own page, D-320). */
+export async function browserPageChat(page: Page): Promise<string> {
+  const pages = (await hostCall(page, "browser.pages")) as {
+    value: Array<{ chatId: string; lastUsedAt: string }>;
+  };
+  return [...pages.value].sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))[0]?.chatId ?? "";
+}
+
 /**
  * An element's box once it has stopped moving (two equal reads 100 ms apart): measure layout after
  * panels finish their opening motion (D-200), not in the middle of it.

@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { expect, hostCall, test } from "./fixtures";
+import { browserPageChat, expect, hostCall, test } from "./fixtures";
 
 const PAGE = `<!doctype html><html><head><title>Cart demo</title></head><body>
 <h1>Cart</h1>
@@ -37,7 +37,8 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
 
   // Two sizes in one call: two images, and the window is back at its size after.
   await expect(chat.getByTestId("tool-images").nth(1).locator("img")).toHaveCount(2);
-  expect(JSON.stringify(await hostCall(page, "browser.state"))).toContain('"width":1280');
+  const chatId = await browserPageChat(page);
+  expect(JSON.stringify(await hostCall(page, "browser.state", { chatId }))).toContain('"width":1280');
 
   // The view opened by itself (browser.showWhenUsed is on by default) and shows the live page.
   const view = page.getByTestId("browser-view");
@@ -46,7 +47,7 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
   await expect(view.getByTestId("browser-address")).toHaveValue(/index\.html/);
 
   // Claude's click ran in the page (real mouse events), and the console error is counted.
-  const count = await hostCall(page, "browser.console", {});
+  const count = await hostCall(page, "browser.console", { chatId });
   expect(JSON.stringify(count)).toContain("added one");
   await expect(view.getByTestId("browser-errors")).toHaveText("1");
   await view.getByTestId("browser-console-toggle").click();
@@ -54,7 +55,7 @@ test("Claude's browser: Claude opens a page, clicks and takes a screenshot you s
 
   // The network log: Claude read it, and the view lists the requests.
   await expect(chat).toContainText("jig_browser_network");
-  expect(JSON.stringify(await hostCall(page, "browser.network", {}))).toContain("index.html");
+  expect(JSON.stringify(await hostCall(page, "browser.network", { chatId }))).toContain("index.html");
 
   await page.screenshot({
     path: join(jigHome, "claude-browser.png"),
@@ -107,16 +108,20 @@ test("Claude's browser: the network log shows requests, errors and their bodies"
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
   try {
-    await hostCall(page, "browser.navigate", { url });
+    // A page of its own, as a chat's (any id names a page).
+    const chatId = "e2e-network";
+    await hostCall(page, "browser.navigate", { chatId, url });
     await expect
-      .poll(async () => JSON.stringify(await hostCall(page, "browser.network", {})), { timeout: 10000 })
+      .poll(async () => JSON.stringify(await hostCall(page, "browser.network", { chatId })), {
+        timeout: 10000,
+      })
       .toContain('"status":500');
-    const list = (await hostCall(page, "browser.network", {})) as {
+    const list = (await hostCall(page, "browser.network", { chatId })) as {
       value: Array<{ id: string; url: string; requestHeaders: Record<string, string> }>;
     };
     const cart = list.value.find((e) => e.url.endsWith("/api/cart"))!;
     expect(cart.requestHeaders.Authorization).toBe("«redacted»");
-    const detail = JSON.stringify(await hostCall(page, "browser.networkDetail", { id: cart.id }));
+    const detail = JSON.stringify(await hostCall(page, "browser.networkDetail", { chatId, id: cart.id }));
     expect(detail).toContain("cart is broken");
     expect(detail).not.toContain("session=secret");
 

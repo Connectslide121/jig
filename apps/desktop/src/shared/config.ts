@@ -236,6 +236,11 @@ export const ConfigSchema = z.object({
     .object({
       /** Open the Claude's browser view when Claude starts using it (off: it stays out of sight). */
       showWhenUsed: z.boolean().default(true),
+      /**
+       * Chats' pages share one session (cookies, logins, storage: "shared", the default) or each
+       * have their own that ends with the page ("separate"), D-320.
+       */
+      pageSessions: z.enum(["shared", "separate"]).default("shared"),
     })
     .prefault({}),
   updates: z

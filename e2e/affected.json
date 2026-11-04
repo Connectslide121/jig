@@ -54,7 +54,13 @@
     },
     {
       "files": ["apps/desktop/src/main/browser/**", "apps/desktop/src/renderer/features/browser/**"],
-      "specs": ["browser.spec.ts", "browser-hangs.spec.ts", "user-browser.spec.ts", "tester.spec.ts"]
+      "specs": [
+        "browser.spec.ts",
+        "browser-hangs.spec.ts",
+        "browser-pages.spec.ts",
+        "user-browser.spec.ts",
+        "tester.spec.ts"
+      ]
     },
     {
       "files": [

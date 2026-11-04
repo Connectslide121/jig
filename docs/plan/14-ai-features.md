@@ -27,6 +27,10 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
       tool call; dialogs answer themselves; a crashed or stuck page is recreated; Stop abandons a running
       call; slow calls, timeouts, crashes and dialogs in main.log (D-319, `e2e/browser-hangs.spec.ts`)
 
+- [x] Claude's browser has one page per chat (refs, console, network and size per page; closed with the
+      chat, after 15 min idle, at most 4 open), shared logins by default, and one tab per page in the
+      view (D-320, `e2e/browser-pages.spec.ts`)
+
 - [x] Top-right globe Browser icon; Claude’s browser uses MonitorCog and has page interaction for sign-ins, read-only navigation and a hint/link to the user Browser (D-226).
 
 - [x] Shared image zoom controls, presets and Ctrl/Cmd + scroll in image tabs, previews and Git comparisons (D-227).

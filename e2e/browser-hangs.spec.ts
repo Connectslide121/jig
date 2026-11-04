@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { test as base, expect, hostCall, launchJig } from "./fixtures";
+import { test as base, browserPageChat, expect, hostCall, launchJig } from "./fixtures";
 
 /**
  * Claude's browser never hangs a chat (D-319): a load that never finishes, a page dialog and a page
@@ -65,9 +65,13 @@ test("Claude's browser: a page that never finishes loading ends the call with a 
     expect(text).toContain(`The page didn't finish loading in 6 s (still loading: ${url}/slow)`);
     expect(text).toContain("(took ");
     // The browser is still usable for the next page.
-    await hostCall(page, "browser.navigate", { url: `${url}/ok` });
+    await hostCall(page, "browser.navigate", { chatId: await browserPageChat(page), url: `${url}/ok` });
     await expect
-      .poll(async () => JSON.stringify(await hostCall(page, "browser.state")), { timeout: 15000 })
+      .poll(
+        async () =>
+          JSON.stringify(await hostCall(page, "browser.state", { chatId: await browserPageChat(page) })),
+        { timeout: 15000 },
+      )
       .toContain('"title":"Fine"');
   } finally {
     server.close();
@@ -83,8 +87,12 @@ test("Claude's browser: alert and confirm answer themselves and show on the cons
     const transcript = await chat(page, jigHome, `browse ${url}/alert`);
     await expect.poll(transcript, { timeout: 30000 }).toContain(DONE);
     // The page went on after its dialogs (confirm answered OK).
-    expect(JSON.stringify(await hostCall(page, "browser.state"))).toContain('"title":"After dialogs"');
-    const console = JSON.stringify(await hostCall(page, "browser.console", {}));
+    expect(
+      JSON.stringify(await hostCall(page, "browser.state", { chatId: await browserPageChat(page) })),
+    ).toContain('"title":"After dialogs"');
+    const console = JSON.stringify(
+      await hostCall(page, "browser.console", { chatId: await browserPageChat(page) }),
+    );
     expect(console).toContain("alert: Saved the cart (answered OK automatically)");
     expect(console).toContain("confirm: Leave the page?");
   } finally {
@@ -103,9 +111,15 @@ test("Claude's browser: a page stuck in a loop is recreated and the call says so
     expect(await transcript()).toContain("The page stopped responding");
     // A new page loaded the address again and answers.
     await expect
-      .poll(async () => JSON.stringify(await hostCall(page, "browser.state")), { timeout: 15000 })
+      .poll(
+        async () =>
+          JSON.stringify(await hostCall(page, "browser.state", { chatId: await browserPageChat(page) })),
+        { timeout: 15000 },
+      )
       .toContain('"title":"Loop"');
-    expect(JSON.stringify(await hostCall(page, "browser.console", {}))).toContain("Jig recreated the page");
+    expect(
+      JSON.stringify(await hostCall(page, "browser.console", { chatId: await browserPageChat(page) })),
+    ).toContain("Jig recreated the page");
   } finally {
     server.close();
   }
