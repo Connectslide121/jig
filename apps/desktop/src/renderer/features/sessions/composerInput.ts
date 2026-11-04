@@ -14,6 +14,12 @@ export function tokenAt(text: string, caret: number): ComposerToken | undefined 
   const afterWord = /^\S*/.exec(text.slice(caret))![0].length;
   const command = /^\/(\S*)$/.exec(before);
   if (command) return { kind: "command", query: command[1]!, start: 0, end: caret + afterWord };
+  // `@meeting portal` and `@chat alex` keep one word after the space, to narrow those lists by name.
+  const named = /(^|\s)@((?:meeting|chat) [^\s@]*)$/i.exec(before);
+  if (named) {
+    const start = caret - named[2]!.length - 1;
+    return { kind: "file", query: named[2]!, start, end: caret + afterWord };
+  }
   const file = /(^|\s)@([^\s@]*)$/.exec(before);
   if (file) {
     const start = caret - file[2]!.length - 1;
@@ -64,11 +70,16 @@ export function historyStep(
   return { index: next, text: next === -1 ? draft : history[history.length - 1 - next]! };
 }
 
-/** An `@…` mention in a message: a file or folder of the project, or a meeting Jig kept (D-250). */
+/**
+ * An `@…` mention in a message: a file or folder of the project, a meeting Jig kept (D-250) or a
+ * Teams chat (D-333).
+ */
 export interface Mention {
-  kind: "file" | "folder" | "meeting";
-  /** The path as typed (relative to the chat's folder), or the meeting's short id. */
+  kind: "file" | "folder" | "meeting" | "chat";
+  /** The path as typed (relative to the chat's folder), or the meeting's or chat's short id. */
   value: string;
+  /** A chat's name as its mention spells it (`alex-contoso` → "Alex Contoso"), for its chip. */
+  name?: string;
   /** Where the mention starts (its `@`) and ends, in the text. */
   start: number;
   end: number;
@@ -86,8 +97,16 @@ export function mentionsIn(text: string): Mention[] {
     const start = m.index! + m[1]!.length;
     const end = start + 1 + raw.length;
     const meeting = /^meeting:(?:[a-z0-9-]*-)?([0-9a-f]{8})$/i.exec(raw);
+    const chat = /^chat:(?:([a-z0-9-]*)-)?([0-9a-f]{8})$/i.exec(raw);
     if (meeting) out.push({ kind: "meeting", value: meeting[1]!.toLowerCase(), start, end });
-    else if (!raw.startsWith("meeting:"))
+    else if (chat) {
+      const name = (chat[1] ?? "")
+        .split("-")
+        .filter(Boolean)
+        .map((w) => w[0]!.toUpperCase() + w.slice(1))
+        .join(" ");
+      out.push({ kind: "chat", value: chat[2]!.toLowerCase(), ...(name ? { name } : {}), start, end });
+    } else if (!raw.startsWith("meeting:") && !raw.startsWith("chat:"))
       out.push({ kind: raw.endsWith("/") ? "folder" : "file", value: raw, start, end });
   }
   return out;
@@ -98,4 +117,13 @@ export function removeMention(text: string, mention: Mention): { text: string; c
   const after = text.slice(mention.end).replace(/^ /, "");
   const before = text.slice(0, mention.start);
   return { text: before + after, caret: before.length };
+}
+
+/**
+ * Which list the `@` picker narrows to: `@meeting…` to meetings and `@chat…` to Teams chats, the
+ * word alone, after a colon or with a name after a space (D-333); anything else lists files first.
+ */
+export function mentionScope(query: string): "meeting" | "chat" | undefined {
+  const m = /^(meeting|chat)(?=$|[:\s])/i.exec(query);
+  return m ? (m[1]!.toLowerCase() as "meeting" | "chat") : undefined;
 }

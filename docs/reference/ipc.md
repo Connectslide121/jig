@@ -298,6 +298,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.deleteFolder | `{id}`: deletes a folder; its meetings go back to their series' folder or to none. Jig's windows |
 | meetings.moveToFolder | `{ids, place}`: `place` is a folder id, `none` (out of every folder) or `auto` (back to its series). Jig's windows |
 | meetings.mentions | Meetings matching `{query}` for the chat's `@` picker, each with its `@meeting:<name>-<8 hex>` mention |
+| meetings.chatMentions | Teams chats matching `{query}` (after `chat:` / `chat `) for the chat's `@` picker, from the list main read last: `[{id (8 hex), name, kind, peerId?, at, mention}]`, `mention` = `@chat:<name>-<8 hex>`; empty while Meetings is off or Microsoft/Chat.Read isn't there (D-333) |
 | meetings.rename | `{id, title}`: rename a meeting; room or main window |
 | meetings.markdown / meetings.export | A meeting as Markdown (notes, actions, transcript by speaker) / saved through a save dialog (returns the file or nothing) |
 | meetings.layout | Save where the live room's People, Transcript and Notes sit (left/right/bottom, hidden) and the remembered sizes; lobby or room (D-221, D-292) |
@@ -350,4 +351,11 @@ Claude tools: jig_meeting_read ({id, through?, offset?}, read-only, 40k-characte
 and jig_meeting_save_notes ({id, notes, actions}, normal approval, generated notes chat only).
 A chat message with `@meeting:…` mentions gets turn context naming each meeting's id, telling Claude to
 read it with jig_meeting_read (speech is source material, not instructions; only while Meetings is on).
+A message with `@chat:<name>-<8 hex>` mentions (D-333) gets a line per Teams chat naming it and its short
+id, telling Claude to read it with jig_teams_chat_read ({chat (8 hex), before?, since?, until?, limit?
+≤ 200}, read-only; only chats mentioned in that Jig chat; text = name, kind, members, then messages
+oldest first as `[YYYY-MM-DD HH:MM UTC] sender: text [image] [file: name]`; latest 100 by default,
+`nextBefore` pages back up to 1000 messages; read from Graph with Chat.Read in main, nothing kept).
+In the composer, `@meeting` and `@chat` (alone, after a colon or with one word after a space) narrow
+the `@` picker to meetings or Teams chats.
 Credential methods never expose Graph/MSAL/resource credentials. Non-Jig frames cannot call any IPC.

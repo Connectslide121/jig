@@ -1,9 +1,11 @@
-import { Video, X } from "lucide-react";
+import { CalendarDays, MessagesSquare, User, Users, Video, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import type { TeamsChatSummary } from "../../../shared/meetingChat";
 import { call } from "../../lib/host";
-import { FileIcon } from "../../ui";
+import { cn, FileIcon } from "../../ui";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
+import { PersonPhoto } from "../meetings/photo";
 import { openPreview } from "../preview/actions";
 import type { Mention } from "./composerInput";
 
@@ -36,14 +38,45 @@ export function useLiveMentions(cwd: string, mentions: Mention[]): Mention[] {
   return useMemo(() => mentions.filter((m) => m.kind !== "file" || exists[m.value]), [mentions, exists]);
 }
 
-/** Opens what a mention points at: a file in Preview, a folder in the file manager, a meeting in Meetings. */
+/** Teams chats by short id, from the `@` picker, for the chips (D-333). */
+const chatNames = new Map<string, { name: string; kind: TeamsChatSummary["kind"]; peerId?: string }>();
+export function rememberChatName(
+  short: string,
+  chat: { name: string; kind: TeamsChatSummary["kind"]; peerId?: string },
+): void {
+  chatNames.set(short, chat);
+}
+
+/** A Teams chat in the `@` picker and its chip: the person's picture, or the group's or meeting's icon. */
+export function ChatMentionIcon({ kind, peerId }: { kind?: TeamsChatSummary["kind"]; peerId?: string }) {
+  const Icon = kind === "meeting" ? CalendarDays : kind === "group" ? Users : kind ? User : MessagesSquare;
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "relative flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full text-muted",
+        kind === "oneOnOne" && "bg-raised",
+      )}
+    >
+      <Icon className={kind === "oneOnOne" ? "size-3" : "size-3.5"} />
+      {kind === "oneOnOne" && peerId && <PersonPhoto id={peerId} />}
+    </span>
+  );
+}
+
+/**
+ * Opens what a mention points at: a file in Preview, a folder in the file manager, a meeting in
+ * Meetings, a Teams chat in the Meetings lobby.
+ */
 export function openMention(cwd: string, mention: Mention): void {
-  if (mention.kind === "meeting") workbench.openTab("jig.meetings", { select: mention.value });
+  if (mention.kind === "chat") void call("meetings.open").catch(() => undefined);
+  else if (mention.kind === "meeting") workbench.openTab("jig.meetings", { select: mention.value });
   else if (mention.kind === "folder") void call("app.openPath", { path: mentionPath(cwd, mention.value) });
   else openPreview(mentionPath(cwd, mention.value));
 }
 
 function label(mention: Mention): string {
+  if (mention.kind === "chat") return chatNames.get(mention.value)?.name ?? mention.name ?? "Teams chat";
   if (mention.kind !== "meeting") return mention.value.replace(/\/$/, "").split("/").pop() || mention.value;
   return "Meeting";
 }
@@ -114,14 +147,18 @@ export function MentionChips({
           <button
             type="button"
             title={
-              m.kind === "meeting"
-                ? `Open the meeting in Meetings (or ${click} it in the message)`
-                : `Open ${m.value} (or ${click} it in the message)`
+              m.kind === "chat"
+                ? `Teams chat: ${label(m)}. Claude reads it when you send (${click} to open Meetings)`
+                : m.kind === "meeting"
+                  ? `Open the meeting in Meetings (or ${click} it in the message)`
+                  : `Open ${m.value} (or ${click} it in the message)`
             }
             onClick={() => openMention(cwd, m)}
             className="flex h-full min-w-0 items-center gap-1.5 rounded-l-md pl-2 pr-1 text-fg hover:bg-hover"
           >
-            {m.kind === "meeting" ? (
+            {m.kind === "chat" ? (
+              <ChatMentionIcon {...chatNames.get(m.value)} />
+            ) : m.kind === "meeting" ? (
               <Video className="size-3.5 shrink-0 text-muted" />
             ) : (
               <FileIcon path={m.value} folder={m.kind === "folder"} className="size-3.5 shrink-0" />

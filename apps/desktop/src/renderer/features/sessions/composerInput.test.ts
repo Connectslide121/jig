@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   historyStep,
   inputMode,
+  mentionScope,
   mentionsIn,
   nextPermissionMode,
   removeMention,
@@ -22,6 +23,24 @@ describe("tokenAt", () => {
     expect(tokenAt("look at @src/cart.ts", 11)).toEqual({ kind: "file", query: "sr", start: 8, end: 20 });
     expect(tokenAt("mail me@example.com", 19)).toBeUndefined();
     expect(tokenAt("plain text", 5)).toBeUndefined();
+  });
+  it("keeps one word after @meeting or @chat, to narrow those lists by name (D-333)", () => {
+    expect(tokenAt("ask @chat ale", 13)).toEqual({ kind: "file", query: "chat ale", start: 4, end: 13 });
+    expect(tokenAt("@meeting port", 13)).toEqual({ kind: "file", query: "meeting port", start: 0, end: 13 });
+    expect(tokenAt("ask @chat about it", 18)).toBeUndefined();
+    expect(tokenAt("@src/a b", 8)).toBeUndefined();
+  });
+});
+
+describe("mentionScope", () => {
+  it("narrows to meetings or chats for the word alone, a colon or a name after a space", () => {
+    expect(mentionScope("chat")).toBe("chat");
+    expect(mentionScope("chat:alex")).toBe("chat");
+    expect(mentionScope("Chat ale")).toBe("chat");
+    expect(mentionScope("meeting")).toBe("meeting");
+    expect(mentionScope("chats/")).toBeUndefined();
+    expect(mentionScope("meetingLobby.tsx")).toBeUndefined();
+    expect(mentionScope("")).toBeUndefined();
   });
 });
 
@@ -79,6 +98,9 @@ describe("mentionsIn", () => {
     ]);
     expect(mentionsIn("@a.md")).toEqual([{ kind: "file", value: "a.md", start: 0, end: 5 }]);
     expect(mentionsIn("just @ and @meeting:nope")).toEqual([]);
+    expect(mentionsIn("ask @chat:alex-contoso-0a1b2c3d, and @chat:nope")).toEqual([
+      { kind: "chat", value: "0a1b2c3d", name: "Alex Contoso", start: 4, end: 31 },
+    ]);
   });
 });
 

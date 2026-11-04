@@ -17,14 +17,22 @@ import type { MethodResult } from "../../../shared/ipc";
 import { call, errorMessage } from "../../lib/host";
 import { cn, FileIcon, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { chatTime } from "../meetings/format";
 import { DictationButton, toggleDictation } from "../speech/DictationButton";
 import { cancelDictation, useDictation } from "../speech/dictation";
 import { type DictationSpan, placeDictation } from "../speech/protocol";
 import { addFiles, ChatAttachments } from "./ChatAttachments";
-import { MentionChips, MentionHighlights, openMention, useLiveMentions } from "./ComposerMentions";
+import {
+  ChatMentionIcon,
+  MentionChips,
+  MentionHighlights,
+  openMention,
+  rememberChatName,
+  useLiveMentions,
+} from "./ComposerMentions";
 import { ComposerPicker, type PickerItem } from "./ComposerPicker";
 import { chatCommands, TERMINAL_ONLY } from "./commands";
-import { inputMode, mentionsIn, removeMention, replaceToken, tokenAt } from "./composerInput";
+import { inputMode, mentionScope, mentionsIn, removeMention, replaceToken, tokenAt } from "./composerInput";
 
 /** Files Claude Code reads itself when mentioned with @. */
 const TEXT_FILE =
@@ -213,6 +221,10 @@ export function ComposerBox({
   const [commands, setCommands] = useState<SlashCommandInfo[]>();
   const [found, setFound] = useState<{ query: string; files: string[] }>();
   const [meetings, setMeetings] = useState<{ query: string; list: MethodResult<"meetings.mentions"> }>();
+  const [teamsChats, setTeamsChats] = useState<{
+    query: string;
+    list: MethodResult<"meetings.chatMentions">;
+  }>();
   const [scrollTop, setScrollTop] = useState(0);
   const mode = inputMode(text);
   // Mentioned files, folders and meetings: highlighted in the text and shown as chips.
@@ -254,6 +266,20 @@ export function ComposerBox({
     }, 80);
     return () => clearTimeout(timer);
   }, [fileQuery]);
+  // And Teams chats (D-333): none while the Meetings add-on is off or Microsoft isn't connected.
+  useEffect(() => {
+    if (fileQuery === undefined) return;
+    const timer = setTimeout(() => {
+      void call("meetings.chatMentions", { query: fileQuery })
+        .then((list) => {
+          for (const c of list) rememberChatName(c.id, c);
+          setTeamsChats({ query: fileQuery, list });
+        })
+        .catch(() => setTeamsChats({ query: fileQuery, list: [] }));
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [fileQuery]);
+  const scope = token?.kind === "file" ? mentionScope(token.query) : undefined;
   const items: PickerItem[] = useMemo(() => {
     if (!pickerOpen || !token) return [];
     if (token.kind === "command") return commandItems(commands, localCommands, token.query);
@@ -271,9 +297,20 @@ export function ComposerBox({
       plain: true,
       icon: <Video className="size-3.5 text-muted" />,
     }));
-    // Asking for a meeting by name puts meetings first; otherwise files lead and a few meetings follow.
-    return token.query.toLowerCase().startsWith("meeting") ? [...kept, ...files] : [...files, ...kept];
-  }, [pickerOpen, token, commands, localCommands, found, meetings]);
+    const chats: PickerItem[] = (teamsChats?.list ?? []).map((c) => ({
+      id: `chat:${c.id}`,
+      value: c.mention,
+      label: c.name,
+      description: `Teams chat · ${chatTime(c.at)}`,
+      plain: true,
+      icon: <ChatMentionIcon kind={c.kind} peerId={c.peerId} />,
+    }));
+    // `@meeting…` lists only meetings and `@chat…` only Teams chats (D-333); otherwise files lead,
+    // then a few meetings, and Teams chats once you type a name.
+    if (scope === "meeting") return kept;
+    if (scope === "chat") return chats;
+    return [...files, ...kept, ...(token.query ? chats.slice(0, 3) : [])];
+  }, [pickerOpen, token, commands, localCommands, found, meetings, teamsChats, scope]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: back to the first item when the list changes.
   useEffect(() => setSelected(0), [tokenKey, token?.query]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: resize whenever the text changes.
@@ -398,14 +435,34 @@ export function ComposerBox({
           title={
             token.kind === "command"
               ? "Commands and skills"
-              : meetings?.list.length
-                ? `Files in ${cwd.split(/[\\/]/).pop()} and meetings`
-                : `Files in ${cwd.split(/[\\/]/).pop()}`
+              : scope === "chat"
+                ? "Teams chats"
+                : scope === "meeting"
+                  ? "Meetings"
+                  : meetings?.list.length
+                    ? `Files in ${cwd.split(/[\\/]/).pop()} and meetings`
+                    : `Files in ${cwd.split(/[\\/]/).pop()}`
           }
           items={items}
           selected={selected}
-          loading={token.kind === "command" ? !commands : found?.query !== token.query}
-          empty={token.kind === "command" ? "No command matches" : "No file matches"}
+          loading={
+            token.kind === "command"
+              ? !commands
+              : scope === "chat"
+                ? teamsChats?.query !== token.query
+                : scope === "meeting"
+                  ? meetings?.query !== token.query
+                  : found?.query !== token.query
+          }
+          empty={
+            token.kind === "command"
+              ? "No command matches"
+              : scope === "chat"
+                ? "No Teams chat matches (connect Microsoft in Meetings to mention chats)"
+                : scope === "meeting"
+                  ? "No meeting matches"
+                  : "No file matches"
+          }
           onPick={pick}
           onHover={setSelected}
           // In a dialog, the list floats above it instead of being cut off by the dialog's edges.

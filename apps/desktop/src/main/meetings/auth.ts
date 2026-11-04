@@ -392,6 +392,67 @@ export class MeetingAuth {
     return { ...chat, viewpoint: { lastMessageReadDateTime: last ?? chat.lastUpdatedDateTime ?? null } };
   }
   /**
+   * A chat for `jig_teams_chat_read` (D-333): its name, kind and members, and up to `limit` messages
+   * newest-changed first from Graph (50 a page, at most 10 pages), before `before`/`until` and after
+   * `since` (Graph filters on lastModifiedDateTime). Returns them oldest first, every sender named,
+   * and where the next page starts. Nothing is kept.
+   */
+  async chatHistory(
+    chatId: string,
+    options: { before?: string; since?: string; until?: string; limit: number },
+  ): Promise<{
+    chat: { name: string; kind: TeamsChatSummary["kind"]; members: string[] };
+    messages: MeetingChatMessage[];
+    nextBefore?: string;
+  }> {
+    const self = this.account?.localAccountId;
+    const graphChat = await this.chat(chatId);
+    const summary = toChatSummaries([graphChat], self)[0];
+    const members = (graphChat.members ?? [])
+      .map((m) => (m.userId === self ? "You" : m.displayName?.trim()))
+      .filter((n): n is string => Boolean(n));
+    const upper = [options.before, options.until].filter((t): t is string => Boolean(t)).sort()[0];
+    const filter = [
+      upper ? `lastModifiedDateTime lt ${new Date(upper).toISOString()}` : "",
+      options.since ? `lastModifiedDateTime gt ${new Date(options.since).toISOString()}` : "",
+    ].filter(Boolean);
+    const query = new URLSearchParams({ $top: "50", $orderby: "lastModifiedDateTime desc" });
+    if (filter.length) query.set("$filter", filter.join(" and "));
+    let path: string | undefined = `/chats/${encodeURIComponent(chatId)}/messages?${query}`;
+    const raw: GraphChatMessage[] = [];
+    let more = false;
+    for (let page = 0; path && page < 10; page++) {
+      const r = await this.chatFetch(path);
+      if (!r.ok) throw chatError(r.status);
+      const data = (await r.json()) as { value: GraphChatMessage[]; "@odata.nextLink"?: string };
+      raw.push(...data.value);
+      const next = data["@odata.nextLink"];
+      if (raw.length >= options.limit) {
+        more = raw.length > options.limit || Boolean(next);
+        break;
+      }
+      if (next && new URL(next).origin !== "https://graph.microsoft.com")
+        throw new JigError("meeting_chat", "Invalid chat continuation");
+      path = next?.replace(/^https:\/\/graph\.microsoft\.com\/v1\.0/, "");
+      more = Boolean(next) && page === 9;
+    }
+    const taken = raw.slice(0, options.limit);
+    const oldest = taken.at(-1)?.lastModifiedDateTime ?? taken.at(-1)?.createdDateTime;
+    const directory = await this.directory(
+      chatId,
+      taken,
+      summary?.kind === "oneOnOne" ? summary.name : undefined,
+    );
+    const inRange = (m: MeetingChatMessage) =>
+      (!options.since || m.at >= new Date(options.since).toISOString()) &&
+      (!options.until || m.at < new Date(options.until).toISOString());
+    return {
+      chat: { name: summary?.name ?? "Teams chat", kind: summary?.kind ?? "group", members },
+      messages: toChatMessages(taken, self, directory).filter(inRange),
+      ...(more && oldest ? { nextBefore: new Date(oldest).toISOString() } : {}),
+    };
+  }
+  /**
    * Messages in your chats that Microsoft Search finds (D-332): Chat.Read is enough, delegated only.
    * The 25 best hits; channel posts are left out (Jig opens chats only).
    */

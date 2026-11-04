@@ -37,6 +37,8 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify colleagues' statuses match Teams after consenting to Presence.Read.All (D-329).
 - [x] Chats toolbar: search (loaded chats and Microsoft Search's messages), Unread/Chats/Meetings filters, New chat, Jig's own pins (D-332).
 - [ ] Verify message search, filters and pins on real chats, and New chat once Chat.ReadWrite is approved (D-332).
+- [x] Mention a Teams chat in a Jig chat with `@chat`; Claude reads it with jig_teams_chat_read (D-333).
+- [ ] Verify @chat on a busy real chat in a Claude and a ChatGPT chat, paging back (D-333).
 - [x] Captions in group meetings: wait for the meeting's capabilities, retry with backoff, keep Teams' real reason (D-321).
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).

@@ -184,6 +184,8 @@ export interface GraphChatMessage {
   id: string;
   messageType?: string;
   createdDateTime: string;
+  /** When it last changed (sent, edited, reacted to): Graph pages and filters a chat's messages by it. */
+  lastModifiedDateTime?: string;
   deletedDateTime?: string | null;
   from?: { user?: { id?: string; displayName?: string } | null } | null;
   body?: { contentType?: string; content?: string };

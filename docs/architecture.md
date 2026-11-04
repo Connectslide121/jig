@@ -669,6 +669,8 @@ sends only text through `meetings.caption` (`source: "local"`; D-321, `localTran
 in `shared/meetingTranscript.ts`). Closing/reloading/crashing and application quit have explicit
 lifecycle handling. Stored meeting records contain no projectId. Questions make immutable snapshots,
 then create normal project/meeting-only Plan-mode chats that read paginated text with jig_meeting_read.
+Any chat can mention a Teams chat with `@chat:…` (D-333): main names it in the turn context and answers
+jig_teams_chat_read from Graph (Chat.Read) for chats that Jig chat mentioned only; nothing is stored.
 Notes use jig_meeting_save_notes only from the generated notes chat. Reviewed actions are sent to Tasks'
 shared addReviewed export with one project/source id per task; queueing pauses the queue and is idempotent.
 See addons/meetings/README.md for the UI, setup, persistence and known SDK limits.

@@ -161,7 +161,11 @@
         "apps/desktop/src/shared/meetingTranscript.ts",
         "apps/desktop/src/shared/meetingDevices.ts",
         "addons/meetings/**",
-        "apps/desktop/src/renderer/features/sessions/Composer.tsx"
+        "apps/desktop/src/renderer/features/sessions/Composer.tsx",
+        "apps/desktop/src/renderer/features/sessions/ComposerBox.tsx",
+        "apps/desktop/src/renderer/features/sessions/ComposerMentions.tsx",
+        "apps/desktop/src/renderer/features/sessions/composerInput.ts",
+        "apps/desktop/src/shared/meetingChatMention.ts"
       ],
       "specs": ["meetings.spec.ts", "meeting-history.spec.ts"]
     },

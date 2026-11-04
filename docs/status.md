@@ -1,5 +1,19 @@
 # Status
 
+Mention a Teams chat in a Jig chat (2026-11-04, D-333): type **@chat** in any chat's message box
+(Claude or ChatGPT) and the @ picker lists your Teams chats from the Meetings lobby (picture or group
+icon, name, last activity); type on (`@chat alex`, `@chat:alex`) to filter them by name or member.
+Picking one puts a chip with the chat's name above the message box; when you send, Claude reads that
+chat (the latest 100 messages, older ones if it needs them) and treats it as source material, not
+instructions. `@meeting` now narrows the picker to meetings the same way. Jig keeps nothing of the
+chat: it reads it from Microsoft when Claude asks. Needs Meetings on and Microsoft connected with the
+chat permission (as for the lobby's Chats). Checked with screenshots in Jig Dark and Jig Light (test
+meeting service); unit tests and the e2e pass.
+**Check on your machine:** mention a busy group chat and ask "what did we decide this week?": the
+answer should quote the right people and dates; ask about older messages to see it page back. Try
+the same in a ChatGPT chat. After restarting Jig, a chat mentioned before should be mentioned again
+for Claude to read it.
+
 Chats toolbar in Meetings (2026-11-04, D-332): the lobby's Chats list has a toolbar like Teams': a
 search that narrows your chats by name, people and last message as you type and, under them, the
 **Messages** Microsoft Search finds in all your chats; filter chips **Unread**, **Chats** and

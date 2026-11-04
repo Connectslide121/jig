@@ -239,6 +239,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.notes": z.object({ id }).strict(),
   "meetings.delete": z.object({ id }).strict(),
   "meetings.mentions": z.object({ query: z.string().max(500) }).strict(),
+  "meetings.chatMentions": z.object({ query: z.string().max(500) }).strict(),
   "meetings.rename": z.object({ id, title: z.string().min(1).max(500) }).strict(),
   "meetings.saveFolder": z.object({ id: z.uuid().optional(), name: z.string().min(1).max(120) }).strict(),
   "meetings.deleteFolder": z.object({ id: z.uuid() }).strict(),

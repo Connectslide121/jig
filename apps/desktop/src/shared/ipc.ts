@@ -138,6 +138,22 @@ export interface HostMethods {
     args: { query: string };
     result: Array<{ id: string; title: string; startedAt: string; mention: string }>;
   };
+  /**
+   * Teams chats for the chat's `@` picker (D-333), matching `query` (after `chat:` or `chat `): from
+   * the list main read last; none while the Meetings add-on is off or Microsoft isn't connected.
+   * `mention` goes in the message.
+   */
+  "meetings.chatMentions": {
+    args: { query: string };
+    result: Array<{
+      id: string;
+      name: string;
+      kind: import("./meetingChat").TeamsChatSummary["kind"];
+      peerId?: string;
+      at: string;
+      mention: string;
+    }>;
+  };
   /** Renames a meeting in the history (from the meeting window or the main window, D-250). */
   "meetings.rename": { args: { id: string; title: string }; result: void };
   /** A meeting as Markdown: notes, actions, the transcript by speaker. */

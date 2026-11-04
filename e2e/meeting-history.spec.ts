@@ -183,3 +183,52 @@ test("Meeting history: a recurring meeting gets its own folder, and you make fol
     await app.close();
   }
 });
+
+test("Chats: @chat mentions a Teams chat, and Claude reads it with jig_teams_chat_read (D-333)", async ({
+  jigHome,
+}) => {
+  await mkdir(join(jigHome, "shop"));
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+    await page.keyboard.press("Control+N");
+    const input = page.getByTestId("composer-input");
+    const shots = ".jig-test-home-meeting-screenshots";
+
+    // `@chat` narrows the picker to Teams chats; a word after it filters them by name or member.
+    await input.fill("@chat");
+    const picker = page.getByTestId("composer-picker");
+    await expect(picker).toContainText("Teams chats");
+    await expect(picker).toContainText("Alex Contoso");
+    await expect(picker).not.toContainText("Shop planning");
+    await expect(picker.getByRole("option")).toHaveCount(8);
+    await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-picker-dark.png` });
+    await hostCall(page, "config.update", { appearance: { themeId: "jig-light" } });
+    await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-picker-light.png` });
+    await input.fill("@chat plann");
+    await expect(picker.getByRole("option")).toHaveCount(1);
+    await expect(picker).toContainText("Portal planning");
+    await expect(picker).toContainText("Teams chat ·");
+    await input.press("Enter");
+    await expect(input).toHaveValue(/^@chat:portal-planning-[0-9a-f]{8} $/);
+    const chip = page.getByTestId("composer-mention");
+    await expect(chip).toHaveAttribute("data-kind", "chat");
+    await expect(chip).toContainText("Portal planning");
+    await input.pressSequentially("what is on the agenda?");
+    await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-chip-light.png` });
+    await hostCall(page, "config.update", { appearance: { themeId: "jig-dark" } });
+    await page.screenshot({ animations: "disabled", path: `${shots}/chat-mention-chip-dark.png` });
+
+    // Jig's context names the chat; Claude reads it, oldest first, pictures and files named.
+    await input.press("Enter");
+    const answer = page.getByTestId("assistant-message").last();
+    await expect(answer).toContainText("From the mentioned Teams chat", { timeout: 20_000 });
+    await expect(answer).toContainText("Teams chat: Portal planning (group chat)");
+    await expect(answer).toContainText("Agenda for Thursday is in the channel.");
+    await expect(answer).toContainText("[image] [file: Shop spec.docx]");
+  } finally {
+    await app.close();
+  }
+});

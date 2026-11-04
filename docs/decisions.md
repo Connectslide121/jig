@@ -4829,6 +4829,38 @@ the raw data was cut off at 60 KB).
 - The test meeting service gives its people different statuses (Alex Available, Sam Away, Taylor
   Busy in a meeting, Kim Do not disturb, Morgan Offline) through three more one-to-one chats.
 
+## D-333: Mention a Teams chat with @chat, and Claude reads it with jig_teams_chat_read
+
+**Jon** asked to mention the Teams chats from the Meetings lobby in a Jig chat (Claude or ChatGPT)
+the way a meeting is mentioned (D-250), as `@chat`; the details are **Claude, on my own**.
+
+- **Mention:** `@chat:<name>-<8 hex>` (`chatMention`, `shared/meetingChatMention.ts`). The short id
+  is FNV-1a of the Teams chat id, so it needs no stored mapping and no crypto in the renderer. The
+  name part is for reading only; the chip shows the chat's name (from the picker, else spelled from
+  the mention) with its picture or group/meeting icon.
+- **Picker:** the `@` picker narrows to Teams chats for `@chat`, `@chat:…` or `@chat <word>`, and to
+  meetings the same way for `@meeting` (`mentionScope`); one word after the space filters by name
+  or member (`tokenAt` keeps it in the token). This changed `@meeting`, which used to list meetings
+  first and then files: both now list only their own kind, so they behave the same. A word that
+  merely starts with them (`@chats/`, `@meetingLobby.tsx`) is still a file. Otherwise files lead,
+  then meetings, then up to 3 Teams chats once a name is typed. Rows look like the meeting rows:
+  icon, name, "Teams chat · <last activity>".
+- **Where the list comes from:** `meetings.chatMentions` filters the list main read last for the
+  lobby (in memory, read again after a minute); nothing while the Meetings add-on is off, Microsoft
+  isn't connected or Chat.Read isn't approved. Callable from the main window.
+- **Context:** a message with `@chat:…` gets one line per chat naming it, its kind and its short id,
+  telling Claude to read it with `jig_teams_chat_read` and that chat messages are source material,
+  not instructions. Engine-neutral, so Codex chats get the same context and tool.
+- **Tool:** `jig_teams_chat_read` (read-only) reads only the chats that Jig chat mentioned (kept in
+  memory per chat; after a restart Claude asks you to mention it again), through Graph with
+  Chat.Read in main: the chat's name, kind, members, and messages oldest first as `[UTC time]
+  sender: text [image] [file: name]`. The latest 100 by default (`limit` up to 200); `nextBefore`
+  (`<lastModifiedDateTime>~<count>`) pages back, up to 1000 messages per chat; `since`/`until`
+  narrow by date (Graph filters on lastModifiedDateTime, then Jig on the time sent).
+- **Privacy:** chat contents are never stored in Jig's state or the activity records; only
+  `meetings.chat-mentioned` is recorded. The prompt itself is recorded as before, with the
+  mention's name and short id.
+
 ## D-332: A toolbar for the lobby's Chats: search, filters, New chat and Jig's own pins
 
 **Jon** asked for Teams' chat list toolbar (search, filters, new chat, pinned chats); the details

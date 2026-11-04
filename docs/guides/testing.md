@@ -85,6 +85,7 @@ in this order:
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
 | a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |
+| a message whose Jig context names a mentioned Teams chat (`@chat:…`, D-333) | reads it with `jig_teams_chat_read` and answers "From the mentioned Teams chat:" with the start of what it read |
 | "skip the report" / "skip two reports" | Claude ends its turn without reporting ("Waiting for the local server to come up."); with "two" it also answers the queue's first request for the report without one (D-318) |
 | the task queue's request for a report ("The task queue asks for the report of task N … taskId "tN" …") | Claude reports "done" with that `taskId` (late when the task ended already) |
 | a task from the Tasks queue (its context names `addon_tasks_report`), unless it says "skip the report" | Claude reports with `addon_tasks_report`: "done" with the summary "Did it: <message>" (without the "[1 image]" tags of its files), or "failed" when it says "fail this task"; one note; a follow-up when it says "with follow-ups". In a ChatGPT (Codex) chat the report goes over the chat's local MCP server, as Codex calls it, and the answer is "Reported from ChatGPT." (D-330) |

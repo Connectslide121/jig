@@ -389,6 +389,23 @@ export class FakeEngine implements Engine {
           onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
           await stream(`${msg}:text:0`, `From the mentioned meeting:\n\n${output.slice(0, 500)}`, signal);
         } else if (
+          toolHandlers?.jig_teams_chat_read &&
+          /read it with jig_teams_chat_read, chat "([0-9a-f]{8})"/.test(sent)
+        ) {
+          // A message that mentions a Teams chat (`@chat:…`, D-333): Jig's context names it; read it.
+          const chat = /read it with jig_teams_chat_read, chat "([0-9a-f]{8})"/.exec(sent)![1]!;
+          const readId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: readId, name: "mcp__jig__jig_teams_chat_read", input: { chat } });
+          const output = outputText(await toolHandlers.jig_teams_chat_read({ chat }));
+          onEvent({ type: "tool_result", toolUseId: readId, output, isError: false });
+          await stream(
+            `${msg}:text:0`,
+            `From the mentioned Teams chat:
+
+${output.slice(0, 600)}`,
+            signal,
+          );
+        } else if (
           toolHandlers?.jig_knowledge_read &&
           /knowledge/i.test(text) &&
           /Documents the user keeps[^\n]*\n- (.+?) \(\d+k characters\)/.test(sent)
