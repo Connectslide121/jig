@@ -484,6 +484,19 @@ export function startSessions(): void {
     if (projectId) await projectStore().get(projectId);
     await m.setProject(id, projectId);
   });
+  handle("sessions.switchProject", async ({ id, projectId }) => {
+    const project = await projectStore().get(projectId);
+    const { provider, model, effort } = chatDefaults(project, undefined);
+    const fallback = project.permissionMode ?? getConfig().engine.defaultPermissionMode;
+    return m.switchProject(id, {
+      projectId,
+      cwd: project.path,
+      provider,
+      model,
+      effort,
+      permissionMode: modeFor(provider, fallback as PermissionMode),
+    });
+  });
   handle("sessions.setPinned", ({ id, pinned }) => m.setPinned(id, pinned));
   handle("sessions.setVoice", ({ id, voice }) => m.setVoice(id, voice));
   handle("sessions.send", ({ id, text, attachments, now }) => m.send(id, text, attachments, now));

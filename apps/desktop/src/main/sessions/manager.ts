@@ -1488,6 +1488,40 @@ export class SessionManager {
     this.setMeta(live, { projectId });
   }
 
+  /**
+   * A chat nobody has written in yet goes to another project as if it had been started there (D-341):
+   * its folder, provider, model, effort and permission mode become the new project's. Once its first
+   * message is sent it stays where it is (`not_allowed`); `setProject` still files it elsewhere.
+   */
+  async switchProject(
+    id: string,
+    target: {
+      projectId: string;
+      cwd: string;
+      provider: ChatProvider;
+      model: string;
+      effort?: EffortLevel;
+      permissionMode: PermissionMode;
+    },
+  ): Promise<SessionMeta> {
+    const live = await this.live(id);
+    const meta = live.state.meta;
+    if (
+      !meta.draft ||
+      meta.kind ||
+      meta.turns > 0 ||
+      meta.engineSessionId ||
+      live.state.items.length > 0 ||
+      live.queue.length > 0
+    )
+      throw new JigError("not_allowed", "A chat stays in its project once its first message is sent");
+    if (meta.projectId === target.projectId) return meta;
+    // A model list may have started an engine in the old folder: it goes, the first message starts anew.
+    this.stop(live);
+    this.setMeta(live, { ...target, effort: target.effort, activeModel: undefined });
+    return live.state.meta;
+  }
+
   async setPinned(id: string, pinned: boolean): Promise<void> {
     const live = await this.live(id);
     this.setMeta(live, { pinned: pinned || undefined });

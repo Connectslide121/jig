@@ -161,6 +161,27 @@ describe("SessionManager", () => {
     await m.shutdown();
   });
 
+  it("moves a chat to another project with its defaults only until its first message (D-341)", async () => {
+    const m = manager();
+    const chat = await create(m);
+    const target = {
+      projectId: "p2",
+      cwd: dir,
+      provider: "codex" as const,
+      model: "sol",
+      effort: "high" as const,
+      permissionMode: "acceptEdits" as const,
+    };
+    expect(await m.switchProject(chat.id, target)).toMatchObject(target);
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    await expect(m.switchProject(chat.id, { ...target, projectId: "p1" })).rejects.toMatchObject({
+      code: "not_allowed",
+    });
+    expect((await metaOf(m, chat.id)).projectId).toBe("p2");
+    await m.shutdown();
+  });
+
   it("reads chats saved without a provider as Claude chats", async () => {
     const m = manager();
     const old = await create(m);

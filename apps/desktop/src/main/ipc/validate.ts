@@ -347,6 +347,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     provider: z.enum(CHAT_PROVIDERS).optional(),
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
+  "sessions.switchProject": z.object({ id, projectId: id }),
   "sessions.setProvider": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
   "sessions.handOverPlan": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
   "sessions.handOver": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),

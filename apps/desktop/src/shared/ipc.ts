@@ -515,6 +515,12 @@ export interface HostMethods {
   "azure.setActiveTenant": { args: { key: string }; result: TenantsState };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
+  /**
+   * A chat nobody has written in yet moves to another project as if started there (D-341): the
+   * project's default workspace, provider, model, effort and permission mode. `not_allowed` once its
+   * first message is sent.
+   */
+  "sessions.switchProject": { args: { id: string; projectId: string }; result: SessionMeta };
   /** Pinned chats stay at the top of their project. */
   "sessions.setPinned": { args: { id: string; pinned: boolean }; result: void };
   /** Talking with Claude (D-209): its next replies are spoken, so it answers briefly and plainly. */
