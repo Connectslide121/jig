@@ -246,6 +246,12 @@ which add-on. The builder knows both. Try it: give an add-on a `menuGroups` entr
 group and open that menu twice after changing its state. Needs testing on your machine: the Time
 add-on once it's rebuilt to use both (see D-305).
 
+Status bar groups (2026-11-04): on each side of the status bar Jig's own items (the usage meters
+on the right) come first, then a faint divider (the same one as between Claude and ChatGPT), then the
+add-ons' items ("2 to release", "1 to push/pull"), 12 px on both sides. The divider shows only while
+both groups show something; an add-on item that renders nothing leaves no divider. Checked in Jig
+Dark and Jig Light, with and without add-on items.
+
 Calmer usage footer (2026-11-04): the status bar no longer shows when each limit resets (the hover
 card still does, for every window of both plans). Every meter is a fixed-width label, bar and
 percentage with tabular numbers, 12 px apart within and between providers, with a faint divider
