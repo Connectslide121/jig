@@ -430,6 +430,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.9.0 being prepared (2026-11-04): Jig 0.9.0 adds an All queues dashboard and Claude/ChatGPT choice per task queue and task, lets add-ons start chats on either provider, and brings chat bubbles, pictures, shared files and Teams status dots to Meetings. Publication not yet verified.
+
 Jig 0.8.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.8.0),
 source/tag `9073b093702bae2f0cb5329d84ac8790ccd9e9a4`. Installer: 388,887,401 bytes;
 SHA-256 `20033a6a5e9d6ad2fc9ba7008155a07088ef940dc26439e0c98b02b75c77588c`.
