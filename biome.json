@@ -13,6 +13,7 @@
       "!**/*.vsix",
       "!e2e/fixtures",
       "!packages/*/src/fixtures",
+      "!apps/desktop/src/main/engine/codex-protocol",
       "!skills/**/skills"
     ]
   },

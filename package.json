@@ -20,6 +20,7 @@
     "format": "biome check --write .",
     "test": "vitest run",
     "check:tokens": "node scripts/check-tokens.ts",
+    "codex:protocol": "node scripts/codex-protocol.ts",
     "check": "npm run typecheck && npm run lint && npm run test && npm run check:tokens",
     "verify": "npm run typecheck && npm run lint && npm run check:tokens",
     "e2e": "node scripts/e2e.ts",
