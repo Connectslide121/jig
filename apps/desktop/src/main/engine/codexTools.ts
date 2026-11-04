@@ -40,9 +40,9 @@ export const PLAN_APPROVED_PROMPT =
 /** Text Jig puts in your messages to Codex that you didn't type (left out of an opened chat's history). */
 export const JIG_ADDED_TEXT = /<(jig_plan_mode|jig_plan_approved|jig-context)>[\s\S]*?<\/\1>\s*/g;
 
-/** Developer instructions for every Codex chat: which tools stand in for Claude's. */
+/** Developer instructions for every Codex chat: which tools stand in for Claude's, and asking to leave the sandbox. */
 export const STAND_IN_INSTRUCTIONS =
-  "In this chat, Jig's MCP tools stand in for Claude Code's: exit_plan is ExitPlanMode (present a plan for approval) and ask_user is AskUserQuestion (questions with 2-4 choices each, shown as a card; the user can also type their own answer). Where instructions name ExitPlanMode or AskUserQuestion, use these. When the user has to pick between options, ask with ask_user rather than in a message.";
+  "In this chat, Jig's MCP tools stand in for Claude Code's: exit_plan is ExitPlanMode (present a plan for approval) and ask_user is AskUserQuestion (questions with 2-4 choices each, shown as a card; the user can also type their own answer). Where instructions name ExitPlanMode or AskUserQuestion, use these. When the user has to pick between options, ask with ask_user rather than in a message. Your sandbox follows the permission mode the user picked in Jig: when a command the user asked for needs to reach the network or write outside the project and the sandbox stops it, run it again asking for escalated permissions with a one-line justification (the user gets an approval card); don't give up or ask in a message instead.";
 
 export interface StandInContext {
   askPermission: (request: PermissionRequest, signal: AbortSignal) => Promise<PermissionDecision>;

@@ -4322,3 +4322,11 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   arrives after you sent something else is dropped. AGENTS.md's list of background AI calls names it.
 - **Capabilities**: Codex's `planMode`, `questions`, `history` and `promptSuggestions` are on; it
   still has no subagents, rewind or fork from Jig's menus.
+- **Ask before changes asks reliably** (Claude, on my own; changes D-311's mapping): the read-only
+  sandbox with `on-request` left asking to the model, and on Windows Codex (Luna, low effort) often
+  reported the sandbox's "access denied" instead of asking, even when told to; an approval with
+  `untrusted` on a read-only sandbox still ran the command read-only. `untrusted` with the
+  workspace-write sandbox asks before every command Codex doesn't know to only read and before every
+  file change, and the approved command writes (checked with Codex 0.166.0 on Windows). Plan only
+  keeps the read-only sandbox. The developer instructions also tell Codex to ask for escalation
+  instead of giving up when the sandbox stops a command it was asked to run.

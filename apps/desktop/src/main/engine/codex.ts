@@ -72,7 +72,11 @@ const log = logger("engine");
  * How each permission mode runs in Codex (D-311, D-315).
  * - plan (Plan only): read-only sandbox; Jig declines anything that writes or leaves it, and each turn
  *   tells Codex to plan and present it with Jig's exit_plan tool (`PLAN_MODE_PROMPT`).
- * - default (Ask before changes): read-only sandbox, Codex asks for anything that writes or leaves it.
+ * - default (Ask before changes): workspace-write sandbox with `untrusted` approvals: Codex asks
+ *   before every file change and every command it doesn't know to only read, and what you approve can
+ *   write in the project. (A read-only sandbox with `on-request` left it to the model to ask, and on
+ *   Windows it often reported the sandbox's "access denied" instead; an approved command still ran
+ *   read-only. Checked with Codex 0.166.0, D-315.)
  * - acceptEdits: workspace-write sandbox, file changes it still asks about are accepted.
  * - bypassPermissions (Don't ask): workspace-write with network, Codex never asks.
  */
@@ -80,9 +84,10 @@ export function codexPolicy(
   mode: PermissionMode,
   extraRoots: string[] = [],
 ): { approvalPolicy: AskForApproval; sandbox: SandboxMode; sandboxPolicy: SandboxPolicy } {
-  if (mode === "acceptEdits" || mode === "bypassPermissions")
+  if (mode !== "plan")
     return {
-      approvalPolicy: mode === "bypassPermissions" ? "never" : "on-request",
+      approvalPolicy:
+        mode === "bypassPermissions" ? "never" : mode === "default" ? "untrusted" : "on-request",
       sandbox: "workspace-write",
       sandboxPolicy: {
         type: "workspaceWrite",
