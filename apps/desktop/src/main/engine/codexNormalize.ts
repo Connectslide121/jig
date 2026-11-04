@@ -42,6 +42,36 @@ export function displayCommand(command: string): string {
   return command;
 }
 
+/**
+ * Codex asking before an MCP tool runs (an `mcpServer/elicitation/request` whose `_meta` says
+ * `codex_approval_kind: "mcp_tool_call"`, D-313): which server and tool, with what input, and
+ * whether it offers to remember the answer for the session. Other elicitations: undefined.
+ */
+export function mcpToolApproval(
+  params: Msg,
+):
+  | { server: string; tool: string; input: Record<string, unknown>; message: string; canPersist: boolean }
+  | undefined {
+  const meta = params?._meta;
+  if (meta?.codex_approval_kind !== "mcp_tool_call") return undefined;
+  const message = str(params?.message) ?? "";
+  const tool = str(meta.tool_name) ?? /run tool "([^"]+)"/.exec(message)?.[1];
+  const server = str(params?.serverName);
+  if (!tool || !server) return undefined;
+  const input =
+    meta.tool_params && typeof meta.tool_params === "object" && !Array.isArray(meta.tool_params)
+      ? (meta.tool_params as Record<string, unknown>)
+      : {};
+  const persist = meta.persist;
+  return {
+    server,
+    tool,
+    input,
+    message,
+    canPersist: persist === "session" || (Array.isArray(persist) && persist.includes("session")),
+  };
+}
+
 /** A file change's diff as unified-diff hunks; a new file's content becomes one added hunk. */
 export function changeDiff(kind: string, diff: string): string {
   if (!diff) return diff;
@@ -139,6 +169,8 @@ export class CodexNormalizer {
   private changes = new Map<string, FileChange[]>();
   /** Commands by item id, for their approval requests. */
   private commands = new Map<string, { command: string; cwd?: string }>();
+  /** MCP calls in progress by `server/tool`: Codex's approval for one names no item (D-313). */
+  private mcpCalls = new Map<string, string>();
   /** Output of running commands, as it streams. */
   private output = new Map<string, string>();
   /** Token totals: the latest, and at the end of the previous turn (a turn's usage is the difference). */
@@ -257,6 +289,11 @@ export class CodexNormalizer {
     return undefined;
   }
 
+  /** The tool card of the MCP call Codex asks about, so its permission shows on it. */
+  mcpCallId(server: string, tool: string): string | undefined {
+    return this.mcpCalls.get(`${server}/${tool}`);
+  }
+
   /** How full the context window is, from the last request's size. */
   context(): { usedTokens: number; maxTokens: number } | undefined {
     if (!this.contextWindow || !this.lastTokens) return undefined;
@@ -302,6 +339,7 @@ export class CodexNormalizer {
         }));
       }
       case "mcpToolCall":
+        this.mcpCalls.set(`${item.server}/${item.tool}`, id);
         return [
           {
             type: "tool_use",
@@ -432,6 +470,8 @@ export class CodexNormalizer {
       }
       case "mcpToolCall":
       case "dynamicToolCall": {
+        if (this.mcpCalls.get(`${item.server}/${item.tool}`) === id)
+          this.mcpCalls.delete(`${item.server}/${item.tool}`);
         if (item.error || item.success === false)
           return [
             {

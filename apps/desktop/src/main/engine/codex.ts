@@ -17,6 +17,7 @@ import { resolveCommand } from "../addons/winCommand";
 import { logger } from "../log";
 import { findCodex } from "../providers/codex";
 import { makeWhich } from "../terminals/shell";
+import { isReadOnlyChatTool } from "./chatTools";
 import type {
   AskForApproval,
   CommandExecutionApprovalDecision,
@@ -34,7 +35,9 @@ import type {
 } from "./codex-protocol/v2";
 import { CODEX_PROTOCOL_VERSION } from "./codex-protocol/version";
 import { personalInstructions } from "./codexInstructions";
-import { CodexNormalizer } from "./codexNormalize";
+import { JIG_MCP_TOKEN_ENV, jigMcpConfig } from "./codexMcp";
+import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
+import { type LocalMcp, newMcpToken, startLocalMcp } from "./localMcp";
 import {
   type Completer,
   codexSessionEnv,
@@ -253,7 +256,21 @@ export class CodexEngine implements Engine {
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     const normalizer = new CodexNormalizer();
-    const env = codexSessionEnv(options.env, Boolean(options.codexAllowApiKey));
+    // Jig's tools reach Codex over a local MCP server with this chat's own token (D-313).
+    const toolServers =
+      options.toolServers && Object.keys(options.toolServers).length ? options.toolServers : undefined;
+    const mcpToken = toolServers ? newMcpToken() : undefined;
+    let localMcp: LocalMcp | undefined;
+    let ended = false;
+    const closeMcp = () => {
+      ended = true;
+      void localMcp?.close();
+      localMcp = undefined;
+    };
+    const env = {
+      ...codexSessionEnv(options.env, Boolean(options.codexAllowApiKey)),
+      ...(mcpToken ? { [JIG_MCP_TOKEN_ENV]: mcpToken } : {}),
+    };
     const binary = codexBinary(options.codexPath, env);
     let permissionMode = options.permissionMode;
     let threadId: string | undefined;
@@ -288,6 +305,7 @@ export class CodexEngine implements Engine {
       },
       request: (message) => void answer(message),
       exit: (error) => {
+        closeMcp();
         for (const controller of asking.values()) controller.abort();
         asking.clear();
         if (error) onEvent({ type: "error", code: "process", message: error });
@@ -297,12 +315,14 @@ export class CodexEngine implements Engine {
 
     /** Codex asks before a command or file change: the permission card, unless the mode decides. */
     const answer = async (message: { id: string | number; method: string; params?: unknown }) => {
+      if (message.method === "mcpServer/elicitation/request") {
+        await answerMcp(message);
+        return;
+      }
       const request = normalizer.permissionRequest(message.method, message.params);
       if (!request) {
-        // Questions, elicitations and other requests come with Codex chats' later phases.
-        if (message.method === "mcpServer/elicitation/request")
-          rpc.respond(message.id, { action: "decline", content: null, _meta: null });
-        else rpc.fail(message.id, `Jig doesn't handle ${message.method} yet`);
+        // Questions and other requests come with Codex chats' later phases.
+        rpc.fail(message.id, `Jig doesn't handle ${message.method} yet`);
         return;
       }
       const isEdit = message.method === "item/fileChange/requestApproval";
@@ -318,6 +338,41 @@ export class CodexEngine implements Engine {
       const reply: CommandExecutionApprovalDecision & FileChangeApprovalDecision =
         decision.behavior === "deny" ? "decline" : decision.always ? "acceptForSession" : "accept";
       rpc.respond(message.id, { decision: reply });
+    };
+
+    /**
+     * Codex asks before an MCP tool runs: Jig's read-only tools and Don't ask mode run unasked, like
+     * in Claude chats; the rest get the usual permission card. Other elicitations are declined.
+     */
+    const answerMcp = async (message: { id: string | number; params?: unknown }) => {
+      const decline = () => rpc.respond(message.id, { action: "decline", content: null, _meta: null });
+      const call = mcpToolApproval(message.params);
+      if (!call) return decline();
+      const toolName = `mcp__${call.server}__${call.tool}`;
+      const accept = (always = false) =>
+        rpc.respond(message.id, {
+          action: "accept",
+          content: {},
+          _meta: always && call.canPersist ? { persist: "session" } : null,
+        });
+      if (permissionMode === "bypassPermissions" || isReadOnlyChatTool(toolServers, toolName))
+        return accept();
+      const controller = new AbortController();
+      asking.set(String(message.id), controller);
+      const decision = await options.askPermission(
+        {
+          requestId: normalizer.mcpCallId(call.server, call.tool) ?? `mcp-${message.id}`,
+          toolName,
+          input: call.input,
+          title: call.message || undefined,
+          canAlwaysAllow: call.canPersist,
+        },
+        controller.signal,
+      );
+      asking.delete(String(message.id));
+      if (controller.signal.aborted) return;
+      if (decision.behavior === "deny") decline();
+      else accept(Boolean(decision.always));
     };
 
     const instructions = () =>
@@ -347,8 +402,25 @@ export class CodexEngine implements Engine {
       const resolved = resolveChatGptModel(options.model, models);
       if (resolved.notice) onEvent({ type: "notice", tone: "warning", text: resolved.notice });
       const policy = codexPolicy(permissionMode, options.additionalDirectories);
+      if (toolServers && mcpToken) {
+        const started = await startLocalMcp(toolServers, mcpToken).catch((error: Error) => {
+          log.warn("Jig's MCP server for a Codex chat didn't start", error);
+          onEvent({
+            type: "notice",
+            tone: "warning",
+            text: `Jig's tools aren't available in this chat: ${error.message}`,
+          });
+          return undefined;
+        });
+        // The chat may have closed while the server started.
+        if (ended) void started?.close();
+        else localMcp = started;
+      }
       const common = {
         cwd: options.cwd,
+        ...(localMcp && toolServers
+          ? { config: jigMcpConfig(toolServers, (name) => localMcp!.url(name)) }
+          : {}),
         model: resolved.model || null,
         approvalPolicy: policy.approvalPolicy,
         sandbox: policy.sandbox,
@@ -504,6 +576,7 @@ export class CodexEngine implements Engine {
       close() {
         if (threadId) rpc.request("thread/unsubscribe", { threadId }).catch(() => {});
         rpc.kill();
+        closeMcp();
       },
     };
     return session;

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EngineEvent, PermissionRequest } from "../../shared/engine";
-import { CodexNormalizer, changeDiff, displayCommand } from "./codexNormalize";
+import { CodexNormalizer, changeDiff, displayCommand, mcpToolApproval } from "./codexNormalize";
 
 /**
  * Recorded `codex app-server` traffic (Codex 0.166.0, signed in with ChatGPT; paths renamed):
@@ -422,5 +422,39 @@ describe("changeDiff", () => {
     expect(changeDiff("update", "@@ -1 +1 @@\n-a\n+b\n")).toBe("@@ -1 +1 @@\n-a\n+b\n");
     expect(changeDiff("add", "x\n")).toBe("@@ -0,0 +1,1 @@\n+x");
     expect(changeDiff("add", "")).toBe("");
+  });
+});
+
+describe("Codex asking before an MCP tool (D-313)", () => {
+  // Recorded from Codex 0.166.0 asking before a Jig tool without readOnly.
+  const params = {
+    threadId: "t",
+    turnId: "u",
+    serverName: "jig",
+    mode: "form",
+    _meta: {
+      codex_approval_kind: "mcp_tool_call",
+      persist: ["session", "always"],
+      tool_description: "Writes",
+      tool_params: { text: "hi" },
+      tool_params_display: [],
+    },
+    message: 'Allow the jig MCP server to run tool "jig_write"?',
+    requestedSchema: { type: "object", properties: {} },
+  };
+
+  it("names the server, the tool and its input", () => {
+    expect(mcpToolApproval(params)).toEqual({
+      server: "jig",
+      tool: "jig_write",
+      input: { text: "hi" },
+      message: 'Allow the jig MCP server to run tool "jig_write"?',
+      canPersist: true,
+    });
+  });
+
+  it("ignores other elicitations", () => {
+    expect(mcpToolApproval({ ...params, _meta: { codex_approval_kind: "other" } })).toBeUndefined();
+    expect(mcpToolApproval({ serverName: "jig", message: "Pick one" })).toBeUndefined();
   });
 });
