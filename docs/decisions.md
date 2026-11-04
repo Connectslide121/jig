@@ -5386,5 +5386,12 @@ choice of Telegram and everything below: Claude, on my own.
   pairing or while `phone.enabled` is on; pairing turns it on.
 - **Claude can text you** with `jig_phone_send` (read-only for permissions: it only sends, to you),
   told in `jigContext` to use it only when asked or blocked on you. Your reply arrives in that chat.
+- **Topics when the bot has them** (Bot API 9.3/9.4, turned on in @BotFather; `getMe` says so):
+  one topic per project and Jig's own, so a running queue doesn't become one wall of messages. Without
+  them everything stays in one thread. Plain text goes to the last chat that wrote in that topic, never
+  to a chat of another project. Finished turns arrive silently; only what waits for you buzzes.
+- **Replies survive a restart:** which message belongs to which chat (last 300) is kept in
+  `phone.json`. **The PC stays awake** (`powerSaveBlocker`, `phone.keepAwake`) while a chat works or
+  waits for you and the phone is connected: a sleeping PC sends nothing.
 - Tests: unit tests for the messages and the service with fakes; `e2e/phone.spec.ts` runs the app
   against a fake Telegram server (`JIG_TELEGRAM_API`, honoured only with `JIG_ENGINE=fake`).

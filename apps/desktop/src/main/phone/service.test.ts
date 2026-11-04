@@ -20,7 +20,11 @@ const bash = (status: PermissionItem["status"] = "pending") =>
     at: "2025-01-01T00:00:00Z",
   }) as PermissionItem;
 
-function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; away?: boolean } = {}) {
+function setup(
+  opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; away?: boolean; topics?: boolean } = {},
+) {
+  let topicId = 500;
+  const goneTopics = new Set<number>();
   const calls: Array<{ method: string; params: Record<string, unknown> }> = [];
   let messageId = 100;
   const api: TelegramApi = {
@@ -32,9 +36,20 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
       calls.push({ method, params });
       if (method === "getMe") {
         if (params && (api as { bad?: boolean }).bad) throw new TelegramError("Unauthorized", 401);
-        return { id: 1, is_bot: true, first_name: "Bot", username: "shop_bot" } as T;
+        return {
+          id: 1,
+          is_bot: true,
+          first_name: "Bot",
+          username: "shop_bot",
+          has_topics_enabled: opts.topics ?? false,
+        } as T;
       }
-      if (method === "sendMessage") return { message_id: ++messageId } as T;
+      if (method === "createForumTopic") return { message_thread_id: ++topicId } as T;
+      if (method === "sendMessage") {
+        if (goneTopics.has(Number(params.message_thread_id)))
+          throw new TelegramError("Bad Request: message thread not found", 400);
+        return { message_id: ++messageId } as T;
+      }
       return true as T;
     },
   };
@@ -67,6 +82,7 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
     },
     store: { load: async () => opts.saved, save: async (s) => void saves.push(s), remembered: true },
     api: () => api,
+    project: async (id) => (id === "p1" ? { name: "Podium", color: "info" } : undefined),
     settings: () => settings,
     away: () => opts.away ?? false,
     keepAwake: (on) => void awake.push(on),
@@ -114,6 +130,7 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
     messages,
     enabled: () => enabled,
     awake,
+    goneTopics,
   };
 }
 
@@ -244,7 +261,7 @@ describe("PhoneService Jig → phone", () => {
     expect(saved?.replies).toEqual([[101, "s1"]]);
     first.service.stop();
 
-    const t = setup({ saved: { ...saved!, target: undefined } });
+    const t = setup({ saved: { ...saved!, targets: undefined } });
     current = t.service;
     await t.service.start();
     t.items.set("s1", []);
@@ -323,5 +340,75 @@ describe("PhoneService phone → Jig", () => {
     await t.text("b", { chat: { id: OWNER, type: "group" } });
     await t.text("c", { date: NOW - 3600 });
     expect(t.sent).toHaveLength(0);
+  });
+});
+
+describe("PhoneService topics", () => {
+  const sends = (t: ReturnType<typeof setup>) => t.calls.filter((c) => c.method === "sendMessage");
+
+  it("puts each project's chats in a topic of its own, made once", async () => {
+    const t = setup({ saved: paired, topics: true });
+    current = t.service;
+    await t.service.start();
+    expect(t.service.state().topics).toBe(true);
+    await t.service.permission(meta({ projectId: "p1" }), bash());
+    await t.service.fromChat(meta({ projectId: "p1" }), "Deploy?");
+    const made = t.calls.filter((c) => c.method === "createForumTopic");
+    expect(made).toEqual([
+      {
+        method: "createForumTopic",
+        params: expect.objectContaining({ name: "Podium", icon_color: 7322096 }),
+      },
+    ]);
+    expect(sends(t).map((c) => c.params.message_thread_id)).toEqual([501, 501]);
+  });
+
+  it("sends chats without a project, and the test, to Jig's own topic", async () => {
+    const t = setup({ saved: paired, topics: true });
+    current = t.service;
+    await t.service.start();
+    await t.service.test();
+    await t.service.fromChat(meta(), "Hi");
+    expect(t.calls.filter((c) => c.method === "createForumTopic")).toHaveLength(1);
+    expect(t.calls.find((c) => c.method === "createForumTopic")?.params.name).toBe("Jig");
+    expect(sends(t).map((c) => c.params.message_thread_id)).toEqual([501, 501]);
+  });
+
+  it("sends what you write in a topic to the last chat there, and answers in that topic", async () => {
+    const t = setup({ saved: paired, topics: true });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.service.fromChat(meta({ projectId: "p1" }), "Deploy?");
+    await t.text("yes", { message_thread_id: 501, is_topic_message: true });
+    expect(t.sent).toEqual([{ id: "s1", text: "yes" }]);
+    expect(sends(t).at(-1)?.params.message_thread_id).toBe(501);
+
+    await t.text("hello?", { message_thread_id: 777, is_topic_message: true });
+    expect(t.sent).toHaveLength(1);
+    expect(t.messages().at(-1)).toContain("Pick a chat first");
+  });
+
+  it("makes a new topic when you deleted the old one", async () => {
+    const t = setup({
+      saved: { ...paired, topics: { projects: { p1: 400 } } },
+      topics: true,
+    });
+    current = t.service;
+    await t.service.start();
+    t.goneTopics.add(400);
+    await t.service.fromChat(meta({ projectId: "p1" }), "One");
+    expect(sends(t).at(-1)?.params).not.toHaveProperty("message_thread_id");
+    await t.service.fromChat(meta({ projectId: "p1" }), "Two");
+    expect(sends(t).at(-1)?.params.message_thread_id).toBe(501);
+  });
+
+  it("keeps one thread when the bot has no topics", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.fromChat(meta({ projectId: "p1" }), "Deploy?");
+    expect(t.calls.some((c) => c.method === "createForumTopic")).toBe(false);
+    expect(sends(t)[0]?.params).not.toHaveProperty("message_thread_id");
   });
 });

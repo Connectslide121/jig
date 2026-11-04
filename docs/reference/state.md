@@ -171,11 +171,12 @@ read-only application resources, not user state. Personal/project Claude skills 
 
 ## Phone (D-348)
 
-`phone.json`: `{ token, bot, owner?, replies?, target? }`. `token` is the Telegram bot token encrypted with the OS
+`phone.json`: `{ token, bot, owner?, replies?, targets?, topics? }`. `token` is the Telegram bot token encrypted with the OS
 (Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written
 and the token lives only until Jig closes. `bot` is its username; `owner` (`{ chatId, name }`) the
-Telegram account it is paired with. `replies` maps the last 300 Telegram messages to their chats and `target` is the chat plain text goes
-to, so replies keep working after Jig restarts. Disconnect deletes the file.
+Telegram account it is paired with. `replies` maps the last 300 Telegram messages to their chats and `targets` (per topic, 0 without
+topics) the chat plain text written there goes to, so replies keep working after Jig restarts.
+`topics` `{ jig?, projects? }` are the topics Jig made in the bot's chat (Jig's own, per project id). Disconnect deletes the file.
 
 ## Meetings (D-217)
 

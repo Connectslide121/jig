@@ -112,6 +112,8 @@ test("phone: pair a Telegram bot, then answer a chat from the phone", async ({ j
     await expect.poll(() => telegram.texts().join("\n")).toContain("Paired with Jig");
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(page.getByRole("switch", { name: "Message my phone" })).toBeChecked();
+    // This bot has no topics: everything in one thread, and Settings says how to turn them on.
+    await expect(page.getByText(/^Off: everything arrives in one thread/)).toBeVisible();
 
     // A permission card in a chat reaches the phone with buttons; Allow from the phone runs it.
     await page.keyboard.press("Control+N");

@@ -13,6 +13,8 @@ export interface PhoneState {
   code?: string;
   /** The token is encrypted on this computer; false: it is kept only until Jig closes. */
   remembered: boolean;
+  /** Once paired: your bot has topics turned on, so each project gets its own topic. */
+  topics?: boolean;
   /** Telegram can't be reached or refused the token (Jig keeps trying while it can). */
   error?: string;
 }

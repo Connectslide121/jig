@@ -6,6 +6,7 @@ import { getConfig, onConfigChange, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
+import { projectStore } from "../projects";
 import { onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
@@ -20,7 +21,10 @@ const SavedFile = z.object({
   bot: z.string().default(""),
   owner: z.object({ chatId: z.number(), name: z.string() }).optional(),
   replies: z.array(z.tuple([z.number(), z.string()])).optional(),
-  target: z.string().optional(),
+  targets: z.array(z.tuple([z.number(), z.string()])).optional(),
+  topics: z
+    .object({ jig: z.number().optional(), projects: z.record(z.string(), z.number()).optional() })
+    .optional(),
 });
 
 /** Like Microsoft's sign-in (D-232): only with the OS's own encryption, never as plain text. */
@@ -83,6 +87,10 @@ export async function startPhone(): Promise<void> {
     },
     store: phoneStore(),
     api: (token) => telegramApi(token),
+    project: async (id) => {
+      const project = await projectStore().get(id);
+      return { name: project.name, color: project.color };
+    },
     settings: () => getConfig().phone,
     away: (minutes) => powerMonitor.getSystemIdleState(minutes * 60) !== "active",
     keepAwake,
@@ -95,7 +103,11 @@ export async function startPhone(): Promise<void> {
   });
   service = s;
 
-  handle("phone.state", () => s.state());
+  // Settings asks: also whether topics were turned on in @BotFather since.
+  handle("phone.state", async () => {
+    await s.checkTopics().catch(() => undefined);
+    return s.state();
+  });
   handle("phone.connect", ({ token }) => s.connect(token));
   handle("phone.test", () => s.test());
   handle("phone.disconnect", () => s.disconnect());

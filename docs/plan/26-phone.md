@@ -101,5 +101,11 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
 - [ ] Settings → Phone: the topics check (on / how to turn it on), the concierge's model, a link to
       open the concierge chat on the computer.
 
+- [x] Topics: one per project (made on its first message, the project's colour) and Jig's own (chats
+      without a project, the test); text written in a topic goes to the last chat that wrote there;
+      `/chats` in a topic lists that project's chats; a deleted topic is made again. Settings → Phone →
+      Topics says whether they're on and how to turn them on (Check again). Renaming a project doesn't
+      rename its topic yet.
+
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

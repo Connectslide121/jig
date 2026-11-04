@@ -255,5 +255,9 @@ export function chatPicker(chats: SessionMeta[], current: string | undefined, ma
 export const HELP =
   "This is Jig on your phone.\n\n• Jig messages you here when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write: it goes to the last chat Jig told you about.\n• /chats picks the chat your messages go to.";
 
+/** The help when your bot has topics: one per project, and Jig's own. */
+export const HELP_TOPICS =
+  "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project and Jig itself write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat, or just write in the topic: it goes to the last chat that wrote there.\n• /chats in a topic picks the chat your messages there go to.";
+
 /** The digits in what you sent ("123456", "123 456"). */
 export const codeIn = (text: string) => text.replace(/\D/g, "");

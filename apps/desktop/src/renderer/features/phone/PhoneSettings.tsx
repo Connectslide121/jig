@@ -1,4 +1,4 @@
-import { ExternalLink, Link2, Send, Smartphone, Unlink } from "lucide-react";
+import { ExternalLink, Link2, RefreshCw, Send, Smartphone, Unlink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isTelegramToken, type PhoneState } from "../../../shared/phone";
 import { call, errorMessage } from "../../lib/host";
@@ -19,12 +19,21 @@ function connectionText(state: PhoneState): string {
   return "Not set up. You need Telegram on your phone and a bot of your own (free, two minutes).";
 }
 
+/** The line under "Topics": on, off and how to turn it on, or what happens once connected. */
+function topicsText(state: PhoneState): string {
+  if (state.status !== "connected")
+    return "Once connected: if your bot has topics turned on, each project gets a topic of its own.";
+  if (state.topics) return "On: each project's chats write in their own topic, and Jig has one too.";
+  return "Off: everything arrives in one thread. To split it by project, open @BotFather, pick your bot, turn on topics (threaded mode) in its settings, then check again.";
+}
+
 /** Settings → Phone: Jig on your phone through your own Telegram bot (D-348). */
 export function PhoneSettings() {
   const state = usePhone((s) => s.state);
   const config = useConfig((s) => s.config);
   const [setup, setSetup] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [checking, setChecking] = useState(false);
   useEffect(startPhone, []);
   if (!state || !config) return <Spinner center />;
   const phone = config.phone;
@@ -39,6 +48,16 @@ export function PhoneSettings() {
       notify({ tone: "danger", title: "Couldn't send the test", message: errorMessage(error) });
     } finally {
       setTesting(false);
+    }
+  };
+  const checkTopics = async () => {
+    setChecking(true);
+    try {
+      usePhone.setState({ state: await call("phone.state") });
+    } catch (error) {
+      notify({ tone: "danger", title: "Couldn't ask Telegram", message: errorMessage(error) });
+    } finally {
+      setChecking(false);
     }
   };
   const disconnect = async () => {
@@ -87,6 +106,17 @@ export function PhoneSettings() {
             </Button>
           </>
         )}
+      </SettingRow>
+      <SettingRow label="Topics" description={topicsText(state)}>
+        <Button
+          icon={RefreshCw}
+          busy={checking}
+          disabled={!connected}
+          onClick={() => void checkTopics()}
+          data-testid="phone-topics-check"
+        >
+          Check again
+        </Button>
       </SettingRow>
       <SettingRow label="Message my phone" description="Turn it off to pause the bot; it stays connected.">
         <Switch
@@ -223,6 +253,10 @@ function SetupDialog({ open, state, onClose }: { open: boolean; state: PhoneStat
             <li key={s}>{s}</li>
           ))}
           <li>Send the code Jig shows you to your bot.</li>
+          <li>
+            Optional: turn on topics in your bot's settings in @BotFather, so each project gets its own
+            thread.
+          </li>
         </ol>
         <Input
           type="password"

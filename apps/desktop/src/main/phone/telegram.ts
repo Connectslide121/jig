@@ -10,6 +10,8 @@ export interface TelegramUser {
   first_name?: string;
   last_name?: string;
   username?: string;
+  /** Only from getMe: the bot has topics turned on in private chats (Bot API 9.3). */
+  has_topics_enabled?: boolean;
 }
 
 export interface TelegramMessage {
@@ -19,6 +21,9 @@ export interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   reply_to_message?: { message_id: number };
+  /** The topic it was written in (private chats with topics, Bot API 9.3). */
+  message_thread_id?: number;
+  is_topic_message?: boolean;
 }
 
 export interface TelegramUpdate {
@@ -28,7 +33,12 @@ export interface TelegramUpdate {
     id: string;
     from: TelegramUser;
     data?: string;
-    message?: { message_id: number; chat: { id: number } };
+    message?: {
+      message_id: number;
+      chat: { id: number };
+      message_thread_id?: number;
+      is_topic_message?: boolean;
+    };
   };
 }
 
