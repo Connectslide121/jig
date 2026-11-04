@@ -1,6 +1,6 @@
 import type { ChatProvider } from "../../shared/engine";
-import { JigError } from "../../shared/ipc";
 import { ClaudeEngine } from "./claude";
+import { CodexEngine } from "./codex";
 import { FakeEngine } from "./fake";
 import type { Engine } from "./types";
 
@@ -9,8 +9,7 @@ const engines = new Map<ChatProvider, Engine>();
 function makeEngine(provider: ChatProvider): Engine {
   // The scripted engine stands in for both providers, so tests cover Codex chats too.
   if (process.env.JIG_ENGINE === "fake") return new FakeEngine(undefined, provider);
-  if (provider === "claude") return new ClaudeEngine();
-  throw new JigError("codex_unavailable", "Codex chats aren't available yet. Start a Claude chat instead.");
+  return provider === "codex" ? new CodexEngine() : new ClaudeEngine();
 }
 
 /**
@@ -28,4 +27,4 @@ export function getEngine(provider: ChatProvider = "claude"): Engine {
 }
 
 export type { Engine, EngineSession, StartOptions } from "./types";
-export { sessionEnv } from "./types";
+export { codexSessionEnv, sessionEnv } from "./types";

@@ -50,6 +50,14 @@ export const ConfigSchema = z.object({
       codexPath: z.string().default(""),
       /** Model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`; D-310) or an exact slug. */
       codexModel: z.string().max(100).default("sol"),
+      /**
+       * Your personal instructions in Codex chats (D-312): `claude` follows Claude Code's
+       * `~/.claude/CLAUDE.md` and its @imports, so one file stays the source; `off` leaves Codex with
+       * its own `~/.codex/AGENTS.md`.
+       */
+      codexInstructions: z.enum(["claude", "off"]).default("claude"),
+      /** Keep OPENAI_API_KEY / CODEX_API_KEY in Codex chats' environment (pay-as-you-go, D-311). */
+      codexAllowApiKey: z.boolean().default(false),
       /** Keep ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in session environments (pay-as-you-go). */
       allowApiKey: z.boolean().default(false),
       /** Model alias or id for new sessions; opusplan = Opus only in Plan mode, Sonnet otherwise. */
@@ -311,6 +319,7 @@ export const PROTECTED_SETTINGS = [
   "ai",
   "engine.claudePath",
   "engine.codexPath",
+  "engine.codexAllowApiKey",
   "engine.provider",
   "engine.allowApiKey",
   "editor.claudeCompletion",

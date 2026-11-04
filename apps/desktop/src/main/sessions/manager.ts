@@ -86,6 +86,8 @@ export interface SessionManagerOptions {
     claudePath: string;
     codexPath?: string;
     allowApiKey: boolean;
+    codexAllowApiKey?: boolean;
+    codexInstructions?: "claude" | "off";
     env: Record<string, string | undefined>;
     promptSuggestions?: boolean;
     fileCheckpoints?: boolean;
@@ -340,6 +342,8 @@ export class SessionManager {
         env: settings.env,
         claudePath: settings.claudePath,
         codexPath: settings.codexPath,
+        codexAllowApiKey: settings.codexAllowApiKey,
+        codexInstructions: settings.codexInstructions,
         promptSuggestions: settings.promptSuggestions,
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,

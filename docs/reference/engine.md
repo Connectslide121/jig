@@ -32,6 +32,8 @@ interface EngineSession {
   `canUseTool` → the permission prompt, `mcpServers: { jig }`, `effort`, `additionalDirectories`, and
   `resumeSessionAt` after a rewind. Messages carry `origin: { kind: "human" }`; one sent while Claude
   works with `priority: "next"` joins the running turn.
+- **`CodexEngine`** (`codex.ts`): OpenAI's Codex over `codex app-server` (JSON-RPC on stdio), one
+  process and one thread per chat. See Codex chats below (D-311).
 - **`FakeEngine`** (`fake.ts`): scripted replies for tests and `JIG_ENGINE=fake`, with no Claude Code
   process and no quota. The trigger words and environment variables are in `docs/guides/testing.md`
   → The fake engine.
@@ -39,8 +41,7 @@ interface EngineSession {
 - **`getEngine(provider = "claude")`** (`index.ts`): one engine per provider for the run. Without a
   provider it is Claude's, which also answers Jig's non-chat calls (one-shots, `callTool`, usage,
   saved conversations). `JIG_ENGINE=fake` gives a `FakeEngine` for both, the Codex one with
-  `provider: "codex"` and Codex's capabilities. Until the Codex engine exists, `getEngine("codex")`
-  throws `codex_unavailable`.
+  `provider: "codex"` and Codex's capabilities; otherwise `getEngine("codex")` is the `CodexEngine`.
 
 ## Chat providers (D-309)
 
@@ -69,6 +70,77 @@ controls a provider doesn't have instead of showing dead buttons:
 Jig's in-process tools (`mcpServers: { jig }`) go to Claude chats only; Codex chats get them as a
 local MCP server later. Routines and Artifacts stay on Claude (Claude's cloud).
 
+## Codex chats (D-311)
+
+`CodexEngine` (`main/engine/codex.ts`) runs one `codex app-server` per chat: the user's own `codex`
+(`engine.codexPath`, else the one on PATH through `findCodex`, the native `codex.exe` on Windows),
+JSON-RPC with one message per line on stdio. Codex reads its own config, `AGENTS.md` files, skills and
+MCP servers as in its CLI, and signs in on its own (ChatGPT); Jig never reads its credentials.
+
+- **Protocol types** are generated from the CLI (`codex app-server generate-ts`) into
+  `main/engine/codex-protocol/`, with the version they came from in `codex-protocol/version.ts`
+  (`CODEX_PROTOCOL_VERSION`). `npm run codex:protocol [path-to-codex]` regenerates both after a Codex
+  update; Biome skips the folder. A chat on another Codex version still runs (the normalizer reads
+  messages loosely) and logs the difference.
+- **Start:** `initialize`, `model/list`, then `thread/resume { threadId: engineSessionId }` (a thread
+  that can't resume starts a new one, with a notice) or `thread/start`, both with `cwd`, the model,
+  the approval policy and sandbox of the permission mode, and `developerInstructions` (personal
+  instructions, D-312, then Jig's appended context). The answer becomes `init` (thread id = the chat's
+  `engineSessionId`, the model Codex picked). A model family (`sol`) resolves with
+  `resolveChatGptModel` against `model/list` (D-310).
+- **Turns:** `send(text, attachments)` → `turn/start` with text and image items (images as data URLs;
+  document text as text; PDFs aren't sent, with a notice), `summary: "auto"` and the pending
+  overrides: `setModel`, `setEffort` and `setPermissionMode` apply to the next turn (Codex keeps them
+  for the turns after). A message sent with `priority: "next"` while a turn runs → `turn/steer`.
+  `interrupt()` → `turn/interrupt`. `models()` is `model/list` (with each model's reasoning levels).
+  `contextUsage()` is the last request's tokens against the model's window
+  (`thread/tokenUsage/updated`). `close()` → `thread/unsubscribe`, then the process is killed.
+  `commands()` is empty; MCP reconnect and toggle, background tasks and rewinding aren't available
+  (the capabilities hide them).
+- **Permission modes:**
+
+  | Mode | `approvalPolicy` | Sandbox | Effect |
+  |---|---|---|---|
+  | `default` (Ask before changes) | `on-request` | read-only | reads run; Codex asks before writing or leaving the sandbox |
+  | `acceptEdits` | `on-request` | workspace-write (+ extra folders) | edits run; file changes Codex still asks about are accepted |
+  | `bypassPermissions` (Don't ask) | `never` | workspace-write with network | Codex never asks |
+  | `plan` | – | – | not offered (`capabilities.planMode` is off); asks like `default` |
+
+- **Approvals:** `item/commandExecution/requestApproval` and `item/fileChange/requestApproval` become
+  permission cards through `askPermission` (Bash, or Edit/Write with the file). Allow → `accept`,
+  always → `acceptForSession`, deny → `decline`. `serverRequest/resolved` (Codex settled it, e.g. the
+  turn ended) cancels the card. MCP elicitations are declined and other requests refused until the
+  later phases handle them.
+- **Events** (`codexNormalize.ts`, `CodexNormalizer`, pure; unknown messages are ignored):
+
+  | Codex | `EngineEvent` |
+  |---|---|
+  | `agentMessage` item, `item/agentMessage/delta` | text `block_start` / `block_delta` / `block_end` |
+  | `reasoning` summary or text deltas | thinking blocks (nothing when Codex keeps its reasoning to itself) |
+  | `commandExecution` item | `tool_use` Bash (`command` without Codex's `powershell -Command` / `bash -lc` wrapper) and its `tool_result` (exit code, declined) |
+  | `fileChange` item | `tool_use` Edit (Write for a new file) per file, `tool_result` with the diff |
+  | `mcpToolCall`, `dynamicToolCall` | `tool_use` `mcp__<server>__<tool>`, result text and images |
+  | `webSearch`, `imageView`, `contextCompaction` | WebSearch, Read, `compacted` |
+  | `turn/completed` | open blocks end, then `result` (this turn's tokens, no cost; interrupted → `stopped`) |
+  | `error` | a notice (`willRetry`: "retrying"); login failures → `error` `not_signed_in` |
+  | `account/updated` without a sign-in | `error` `not_signed_in`; an API key → billing notice |
+  | `mcpServer/startupStatus/updated` | MCP status (failed → a notice) |
+
+  Fixtures recorded from a real signed-in Codex 0.166.0 (paths renamed) are in
+  `main/engine/__fixtures__/codex/`; `codexNormalize.test.ts` replays them. On Windows Codex writes
+  small files with PowerShell commands rather than `apply_patch`, so those show as Bash cards.
+- **Environment:** `codexSessionEnv` removes `OPENAI_API_KEY` and `CODEX_API_KEY` unless
+  `engine.codexAllowApiKey` is on, and `ELECTRON_RUN_AS_NODE` always.
+- **Personal instructions (D-312):** with `engine.codexInstructions` = `claude` (the default),
+  `personalInstructions()` (`codexInstructions.ts`) reads `CLAUDE.md` in Claude Code's config folder
+  (`CLAUDE_CONFIG_DIR`, else `~/.claude`) with its `@imports` followed as Claude Code does (relative
+  to the importing file, `~/` = home, five hops, no cycles, not in code), and the chat gets it as
+  developer instructions. Nothing is written: no copy in `~/.codex`. When Codex's own
+  `$CODEX_HOME/AGENTS.md` says the same, it isn't sent twice. `off` leaves Codex with its own file.
+- **Not in chats:** the Codex engine's `oneShot`, `completer`, `callTool` and `planUsage` refuse;
+  those run on Claude's engine or through `main/providers` (D-294, D-298). Saved Codex conversations
+  come later (`history` is off).
+
 - **`callTool(request, options)`** (`toolCall.ts`): has Claude Code call one of its own tools with
   an exact input, for Jig's routines and artifacts tabs.
   - It runs a hidden session: Haiku, no settings, only that tool, at most 3 turns, not persisted.
@@ -81,7 +153,8 @@ local MCP server later. Routines and Artifacts stay on Claude (Claude's cloud).
 
 - Jig never reads, stores or forwards Claude credentials, and has no login screen.
 - `sessionEnv()` removes `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the session environment
-  unless Settings → Claude Code → Allow API keys is on (`engine.allowApiKey`).
+  unless Settings → Claude Code → Allow API keys is on (`engine.allowApiKey`). Codex chats:
+  `codexSessionEnv()` removes `OPENAI_API_KEY` and `CODEX_API_KEY` unless `engine.codexAllowApiKey`.
 - The init message's `apiKeySource` becomes `meta.authSource`: `none` → `subscription`, anything else
   → `api_key` (a warning is shown in the chat and a badge in its header).
 - Not signed in (assistant error `authentication_failed`, or a result error mentioning `/login`) sets
@@ -114,7 +187,7 @@ final text, reject with a plain message, and time out after 3 minutes ("... didn
   `CHATGPT_FALLBACK_MODELS`. Any family Codex lists resolves (`astra` too); exact slugs and `""` pass
   through unchanged; an alias no model has gives `""` (Codex's default) with a notice (logged).
   `resolveCodexModel(choice)` (`main/providers`) resolves at call time against the current list, so
-  a new release (6.2) is used without a setting changing; `oneShot` uses it, and Codex chats will
+  a new release (6.2) is used without a setting changing; `oneShot` uses it, and Codex chats
   too. Pickers list the families first ("Sol (latest) · now GPT-6.1-Sol", `chatGptModelChoices`),
   then a divider, then the exact versions for pinning one.
 - **Credentials:** Jig never reads `~/.codex/auth.json` or any Codex/ChatGPT token. Sign-in is `codex

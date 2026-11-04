@@ -65,6 +65,8 @@ A new state file is documented here in the same commit that adds it.
 | `engine.provider` | `"claude"` | who runs new chats (D-309): `claude` (Claude Code) or `codex` (OpenAI's Codex, signed in with ChatGPT); a project's `provider` overrides it, and a chat keeps the one it started with. Protected |
 | `engine.codexPath` | `""` | your own `codex` binary; empty = the one on PATH. Protected |
 | `engine.codexModel` | `"sol"` | model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`: always the newest of it, D-310) or an exact slug |
+| `engine.codexInstructions` | `"claude"` | your personal instructions in Codex chats (D-312): `claude` = Claude Code's `CLAUDE.md` with its `@imports`, as developer instructions; `off` = only Codex's own `AGENTS.md` |
+| `engine.codexAllowApiKey` | `false` | keep `OPENAI_API_KEY` / `CODEX_API_KEY` in Codex chats' environment (pay-as-you-go). Protected |
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |
 | `engine.defaultModel` | `"opus"` | new chats (D-207); `opusplan` = Opus only in Plan mode, Sonnet otherwise; empty follows Claude Code; an explicit project model overrides it |
 | `engine.subagentModel` | `"sonnet"` | Claude Code subagent fallback; explicit invocation/agent models win; empty respects existing Claude settings/environment |

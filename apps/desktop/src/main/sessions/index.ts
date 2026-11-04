@@ -150,6 +150,8 @@ export function startSessions(): void {
         claudePath: engine.claudePath,
         codexPath: engine.codexPath,
         allowApiKey: engine.allowApiKey,
+        codexAllowApiKey: engine.codexAllowApiKey,
+        codexInstructions: engine.codexInstructions,
         // Claude's az runs with the active tenant's sign-in (D-285); API keys stay stripped.
         env: {
           ...withAzureEnv(sessionEnv(process.env, engine.allowApiKey)),

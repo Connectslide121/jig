@@ -22,9 +22,11 @@ describe("getEngine", () => {
     expect(codex.capabilities.planMode).toBe(false);
   });
 
-  it("says Codex chats aren't available until there is a Codex engine", async () => {
+  it("runs Codex chats on the Codex engine and Claude's on Claude's", async () => {
     vi.stubEnv("JIG_ENGINE", "");
     const { getEngine } = await import("./index");
-    expect(() => getEngine("codex")).toThrow("Codex chats aren't available yet");
+    expect(getEngine("codex").kind).toBe("codex");
+    expect(getEngine("codex").capabilities.planMode).toBe(false);
+    expect(getEngine().kind).toBe("claude");
   });
 });

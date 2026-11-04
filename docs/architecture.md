@@ -147,6 +147,9 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
   project, `engine.provider`) and keeps it for life. `Engine.capabilities` (`ENGINE_CAPABILITIES`)
   says what each provider's chats can do, so the UI hides what a provider lacks. Both drive an
   official, unmodified CLI; Jig never runs an agent loop of its own.
+- `CodexEngine` runs one `codex app-server` per chat (JSON-RPC on stdio, types generated from the
+  CLI into `engine/codex-protocol/`); `codexNormalize.ts` turns its notifications into the same
+  `EngineEvent`s, so commands, edits and MCP calls show on Claude's cards (D-311).
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.

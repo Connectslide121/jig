@@ -43,8 +43,14 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
 - [x] ChatGPT model families (Sol, Terra, Luna) resolved to their newest version at call time; family
   pickers in Settings → AI features (D-310; unit tests in `shared/providers.test.ts`,
   `aiFeatures.test.ts`, e2e in `e2e/ai.spec.ts`).
-- [ ] Codex chats B–E: the Codex engine over `codex app-server`, Jig's tools as a local MCP server,
-  the provider picker and Codex-aware chat UI, plan mode/questions/history/skills (queued tasks).
+- [x] Codex chats B: `CodexEngine` over `codex app-server` (thread start/resume, turns, steer,
+  interrupt, per-turn model/effort/mode, approvals as permission cards), `codexNormalize.ts` onto
+  Claude's cards, protocol types generated from Codex 0.166.0, personal instructions from CLAUDE.md
+  (D-311, D-312; unit tests in `codexNormalize.test.ts` with recorded fixtures,
+  `codexInstructions.test.ts`, `engine/index.test.ts`).
+- [ ] Codex chats C–E: Jig's tools as a local MCP server, the provider picker and Codex-aware chat UI
+  (with the `engine.codexInstructions` / `engine.codexAllowApiKey` settings), plan mode/questions/
+  history/skills (queued tasks).
 
 ## Later
 

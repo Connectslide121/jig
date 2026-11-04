@@ -4139,3 +4139,61 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   patterns, caption translation, add-ons' short answers), Terra for Sonnet (check, release notes,
   add-ons' other questions), Sol for Opus (tour, compare attempts, standup). New Codex chats default
   to `sol` (`engine.codexModel`, D-309).
+
+## D-311: The Codex chat engine runs `codex app-server`, mapped onto Claude's cards
+
+- Status: accepted. Task Codex chat B (Jon's plan "Codex chats in Jig", phase B, 2026-11-04): a chat
+  whose provider is Codex (D-309) runs on OpenAI's Codex. The choices below are Claude's, on my own,
+  unless they come from the plan.
+- **`codex app-server`, one per chat** (plan): the JSON-RPC mode OpenAI's own IDE extensions use,
+  over stdio, one process and one thread per chat (`CodexEngine`, `main/engine/codex.ts`). It drives
+  the user's own, unmodified `codex` (`engine.codexPath` or PATH); Jig doesn't ship it (D-294).
+- **Generated protocol types, pinned** (plan): `codex app-server generate-ts` output from Codex 0.166.0
+  is committed in `engine/codex-protocol/`, with that version in `version.ts`; `npm run codex:protocol`
+  regenerates both. Jig doesn't ship Codex, so "pinned" means the types record the version they were
+  generated from; a chat on another version runs anyway and logs the difference, because the
+  normalizer reads messages loosely (the protocol is marked experimental and grows often) and ignores
+  what it doesn't know.
+- **Claude's cards, not new ones:** a command is a Bash card (without the `powershell -Command` /
+  `bash -lc` wrapper Codex adds, so you see what it meant to run), a file change an Edit card (Write
+  for a new file) per file with its diff, an MCP call the generic tool card, web search WebSearch.
+  The chat's change summaries, compact step lines and diff views work unchanged.
+- **Permission modes** (plan, with the sandboxes chosen here): Ask before changes = `on-request` with
+  a read-only sandbox, so Codex reads freely and asks before writing (Codex's own default,
+  workspace-write, would edit without asking, which isn't what the mode says). Accept edits =
+  `on-request` with workspace-write, and file-change approvals Codex still sends are accepted. Don't
+  ask = `never` with workspace-write and network. Plan mode is off in Codex's capabilities.
+  Overrides go with the next `turn/start` (Codex keeps them), like model and effort.
+- **Approvals:** Allow → `accept`, Always → `acceptForSession` (Codex remembers it for the thread;
+  Jig writes no rule), Deny → `decline`. Questions and MCP elicitations wait for phase E: elicitations
+  are declined, anything else refused, so Codex never hangs on a request Jig can't show.
+- **Usage, no cost:** a turn's `result` carries the tokens of that turn (the difference of Codex's
+  running totals), cache reads apart, and no cost: ChatGPT plans have no per-token price. The context
+  meter is the last request's size against the model's window. Plan usage stays with D-298.
+- **API keys** (plan): `codexSessionEnv` removes `OPENAI_API_KEY` / `CODEX_API_KEY` unless the new,
+  protected `engine.codexAllowApiKey` is on (separate from Claude's `engine.allowApiKey`: they bill
+  different accounts).
+- **Recorded fixtures:** one real signed-in session (a reply, an approved and a declined command, an
+  interrupt, an apply_patch edit with its approval, an MCP call) is in
+  `engine/__fixtures__/codex/` with paths and machine names replaced; `codexNormalize.test.ts`
+  replays it. Re-record when Codex's messages change.
+
+## D-312: Personal instructions reach Codex chats from CLAUDE.md, without a copy
+
+- Status: accepted. Jon, 2026-11-03 (project note) and task Codex chat B: personal rules have one
+  source. Claude Code gets them through `~/.claude/CLAUDE.md`, which imports another file
+  (`@~/.agents/AGENTS.md`); Codex has no imports. Never a second hand-edited copy, never a path
+  hard-coded in Jig.
+- **Developer instructions, not a synced file** (Claude, on my own): the plan allowed syncing
+  `$CODEX_HOME/AGENTS.md` on launch or passing the text as instructions. Jig passes it: each Codex
+  chat's `thread/start` / `thread/resume` gets `developerInstructions` = your personal instructions,
+  then Jig's appended context. Nothing is written into `~/.codex`, so there is no copy to drift or to
+  overwrite something you wrote there, and Codex used outside Jig is unchanged.
+- **Following imports like Claude Code** (`expandImports`, `codexInstructions.ts`): `@path` relative to
+  the importing file, `@~/…` from home, absolute paths; five hops at most, no cycles; not inside code
+  spans or fenced blocks; an `@word` that names no file stays as written (so e-mail addresses and
+  handles are safe). Claude Code's folder is `CLAUDE_CONFIG_DIR`, else `~/.claude`.
+- **A generic setting:** `engine.codexInstructions` = `claude` (default: someone who uses both wants
+  the same rules in both) or `off`. When Codex's own `AGENTS.md` already holds the same text, it isn't
+  sent twice. The setting shows in Settings with the Codex chat settings (task D).
+

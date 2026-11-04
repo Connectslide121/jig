@@ -1,7 +1,7 @@
 /**
  * Regenerates the Codex app-server protocol types (`codex app-server generate-ts`) into
  * apps/desktop/src/main/engine/codex-protocol and records the Codex CLI version they came from in
- * VERSION. The Codex chat engine compares that version with the running CLI's (D-311). Run it after
+ * version.ts. The Codex chat engine compares that version with the running CLI's (D-311). Run it after
  * updating Codex: `node scripts/codex-protocol.ts [path-to-codex]`.
  */
 import { execFileSync } from "node:child_process";
@@ -17,5 +17,8 @@ if (!version || !/^\d+\.\d+\.\d+/.test(version))
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 execFileSync(codex, ["app-server", "generate-ts", "--out", out], { stdio: "inherit", shell });
-writeFileSync(join(out, "VERSION"), `${version}\n`);
+writeFileSync(
+  join(out, "version.ts"),
+  `// The Codex CLI these types were generated from (npm run codex:protocol).\nexport const CODEX_PROTOCOL_VERSION = "${version}";\n`,
+);
 console.log(`Codex ${version} protocol types written to ${out}`);

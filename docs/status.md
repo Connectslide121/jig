@@ -1,5 +1,15 @@
 # Status
 
+Codex chat engine (2026-11-04, D-311, D-312): a chat whose provider is Codex now runs on OpenAI's
+Codex (`codex app-server`, your ChatGPT sign-in) instead of failing: replies stream, commands show on
+the Bash card, file changes on the Edit/Write cards with their diffs, MCP calls on the tool card, and
+Codex's approvals are the usual permission cards (Allow, Always, Deny). Ask before changes runs Codex
+read-only and asking; Accept edits lets it write in the project; Don't ask never asks. Your personal
+instructions (`~/.claude/CLAUDE.md` with its imports) go with every Codex chat, so one file stays the
+source. There is no way to start a Codex chat from the UI yet (the provider picker comes with task D);
+checked with a script driving the engine against Codex 0.166.0 on Windows (a reply, a command, the
+context meter, the model list, Stop). Needs testing in the app once the picker exists.
+
 ChatGPT model families (2026-11-04, D-310): in **Settings → AI features**, a row on ChatGPT now offers
 Sol, Terra and Luna first ("Terra (latest) · now GPT-6.1 Terra"), then a divider and the exact
 versions for pinning one. A family always runs on its newest version in the list Codex reports, so a

@@ -46,6 +46,10 @@ export interface StartOptions {
   claudePath: string;
   /** Path to the user's own `codex` binary (Codex chats); empty = the one on PATH. */
   codexPath?: string;
+  /** Codex chats: keep OPENAI_API_KEY / CODEX_API_KEY in Codex's environment (D-311). */
+  codexAllowApiKey?: boolean;
+  /** Codex chats: `claude` gives Codex your Claude Code instructions (CLAUDE.md and its imports, D-312). */
+  codexInstructions?: "claude" | "off";
   /** Claude Code suggests the next message after each turn (`suggestion` events). */
   promptSuggestions?: boolean;
   /** Claude Code keeps copies of files before editing them (`rewindFiles`). */
@@ -179,6 +183,24 @@ export function sessionEnv(
     delete env.ANTHROPIC_AUTH_TOKEN;
   }
   // Electron sets this for its own child processes; Claude Code must run as itself.
+  delete env.ELECTRON_RUN_AS_NODE;
+  return env;
+}
+
+/**
+ * Codex's environment: no OpenAI API key unless the user allowed it (`engine.codexAllowApiKey`), so
+ * Codex uses the ChatGPT sign-in it stored itself (Jig never reads that), and nothing Electron set for
+ * its own child processes.
+ */
+export function codexSessionEnv(
+  base: Record<string, string | undefined>,
+  allowApiKey: boolean,
+): Record<string, string | undefined> {
+  const env = { ...base };
+  if (!allowApiKey) {
+    delete env.OPENAI_API_KEY;
+    delete env.CODEX_API_KEY;
+  }
   delete env.ELECTRON_RUN_AS_NODE;
   return env;
 }

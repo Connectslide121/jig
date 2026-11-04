@@ -88,6 +88,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Follow Claude Code, don't reimplement it.**
   - New Claude Code behaviour reaches the UI through `main/engine/normalize.ts`, which turns SDK
     messages into `EngineEvent`s. Unknown messages are ignored, never a crash.
+  - New Codex behaviour reaches the UI through `main/engine/codexNormalize.ts`, onto the same cards
+    (D-311). After updating Codex, run `npm run codex:protocol` to regenerate the protocol types in
+    `engine/codex-protocol/`; never edit them by hand.
   - Lists Claude Code owns (commands, skills, models, MCP servers) come from the running Claude Code,
     not hard-coded lists.
   - The chat should keep matching Claude Code's terminal (`docs/reference/chat.md`).
@@ -108,7 +111,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Never read, copy, store, log or forward Claude, Codex or ChatGPT credentials or tokens.** No login
   UI: sign-in is the official CLI's own flow in a private terminal (`claude auth login`, `codex
   login`). Keep the default that strips `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` from session
-  environments, and `OPENAI_API_KEY` / `CODEX_API_KEY` from Codex's.
+  environments, and `OPENAI_API_KEY` / `CODEX_API_KEY` from Codex's (`codexSessionEnv`).
 - **The user's own tools and credentials** for git, GitHub, Azure, Azure DevOps (`git`, `gh`, `az`).
   Jig does not copy those tools' credentials. The Microsoft meeting sign-in exception is below.
 - **Teams media (D-217):** the official calling SDK runs only in the dedicated sandboxed meeting
