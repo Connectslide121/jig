@@ -364,6 +364,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.8.0 being prepared (2026-11-04): Jig 0.8.0 lets chats run on ChatGPT through the Codex CLI, gives each chat its own page in Claude's browser, and adds local meeting transcripts and noise suppression in calls. Publication not yet verified.
+
 Jig 0.7.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.7.0),
 source/tag `43b923dee9ceec6da0e31038383a981e88b3448d`. Installer: 373,138,754 bytes;
 SHA-256 `9ad4c70dcd0491b34e63b7370d0a39bf099c6b8964f350e592392f0688509393`.
