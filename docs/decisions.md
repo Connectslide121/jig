@@ -4270,6 +4270,7 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   header always shows the chat's mark _(removed by D-340: the composer's provider picker shows it)_. In the Chats list, once any ChatGPT chat exists, every row
   keeps a slot at the far right; ChatGPT chats show their mark there and Claude chats, the default,
   leave it empty (Claude, on my own: a mark on every row would be noise for the common case).
+  _(Amended by D-348: every row shows its provider's mark, Claude's too.)_
 - **Usage** (plan): a Codex chat's turn refreshes the ChatGPT meter (at most every 15 s), not
   Claude's.
 
@@ -5376,3 +5377,13 @@ provider, capabilities and Claude as the default still hold.
   its icon (the label stays in its tooltip and accessible name).
 - **Shift+Tab** in the message box still goes through the modes; the hint under the box still says
   so, and the chip updates with the chat's meta.
+
+## D-348: Every chat in the Chats list shows its provider's mark
+
+- Status: accepted. Amends D-314.
+- **Who:** Jon, 2026-11-04: every row should say who runs the chat, Claude's included, instead of
+  Claude's rows leaving the slot empty (and the slot appearing only once a ChatGPT chat existed).
+- **What:** the far-right slot of every row (`size-3.5`, fixed) always holds
+  `<ProviderMark provider={chatProvider(m)} iconOnly />`: Claude's asterisk or ChatGPT's aperture, in
+  the provider's colour, its name in the tooltip. On hover the pin button still takes the slot's place
+  (`group-hover:hidden`), so the columns stay aligned. The `mixedProviders` gate is gone.

@@ -1,5 +1,9 @@
 # Status
 
+Chats list marks every chat's provider (2026-11-04, D-348, Jon): each row shows Claude's asterisk or
+ChatGPT's aperture at the far right, in one aligned column; hovering a row still shows the pin button
+there.
+
 Permission mode in the chat's header (2026-11-04, D-347, Jon): the message box no longer has its own
 permission button. The mode shows in the chat's header, right after the status (icon and label; only
 the icon in a narrow chat; red for Don't ask, the accent for Accept edits and Plan only), and
@@ -363,7 +367,7 @@ model picker, Claude or ChatGPT (greyed out with a link to Get started while Cod
 It can change until the first message; then it is the chat's mark. ChatGPT chats show ChatGPT's
 models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and hide what Codex can't do
 (rewind and edit-and-resend, fork; Plan only, questions and suggestions came with D-315). The chat's
-mark stays in the composer (no longer in the header, D-340), and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
+mark stays in the composer (no longer in the header, D-340), and every row of the Chats list shows its provider's mark at the far right, Claude's too (D-348). **Settings → Chats**
 (was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
 group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the
 default one badged. A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the

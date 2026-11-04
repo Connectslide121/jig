@@ -194,6 +194,8 @@ test("chat: sessions list across projects and survive a restart", async ({ app, 
   await say(page, "first in two");
   await expect(page.getByTestId("turn-result")).toBeVisible();
   await expect(page.getByTestId("session-first in two")).toBeVisible();
+  // Every row shows its provider's mark, Claude's too (D-348).
+  await expect(page.getByTestId("session-first in two").getByTestId("provider-mark-claude")).toBeVisible();
   await page.waitForTimeout(700);
   await app.close();
   const again = await launchJig(jigHome);
