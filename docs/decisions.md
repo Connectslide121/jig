@@ -4428,3 +4428,40 @@ chat only learned its current task number.
   `jig_set_addon_data`. The tool's description says the same.
 - **Ask for a report (Jon).** A No report or Interrupted row has it in its ⋯ and in its details: the
   same request, sent only to an idle chat.
+
+## D-319: Claude's browser never hangs a chat
+
+Jon, 2026-11-04: now and then a chat sat on a browser tool for over an hour (one: 72 minutes), the
+page in the view looked frozen, and Claude said it wasn't stuck: it can't see time passing. Nothing in
+`main/browser/service.ts` had a time limit: `loadURL` (a dev server rebuilding holds the request),
+`executeJavaScript` (a busy page, a page blocked by a dialog), `capturePage` on the hidden offscreen
+window; page dialogs, `beforeunload`, crashes and hangs weren't handled, and no tool call had a limit.
+
+- **Time limits everywhere (Jon).** A load 30 s, then it is stopped and `jig_browser_open` says "The
+  page didn't finish loading in 30 s (still loading: <url>). The page may be waiting on a dev server;
+  try jig_browser_read or open it again." A page script 15 s; a screenshot 15 s, then `invalidate()`
+  and one more try. Every browser tool call 60 s as a backstop (`guardBrowserTool`). A result says
+  how long it took from 3 s on. The limits live in `browser/deadline.ts`; `JIG_BROWSER_TIMEOUT_SCALE`
+  shortens them for the e2e tests only.
+- **A script timeout tells a stuck page from a waiting script (Claude, on my own).** After a script
+  times out, `1` gets 3 s: a page that answers only had that script waiting (a promise that never
+  settles) and the call says so; a page that doesn't is stuck and is recreated. Why: recreating a
+  page that is merely waiting on a fetch would lose its state for nothing.
+- **Dialogs answer themselves (Jon); they say OK (Claude, on my own).** `alert` returns, `confirm`
+  returns true, `prompt` its default text, through a script DevTools adds before the page's own; one
+  that still opens is accepted through `Page.javascriptDialogOpening`. `beforeunload` is left anyway.
+  Each one is a console warning ("alert: … (answered OK automatically)"). Why OK: Claude clicked the
+  button that asked, like a person who means it; the console line lets it see what it agreed to.
+- **Crashed or stuck pages are recreated, once a minute (Jon; the limit is Claude's, on my own).** On
+  `render-process-gone`, `unresponsive` or a stuck script, the old renderer is killed and a new page
+  loads the same address. The same address failing again within a minute stays blank, so a page
+  that loops on load can't make every call wait. The call that hit it, or else the next one, starts
+  with what happened. **Claude, on my own:** a crash between calls is a note at the top of the next
+  result rather than a failed call, so a following `jig_browser_open` still works.
+- **Stop abandons the call (Jon).** `JigTool.handler` and `ChatTool.handler` get an `AbortSignal`:
+  the engine's cancellation (`extra.signal` from the Agent SDK and the local MCP server) combined
+  with the chat's own, which `abortJigToolCalls` aborts on interrupt and when the process ends. The
+  browser tool stops waiting at once; whatever it still runs is bounded by the limits above, so the
+  browser is usable for the next call.
+- **main.log (Jon):** calls of 10 s or more, every timeout, crash, recreated page and dialog, never the
+  page's text.

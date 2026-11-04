@@ -1122,7 +1122,9 @@ export class FakeEngine implements Engine {
               name: `mcp__jig__${name}`,
               input,
             });
-            const result = await toolHandlers![name]!(input).catch((e: Error) => `Error: ${e.message}`);
+            const result = await toolHandlers![name]!(input, signal).catch(
+              (e: Error) => `Error: ${e.message}`,
+            );
             const output = outputText(result);
             const images = outputImages(result);
             onEvent({
@@ -1136,6 +1138,8 @@ export class FakeEngine implements Engine {
           };
           const page = await call("jig_browser_open", { url });
           if (/\[1\]/.test(page)) await call("jig_browser_click", { ref: 1 });
+          // "browse … and read it again": the page text after the click (a page that hangs on it).
+          if (/\bread it again\b/i.test(text)) await call("jig_browser_read", {});
           await call("jig_browser_screenshot", {});
           // "browse … at phone and desktop": one screenshot per size, the size is put back after.
           if (/\bphone\b/i.test(text))

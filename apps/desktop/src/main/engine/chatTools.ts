@@ -19,9 +19,13 @@ export function mcpContent(out: ToolOutput): McpToolResult {
 }
 
 /** Runs a tool for an MCP server: a thrown error becomes an error result, never a crash. */
-export async function runChatTool(tool: ChatTool, args: Record<string, unknown>): Promise<McpToolResult> {
+export async function runChatTool(
+  tool: ChatTool,
+  args: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<McpToolResult> {
   try {
-    return mcpContent(await tool.handler(args));
+    return mcpContent(await tool.handler(args, signal));
   } catch (error) {
     return { content: [{ type: "text", text: `Error: ${(error as Error).message}` }], isError: true };
   }

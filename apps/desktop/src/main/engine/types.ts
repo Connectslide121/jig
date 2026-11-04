@@ -45,7 +45,8 @@ export interface ChatTool {
   readOnly?: boolean;
   /** Claude Code: always in the prompt, never behind its tool search (D-158). */
   alwaysLoad?: boolean;
-  handler: (args: Record<string, unknown>) => Promise<ToolOutput>;
+  /** `signal` aborts when the call is cancelled (the chat stopped, the turn was interrupted). */
+  handler: (args: Record<string, unknown>, signal?: AbortSignal) => Promise<ToolOutput>;
 }
 
 /** One MCP server's worth of Jig tools for a chat (`jig`, `jig-builder`). */

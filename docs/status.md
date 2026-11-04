@@ -1259,6 +1259,18 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
+- **Claude's browser never hangs (D-319).** Covered by `e2e/browser-hangs.spec.ts` (a load that never
+  finishes, `alert`/`confirm` on load, a page stuck in a loop). Watch for, in real chats:
+  - A browser call that waits on a rebuilding dev server ends after about 30 s with "The page didn't
+    finish loading in 30 s…", and no browser call runs longer than about a minute.
+  - Results of slow calls end with "(took N s)"; main.log (`[browser]`) lists calls of 10 s or more,
+    timeouts, crashes, recreated pages and answered dialogs.
+  - Stop while Claude is on a browser tool ends the turn at once, and the next browser call works.
+  - A page whose `confirm()` Claude shouldn't accept (a delete): dialogs are answered OK on their own,
+    and only the console says so.
+  - Screenshots in a hidden Jig ("couldn't take a screenshot … didn't paint a frame") should be rare;
+    if they come often, the offscreen frame stall needs another fix.
+
 - **Azure tenants (phase 24, D-282–D-286)**, only tried with a fake `az`. With a real second tenant
   (another account, or another Entra tenant of yours):
   - Add tenant… In the browser (D-316): your default browser opens, not Windows' Microsoft account

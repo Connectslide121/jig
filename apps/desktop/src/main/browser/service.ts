@@ -3,7 +3,8 @@ import type { BrowserInput, BrowserState, ConsoleEntry, NetworkEntry } from "../
 import { isNetworkError, normalizeUrl, redactHeaders, VIEWPORTS } from "../../shared/browser";
 import { markHelperWindow } from "../appWindows";
 import { logger } from "../log";
-import { focusScript, locateScript, SNAPSHOT_SCRIPT } from "./pageScripts";
+import { LIMITS, secs, TimeoutError, withTimeout } from "./deadline";
+import { DIALOG_MARK, DIALOG_SCRIPT, focusScript, locateScript, SNAPSHOT_SCRIPT } from "./pageScripts";
 
 const log = logger("browser");
 const PARTITION = "persist:jig-browser";
@@ -26,6 +27,10 @@ export interface BrowserEvents {
  * Claude's browser: one offscreen page in its own session (cookies and storage apart from Jig),
  * rendered to frames for the Browser view, driven with real input events so pages behave as with a
  * person. Pop-ups open in place; downloads and permission requests (camera, location…) are refused.
+ *
+ * Nothing here waits for ever (D-319): loads, page scripts and captures have time limits; page dialogs
+ * answer themselves; a page that crashes or stops responding is recreated, and the next tool call
+ * hears about it (`takeNotice`).
  */
 export class BrowserService {
   private window: BrowserWindow | undefined;
@@ -36,6 +41,11 @@ export class BrowserService {
   private console: ConsoleEntry[] = [];
   private network: NetworkEntry[] = [];
   private viewport: { width: number; height: number } = { ...VIEWPORTS.desktop };
+  /** Aborted when the current page is gone (crashed, hung and recreated, closed): its waits stop. */
+  private gone = new AbortController();
+  /** What happened to the page since the last tool call (a crash, a recreated page), for Claude. */
+  private notice: string | undefined;
+  private lastRecovery: { url: string; at: number } | undefined;
 
   constructor(private readonly events: BrowserEvents) {}
 
@@ -81,7 +91,10 @@ export class BrowserService {
     });
     markHelperWindow(window);
     this.window = window;
+    this.gone = new AbortController();
     const c = window.webContents;
+    /** Events of a page that was replaced since (one we crashed while recreating it) don't count. */
+    const current = () => this.window === window;
     c.setFrameRate(15);
     c.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     // The session outlives the window (a reopened browser uses it again): one listener is enough.
@@ -108,17 +121,23 @@ export class BrowserService {
     c.on("console-message", (details) => {
       // Electron's own development warnings are not the page's.
       if (details.message.includes("Electron Security Warning")) return;
+      if (details.message.startsWith(DIALOG_MARK)) {
+        try {
+          const d = JSON.parse(details.message.slice(DIALOG_MARK.length)) as Record<string, string>;
+          this.dialog(`${d.kind}: ${d.message} (answered ${d.answer} automatically)`, d.kind ?? "dialog");
+        } catch {}
+        return;
+      }
       const level = (["log", "info", "warning", "error"] as const).includes(details.level as never)
         ? (details.level as ConsoleEntry["level"])
         : "log";
-      this.console.push({
+      this.addConsole({
         level,
         message: details.message.slice(0, 2000),
         source: details.sourceId,
         line: details.lineNumber,
         at: new Date().toISOString(),
       });
-      if (this.console.length > MAX_CONSOLE) this.console.splice(0, this.console.length - MAX_CONSOLE);
       if (level === "error") this.changed();
     });
     for (const e of [
@@ -131,26 +150,50 @@ export class BrowserService {
       c.on(e as never, this.changed);
     c.on("did-fail-load", (_e, code, description, url, isMainFrame) => {
       if (isMainFrame && code !== -3)
-        this.console.push({
+        this.addConsole({
           level: "error",
           message: `Couldn't load ${url}: ${description} (${code})`,
           at: new Date().toISOString(),
         });
       this.changed();
     });
+    // A page that wants to stay ("Leave site?") is left anyway: nobody is there to answer.
+    c.on("will-prevent-unload", (event) => {
+      event.preventDefault();
+      this.dialog("beforeunload: the page asked to stay; it was left anyway", "beforeunload");
+    });
+    c.on("render-process-gone", (_event, details) => {
+      if (current() && details.reason !== "clean-exit") this.recover(`The page crashed (${details.reason})`);
+    });
+    c.on("unresponsive", () => {
+      if (current()) this.recover("The page stopped responding");
+    });
     window.on("closed", () => {
+      if (!current()) return;
       this.window = undefined;
+      this.gone.abort(new Error("Claude's browser was closed"));
       this.changed();
     });
     this.captureNetwork(c);
     return c;
   }
 
+  private addConsole(entry: ConsoleEntry): void {
+    this.console.push(entry);
+    if (this.console.length > MAX_CONSOLE) this.console.splice(0, this.console.length - MAX_CONSOLE);
+  }
+
+  /** A dialog answered by itself: on the console for Claude, and in main.log (without its text). */
+  private dialog(message: string, kind: string): void {
+    log.info(`A page ${kind} dialog was answered automatically`);
+    this.addConsole({ level: "warning", message: message.slice(0, 2000), at: new Date().toISOString() });
+  }
+
   /**
    * The page's requests: the log comes from the session's `webRequest` events (every request, whatever
    * renderer process the page is in): method, URL, type, status, time, headers with credentials
    * redacted. Chromium's DevTools protocol (`webContents.debugger`) is only used to fetch a response
-   * body when asked.
+   * body when asked, and to answer page dialogs.
    */
   private captureNetwork(c: WebContents): void {
     const web = c.session.webRequest;
@@ -212,6 +255,10 @@ export class BrowserService {
       const enable = (async () => {
         await c.loadURL("about:blank").catch(() => {});
         await c.debugger.sendCommand("Network.enable");
+        // Dialogs never block the page: answered in it before its own scripts run, and one that still
+        // opens (from a frame the script missed) is accepted through DevTools.
+        await c.debugger.sendCommand("Page.enable");
+        await c.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", { source: DIALOG_SCRIPT });
       })().catch(() => {});
       this.bodiesReady = Promise.race([enable, new Promise<void>((r) => setTimeout(r, 3000))]);
       // A navigation to another site moves the page to a new renderer: enable it there too.
@@ -223,9 +270,23 @@ export class BrowserService {
       c.debugger.on("message", (_event, method: string, params: any) => {
         if (method === "Network.responseReceived" && params.response?.url)
           this.bodyIds.set(`${params.response.url}`, String(params.requestId));
+        if (method === "Page.javascriptDialogOpening") {
+          void c.debugger
+            .sendCommand("Page.handleJavaScriptDialog", {
+              accept: true,
+              promptText: params.defaultPrompt ?? "",
+            })
+            .catch(() => {});
+          this.dialog(
+            `${params.type}: ${String(params.message ?? "").slice(0, 500)} (answered OK automatically)`,
+            String(params.type),
+          );
+        }
       });
     } catch (error) {
       log.warn("Response bodies unavailable", error);
+      // Without DevTools, dialogs are answered from the moment the document is ready.
+      c.on("dom-ready", () => void c.executeJavaScript(DIALOG_SCRIPT).catch(() => {}));
     }
   }
 
@@ -260,10 +321,11 @@ export class BrowserService {
     const c = this.contents;
     if (!requestId || !c) return { ...e, bodyNote: "The body is no longer available." };
     try {
-      const r = (await c.debugger.sendCommand("Network.getResponseBody", { requestId })) as {
-        body: string;
-        base64Encoded: boolean;
-      };
+      const r = (await withTimeout(
+        c.debugger.sendCommand("Network.getResponseBody", { requestId }),
+        LIMITS.script,
+        "body",
+      )) as { body: string; base64Encoded: boolean };
       if (r.base64Encoded) return { ...e, bodyNote: `Binary body (${e.mimeType || "unknown type"}).` };
       return {
         ...e,
@@ -293,16 +355,16 @@ export class BrowserService {
   }
 
   /** Waits until the page stops loading (and a moment for scripts), at most `timeoutMs`. */
-  private async settle(timeoutMs = 15_000): Promise<void> {
+  private async settle(timeoutMs = LIMITS.settle): Promise<void> {
     const c = this.contents;
     if (!c) return;
     await new Promise((r) => setTimeout(r, 250));
-    if (c.isLoading())
+    if (!c.isDestroyed() && c.isLoading())
       await new Promise<void>((resolve) => {
         const timer = setTimeout(done, timeoutMs);
         function done() {
           clearTimeout(timer);
-          c?.off("did-stop-loading", done);
+          if (!c?.isDestroyed()) c?.off("did-stop-loading", done);
           resolve();
         }
         c.once("did-stop-loading", done);
@@ -310,20 +372,39 @@ export class BrowserService {
     await new Promise((r) => setTimeout(r, 200));
   }
 
-  async open(input: string): Promise<BrowserState> {
+  /**
+   * Loads `url`, at most `LIMITS.load`: a server that holds the request (a dev server rebuilding)
+   * would keep `loadURL` waiting for ever. Then the load is stopped; false says it didn't finish.
+   */
+  private async load(c: WebContents, url: string): Promise<boolean> {
+    const signal = this.gone.signal;
+    const loading = c.loadURL(url);
+    try {
+      await withTimeout(loading, LIMITS.load, "load", signal);
+      return true;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      if (!(error instanceof TimeoutError)) {
+        // A failed load is reported in the state and the console; the page shows Chromium's error.
+        log.debug(`load failed: ${(error as Error).message}`);
+        return true;
+      }
+      log.warn(`A page load didn't finish in ${secs(LIMITS.load)}; stopped it`);
+      loading.catch(() => {});
+      if (!c.isDestroyed()) c.stop();
+      return false;
+    }
+  }
+
+  async open(input: string): Promise<{ state: BrowserState; timedOut: boolean; url: string }> {
     const url = normalizeUrl(input);
     const c = this.ensure();
     this.events.reveal();
     await this.bodiesReady;
-    try {
-      await c.loadURL(url);
-    } catch (error) {
-      // A failed load is reported in the state and the console; the page shows Chromium's error.
-      log.debug(`load failed: ${(error as Error).message}`);
-    }
-    await this.settle();
+    const finished = await this.load(c, url);
+    if (finished) await this.settle();
     this.changed();
-    return this.state();
+    return { state: this.state(), timedOut: !finished, url };
   }
 
   async navigate(action: "back" | "forward" | "reload"): Promise<BrowserState> {
@@ -341,6 +422,91 @@ export class BrowserService {
     return c;
   }
 
+  /**
+   * A script in the page, at most `LIMITS.script`. When it doesn't answer, a trivial script tells
+   * whether only this one waits (a promise that never settles) or the whole page is stuck (a loop, a
+   * blocked renderer): then the page is recreated.
+   */
+  private async run<T>(code: string, what: string): Promise<T> {
+    const c = this.page();
+    try {
+      return (await withTimeout(
+        c.executeJavaScript(code, true),
+        LIMITS.script,
+        "script",
+        this.gone.signal,
+      )) as T;
+    } catch (error) {
+      if (!(error instanceof TimeoutError)) throw error;
+    }
+    log.warn(`A page script (${what}) didn't answer in ${secs(LIMITS.script)}`);
+    await this.responsiveOrRecover(c);
+    throw new Error(
+      `The page didn't answer in ${secs(LIMITS.script)} while ${what} (the script is still waiting, e.g. on a promise that never settles); the page itself still responds.`,
+    );
+  }
+
+  /** Throws (and recreates the page) when the page doesn't run even a trivial script. */
+  private async responsiveOrRecover(c: WebContents): Promise<void> {
+    const alive = await withTimeout(
+      c.executeJavaScript("1", true),
+      LIMITS.probe,
+      "probe",
+      this.gone.signal,
+    ).then(
+      () => true,
+      () => false,
+    );
+    if (alive || c !== this.contents) return;
+    this.recover(`The page stopped responding (no answer for ${secs(LIMITS.script + LIMITS.probe)})`);
+    throw new Error(this.notice ?? "The page stopped responding.");
+  }
+
+  /**
+   * The page crashed or hangs: it is replaced by a new one (in a new renderer process) that loads the
+   * same address again, once: the same page failing again within a minute is left closed. Every wait
+   * on the old page stops, and the next tool call says what happened.
+   */
+  private recover(reason: string): void {
+    const window = this.window;
+    if (!window || window.isDestroyed()) return;
+    const url = window.webContents.getURL();
+    const real = Boolean(url) && !url.startsWith("about:");
+    const again = real && !(this.lastRecovery?.url === url && Date.now() - this.lastRecovery.at < 60_000);
+    this.lastRecovery = real ? { url, at: Date.now() } : undefined;
+    log.warn(`${reason}; recreating the page${again ? " and loading it again" : ""}`);
+    this.window = undefined;
+    this.gone.abort(new Error(reason));
+    try {
+      // Its renderer may be stuck in a loop: end it, so the new page never shares it.
+      window.webContents.forcefullyCrashRenderer();
+    } catch {}
+    window.destroy();
+    this.addConsole({
+      level: "error",
+      message: `${reason}; Jig recreated the page.`,
+      at: new Date().toISOString(),
+    });
+    if (!real) this.notice = `${reason}; it was recreated (blank).`;
+    else if (again) this.notice = `${reason}; it was reloaded (${url}).`;
+    else
+      this.notice = `${reason} again; this time it was left blank. Open it again with jig_browser_open (${url}) once it should work.`;
+    const c = this.ensure();
+    if (again)
+      void (async () => {
+        await this.bodiesReady;
+        if (this.contents === c) await this.load(c, url);
+      })().catch(() => {});
+    this.changed();
+  }
+
+  /** What happened to the page since the last tool call (a crash, a recreated page); read once. */
+  takeNotice(): string | undefined {
+    const notice = this.notice;
+    this.notice = undefined;
+    return notice;
+  }
+
   /** The page as text plus its interactive elements, numbered for click/type. */
   async snapshot(): Promise<{
     title: string;
@@ -349,17 +515,15 @@ export class BrowserService {
     truncated: boolean;
     items: string[];
   }> {
-    return this.page().executeJavaScript(SNAPSHOT_SCRIPT, true);
+    return this.run(SNAPSHOT_SCRIPT, "reading the page");
   }
 
   async click(target: { ref?: number; selector?: string; text?: string }): Promise<string> {
     const c = this.page();
-    const at = (await c.executeJavaScript(locateScript(target), true)) as {
-      x: number;
-      y: number;
-      label: string;
-      tag: string;
-    } | null;
+    const at = await this.run<{ x: number; y: number; label: string; tag: string } | null>(
+      locateScript(target),
+      "finding the element",
+    );
     if (!at)
       throw new Error("No such element on the page (read the page again: refs change after it updates)");
     c.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
@@ -375,9 +539,13 @@ export class BrowserService {
     options: { clear?: boolean; submit?: boolean },
   ): Promise<string> {
     const c = this.page();
-    const ok = await c.executeJavaScript(focusScript(target, options.clear !== false), true);
+    const ok = await this.run<boolean>(focusScript(target, options.clear !== false), "finding the field");
     if (!ok) throw new Error("No such field on the page (read the page again: refs change after it updates)");
-    await c.insertText(text);
+    await withTimeout(c.insertText(text), LIMITS.script, "type", this.gone.signal).catch(async (error) => {
+      if (!(error instanceof TimeoutError)) throw error;
+      await this.responsiveOrRecover(c);
+      throw new Error(`The page didn't take the text in ${secs(LIMITS.script)}.`);
+    });
     if (options.submit) await this.press("Enter");
     else await this.settle();
     return `Typed ${JSON.stringify(text.length > 60 ? `${text.slice(0, 60)}…` : text)}${options.submit ? " and pressed Enter" : ""}.`;
@@ -406,23 +574,45 @@ export class BrowserService {
     let image: Electron.NativeImage;
     if (options.fullPage) {
       const pageHeight = Number(
-        await c.executeJavaScript(
+        await this.run(
           "Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)",
-          true,
+          "measuring the page",
         ),
       );
       const tall = Math.min(Math.max(height, Math.round(pageHeight) || height), 8000);
       this.window?.setContentSize(width, tall);
       await new Promise((r) => setTimeout(r, 400));
       try {
-        image = await c.capturePage();
+        image = await this.capture(c);
       } finally {
         this.window?.setContentSize(width, height);
       }
-    } else image = await c.capturePage();
+    } else image = await this.capture(c);
     let scaled = image.getSize().width > 1280 ? image.resize({ width: 1280 }) : image;
     if (scaled.getSize().height > 7900) scaled = scaled.resize({ height: 7900 });
     return { png: scaled.toPNG().toString("base64"), ...scaled.getSize() };
+  }
+
+  /**
+   * `capturePage`, at most `LIMITS.capture`. A hidden offscreen page sometimes stops making frames
+   * until something forces one: then `invalidate()` and once more, before saying it failed.
+   */
+  private async capture(c: WebContents): Promise<Electron.NativeImage> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await withTimeout(c.capturePage(), LIMITS.capture, "capture", this.gone.signal);
+      } catch (error) {
+        if (!(error instanceof TimeoutError)) throw error;
+      }
+      log.warn(
+        `A screenshot didn't come in ${secs(LIMITS.capture)}${attempt ? "" : "; forcing a frame and trying again"}`,
+      );
+      if (!c.isDestroyed()) c.invalidate();
+    }
+    await this.responsiveOrRecover(c);
+    throw new Error(
+      `Couldn't take a screenshot: the page didn't paint a frame in ${secs(2 * LIMITS.capture)}. Try again, or use jig_browser_read for the text.`,
+    );
   }
 
   /** The current window size (to put it back after trying other sizes). */
@@ -440,9 +630,9 @@ export class BrowserService {
   }
 
   async evaluate(expression: string): Promise<string> {
-    const value = await this.page().executeJavaScript(
+    const value = await this.run(
       `(async () => { const v = await (${expression}); try { return JSON.stringify(v, null, 2); } catch { return String(v); } })()`,
-      true,
+      "running the expression",
     );
     return typeof value === "string" ? value.slice(0, 20_000) : String(value);
   }
@@ -496,8 +686,11 @@ export class BrowserService {
     this.frameTimer = undefined;
     this.networkTimer = undefined;
     this.pending = undefined;
-    this.window?.destroy();
+    const window = this.window;
     this.window = undefined;
+    this.gone.abort(new Error("Claude's browser was closed"));
+    window?.destroy();
+    this.notice = undefined;
     this.console = [];
     this.network = [];
     this.bodyIds.clear();

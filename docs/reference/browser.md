@@ -70,6 +70,24 @@ Console and Network remain available for inspection (D-226).
   `«redacted»`; response bodies are fetched only when asked (at most 20k characters, while Chromium
   still has them). The view's Network button lists them (click one for headers and body); a badge
   counts failed requests and HTTP errors.
+- **Never waits for ever (D-319, `deadline.ts`):** a load stops after 30 s (`jig_browser_open` says
+  "The page didn't finish loading in 30 s (still loading: <url>)…"), a script in the page
+  (read, click, type, eval, measuring a full page) gives up after 15 s, a screenshot after 15 s, then
+  `invalidate()` and 15 s more. Every tool call has a 60 s backstop and ends when the chat is stopped
+  or the turn interrupted (the call's `AbortSignal`, below). A result says how long it took from 3 s
+  on (`(took 12 s)`).
+- **Dialogs answer themselves:** a script added through DevTools before the page's own
+  (`Page.addScriptToEvaluateOnNewDocument`, `DIALOG_SCRIPT`) makes `alert` return, `confirm` return
+  OK and `prompt` return its default text; a dialog that still opens is accepted through
+  `Page.javascriptDialogOpening`. `beforeunload` ("Leave site?") is left anyway (`will-prevent-unload`).
+  Each one is a console warning (`alert: Saved (answered OK automatically)`).
+- **Crashes and stuck pages:** on `render-process-gone` or `unresponsive`, or when a script times out
+  and even `1` doesn't answer in 3 s, the page is replaced by a new one (the old renderer is killed)
+  that loads the same address again, once per minute: the same address failing again stays blank.
+  Waits on the old page stop at once; the call (or the next one) starts with what happened ("The page
+  stopped responding …; it was reloaded (<url>)"), and the console has an error line for it.
+- **main.log:** browser calls of 10 s or more, every timeout, crash, recreated page and answered
+  dialog (the kind only, never the page's text or contents).
 - **Sizes:** desktop 1280×800 (default), tablet 820×1180 and phone 390×844, or any size from the tool.
   The window is offscreen, so resizing never moves anything on your screen.
 
@@ -100,4 +118,6 @@ together with `jig_terminal_run` for the dev server.
 
 `browse <url>` in a chat: the fake engine calls `jig_browser_open`, clicks element `[1]` if there is
 one, and takes a screenshot; with "phone" in the message it also takes `sizes: ["phone","desktop"]`
-(`e2e/browser.spec.ts`).
+(`e2e/browser.spec.ts`). With "read it again" it also reads the page after the click
+(`e2e/browser-hangs.spec.ts`: a load that never finishes, `alert`/`confirm` on load, a click that
+loops for ever, with `JIG_BROWSER_TIMEOUT_SCALE=0.2`).

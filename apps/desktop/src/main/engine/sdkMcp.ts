@@ -19,7 +19,8 @@ export function sdkMcpServers(servers: Record<string, ChatToolServer>): Record<s
             t.name,
             t.description,
             t.shape,
-            (args) => runChatTool(t, args as Record<string, unknown>),
+            (args, extra) =>
+              runChatTool(t, args as Record<string, unknown>, (extra as { signal?: AbortSignal })?.signal),
             t.alwaysLoad ? { alwaysLoad: true } : undefined,
           ),
         ),

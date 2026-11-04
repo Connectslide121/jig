@@ -24,7 +24,7 @@ export function startBrowser(): void {
   handle("browser.state", () => browser.state());
   handle("browser.watch", ({ on }) => browser.watch(on));
   handle("browser.navigate", async ({ url, action }) =>
-    url ? browser.open(url) : browser.navigate(action ?? "reload"),
+    url ? (await browser.open(url)).state : browser.navigate(action ?? "reload"),
   );
   handle("browser.input", (event) => browser.input(event));
   handle("browser.resize", ({ width, height }) => browser.resize(width, height));

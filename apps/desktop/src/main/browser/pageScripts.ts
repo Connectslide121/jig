@@ -69,3 +69,25 @@ export function focusScript(target: { ref?: number; selector?: string }, clear: 
   return true;
 })()`;
 }
+
+/** What the dialog script's console lines start with (an invisible separator, then a tag). */
+export const DIALOG_MARK = "⁣jig-dialog ";
+
+/**
+ * Runs before the page's own scripts in every document (DevTools `addScriptToEvaluateOnNewDocument`):
+ * `alert`, `confirm` and `prompt` answer at once (OK; a prompt's default text) instead of opening a
+ * dialog nobody sees that would block the page, and say so on the console for Claude (D-319).
+ */
+export const DIALOG_SCRIPT = `(() => {
+  if (window.__jigDialogs) return;
+  Object.defineProperty(window, "__jigDialogs", { value: true });
+  const say = (kind, message, answer) =>
+    console.warn(${JSON.stringify(DIALOG_MARK)} + JSON.stringify({ kind, message: String(message === undefined ? "" : message).slice(0, 500), answer }));
+  window.alert = function alert(message) { say("alert", message, "OK"); };
+  window.confirm = function confirm(message) { say("confirm", message, "OK"); return true; };
+  window.prompt = function prompt(message, value) {
+    const text = value === undefined || value === null ? "" : String(value);
+    say("prompt", message, text ? JSON.stringify(text) : "empty");
+    return text;
+  };
+})()`;

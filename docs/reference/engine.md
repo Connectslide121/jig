@@ -327,7 +327,11 @@ Attached to every real session, through the engine-neutral registry (D-313): `re
 (`{ instructions, tools: ChatTool[] }`: name, zod shape, handler, `readOnly`, `alwaysLoad`), and the
 session hands `{ jig: … }` (a builder chat: `{ "jig-builder": … }`) to the engine as
 `StartOptions.toolServers`. Helpers in `chatTools.ts`: `runChatTool` (output → MCP text and image
-blocks, a thrown error → an error result), `isReadOnlyChatTool`, `toolHandlersOf` (the fake engine). Tools: `jig_list_addons` (the add-on catalog) and
+blocks, a thrown error → an error result), `isReadOnlyChatTool`, `toolHandlersOf` (the fake engine).
+A handler gets an `AbortSignal` (D-319): the engine's own cancellation (the Agent SDK's and the local
+MCP server's `extra.signal`, the fake engine's turn signal) combined with the chat's, which
+`abortJigToolCalls(id)` aborts when the chat is interrupted (Stop) or its process ends; a tool that
+can wait long (Claude's browser) gives up then. Tools: `jig_list_addons` (the add-on catalog) and
 `jig_request_build { goal, addonId? }` (starts the builder). Handlers are set with
 `setJigToolHandlers()` by the add-on host (phase 6) and the builder (phase 8). The appended system
 prompt tells Claude to use `jig_request_build` instead of editing Jig's files itself. It also tells Claude what an add-on can be (a whole module, with the D-215 abilities), so the goal it

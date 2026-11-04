@@ -26,6 +26,7 @@ import {
   type SlashCommandInfo,
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import { abortJigToolCalls } from "../engine/jigTools";
 import type { ChatToolServer, Engine, EngineSession } from "../engine/types";
 import { logger } from "../log";
 import { readJson, writeJson } from "../state/jsonStore";
@@ -1051,6 +1052,7 @@ export class SessionManager {
     const live = await this.live(id);
     if (!live.engine) return;
     if (live.state.meta.status === "working") this.friction(live, "interrupt", "stopped Claude mid-turn");
+    abortJigToolCalls(id);
     await live.engine.interrupt().catch((error) => log.warn("Interrupt failed", error));
   }
 
@@ -1147,6 +1149,7 @@ export class SessionManager {
   private stop(live: Live) {
     if (!live.engine) return;
     const engine = live.engine;
+    abortJigToolCalls(live.state.meta.id);
     this.handleEvent(live, { type: "exit" });
     live.engineToken = undefined;
     engine.close();

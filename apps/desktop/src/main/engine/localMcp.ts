@@ -63,7 +63,7 @@ function mcpServerFor(name: string, server: ChatToolServer): McpServer {
         inputSchema: t.shape,
         annotations: { readOnlyHint: Boolean(t.readOnly) },
       },
-      (args: Record<string, unknown>) => runChatTool(t, args),
+      (args: Record<string, unknown>, extra) => runChatTool(t, args, extra.signal),
     );
   return mcp;
 }

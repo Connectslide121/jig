@@ -27,7 +27,11 @@ export interface JigTool {
    * Claude should reach for without a lookup first. Each one costs prompt space in every turn.
    */
   alwaysLoad?: boolean;
-  handler: (args: Record<string, unknown>, meta: SessionMeta) => Promise<ToolOutput>;
+  /**
+   * `signal` aborts when the user stops the chat or interrupts the turn (or the engine cancels the
+   * call): a tool that can wait long gives up then, so Stop never leaves it running (D-319).
+   */
+  handler: (args: Record<string, unknown>, meta: SessionMeta, signal?: AbortSignal) => Promise<ToolOutput>;
 }
 
 let coreTools: JigTool[] = [];
@@ -87,6 +91,25 @@ function tenantSwitchedContext(meta: SessionMeta): string {
   return `The user has since switched Jig's Azure tenant to "${active.label}", but az in this chat still runs with "${started.label}", the tenant this chat started with. Say so when it matters for what they ask; Azure views and new chats use "${active.label}".`;
 }
 
+/** Per chat: aborted (and replaced) when the chat is interrupted or its process ends. */
+const callAborts = new Map<string, AbortController>();
+
+function chatSignal(sessionId: string): AbortSignal {
+  let controller = callAborts.get(sessionId);
+  if (!controller) {
+    controller = new AbortController();
+    callAborts.set(sessionId, controller);
+  }
+  return controller.signal;
+}
+
+/** Stop pressed / process ended: every Jig tool call still running for this chat is abandoned. */
+export function abortJigToolCalls(sessionId: string): void {
+  const controller = callAborts.get(sessionId);
+  callAborts.delete(sessionId);
+  controller?.abort(new Error("The chat was stopped"));
+}
+
 let handlers: JigToolHandlers = {
   listAddons: async () => "No add-ons are installed yet.",
   requestBuild: async () => "Jig's builder is not available in this version yet.",
@@ -133,7 +156,12 @@ export function jigToolServer(meta: SessionMeta): ChatToolServer {
         shape: t.shape,
         readOnly: t.readOnly,
         alwaysLoad: t.alwaysLoad,
-        handler: (args: Record<string, unknown>) => t.handler(args, meta),
+        handler: (args: Record<string, unknown>, signal?: AbortSignal) =>
+          t.handler(
+            args,
+            meta,
+            signal ? AbortSignal.any([signal, chatSignal(meta.id)]) : chatSignal(meta.id),
+          ),
       })),
     ],
   };

@@ -3,7 +3,15 @@ import type { BrowserState } from "../../shared/browser";
 import { networkSummary, VIEWPORTS } from "../../shared/browser";
 import type { JigTool } from "../engine/jigTools";
 import type { ToolOutput } from "../engine/types";
+import { logger } from "../log";
+import { LIMITS, secs, TimeoutError, withTimeout } from "./deadline";
 import type { BrowserService } from "./service";
+
+const log = logger("browser");
+/** Results say how long they took from this long on (ms), so Claude notices time passing. */
+const SHOW_TIME_MS = 3_000;
+/** Calls this long or longer go into main.log (ms). */
+const LOG_TIME_MS = 10_000;
 
 const target = {
   ref: z.number().int().optional().describe("Element number from jig_browser_read, e.g. 4 for [4]"),
@@ -24,12 +32,59 @@ async function pageText(browser: BrowserService): Promise<string> {
   ].join("\n");
 }
 
+const withText = (out: ToolOutput, edit: (text: string) => string): ToolOutput =>
+  typeof out === "string" ? edit(out) : { ...out, text: edit(out.text) };
+
+/**
+ * Every browser tool call has a backstop (`LIMITS.call`) and gives up when the chat is stopped
+ * (D-319): the browser's own waits are limited too, so an abandoned call ends soon by itself and the
+ * browser stays usable. A result says how long it took when that's over a few seconds, and starts
+ * with what happened to the page since the last call (a crash, a recreated page).
+ */
+export function guardBrowserTool(browser: () => BrowserService, tool: JigTool): JigTool {
+  return {
+    ...tool,
+    handler: async (args, meta, signal) => {
+      const started = Date.now();
+      const took = () => Date.now() - started;
+      const timing = () => (took() >= SHOW_TIME_MS ? `(took ${secs(took())})` : "");
+      let out: ToolOutput;
+      try {
+        out = await withTimeout(tool.handler(args, meta, signal), LIMITS.call, "call", signal);
+      } catch (error) {
+        let message = (error as Error).message;
+        if (error instanceof TimeoutError && error.label === "call") {
+          log.warn(`${tool.name} didn't finish in ${secs(LIMITS.call)}; abandoned it`);
+          message = `${tool.name} didn't finish in ${secs(LIMITS.call)} and was abandoned. The browser is still usable: try again, or jig_browser_read to see where the page is.`;
+        } else if (signal?.aborted) {
+          log.info(`${tool.name} abandoned after ${secs(took())}: the chat was stopped`);
+          message = "Stopped: the chat was stopped while the browser was working.";
+        } else if (took() >= LOG_TIME_MS) log.info(`${tool.name} failed after ${secs(took())}`);
+        const notice = browser().takeNotice();
+        if (notice && !message.includes(notice)) message = `${notice}\n${message}`;
+        throw new Error([message, timing()].filter(Boolean).join(" "));
+      }
+      if (took() >= LOG_TIME_MS) log.info(`${tool.name} took ${secs(took())}`);
+      const notice = browser().takeNotice();
+      const time = timing();
+      if (!notice && !time) return out;
+      return withText(out, (text) =>
+        [notice ? `Note: ${notice}` : "", text, time].filter(Boolean).join("\n"),
+      );
+    },
+  };
+}
+
 /**
  * Claude's browser as tools on the `jig` server: Claude opens the app it is building, reads the page,
  * clicks and types like a person, takes screenshots (shown in the chat) and reads the console. The
  * user watches the same page in the Browser view and can take over at any time.
  */
 export function browserTools(browser: () => BrowserService): JigTool[] {
+  return tools(browser).map((t) => guardBrowserTool(browser, t));
+}
+
+function tools(browser: () => BrowserService): JigTool[] {
   const after = async (what: string): Promise<string> => `${what}\nNow at ${where(browser().state())}`;
   return [
     {
@@ -38,7 +93,9 @@ export function browserTools(browser: () => BrowserService): JigTool[] {
         "Open a web page in Claude's browser, a real Chromium page inside Jig that the user can watch (e.g. the dev server you started: `localhost:5173`, or a file:// page). Returns the page text and its numbered interactive elements. Use it to check UI work yourself: open, click, type, screenshot, read the console.",
       shape: { url: z.string().describe("URL, e.g. http://localhost:3000 or localhost:3000/login") },
       handler: async (args) => {
-        const state = await browser().open(String(args.url));
+        const { state, timedOut, url } = await browser().open(String(args.url));
+        if (timedOut)
+          return `The page didn't finish loading in ${secs(LIMITS.load)} (still loading: ${url}). The page may be waiting on a dev server; try jig_browser_read or open it again.\nNow at ${where(state)}`;
         if (state.errors && !state.title)
           return `Couldn't load ${state.url}. ${JSON.stringify(browser().consoleEntries(false).at(-1)?.message ?? "")}`;
         return pageText(browser());
