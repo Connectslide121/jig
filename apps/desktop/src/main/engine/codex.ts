@@ -1,6 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { createInterface } from "node:readline";
 import {
   ENGINE_CAPABILITIES,
@@ -26,6 +27,7 @@ import type {
   ModelListResponse,
   SandboxMode,
   SandboxPolicy,
+  SkillsListResponse,
   ThreadForkParams,
   ThreadListParams,
   ThreadListResponse,
@@ -43,6 +45,7 @@ import { savedThread, threadMessages } from "./codexHistory";
 import { personalInstructions } from "./codexInstructions";
 import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
+import { claudeSkillFolders, missingSkills } from "./codexSkills";
 import {
   PLAN_APPROVED_PROMPT,
   PLAN_MODE_PROMPT,
@@ -455,6 +458,7 @@ export class CodexEngine implements Engine {
         .request<ModelListResponse>("model/list", {})
         .then((r) => modelsFrom(r.data))
         .catch(() => []);
+      if (options.codexSkills === "claude") await addClaudeSkills(rpc, options);
       const resolved = resolveChatGptModel(options.model, models);
       if (resolved.notice) onEvent({ type: "notice", tone: "warning", text: resolved.notice });
       const policy = codexPolicy(permissionMode, options.additionalDirectories);
@@ -726,6 +730,23 @@ export class CodexEngine implements Engine {
   }
   planUsage(): Promise<RawUsage> {
     return Promise.reject(new Error("ChatGPT's plan usage comes from main/providers."));
+  }
+}
+
+/**
+ * Claude Code's skills for this chat that Codex doesn't have under the same name, as extra skill roots
+ * of this chat's app-server (D-315). A failure only costs those skills.
+ */
+async function addClaudeSkills(rpc: CodexRpc, options: StartOptions): Promise<void> {
+  try {
+    const listed = await rpc.request<SkillsListResponse>("skills/list", { cwds: [options.cwd] });
+    const roots = missingSkills(
+      claudeSkillFolders({ cwd: options.cwd, home: homedir(), plugins: options.plugins }),
+      listed.data.flatMap((entry) => entry.skills.map((s) => s.name)),
+    );
+    if (roots.length) await rpc.request("skills/extraRoots/set", { extraRoots: roots });
+  } catch (error) {
+    log.warn("Claude Code's skills weren't added to a Codex chat", error);
   }
 }
 

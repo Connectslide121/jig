@@ -73,6 +73,8 @@ export interface StartOptions {
   codexAllowApiKey?: boolean;
   /** Codex chats: `claude` gives Codex your Claude Code instructions (CLAUDE.md and its imports, D-312). */
   codexInstructions?: "claude" | "off";
+  /** Codex chats: `claude` adds Claude Code's skills to Codex's own (D-315). */
+  codexSkills?: "claude" | "off";
   /** Claude Code suggests the next message after each turn (`suggestion` events). */
   promptSuggestions?: boolean;
   /** Claude Code keeps copies of files before editing them (`rewindFiles`). */

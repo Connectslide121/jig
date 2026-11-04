@@ -58,6 +58,12 @@ export const ConfigSchema = z.object({
        * its own `~/.codex/AGENTS.md`.
        */
       codexInstructions: z.enum(["claude", "off"]).default("claude"),
+      /**
+       * Claude Code's skills in Codex chats (D-315): `claude` adds the project's and your
+       * `.claude/skills` and Jig's built-in skills to Codex's own (nothing is copied); `off` leaves
+       * Codex with its own skills (`.agents/skills`).
+       */
+      codexSkills: z.enum(["claude", "off"]).default("claude"),
       /** Keep OPENAI_API_KEY / CODEX_API_KEY in Codex chats' environment (pay-as-you-go, D-311). */
       codexAllowApiKey: z.boolean().default(false),
       /** Keep ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN in session environments (pay-as-you-go). */

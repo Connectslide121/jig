@@ -39,6 +39,7 @@ const int = z.number().int();
 /** An Azure tenant's key (`default` = your own az login) and what may be passed to `az login --tenant`. */
 const tenantKey = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
 const tenantInput = z.string().max(253).refine(isTenantInput, "a tenant id (GUID) or a domain");
+const signInMethod = z.enum(["browser", "code"]);
 const meetingAction = z.object({
   id,
   title: z.string().min(1).max(500),
@@ -428,8 +429,10 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     gallerySource: z.string().min(1).max(2000).optional(),
   }),
   "azure.tenants": z.object({ check: z.boolean().optional() }).strict(),
-  "azure.addTenant": z.object({ tenant: tenantInput, label: z.string().max(80).optional() }).strict(),
-  "azure.signInAgain": z.object({ key: tenantKey }).strict(),
+  "azure.addTenant": z
+    .object({ tenant: tenantInput, label: z.string().max(80).optional(), method: signInMethod.optional() })
+    .strict(),
+  "azure.signInAgain": z.object({ key: tenantKey, method: signInMethod.optional() }).strict(),
   "azure.renameTenant": z
     .object({ key: tenantKey, label: z.string().trim().min(1).max(80).optional() })
     .strict(),

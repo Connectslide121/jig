@@ -182,6 +182,7 @@ export function startSessions(): void {
         allowApiKey: engine.allowApiKey,
         codexAllowApiKey: engine.codexAllowApiKey,
         codexInstructions: engine.codexInstructions,
+        codexSkills: engine.codexSkills,
         // Claude's az runs with the active tenant's sign-in (D-285); API keys stay stripped.
         env: {
           ...withAzureEnv(sessionEnv(process.env, engine.allowApiKey)),
@@ -208,9 +209,12 @@ export function startSessions(): void {
       [
         kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
           jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
-        kindHooks.has(meta.kind ?? "") || !getConfig().engine.searchModel ? "" : SEARCH_GUIDANCE,
+        // Codex chats have no subagents and find their skills themselves (D-315).
+        kindHooks.has(meta.kind ?? "") || !getConfig().engine.searchModel || meta.provider === "codex"
+          ? ""
+          : SEARCH_GUIDANCE,
         aiTransparencyGuidance(getConfig(), meta.projectId),
-        skillLibrary().context(getConfig(), meta.projectId),
+        meta.provider === "codex" ? "" : skillLibrary().context(getConfig(), meta.projectId),
       ]
         .filter(Boolean)
         .join("\n"),

@@ -329,6 +329,16 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
           onChange={(on) => void updateConfig({ engine: { codexInstructions: on ? "claude" : "off" } })}
         />
       </SettingRow>
+      <SettingRow
+        label="Claude Code's skills"
+        description="ChatGPT chats can use the skills Claude chats have: .claude/skills in the project and in your home folder, and Jig's built-in skills, besides Codex's own .agents/skills. Nothing is copied. Off: only Codex's own skills."
+      >
+        <Switch
+          label="Claude Code's skills"
+          checked={e.codexSkills === "claude"}
+          onChange={(on) => void updateConfig({ engine: { codexSkills: on ? "claude" : "off" } })}
+        />
+      </SettingRow>
       <TextSetting
         label="Codex binary"
         description="Leave empty to use the `codex` on your PATH, or point to your own."

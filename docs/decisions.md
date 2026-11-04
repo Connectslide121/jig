@@ -4304,3 +4304,14 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   provider's defaults, and continues as a copy: Codex's `thread/fork` stands in for Claude's
   `forkSession`. Jig's own text (its context, the plan-mode instructions, the turn after an approved
   plan) is left out.
+- **Instructions and skills** (plan; details Claude, on my own): Codex reads AGENTS.md and its own
+  skills (`.agents/skills` in the repository, `~/.agents/skills`, checked with 0.166.0) natively, and
+  Jig's appended context was already its developer instructions (D-312). That context now leaves out
+  what a Codex chat can't use (the jig-tester and jig-search subagents, routines and artifacts, the
+  bundled-skill line about Claude Code's Skill tool). The "sync" of `.claude/skills` is a live one
+  instead of copies: with the new `engine.codexSkills` (default `claude`, a switch in Settings →
+  Chats → ChatGPT chats), each Codex chat's app-server gets the skill folders a Claude chat there
+  would have (`.claude/skills` from the folder up to the repository root, `~/.claude/skills`, Jig's
+  built-in skills) through `skills/extraRoots/set`, one root per skill, skipping names Codex already
+  has (Jig's own `jig-release` would otherwise show twice). Copying into `.agents/skills` was left
+  out: it would write into the user's repository and leave two copies to keep in step.

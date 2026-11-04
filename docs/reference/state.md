@@ -66,6 +66,7 @@ A new state file is documented here in the same commit that adds it.
 | `engine.codexPath` | `""` | your own `codex` binary; empty = the one on PATH. Protected |
 | `engine.codexModel` | `"sol"` | model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`: always the newest of it, D-310) or an exact slug |
 | `engine.codexEffort` | `""` | reasoning effort for new Codex chats: `low` … `ultra`, `""` = the model's default (D-314) |
+| `engine.codexSkills` | `"claude"` | Claude Code's skills in Codex chats (D-315): `claude` = the project's `.claude/skills` (its folder up to the repository root), `~/.claude/skills` and Jig's built-in skills, added as extra skill roots of the chat's app-server besides Codex's own `.agents/skills` (nothing copied; a name Codex already has is skipped); `off` = only Codex's own |
 | `engine.codexInstructions` | `"claude"` | your personal instructions in Codex chats (D-312): `claude` = Claude Code's `CLAUDE.md` with its `@imports`, as developer instructions; `off` = only Codex's own `AGENTS.md` |
 | `engine.codexAllowApiKey` | `false` | keep `OPENAI_API_KEY` / `CODEX_API_KEY` in Codex chats' environment (pay-as-you-go). Protected |
 | `engine.allowApiKey` | `false` | keep `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` in sessions (pay-as-you-go!) |

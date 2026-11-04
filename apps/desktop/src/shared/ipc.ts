@@ -14,7 +14,7 @@ import type { AddonCommit, AddonInfo, AddonOriginInfo, GallerySource } from "./a
 import type { AddonAiFeature } from "./aiFeatures";
 import type { ChatArtifact, RemoteArtifact } from "./artifacts";
 import type { AttemptChanges, AttemptRun, AttemptVerdict } from "./attempts";
-import type { TenantsState } from "./azure";
+import type { SignInMethod, TenantsState } from "./azure";
 import type {
   BrowserBounds,
   BrowserInput,
@@ -421,14 +421,19 @@ export interface HostMethods {
    */
   "azure.tenants": { args: { check?: boolean }; result: TenantsState };
   /**
-   * Adds a tenant: `az login --tenant <tenant> --allow-no-subscriptions` in a new folder (the system
-   * browser opens; an empty `tenant` lets you pick in the browser). Progress as `azure.signInProgress`;
-   * `azure.cancelSignIn` stops it. Resolves when signed in. Errors: `busy`, `cancelled`,
-   * `az_missing`, `az_login_failed`, `invalid_args`.
+   * Adds a tenant: `az login --tenant <tenant> --allow-no-subscriptions` in a new folder. `method`
+   * `browser` (default) opens the system browser, never Windows' account window; `code` adds
+   * `--use-device-code` and the code arrives as a progress line (`deviceCodePrompt`). An empty `tenant`
+   * lets you pick in the browser. Progress as `azure.signInProgress`; `azure.cancelSignIn` stops it.
+   * Resolves when signed in. Errors: `busy`, `cancelled`, `az_missing`, `az_login_failed`,
+   * `invalid_args`.
    */
-  "azure.addTenant": { args: { tenant: string; label?: string }; result: TenantsState };
+  "azure.addTenant": {
+    args: { tenant: string; label?: string; method?: SignInMethod };
+    result: TenantsState;
+  };
   /** Signs in to a tenant again (`default`: your own az login, without `--tenant`). Same errors. */
-  "azure.signInAgain": { args: { key: string }; result: TenantsState };
+  "azure.signInAgain": { args: { key: string; method?: SignInMethod }; result: TenantsState };
   /** Stops the sign-in that is running (nothing when none is). */
   "azure.cancelSignIn": { args: void; result: void };
   /**

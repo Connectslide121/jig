@@ -8,15 +8,18 @@ import {
   azEnv,
   DEFAULT_TENANT,
   defaultLabel,
+  deviceCodePrompt,
   emptyTenantsFile,
   errorLine,
   failedCheck,
   findTenant,
+  LOGIN_ENV,
   loginArgs,
   mergeSignIn,
   parseTenantsFile,
   pinnedTenant,
   renameTenant,
+  type SignInMethod,
   type Tenant,
   type TenantInfo,
   type TenantsFile,
@@ -163,25 +166,28 @@ async function checkAll(): Promise<TenantsState> {
  * `az login` for a tenant's folder, its output streamed as `azure.signInProgress`. Resolves when it
  * ended well; rejects with `cancelled`, `az_missing` or `az_login_failed`.
  */
-async function login(key: string, requested: string | undefined): Promise<void> {
+async function login(key: string, requested: string | undefined, method?: SignInMethod): Promise<void> {
   if (signingIn) throw new JigError("busy", "Another sign-in is running. Finish or cancel it first.");
   const dir = tenantConfigDir(paths.azure(), key, join);
   if (dir) await mkdir(dir, { recursive: true });
-  const c = azCommand(loginArgs(requested));
+  const c = azCommand(loginArgs(requested, method));
   const child = spawn(c.file, c.args, {
     windowsHide: true,
     windowsVerbatimArguments: c.verbatim,
     stdio: ["ignore", "pipe", "pipe"],
-    // The newer login asks which subscription to use in the terminal; there is none here.
-    env: { ...process.env, ...envFor(key), ...c.env, AZURE_CORE_LOGIN_EXPERIENCE_V2: "off" },
+    // The browser (or a code), never Windows' account window; no subscription question (LOGIN_ENV).
+    env: { ...process.env, ...envFor(key), ...c.env, ...LOGIN_ENV },
   });
   const run = { key, child, cancelled: false };
   signingIn = run;
   let output = "";
   const progress = (text: string) => {
     output = (output + text).slice(-8000);
-    for (const line of text.split(/\r?\n/))
+    for (const raw of text.split(/\r?\n/)) {
+      // The code to enter comes as a warning in some Azure CLI versions: keep it, without the prefix.
+      const line = deviceCodePrompt(raw) ? raw.replace(/^\s*warning:\s*/i, "") : raw;
       if (line.trim() && !/^warning:/i.test(line.trim())) emit("azure.signInProgress", { key, text: line });
+    }
   };
   child.stdout?.setEncoding("utf8");
   child.stderr?.setEncoding("utf8");
@@ -208,14 +214,18 @@ function stop(run: NonNullable<typeof signingIn>): void {
   else run.child.kill();
 }
 
-async function addTenant(input: { tenant: string; label?: string }): Promise<TenantsState> {
+async function addTenant(input: {
+  tenant: string;
+  label?: string;
+  method?: SignInMethod;
+}): Promise<TenantsState> {
   const requested = input.tenant.trim() || undefined;
   const key = tenantKey(
     requested ?? "",
     file.tenants.map((t) => t.key),
   );
   try {
-    await login(key, requested);
+    await login(key, requested, input.method);
   } catch (error) {
     // A sign-in that didn't finish leaves nothing behind (another one may be running: keep it).
     if (!(error instanceof JigError && error.code === "busy"))
@@ -234,14 +244,14 @@ async function addTenant(input: { tenant: string; label?: string }): Promise<Ten
   return save({ ...file, tenants: [...file.tenants.filter((t) => t.key !== key), tenant] });
 }
 
-async function signInAgain(key: string): Promise<TenantsState> {
+async function signInAgain(key: string, method?: SignInMethod): Promise<TenantsState> {
   if (key === DEFAULT_TENANT) {
-    await login(key, undefined);
+    await login(key, undefined, method);
     const checked = await check(key, file.default);
     return save({ ...file, default: keepName(checked) });
   }
   const tenant = find(key);
-  await login(key, tenant.tenantId ?? tenant.requested);
+  await login(key, tenant.tenantId ?? tenant.requested, method);
   const checked = await check(key, tenant);
   return save({
     ...file,
@@ -321,7 +331,7 @@ export async function startAzure(): Promise<void> {
 
   handle("azure.tenants", (args) => (args?.check ? checkAll() : state()));
   handle("azure.addTenant", (args) => addTenant(args));
-  handle("azure.signInAgain", ({ key }) => signInAgain(key));
+  handle("azure.signInAgain", ({ key, method }) => signInAgain(key, method));
   handle("azure.cancelSignIn", () => {
     if (signingIn) stop(signingIn);
   });

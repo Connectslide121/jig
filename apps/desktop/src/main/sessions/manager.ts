@@ -88,6 +88,7 @@ export interface SessionManagerOptions {
     allowApiKey: boolean;
     codexAllowApiKey?: boolean;
     codexInstructions?: "claude" | "off";
+    codexSkills?: "claude" | "off";
     env: Record<string, string | undefined>;
     promptSuggestions?: boolean;
     fileCheckpoints?: boolean;
@@ -342,6 +343,7 @@ export class SessionManager {
         codexPath: settings.codexPath,
         codexAllowApiKey: settings.codexAllowApiKey,
         codexInstructions: settings.codexInstructions,
+        codexSkills: settings.codexSkills,
         promptSuggestions: settings.promptSuggestions,
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,

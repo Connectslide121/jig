@@ -1,11 +1,14 @@
-import { LogIn, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Copy, ExternalLink, LogIn, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TENANT_LABEL,
+  deviceCodePrompt,
   isRenamedDefault,
   isTenantInput,
+  type SignInMethod,
   type TenantView,
 } from "../../../shared/azure";
+import { copyText } from "../../lib/clipboard";
 import { call, errorMessage, HostError, useHostEvent } from "../../lib/host";
 import {
   Button,
@@ -18,6 +21,7 @@ import {
   Spinner,
   Switch,
 } from "../../ui";
+import { SegmentedSwitch } from "../settings/parts";
 import { needsSignIn, statusText, TenantAvatar, TenantMark } from "./parts";
 import { closeTenantDialog, openAddTenant, switchTenant, useTenantDialog, useTenants } from "./store";
 
@@ -41,12 +45,15 @@ function SignInLog({
   lines,
   error,
   idle,
+  waiting = "Waiting for the sign-in in your browser…",
 }: {
   busy: boolean;
   lines: string[];
   error?: string;
   idle: string;
+  waiting?: string;
 }) {
+  const prompt = busy ? lines.map(deviceCodePrompt).findLast(Boolean) : undefined;
   return (
     <div
       className={cn(
@@ -58,11 +65,13 @@ function SignInLog({
     >
       {error ? (
         <span className="line-clamp-4">{error}</span>
+      ) : prompt ? (
+        <DeviceCode {...prompt} />
       ) : busy ? (
         <>
           <span className="flex items-center gap-2 text-fg">
             <Spinner size="sm" />
-            Waiting for the sign-in in your browser…
+            {waiting}
           </span>
           {lines.slice(-3).map((line, i) => (
             <span key={i} className="truncate font-mono text-2xs">
@@ -74,6 +83,40 @@ function SignInLog({
         <span>{idle}</span>
       )}
     </div>
+  );
+}
+
+/**
+ * The code of a sign-in with a code (`az login --use-device-code`): the page to open and the code to
+ * enter there, in any browser (a private window picks another account), with Copy and Open page.
+ */
+function DeviceCode({ url, code }: { url: string; code: string }) {
+  return (
+    <>
+      <span className="flex items-center gap-2 text-fg">
+        <Spinner size="sm" />
+        <span className="truncate">
+          Open <span className="font-medium">{url.replace(/^https:\/\//, "")}</span> and enter this code:
+        </span>
+      </span>
+      <span className="flex items-center gap-2">
+        <span
+          className="min-w-0 flex-1 truncate font-mono text-lg font-semibold tracking-widest text-fg select-all"
+          data-testid="tenant-device-code"
+        >
+          {code}
+        </span>
+        <Button size="sm" icon={Copy} onClick={() => void copyText(code)}>
+          Copy
+        </Button>
+        <Button size="sm" icon={ExternalLink} onClick={() => void call("app.openExternal", { url })}>
+          Open page
+        </Button>
+      </span>
+      <span className="truncate text-2xs">
+        Signed in to another account there? Paste the link into a private window.
+      </span>
+    </>
   );
 }
 
@@ -92,6 +135,7 @@ export function AddTenantDialog() {
   const [tenant, setTenant] = useState("");
   const [label, setLabel] = useState("");
   const [switchTo, setSwitchTo] = useState(true);
+  const [method, setMethod] = useState<SignInMethod>("browser");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [lines, clearLines] = useSignInLines();
@@ -103,6 +147,7 @@ export function AddTenantDialog() {
     setTenant("");
     setLabel("");
     setSwitchTo(true);
+    setMethod("browser");
     setError(undefined);
     clearLines();
   }, [open, clearLines]);
@@ -121,6 +166,7 @@ export function AddTenantDialog() {
       const state = await call("azure.addTenant", {
         tenant: tenant.trim(),
         label: label.trim() || undefined,
+        method,
       });
       const added = state.tenants.find((t) => !before.has(t.key));
       if (switchTo && added) await switchTenant(added.key);
@@ -164,8 +210,8 @@ export function AddTenantDialog() {
         }}
       >
         <p className="text-muted">
-          Signs in with the Azure CLI in a folder of its own, so it doesn't touch your own az login. Your
-          browser opens for the Microsoft sign-in; Jig never sees the password or tokens.
+          Signs in with the Azure CLI in a folder of its own, so it doesn't touch your own az login. You sign
+          in at Microsoft, in your browser or with a code; Jig never sees the password or tokens.
         </p>
         {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the child. */}
         <label className="flex flex-col gap-1">
@@ -179,7 +225,9 @@ export function AddTenantDialog() {
             data-testid="tenant-input"
           />
           <span className={cn("h-4 text-xs", valid ? "text-hint" : "text-danger")}>
-            {valid ? "Empty: pick the account and tenant in the browser." : "A tenant id (GUID) or a domain."}
+            {valid
+              ? "Empty: pick the account and tenant when you sign in."
+              : "A tenant id (GUID) or a domain."}
           </span>
         </label>
         {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the child. */}
@@ -194,6 +242,24 @@ export function AddTenantDialog() {
             data-testid="tenant-label"
           />
         </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Sign in</span>
+          <SegmentedSwitch
+            label="Sign in"
+            value={method}
+            onChange={busy ? () => undefined : setMethod}
+            options={[
+              { id: "browser", label: "In the browser", disabled: busy && method !== "browser" },
+              { id: "code", label: "With a code", disabled: busy && method !== "code" },
+            ]}
+            testId="tenant-method"
+          />
+          <span className="h-4 truncate text-xs text-hint">
+            {method === "browser"
+              ? "Your default browser opens: pick the account there, or use another one."
+              : "Enter a code in any browser, e.g. a private window for another account."}
+          </span>
+        </div>
         <div className="flex items-center justify-between gap-3">
           <span>Switch to it when signed in</span>
           <Switch
@@ -207,7 +273,12 @@ export function AddTenantDialog() {
           busy={busy}
           lines={lines}
           error={error}
-          idle="Sign in opens your browser. Cancel stops the sign-in."
+          idle={
+            method === "browser"
+              ? "Sign in opens your browser. Cancel stops the sign-in."
+              : "Sign in shows a code to enter at Microsoft. Cancel stops the sign-in."
+          }
+          waiting={method === "browser" ? undefined : "Getting a sign-in code…"}
         />
         <button type="submit" hidden />
       </form>
