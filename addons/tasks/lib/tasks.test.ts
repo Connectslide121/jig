@@ -346,6 +346,63 @@ describe("moving tasks (D-307)", () => {
   });
 });
 
+describe("Claude's moves and chats (addon_tasks_edit)", () => {
+  const edit = (q: Queue, ...edits: unknown[]) => editTasks(q, parseTaskEdits(edits));
+  it("sets whether a queued task continues the chat before it", () => {
+    expect(draw(edit(pic("Ab Cd"), { id: "c", newChat: false }))).toBe("Abcd");
+    expect(draw(edit(pic("Ab Cd"), { id: "b", newChat: true }))).toBe("ABCd");
+    // Right after tasks that ran it may continue their chat, as a drop there does.
+    expect(draw(edit(pic("Ab Cd", "ab"), { id: "c", newChat: false }))).toBe("Abcd");
+    expect(() => edit(pic("Ab Cd"), { id: "a", newChat: false })).toThrow(/first in the queue/);
+    expect(() => edit(pic("Ab Cd", "ab"), { id: "a", newChat: true })).toThrow(/only queued/);
+  });
+  it("moves a task to the top or the bottom", () => {
+    const q = pic("Ab Cd");
+    expect(draw(edit(q, { id: "d", moveTo: "top" }))).toBe("DAbC");
+    expect(draw(edit(q, { id: "a", moveTo: "bottom" }))).toBe("BCdA");
+    expect(draw(edit(q, { id: "a", moveTo: "bottom", newChat: false }))).toBe("BCda");
+    // Nothing ran, so the top has no chat to continue.
+    expect(() => edit(q, { id: "d", moveTo: "top", newChat: false })).toThrow(/can't continue a chat/);
+  });
+  it("moves a task before or after another, into a chat or between chats", () => {
+    const q = pic("Ab Cd");
+    expect(draw(edit(q, { id: "d", moveTo: { after: "a" } }))).toBe("AdbC");
+    expect(draw(edit(q, { id: "d", moveTo: { after: "b" } }))).toBe("AbDC");
+    expect(draw(edit(q, { id: "d", moveTo: { after: "b" }, newChat: false }))).toBe("AbdC");
+    expect(draw(edit(q, { id: "b", moveTo: { before: "c" } }))).toBe("ABCd");
+    expect(() => edit(q, { id: "d", moveTo: { before: "b" }, newChat: true })).toThrow(/continues the chat/);
+    expect(() => edit(q, { id: "d", moveTo: { after: "d" } })).toThrow(/itself/);
+    expect(() => edit(q, { id: "d", moveTo: { after: "x" } })).toThrow(/no task x/);
+  });
+  it("never moves above or into tasks that ran", () => {
+    const q = pic("Ab Cd", "ab");
+    expect(draw(edit(q, { id: "d", moveTo: "top" }))).toBe("AbDC");
+    expect(draw(edit(q, { id: "d", moveTo: "top", newChat: false }))).toBe("AbdC");
+    expect(() => edit(q, { id: "d", moveTo: { before: "b" } })).toThrow(/below the tasks/);
+    expect(() => edit(q, { id: "a", moveTo: "bottom" })).toThrow(/only queued/);
+  });
+  it("moves a whole chat only between chats", () => {
+    const q = pic("Ab Cd E");
+    expect(draw(edit(q, { id: "d", moveTo: "top", wholeChat: true }))).toBe("CdAbE");
+    expect(() => edit(q, { id: "c", moveTo: { after: "a" }, wholeChat: true })).toThrow(/between chats/);
+    expect(() => edit(q, { id: "c", moveTo: "top", wholeChat: true, newChat: false })).toThrow(
+      /between chats/,
+    );
+  });
+  it("applies the edits in order, together with the text changes", () => {
+    const next = edit(pic("Ab Cd"), { id: "d", append: "More.", moveTo: "top" }, { id: "a", newChat: false });
+    expect(draw(next)).toBe("DabC");
+    expect(next.tasks[0]!.prompt).toBe("d\n\nMore.");
+  });
+  it("checks the new options", () => {
+    expect(parseTaskEdits([{ id: "a", newChat: false, moveTo: { after: "b" } }])).toEqual([
+      { id: "a", newChat: false, moveTo: { after: "b" } },
+    ]);
+    expect(() => parseTaskEdits([{ id: "a", moveTo: "middle" }])).toThrow(/moveTo/);
+    expect(() => parseTaskEdits([{ id: "a", wholeChat: true }])).toThrow(/needs a moveTo/);
+  });
+});
+
 describe("requeue", () => {
   it("queues a copy in a new chat", () => {
     const q = queued(["a"], false);

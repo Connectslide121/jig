@@ -57,8 +57,14 @@ went, so you read the results as a table instead of scrolling one long chat.
   chat. Each prompt must stand alone. Claude starts the queue only when you say so, and you review
   the tasks first (it isn't read-only). `addon_tasks_list` shows the queue.
 - **Claude can change queued tasks** (`addon_tasks_edit`, D-287): title, prompt, a paragraph appended
-  to the prompt, or left out. Only queued tasks, and nothing else in the queue changes, so it is safe
-  while the queue runs. Claude uses it instead of rewriting the queue with `jig_set_addon_data`,
+  to the prompt, or left out. Also (D-317) whether a task continues the previous task's chat
+  (`newChat`; the first task in the queue can't, the one right after a task that ran can) and where it
+  is (`moveTo`: `"top"`, `"bottom"`, `{ after: id }`, `{ before: id }`; `wholeChat` moves its whole
+  chat). Moves go through the same `dropSlots` as a drag: inside a chat the task continues it, between
+  chats it starts its own unless `newChat` is false; a whole chat only between chats; nothing above
+  tasks that ran. Edits apply in order, all or nothing, and a refused one says why
+  (`editTasks`/`setNewChat`/`moveTo` in `lib/tasks.ts`). Only queued tasks, and nothing else in the
+  queue changes, so it is safe while the queue runs. Claude uses it instead of rewriting the queue with `jig_set_addon_data`,
   which now refuses to replace a key that changed since the chat read it.
 - **What a running task's chat is told** (`contributes.context`, D-287): its place in the queue, how to
   report, and the titles of the tasks still queued (left-out ones marked), so it doesn't suggest work

@@ -228,7 +228,7 @@ export function addonDataTools(deps: AddonDataDeps): JigTool[] {
     {
       name: "jig_set_addon_data",
       description:
-        "Create or replace one key of an add-on's stored data with a JSON value (e.g. add a workflow to Workflows' `workflows:<projectId>`). Read it first with jig_get_addon_data and keep the shape the add-on uses; replacing a key fails if it changed since you read it (read again, redo the change). Prefer the add-on's own tools when it has one for the change (e.g. addon_tasks_edit for queued tasks). The user sees a card with Undo.",
+        "Create or replace one key of an add-on's stored data with a JSON value (e.g. add a workflow to Workflows' `workflows:<projectId>`). Read it first with jig_get_addon_data and keep the shape the add-on uses; replacing a key fails if it changed since you read it (read again, redo the change). Prefer the add-on's own tools when it has one for the change (e.g. addon_tasks_edit to change, move or regroup queued tasks). The user sees a card with Undo.",
       shape: {
         addonId: z.string(),
         key: z.string().min(1).max(200),

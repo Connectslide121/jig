@@ -103,11 +103,11 @@
       },
       {
         "id": "edit",
-        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, or whether they are left out of the run. Safe while the queue runs: it changes only those tasks, never the queue's status. Use it instead of jig_set_addon_data for the queue. addon_tasks_list gives the ids.",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, whether they are left out of the run, whether they continue the previous task's chat (newChat), and where they are in the queue (moveTo). Moves follow the Queue tab's rules: never above or between tasks that ran; a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue. addon_tasks_list gives the ids.",
         "params": {
           "tasks": {
             "type": "array",
-            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut? }"
+            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut?, newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat) }"
           },
           "project": {
             "type": "string",

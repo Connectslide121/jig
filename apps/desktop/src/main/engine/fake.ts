@@ -993,6 +993,10 @@ export class FakeEngine implements Engine {
             // The Tasks add-on's edit tool: adds a line to the first queued task (t1 in a new queue).
             await call("addon_tasks_edit", { tasks: [{ id: "t1", append: "Don't run the e2e tests." }] });
             await stream(`${msg}:text:0`, "I added the line to the queued task.", signal);
+          } else if (/move the queued task/.test(lower)) {
+            // The edit tool's moves: the second queued task (t2) goes to the top in a chat of its own.
+            await call("addon_tasks_edit", { tasks: [{ id: "t2", moveTo: "top", newChat: true }] });
+            await stream(`${msg}:text:0`, "I moved the task to the top of the queue.", signal);
           } else if (/in the releases data/.test(lower)) {
             await call("jig_get_addon", { addonId: "releases" });
             await call("jig_set_addon_data", {

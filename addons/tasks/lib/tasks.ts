@@ -336,6 +336,25 @@ export interface TaskEdit {
   /** Added to the prompt as a new paragraph. */
   append?: string;
   leftOut?: boolean;
+  /** False continues the chat of the task before it, true starts a new one. */
+  newChat?: boolean;
+  /** Moves the task (or with `wholeChat` its whole chat) by the Queue tab's rules (D-307). */
+  moveTo?: MoveTo;
+  /** `moveTo` takes every task of the task's chat, as dragging a chat card's header does. */
+  wholeChat?: boolean;
+}
+
+/** Where Claude moves a queued task (`addon_tasks_edit`). */
+export type MoveTo = "top" | "bottom" | { after: string } | { before: string };
+
+function parseMoveTo(value: unknown, id: string): MoveTo {
+  if (value === "top" || value === "bottom") return value;
+  const o = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  if (typeof o.after === "string" && o.after.trim()) return { after: o.after.trim() };
+  if (typeof o.before === "string" && o.before.trim()) return { before: o.before.trim() };
+  throw new Error(
+    `moveTo for task ${id} must be "top", "bottom", { after: <task id> } or { before: <task id> }`,
+  );
 }
 
 export function parseTaskEdits(value: unknown): TaskEdit[] {
@@ -353,6 +372,12 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
     const append = text(o.append);
     if (append) edit.append = append;
     if (typeof o.leftOut === "boolean") edit.leftOut = o.leftOut;
+    if (typeof o.newChat === "boolean") edit.newChat = o.newChat;
+    if (o.moveTo !== undefined && o.moveTo !== null) edit.moveTo = parseMoveTo(o.moveTo, id);
+    if (o.wholeChat === true) {
+      if (!edit.moveTo) throw new Error(`wholeChat for task ${id} needs a moveTo`);
+      edit.wholeChat = true;
+    }
     if (Object.keys(edit).length === 1) throw new Error(`Say what to change in task ${id}`);
     return edit;
   });
@@ -361,8 +386,9 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
 }
 
 /**
- * Applies edits to queued tasks only; the queue's own state (running, statuses, reports) is left as
- * it is, so this is safe while the queue runs. Throws, changing nothing, when a task isn't queued.
+ * Applies edits to queued tasks only, one after another; the queue's own state (running, statuses,
+ * reports) is left as it is, so this is safe while the queue runs. Throws, changing nothing, when a
+ * task isn't queued or a change breaks the Queue tab's rules (`setNewChat`, `moveTo`).
  */
 export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
   const byId = new Map(queue.tasks.map((t) => [t.id, t]));
@@ -374,19 +400,92 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
         `Task ${e.id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be changed`,
       );
   }
-  const wanted = new Map(edits.map((e) => [e.id, e]));
-  return {
-    ...queue,
-    tasks: queue.tasks.map((t) => {
-      const e = wanted.get(t.id);
-      if (!e) return t;
-      let prompt = e.prompt ?? t.prompt;
-      if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
-      let next: Task = { ...t, prompt, ...(e.title ? { title: e.title } : {}) };
-      if (e.leftOut !== undefined) next = setLeftOut({ ...queue, tasks: [next] }, e.leftOut).tasks[0]!;
-      return next;
-    }),
-  };
+  let next = queue;
+  for (const e of edits) {
+    next = {
+      ...next,
+      tasks: next.tasks.map((t) => {
+        if (t.id !== e.id) return t;
+        let prompt = e.prompt ?? t.prompt;
+        if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
+        let task: Task = { ...t, prompt, ...(e.title ? { title: e.title } : {}) };
+        if (e.leftOut !== undefined) task = setLeftOut({ ...next, tasks: [task] }, e.leftOut).tasks[0]!;
+        return task;
+      }),
+    };
+    if (e.moveTo) next = moveTo(next, e.id, e.moveTo, { newChat: e.newChat, wholeChat: e.wholeChat });
+    else if (e.newChat !== undefined) next = setNewChat(next, e.id, e.newChat);
+  }
+  return next;
+}
+
+/**
+ * Whether a queued task starts its own chat (true) or continues the chat of the task before it, as the
+ * edit dialog's "Continue the chat of the task before" switch does. The task right after a running or
+ * finished one may continue that chat (a drag can drop it there too); the first task in the queue has
+ * no chat before it, so it can't. The tasks after it that continue its chat go with it.
+ */
+export function setNewChat(queue: Queue, id: string, newChat: boolean): Queue {
+  const index = queue.tasks.findIndex((t) => t.id === id);
+  const task = queue.tasks[index];
+  if (!task) throw new Error(`There is no task ${id} in this queue`);
+  if (task.status !== "queued") throw new Error(`Task ${id} has started; only queued tasks can be changed`);
+  if (!newChat && index === 0)
+    throw new Error(`Task ${id} is the first in the queue, so there is no chat before it to continue`);
+  return { ...queue, tasks: queue.tasks.map((t) => (t.id === id ? { ...t, newChat } : t)) };
+}
+
+/** The ids of the chat a task is in (a chat card), in queue order. */
+function chatOf(queue: Pick<Queue, "tasks">, id: string): string[] {
+  const group = chatGroups(queue).find((g) => g.tasks.some((x) => x.task.id === id));
+  return group ? group.tasks.map((x) => x.task.id) : [id];
+}
+
+/**
+ * Moves a queued task, or its whole chat (`wholeChat`), to the top, the bottom, or before or after
+ * another task, through the slots a drag offers (`dropSlots`, D-307): never above or between tasks
+ * that ran. A task that lands inside a chat continues it; between chats it starts its own, unless
+ * `newChat` is false (it then continues the chat above: the end of that chat, or the task that ran
+ * last). A whole chat only lands between chats. Throws with the reason when the place isn't allowed.
+ */
+export function moveTo(
+  queue: Queue,
+  id: string,
+  to: MoveTo,
+  options: { newChat?: boolean; wholeChat?: boolean } = {},
+): Queue {
+  if (!queue.tasks.some((t) => t.id === id)) throw new Error(`There is no task ${id} in this queue`);
+  const ids = options.wholeChat ? chatOf(queue, id) : [id];
+  if (options.wholeChat && options.newChat === false)
+    throw new Error("A whole chat only moves between chats; it can't continue another chat");
+  const slots = dropSlots(queue, ids);
+  const join = options.newChat === false;
+  const rest = withoutTasks(queue.tasks, new Set(ids));
+  const what = options.wholeChat ? `The chat of task ${id}` : `Task ${id}`;
+  let slot: DropSlot | undefined;
+  // The top continues a chat only right below the tasks that ran (the first slot), never further down.
+  if (to === "top") slot = join ? (slots[0]?.join ? slots[0] : undefined) : slots.find((s) => !s.join);
+  else if (to === "bottom") slot = slots.filter((s) => s.join === join).pop();
+  else {
+    const target = "after" in to ? to.after : to.before;
+    if (ids.includes(target)) throw new Error(`${what} can't move next to itself`);
+    const k = rest.findIndex((t) => t.id === target);
+    if (k < 0) throw new Error(`There is no task ${target} in this queue`);
+    const before = "before" in to ? target : rest[k + 1]?.id;
+    const inside = before !== undefined && rest.find((t) => t.id === before)?.newChat === false;
+    if (inside && options.newChat === true)
+      throw new Error(
+        `${what} can't start its own chat there: task ${before} continues the chat above it. Move it between chats, or leave newChat out to join that chat`,
+      );
+    slot = slots.find((s) => s.before === before && s.join === (inside || join));
+  }
+  if (!slot)
+    throw new Error(
+      `${what} can't go there: queued tasks only move below the tasks that are running or finished${
+        options.wholeChat ? ", and a whole chat only between chats" : ""
+      }${join ? ", and the first task in the queue can't continue a chat" : ""}`,
+    );
+  return moveTasks(queue, ids, slot);
 }
 
 /**

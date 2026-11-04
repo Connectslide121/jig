@@ -32,6 +32,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **Run history:** every run (Start until the queue finishes or stops) is kept automatically,
       with its overview table, per-task reports, time and cost. A History list per project opens any
       past run in the same results view. "Clear finished tasks" no longer loses results.
+- [x] **Claude regroups and moves queued tasks** (added 2026-11-04, D-317): `addon_tasks_edit` takes
+      `newChat` and `moveTo` (with `wholeChat`), by the drag-and-drop rules (D-307), so Claude never
+      rewrites the queue with `jig_set_addon_data` to do it.
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

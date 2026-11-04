@@ -72,7 +72,7 @@ task continue the previous task's chat or start its own (`newChat`), and move it
 bottom, before or after a task; `wholeChat` for its whole chat), by the same rules as dragging in the
 Queue tab. A move or chat change the rules don't allow is refused with the reason, changing nothing;
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
-continue the chat before it" or "move t5 to the top". Unit tests cover the rules (not run yet, D-258).
+continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
 Task queue reordering (2026-11-04, D-307): drag a queued task's row, or a chat card's header for the
 whole chat, to a new place in the Queue tab; a line shows where it lands and nothing else moves until

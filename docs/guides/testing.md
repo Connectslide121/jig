@@ -104,6 +104,7 @@ in this order:
 | "run the unit tests" | Claude lists the project's test suites (`addon_tests_list`) and runs `npm:test` (`addon_tests_run`); the run shows in the Tests view (D-244) |
 | "remember in the notes" | Claude adds a project dependency about deferring pipeline improvements until migration, using `jig_notes_add`; all chats in that project see it |
 | "change the queued task" | Claude appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
+| "move the queued task" | Claude moves queued task `t2` to the top of the queue, in a chat of its own, with `addon_tasks_edit` (`moveTo`, `newChat`) |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
