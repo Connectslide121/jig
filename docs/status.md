@@ -1,5 +1,16 @@
 # Status
 
+ChatGPT chats and one-shots hold up better (2026-11-04): a chat whose Codex crashes or is killed now
+says so (exit code or signal, with Codex's last log line) instead of ending silently, and its last
+lines are read first. A message sent just as a turn ends starts the next turn instead of "Codex
+didn't take the message"; a refused turn keeps your model, effort and mode changes for the next one;
+a mode switch while the chat starts applies to its first turn; a failing permission card declines
+Codex's request instead of leaving Codex waiting. On Windows, stopping a chat or a timed-out one-shot
+ends Codex with the commands it started. One-shots keep an answer that came after a "Reconnecting…"
+error, fail when Codex exits badly before finishing, and can't hang past their timeout. ChatGPT's
+sign-in status (Get started, providers) is read with the environment chats get, so a stray
+`OPENAI_API_KEY` no longer reads as signed in. Unit tests and the affected e2e specs pass.
+
 ChatGPT chats in Don't ask run without a sandbox (2026-11-04, D-334): a ChatGPT (Codex) chat in
 **Don't ask** now runs like a Claude chat in that mode, with no sandbox, so Codex's elevated Windows
 sandbox can't leave its commands hanging, and Jig's own tools (`jig_terminal_run`…) run instead of
