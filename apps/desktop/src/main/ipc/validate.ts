@@ -6,6 +6,7 @@ import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { CHAT_MESSAGE_ID, HOSTED_CONTENT_ID, TEAMS_CHAT_ID } from "../../shared/meetingChat";
 import { MEETING_SIZES, MEETING_SLOTS } from "../../shared/meetingLayout";
+import { PRESENCE_BATCH } from "../../shared/meetingPresence";
 import { PROJECT_COLORS } from "../../shared/projects";
 import { AI_PROVIDERS } from "../../shared/providers";
 import { NATURAL_VOICE_IDS, SPEECH_MODEL_IDS } from "../../shared/speech";
@@ -115,6 +116,9 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
       messageId: z.string().regex(CHAT_MESSAGE_ID),
       contentId: z.string().regex(HOSTED_CONTENT_ID),
     })
+    .strict(),
+  "meetings.presence": z
+    .object({ ids: z.array(z.string().regex(/^[0-9a-f-]{36}$/i)).max(PRESENCE_BATCH) })
     .strict(),
   "meetings.openChatFile": z.object({ url: z.url({ protocol: /^https$/ }).max(8192) }).strict(),
   "completion.request": z

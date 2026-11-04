@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CircleDot,
   MessagesSquare,
   Plug,
   RefreshCw,
@@ -17,11 +18,12 @@ import {
 } from "../../../shared/meetingChat";
 import type { MeetingLayout, MeetingSizeKey } from "../../../shared/meetingLayout";
 import { call, errorMessage } from "../../lib/host";
-import { Button, cn, Empty, IconButton, Spinner } from "../../ui";
+import { Button, cn, Empty, IconButton, type MenuEntry, Spinner } from "../../ui";
 import { ChatPanel, type ChatStatus } from "./Chat";
 import { chatTime, initials } from "./format";
 import { PanelHeader } from "./Panels";
 import { PersonPhoto } from "./photo";
+import { PresenceDot, refreshPresence, usePresenceState } from "./presence";
 import { SizedBox } from "./Slots";
 
 /** The lobby's list of your chats: undefined until the first read. */
@@ -34,23 +36,32 @@ export interface ChatList {
 /** The chat that is open: from the list, or found for someone in Call… (it may not be in the list). */
 export type OpenChat = Pick<TeamsChatSummary, "id" | "name" | "kind" | "peerId">;
 
-function ChatAvatar({ chat, small }: { chat: OpenChat; small?: boolean }) {
+/**
+ * A chat's picture: the other person's (with their Teams status on it, D-329) or the group's icon.
+ * `ring`: the background it sits on, around the status dot.
+ */
+function ChatAvatar({ chat, small, ring }: { chat: OpenChat; small?: boolean; ring?: string }) {
   const Icon = chat.kind === "meeting" ? CalendarDays : Users;
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-semibold text-muted",
-        small ? "size-6 text-2xs" : "size-9 text-xs",
-      )}
-    >
-      {chat.kind === "oneOnOne" ? (
-        <>
-          {initials(chat.name)}
-          {chat.peerId && <PersonPhoto id={chat.peerId} />}
-        </>
-      ) : (
-        <Icon className={small ? "size-3.5" : "size-4"} />
+    <span className="relative flex shrink-0">
+      <span
+        aria-hidden
+        className={cn(
+          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-semibold text-muted",
+          small ? "size-6 text-2xs" : "size-9 text-xs",
+        )}
+      >
+        {chat.kind === "oneOnOne" ? (
+          <>
+            {initials(chat.name)}
+            {chat.peerId && <PersonPhoto id={chat.peerId} />}
+          </>
+        ) : (
+          <Icon className={small ? "size-3.5" : "size-4"} />
+        )}
+      </span>
+      {chat.kind === "oneOnOne" && (
+        <PresenceDot id={chat.peerId} name={chat.name} small={small} ring={ring} />
       )}
     </span>
   );
@@ -97,6 +108,22 @@ export function ChatsView({
     }
   };
   const chats = list?.chats ?? [];
+  const presence = usePresenceState();
+  // Teams status (D-329) is asked for here, once: refused, the list just shows no dots.
+  const listMenu: MenuEntry[] = [
+    presence === "consent"
+      ? {
+          label: "Show Teams status…",
+          icon: CircleDot,
+          onSelect: () =>
+            void call("meetings.presenceConnect")
+              .then(refreshPresence)
+              .catch((e) => onError(errorMessage(e))),
+        }
+      : presence === "ok"
+        ? { label: "Teams status is shown", icon: CircleDot, checked: true, disabled: true }
+        : { label: "Teams status isn't available", icon: CircleDot, disabled: true },
+  ];
   return (
     <main className="flex min-h-0 min-w-0 flex-1">
       <SizedBox
@@ -120,6 +147,7 @@ export function ChatsView({
                 `${chats.length}`
               ) : undefined
             }
+            menu={listMenu}
           >
             <IconButton
               icon={RefreshCw}
@@ -268,7 +296,7 @@ function OpenChatPanel({
       emptyText="No messages in this chat yet."
       header={
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line pr-2 pl-3">
-          <ChatAvatar chat={chat} small />
+          <ChatAvatar chat={chat} small ring="ring-canvas" />
           <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{chat.name}</h2>
           {status?.error && status.state === "ok" && (
             <span className="shrink-0 text-xs text-warning" title={status.error}>

@@ -33,6 +33,8 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [x] Chats as bubbles, senders named from the chat's members (D-327).
 - [x] Pictures and shared files in chats: thumbnails read by main, a viewer, file rows that open in the browser (D-328).
 - [ ] Verify pictures, files and names in a real chat and meeting chat (D-327, D-328).
+- [x] People's Teams status as a dot on their picture: chat list, open chat, People panel (D-329).
+- [ ] Verify colleagues' statuses match Teams after consenting to Presence.Read.All (D-329).
 - [x] Captions in group meetings: wait for the meeting's capabilities, retry with backoff, keep Teams' real reason (D-321).
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).

@@ -1,5 +1,17 @@
 # Status
 
+Teams status in Meetings (2026-11-04, D-329): in the lobby's Chats, each one-to-one chat's picture has
+the person's Teams status as a dot, like Teams (green check Available, red Busy or In a call, red
+minus Do not disturb, amber clock Away or Be right back, grey ring Offline); hover it for the words
+("Busy, in a meeting"). The open chat's header and the call's People panel show it too; group chats
+don't. It refreshes every minute while the Meetings window is shown. Jig needs Microsoft's
+**Presence.Read.All** permission for this: choose **⋯ → Show Teams status…** in the Chats list and
+approve it in the browser (if your organisation lets you; otherwise your administrator). Without it
+there are no dots. Checked with screenshots in Jig Dark, Jig Light and an imported theme, wide and
+narrow (test meeting service). Unit tests pass; e2e updated, not run (D-258).
+**Check on your machine:** after approving, your colleagues' dots match what Teams shows, and change
+within about a minute when theirs do (someone joins a meeting, goes Away).
+
 Pictures and files in Teams chats (2026-11-04, D-328): in the call's Chat panel and the lobby's
 Chats, a picture pasted into a message shows as a thumbnail in the bubble (its space is kept while it
 loads) and opens larger when you click it; a shared file shows as a row with its icon and name that

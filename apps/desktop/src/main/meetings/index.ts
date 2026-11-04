@@ -25,6 +25,7 @@ import {
   toChatMessages,
   toChatSummaries,
 } from "../../shared/meetingChat";
+import { presenceIds, type TeamsPresence, type TeamsPresenceResult } from "../../shared/meetingPresence";
 import type { MeetingEvent, MeetingRecord, MeetingStart } from "../../shared/meetings";
 import { publishActivity } from "../activity/bus";
 import { addonService } from "../addons";
@@ -74,6 +75,18 @@ const FAKE_ALEX = "00000000-0000-4000-8000-00000000a1e5";
 const FAKE_SAM = "00000000-0000-4000-8000-0000000005a3";
 const FAKE_ROBIN = "00000000-0000-4000-8000-0000000000b0";
 const FAKE_MEETING_CHAT = "19:meeting_contoso@thread.v2";
+const FAKE_TAYLOR = "00000000-0000-4000-8000-00000000a710";
+const FAKE_KIM = "00000000-0000-4000-8000-0000000000c1";
+const FAKE_MORGAN = "00000000-0000-4000-8000-0000000000d2";
+/** The test meeting service's people each have another Teams status (D-329). */
+const FAKE_PRESENCE: Record<string, TeamsPresence> = {
+  [FAKE_ALEX]: { availability: "Available", activity: "Available" },
+  [FAKE_SAM]: { availability: "Away", activity: "BeRightBack" },
+  [FAKE_TAYLOR]: { availability: "Busy", activity: "InAMeeting" },
+  [FAKE_KIM]: { availability: "DoNotDisturb", activity: "DoNotDisturb" },
+  [FAKE_MORGAN]: { availability: "Offline", activity: "Offline" },
+  [FAKE_ROBIN]: { availability: "Busy", activity: "InACall" },
+};
 /**
  * A message as Graph sends it. `name` "" is a sender Graph leaves nameless (a guest or someone from
  * another organisation): the chat's members name them (D-327).
@@ -177,6 +190,34 @@ function fakeChatData() {
         members: [person(FAKE_ME, "You"), person(FAKE_SAM, "Sam Fabrikam")],
       },
       messages: [fakeMessage("s1", FAKE_ME, "", ago(26 * 60), "Thanks for the review!")],
+    },
+    {
+      chat: {
+        id: `19:${FAKE_ME}_${FAKE_TAYLOR}@unq.gbl.spaces`,
+        chatType: "oneOnOne",
+        members: [person(FAKE_ME, "You"), person(FAKE_TAYLOR, "Taylor Contoso")],
+      },
+      messages: [
+        fakeMessage("t1", FAKE_TAYLOR, "Taylor Contoso", ago(3 * 24 * 60), "See you at the Contoso review."),
+      ],
+    },
+    {
+      chat: {
+        id: `19:${FAKE_ME}_${FAKE_KIM}@unq.gbl.spaces`,
+        chatType: "oneOnOne",
+        members: [person(FAKE_ME, "You"), person(FAKE_KIM, "Kim Fabrikam")],
+      },
+      messages: [
+        fakeMessage("k1", FAKE_KIM, "Kim Fabrikam", ago(5 * 24 * 60), "The Fabrikam invoices are sent."),
+      ],
+    },
+    {
+      chat: {
+        id: `19:${FAKE_ME}_${FAKE_MORGAN}@unq.gbl.spaces`,
+        chatType: "oneOnOne",
+        members: [person(FAKE_ME, "You"), person(FAKE_MORGAN, "Morgan Shop")],
+      },
+      messages: [fakeMessage("m1", FAKE_ME, "", ago(9 * 24 * 60), "Have a good holiday!")],
     },
   ];
   const find = (chatId: string) => {
@@ -966,6 +1007,28 @@ export async function startMeetings(): Promise<void> {
     enabled();
     if (fake()) return contentId === FAKE_DIAGRAM_ID ? FAKE_DIAGRAM : null;
     return auth.chatImage(chatId, messageId, contentId);
+  });
+  // People's Teams status (D-329): the Meetings windows ask every minute while they're shown.
+  handle("meetings.presence", async ({ ids }, ctx): Promise<TeamsPresenceResult> => {
+    lobbyOrCall(ctx);
+    enabled();
+    const wanted = presenceIds(ids);
+    if (fake()) {
+      const presence: Record<string, TeamsPresence> = {};
+      for (const id of wanted) if (FAKE_PRESENCE[id]) presence[id] = FAKE_PRESENCE[id];
+      return { state: "ok", presence };
+    }
+    if (!auth.name || !wanted.length) return { state: auth.name ? "ok" : "unavailable", presence: {} };
+    try {
+      return await auth.presence(wanted);
+    } catch (error) {
+      log.warn("presence unavailable", { error: (error as Error).message });
+      return { state: "unavailable", presence: {} };
+    }
+  });
+  handle("meetings.presenceConnect", async (_args, ctx) => {
+    lobbyOrCall(ctx);
+    if (!fake()) await auth.connectPresence();
   });
   handle("meetings.openChatFile", async ({ url }, ctx) => {
     lobbyOrCall(ctx);

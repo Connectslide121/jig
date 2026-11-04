@@ -18,6 +18,7 @@ import {
   toChatMessages,
   toChatSummaries,
 } from "../../shared/meetingChat";
+import { presenceBatches, type TeamsPresence, toPresence } from "../../shared/meetingPresence";
 import type { MeetingEvent, MeetingPerson, MeetingSettings } from "../../shared/meetings";
 import { openExternal } from "../appWindows";
 import { logger } from "../log";
@@ -47,6 +48,11 @@ export const CHAT_SCOPES = [
   "https://graph.microsoft.com/ChatMessage.Send",
 ];
 
+/** People's Teams status (D-329): delegated, users can consent to it themselves. */
+export const PRESENCE_SCOPES = ["https://graph.microsoft.com/Presence.Read.All"];
+/** How long a presence read is reused (both Meetings windows ask every minute). */
+const PRESENCE_FRESH_MS = 30_000;
+
 /** Chat pictures Jig shows (no SVG: it can carry scripts), the largest one, and the memory they may use. */
 const CHAT_IMAGE_TYPES = /^image\/(png|jpeg|gif|webp)$/;
 const CHAT_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -66,6 +72,8 @@ export class MeetingAuth {
   private directories = new Map<string, { directory: ChatDirectory; at: number }>();
   /** Pictures in chat messages as data URLs, oldest first, at most `IMAGE_CACHE_BYTES` (D-328). */
   private images = new Map<string, { url: Promise<string | null>; bytes: number }>();
+  /** People's presence by object id, with when it was read (D-329). */
+  private presences = new Map<string, { presence?: TeamsPresence; at: number }>();
   constructor(private readonly settings: () => MeetingSettings) {}
   get name(): string | undefined {
     return this.account?.username;
@@ -80,6 +88,7 @@ export class MeetingAuth {
     this.account = undefined;
     this.directories.clear();
     this.images.clear();
+    this.presences.clear();
   }
   private cacheFile(): string | undefined {
     const { tenantId, clientId } = this.settings();
@@ -189,7 +198,7 @@ export class MeetingAuth {
       } catch {
         throw new JigError(
           "meeting_signin",
-          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All, People.Read, Chat.Read and ChatMessage.Send permissions, then try again.",
+          "Microsoft sign-in did not complete. If approval is required, ask your administrator to approve Jig's delegated Teams.ManageCalls, Teams.ManageChats, Calendars.ReadBasic, User.ReadBasic.All, People.Read, Chat.Read, ChatMessage.Send and Presence.Read.All permissions, then try again.",
         );
       } finally {
         this.interactive = undefined;
@@ -382,6 +391,41 @@ export class MeetingAuth {
     const data = (await r.json()) as { value: GraphChatMessage[] };
     const directory = await this.directory(chatId, data.value, title);
     return toChatMessages(data.value, this.account?.localAccountId, directory);
+  }
+  /** Asks Microsoft to let Jig read people's Teams status (opens the browser, D-329). */
+  async connectPresence(): Promise<void> {
+    await this.access(PRESENCE_SCOPES, true);
+  }
+  /**
+   * People's Teams status by object id (D-329), silently: `consent` when Jig may not read it yet.
+   * Reads only ids not read in the last 30 seconds, in Graph's batches of 650.
+   */
+  async presence(
+    ids: string[],
+  ): Promise<{ state: "ok" | "consent"; presence: Record<string, TeamsPresence> }> {
+    const token = await this.access(PRESENCE_SCOPES, false).catch(() => undefined);
+    if (!token) return { state: "consent", presence: {} };
+    const now = Date.now();
+    const stale = ids.filter((id) => now - (this.presences.get(id)?.at ?? 0) > PRESENCE_FRESH_MS);
+    for (const batch of presenceBatches(stale)) {
+      const r = await fetch("https://graph.microsoft.com/v1.0/communications/getPresencesByUserId", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: batch }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (r.status === 401 || r.status === 403) return { state: "consent", presence: {} };
+      if (!r.ok)
+        throw new JigError("meeting_presence", `Microsoft didn't give people's status (${r.status})`);
+      const found = toPresence(((await r.json()) as { value?: [] }).value);
+      for (const id of batch) this.presences.set(id, { presence: found[id], at: now });
+    }
+    const presence: Record<string, TeamsPresence> = {};
+    for (const id of ids) {
+      const kept = this.presences.get(id)?.presence;
+      if (kept) presence[id] = kept;
+    }
+    return { state: "ok", presence };
   }
   /**
    * A picture in a chat message (D-328): its hosted content from Graph with Chat.Read, as a data

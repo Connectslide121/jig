@@ -4799,3 +4799,32 @@ the raw data was cut off at 60 KB).
   last message; not done.
 - The test meeting service has a Contoso diagram (a picture it serves itself) and Shop spec.docx in
   the meeting chat and in Portal planning.
+
+## D-329: People's Teams status on their picture in Meetings
+
+**Jon** asked to see whether people are Available, Busy, Away… like in Teams; the details are
+**Claude, on my own**.
+
+- Main reads presence from `POST /communications/getPresencesByUserId` (batches of 650) with
+  **Presence.Read.All** (delegated; users can normally consent themselves), silently, and reuses a
+  read for 30 seconds so the lobby and the call window share it. Through `meetings.presence` the
+  windows get availability and activity by object id, never a token. The pure part (ids, batches,
+  Graph's values as a Teams-like status and words) is `shared/meetingPresence.ts`.
+- Consent: Presence.Read.All is asked for separately (`meetings.presenceConnect`), never bundled into
+  the chat or calendar sign-in, so an administrator who approved those but not presence doesn't break
+  them. The Chats list's ⋯ menu has **Show Teams status…** while it isn't allowed; refused or failing,
+  there are simply no dots (no error).
+- Each window keeps one store (`features/meetings/presence.tsx`): the ids its views show, read
+  together soon after they appear and every 60 seconds, only while the window is visible
+  (`document.visibilityState`); hidden or closed, nothing is asked.
+- The dot sits on the avatar's bottom right, over it, so nothing moves when presence loads: Available
+  `bg-success` with a check, Busy/In a call `bg-danger`, Do not disturb `bg-danger` with a minus,
+  Away/Be right back/Out of office `bg-warning` with a clock, Offline a `border-hint` ring, unknown
+  nothing. Glyphs are cut out in `text-surface`, and the ring around the dot is the background the
+  avatar sits on. Existing tokens only (every theme has them). Tooltip and aria-label: "Name: Busy, in
+  a meeting"; In a call and Presenting read as the status itself, like Teams.
+- Where: one-to-one chats in the list and in the open chat's header (a smaller dot without a glyph),
+  and people in the call's People panel who have a Microsoft account id (`8:orgid:…`). Group and
+  meeting chats get none.
+- The test meeting service gives its people different statuses (Alex Available, Sam Away, Taylor
+  Busy in a meeting, Kim Do not disturb, Morgan Offline) through three more one-to-one chats.

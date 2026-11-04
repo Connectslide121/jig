@@ -237,6 +237,16 @@ export interface HostMethods {
     args: { chatId: string; messageId: string; contentId: string };
     result: string | null;
   };
+  /**
+   * People's Teams status by Entra object id (D-329), read by main with Presence.Read.All, silently;
+   * `consent` when Jig may not read it yet (then the windows show no status, not an error).
+   */
+  "meetings.presence": {
+    args: { ids: string[] };
+    result: import("./meetingPresence").TeamsPresenceResult;
+  };
+  /** Asks Microsoft to let Jig read people's Teams status (opens the browser, D-329). */
+  "meetings.presenceConnect": { args: void; result: void };
   /** Opens a file or link shared in a Teams chat (https only) in your browser (D-328). */
   "meetings.openChatFile": { args: { url: string }; result: void };
   /** Your one-to-one chat with someone, if you have one (Jig can't start one: no Chat.Create). */

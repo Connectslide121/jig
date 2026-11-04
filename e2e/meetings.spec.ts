@@ -458,7 +458,14 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
     // Your chats, newest first: name, last message, time, and the unread mark.
     await lobby.getByRole("button", { name: "Chats", exact: true }).click();
     const rows = lobby.getByTestId("teams-chat");
-    await expect(rows).toHaveCount(3);
+    await expect(rows).toHaveCount(6);
+    // Each person's Teams status on their picture (D-329); a group chat has none.
+    await expect(rows.first().getByRole("img", { name: "Alex Contoso: Available" })).toBeVisible();
+    await expect(rows.nth(1).getByTestId("presence")).toHaveCount(0);
+    await expect(rows.nth(2).getByRole("img", { name: "Sam Fabrikam: Away" })).toBeVisible();
+    await expect(rows.nth(3).getByRole("img", { name: "Taylor Contoso: Busy, in a meeting" })).toBeVisible();
+    await expect(rows.nth(4).getByRole("img", { name: "Kim Fabrikam: Do not disturb" })).toBeVisible();
+    await expect(rows.nth(5).getByRole("img", { name: "Morgan Shop: Offline" })).toBeVisible();
     await expect(rows.first()).toContainText("Alex Contoso");
     await expect(rows.first()).toContainText("Almost: can you look at the error codes?");
     await expect(rows.first()).toContainText("Unread");

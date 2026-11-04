@@ -16,6 +16,7 @@ import { Button, CountBadge, cn, Empty, IconButton, Markdown, type MenuEntry, op
 import { clock, initials } from "./format";
 import type { Person } from "./media";
 import { PersonPhoto } from "./photo";
+import { PresenceDot } from "./presence";
 
 /** A panel's title bar: the same height everywhere, so panels side by side line up. */
 export function PanelHeader({
@@ -282,15 +283,19 @@ export function PeoplePanel({ people, you, menu }: { people: Person[]; you: Pers
       <ul className="min-h-0 flex-1 overflow-y-auto p-2">
         {everyone.map((p) => (
           <li key={p.id} className="flex h-11 items-center gap-3 rounded-md px-2 hover:bg-hover">
-            <span
-              aria-hidden
-              className={cn(
-                "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-xs font-semibold",
-                p.speaking && "ring-2 ring-accent",
-              )}
-            >
-              {initials(p.name)}
-              <PersonPhoto id={p.id} />
+            <span className="relative flex shrink-0">
+              <span
+                aria-hidden
+                className={cn(
+                  "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-raised text-xs font-semibold",
+                  p.speaking && "ring-2 ring-accent",
+                )}
+              >
+                {initials(p.name)}
+                <PersonPhoto id={p.id} />
+              </span>
+              {/* Their Teams status when they have a Microsoft account id (D-329). */}
+              <PresenceDot id={p.id} name={p.name} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm">{p.name}</span>
