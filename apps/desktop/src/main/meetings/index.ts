@@ -563,6 +563,7 @@ export async function startMeetings(): Promise<void> {
       layout: store.layout(),
       lobbyView: store.lobbyView(),
       captionLanguage: store.captionLanguage(),
+      devices: store.devices(),
     };
   });
   handle("meetings.delete", async ({ id }, ctx) => {
@@ -648,6 +649,11 @@ export async function startMeetings(): Promise<void> {
   handle("meetings.captionLanguage", async ({ language }, ctx) => {
     own(ctx);
     await store.setCaptionLanguage(language);
+    changed();
+  });
+  handle("meetings.devices", async (devices, ctx) => {
+    own(ctx);
+    await store.setDevices(devices);
     changed();
   });
   handle("meetings.lobbyView", async ({ view }, ctx) => {

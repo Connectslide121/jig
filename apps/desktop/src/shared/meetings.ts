@@ -113,6 +113,8 @@ export interface MeetingOverview {
   lobbyView: LobbyView;
   /** The language captions are shown in ("" = as spoken); Teams translates (D-260). */
   captionLanguage: string;
+  /** Devices picked for meetings; a kind that's missing uses System default (D-323). */
+  devices: import("./meetingDevices").RememberedDevices;
   settings: MeetingSettings;
   account?: string;
   fake: boolean;

@@ -4605,4 +4605,48 @@ best one). Asked for noise suppression on by default, a switch, and a check of t
   the synthetic `default` entry (marking the real default device `isSystemDefault`), so Jig's lookup
   of `"default"` never matched and took the *first* microphone, whichever Windows lists first. Jig now
   takes the `isSystemDefault` microphone. Speakers have the same bug; that fix (and naming the device
-  in the selectors) is the queued "System default picks the wrong device" task.
+  in the selectors) is the queued "System default picks the wrong device" task (done in D-323).
+
+## D-323: Meeting devices follow Windows' default device, name it, and remember what you pick
+
+**Who:** Jon (the bug, what to do, and no webcam-vs-headset hint); Claude, on my own (how "System
+default" is resolved, which Windows default, the test service's devices). **When:** 2026-11-04.
+
+**Why.** In the Join dialog all three selects said "System default", yet the meeting played through
+Speakers (Realtek) while Windows' default output was the JBL headphones. The calling SDK (2.0.0) never
+lists a device with the id `default`: it drops Chromium's `default` and `communications` entries,
+marks the real device behind `default` as `isSystemDefault`, then sorts its list by its own priority
+and sets the mark on the *top* item (and later on whichever microphone is active). Jig looked for the
+id `"default"`, found nothing and took the first device.
+
+**What.**
+- **"System default" = Windows' default device** (Settings → Sound, "Default device"), not the default
+  *communications* device. The SDK itself filters Chromium's `communications` entry out, and Teams on
+  the web runs on the same stack, so following `default` is what Teams does; Jon's report also names the
+  default device as the expectation. Jig reads it from `navigator.mediaDevices.enumerateDevices()`: the
+  real device whose label ends the `default` entry's ("Default - Headphones (…)"), else the one in its
+  `groupId`, else the text after " - " (`windowsDefaultName`, `shared/meetingDevices.ts`). Then
+  `resolveDefault`: that name, else the SDK's `isSystemDefault`, else an id `default`, else the first.
+  Microphone and speakers both; the camera's default is the first camera (Windows has none).
+- **One place picks devices.** `MeetingMedia` keeps the picks per kind (`""` = System default) and
+  applies them before joining, in Devices…, before placing or answering a call, and after a device
+  change; `selected()` returns the picks, so Devices… opens on "System default (…)" when that is in use.
+- **The selects name the device:** "System default (JBL Tune 775NC)" — `shortDeviceName` keeps the
+  product in Windows' "Kind (Product)" names and drops a "2- " prefix and a USB id. The selects are
+  `w-full min-w-0 truncate` in fixed columns, so a long name is cut off (full name in the tooltip) and
+  nothing moves. A pick that is unplugged shows "Not connected (default is used)", as in Speech.
+- **Device changes in a call:** the SDK's `audioDevicesUpdated`/`videoDevicesUpdated` and Chromium's
+  `devicechange` (which also fires when Windows' default changes without a device coming or going),
+  debounced 400 ms, re-resolve the list: System default moves to the new default, a missing pick falls
+  back to it and comes back when it is plugged in again, the call's camera switches its source, and open
+  dialogs relabel (`MeetingMedia.onDevices`).
+- **Remembered picks:** `meetings.json` `devices` {microphone?, speaker?, camera?: {id, name}}, written by
+  `meetings.devices` (call window only) when you join from the dialog or apply Devices…. System default
+  isn't stored. Next time a remembered device that isn't connected falls back to System default, the
+  status line says "<name> isn't connected, so System default is used.", and it stays remembered unless
+  you pick another device for that kind.
+- **No microphone-quality hint (Jon).** The planned "your microphone is the webcam's; the headset may
+  sound better" hint was dropped: Jon's webcam mic is his preferred microphone. Never steer people away
+  from a webcam microphone.
+- **Test meeting service:** sample devices with neutral names (Contoso Cam HD, Contoso Headset,
+  Fabrikam Audio), so the dialogs, Devices… (now enabled there) and the e2e test show real lists.

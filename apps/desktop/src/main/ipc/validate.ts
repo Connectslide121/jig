@@ -24,6 +24,7 @@ export function isAllowedOrigin(url: string | undefined, devUrl = process.env.JI
   return Boolean(devUrl) && url.startsWith(new URL(devUrl!).origin);
 }
 
+const rememberedDevice = z.object({ id: z.string().min(1).max(500), name: z.string().max(500) }).strict();
 const meetingPanel = z.object({ slot: z.enum(MEETING_SLOTS), hidden: z.boolean().optional() }).strict();
 const MAX_TEXT = 1_000_000;
 const path = z.string().min(1).max(4096);
@@ -77,6 +78,10 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   "meetings.lobbyView": z.object({ view: z.enum(["agenda", "week"]) }).strict(),
   "meetings.captionLanguage": z
     .object({ language: z.string().regex(/^([a-z]{2,3}(-[a-z0-9]{2,8})*)?$/i) })
+    .strict(),
+  "meetings.devices": z
+    .object({ microphone: rememberedDevice, speaker: rememberedDevice, camera: rememberedDevice })
+    .partial()
     .strict(),
   "meetings.aiTranslation": z
     .object({ id: z.uuid(), language: z.string().regex(/^([a-z]{2,3}(-[a-z0-9]{2,8})*)?$/i) })

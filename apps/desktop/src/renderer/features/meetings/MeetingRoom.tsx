@@ -153,6 +153,12 @@ function Room() {
     if (savedLanguage !== undefined && savedLanguage !== mediaState.captionLanguage)
       void media.current!.setCaptionLanguage(savedLanguage).catch((e) => setError(errorMessage(e)));
   }, [savedLanguage]);
+  // Devices picked last time apply to calls too, not only to meetings joined from the dialog (D-323).
+  const savedDevices = overview ? JSON.stringify(overview.devices) : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the saved picks change.
+  useEffect(() => {
+    if (overview) media.current!.remember(overview.devices);
+  }, [savedDevices]);
   // The window's title says what it is (the page's own title would just say "Jig").
   const liveTitle = overview?.records.find((r) => r.id === overview.activeId)?.title;
   useEffect(() => {
@@ -471,6 +477,7 @@ function Room() {
       {devicePicker && (
         <DevicePicker
           media={media.current}
+          fake={overview.fake}
           noiseSuppression={mediaState.noiseSuppression}
           onNoiseSuppression={toggleNoiseSuppression}
           onClose={() => setDevicePicker(false)}
@@ -481,6 +488,7 @@ function Room() {
         <Prejoin
           meeting={joining}
           fake={overview.fake}
+          remembered={overview.devices}
           media={media.current}
           busy={pending === "join"}
           onClose={() => setJoining(undefined)}

@@ -3,6 +3,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { meetingLink, mergeCaption } from "../../../../../addons/meetings/lib/meeting";
+import type { RememberedDevices } from "../../shared/meetingDevices";
 import { folderName, type MeetingFolder, type MeetingPlace, placeFolder } from "../../shared/meetingFolders";
 import { type MeetingLayout, normalizeMeetingLayout } from "../../shared/meetingLayout";
 import type { MeetingCall, MeetingCaption, MeetingRecord, MeetingSettings } from "../../shared/meetings";
@@ -65,6 +66,7 @@ const record = z.object({
   translationError: z.string().optional(),
   folder: z.string().nullable().optional(),
 });
+const remembered = z.object({ id: z.string().max(500), name: z.string().max(500) });
 const folder = z.object({ id: z.uuid(), name: z.string().min(1).max(120) });
 const schema = z.object({
   settings: z
@@ -73,6 +75,14 @@ const schema = z.object({
   lobbyView: z.enum(["agenda", "week"]).default("agenda"),
   ringing: z.boolean().default(true),
   captionLanguage: z.string().default(""),
+  /** Devices picked for meetings (D-323); a kind that's missing uses System default. */
+  devices: z
+    .object({
+      microphone: remembered.optional(),
+      speaker: remembered.optional(),
+      camera: remembered.optional(),
+    })
+    .default({}),
   records: z.array(record).default([]),
   folders: z.array(folder).default([]),
   layout: z.unknown().optional(),
@@ -113,6 +123,14 @@ export class MeetingStore {
   setCaptionLanguage(language: string): Promise<void> {
     return this.change(() => {
       this.data.captionLanguage = language;
+    });
+  }
+  devices(): RememberedDevices {
+    return structuredClone(this.data.devices);
+  }
+  setDevices(devices: RememberedDevices): Promise<void> {
+    return this.change(() => {
+      this.data.devices = structuredClone(devices);
     });
   }
   /** Whether Jig rings for Teams calls while it runs (on until you turn it off). */

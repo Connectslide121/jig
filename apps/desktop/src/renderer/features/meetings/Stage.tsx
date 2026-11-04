@@ -141,7 +141,7 @@ export function Stage({
                 label="More call options"
                 onClick={(e) =>
                   openMenuAt(e.currentTarget, [
-                    { label: "Devices…", icon: Settings2, disabled: fake, onSelect: onDevices },
+                    { label: "Devices…", icon: Settings2, onSelect: onDevices },
                     {
                       label: "Noise suppression",
                       icon: AudioLines,

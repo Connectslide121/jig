@@ -21,6 +21,14 @@ import {
   VideoStreamRenderer,
 } from "@azure/communication-calling";
 import { AzureCommunicationTokenCredential, getIdentifierRawId } from "@azure/communication-common";
+import {
+  type DeviceKind,
+  type MeetingDeviceList,
+  type RememberedDevices,
+  resolveChoice,
+  resolveDefault,
+  windowsDefaultName,
+} from "../../../shared/meetingDevices";
 import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
 import {
   CAPTION_RETRY_DELAYS,
@@ -94,6 +102,22 @@ export interface Ringing {
   peerId?: string;
 }
 
+type SdkDevices = { microphones: AudioDeviceInfo[]; speakers: AudioDeviceInfo[]; cameras: VideoDeviceInfo[] };
+
+/** The test meeting service's devices (neutral names), so the dialogs show what a real list looks like. */
+const FAKE_DEVICES: MeetingDeviceList = {
+  microphones: [
+    { id: "microphone:cam", name: "Microphone (Contoso Cam HD)" },
+    { id: "microphone:headset", name: "Headset Microphone (Contoso Headset Hands-Free)" },
+  ],
+  speakers: [
+    { id: "speaker:headphones", name: "Headphones (Contoso Headset)" },
+    { id: "speaker:builtin", name: "Speakers (Fabrikam(R) Audio)" },
+  ],
+  cameras: [{ id: "camera:cam", name: "Contoso Cam HD" }],
+  defaults: { microphone: "microphone:cam", speaker: "speaker:headphones", camera: "camera:cam" },
+};
+
 type CallOptions = { muted: boolean; camera: boolean; language: string; fake: boolean };
 
 /** Why a one-to-one call ended before it was answered, from Teams' end-reason codes. */
@@ -139,6 +163,12 @@ export class MeetingMedia {
   >();
   private preview?: VideoStreamRenderer;
   private cameraDevice?: VideoDeviceInfo;
+  /** What the dialogs picked per kind ("" = System default, D-323), and the names they were shown with. */
+  private choice: Record<DeviceKind, string> = { microphone: "", speaker: "", camera: "" };
+  private deviceNames = new Map<string, string>();
+  private deviceListeners = new Set<(list: MeetingDeviceList) => void>();
+  private deviceWatch?: () => void;
+  private deviceRefresh?: ReturnType<typeof setTimeout>;
   private previewVersion = 0;
   private participantCleanup: Array<() => void> = [];
   private listeners = new Set<(state: MediaState) => void>();
@@ -181,28 +211,127 @@ export class MeetingMedia {
       .then(() => call("meetings.status", { id, status, capture, gap }))
       .catch(this.error);
   }
-  async prepare(): Promise<{
-    microphones: AudioDeviceInfo[];
-    speakers: AudioDeviceInfo[];
-    cameras: VideoDeviceInfo[];
-  }> {
+  private async prepare(): Promise<SdkDevices> {
     this.client ??= new CallClient();
     this.deviceManager ??= await this.client.getDeviceManager();
     const granted = await this.deviceManager.askDevicePermission({ audio: true, video: true });
     if (!granted.audio) throw new Error("Microphone access was denied");
+    this.watchDevices();
     return {
       microphones: await this.deviceManager.getMicrophones(),
       speakers: await this.deviceManager.getSpeakers(),
       cameras: granted.video ? await this.deviceManager.getCameras() : [],
     };
   }
-  /** The devices in use now, so the in-call picker opens on them instead of "System default". */
-  selected(): { microphone: string; speaker: string; camera: string } {
-    return {
-      microphone: this.deviceManager?.selectedMicrophone?.id ?? "",
-      speaker: this.deviceManager?.selectedSpeaker?.id ?? "",
-      camera: this.cameraDevice?.id ?? "",
+  /**
+   * The devices to choose from and what "System default" means now (D-323): Windows' default device,
+   * read from Chromium's `default` entries, since the SDK's ids are never "default" and its own
+   * default mark can sit on another device. The test meeting service lists sample devices.
+   */
+  async deviceList(fake = false): Promise<MeetingDeviceList> {
+    if (!fake) return (await this.sdkDeviceList()).list;
+    for (const d of [...FAKE_DEVICES.microphones, ...FAKE_DEVICES.speakers, ...FAKE_DEVICES.cameras])
+      this.deviceNames.set(d.id, d.name);
+    return FAKE_DEVICES;
+  }
+  private async sdkDeviceList(): Promise<{ list: MeetingDeviceList; sdk: SdkDevices }> {
+    const sdk = await this.prepare();
+    const entries = (await navigator.mediaDevices?.enumerateDevices().catch(() => [])) ?? [];
+    const microphone = resolveDefault(sdk.microphones, windowsDefaultName(entries, "audioinput"));
+    const speaker = resolveDefault(sdk.speakers, windowsDefaultName(entries, "audiooutput"));
+    const plain = (d: AudioDeviceInfo | VideoDeviceInfo) => ({ id: d.id, name: d.name });
+    for (const d of [...sdk.microphones, ...sdk.speakers, ...sdk.cameras]) this.deviceNames.set(d.id, d.name);
+    const list = {
+      microphones: sdk.microphones.map(plain),
+      speakers: sdk.speakers.map(plain),
+      cameras: sdk.cameras.map(plain),
+      defaults: {
+        microphone: microphone?.id ?? "",
+        speaker: speaker?.id ?? "",
+        camera: sdk.cameras[0]?.id ?? "",
+      },
     };
+    return { list, sdk };
+  }
+  /** Tells `listener` about every new device list (plugged in or out, another Windows default). */
+  onDevices(listener: (list: MeetingDeviceList) => void): () => void {
+    this.deviceListeners.add(listener);
+    return () => this.deviceListeners.delete(listener);
+  }
+  /** Picks remembered from the last meeting, used until a dialog picks others (D-323). */
+  remember(devices: RememberedDevices): void {
+    this.choice = {
+      microphone: devices.microphone?.id ?? "",
+      speaker: devices.speaker?.id ?? "",
+      camera: devices.camera?.id ?? "",
+    };
+  }
+  /** Sets the picks without touching the devices (the test meeting service has none). */
+  choose(microphoneId: string, speakerId: string, cameraId: string): void {
+    this.choice = { microphone: microphoneId, speaker: speakerId, camera: cameraId };
+  }
+  /**
+   * Keeps the picks (not System default) for the next meeting; `keep` holds remembered devices that
+   * weren't connected and weren't changed, so they stay remembered.
+   */
+  async saveChoice(keep: RememberedDevices = {}): Promise<void> {
+    const remembered: RememberedDevices = {};
+    for (const kind of ["microphone", "speaker", "camera"] as const) {
+      const id = this.choice[kind];
+      const kept = keep[kind];
+      if (id) remembered[kind] = { id, name: this.deviceNames.get(id) ?? id };
+      else if (kept) remembered[kind] = kept;
+    }
+    await call("meetings.devices", remembered);
+  }
+  /** Follows device changes: the SDK's list events, and Chromium's, which also fire for a new default. */
+  private watchDevices(): void {
+    if (this.deviceWatch || !this.deviceManager) return;
+    const manager = this.deviceManager;
+    const changed = () => {
+      clearTimeout(this.deviceRefresh);
+      this.deviceRefresh = setTimeout(() => void this.followDevices().catch(this.error), 400);
+    };
+    manager.on("audioDevicesUpdated", changed);
+    manager.on("videoDevicesUpdated", changed);
+    navigator.mediaDevices?.addEventListener("devicechange", changed);
+    this.deviceWatch = () => {
+      clearTimeout(this.deviceRefresh);
+      manager.off("audioDevicesUpdated", changed);
+      manager.off("videoDevicesUpdated", changed);
+      navigator.mediaDevices?.removeEventListener("devicechange", changed);
+      this.deviceWatch = undefined;
+    };
+  }
+  /** After a change: System default moves to the new default, a missing pick falls back to it. */
+  private async followDevices(): Promise<void> {
+    if (!this.deviceManager) return;
+    const found = await this.sdkDeviceList();
+    await this.applyDevices(found);
+    for (const fn of this.deviceListeners) fn(found.list);
+  }
+  /** Selects the microphone and speakers for the picks, and switches the call's camera when it changed. */
+  private async applyDevices({ list, sdk }: { list: MeetingDeviceList; sdk: SdkDevices }): Promise<void> {
+    const manager = this.deviceManager;
+    if (!manager) return;
+    const microphone = resolveChoice(sdk.microphones, this.choice.microphone, list.defaults.microphone);
+    const speaker = resolveChoice(sdk.speakers, this.choice.speaker, list.defaults.speaker);
+    if (microphone && manager.selectedMicrophone?.id !== microphone.id) {
+      await manager.selectMicrophone(microphone);
+      // Another microphone in a call: noise suppression follows it.
+      if (this.active) this.applyNoiseSuppression();
+    }
+    if (speaker && manager.selectedSpeaker?.id !== speaker.id) await manager.selectSpeaker(speaker);
+    const camera = resolveChoice(sdk.cameras, this.choice.camera, list.defaults.camera);
+    if (camera?.id !== this.cameraDevice?.id) {
+      this.cameraDevice = camera;
+      const current = this.active?.localVideoStreams.find((s) => s.mediaStreamType === "Video");
+      if (current && camera) await current.switchSource(camera);
+    }
+  }
+  /** The picks, so the in-call picker opens on them ("" = System default, as chosen). */
+  selected(): Record<DeviceKind, string> {
+    return { ...this.choice };
   }
   async devices(
     microphoneId: string,
@@ -212,30 +341,17 @@ export class MeetingMedia {
     target?: HTMLElement,
   ): Promise<void> {
     const previewVersion = ++this.previewVersion;
-    const available = await this.prepare();
+    this.choose(microphoneId, speakerId, cameraId);
+    const found = await this.sdkDeviceList();
     if (previewVersion !== this.previewVersion) return;
-    // "System default" is the microphone the SDK marks as the system's default: it lists real devices
-    // as `microphone:<id>` and drops the synthetic "default" entry, so the first one may be another mic.
-    const microphone =
-      (microphoneId && available.microphones.find((d) => d.id === microphoneId)) ||
-      available.microphones.find((d) => d.isSystemDefault) ||
-      available.microphones[0];
-    const speaker =
-      available.speakers.find((d) => d.id === (speakerId || "default")) ?? available.speakers[0];
-    if (microphone) await this.deviceManager!.selectMicrophone(microphone);
-    if (speaker) await this.deviceManager!.selectSpeaker(speaker);
-    // Another microphone in a call: noise suppression follows it.
-    if (this.active) this.applyNoiseSuppression();
+    await this.applyDevices(found);
     this.preview?.dispose();
     this.preview = undefined;
     if (!this.active && this.video) {
       this.video.dispose();
       this.video = undefined;
     }
-    const camera = available.cameras.find((d) => d.id === cameraId) ?? available.cameras[0];
-    this.cameraDevice = camera;
-    const current = this.active?.localVideoStreams.find((s) => s.mediaStreamType === "Video");
-    if (current && camera) await current.switchSource(camera);
+    const camera = this.cameraDevice;
     if (cameraOn && camera && !this.active) {
       const video = new LocalVideoStream(camera);
       const renderer = new VideoStreamRenderer(video);
@@ -588,7 +704,7 @@ export class MeetingMedia {
         }, 700);
         return;
       }
-      await this.prepare();
+      await this.applyDevices(await this.sdkDeviceList());
       const agent = await this.agentFor();
       let joining = true;
       this.active = await start(agent);
@@ -1158,6 +1274,7 @@ export class MeetingMedia {
     this.credential = undefined;
     await this.client?.dispose().catch(this.error);
     this.client = undefined;
+    this.deviceWatch?.();
     this.deviceManager = undefined;
   }
   /** Ends what belongs to the call; the agent and client stay while Jig listens for calls. */

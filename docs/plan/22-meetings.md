@@ -35,3 +35,5 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).
 - [x] Noise suppression on your microphone: Azure deep noise suppression by default, browser fallback, switch in the call's ⋯ menu and Devices… (D-322).
 - [ ] Verify noise suppression on a real call: colleagues don't hear typing, voice quality matches Teams (D-322).
+- [x] Devices follow Windows' default device, the selects name it, picks are remembered and device changes are followed in a call (D-323).
+- [ ] Verify the devices on a real machine: headphones as default output, switching the default and unplugging during a call (D-323).

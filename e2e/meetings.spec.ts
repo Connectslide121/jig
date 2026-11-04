@@ -491,6 +491,76 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
   }
 });
 
+test("Meetings: System default names its device, and a picked device is remembered (D-323)", async ({
+  jigHome,
+}) => {
+  const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
+  try {
+    const main = await app.firstWindow();
+    await main.waitForSelector("[data-testid=app-root]");
+    await hostCall(main, "meetings.open");
+    const { lobby, room } = await meetingWindows(app);
+    const shots = ".jig-test-home-meeting-screenshots";
+
+    // A remembered device that isn't connected: System default, said in the status line.
+    expect(
+      (
+        await hostCall(room, "meetings.devices", {
+          speaker: { id: "speaker:gone", name: "Headphones (Fabrikam Buds)" },
+        })
+      ).ok,
+    ).toBe(true);
+    // "System default" says which device it is (the test service's Windows default).
+    await lobby.getByRole("button", { name: "Join from link…", exact: true }).click();
+    const prejoin = room.getByRole("dialog", { name: "Join Teams meeting" });
+    const speakers = prejoin.getByLabel("Speakers", { exact: true });
+    await expect(speakers.locator("option").first()).toHaveText("System default (Contoso Headset)");
+    await expect(prejoin.getByLabel("Microphone", { exact: true }).locator("option").first()).toHaveText(
+      "System default (Contoso Cam HD)",
+    );
+    await expect(speakers).toHaveValue("");
+    await expect(prejoin.getByRole("status")).toHaveText(
+      "Fabrikam Buds isn't connected, so System default is used. Ready to join.",
+    );
+    await room.screenshot({ animations: "disabled", path: `${shots}/devices-dark.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-light" } });
+    await room.screenshot({ animations: "disabled", path: `${shots}/devices-light.png` });
+
+    // A picked device is kept for the next meeting (and replaces the missing one); nothing moves.
+    const box = await prejoin.boundingBox();
+    await speakers.selectOption({ label: "Speakers (Fabrikam(R) Audio)" });
+    await expect(prejoin.getByRole("status")).toHaveText("Ready to join.");
+    expect(await prejoin.boundingBox()).toEqual(box);
+    await prejoin.getByLabel("Teams join link").fill("https://teams.microsoft.com/l/meetup-join/test");
+    await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
+    await expect(room.getByTestId("meeting-transcript")).toContainText("We should review the Shop API");
+    const devices = async () => {
+      const result = await hostCall(room, "meetings.overview");
+      return result.ok ? (result.value as MeetingOverview).devices : undefined;
+    };
+    await expect
+      .poll(devices)
+      .toEqual({ speaker: { id: "speaker:builtin", name: "Speakers (Fabrikam(R) Audio)" } });
+
+    // The in-call picker opens on the picks, System default named.
+    await room.getByRole("button", { name: "More call options", exact: true }).click();
+    await room.getByRole("menuitem", { name: "Devices…" }).click();
+    const picker = room.getByRole("dialog", { name: "Meeting devices" });
+    await expect(picker.getByLabel("Speakers", { exact: true })).toHaveValue("speaker:builtin");
+    await expect(picker.getByLabel("Camera", { exact: true }).locator("option").first()).toHaveText(
+      "System default (Contoso Cam HD)",
+    );
+    await room.screenshot({ animations: "disabled", path: `${shots}/in-call-devices-light.png` });
+    await hostCall(main, "config.update", { appearance: { themeId: "jig-dark" } });
+    await room.screenshot({ animations: "disabled", path: `${shots}/in-call-devices-dark.png` });
+    await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+    await room.getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(room.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});
+
 test("Meetings: noise suppression is on in a call and switches from the call's menu (D-322)", async ({
   jigHome,
 }) => {

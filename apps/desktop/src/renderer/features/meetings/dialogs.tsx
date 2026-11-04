@@ -1,5 +1,15 @@
 import { AppWindow, AudioLines, Info, Mic, Monitor, Phone, PlugZap, Video, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import {
+  DEVICE_KINDS,
+  type DeviceKind,
+  devicesOf,
+  type MeetingDeviceList,
+  missingDevicesText,
+  type RememberedDevices,
+  rememberedChoices,
+  systemDefaultLabel,
+} from "../../../shared/meetingDevices";
 import type { MeetingAction, MeetingRecord, MeetingSettings } from "../../../shared/meetings";
 import type { ProjectsState } from "../../../shared/projects";
 import { errorMessage } from "../../lib/host";
@@ -8,7 +18,8 @@ import { ProjectSwatch } from "../projects/colors";
 import { NOISE_SUPPRESSION_TEXT, SPEECH_LANGUAGES } from "./format";
 import type { MeetingMedia, NoiseSuppression } from "./media";
 
-type Devices = Awaited<ReturnType<MeetingMedia["prepare"]>>;
+type Devices = MeetingDeviceList;
+const DEVICE_LABELS = { microphone: "Microphone", speaker: "Speakers", camera: "Camera" } as const;
 
 function Field({
   id,
@@ -32,6 +43,10 @@ function Field({
   );
 }
 
+/**
+ * The microphone, speakers and camera selects. "System default" names the device it is now (D-323);
+ * the selects keep their width, so a long name is cut off instead of moving anything.
+ */
 function DeviceSelects({
   prefix,
   devices,
@@ -43,30 +58,33 @@ function DeviceSelects({
   values: Array<[string, (value: string) => void]>;
   disabled?: boolean;
 }) {
-  const rows = [
-    ["Microphone", devices?.microphones],
-    ["Speakers", devices?.speakers],
-    ["Camera", devices?.cameras],
-  ] as const;
   return (
     <>
-      {rows.map(([label, choices], index) => {
+      {DEVICE_KINDS.map((kind, index) => {
+        const label = DEVICE_LABELS[kind];
         const [value, setValue] = values[index]!;
+        const choices = devices ? devicesOf(devices, kind) : [];
+        const fallback = choices.find((d) => d.id === devices?.defaults[kind])?.name;
+        const picked = value ? choices.find((d) => d.id === value)?.name : fallback;
+        const missing = Boolean(devices && value && !choices.some((d) => d.id === value));
         return (
-          <Field key={label} id={`${prefix}-${label}`} label={label}>
+          <Field key={kind} id={`${prefix}-${label}`} label={label}>
             <Select
               id={`${prefix}-${label}`}
               aria-label={label}
+              className="w-full min-w-0 truncate"
+              title={picked}
               disabled={disabled}
               value={value}
               onChange={(e) => setValue(e.target.value)}
             >
-              <option value="">System default</option>
-              {choices?.map((d) => (
+              <option value="">{systemDefaultLabel(fallback)}</option>
+              {choices.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
                 </option>
               ))}
+              {missing && <option value={value}>Not connected (default is used)</option>}
             </Select>
           </Field>
         );
@@ -75,14 +93,22 @@ function DeviceSelects({
   );
 }
 
+/** Keeps a dialog's device list current while it's open (plugged in or out, another default). */
+function useDeviceUpdates(media: MeetingMedia, fake: boolean, setDevices: (list: Devices) => void): void {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: subscribe once per dialog.
+  useEffect(() => (fake ? undefined : media.onDevices(setDevices)), []);
+}
+
 export function DevicePicker({
   media,
+  fake,
   noiseSuppression,
   onNoiseSuppression,
   onClose,
   onError,
 }: {
   media: MeetingMedia;
+  fake: boolean;
   /** Noise suppression's state in the call; switching it applies at once, not with the devices. */
   noiseSuppression: NoiseSuppression;
   onNoiseSuppression(): void;
@@ -94,10 +120,11 @@ export function DevicePicker({
   const [speaker, setSpeaker] = useState("");
   const [camera, setCamera] = useState("");
   const [busy, setBusy] = useState(false);
+  useDeviceUpdates(media, fake, setDevices);
   // biome-ignore lint/correctness/useExhaustiveDependencies: enumerate once when the user opens the picker.
   useEffect(() => {
     void media
-      .prepare()
+      .deviceList(fake)
       .then((found) => {
         const now = media.selected();
         setMicrophone(now.microphone);
@@ -123,7 +150,9 @@ export function DevicePicker({
               void (async () => {
                 setBusy(true);
                 try {
-                  await media.devices(microphone, speaker, camera, false);
+                  if (fake) media.choose(microphone, speaker, camera);
+                  else await media.devices(microphone, speaker, camera, false);
+                  await media.saveChoice();
                   onClose();
                 } catch (e) {
                   onError(e);
@@ -281,6 +310,7 @@ export function Connection({
 export function Prejoin({
   meeting,
   fake,
+  remembered,
   media,
   busy,
   onClose,
@@ -289,6 +319,8 @@ export function Prejoin({
 }: {
   meeting: { url: string; title: string };
   fake: boolean;
+  /** Devices picked last time; one that isn't connected falls back to System default, said in the status. */
+  remembered: RememberedDevices;
   media: MeetingMedia;
   busy: boolean;
   onClose(): void;
@@ -306,8 +338,10 @@ export function Prejoin({
   const [cameraOn, setCameraOn] = useState(false);
   const [muted, setMuted] = useState(true);
   const [language, setLanguage] = useState("en-us");
-  const [deviceLoading, setDeviceLoading] = useState(!fake);
+  const [deviceLoading, setDeviceLoading] = useState(true);
   const [deviceAttempt, setDeviceAttempt] = useState(0);
+  // Remembered devices that aren't connected: still remembered unless another one is picked.
+  const [missing, setMissing] = useState<RememberedDevices>({});
   const [error, setError] = useState("");
   const preview = useRef<HTMLDivElement>(null);
   const reportError = (e: unknown) => {
@@ -317,34 +351,46 @@ export function Prejoin({
   // biome-ignore lint/correctness/useExhaustiveDependencies: prepare devices once per pre-join modal; onError is a parent callback.
   useEffect(() => {
     let cancelled = false;
-    if (!fake) {
-      setDeviceLoading(true);
-      setError("");
-      void media.prepare().then(
-        (value) => {
-          if (!cancelled) {
-            setDevices(value);
-            setDeviceLoading(false);
-          }
-        },
-        (e: unknown) => {
-          if (!cancelled) {
-            setDeviceLoading(false);
-            reportError(e);
-          }
-        },
-      );
-    }
+    setDeviceLoading(true);
+    setError("");
+    void media.deviceList(fake).then(
+      (value) => {
+        if (!cancelled) {
+          const start = rememberedChoices(remembered, value);
+          setMic(start.choices.microphone);
+          setSpeaker(start.choices.speaker);
+          setCamera(start.choices.camera);
+          setMissing(start.missing);
+          setDevices(value);
+          setDeviceLoading(false);
+        }
+      },
+      (e: unknown) => {
+        if (!cancelled) {
+          setDeviceLoading(false);
+          reportError(e);
+        }
+      },
+    );
     return () => {
       cancelled = true;
       media.cancelPreview();
     };
   }, [deviceAttempt]);
-  const configure = () => media.devices(mic, speaker, camera, cameraOn, preview.current ?? undefined);
+  useDeviceUpdates(media, fake, setDevices);
+  /** A device picked in a select: a missing remembered one of that kind is forgotten. */
+  const picked = (kind: DeviceKind, set: (id: string) => void) => (id: string) => {
+    set(id);
+    setMissing(({ [kind]: _, ...rest }) => rest);
+  };
+  const configure = async () => {
+    if (fake) media.choose(mic, speaker, camera);
+    else await media.devices(mic, speaker, camera, cameraOn, preview.current ?? undefined);
+  };
   // The preview follows the camera switch and the chosen camera.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only camera choices change the preview.
   useEffect(() => {
-    if (devices) void configure().catch(reportError);
+    if (devices && !fake) void configure().catch(reportError);
   }, [devices, cameraOn, camera]);
   return (
     <Dialog
@@ -359,11 +405,12 @@ export function Prejoin({
             variant="primary"
             icon={Video}
             busy={busy}
-            disabled={!value.url.trim() || (!fake && !devices)}
+            disabled={!value.url.trim() || !devices}
             onClick={() =>
               void (async () => {
                 try {
-                  if (!fake) await configure();
+                  await configure();
+                  void media.saveChoice(missing).catch(onError);
                   await onJoin(value, { muted, camera: cameraOn, language });
                 } catch (e) {
                   reportError(e);
@@ -430,9 +477,9 @@ export function Prejoin({
               devices={devices}
               disabled={!devices}
               values={[
-                [mic, setMic],
-                [speaker, setSpeaker],
-                [camera, setCamera],
+                [mic, picked("microphone", setMic)],
+                [speaker, picked("speaker", setSpeaker)],
+                [camera, picked("camera", setCamera)],
               ]}
             />
             <Field id="meeting-language" label="Speech language">
@@ -456,9 +503,12 @@ export function Prejoin({
             role={error ? "alert" : "status"}
             className={cn("min-w-0 flex-1 overflow-y-auto max-h-full", error ? "text-danger" : "text-muted")}
           >
-            {error || (deviceLoading ? "Checking microphone, speakers and camera…" : "Ready to join.")}
+            {error ||
+              (deviceLoading
+                ? "Checking microphone, speakers and camera…"
+                : `${missingDevicesText(missing)} Ready to join.`.trimStart())}
           </p>
-          {!fake && !devices && !deviceLoading && (
+          {!devices && !deviceLoading && (
             <Button size="sm" onClick={() => setDeviceAttempt((n) => n + 1)}>
               Retry devices
             </Button>

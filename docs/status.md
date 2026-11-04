@@ -1,5 +1,27 @@
 # Status
 
+Meeting devices (2026-11-04, D-323): in the Join dialog Microphone, Speakers and Camera all said
+"System default", but the meeting played through Speakers (Realtek) while Windows' default output was
+the JBL headphones. Jig took the first device in the SDK's list. Now "System default" is **Windows'
+default device** (Settings → Sound), and the selects say which one: "System default (JBL Tune 775NC)".
+A device you pick is **remembered for the next meeting**; when it isn't connected Jig uses System
+default and says so in the dialog's status line. During a call Jig **follows device changes**: a new
+Windows default, or a headset connecting or disconnecting, switches System default to the new device.
+Tried with the test meeting service (e2e test, screenshots in Jig Dark and Light); not on a real call.
+**Check on your machine:**
+1. Open Join: Speakers should read **System default (JBL Tune 775NC)** (or the name Windows shows),
+   Microphone **System default (…C270…)**. Join and check the meeting plays in the headphones.
+2. In the call, change the default output in Windows (Settings → System → Sound → Output) to the
+   Realtek speakers: within a second the sound should move there, and ⋯ → Devices… should say
+   **System default (Realtek(R) Audio)**. Change it back.
+3. Turn the JBL headphones off during the call (System default picked): sound moves to the next
+   default; turn them on again: it comes back when Windows makes them the default again.
+4. Pick Speakers = Realtek explicitly in Devices…, Apply, leave. Next Join should open on Realtek.
+   Then pick a Bluetooth device, leave, turn it off and open Join: the status line should say it isn't
+   connected and that System default is used.
+5. If a select still names the wrong device, send the call window's console lines and what Windows
+   Settings → Sound shows as Default device and Default communication device.
+
 Noise suppression on your microphone (2026-11-04, D-322): colleagues heard Jon's typing in Jig calls
 (not with the Teams app) and found his microphone worse overall. Jig's calls had no voice processing
 of their own; now every call (join, call, answer) starts **Azure Communication Services' deep noise

@@ -111,6 +111,8 @@ export interface HostMethods {
   "meetings.overview": { args: void; result: import("./meetings").MeetingOverview };
   "meetings.lobbyView": { args: { view: import("./meetings").LobbyView }; result: void };
   "meetings.captionLanguage": { args: { language: string }; result: void };
+  /** The devices picked for meetings, remembered for the next one (D-323); call window only. */
+  "meetings.devices": { args: import("./meetingDevices").RememberedDevices; result: void };
   /** Claude translates the meeting's finished captions into `language` ("" = stop; D-277). */
   "meetings.aiTranslation": { args: { id: string; language: string }; result: void };
   "meetings.configure": { args: import("./meetings").MeetingSettings; result: void };
