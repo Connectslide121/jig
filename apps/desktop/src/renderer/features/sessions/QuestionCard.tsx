@@ -4,6 +4,7 @@ import type { ChatItem, PermissionDecision } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, cn } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { providerName } from "./provider";
 import {
   answerFor,
   answersOf,
@@ -15,6 +16,7 @@ import {
   splitRecommended,
   toggleOther,
 } from "./question";
+import { useSessions } from "./store";
 
 type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
 
@@ -53,6 +55,8 @@ export function QuestionCard({ item, sessionId }: { item: PermissionItem; sessio
   const [choices, setChoices] = useState<Choice[]>(() => questions.map(() => EMPTY_CHOICE));
   const otherField = useRef<HTMLInputElement>(null);
   const pending = item.status === "pending";
+  // ChatGPT chats ask through Jig's ask_user (D-315): the card names who asks.
+  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
   const q = questions[step];
   const choice = choices[step] ?? EMPTY_CHOICE;
   const last = step === questions.length - 1;
@@ -76,7 +80,7 @@ export function QuestionCard({ item, sessionId }: { item: PermissionItem; sessio
       >
         <div className="flex items-center gap-2 text-xs text-muted">
           <CircleHelp className="size-3.5" />
-          <span className="flex-1">Claude asked</span>
+          <span className="flex-1">{who} asked</span>
           <Badge>{item.status === "denied" ? "skipped" : "answered"}</Badge>
         </div>
         {item.status !== "denied" &&
@@ -97,7 +101,7 @@ export function QuestionCard({ item, sessionId }: { item: PermissionItem; sessio
     >
       <div className="flex items-center gap-2 text-xs text-muted">
         <CircleHelp className="size-4 text-accent" />
-        <span className="flex-1 font-medium text-fg">Claude has a question</span>
+        <span className="flex-1 font-medium text-fg">{who} has a question</span>
         {questions.length > 1 && (
           <span data-testid="question-step">
             {step + 1} of {questions.length}

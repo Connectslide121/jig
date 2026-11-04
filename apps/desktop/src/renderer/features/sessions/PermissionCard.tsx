@@ -4,6 +4,7 @@ import type { ChatItem, PermissionDecision, PermissionMode } from "../../../shar
 import { call, errorMessage } from "../../lib/host";
 import { Badge, Button, CodeBlock, cn, Markdown } from "../../ui";
 import { notify } from "../../workbench/toasts";
+import { providerName } from "./provider";
 import { QuestionCard } from "./QuestionCard";
 import { useSessions } from "./store";
 import { toolLabel, toolSummary } from "./ToolCard";
@@ -30,6 +31,8 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
   const pending = item.status === "pending";
   const [feedback, setFeedback] = useState("");
   const notes = useSessions((s) => Boolean(s.metas[sessionId]?.meetingNotes));
+  // ChatGPT chats' plans come through Jig's exit_plan (D-315): the card names who wrote it.
+  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
   const approve = async (mode: PermissionMode) => {
     await call("sessions.setPermissionMode", { id: sessionId, mode }).catch(() => {});
     await answer(sessionId, item.request.requestId, { behavior: "allow" });
@@ -44,7 +47,7 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
     >
       <div className="flex items-center gap-2 text-sm font-medium text-fg">
         <ListChecks className="size-4 text-accent" />
-        {notes ? "Meeting notes and draft actions" : "Claude's plan"}
+        {notes ? "Meeting notes and draft actions" : `${who}'s plan`}
         {!pending && (
           <Badge tone={item.status === "denied" ? "neutral" : "success"}>
             {item.status === "denied"
@@ -107,8 +110,8 @@ function PlanCard({ item, sessionId }: { item: PermissionItem; sessionId: string
             <input
               placeholder={
                 notes
-                  ? "Or tell Claude what to change in the notes…"
-                  : "Or tell Claude what to change in the plan…"
+                  ? `Or tell ${who} what to change in the notes…`
+                  : `Or tell ${who} what to change in the plan…`
               }
               className="h-7 min-w-0 flex-1 rounded-md border border-line-strong bg-raised px-2 text-xs outline-none focus:border-focus"
               value={feedback}
@@ -168,6 +171,11 @@ export function PermissionCard({ item, sessionId }: { item: PermissionItem; sess
   if (custom) return <AddonPermissionCard item={item} sessionId={sessionId} />;
   if (item.request.toolName === "AskUserQuestion") return <QuestionCard item={item} sessionId={sessionId} />;
   if (item.request.toolName === "ExitPlanMode") return <PlanCard item={item} sessionId={sessionId} />;
+  return <ToolPermissionCard item={item} sessionId={sessionId} />;
+}
+
+function ToolPermissionCard({ item, sessionId }: { item: PermissionItem; sessionId: string }) {
+  const who = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
   const { request } = item;
   const pending = item.status === "pending";
   const summary = toolSummary(request.toolName, request.input);
@@ -199,7 +207,7 @@ export function PermissionCard({ item, sessionId }: { item: PermissionItem; sess
     >
       <div className="flex items-center gap-2 text-sm font-medium text-fg">
         <ShieldAlert className="size-4 text-warning" />
-        {request.title ?? `Claude wants to use ${toolLabel(request.toolName)}`}
+        {request.title ?? `${who} wants to use ${toolLabel(request.toolName)}`}
       </div>
       {request.description && <div className="text-xs text-muted">{request.description}</div>}
       {command ? (
