@@ -4501,7 +4501,8 @@ and tabs in the view.
   with that `webContentsId`.
 - **The view (Jon; details Claude, on my own).** A fixed-height strip of fixed-width tabs above the
   address row: the chat's name and project swatch, the page title muted below, a pulsing dot while the
-  chat drives the page (a call runs or ended under 5 s ago). The chat in front's tab is selected by
+  chat drives the page (a call runs or ended under 5 s ago). Later the same day (Jon): one line per
+  tab, as tall as the main area's tab strip; the page title moved to the tooltip. The chat in front's tab is selected by
   default, else the page used last; a clicked tab holds until another chat comes to the front. Its ⋯
   (and context menu) has Open chat and Close page. The view's title row was merged into the address row
   (Console, Network and the badges sit beside the address) to keep the page tall.

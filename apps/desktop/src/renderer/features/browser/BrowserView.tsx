@@ -98,8 +98,9 @@ const pageMenu = (chatId: string): MenuEntry[] => [
 ];
 
 /**
- * One chat's page: the chat's name and project, the page title muted below it, a dot while the chat
- * drives it. Fixed width, so tabs coming and going never move anything else.
+ * One chat's page on one line: the project, the chat's name and a dot while the chat drives it (the
+ * page title is in the tooltip and the address row). Fixed width, so tabs coming and going never move
+ * anything else.
  */
 function PageTab({
   page,
@@ -131,27 +132,20 @@ function PageTab({
       }}
       onContextMenu={contextMenu(pageMenu(page.chatId))}
       className={cn(
-        "group relative flex h-full shrink-0 cursor-default items-center gap-1 border-r border-line pr-1 pl-2.5 outline-none focus-visible:ring-1 focus-visible:ring-focus @max-md:w-36 @md:w-48",
+        "group relative flex h-full shrink-0 cursor-default items-center gap-1.5 border-r border-line pr-1 pl-3 text-xs outline-none focus-visible:ring-1 focus-visible:ring-focus @max-md:w-36 @md:w-48",
         selected ? "bg-canvas text-fg" : "bg-surface text-muted hover:text-fg",
       )}
     >
       {selected && <span className="absolute inset-x-0 top-0 h-0.5 bg-accent" />}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {project ? <ProjectSwatch color={project.color} /> : <span className="size-2.5 shrink-0" />}
-          <span className="min-w-0 flex-1 truncate text-xs font-medium" data-testid="browser-tab-chat">
-            {name}
-          </span>
-          <span className="flex size-2 shrink-0 items-center" data-testid="browser-tab-driving">
-            {page.driving && (
-              <span title="Claude is using this page" className="size-2 animate-pulse rounded-full bg-info" />
-            )}
-          </span>
-        </div>
-        <span className="min-w-0 truncate pl-4 text-xs text-hint" data-testid="browser-tab-title">
-          {title}
-        </span>
-      </div>
+      {project ? <ProjectSwatch color={project.color} /> : <span className="size-2.5 shrink-0" />}
+      <span className="min-w-0 flex-1 truncate" data-testid="browser-tab-chat">
+        {name}
+      </span>
+      <span className="flex size-2 shrink-0 items-center" data-testid="browser-tab-driving">
+        {page.driving && (
+          <span title="Claude is using this page" className="size-2 animate-pulse rounded-full bg-info" />
+        )}
+      </span>
       <button
         type="button"
         aria-label={`Options for ${name}'s page`}
@@ -191,7 +185,7 @@ function PageTabs({
         aria-label="Chats’ pages"
         data-testid="browser-tabs"
         // No scrollbar squeezing the tabs: a thin one is drawn over their bottom edge on hover.
-        className="tab-strip flex h-11 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
+        className="tab-strip flex h-8 overflow-x-auto overflow-y-hidden border-b border-line bg-surface"
         onWheel={(e) => {
           if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
         }}

@@ -58,8 +58,9 @@ test("Claude's browser: two chats browse at once, each on its own page, one tab 
   const tabs = view.getByTestId("browser-tab");
   await expect(tabs).toHaveCount(2);
   const tabOf = (id: string) => view.locator(`[data-testid="browser-tab"][data-chat="${id}"]`);
-  await expect(tabOf(checkout).getByTestId("browser-tab-title")).toHaveText("Cart A");
-  await expect(tabOf(search).getByTestId("browser-tab-title")).toHaveText("Search B");
+  // One line per tab: the page title is in its tooltip (and the address row), not under the name.
+  await expect(tabOf(checkout)).toHaveAttribute("title", /\nCart A$/);
+  await expect(tabOf(search)).toHaveAttribute("title", /\nSearch B$/);
   await tabOf(checkout).click();
   await expect(tabOf(checkout)).toHaveAttribute("aria-selected", "true");
   await expect(view.getByTestId("browser-address")).toHaveValue(/a\.html$/);

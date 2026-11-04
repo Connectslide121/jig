@@ -280,9 +280,9 @@ test was run once for its screenshot). **Check in the next daily (Sprinta Daily,
 Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.
-The **Claude's browser** view has a tab per page (the chat's name and project, the page title, a dot
-while Claude drives it); click one to watch that page with its Console and Network, ⋯ → Open chat or
-Close page. Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
+The **Claude's browser** view has a one-line tab per page (the chat's name and project, a dot while
+Claude drives it, the page title in its tooltip); click one to watch that page with its Console and
+Network, ⋯ → Open chat or Close page. Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
 are open. Logins are shared between the pages by default (sign in once); Settings → Chats → **Chats’
 pages in Claude’s browser** → Separate keeps each chat's cookies apart. Covered by
 `e2e/browser-pages.spec.ts` (not run in this change, D-258). Needs testing on your machine: two

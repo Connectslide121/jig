@@ -70,9 +70,10 @@ Console and Network remain available for inspection (D-226).
 
 ## The view: one tab per page
 
-A fixed-height strip of tabs sits above the address row, one per open page: the chat's name with its
-project swatch, the page title muted below it, and a pulsing dot at the right while the chat drives
-the page (a tool call runs, or ended less than 5 s ago). Tabs have a fixed width (narrower in a
+A strip of tabs as tall as the main area's sits above the address row, one per open page, each on
+one line: the chat's name with its project swatch and a pulsing dot at the right while the chat drives
+the page (a tool call runs, or ended less than 5 s ago). The page title is in the tab's tooltip and
+the address row, not on the tab. Tabs have a fixed width (narrower in a
 sidebar than in the bottom panel or a main-area tab, by the view's container width) and truncate;
 the strip keeps its height when there are none ("Each chat that browses gets its own page here"), so
 opening or closing a page never moves the picture below. The strip scrolls sideways with an overlay
