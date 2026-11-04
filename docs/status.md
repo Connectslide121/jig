@@ -626,6 +626,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.11.0 being prepared (2026-11-04): Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Claude's browser got a round of polish. Publication not yet verified.
+
 Jig 0.10.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.10.0),
 source/tag `8eef63465b5e3d0dd03779acf81b0aade332f038`. Installer: 388,925,532 bytes;
 SHA-256 `4c8141b5470c0443e203e6dc1d43cfb49ad1e7ed6f202b51e6a17e6a5fc902d8`.
