@@ -34,7 +34,7 @@ async function runtime(code: string, permissions: string[]) {
     }
     throw new Error("no result");
   };
-  return { sent, call, dir };
+  return { sent, call, dir, rt };
 }
 
 describe("add-on host runtime", () => {
@@ -161,6 +161,23 @@ describe("add-on host runtime", () => {
         }),
       ]),
     );
+  });
+
+  it("names the active tenant and refuses to pin az to a tenant it never had", async () => {
+    const { call, rt } = await runtime(
+      `export async function tenant(_, api) { return api.azure.tenant().key; }
+       export async function pin(_, api) { return api.azure.az(["account", "show"], { tenant: "fabrikam" }); }`,
+      ["exec:az"],
+    );
+    await rt.handle({
+      t: "azure",
+      azure: { env: {}, tenant: { key: "contoso", label: "Contoso", isDefault: false } },
+    });
+    expect(await call("tenant")).toMatchObject({ ok: true, value: "contoso" });
+    expect(await call("pin")).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('"fabrikam" isn\'t known'),
+    });
   });
 
   it("reports a bundle that fails to load", async () => {

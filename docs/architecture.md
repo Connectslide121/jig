@@ -520,7 +520,8 @@ changes. It can be renamed (its name is `default.label` in `tenants.json`, D-301
   its own Python with `-X utf8`, any other az with free text in `@file` arguments).
 - One way to run `az` (D-284): `main/azure/run.ts` `runAz` (JSON out, decoded, failures mapped by
   `azFailure` into an `AzError` naming an added tenant). Project links use it in main; add-on hosts
-  run it as `api.azure.az`. Setup checks and add-on `exec`/`spawn` (any program, so scripts that call
+  run it as `api.azure.az`. A host process remembers every tenant that was active in it, so
+  `api.azure.az(args, { tenant })` can pin a run to the tenant an operation started with (D-345). Setup checks and add-on `exec`/`spawn` (any program, so scripts that call
   `az` follow too) add the same environment; an explicit `options.env` from an add-on still wins.
 - Switching emits `azure.tenantChanged` to the renderer and the add-on event `azure.tenant`
   (`JIG_EVENTS`), after host processes got the new tenant. Add-on UIs read it from `ctx.azure`

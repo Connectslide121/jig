@@ -9,6 +9,12 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
   `<key>@<tenant>` for another). On a switch (`azure.tenant` → `tenantChanged`) the view keeps its
   toolbar, shows a spinner in the list's place and then that tenant's pipelines. A run started from
   Jig is watched while its tenant is active.
+- **Each call stays in its tenant (D-345):** every exported function first pins the tenant active when
+  it starts (`pinned(api)`), and passes it to every `az` (`api.azure.az(args, { tenant })`), its
+  caches and its storage keys. A search still running when you switch finishes in the tenant it
+  started with and is stored there; it never lists another tenant's errors on this tenant's list. A
+  saved list that has errors naming another tenant (saved by a search that ran into a switch before
+  this) is searched again, however new, and those errors are left out until then.
 
 - **Your repositories' pipelines:** every repository in your workspaces whose `origin` is on Azure
   DevOps (a repository with worktrees once) → `az pipelines list --repository … --repository-type

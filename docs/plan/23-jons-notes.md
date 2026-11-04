@@ -112,6 +112,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **Board search and filters (Jon, 2026-11-04, D-304):** a toolbar like Azure DevOps': search,
       Type / Assigned to / State / Tags / Iteration / Area pickers (multi-select menus), Clear filters;
       client-side, columns never move, remembered per board.
+- [x] **Pipelines keeps a search in its tenant (Jon, 2026-11-04, D-345):** switching tenants while a
+      search ran left another tenant's errors on this tenant's list; every az call of an operation now
+      runs in the tenant it started in (`api.azure.az(args, { tenant })`), and lists saved with such
+      errors are searched again.
 - [x] **Update progress:** while an update installs, show the installer or a progress window
       instead of Jig vanishing (D-252): an "Installing Jig X" modal says what happens next for 2 s,
       then the assisted installer shows its progress and starts Jig, which says "Updated to Jig X".

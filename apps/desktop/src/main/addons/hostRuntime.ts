@@ -68,6 +68,15 @@ export function createHostRuntime(send: (message: FromHost) => void) {
   let rpcId = 0;
   /** The active Azure tenant and its `AZURE_CONFIG_DIR` (empty for your own az login), D-282. */
   let azure: AzureContext = { env: {}, tenant: DEFAULT_TENANT_REF };
+  /**
+   * Every tenant that has been active in this process, by key: an operation that pins the tenant it
+   * started with (`az(args, { tenant })`) keeps running there after a switch (D-345).
+   */
+  const tenants = new Map<string, AzureContext>([[azure.tenant.key, azure]]);
+  const setAzure = (next: AzureContext) => {
+    azure = next;
+    tenants.set(next.tenant.key, next);
+  };
   /** Open file watchers (they end with the process, which stops when the add-on reloads). */
   const watchers = new Set<FSWatcher>();
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
@@ -135,7 +144,12 @@ export function createHostRuntime(send: (message: FromHost) => void) {
             return Promise.reject(
               new PermissionError('This add-on needs "exec:az" (or "exec") in addon.json'),
             );
-          return runAz(args, { env: azure.env, tenant: azure.tenant, timeoutMs: options.timeoutMs });
+          const context = options.tenant === undefined ? azure : tenants.get(options.tenant);
+          if (!context)
+            return Promise.reject(
+              new Error(`The Azure tenant "${options.tenant}" isn't known to Jig (any more).`),
+            );
+          return runAz(args, { env: context.env, tenant: context.tenant, timeoutMs: options.timeoutMs });
         },
       },
       fs: {
@@ -260,9 +274,9 @@ export function createHostRuntime(send: (message: FromHost) => void) {
 
   async function handle(message: ToHost): Promise<void> {
     if (message.t === "azure") {
-      azure = message.azure;
+      setAzure(message.azure);
     } else if (message.t === "init") {
-      azure = message.azure ?? azure;
+      setAzure(message.azure ?? azure);
       try {
         api = makeApi(message);
         module = (await import(`${pathToFileURL(message.bundle).href}?t=${Date.now()}`)) as Record<

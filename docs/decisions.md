@@ -5312,3 +5312,27 @@ provider, capabilities and Claude as the default still hold.
 - **`VirtualList` keeps its position:** `initialScrollTop` and `onScrollTop` (set before the first
   paint, so a restored list never shows its top first).
 
+
+## D-345: An add-on's az operation stays in the tenant it started in
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04 (the bug): with his own az login active, switching to another tenant and
+  back showed his pipelines with a list of errors above them, "In tenant <other>: ERROR: Identity …
+  has not been materialized", for repositories that aren't in that tenant. The fix's shape: Claude,
+  on my own, along the lines Jon's task asked for.
+- **Why it happened:** Pipelines' `pipelines()` read the tenant (and its storage key) once when it
+  started, but each `api.azure.az` ran in the tenant active at call time. A search still running at
+  the switch (the view's search, the 5-minute watcher) sent its remaining calls to the new tenant;
+  they failed, and the result, tagged and stored as the old tenant's, carried their errors. Under
+  four minutes old, it was what the view showed after switching back. `latest()` and the in-memory
+  caches (keyed by the tenant at call time) had the same race.
+- **`api.azure.az(args, { tenant })`:** a key from `api.azure.tenant()` pins the run to that tenant.
+  The add-on host process remembers the environment of every tenant that was active in it (main sends
+  each switch), so it can run in a tenant that is no longer active; a key it never had rejects. Chosen
+  over "drop the result when the tenant changed midway": a search that ran into a switch still
+  finishes correctly and is kept where it belongs, instead of being thrown away and run again.
+- **Pipelines pins every exported function** (`pinned(api)`: `tenant()` keeps answering the tenant it
+  started with and every `az` gets its key), so az calls, caches and storage keys all agree. The view
+  keeps dropping results tagged with another tenant (`otherTenant`).
+- **Lists saved before the fix heal themselves:** a saved `found` with errors naming another tenant
+  than its own is searched again however new, and `saved` leaves those errors out until then.

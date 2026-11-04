@@ -500,10 +500,13 @@ export interface AddonHostApi {
    * `az(args)` runs `az <args> -o json --only-show-errors` (needs `exec:az`) and resolves with the
    * parsed JSON; a failure rejects with a message for the user that names the tenant (not signed in,
    * sign-in expired, az or the azure-devops extension missing, or what az said).
+   * `tenant` (a `tenant().key`) pins the run to that tenant instead of the one active when it starts:
+   * an operation of several az calls reads `tenant()` once and passes its key to each, so a switch in
+   * the middle doesn't send its remaining calls to another tenant (D-345). An unknown key rejects.
    */
   azure: {
     tenant(): AddonAzureTenant;
-    az<T = unknown>(args: string[], options?: { timeoutMs?: number }): Promise<T>;
+    az<T = unknown>(args: string[], options?: { timeoutMs?: number; tenant?: string }): Promise<T>;
   };
   /** Runs a program with arguments (no shell). Needs `exec` or `exec:<name>`. */
   exec(

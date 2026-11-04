@@ -24,6 +24,7 @@ import {
   type Settings,
 } from "./lib/orgs";
 import { latestRuns, type Pipeline, type Run, runState, runUrl, toPipeline, toRun } from "./lib/runs";
+import { foreignErrors } from "./lib/tenants";
 
 export type { OrgSettings, PipelineInfo, PipelineRun, Settings };
 
@@ -31,7 +32,8 @@ export type { OrgSettings, PipelineInfo, PipelineRun, Settings };
  * Azure DevOps through the user's `az` CLI (az login + azure-devops extension), with the tenant picked
  * in Jig's top bar (D-282). No tokens stored. Every organisation the sign-in belongs to by default, or
  * the ones you list (D-125); those settings, the pipelines found and their newest runs are kept per
- * tenant, and what is remembered in memory is keyed by it.
+ * tenant, and what is remembered in memory is keyed by it. Every call works in the tenant active when it
+ * started, to its end (`pinned`, D-345).
  */
 interface Tracked {
   org: string;
@@ -56,6 +58,24 @@ const PIPELINES_FOR = 10 * 60_000;
 /** Jig's shared `az` (D-284): the active tenant, JSON out, errors that name the tenant. */
 const az = <T>(api: AddonHostApi, args: string[], timeoutMs = 60_000): Promise<T> =>
   api.azure.az<T>(args, { timeoutMs });
+
+/**
+ * The add-on API with the tenant active now pinned (D-345): `tenant()` keeps answering it and every
+ * `az` runs in it, even after another tenant becomes active. Each exported function pins its `api`
+ * first, so a search that is still running when you switch tenants finishes in the tenant it started
+ * with and is stored under that tenant's keys, instead of sending its remaining calls to the new one.
+ */
+export function pinned(api: AddonHostApi): AddonHostApi {
+  const t = api.azure.tenant();
+  return {
+    ...api,
+    azure: {
+      tenant: () => t,
+      az: <T>(args: string[], options?: { timeoutMs?: number }) =>
+        api.azure.az<T>(args, { ...options, tenant: t.key }),
+    },
+  };
+}
 
 /** The active tenant's key (`default`: your own az login). */
 const tenantOf = (api: AddonHostApi) => api.azure.tenant().key;
@@ -106,7 +126,8 @@ const projectsCache = remembered<string[]>(HOUR);
 const pipelinesCache = remembered<Pipeline[]>(PIPELINES_FOR);
 
 /** The organisations to show with the active tenant (each tenant has its own), and its label. */
-export async function settings(_: unknown, api: AddonHostApi): Promise<Settings & { tenant?: string }> {
+export async function settings(_: unknown, host: AddonHostApi): Promise<Settings & { tenant?: string }> {
+  const api = pinned(host);
   const t = api.azure.tenant();
   return {
     ...readSettings(await api.storage.get(perTenant(api, "settings"))),
@@ -114,12 +135,14 @@ export async function settings(_: unknown, api: AddonHostApi): Promise<Settings 
   };
 }
 
-export async function saveSettings(next: Settings, api: AddonHostApi) {
+export async function saveSettings(next: Settings, host: AddonHostApi) {
+  const api = pinned(host);
   await api.storage.set(perTenant(api, "settings"), readSettings(next));
 }
 
 /** Is everything needed there? Each check with a hint. */
-export async function check(_: unknown, api: AddonHostApi) {
+export async function check(_: unknown, host: AddonHostApi) {
+  const api = pinned(host);
   const version = await api.exec("az", ["version", "-o", "json"], { timeoutMs: 30_000 });
   if (version.code !== 0)
     return { ok: false, message: "The Azure CLI (az) is not installed or not on PATH." };
@@ -144,7 +167,8 @@ export async function check(_: unknown, api: AddonHostApi) {
 }
 
 /** The organisations your az login belongs to (Azure DevOps' profile and accounts APIs). */
-export async function listOrgs(_: unknown, api: AddonHostApi): Promise<string[]> {
+export async function listOrgs(_: unknown, host: AddonHostApi): Promise<string[]> {
+  const api = pinned(host);
   return orgsCache(api, "me", async () => {
     const rest = (uri: string, params: string[]) =>
       az<{ id?: string; value?: Array<{ accountName: string }> }>(api, [
@@ -170,7 +194,8 @@ export async function listOrgs(_: unknown, api: AddonHostApi): Promise<string[]>
   });
 }
 
-export async function listProjects({ org }: { org: string }, api: AddonHostApi): Promise<string[]> {
+export async function listProjects({ org }: { org: string }, host: AddonHostApi): Promise<string[]> {
+  const api = pinned(host);
   return projectsCache(api, orgUrl(org).toLowerCase(), async () => {
     const result = await az<{ value?: Array<{ name: string }> }>(api, [
       "devops",
@@ -209,8 +234,9 @@ async function orgsToShow(api: AddonHostApi): Promise<{ orgs: OrgSettings[]; err
 
 export async function overview(
   _: unknown,
-  api: AddonHostApi,
+  host: AddonHostApi,
 ): Promise<{ orgs: OrgPipelines[]; error?: string }> {
+  const api = pinned(host);
   const { orgs, error } = await orgsToShow(api);
   const withProjects = await inBatches(orgs, PARALLEL, async (o) => {
     try {
@@ -253,7 +279,8 @@ export async function overview(
 }
 
 /** Watcher: notifies when a run started from Jig finishes. */
-export async function checkTrackedRuns(_: unknown, api: AddonHostApi) {
+export async function checkTrackedRuns(_: unknown, host: AddonHostApi) {
+  const api = pinned(host);
   const tenant = tenantOf(api);
   // A run started in another tenant waits until that one is active again (this sign-in can't see it).
   const tracked = ((await api.storage.get<Tracked[]>("tracked")) ?? []).filter(
@@ -350,12 +377,17 @@ async function checkouts(api: AddonHostApi): Promise<Array<{ path: string; name:
  * pipelines building that repository (not retired ones), their YAML file and its run-time parameters.
  * A repository checked out twice (worktrees) counts once.
  */
-export async function pipelines({ force }: { force?: boolean } = {}, api: AddonHostApi): Promise<Found> {
-  // Kept under the tenant it started with, even if another one becomes active meanwhile.
+export async function pipelines({ force }: { force?: boolean } = {}, host: AddonHostApi): Promise<Found> {
+  // Searched in, and kept under, the tenant it started with, even if another one becomes active meanwhile.
+  const api = pinned(host);
   const tenant = tenantOf(api);
   const foundKey = perTenant(api, "found");
   const kept = await api.storage.get<Found>(foundKey);
-  if (kept && !force && Date.now() - kept.at < FIND_AGAIN) return { ...kept, tenant };
+  // A list saved with another tenant's errors on it (a search that ran into a switch before D-345) is
+  // searched again, however new.
+  const fresh =
+    kept && Date.now() - kept.at < FIND_AGAIN && !foreignErrors(kept.errors, api.azure.tenant()).length;
+  if (kept && fresh && !force) return { ...kept, tenant };
   const remotes = new Map<
     string,
     { path: string; name: string; org: string; project: string; repo: string }
@@ -432,8 +464,9 @@ export async function pipelines({ force }: { force?: boolean } = {}, api: AddonH
       .sort((a, b) => a.repoName.localeCompare(b.repoName) || a.name.localeCompare(b.name)),
     errors,
   };
-  // A failed search (signed out…) doesn't replace pipelines found before.
+  // A failed search (signed out…) doesn't replace pipelines found before, only another tenant's errors.
   if (result.pipelines.length || !kept?.pipelines.length) await api.storage.set(foundKey, result);
+  else if (!fresh) await api.storage.set(foundKey, { ...kept, errors });
   return result.pipelines.length || !kept ? result : { ...kept, tenant, errors };
 }
 
@@ -446,8 +479,9 @@ const finishedStages = new Map<string, PipelineRun["stages"]>();
  */
 export async function latest(
   { keys }: { keys: string[] },
-  api: AddonHostApi,
+  host: AddonHostApi,
 ): Promise<{ runs: Record<string, PipelineRun | null>; error?: string; tenant: string }> {
+  const api = pinned(host);
   const tenant = tenantOf(api);
   const latestKey = perTenant(api, "latest");
   const byProject = new Map<string, { org: string; project: string; ids: number[] }>();
@@ -527,7 +561,8 @@ export interface SavedLatest {
  * Watcher (at start, then every few minutes): finds the pipelines and reads their newest runs in the
  * background, so the view opens with them already there; tells an open view.
  */
-export async function refresh(_: unknown, api: AddonHostApi) {
+export async function refresh(_: unknown, host: AddonHostApi) {
+  const api = pinned(host);
   const found = await pipelines({}, api);
   if (!found.pipelines.length) return;
   const result = await latest({ keys: found.pipelines.map((p) => p.key) }, api);
@@ -579,8 +614,9 @@ async function repoDefaultBranch(
  */
 export async function describe(
   { org, project, id, name }: { org: string; project: string; id: number; name?: string },
-  api: AddonHostApi,
+  host: AddonHostApi,
 ): Promise<PipelineInfo> {
+  const api = pinned(host);
   const key = `${orgName(org)}/${project}/${id}`;
   return describeCache(api, key.toLowerCase(), async () => {
     // biome-ignore lint/suspicious/noExplicitAny: az JSON.
@@ -661,8 +697,9 @@ async function yamlAt(api: AddonHostApi, p: PipelineInfo, branch: string): Promi
  */
 export async function parametersAt(
   { key, branch }: { key: string; branch: string },
-  api: AddonHostApi,
+  host: AddonHostApi,
 ): Promise<PipelineInfo["params"] | null> {
+  const api = pinned(host);
   const p = await resolve(key, api);
   const repoId = p.repoId ?? (await describe(fromKey(key), api)).repoId;
   const text = await yamlAt(api, { ...p, repoId }, branch || p.defaultBranch);
@@ -670,7 +707,8 @@ export async function parametersAt(
 }
 
 /** The branches to run a pipeline on: the default first, then the checkout's and origin's (or the repository's). */
-export async function branches({ key }: { key: string }, api: AddonHostApi): Promise<string[]> {
+export async function branches({ key }: { key: string }, host: AddonHostApi): Promise<string[]> {
+  const api = pinned(host);
   const p = await resolve(key, api).catch(() => undefined);
   if (!p) return [];
   if (p.repoPath) {
@@ -705,8 +743,9 @@ export async function branches({ key }: { key: string }, api: AddonHostApi): Pro
 /** Queues a run with the branch and parameters picked in the Run form, and keeps an eye on it. */
 export async function queue(
   { key, branch, values }: { key: string; branch: string; values: Record<string, string> },
-  api: AddonHostApi,
+  host: AddonHostApi,
 ) {
+  const api = pinned(host);
   const p = await resolve(key, api);
   // The parameters of the branch being run, so only ones that exist there are passed.
   const params = runParameters((await parametersAt({ key, branch }, api)) ?? p.params, values);
@@ -746,7 +785,8 @@ async function track(api: AddonHostApi, run: Tracked) {
  * tenant already, so this finds that tenant's pipelines and their newest runs and tells an open view
  * (`refreshed`); the view shows a spinner in their place until then.
  */
-export async function tenantChanged(_: unknown, api: AddonHostApi) {
+export async function tenantChanged(_: unknown, host: AddonHostApi) {
+  const api = pinned(host);
   const found = await pipelines({}, api);
   const result = found.pipelines.length
     ? await latest({ keys: found.pipelines.map((p) => p.key) }, api)
@@ -754,11 +794,17 @@ export async function tenantChanged(_: unknown, api: AddonHostApi) {
   api.emit("refreshed", { tenant: found.tenant, found, latest: result });
 }
 
-/** What the view shows at once when it opens: the active tenant's saved pipelines and newest runs. */
-export async function saved(_: unknown, api: AddonHostApi) {
+/**
+ * What the view shows at once when it opens: the active tenant's saved pipelines and newest runs. Errors
+ * that name another tenant are left out (`pipelines` replaces such a list on its next search).
+ */
+export async function saved(_: unknown, host: AddonHostApi) {
+  const api = pinned(host);
+  const found = await api.storage.get<Found>(perTenant(api, "found"));
+  const foreign = new Set(found ? foreignErrors(found.errors, api.azure.tenant()) : []);
   return {
     tenant: tenantOf(api),
-    found: await api.storage.get<Found>(perTenant(api, "found")),
+    found: found && { ...found, errors: found.errors.filter((e) => !foreign.has(e)) },
     latest: await api.storage.get<SavedLatest>(perTenant(api, "latest")),
   };
 }
