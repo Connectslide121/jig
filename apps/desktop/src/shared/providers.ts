@@ -112,6 +112,21 @@ export function chatGptModelChoices(models: readonly ModelInfo[]): {
   };
 }
 
+/** The roles ChatGPT chats hand work to (D-337), each a separate scoped Codex call on its own model. */
+export type ChatGptHelperRole = "search" | "tester";
+
+/**
+ * The stored model choice for a ChatGPT helper (D-337): the role's own, else the helper fallback
+ * model, else "" (Codex's default). Resolve the result with `resolveChatGptModel` at call time.
+ */
+export function chatGptHelperChoice(
+  role: ChatGptHelperRole,
+  engine: { codexSearchModel: string; codexTesterModel: string; codexHelperFallbackModel: string },
+): string {
+  const own = role === "search" ? engine.codexSearchModel : engine.codexTesterModel;
+  return own.trim() || engine.codexHelperFallbackModel.trim();
+}
+
 /** Whether a provider can answer now (Settings → AI features disables ChatGPT when it can't). */
 export interface ProviderStatus {
   provider: AiProvider;

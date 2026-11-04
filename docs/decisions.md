@@ -5042,3 +5042,28 @@ answer, then decline"). Supersedes the "declines at once" part of D-293; the res
   equivalent safety prompt (D-334); should one ever reach `askPermission`, it gets the same wait.
 - Tested with the fake engine's "safety check" message (asks in every mode), unit tests in
   `manager.test.ts` and `e2e/dont-ask.spec.ts` (2 s wait).
+
+## D-337: ChatGPT chats get the search and tester helpers as tools, each on its own model
+
+**Who:** Jon, 2026-11-04 (he expected ChatGPT chats to have the same per-role models as Claude chats:
+Default, Subagent fallback, Tester, Search). How it's built: Claude, on my own.
+
+- **Tools, not subagents.** Codex has no subagents, so the roles are two Jig tools on a Codex chat's
+  `jig` server: `jig_search_code({ question, thoroughness })` and `jig_test_page({ url, steps })`.
+  Each runs one separate `codex exec` (Codex's own CLI and sign-in; no agent runtime of Jig's own)
+  in the chat's folder, stopped with the chat, counted on the ChatGPT usage meter.
+- **Scoped.** Search: read-only sandbox (no network), Codex's shell for reading, the user's config
+  ignored and no MCP servers (no Jig tools), no AGENTS.md; on Windows the `unelevated` sandbox,
+  since without a mode Codex refuses every command and the user's mode lives in the ignored config.
+  Tester: no shell, one MCP server of its own for the call serving only the chat's browser tools,
+  pre-approved; its token in an environment variable (`bearer_token_env_var`), safe because nothing
+  in that Codex can run a command. Search is `readOnly` (runs unasked); the tester asks once,
+  like the browser tools that click and type.
+- **Capabilities:** `subagents` stays false for Codex (no `agents` are passed); new flags
+  `searchHelper` and `testerHelper` (true for Codex only) decide who gets the tools and guidance.
+- **Models:** `engine.codexSearchModel` and `engine.codexTesterModel` (default `luna`, Codex's
+  "fast and affordable" family) and `engine.codexHelperFallbackModel` (default `terra`, the
+  balanced one) for a role set to "". Families resolve at call time (D-310). All three are
+  protected (D-077): they run programs and spend the plan.
+- **Settings:** three rows after ChatGPT's Default model, in the Claude group's order, same picker
+  width.

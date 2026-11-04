@@ -65,13 +65,34 @@ export interface OneShotExtras {
   system?: string;
 }
 
-/** Runs `codex exec` once and returns its final answer; stops it after `timeoutMs`. */
-function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: number, cwd: string) {
+export interface CodexExecRun {
+  binary: string;
+  /** `codex exec` arguments (`codexExecArgs`, `codexSearchArgs`, `codexTesterArgs`). */
+  args: string[];
+  /** Goes in on stdin. */
+  prompt: string;
+  timeoutMs: number;
+  cwd: string;
+  /** Added to Codex's environment (the tester helper's MCP token, D-337). */
+  env?: Record<string, string>;
+  /** Stops Codex: the chat was stopped or the turn interrupted. */
+  signal?: AbortSignal;
+}
+
+/**
+ * Runs `codex exec` once and returns its final answer; stops it after `timeoutMs` or when `signal`
+ * aborts. Every run counts toward the ChatGPT usage meter (D-298): its listeners hear about it.
+ */
+export function runCodexExec(run: CodexExecRun): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    const r = resolveCommand(binary, codexExecArgs(model, cwd), process.platform, process.env);
+    if (run.signal?.aborted) {
+      reject(new Error("Stopped"));
+      return;
+    }
+    const r = resolveCommand(run.binary, run.args, process.platform, process.env);
     const child = spawn(r.file, r.args, {
-      cwd,
-      env: codexEnv(process.env),
+      cwd: run.cwd,
+      env: { ...codexEnv(process.env), ...run.env },
       windowsHide: true,
       windowsVerbatimArguments: r.verbatim,
       stdio: ["pipe", "pipe", "pipe"],
@@ -79,17 +100,25 @@ function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: 
     let stdout = "";
     let stderr = "";
     let settled = false;
+    const onAbort = () => {
+      killProcess(child);
+      settle(() => reject(new Error("Stopped")));
+    };
     const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      run.signal?.removeEventListener("abort", onAbort);
+      // Every ChatGPT answer uses the plan: the footer's ChatGPT usage refreshes (D-298).
+      for (const listener of chatGptCallListeners) listener();
       fn();
     };
+    run.signal?.addEventListener("abort", onAbort, { once: true });
     // Settles here too: a command Codex started can keep the pipes (and so "close") open.
     const timer = setTimeout(() => {
       killProcess(child);
       settle(() => reject(new Error("Codex didn't answer in time")));
-    }, timeoutMs);
+    }, run.timeoutMs);
     child.stdout.on("data", (d: Buffer) => {
       stdout += d.toString("utf8");
     });
@@ -109,7 +138,7 @@ function codexOneShot(binary: string, model: string, prompt: string, timeoutMs: 
       }),
     );
     child.stdin.on("error", () => {});
-    child.stdin.end(prompt);
+    child.stdin.end(run.prompt);
   });
 }
 
@@ -153,18 +182,13 @@ export async function oneShot(
   const binary = codexBinary();
   if (!binary)
     throw new JigError("codex_missing", "The Codex CLI isn't installed. See Get started → ChatGPT (Codex).");
-  try {
-    return await codexOneShot(
-      binary,
-      model,
-      extras.system ? `${extras.system}\n\n${prompt}` : prompt,
-      timeoutMs,
-      cwd,
-    );
-  } finally {
-    // Every ChatGPT answer uses the plan: the footer's ChatGPT usage refreshes (D-298).
-    for (const listener of chatGptCallListeners) listener();
-  }
+  return runCodexExec({
+    binary,
+    args: codexExecArgs(model, cwd),
+    prompt: extras.system ? `${extras.system}\n\n${prompt}` : prompt,
+    timeoutMs,
+    cwd,
+  });
 }
 
 /**

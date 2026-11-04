@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ModelInfo } from "./engine";
 import {
   CHATGPT_FALLBACK_MODELS,
+  chatGptHelperChoice,
   chatGptModelChoices,
   compareVersions,
   newestOfFamily,
@@ -104,5 +105,26 @@ describe("chatGptModelChoices", () => {
       { value: "luna", label: "Luna (latest) · now GPT-6-Luna" },
     ]);
     expect(versions.map((v) => v.value)).toEqual(codex.map((m) => m.value));
+  });
+});
+
+describe("chatGptHelperChoice (D-337)", () => {
+  const engine = { codexSearchModel: "luna", codexTesterModel: "", codexHelperFallbackModel: "terra" };
+
+  it("uses the role's own model, else the helper fallback", () => {
+    expect(chatGptHelperChoice("search", engine)).toBe("luna");
+    expect(chatGptHelperChoice("tester", engine)).toBe("terra");
+    expect(chatGptHelperChoice("tester", { ...engine, codexTesterModel: " gpt-6-sol " })).toBe("gpt-6-sol");
+  });
+
+  it("leaves it to Codex when neither is set, and resolves a family to its newest version", () => {
+    expect(chatGptHelperChoice("tester", { ...engine, codexHelperFallbackModel: "" })).toBe("");
+    const models: ModelInfo[] = [
+      { value: "gpt-5.6-luna", displayName: "GPT-5.6-Luna", description: "" },
+      { value: "gpt-6-luna", displayName: "GPT-6-Luna", description: "" },
+      { value: "gpt-6.1-terra", displayName: "GPT-6.1 Terra", description: "" },
+    ];
+    expect(resolveChatGptModel(chatGptHelperChoice("search", engine), models).model).toBe("gpt-6-luna");
+    expect(resolveChatGptModel(chatGptHelperChoice("tester", engine), models).model).toBe("gpt-6.1-terra");
   });
 });

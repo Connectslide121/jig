@@ -63,6 +63,8 @@ controls a provider doesn't have instead of showing dead buttons:
 | `planMode` | yes | yes (D-315: Jig's `exit_plan`) | Plan mode and the approve-the-plan card (ExitPlanMode) |
 | `questions` | yes | yes (D-315: Jig's `ask_user`) | questions with choices (AskUserQuestion) |
 | `subagents` | yes | no | jig-tester, jig-search (no `agents` are passed to Codex chats) |
+| `searchHelper` | no (has jig-search) | yes (D-337) | Jig's `jig_search_code` tool: a separate read-only `codex exec` |
+| `testerHelper` | no (has jig-tester) | yes (D-337) | Jig's `jig_test_page` tool: a separate `codex exec` with only the browser tools |
 | `rewind` | yes | no | restoring files and the conversation (file checkpoints) |
 | `fork` | yes | no | forking a chat into a new branch |
 | `history` | yes | yes (D-315: `thread/list`, `thread/read`) | opening conversations the CLI saved on this machine |
@@ -320,6 +322,31 @@ Codex can't take in-process tools, so each Codex chat with `toolServers` gets a 
 - **A server that can't start** leaves the chat running without Jig's tools, with a notice.
 - **Fake engine:** `call <tool> over mcp [with {json}]` calls a tool through this path
   (`fakeMcp.ts`, the official MCP client); see `docs/guides/testing.md`.
+
+## Helpers in Codex chats (D-337)
+
+Codex has no subagents, so the roles Claude chats hand to jig-search and jig-tester are two tools on a
+Codex chat's `jig` server (`main/providers/helpers.ts`, `codexHelperTools`), added in
+`sessions/index.ts` `toolServers` when the provider's `searchHelper` / `testerHelper` flag is on.
+Each call runs one separate, scoped `codex exec` (`runCodexExec`, `main/providers/index.ts`) in the
+chat's folder, stopped with the chat (the tool's abort signal), and counts toward the ChatGPT usage
+meter like every Codex call (`onChatGptCall`, D-298).
+
+| | `jig_search_code({ question, thoroughness? })` | `jig_test_page({ url, steps })` |
+|---|---|---|
+| Arguments (`main/providers/codex.ts`) | `codexSearchArgs`: read-only sandbox (no writes, no network), Codex's shell on (it reads with `rg`), no MCP servers (`--ignore-user-config`, none added: no Jig tools), `project_doc_max_bytes=0` (no AGENTS.md), web search, plugins, apps, sub-agents and the rest off; on Windows `windows.sandbox="unelevated"` (without a mode Codex refuses every command, and the user's mode is in the ignored config) | `codexTesterArgs`: read-only sandbox, no shell at all, one MCP server `jig` = a local MCP server of its own (`startLocalMcp`, new token, closed after the call) serving only the chat's `jig_browser_*` tools, each `approval_mode="approve"`; the token in `JIG_HELPER_MCP_TOKEN` (`bearer_token_env_var`), never on the command line |
+| Instructions (`shared/searcher.ts`, `shared/tester.ts`) | `codexSearchPrompt`: jig-search's rules (paths, line numbers, short excerpts, never change files) and the thoroughness | `codexTesterPrompt`: jig-tester's `TEST_PROTOCOL` (PASS/FAIL per check), the page and the steps |
+| Model | `engine.codexSearchModel` (default `luna`) | `engine.codexTesterModel` (default `luna`) |
+| Returns | the answer text | the report, with the screenshots the browser tools took (newest 6) as `ToolOutput` images |
+| Approval | `readOnly`: runs unasked | asks like other tools that change something (it drives the chat's page) |
+
+A role without a model of its own uses `engine.codexHelperFallbackModel` (default `terra`); an empty
+fallback is Codex's default model (`chatGptHelperChoice`, `shared/providers.ts`). Families resolve to
+their newest version at call time (D-310). The chat is told when to use them: `CODEX_SEARCH_GUIDANCE`
+in its appended instructions and `CODEX_TESTER_GUIDANCE` in `jigContext`. The dev server must
+already run for a test, as with jig-tester. With `enabled_tools` set on the command line Codex offered
+the model no tools at all (0.166.0), so the server itself is what scopes the tester.
+The fake engine answers both at once ("Fake search (…)", "Fake test (…)"; `docs/guides/testing.md`).
 
 ## The `jig` MCP server (`main/engine/jigTools.ts`)
 

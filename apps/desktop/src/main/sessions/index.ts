@@ -17,7 +17,13 @@ import {
 } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
 import type { Project } from "../../shared/projects";
-import { SEARCH_AGENT, SEARCH_GUIDANCE, searchAgent } from "../../shared/searcher";
+import {
+  CODEX_SEARCH_GUIDANCE,
+  SEARCH_AGENT,
+  SEARCH_GUIDANCE,
+  SEARCH_TOOL,
+  searchAgent,
+} from "../../shared/searcher";
 import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
 import { publishActivity } from "../activity/bus";
@@ -33,6 +39,7 @@ import { persistCurrentLayout } from "../layout";
 import { logger } from "../log";
 import { projectStore } from "../projects";
 import { featureOneShot } from "../providers";
+import { codexHelperTools } from "../providers/helpers";
 import { routinesChanged } from "../routines";
 import { selectedSkillPlugins, skillLibrary } from "../skills";
 import { VOICE_GUIDANCE } from "../speech/voice";
@@ -220,10 +227,14 @@ export function startSessions(): void {
       [
         kindHooks.get(meta.kind ?? "")?.appendSystemPrompt(meta) ??
           jigContext(meta, meta.projectId ? projects.get(meta.projectId) : undefined),
-        // Codex chats have no subagents and find their skills themselves (D-315).
-        kindHooks.has(meta.kind ?? "") || !getConfig().engine.searchModel || meta.provider === "codex"
+        // Codex chats have no subagents: they search with Jig's search helper tool (D-337).
+        kindHooks.has(meta.kind ?? "")
           ? ""
-          : SEARCH_GUIDANCE,
+          : ENGINE_CAPABILITIES[chatProvider(meta)].searchHelper
+            ? CODEX_SEARCH_GUIDANCE
+            : getConfig().engine.searchModel
+              ? SEARCH_GUIDANCE
+              : "",
         aiTransparencyGuidance(getConfig(), meta.projectId),
         meta.provider === "codex" ? "" : skillLibrary().context(getConfig(), meta.projectId),
       ]
@@ -260,10 +271,18 @@ export function startSessions(): void {
       );
       return suggestionFrom(answer.text);
     },
-    // Every engine offers the same tools under the same names (D-313).
+    // Every engine offers the same tools under the same names (D-313); engines without subagents
+    // also get the search and tester helpers as tools (D-337).
     toolServers: (meta) => {
       const hooks = kindHooks.get(meta.kind ?? "");
-      return hooks ? hooks.toolServers(meta) : { jig: jigToolServer(meta) };
+      if (hooks) return hooks.toolServers(meta);
+      const jig = jigToolServer(meta);
+      const can = ENGINE_CAPABILITIES[chatProvider(meta)];
+      if (!can.searchHelper && !can.testerHelper) return { jig };
+      const helpers = codexHelperTools(meta).filter((t) =>
+        t.name === SEARCH_TOOL ? can.searchHelper : can.testerHelper,
+      );
+      return { jig: { ...jig, tools: [...jig.tools, ...helpers] } };
     },
     // Chats with Jig's tools get the tester and the searcher, which run on small models.
     agents: (meta) => {

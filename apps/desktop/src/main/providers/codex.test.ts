@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   codexExecArgs,
   codexRateLimitRequests,
+  codexSearchArgs,
   codexSignInText,
+  codexTesterArgs,
   findCodex,
+  HELPER_TOKEN_ENV,
   parseCodexExec,
   parseCodexLoginStatus,
   parseCodexModels,
@@ -121,6 +124,49 @@ describe("codexExecArgs", () => {
 
   it("leaves the model to Codex when none is chosen", () => {
     expect(codexExecArgs("", "/tmp")).not.toContain("--model");
+  });
+});
+
+describe("helper exec args (D-337)", () => {
+  const values = (args: string[], flag: string) => args.flatMap((a, i) => (args[i - 1] === flag ? [a] : []));
+
+  it("search: Codex's shell in a read-only sandbox, no MCP servers, no AGENTS.md", () => {
+    const args = codexSearchArgs("gpt-6-luna", "/work/shop", "linux");
+    expect(values(args, "--sandbox")).toEqual(["read-only"]);
+    expect(values(args, "--disable")).not.toContain("shell_tool");
+    expect(values(args, "--disable")).not.toContain("unified_exec");
+    expect(values(args, "--disable")).toEqual(expect.arrayContaining(["apps", "plugins", "multi_agent"]));
+    expect(args).toContain("--ignore-user-config");
+    expect(values(args, "-c")).toEqual(
+      expect.arrayContaining(['approval_policy="never"', 'web_search="disabled"', "project_doc_max_bytes=0"]),
+    );
+    expect(values(args, "-c").some((c) => c.startsWith("mcp_servers"))).toBe(false);
+    expect(values(args, "--model")).toEqual(["gpt-6-luna"]);
+    expect(values(args, "--cd")).toEqual(["/work/shop"]);
+    expect(args.at(-1)).toBe("-");
+  });
+
+  it("search: a Windows sandbox mode that needs no setup, only on Windows", () => {
+    expect(values(codexSearchArgs("", "C:\\shop", "win32"), "-c")).toContain('windows.sandbox="unelevated"');
+    expect(values(codexSearchArgs("", "/shop", "darwin"), "-c").join(" ")).not.toContain("windows");
+    expect(codexSearchArgs("", "/shop", "linux")).not.toContain("--model");
+  });
+
+  it("tester: no shell, one jig server with only the given tools pre-approved, the token from the environment", () => {
+    const tools = ["jig_browser_open", "jig_browser_read"];
+    const args = codexTesterArgs("gpt-6-luna", "/work/shop", "http://127.0.0.1:4321/mcp/jig", tools);
+    expect(values(args, "--disable")).toEqual(expect.arrayContaining(["shell_tool", "unified_exec"]));
+    expect(values(args, "--sandbox")).toEqual(["read-only"]);
+    const config = values(args, "-c");
+    expect(config).toContain('mcp_servers.jig.url="http://127.0.0.1:4321/mcp/jig"');
+    expect(config).toContain(`mcp_servers.jig.bearer_token_env_var="${HELPER_TOKEN_ENV}"`);
+    expect(config).toContain('mcp_servers.jig.tools.jig_browser_open.approval_mode="approve"');
+    expect(config).toContain('mcp_servers.jig.tools.jig_browser_read.approval_mode="approve"');
+    expect(config.filter((c) => c.startsWith("mcp_servers.") && !c.startsWith("mcp_servers.jig."))).toEqual(
+      [],
+    );
+    expect(args.join(" ")).not.toMatch(/Bearer|http_headers/);
+    expect(values(args, "--model")).toEqual(["gpt-6-luna"]);
   });
 });
 

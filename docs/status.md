@@ -1,5 +1,20 @@
 # Status
 
+ChatGPT chats get Claude's helper roles (2026-11-04, D-337): a ChatGPT (Codex) chat now hands code
+searches to Jig's **jig_search_code** tool and page tests to **jig_test_page**, as Claude chats hand
+them to the jig-search and jig-tester subagents. Each is a separate ChatGPT call: the search runs a
+read-only Codex in the chat's folder (it can read, never change, no network, no Jig tools); the
+tester runs a Codex whose only tools are Claude's browser tools on the chat's page, and its report
+comes back with its screenshots. **Settings → Chats → ChatGPT chats** has **Helper fallback model**,
+**Tester model** and **Search model** after Default model (families first, then versions; defaults
+Luna for search and tester, Terra for the fallback). Both count toward the ChatGPT usage bar. Tried
+in a real ChatGPT chat (Codex 0.166.0, Luna, Don't ask): the search answered with the file and line in
+about 3 s, and the tester opened a small page, clicked a button and reported PASS/PASS with two
+screenshots on the tool card. The Settings rows line up with Claude's in Jig Dark and Light, wide and
+narrow. Unit tests pass; no e2e run.
+**Check on your machine:** in a ChatGPT chat in Ask before changes, jig_test_page should ask once
+(a permission card) and then run; jig_search_code runs unasked.
+
 Don't ask asks you for a minute first (2026-11-04, D-336): in a **Don't ask** chat, the safety checks
 Claude Code still asks about (such as "Dangerous rm operation on critical path") show the usual
 permission card with Allow / Deny and a countdown, "Declines in 0:59", instead of being declined at

@@ -558,7 +558,7 @@ mode with your add-ons off, and Jig shows a banner); installed, the latest GitHu
 
 ### Model defaults and desktop menus (D-129)
 
-The main process passes the default model (Opus, D-207) and the subagent fallback to Claude Code; it does not implement model routing. Chats get the `jig-tester` and `jig-search` subagents on small models through the SDK's `agents`. New chats start in Plan mode, add-on questions use Sonnet, browser testing/searching/reflection keep Haiku. Settings preserve explicit choices and offer a preset. Top-bar group menus derive from the existing action registry and use `ui/Menu`; Ctrl+K still searches all actions.
+The main process passes the default model (Opus, D-207) and the subagent fallback to Claude Code; it does not implement model routing. Chats get the `jig-tester` and `jig-search` subagents on small models through the SDK's `agents`. Codex chats, which have no subagents, get the same roles as Jig tools (`jig_search_code`, `jig_test_page`; `main/providers/helpers.ts`), each a separate scoped `codex exec` on its own ChatGPT model (D-337). New chats start in Plan mode, add-on questions use Sonnet, browser testing/searching/reflection keep Haiku. Settings preserve explicit choices and offer a preset. Top-bar group menus derive from the existing action registry and use `ui/Menu`; Ctrl+K still searches all actions.
 
 Markdown file previews opt into HTML parsing followed by sanitization before React rendering. Local images and links still use jig-file grants; chat Markdown does not opt in.
 

@@ -254,6 +254,52 @@ function chatGptChoices(models: ModelInfo[], saved: string): Array<[string, stri
   return choices;
 }
 
+/**
+ * A ChatGPT model picker row's select (D-310): families, then versions. `empty` adds a first option
+ * for "" (a helper's fallback, or Codex's default model; D-337).
+ */
+function ChatGptModelSelect({
+  value,
+  models,
+  label,
+  testId,
+  empty,
+  onSave,
+}: {
+  value: string;
+  models: ModelInfo[];
+  label: string;
+  testId: string;
+  empty?: string;
+  onSave: (model: string) => void;
+}) {
+  return (
+    <Select
+      className={PICKER}
+      aria-label={label}
+      data-testid={testId}
+      value={value}
+      onChange={(ev) => onSave(ev.target.value)}
+    >
+      {empty !== undefined && (
+        <>
+          <option value="">{empty}</option>
+          <hr />
+        </>
+      )}
+      {chatGptChoices(models, value).map((c, i) =>
+        c ? (
+          <option key={c[0]} value={c[0]}>
+            {c[1]}
+          </option>
+        ) : (
+          <hr key={`divider-${i}`} />
+        ),
+      )}
+    </Select>
+  );
+}
+
 function ChatGptChats({ isDefault }: { isDefault: boolean }) {
   const config = useConfig((s) => s.config);
   const chatgpt = useChatGptStatus();
@@ -263,7 +309,7 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
   return (
     <SettingsGroup
       title="ChatGPT chats"
-      description="OpenAI's Codex, with your ChatGPT plan. No subagents: tester and search stay with Claude."
+      description="OpenAI's Codex, with your ChatGPT plan. Codex has no subagents, so Jig gives these chats two helpers as tools: one searches the code, one tests pages in Claude's browser. Each is a separate ChatGPT call on its own model."
       leading={<ProviderMark provider="codex" iconOnly />}
       badge={isDefault && <DefaultBadge />}
       testId="settings-chatgpt-chats"
@@ -288,23 +334,49 @@ function ChatGptChats({ isDefault }: { isDefault: boolean }) {
         label="Default model"
         description="For new ChatGPT chats. A family always runs on its newest version; pick a version to pin it."
       >
-        <Select
-          className={PICKER}
-          aria-label="Default ChatGPT model"
-          data-testid="settings-codex-model"
+        <ChatGptModelSelect
+          label="Default ChatGPT model"
+          testId="settings-codex-model"
           value={e.codexModel}
-          onChange={(ev) => void updateConfig({ engine: { codexModel: ev.target.value } })}
-        >
-          {chatGptChoices(models, e.codexModel).map((c, i) =>
-            c ? (
-              <option key={c[0]} value={c[0]}>
-                {c[1]}
-              </option>
-            ) : (
-              <hr key={`divider-${i}`} />
-            ),
-          )}
-        </Select>
+          models={models}
+          onSave={(codexModel) => void updateConfig({ engine: { codexModel } })}
+        />
+      </SettingRow>
+      <SettingRow label="Helper fallback model" description="For helpers without a model of their own.">
+        <ChatGptModelSelect
+          label="ChatGPT helper fallback model"
+          testId="settings-codex-helper-model"
+          value={e.codexHelperFallbackModel}
+          models={models}
+          empty="Codex's default model"
+          onSave={(codexHelperFallbackModel) => void updateConfig({ engine: { codexHelperFallbackModel } })}
+        />
+      </SettingRow>
+      <SettingRow
+        label="Tester model"
+        description="For the browser-testing helper, which tests pages with only Claude's browser."
+      >
+        <ChatGptModelSelect
+          label="ChatGPT tester model"
+          testId="settings-codex-tester-model"
+          value={e.codexTesterModel}
+          models={models}
+          empty="Helper fallback model"
+          onSave={(codexTesterModel) => void updateConfig({ engine: { codexTesterModel } })}
+        />
+      </SettingRow>
+      <SettingRow
+        label="Search model"
+        description="For code searches the chat hands to its search helper, so the chat's model doesn't read through files itself."
+      >
+        <ChatGptModelSelect
+          label="ChatGPT search model"
+          testId="settings-codex-search-model"
+          value={e.codexSearchModel}
+          models={models}
+          empty="Helper fallback model"
+          onSave={(codexSearchModel) => void updateConfig({ engine: { codexSearchModel } })}
+        />
       </SettingRow>
       <SettingRow
         label="Reasoning effort"

@@ -74,6 +74,10 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   continued as a copy with `thread/fork`); Claude Code's skills as extra skill roots
   (`engine.codexSkills`); a next-message one-shot (AI feature `chatSuggestions`); Ask before changes
   on `untrusted` approvals; the capability flags on; fake-engine coverage (D-315).
+- [x] Codex chats F: the search and tester helpers as tools (`jig_search_code`, `jig_test_page`), each a
+  separate scoped `codex exec` on its own model (search, tester, helper fallback in Settings → Chats →
+  ChatGPT chats), the `searchHelper` / `testerHelper` capability flags, guidance in the chat's
+  instructions, fake answers, unit tests (D-337).
 
 ## Later
 

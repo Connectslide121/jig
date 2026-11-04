@@ -55,6 +55,14 @@ export const ConfigSchema = z.object({
       /** Reasoning effort for new Codex chats; "" = the model's own default. */
       codexEffort: z.enum([...CODEX_EFFORT_LEVELS, ""]).default(""),
       /**
+       * ChatGPT chats' helpers (D-337), each a family (D-310) or an exact slug: the search helper
+       * (`jig_search_code`) and the tester helper (`jig_test_page`); "" = the helper fallback model.
+       * The fallback is used by a helper without a model of its own; "" = Codex's default model.
+       */
+      codexSearchModel: z.string().max(100).default("luna"),
+      codexTesterModel: z.string().max(100).default("luna"),
+      codexHelperFallbackModel: z.string().max(100).default("terra"),
+      /**
        * Your personal instructions in Codex chats (D-312): `claude` follows Claude Code's
        * `~/.claude/CLAUDE.md` and its @imports, so one file stays the source; `off` leaves Codex with
        * its own `~/.codex/AGENTS.md`.
@@ -350,6 +358,9 @@ export const PROTECTED_SETTINGS = [
   "engine.claudePath",
   "engine.codexPath",
   "engine.codexAllowApiKey",
+  "engine.codexSearchModel",
+  "engine.codexTesterModel",
+  "engine.codexHelperFallbackModel",
   "engine.provider",
   "engine.allowApiKey",
   "editor.claudeCompletion",

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { BROWSER_TOOLS, TESTER_AGENT, testChatMessage, testerAgent } from "./tester";
+import {
+  BROWSER_TOOLS,
+  CODEX_TESTER_GUIDANCE,
+  codexTesterPrompt,
+  TEST_PROTOCOL,
+  TEST_TOOL,
+  TESTER_AGENT,
+  testChatMessage,
+  testerAgent,
+} from "./tester";
 
 describe("the tester", () => {
   it("is a subagent on the tester model with the browser and read-only file tools", () => {
@@ -20,5 +29,19 @@ describe("the tester", () => {
     );
     expect(text).toContain("never start servers yourself");
     expect(testChatMessage("Check the menu")).toMatch(/^Test this in Claude's browser:\n/);
+  });
+});
+
+describe("ChatGPT chats' tester helper (D-337)", () => {
+  it("gives the page, the steps and jig-tester's protocol", () => {
+    const prompt = codexTesterPrompt(" http://localhost:5173 ", "Add a product to the cart\n");
+    expect(prompt).toContain("<page>http://localhost:5173</page>");
+    expect(prompt).toContain("<steps>\nAdd a product to the cart\n</steps>");
+    expect(prompt).toContain(TEST_PROTOCOL);
+  });
+
+  it("tells the chat to use the tool, with the dev server already running", () => {
+    expect(CODEX_TESTER_GUIDANCE).toContain(TEST_TOOL);
+    expect(CODEX_TESTER_GUIDANCE).toContain("dev server first");
   });
 });

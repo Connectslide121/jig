@@ -76,25 +76,33 @@ export function codexSignInText(signIn: CodexSignIn | undefined): string {
   return signIn.loggedIn ? `Signed in${signIn.method ? ` with ${signIn.method}` : ""}.` : "Not signed in.";
 }
 
+/** Codex features a one-shot never needs: plugins, apps, sub-agents, images, the browser, hooks… */
+const OFF_FEATURES = [
+  "apps",
+  "plugins",
+  "multi_agent",
+  "image_generation",
+  "view_image",
+  "browser_use",
+  "computer_use",
+  "hooks",
+  "memories",
+];
+/** Codex's shell: how it runs commands (and, without a read tool of its own, how it reads files). */
+const SHELL_FEATURES = ["shell_tool", "unified_exec"];
+
 /**
- * `codex exec` for one text answer: the prompt comes on stdin (`-`), JSON events on stdout, a
- * read-only sandbox with no approvals, the shell, plugins, apps, web search and sub-agents off, the
- * user's config and rules ignored and nothing saved. Codex still signs in with its own login.
+ * A scoped `codex exec`: the prompt on stdin (`-`), JSON events on stdout, a read-only sandbox (no
+ * writes, no network) with no approvals, web search and the features above off, the user's config
+ * (so their MCP servers) and rules ignored and nothing saved. `shell` keeps Codex's shell, `config`
+ * adds `-c` overrides. Codex still signs in with its own login.
  */
-export function codexExecArgs(model: string, cwd: string): string[] {
-  const off = [
-    "shell_tool",
-    "unified_exec",
-    "apps",
-    "plugins",
-    "multi_agent",
-    "image_generation",
-    "view_image",
-    "browser_use",
-    "computer_use",
-    "hooks",
-    "memories",
-  ];
+function scopedExecArgs(
+  model: string,
+  cwd: string,
+  options: { shell?: boolean; config?: string[] } = {},
+): string[] {
+  const off = [...(options.shell ? [] : SHELL_FEATURES), ...OFF_FEATURES];
   return [
     "exec",
     "--json",
@@ -110,12 +118,60 @@ export function codexExecArgs(model: string, cwd: string): string[] {
     'approval_policy="never"',
     "-c",
     'web_search="disabled"',
+    ...(options.config ?? []).flatMap((c) => ["-c", c]),
     ...off.flatMap((f) => ["--disable", f]),
     ...(model ? ["--model", model] : []),
     "--cd",
     cwd,
     "-",
   ];
+}
+
+/** `codex exec` for one text answer: no shell and no tools at all. */
+export function codexExecArgs(model: string, cwd: string): string[] {
+  return scopedExecArgs(model, cwd);
+}
+
+/**
+ * The search helper of Codex chats (D-337): Codex's shell in a read-only sandbox without network, so
+ * it can grep and read the chat's folder but change nothing; no MCP servers (no Jig tools), and no
+ * AGENTS.md (everything it needs is in the question, like jig-search's `omitClaudeMd`). On Windows
+ * the sandbox needs a mode, which usually comes from the user's config (ignored here): without one
+ * Codex refuses every command. `unelevated` needs no administrator setup (checked with 0.166.0).
+ */
+export function codexSearchArgs(model: string, cwd: string, platform: string = process.platform): string[] {
+  return scopedExecArgs(model, cwd, {
+    shell: true,
+    config: ["project_doc_max_bytes=0", ...(platform === "win32" ? ['windows.sandbox="unelevated"'] : [])],
+  });
+}
+
+/** The environment variable that hands the tester its MCP server's token (never a command line). */
+export const HELPER_TOKEN_ENV = "JIG_HELPER_MCP_TOKEN";
+
+/**
+ * The tester helper of Codex chats (D-337): no shell (nothing it runs could read the token from its
+ * environment) and one MCP server, `jig`, that serves only Claude's browser tools, each pre-approved
+ * since nobody is there to answer a prompt. The token comes from `HELPER_TOKEN_ENV`. (Codex's
+ * `enabled_tools` isn't used: with it set from the command line Codex offered the model no tools at
+ * all, checked with 0.166.0.)
+ */
+export function codexTesterArgs(
+  model: string,
+  cwd: string,
+  mcpUrl: string,
+  tools: readonly string[],
+): string[] {
+  return scopedExecArgs(model, cwd, {
+    config: [
+      "project_doc_max_bytes=0",
+      `mcp_servers.jig.url=${JSON.stringify(mcpUrl)}`,
+      `mcp_servers.jig.bearer_token_env_var=${JSON.stringify(HELPER_TOKEN_ENV)}`,
+      "mcp_servers.jig.startup_timeout_sec=20",
+      "mcp_servers.jig.tool_timeout_sec=120",
+      ...tools.map((t) => `mcp_servers.jig.tools.${t}.approval_mode="approve"`),
+    ],
+  });
 }
 
 /**

@@ -63,3 +63,25 @@ export function testChatMessage(what: string, url?: string): string {
     TEST_PROTOCOL,
   ].join("\n");
 }
+
+/**
+ * ChatGPT chats' tester helper (D-337): Codex has no subagents, so Jig offers the same role as a tool
+ * that runs a separate `codex exec` with only Claude's browser tools, on the ChatGPT tester model.
+ */
+export const TEST_TOOL = "jig_test_page";
+
+/** The tester helper's whole prompt: jig-tester's instructions, then the page and the steps. */
+export function codexTesterPrompt(url: string, steps: string): string {
+  return `You are Jig's tester. You test web pages in Claude's browser (the jig_browser_* tools of Jig's MCP server, your only tools) for the main chat and report what you find.
+
+${TEST_PROTOCOL}
+
+<page>${url.trim()}</page>
+
+<steps>
+${steps.trim()}
+</steps>`;
+}
+
+/** What a ChatGPT chat is told about its tester helper (instead of the jig-tester subagent). */
+export const CODEX_TESTER_GUIDANCE = `To test a page after a change (click through it, check it works, look for errors), call Jig's ${TEST_TOOL} tool instead of doing it yourself: it runs a separate Codex on a small, cheap model with only Claude's browser tools, in this chat's page. Start the dev server first (jig_terminal_run), then give it the URL and exact steps and checks; it answers PASS/FAIL per check with screenshots. Do it yourself only for a quick look or when the user asks you to.`;

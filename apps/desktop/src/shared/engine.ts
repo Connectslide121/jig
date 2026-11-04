@@ -41,6 +41,10 @@ export interface EngineCapabilities {
   questions: boolean;
   /** Subagents Jig defines (jig-tester, jig-search). */
   subagents: boolean;
+  /** Without subagents: Jig's search helper tool, a separate scoped call (`jig_search_code`, D-337). */
+  searchHelper: boolean;
+  /** Without subagents: Jig's tester helper tool, a separate scoped call (`jig_test_page`, D-337). */
+  testerHelper: boolean;
   /** Restoring files and the conversation to an earlier message (file checkpoints). */
   rewind: boolean;
   /** Forking a chat into a new branch of the conversation. */
@@ -62,6 +66,8 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
     planMode: true,
     questions: true,
     subagents: true,
+    searchHelper: false,
+    testerHelper: false,
     rewind: true,
     fork: true,
     history: true,
@@ -72,6 +78,8 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
     planMode: true,
     questions: true,
     subagents: false,
+    searchHelper: true,
+    testerHelper: true,
     rewind: false,
     fork: false,
     history: true,
