@@ -17,9 +17,10 @@ import {
   type SlashCommandInfo,
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
-import { toolHandlersOf } from "./chatTools";
+import { isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
+import { FakeMcpClient } from "./fakeMcp";
 import { contextFrom, patchText } from "./normalize";
 import type { ToolCallRequest, ToolCallResult } from "./toolCall";
 import {
@@ -112,6 +113,8 @@ export class FakeEngine implements Engine {
     const engineSessionId = options.resume && !options.forkSession ? options.resume : `fake-${randomUUID()}`;
     // Jig's tools as plain functions; scripts call them directly like Claude Code's in-process server.
     const toolHandlers = options.toolServers ? toolHandlersOf(options.toolServers) : undefined;
+    // "call <tool> over mcp": the same tools through the chat's local MCP server, as Codex calls them.
+    const mcpClient = options.toolServers ? new FakeMcpClient(options.toolServers) : undefined;
     let model = options.model || "fake-model";
     let permissionMode: PermissionMode = options.permissionMode;
     let initialised = false;
@@ -751,6 +754,44 @@ export class FakeEngine implements Engine {
             }),
           });
           await stream(`${msg}:text:0`, `I edited ${name}.`, signal);
+        } else if (mcpClient && /^call \S+ over mcp\b/i.test(text.trim())) {
+          // "call jig_get_settings over mcp" / "call <tool> over mcp with {json}": asks first unless the
+          // tool only reads or the chat is in Don't ask mode, like Codex (D-313).
+          const match = /^call (\S+) over mcp(?:\s+with\s+(\{[\s\S]*\}))?\s*$/i.exec(text.trim());
+          const tool = match?.[1] ?? "";
+          let input: Record<string, unknown> = {};
+          try {
+            input = match?.[2] ? JSON.parse(match[2]) : {};
+          } catch {
+            input = {};
+          }
+          const server = mcpClient.serverOf(tool) ?? "jig";
+          const name = `mcp__${server}__${tool}`;
+          const toolId = `tool-${randomUUID()}`;
+          onEvent({ type: "tool_use", id: toolId, name, input });
+          const decision =
+            permissionMode === "bypassPermissions" || isReadOnlyChatTool(options.toolServers, name)
+              ? { behavior: "allow" as const }
+              : await options.askPermission(
+                  { requestId: toolId, toolName: name, input, canAlwaysAllow: true },
+                  signal,
+                );
+          if (decision.behavior !== "allow") {
+            onEvent({ type: "tool_result", toolUseId: toolId, output: "Denied", isError: true });
+            await stream(`${msg}:text:0`, `OK, I didn't call ${tool}.`, signal);
+          } else {
+            const result = await mcpClient
+              .call(server, tool, input)
+              .catch((e: Error) => ({ text: `Error: ${e.message}`, images: [], isError: true }));
+            onEvent({
+              type: "tool_result",
+              toolUseId: toolId,
+              output: result.text,
+              isError: result.isError,
+              ...(result.images.length ? { imageData: result.images } : {}),
+            });
+            await stream(`${msg}:text:0`, `I called ${tool} over Jig's MCP server.`, signal);
+          }
         } else if (toolHandlers?.jig_azure_tenants && /\bazure tenants?\b/.test(lower)) {
           // "which azure tenants…" lists them; "switch the azure tenant to X" also switches (asks first).
           const listId = `tool-${randomUUID()}`;
@@ -1331,6 +1372,7 @@ export class FakeEngine implements Engine {
       },
       close() {
         closed = true;
+        mcpClient?.close();
         clearTimeout(suggestTimer);
         turn?.abort();
         onEvent({ type: "exit" });

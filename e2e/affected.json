@@ -78,7 +78,8 @@
         "context.spec.ts",
         "images.spec.ts",
         "saved-chats.spec.ts",
-        "usage.spec.ts"
+        "usage.spec.ts",
+        "codex-tools.spec.ts"
       ]
     },
     { "files": ["apps/desktop/src/main/configure/**"], "specs": ["configure.spec.ts", "projects.spec.ts"] },
