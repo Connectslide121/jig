@@ -16,6 +16,8 @@ export interface OutMessage {
   text: string;
   /** Rows of buttons under the message. */
   buttons?: Button[][];
+  /** Arrives without a sound (it's news, not something waiting for you). */
+  silent?: boolean;
 }
 
 export type PermissionItem = Extract<ChatItem, { kind: "permission" }>;
@@ -67,6 +69,7 @@ export function statusMessage(
   if (meta.status === "idle" && finished)
     return {
       text: `✅ <b>Finished</b> · ${chatTitle(meta)}${reply ? `\n\n${excerpt(reply)}` : ""}\n\n<i>Reply to this message to answer.</i>`,
+      silent: true,
     };
   if (meta.status === "error")
     return {

@@ -32,6 +32,10 @@ export interface SavedPhone {
   token: string;
   bot: string;
   owner?: { chatId: number; name: string };
+  /** Telegram message → the chat it was about (the latest), so replies still work after a restart. */
+  replies?: Array<[number, string]>;
+  /** The chat plain text goes to. */
+  target?: string;
 }
 
 export interface PhoneSettings {
@@ -39,6 +43,7 @@ export interface PhoneSettings {
   when: "away" | "always";
   awayMinutes: number;
   finished: boolean;
+  keepAwake: boolean;
 }
 
 export interface PhoneDeps {
@@ -57,6 +62,8 @@ export interface PhoneDeps {
   settings(): PhoneSettings;
   /** This computer has been idle for `minutes` or is locked. */
   away(minutes: number): boolean;
+  /** Keep this computer from sleeping (a chat works while you're away and the phone is connected). */
+  keepAwake?(on: boolean): void;
   /** Turns sending on once you pair (the `phone.enabled` setting). */
   enable(): Promise<void>;
   onChange(state: PhoneState): void;
@@ -113,18 +120,26 @@ export class PhoneService {
   private readonly sending = new Set<string>();
   private readonly answeredHere = new Set<string>();
   private nextKey = 0;
+  private saving: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: PhoneDeps) {}
 
   async start(): Promise<void> {
     this.saved = await this.deps.store.load().catch(() => undefined);
     if (this.saved) this.api = this.deps.api(this.saved.token);
+    for (const [messageId, sessionId] of this.saved?.replies ?? []) this.replies.set(messageId, sessionId);
+    this.target = this.saved?.target;
     this.refresh();
   }
 
   stop(): void {
     this.poll?.abort();
     this.poll = undefined;
+  }
+
+  /** Waits for what is being saved (tests, quitting). */
+  flush(): Promise<void> {
+    return this.saving;
   }
 
   state(): PhoneState {
@@ -204,7 +219,16 @@ export class PhoneService {
     const wanted = Boolean(s && (!s.owner || this.deps.settings().enabled));
     if (wanted && !this.poll) void this.pollLoop();
     else if (!wanted) this.stop();
+    this.updateKeepAwake();
     this.changed();
+  }
+
+  /** Awake while a chat works or waits for you, the phone is connected and the setting is on. */
+  private updateKeepAwake(): void {
+    const busy = [...this.previous.values()].some(
+      (s) => s === "working" || s === "starting" || s === "needs_you",
+    );
+    this.deps.keepAwake?.(busy && this.connected() && this.deps.settings().keepAwake);
   }
 
   private connected(): boolean {
@@ -227,7 +251,9 @@ export class PhoneService {
   async chatStatus(meta: SessionMeta): Promise<void> {
     const previous = this.previous.get(meta.id);
     this.previous.set(meta.id, meta.status);
-    if (previous === meta.status || !this.shouldTell()) return;
+    if (previous === meta.status) return;
+    this.updateKeepAwake();
+    if (!this.shouldTell()) return;
     const settings = this.deps.settings();
     const items =
       meta.status === "idle" ? (await this.deps.chats.snapshot(meta.id).catch(() => undefined))?.items : [];
@@ -313,11 +339,13 @@ export class PhoneService {
         text: message.text,
         parse_mode: "HTML",
         link_preview_options: { is_disabled: true },
+        ...(message.silent ? { disable_notification: true } : {}),
         ...(message.buttons?.length ? { reply_markup: keyboard(message.buttons) } : {}),
       });
       if (sessionId) {
         this.remember(sent.message_id, sessionId);
         this.target = sessionId;
+        this.persist();
       }
       return sent.message_id;
     } catch (error) {
@@ -329,6 +357,21 @@ export class PhoneService {
   private remember(messageId: number, sessionId: string) {
     this.replies.set(messageId, sessionId);
     if (this.replies.size > MAX_REMEMBERED) this.replies.delete(this.replies.keys().next().value!);
+  }
+
+  /** Keeps which message belongs to which chat, and the chat text goes to, in `phone.json`. */
+  private persist(): void {
+    this.saving = this.saving
+      .then(async () => {
+        if (!this.saved?.owner) return;
+        this.saved = {
+          ...this.saved,
+          replies: [...this.replies],
+          ...(this.target ? { target: this.target } : {}),
+        };
+        await this.deps.store.save(this.saved);
+      })
+      .catch((error) => this.deps.log?.warn("Saving the phone's messages failed", error));
   }
 
   // --- phone → Jig -------------------------------------------------------------------------------

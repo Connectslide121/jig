@@ -88,12 +88,13 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
 - Disclosure: its messages are marked "🤖 Jig (AI)"; the topic's first message says it can be wrong.
 
 **Also in 26b:**
-- [ ] Remember which message belongs to which chat in `phone.json` (message id → chat, last 300), so
+- [x] Remember which message belongs to which chat in `phone.json` (message id → chat, last 300), so
       replies still work after Jig restarts.
 - [ ] Queue digest: one message when a project's queue ends ("8 done, 1 failed, 1 needs you"), with
       buttons per failed or waiting task; per-task "Finished" messages off while a queue runs.
-- [ ] Keep Windows awake (`powerSaveBlocker`, `prevent-app-suspension`) while a chat works or a
-      queue runs and the phone is connected; setting `phone.keepAwake`, default on.
+- [x] Keep Windows awake (`powerSaveBlocker`, `prevent-app-suspension`) while a chat works or waits
+      for you and the phone is connected; setting `phone.keepAwake`, default on.
+- [x] Finished messages arrive silently (`disable_notification`); what waits for you still buzzes.
 - [ ] Several questions: one message per question with its options as buttons, sent in turn.
 - [ ] Voice messages: a Telegram voice note is transcribed with Jig's Whisper (`speech.*`) and
       handled as text (shown back as "🎙 …" so you see what was understood).

@@ -45,11 +45,13 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
   const saves: Array<SavedPhone | undefined> = [];
   const states: PhoneState[] = [];
   let enabled = false;
+  const awake: boolean[] = [];
   const settings: PhoneSettings = {
     enabled: true,
     when: "always",
     awayMinutes: 5,
     finished: true,
+    keepAwake: true,
     ...opts.settings,
   };
   const service = new PhoneService({
@@ -67,6 +69,7 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
     api: () => api,
     settings: () => settings,
     away: () => opts.away ?? false,
+    keepAwake: (on) => void awake.push(on),
     enable: async () => {
       enabled = true;
     },
@@ -110,6 +113,7 @@ function setup(opts: { saved?: SavedPhone; settings?: Partial<PhoneSettings>; aw
     tap,
     messages,
     enabled: () => enabled,
+    awake,
   };
 }
 
@@ -205,6 +209,49 @@ describe("PhoneService Jig → phone", () => {
     await t.service.chatStatus(meta({ status: "working" }));
     await t.service.chatStatus(meta({ status: "idle" }));
     expect(t.messages()).toEqual([expect.stringContaining("All tests pass.")]);
+    expect(t.calls.at(-1)?.params.disable_notification).toBe(true);
+  });
+
+  it("buzzes for what waits for you, not for finished turns", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.permission(meta(), bash());
+    expect(t.calls.at(-1)?.params).not.toHaveProperty("disable_notification");
+  });
+
+  it("keeps the computer awake while a chat works, and lets it sleep after", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await t.service.chatStatus(meta({ status: "working" }));
+    expect(t.awake.at(-1)).toBe(true);
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(t.awake.at(-1)).toBe(false);
+    t.settings.keepAwake = false;
+    await t.service.chatStatus(meta({ status: "working" }));
+    expect(t.awake.at(-1)).toBe(false);
+  });
+
+  it("remembers which message belongs to which chat across a restart", async () => {
+    const first = setup({ saved: paired });
+    current = first.service;
+    await first.service.start();
+    first.items.set("s1", []);
+    await first.service.fromChat(meta(), "Deploy?");
+    await first.service.flush();
+    const saved = first.saves.at(-1);
+    expect(saved?.replies).toEqual([[101, "s1"]]);
+    first.service.stop();
+
+    const t = setup({ saved: { ...saved!, target: undefined } });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", []);
+    await t.text("go ahead", {
+      reply_to_message: { message_id: 101, date: NOW, chat: { id: OWNER, type: "private" } },
+    });
+    expect(t.sent).toEqual([{ id: "s1", text: "go ahead" }]);
   });
 });
 

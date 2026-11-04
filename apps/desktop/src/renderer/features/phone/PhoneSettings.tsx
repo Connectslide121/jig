@@ -140,6 +140,17 @@ export function PhoneSettings() {
           onChange={(finished) => void updateConfig({ phone: { finished } })}
         />
       </SettingRow>
+      <SettingRow
+        label="Keep the computer awake"
+        description="While a chat works or waits for you, this computer doesn't go to sleep, so messages keep arriving. The screen can still turn off."
+      >
+        <Switch
+          label="Keep the computer awake"
+          checked={phone.keepAwake}
+          disabled={!connected}
+          onChange={(keepAwake) => void updateConfig({ phone: { keepAwake } })}
+        />
+      </SettingRow>
       <SetupDialog open={setup} state={state} onClose={() => setSetup(false)} />
     </SettingsSection>
   );

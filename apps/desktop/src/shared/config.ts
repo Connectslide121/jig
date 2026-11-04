@@ -271,6 +271,8 @@ export const ConfigSchema = z.object({
       awayMinutes: z.number().int().min(1).max(60).default(5),
       /** Also when a chat finishes (needing you and stopping with an error always go). */
       finished: z.boolean().default(true),
+      /** Keep this computer from sleeping while a chat works or waits for you (only when connected). */
+      keepAwake: z.boolean().default(true),
     })
     .prefault({}),
   browser: z

@@ -109,6 +109,7 @@ A new state file is documented here in the same commit that adds it.
 | `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
 | `phone.awayMinutes` | `5` | 1–60; protected |
 | `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
+| `phone.keepAwake` | `true` | while a chat works or waits for you and the phone is connected, the computer doesn't sleep (`powerSaveBlocker`, the screen may still turn off); protected |
 | `speech.model` | `"base"` | dictation's Whisper model: `tiny` (~45 MB, fastest), `base` (~80 MB) or `small` (~250 MB, most accurate) (D-208) |
 | `speech.language` | `""` | the language you dictate in (`en`, `sv`, …); empty = Whisper recognises it |
 | `speech.engine` | `"natural"` | what reads aloud: `natural` (Kokoro on this computer, ~330 MB downloaded once; D-243) or `system` (the system's voices) |
@@ -170,11 +171,11 @@ read-only application resources, not user state. Personal/project Claude skills 
 
 ## Phone (D-348)
 
-`phone.json`: `{ token, bot, owner? }`. `token` is the Telegram bot token encrypted with the OS
+`phone.json`: `{ token, bot, owner?, replies?, target? }`. `token` is the Telegram bot token encrypted with the OS
 (Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written
 and the token lives only until Jig closes. `bot` is its username; `owner` (`{ chatId, name }`) the
-Telegram account it is paired with. Disconnect deletes the file. Which messages map to which chat
-is kept in memory only.
+Telegram account it is paired with. `replies` maps the last 300 Telegram messages to their chats and `target` is the chat plain text goes
+to, so replies keep working after Jig restarts. Disconnect deletes the file.
 
 ## Meetings (D-217)
 

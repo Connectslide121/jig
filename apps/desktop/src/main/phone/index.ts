@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { rm } from "node:fs/promises";
-import { powerMonitor, safeStorage } from "electron";
+import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
 import { z } from "zod";
 import { getConfig, onConfigChange, updateConfig } from "../config";
 import { registerJigTools } from "../engine/jigTools";
@@ -19,6 +19,8 @@ const SavedFile = z.object({
   token: z.string().optional(),
   bot: z.string().default(""),
   owner: z.object({ chatId: z.number(), name: z.string() }).optional(),
+  replies: z.array(z.tuple([z.number(), z.string()])).optional(),
+  target: z.string().optional(),
 });
 
 /** Like Microsoft's sign-in (D-232): only with the OS's own encryption, never as plain text. */
@@ -40,7 +42,8 @@ function phoneStore() {
       if (!saved.token) return undefined;
       try {
         const token = safeStorage.decryptString(Buffer.from(saved.token, "base64"));
-        return { token, bot: saved.bot, ...(saved.owner ? { owner: saved.owner } : {}) };
+        const { token: _, ...rest } = saved;
+        return { ...rest, token };
       } catch {
         return undefined;
       }
@@ -49,15 +52,24 @@ function phoneStore() {
       if (!saved) return rm(paths.phone(), { force: true });
       if (!remembered) return;
       await writeJson(paths.phone(), {
+        ...saved,
         token: safeStorage.encryptString(saved.token).toString("base64"),
-        bot: saved.bot,
-        ...(saved.owner ? { owner: saved.owner } : {}),
       });
     },
   };
 }
 
 let service: PhoneService | undefined;
+let blocker: number | undefined;
+
+/** Windows (and macOS) don't sleep while a chat works for you and the phone is connected. */
+function keepAwake(on: boolean): void {
+  if (on && blocker === undefined) blocker = powerSaveBlocker.start("prevent-app-suspension");
+  else if (!on && blocker !== undefined) {
+    powerSaveBlocker.stop(blocker);
+    blocker = undefined;
+  }
+}
 
 /** Jig on your phone through your own Telegram bot (D-348). */
 export async function startPhone(): Promise<void> {
@@ -73,6 +85,7 @@ export async function startPhone(): Promise<void> {
     api: (token) => telegramApi(token),
     settings: () => getConfig().phone,
     away: (minutes) => powerMonitor.getSystemIdleState(minutes * 60) !== "active",
+    keepAwake,
     enable: async () => {
       await updateConfig({ phone: { enabled: true } });
     },
@@ -113,4 +126,5 @@ export async function startPhone(): Promise<void> {
 
 export function stopPhone(): void {
   service?.stop();
+  keepAwake(false);
 }
