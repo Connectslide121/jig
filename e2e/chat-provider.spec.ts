@@ -25,7 +25,8 @@ test("a new chat switches to ChatGPT before its first message, then keeps it", a
   await page.keyboard.press("Enter");
   await expect(page.getByText("You said:")).toBeVisible({ timeout: 15000 });
   // Started: the provider is the chat's mark now, and nothing opens from it.
-  await picker.click();
+  await expect(picker).toHaveAttribute("aria-disabled", "true");
+  await picker.click({ force: true });
   await expect(page.getByTestId("provider-claude")).toHaveCount(0);
   await expect(page.getByTestId("user-message-edit")).toHaveCount(0);
 });

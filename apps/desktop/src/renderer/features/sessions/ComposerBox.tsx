@@ -502,7 +502,7 @@ export function ComposerBox({
         />
       </div>
       {fill && chips}
-      <div className="flex min-w-0 items-center gap-1" data-testid="composer-toolbar">
+      <div className="@container/toolbar flex min-w-0 items-center gap-1" data-testid="composer-toolbar">
         <IconButton
           icon={Plus}
           label={moreLabel}

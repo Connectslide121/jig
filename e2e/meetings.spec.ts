@@ -61,6 +61,8 @@ test("Meetings: device setup failure is visible and retryable before joining", a
 });
 
 test("Meetings: global live capture, project questions, notes and reviewed tasks", async ({ jigHome }) => {
+  // One walk through the whole meetings flow: about a minute alone, longer beside the parallel suite.
+  test.setTimeout(120_000);
   const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
   try {
     const main = await app.firstWindow();
