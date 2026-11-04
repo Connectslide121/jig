@@ -14,6 +14,7 @@ import {
   canReportLate,
   chatFinished,
   chatToContinue,
+  checkProviderChoices,
   closeRun,
   compactListing,
   type DropSlot,
@@ -33,6 +34,7 @@ import {
   openRun,
   type PermissionMode,
   parseNewTasks,
+  parseQueueProvider,
   parseReport,
   parseTaskEdits,
   pendingReportsNote,
@@ -42,13 +44,17 @@ import {
   reportTarget,
   requeue,
   resetTasks,
+  runsOn,
   STATUS_LABEL,
   setLeftOut,
+  setProviderChoice,
   shouldPause,
   splitQueue,
+  startFailed,
   stepTasks,
   type Task,
   type TaskFile,
+  type TaskProvider,
   taskContext,
   titleFor,
   unusedFiles,
@@ -155,6 +161,11 @@ async function projectOfChat(
   return undefined;
 }
 
+/** Who runs a project's new chats when neither the task nor the queue says (its provider, else Jig's). */
+async function projectProvider(api: AddonHostApi, projectId: string | undefined): Promise<TaskProvider> {
+  return (await api.projects()).find((p) => p.id === projectId)?.provider ?? "claude";
+}
+
 const replace = (q: Queue, task: Task): Queue => ({
   ...q,
   tasks: q.tasks.map((t) => (t.id === task.id ? task : t)),
@@ -228,6 +239,8 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
     const continued = chatToContinue(q, task);
     try {
       const before = continued ? await api.chats.get(continued) : undefined;
+      // Who runs it (D-330): the chat it continues, else the task's choice, the queue's, the project's.
+      const on = runsOn(q, task, await projectProvider(api, task.projectId));
       const sessionId =
         continued ??
         (
@@ -235,8 +248,12 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
             projectId: task.projectId,
             title: task.title,
             permissionMode: task.permissionMode,
+            provider: on.provider,
+            ...(on.model ? { model: on.model } : {}),
           })
         ).sessionId;
+      const ranOn = before?.provider ?? on.provider;
+      const ranModel = before ? before.model : on.model;
       if (task.projectId) chatProjects.set(sessionId, task.projectId);
       // Saved as running before the message goes, so the chat's first turn gets the task's instructions.
       q = replace(q, {
@@ -246,6 +263,8 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         sentAt: new Date().toISOString(),
         costAtStart: before?.costUsd ?? 0,
         sawBusy: false,
+        ranOn,
+        ...(ranModel ? { ranModel } : {}),
         ...(q.runId ? { runId: q.runId } : {}),
       });
       if (task.projectId) await api.storage.set(KEY, q, scope(task.projectId));
@@ -255,17 +274,15 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
       await api.chats.send({ text, sessionId, attachments: task.attachments });
       return q;
     } catch (error) {
+      // ChatGPT not signed in: blocked (sign in, then run it again); anything else an error.
       const failed: Task = {
-        ...task,
-        status: "error",
-        error: (error as Error).message,
-        finishedAt: new Date().toISOString(),
+        ...startFailed(task, (error as Error).message),
         ...(q.runId ? { runId: q.runId } : {}),
       };
       q = replace(q, failed);
       if (shouldPause(q, failed)) {
         api.notify({
-          title: "Task queue paused",
+          title: `Task queue paused: ${STATUS_LABEL[failed.status].toLowerCase()}`,
           message: failed.error,
           tone: "warning",
           system: true,
@@ -338,6 +355,8 @@ export async function overview(
     needsYou: number;
     running: boolean;
     runs: number;
+    /** Who runs its new chats: its "Runs on", else the project's default (D-330). */
+    provider: TaskProvider;
   }>
 > {
   await ready(api);
@@ -351,6 +370,7 @@ export async function overview(
       needsYou: q.tasks.filter((t) => t.status === "needs_you").length,
       running: q.running,
       runs: (await loadHistory(api, p.id)).length,
+      provider: q.provider ?? p.provider,
     });
   }
   return out;
@@ -370,7 +390,7 @@ export async function dashboard(_args: unknown, api: AddonHostApi): Promise<Dash
   let empty = 0;
   for (const p of await api.projects()) {
     const q = await load(api, p.id);
-    const card = queueCard(p.id, q);
+    const card = queueCard(p.id, q, p.provider);
     if (card) cards.push(card);
     else empty++;
     const runs = (await loadHistory(api, p.id)).filter((r) => !r.finishedAt || r.finishedAt >= since);
@@ -456,7 +476,12 @@ export async function add(
 ): Promise<Queue> {
   const projectId = await projectArg(api, args?.projectId);
   return change(api, projectId, async (q) => {
-    const next = await advance(api, addTasks(q, args.prompts, { ...args, projectId }));
+    const added = addTasks(q, args.prompts, { ...args, projectId });
+    checkProviderChoices(
+      added,
+      added.tasks.slice(q.tasks.length).map((t) => t.id),
+    );
+    const next = await advance(api, added);
     return [next, next];
   });
 }
@@ -469,6 +494,10 @@ export async function update(
     newChat?: boolean;
     permissionMode?: PermissionMode;
     attachments?: TaskFile[];
+    /** Its own provider; null = the queue's choice (D-330). */
+    provider?: TaskProvider | null;
+    /** A model of that provider; null = its default. */
+    model?: string | null;
   },
   api: AddonHostApi,
 ): Promise<void> {
@@ -478,17 +507,20 @@ export async function update(
     const attachments = args.attachments ?? task.attachments ?? [];
     const prompt =
       args.prompt?.trim() || (args.prompt !== undefined && attachments.length ? "" : task.prompt);
-    return [
-      replace(q, {
-        ...task,
-        prompt,
-        attachments: attachments.length ? attachments : undefined,
-        title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
-        newChat: args.newChat ?? task.newChat,
-        permissionMode: args.permissionMode ?? task.permissionMode,
-      }),
-      undefined,
-    ];
+    const provider =
+      args.provider === undefined || args.provider === null
+        ? args.provider
+        : parseQueueProvider(args.provider);
+    const next = replace(q, {
+      ...setProviderChoice(task, provider, args.model),
+      prompt,
+      attachments: attachments.length ? attachments : undefined,
+      title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
+      newChat: args.newChat ?? task.newChat,
+      permissionMode: args.permissionMode ?? task.permissionMode,
+    });
+    checkProviderChoices(next, [task.id]);
+    return [next, undefined];
   });
 }
 
@@ -558,11 +590,19 @@ export async function runFromHistory(
   await change(api, projectId, async (q) => [
     await advance(
       api,
-      addTasks(q, [{ prompt: task.prompt, title: task.title, attachments: task.attachments }], {
-        projectId,
-        newChat: true,
-        permissionMode: task.permissionMode,
-      }),
+      addTasks(
+        q,
+        [
+          {
+            prompt: task.prompt,
+            title: task.title,
+            attachments: task.attachments,
+            ...(task.provider ? { provider: task.provider } : {}),
+            ...(task.model ? { model: task.model } : {}),
+          },
+        ],
+        { projectId, newChat: true, permissionMode: task.permissionMode },
+      ),
     ),
     undefined,
   ]);
@@ -632,6 +672,18 @@ export async function setStopOnFailure(
     { ...q, stopOnFailure: args.on },
     undefined,
   ]);
+}
+
+/** The queue's "Runs on" (D-330): the provider of its new chats, or none for the project's default. */
+export async function setProvider(
+  args: ProjectArgs & { provider?: TaskProvider | "default" | null },
+  api: AddonHostApi,
+): Promise<void> {
+  const provider = parseQueueProvider(args?.provider);
+  await change(api, await projectArg(api, args?.projectId), (q) => {
+    const { provider: _was, ...rest } = q;
+    return [provider ? { ...rest, provider } : rest, undefined];
+  });
 }
 
 /** Clears finished tasks from the queue; their runs stay in the history. */
@@ -776,29 +828,48 @@ export async function toolAdd(
   const tasks = parseNewTasks(args.tasks);
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project the tasks are for (this chat has none)");
+  const fallback = await projectProvider(api, projectId);
   return change(api, projectId, async (q) => {
     let next = addTasks(q, tasks, { projectId, newChat: !args.sameChat, addedBy: args.chat?.sessionId });
+    checkProviderChoices(
+      next,
+      next.tasks.slice(q.tasks.length).map((t) => t.id),
+    );
     if (args.start) next = await advance(api, openRun({ ...next, running: true }));
     return [
       next,
       `Queued ${tasks.length} task${tasks.length === 1 ? "" : "s"}${
         args.start ? " and started the queue" : "; the user starts the queue from its view"
-      }.\n${listing(next)}`,
+      }.\n${listing(next, fallback)}`,
     ];
   });
 }
 
 /** Claude changes queued tasks; the queue's own state (running, other tasks) stays as it is. */
 export async function toolEdit(
-  args: ChatArgs & { tasks?: unknown; project?: string },
+  args: ChatArgs & { tasks?: unknown; project?: string; runsOn?: unknown },
   api: AddonHostApi,
 ): Promise<string> {
-  const edits = parseTaskEdits(args.tasks);
+  // The queue's "Runs on" alone, or with task edits (D-330).
+  const queueProvider = args.runsOn === undefined ? undefined : { provider: parseQueueProvider(args.runsOn) };
+  const edits = queueProvider && args.tasks === undefined ? [] : parseTaskEdits(args.tasks);
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project's queue to change (this chat has none)");
+  const fallback = await projectProvider(api, projectId);
   return change(api, projectId, (q) => {
-    const next = editTasks(q, edits);
-    return [next, `Changed ${edits.length} task${edits.length === 1 ? "" : "s"}.\n${listing(next)}`];
+    let next = q;
+    if (queueProvider) {
+      const { provider: _was, ...rest } = q;
+      next = queueProvider.provider ? { ...rest, provider: queueProvider.provider } : rest;
+    }
+    if (edits.length) next = editTasks(next, edits);
+    const what = [
+      queueProvider ? "the queue's Runs on" : "",
+      edits.length ? `${edits.length} task${edits.length === 1 ? "" : "s"}` : "",
+    ]
+      .filter(Boolean)
+      .join(" and ");
+    return [next, `Changed ${what}.\n${listing(next, fallback)}`];
   });
 }
 
@@ -826,7 +897,7 @@ export async function toolList(
   const parts: string[] = [];
   for (const p of shown) {
     const q = await load(api, p.id);
-    if (own || q.tasks.length) parts.push(`${p.name}: ${listing(q)}`);
+    if (own || q.tasks.length) parts.push(`${p.name}: ${listing(q, p.provider)}`);
   }
   return parts.join("\n\n") || "Every task queue is empty.";
 }

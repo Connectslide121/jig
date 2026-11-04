@@ -6,6 +6,7 @@ import {
   Empty,
   IconButton,
   ProjectSwatch,
+  ProviderMark,
   Spinner,
   useAddonEvent,
   useHostCall,
@@ -248,6 +249,10 @@ function QueueCardView({
               menu(e.currentTarget);
             }}
           />
+        </span>
+        {/* Who runs its new chats: the queue's "Runs on", else the project's default (D-330). */}
+        <span className="flex w-4 shrink-0 justify-center" data-testid={`tasks-dashboard-provider-${name}`}>
+          <ProviderMark provider={card.provider} iconOnly />
         </span>
         <span className="flex w-20 shrink-0 justify-end">
           <Badge tone={STATE_TONE[card.state]}>

@@ -1,7 +1,8 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, test } from "./fixtures";
+import { expect, hostCall, launchJig, test } from "./fixtures";
 
 const TINY_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -108,11 +109,28 @@ test("Tasks: a queue Claude works through, each task reporting back, with links 
   await page.getByRole("menuitem", { name: "Continue the chat before" }).click();
   await expect(add.getByTestId("tasks-add-chat-2")).toHaveCount(0);
   await expect(add.getByTestId("tasks-add-confirm")).toHaveText("Add 3 tasks in 2 chats");
+  // Who runs each chat (D-330): the queue's choice by default; chat 2 on ChatGPT's Sol. The control
+  // keeps its width, so the project picker beside it doesn't move.
+  const runsOn = add.getByTestId("tasks-add-runs-on-1");
+  await expect(runsOn).toContainText("Queue's choice");
+  const projectBefore = await add.getByTestId("tasks-add-project-1").boundingBox();
+  await runsOn.click();
+  await page.getByTestId("tasks-runs-on-chatgpt").hover();
+  await page.getByTestId("tasks-model-sol").click();
+  await expect(runsOn).toContainText("ChatGPT · Sol (latest)");
+  expect(await add.getByTestId("tasks-add-project-1").boundingBox()).toEqual(projectBefore);
   await add.getByTestId("tasks-add-confirm").click();
   await expect(view.getByTestId("task-t3")).toContainText("update the readme");
   await expect(view.getByTestId("task-group-1").getByTestId("task-t3")).toBeVisible();
   await expect(view.getByTestId("task-group-0").getByTestId("task-t2")).toHaveCount(0);
   await expect(view.getByTestId("task-status-t1")).toContainText("Queued");
+  // Every row shows who runs it, in one column: the queue's default for t1, chat 2's ChatGPT for t2
+  // and for t3, which continues t2's chat.
+  await expect(view.getByTestId("task-provider-t1").getByTestId("provider-mark-claude")).toBeVisible();
+  await expect(view.getByTestId("task-provider-t2").getByTestId("provider-mark-chatgpt")).toBeVisible();
+  await expect(view.getByTestId("task-provider-t3").getByTestId("provider-mark-chatgpt")).toBeVisible();
+  const markX = async (id: string) => (await view.getByTestId(`task-provider-${id}`).boundingBox())!.x;
+  expect(await markX("t1")).toBe(await markX("t3"));
   await expect(view.getByTestId("task-files-t1")).toHaveText("2");
   await expect(view.getByTestId("task-files-t2")).toHaveCount(0);
 
@@ -392,4 +410,94 @@ test("Tasks: a turn without a report is asked once for it, and a chat reports la
     "Task queue: asked for the report of task 2",
   );
   await expect(page.getByTestId("jig-message")).toHaveCount(2);
+});
+
+test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it (D-330)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  // The header's Runs on: the project's default until you pick one; its slot keeps its size.
+  const runsOn = view.getByTestId("tasks-runs-on");
+  await expect(runsOn).toContainText("Default");
+  const pickerBefore = await view.getByTestId("tasks-project").boundingBox();
+  await runsOn.click();
+  await page.getByTestId("tasks-runs-on-chatgpt").click();
+  await expect(runsOn).toContainText("ChatGPT");
+  expect(await view.getByTestId("tasks-project").boundingBox()).toEqual(pickerBefore);
+
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: [
+        { prompt: "update the readme", newChat: true },
+        { prompt: "then the changelog", newChat: false },
+        { prompt: "check the cart", newChat: true, provider: "claude", model: "sonnet" },
+      ],
+      newChat: true,
+    },
+  });
+  await expect(view.getByTestId("task-provider-t1").getByTestId("provider-mark-chatgpt")).toBeVisible();
+  await expect(view.getByTestId("task-provider-t3").getByTestId("provider-mark-claude")).toBeVisible();
+
+  // Editing a task that continues a chat shows that chat's provider, greyed out with the reason.
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit…" }).click();
+  const edit = page.getByTestId("tasks-edit-dialog");
+  await expect(edit.getByTestId("tasks-edit-runs-on")).toHaveAttribute("aria-disabled", "true");
+  await expect(edit.getByTestId("tasks-edit-runs-on")).toContainText("ChatGPT");
+  await expect(edit.getByTestId("tasks-edit-runs-on-hint")).toContainText("Same as the chat it continues");
+  await edit.getByRole("button", { name: "Cancel" }).click();
+
+  // The details pane names the provider and model.
+  await view.getByTestId("task-t3").click();
+  await expect(page.getByTestId("task-runs-on")).toContainText("Claude · Sonnet (latest)");
+  await page.getByTestId("task-details").getByRole("button", { name: "Close" }).click();
+
+  // The ChatGPT chat runs and reports through Jig's MCP server, like Codex.
+  await view.getByTestId("task-tick-t3").click();
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 45000 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done");
+  await view.getByTestId("task-group-chat-0").click();
+  await expect(page.getByText("Reported from ChatGPT.").first()).toBeVisible();
+});
+
+test("Tasks: a task for ChatGPT while it isn't signed in is blocked and pauses the queue", async () => {
+  const home = await mkdtemp(join(tmpdir(), "jig-e2e-"));
+  const app = await launchJig(home, { JIG_FAKE_CHATGPT_USAGE: "signedout" });
+  try {
+    const page = await app.firstWindow();
+    await page.waitForSelector("[data-testid=app-root]");
+    const ids = await twoProjects(page, home);
+    const view = await openTasks(page);
+    // ChatGPT can't be picked until you sign in on Get Started.
+    await view.getByTestId("tasks-runs-on").click();
+    await expect(page.getByTestId("tasks-runs-on-chatgpt")).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByTestId("tasks-runs-on-get-started")).toBeVisible();
+    await page.keyboard.press("Escape");
+    // Claude asked for it anyway: the task ends blocked, and the queue stops.
+    await hostCall(page, "addons.call", {
+      id: "tasks",
+      method: "add",
+      args: {
+        projectId: ids.shop,
+        prompts: [{ prompt: "update the readme", newChat: true, provider: "chatgpt" }, "check the cart"],
+        newChat: true,
+      },
+    });
+    await view.getByTestId("tasks-start").click();
+    await expect(view.getByTestId("task-status-t1")).toContainText("Blocked", { timeout: 20000 });
+    await expect(view.getByTestId("task-status-t2")).toContainText("Queued");
+    await expect(view.getByTestId("tasks-start")).toBeVisible();
+    await view.getByTestId("task-t1").click();
+    await expect(page.getByTestId("task-details")).toContainText("ChatGPT isn't signed in");
+  } finally {
+    await app.close();
+    await rm(home, { recursive: true, force: true });
+  }
 });

@@ -12,6 +12,7 @@ import {
   removeFile,
   removeStep,
   setChatProject,
+  setChatProvider,
   setStep,
   splitAt,
   spreadStep,
@@ -100,5 +101,20 @@ describe("the add dialog's draft", () => {
     chats = removeFile(chats, 0, 1, spec.path);
     expect(draftTasks(chats)[0]!.tasks).toHaveLength(1);
     expect(spreadStep(chats, 0, 0, ["a", "b"])[0]!.steps.map((s) => s.files.length)).toEqual([2, 0, 0]);
+  });
+});
+
+describe("a chat's provider (D-330)", () => {
+  it("goes on the chat's first task only, and a split chat keeps it", () => {
+    let chats = setChatProvider([draftChat("p1", ["a", "b"])], 0, "chatgpt", "sol");
+    expect(draftTasks(chats)[0]!.tasks.map((t) => [t.provider, t.model])).toEqual([
+      ["chatgpt", "sol"],
+      [undefined, undefined],
+    ]);
+    chats = splitAt(chats, 0, 1);
+    expect(chats[1]).toMatchObject({ provider: "chatgpt", model: "sol" });
+    chats = setChatProvider(chats, 0);
+    expect(chats[0]).not.toHaveProperty("provider");
+    expect(setChatProvider(chats, 1, undefined, "sol")[1]).not.toHaveProperty("model");
   });
 });

@@ -188,6 +188,22 @@ export class FakeEngine implements Engine {
      * A Codex chat's stand-in tool, called over the chat's MCP server like Codex does: the card shows
      * as Claude's tool and the stand-in asks on it. Returns what the tool answered.
      */
+    /**
+     * The task queue's report tool (D-330): a Codex chat calls it over the chat's local MCP server, as
+     * Codex does; a Claude chat directly, as Claude Code's in-process server. Returns what it answered.
+     */
+    const reportTask = async (input: Record<string, unknown>): Promise<string> => {
+      if (mcpClient && this.provider === "codex") {
+        const out = await mcpClient.call("jig", "addon_tasks_report", input).catch((e: Error) => ({
+          text: e.message,
+          isError: true,
+        }));
+        return out.isError ? `Error: ${out.text}` : out.text;
+      }
+      return outputText(
+        await toolHandlers!.addon_tasks_report!(input).catch((e: Error) => `Error: ${e.message}`),
+      );
+    };
     const callStandIn = async (tool: string, toolId: string, input: Record<string, unknown>) => {
       standInCall = toolId;
       try {
@@ -417,9 +433,7 @@ export class FakeEngine implements Engine {
             const toolId = `tool-${randomUUID()}`;
             const input = { outcome: "done", summary: "Reported when the queue asked", taskId };
             onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });
-            const output = outputText(
-              await toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
-            );
+            const output = await reportTask(input);
             onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
             await stream(`${msg}:text:1`, "Reported.", signal);
           }
@@ -446,16 +460,19 @@ export class FakeEngine implements Engine {
             name: "mcp__jig__addon_tasks_report",
             input,
           });
-          const output = outputText(
-            await toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
-          );
+          const output = await reportTask(input);
           onEvent({
             type: "tool_result",
             toolUseId: toolId,
             output,
             isError: output.startsWith("Error"),
           });
-          await stream(`${msg}:text:1`, "Reported.", signal);
+          // The answer names who ran it, so tests see which engine the task's chat runs on.
+          await stream(
+            `${msg}:text:1`,
+            `Reported${this.provider === "codex" ? " from ChatGPT" : ""}.`,
+            signal,
+          );
         } else if (toolHandlers?.addon_tasks_add && /\bqueue tasks for\b/.test(lower)) {
           // "queue tasks for the specs": Claude fills the Tasks add-on's queue.
           const toolId = `tool-${randomUUID()}`;

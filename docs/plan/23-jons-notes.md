@@ -41,6 +41,10 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
 - [x] **All queues dashboard** (added 2026-11-04, D-326): a main-area tab from the Tasks view with a
       card per project's queue (state, progress, current task and why it needs you, up next, last) and
       a summary strip; `addon_tasks_list` takes `project` and `all`.
+- [x] **Claude or ChatGPT per queue and per task** (added 2026-11-04, D-330): the queue's "Runs on"
+      (project default, Claude, ChatGPT), a per-task provider and model in Add tasks and Edit, the
+      mark on every row, the details and the dashboard card; `chats.create({ provider, model })` for
+      add-ons; `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model` and `runsOn`.
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

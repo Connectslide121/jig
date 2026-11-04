@@ -1,5 +1,19 @@
 # Status
 
+Claude or ChatGPT per task queue (2026-11-04, D-330): each project's queue picks who runs its chats:
+the Queue tab's header has **Runs on** beside the project picker (Project default, Claude, ChatGPT),
+so Podium's queue can run on ChatGPT and Jig's on Claude. A task can override it in **Add tasks** (per
+chat) and **Edit**, with a model ("Opus (latest)", "Sol (latest)"…); a task that continues a chat
+shows that chat's provider, greyed out. Every row shows the provider's mark in its own column, the
+details say provider and model, and the All queues card shows the queue's. ChatGPT is greyed out with
+"Sign in on Get Started" while Codex isn't signed in; a task that gets to ChatGPT signed out ends
+Blocked and pauses the queue. Claude's `addon_tasks_add`/`addon_tasks_edit` take `provider`, `model`
+and `runsOn`. Add-ons can start chats on a provider and model (`api.chats.create({ provider, model })`).
+Checked with screenshots in Jig Dark and Jig Light, wide and narrow (fake engine, signed in and out).
+Unit tests pass; e2e updated, not run (D-258).
+**Check on your machine:** set Podium's queue to ChatGPT and run a task: its chat should be a ChatGPT
+chat (the mark in its header), and the task should end with ChatGPT's report in the table.
+
 Teams status in Meetings (2026-11-04, D-329): in the lobby's Chats, each one-to-one chat's picture has
 the person's Teams status as a dot, like Teams (green check Available, red Busy or In a call, red
 minus Do not disturb, amber clock Away or Be right back, grey ring Offline); hover it for the words

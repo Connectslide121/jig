@@ -6,6 +6,8 @@
 export type Outcome = "done" | "partial" | "failed" | "blocked";
 export type TaskStatus = "queued" | "running" | "needs_you" | Outcome | "no_report" | "error" | "skipped";
 export type PermissionMode = "default" | "acceptEdits" | "plan";
+/** Who runs a task's chat (D-330): Claude Code, or ChatGPT through Codex. */
+export type TaskProvider = "claude" | "chatgpt";
 /** Why a task's chat waits for you: the kind of card pending in it. */
 export type WaitingFor = "permission" | "question" | "plan";
 
@@ -64,6 +66,13 @@ export interface Task {
   interrupted?: boolean;
   /** While it needs you: what its chat waits for (D-326). */
   waitingFor?: WaitingFor;
+  /** Runs on this provider instead of the queue's choice (D-330); ignored when it continues a chat. */
+  provider?: TaskProvider;
+  /** A model of `provider` (a family alias like `opus` or `sol`, or an exact id); empty = its default. */
+  model?: string;
+  /** The provider and model its chat ran on, set when it starts. */
+  ranOn?: TaskProvider;
+  ranModel?: string;
 }
 
 export interface Queue {
@@ -73,6 +82,8 @@ export interface Queue {
   seq: number;
   /** The open run: from Start until the queue finishes (pausing keeps it open). */
   runId?: string;
+  /** "Runs on": the provider of the queue's new chats; none = the project's default (D-330). */
+  provider?: TaskProvider;
 }
 
 /** A run kept in the history: the tasks that ran in it, as they ended (or are now, while it runs). */
@@ -154,6 +165,8 @@ export interface NewTask {
   title?: string;
   newChat?: boolean;
   attachments?: TaskFile[];
+  provider?: TaskProvider;
+  model?: string;
 }
 
 /** A file's name to show (its original name, else the end of its path). */
@@ -191,6 +204,7 @@ export function addTasks(
         status: "queued",
         ...(options.from ? { from: options.from } : {}),
         ...(options.addedBy ? { addedBy: options.addedBy } : {}),
+        ...providerFields(item.provider, item.model),
       }),
     );
   return { ...queue, seq, tasks: [...queue.tasks, ...added] };
@@ -232,6 +246,8 @@ export function resetTask(task: Task): Task {
     answer: _a,
     error: _e,
     runId: _run,
+    ranOn: _ranOn,
+    ranModel: _ranModel,
     ...rest
   } = task;
   return { ...rest, status: "queued" };
@@ -448,8 +464,8 @@ export function parseReport(args: {
 }
 
 /**
- * Checks the tasks Claude passes to the add tool: strings, or `{ title?, prompt, newChat? }`. At most
- * 50 at once; a prompt must say what to do on its own (it may run in a new chat).
+ * Checks the tasks Claude passes to the add tool: strings, or `{ title?, prompt, newChat?, provider?,
+ * model? }`. At most 50 at once; a prompt must say what to do on its own (it may run in a new chat).
  */
 export function parseNewTasks(value: unknown): NewTask[] {
   const items = Array.isArray(value) ? value : [];
@@ -464,6 +480,7 @@ export function parseNewTasks(value: unknown): NewTask[] {
         prompt,
         ...(typeof o.title === "string" && o.title.trim() ? { title: o.title.trim().slice(0, 120) } : {}),
         ...(typeof o.newChat === "boolean" ? { newChat: o.newChat } : {}),
+        ...parseProviderChoice(o, `"${prompt.slice(0, 40)}"`),
       };
     })
     .filter((t): t is NewTask => !!t);
@@ -487,6 +504,10 @@ export interface TaskEdit {
   moveTo?: MoveTo;
   /** `moveTo` takes every task of the task's chat, as dragging a chat card's header does. */
   wholeChat?: boolean;
+  /** Its own provider; null = the queue's choice (D-330). */
+  provider?: TaskProvider | null;
+  /** A model of its provider; null = the provider's default. */
+  model?: string | null;
 }
 
 /** Where Claude moves a queued task (`addon_tasks_edit`). */
@@ -523,6 +544,15 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
       if (!edit.moveTo) throw new Error(`wholeChat for task ${id} needs a moveTo`);
       edit.wholeChat = true;
     }
+    // "default" (or null) goes back to the queue's choice; a null model to the provider's default.
+    const choice = parseProviderChoice(
+      { provider: o.provider === "default" ? undefined : o.provider, model: o.model },
+      `task ${id}`,
+    );
+    if (o.provider === null || o.provider === "default") edit.provider = null;
+    else if (choice.provider) edit.provider = choice.provider;
+    if (o.model === null || o.model === "") edit.model = null;
+    else if (choice.model) edit.model = choice.model;
     if (Object.keys(edit).length === 1) throw new Error(`Say what to change in task ${id}`);
     return edit;
   });
@@ -555,12 +585,16 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
         if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
         let task: Task = { ...t, prompt, ...(e.title ? { title: e.title } : {}) };
         if (e.leftOut !== undefined) task = setLeftOut({ ...next, tasks: [task] }, e.leftOut).tasks[0]!;
-        return task;
+        return setProviderChoice(task, e.provider, e.model);
       }),
     };
     if (e.moveTo) next = moveTo(next, e.id, e.moveTo, { newChat: e.newChat, wholeChat: e.wholeChat });
     else if (e.newChat !== undefined) next = setNewChat(next, e.id, e.newChat);
   }
+  checkProviderChoices(
+    next,
+    edits.filter((e) => e.provider || e.model).map((e) => e.id),
+  );
   return next;
 }
 
@@ -761,7 +795,7 @@ export function stepTasks(queue: Queue, ids: string[], to: -1 | 1 | "top" | "bot
 export function requeue(queue: Queue, id: string): Queue {
   const task = queue.tasks.find((t) => t.id === id);
   if (!task) return queue;
-  return addTasks(queue, [{ prompt: task.prompt, title: task.title, attachments: task.attachments }], {
+  return addTasks(queue, [{ ...rerunOf(task) }], {
     projectId: task.projectId,
     newChat: true,
     permissionMode: task.permissionMode,
@@ -998,15 +1032,36 @@ export function tally(
   return { byStatus, finished: tasks.filter(isFinished).length, ms, costUsd };
 }
 
-/** One line per task for Claude (the list tool). */
-export function listing(queue: Queue): string {
+/** How a task's provider reads in Claude's listings: "on ChatGPT (sol)", "on Claude, the chat's". */
+function runsOnText(queue: Queue, task: Task, projectDefault: TaskProvider): string {
+  const on = runsOn(queue, task, projectDefault);
+  const from = {
+    task: "",
+    ran: "",
+    chat: ", the chat's",
+    queue: ", the queue's",
+    project: ", the project's",
+  }[on.from];
+  return `on ${PROVIDER_LABEL[on.provider]}${on.model ? ` (${on.model})` : ""}${from}`;
+}
+
+/** The queue's "Runs on", for Claude. */
+const queueRunsOn = (queue: Queue) =>
+  queue.provider
+    ? `New chats run on ${PROVIDER_LABEL[queue.provider]}.`
+    : "New chats run on the project's default.";
+
+/** One line per task for Claude (the list tool); `projectDefault`: the project's provider. */
+export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): string {
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
-  return [`The task queue is ${queue.running ? "running" : "paused"}.`, ...lines].join("\n");
+  return [`The task queue is ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`, ...lines].join(
+    "\n",
+  );
 }
 
 /** One short line per task (id, status, title), for listing every project's queue at once. */
@@ -1016,7 +1071,188 @@ export function compactListing(queue: Queue): string {
       `- ${t.id} [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}] ${t.title}`,
   );
   return [
-    `${queue.tasks.length} task${queue.tasks.length === 1 ? "" : "s"}, ${queue.running ? "running" : "paused"}.`,
+    `${queue.tasks.length} task${queue.tasks.length === 1 ? "" : "s"}, ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`,
     ...lines,
   ].join("\n");
+}
+
+// Who runs a task's chat (D-330).
+
+export const TASK_PROVIDERS: TaskProvider[] = ["claude", "chatgpt"];
+
+export const PROVIDER_LABEL: Record<TaskProvider, string> = { claude: "Claude", chatgpt: "ChatGPT" };
+
+/**
+ * The models a task can pick: each provider's families, which always run its newest version (Claude
+ * Code's aliases; ChatGPT's families, D-310). Claude's tools may also give an exact model id.
+ */
+export const TASK_MODELS: Record<TaskProvider, Array<{ value: string; label: string }>> = {
+  claude: [
+    { value: "opus", label: "Opus (latest)" },
+    { value: "sonnet", label: "Sonnet (latest)" },
+    { value: "haiku", label: "Haiku (latest)" },
+  ],
+  chatgpt: [
+    { value: "sol", label: "Sol (latest)" },
+    { value: "terra", label: "Terra (latest)" },
+    { value: "luna", label: "Luna (latest)" },
+  ],
+};
+
+/** A model's name for people: its family's ("Opus (latest)"), else the id as given. */
+export const modelLabel = (model: string): string =>
+  [...TASK_MODELS.claude, ...TASK_MODELS.chatgpt].find((m) => m.value === model.toLowerCase())?.label ??
+  model;
+
+/** Whose model an id is: ChatGPT's families and `gpt-…` ids are ChatGPT's, everything else Claude's. */
+export function providerOfModel(model: string): TaskProvider {
+  const m = model.trim().toLowerCase();
+  return TASK_MODELS.chatgpt.some((x) => x.value === m) || /^gpt-|codex/.test(m) ? "chatgpt" : "claude";
+}
+
+const MODEL_ID = /^[\w.:[\]-]{1,80}$/;
+
+/** A provider choice as stored on a task: a model alone names its provider; another provider's model is dropped. */
+function providerFields(provider?: TaskProvider, model?: string): Pick<Task, "provider" | "model"> {
+  const m = model?.trim();
+  const p = provider ?? (m ? providerOfModel(m) : undefined);
+  if (!p) return {};
+  return { provider: p, ...(m && providerOfModel(m) === p ? { model: m } : {}) };
+}
+
+/** A finished task as a new queued one (Run again): the same prompt, files and provider choice. */
+function rerunOf(task: Task): NewTask {
+  return {
+    prompt: task.prompt,
+    title: task.title,
+    attachments: task.attachments,
+    ...(task.provider ? { provider: task.provider } : {}),
+    ...(task.model ? { model: task.model } : {}),
+  };
+}
+
+/** Whether a task continues the chat of the task before it (it isn't the first of its chat card). */
+export function continuesChat(queue: Pick<Queue, "tasks">, task: Task): boolean {
+  const group = chatGroups(queue).find((g) => g.tasks.some((x) => x.task.id === task.id));
+  return !!group && group.tasks[0]!.task.id !== task.id;
+}
+
+/**
+ * Where a task's provider comes from: its own choice, the queue's, the project's default, the chat it
+ * continues, or (once it started) the chat it ran in.
+ */
+export type RunsOnSource = "task" | "queue" | "project" | "chat" | "ran";
+
+export interface RunsOn {
+  provider: TaskProvider;
+  /** The model asked for; none = the provider's default (the project's model for its own provider). */
+  model?: string;
+  from: RunsOnSource;
+}
+
+/**
+ * The provider a task runs on (D-330): once it started, the one its chat ran on; a task that continues
+ * a chat, that chat's (a chat keeps its provider for life), so its own choice is ignored; otherwise its
+ * own choice, then the queue's "Runs on", then the project's default (`projectDefault`: the project's
+ * provider, else Jig's).
+ */
+export function runsOn(
+  queue: Pick<Queue, "tasks" | "provider">,
+  task: Task,
+  projectDefault: TaskProvider,
+): RunsOn {
+  if (task.ranOn)
+    return { provider: task.ranOn, ...(task.ranModel ? { model: task.ranModel } : {}), from: "ran" };
+  const group = chatGroups(queue).find((g) => g.tasks.some((x) => x.task.id === task.id));
+  const tasks = group?.tasks.map((x) => x.task) ?? [];
+  if (tasks[0] && tasks[0] !== task) {
+    // The chat it continues: the one a task of its card ran in, else the one its first task will start.
+    const chat = runsOn(queue, tasks.find((t) => t.ranOn) ?? tasks[0], projectDefault);
+    return { provider: chat.provider, from: "chat" };
+  }
+  if (task.provider)
+    return { provider: task.provider, ...(task.model ? { model: task.model } : {}), from: "task" };
+  if (queue.provider) return { provider: queue.provider, from: "queue" };
+  return { provider: projectDefault, from: "project" };
+}
+
+/** What a task's error starts with when it was to run on ChatGPT while Codex isn't signed in. */
+export const CHATGPT_SIGNED_OUT = "ChatGPT isn't signed in";
+
+/**
+ * A task whose chat couldn't start: blocked when ChatGPT isn't signed in (sign in, then run it again),
+ * an error otherwise. Both pause the queue when "stop when a task fails" is on.
+ */
+export function startFailed(task: Task, message: string, at = new Date().toISOString()): Task {
+  const signedOut = message.startsWith(CHATGPT_SIGNED_OUT);
+  return {
+    ...task,
+    status: signedOut ? "blocked" : "error",
+    error: signedOut ? `${CHATGPT_SIGNED_OUT}: sign in on Get Started, then run it again` : message,
+    finishedAt: at,
+  };
+}
+
+/**
+ * Throws when a queued task with its own provider or model continues a chat (D-330): a chat keeps its
+ * provider for life, so the choice could never apply. `ids`: the tasks to check (just added or edited).
+ */
+export function checkProviderChoices(queue: Pick<Queue, "tasks">, ids: string[]): void {
+  for (const task of queue.tasks) {
+    if (!ids.includes(task.id) || (!task.provider && !task.model) || task.status !== "queued") continue;
+    if (continuesChat(queue, task))
+      throw new Error(
+        `Task ${task.id} continues the chat before it, so it runs on that chat's provider: leave provider and model out, or start a new chat (newChat true)`,
+      );
+  }
+}
+
+function parseProvider(value: unknown, where: string): TaskProvider | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (value === "claude" || value === "chatgpt") return value;
+  throw new Error(`provider for ${where} must be "claude" or "chatgpt"`);
+}
+
+function parseModel(value: unknown, where: string): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const m = String(value).trim();
+  if (!MODEL_ID.test(m)) throw new Error(`model for ${where} isn't a model id (e.g. opus, sonnet, sol)`);
+  return m;
+}
+
+/** A provider and model as Claude gave them, checked against each other. */
+export function parseProviderChoice(
+  o: Record<string, unknown>,
+  where: string,
+): { provider?: TaskProvider; model?: string } {
+  const provider = parseProvider(o.provider, where);
+  const model = parseModel(o.model, where);
+  if (provider && model && providerOfModel(model) !== provider)
+    throw new Error(`model ${model} for ${where} isn't a ${PROVIDER_LABEL[provider]} model`);
+  return { ...(provider ? { provider } : {}), ...(model ? { model } : {}) };
+}
+
+/** The queue's "Runs on" as Claude or the view gives it: "default" (or none) = the project's default. */
+export function parseQueueProvider(value: unknown): TaskProvider | undefined {
+  if (value === "default" || value === undefined || value === null || value === "") return undefined;
+  return parseProvider(value, "the queue");
+}
+
+/**
+ * A task's provider choice changed: `null` provider goes back to the queue's choice (and drops the
+ * model); `null` model to the provider's default; a model alone names its provider.
+ */
+export function setProviderChoice(
+  task: Task,
+  provider: TaskProvider | null | undefined,
+  model: string | null | undefined,
+): Task {
+  if (provider === undefined && model === undefined) return task;
+  const { provider: _p, model: _m, ...rest } = task;
+  const nextProvider =
+    provider === undefined ? (model ? providerOfModel(model) : task.provider) : (provider ?? undefined);
+  const nextModel =
+    model === undefined ? (provider === undefined ? task.model : undefined) : (model ?? undefined);
+  if (provider === null && model === undefined) return rest;
+  return { ...rest, ...providerFields(nextProvider, nextModel) };
 }

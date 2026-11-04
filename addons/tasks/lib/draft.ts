@@ -1,4 +1,4 @@
-import { type NewTask, parsePrompts, type TaskFile } from "./tasks";
+import { type NewTask, parsePrompts, type TaskFile, type TaskProvider } from "./tasks";
 
 /**
  * The Add tasks dialog's draft: chats, each with its tasks in order. A chat's first task starts a new
@@ -15,6 +15,9 @@ export interface DraftChat {
   id: string;
   projectId: string;
   steps: DraftStep[];
+  /** Runs on this provider and model instead of the queue's choice (D-330); its tasks share the chat's. */
+  provider?: TaskProvider;
+  model?: string;
 }
 
 let seq = 0;
@@ -105,7 +108,9 @@ export function moveStep(chats: DraftChat[], ci: number, si: number, delta: -1 |
 export function splitAt(chats: DraftChat[], ci: number, si: number): DraftChat[] {
   const chat = chats[ci];
   if (!chat || si <= 0 || si >= chat.steps.length) return chats;
-  const rest: DraftChat = { id: nextId("c"), projectId: chat.projectId, steps: chat.steps.slice(si) };
+  // The new chat runs where the one it came from runs.
+  const { id: _id, steps: _steps, ...same } = chat;
+  const rest: DraftChat = { ...same, id: nextId("c"), steps: chat.steps.slice(si) };
   return [...chats.slice(0, ci), { ...chat, steps: chat.steps.slice(0, si) }, rest, ...chats.slice(ci + 1)];
 }
 
@@ -135,6 +140,23 @@ export function setChatProject(chats: DraftChat[], ci: number, projectId: string
   return chat ? withChat(chats, ci, { ...chat, projectId }) : chats;
 }
 
+/** A chat's "Runs on": a provider and model, or none for the queue's choice. */
+export function setChatProvider(
+  chats: DraftChat[],
+  ci: number,
+  provider?: TaskProvider,
+  model?: string,
+): DraftChat[] {
+  const chat = chats[ci];
+  if (!chat) return chats;
+  const { provider: _p, model: _m, ...rest } = chat;
+  return withChat(chats, ci, {
+    ...rest,
+    ...(provider ? { provider } : {}),
+    ...(provider && model ? { model } : {}),
+  });
+}
+
 /**
  * What to queue, one entry per chat in order: its project and its tasks, the first starting a new chat
  * and the rest continuing it, with their files. Empty tasks (no text, no files) are left out, and chats
@@ -151,6 +173,9 @@ export function draftTasks(chats: DraftChat[]): Array<{ projectId: string; tasks
             prompt: s.text.trim(),
             newChat: i === 0,
             ...(s.files.length ? { attachments: s.files } : {}),
+            // The chat's first task starts it, so it carries the chat's provider; the rest continue it.
+            ...(i === 0 && c.provider ? { provider: c.provider } : {}),
+            ...(i === 0 && c.provider && c.model ? { model: c.model } : {}),
           }),
         ),
     }))

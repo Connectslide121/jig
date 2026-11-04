@@ -11,6 +11,7 @@ import {
   isReady,
   type Queue,
   type Task,
+  type TaskProvider,
   type TaskStatus,
   type WaitingFor,
 } from "./tasks";
@@ -60,6 +61,8 @@ export interface DashboardTask {
 export interface QueueCard {
   projectId: string;
   state: QueueState;
+  /** Who runs the queue's new chats: its "Runs on", else the project's default (D-330). */
+  provider: TaskProvider;
   /** The queue's own switch: Start or Pause. */
   running: boolean;
   /** Queued and ticked: what Start takes. */
@@ -103,8 +106,15 @@ export function queueState(queue: Queue): QueueState {
   return "idle";
 }
 
-/** A project's card, from its queue alone; undefined when the queue has no tasks. */
-export function queueCard(projectId: string, queue: Queue): QueueCard | undefined {
+/**
+ * A project's card, from its queue alone; undefined when the queue has no tasks. `projectDefault`: who
+ * runs the project's new chats when the queue doesn't say.
+ */
+export function queueCard(
+  projectId: string,
+  queue: Queue,
+  projectDefault: TaskProvider = "claude",
+): QueueCard | undefined {
   if (!queue.tasks.length) return undefined;
   const run = runTasks(queue);
   const segments = Object.fromEntries(SEGMENTS.map((s) => [s, 0])) as Record<Segment, number>;
@@ -123,6 +133,7 @@ export function queueCard(projectId: string, queue: Queue): QueueCard | undefine
   return {
     projectId,
     state: queueState(queue),
+    provider: queue.provider ?? projectDefault,
     running: queue.running,
     ready: ready.length,
     segments,

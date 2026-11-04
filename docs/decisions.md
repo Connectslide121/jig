@@ -4828,3 +4828,47 @@ the raw data was cut off at 60 KB).
   meeting chats get none.
 - The test meeting service gives its people different statuses (Alex Available, Sam Away, Taylor
   Busy in a meeting, Kim Do not disturb, Morgan Offline) through three more one-to-one chats.
+
+## D-330: Claude or ChatGPT per task queue, and per task
+
+**Jon:** "I would like to select the provider in the task queues, like ChatGPT in Podium and Claude in
+Jig queues." The details are **Claude, on my own**.
+
+- **Add-on API:** `api.chats.create` / `send` take `provider` (`"claude"` | `"chatgpt"`) and `model`
+  for a **new** chat only; with `sessionId` both are refused (a chat keeps its provider for life,
+  D-309). Add-ons say "chatgpt", main maps it to the `codex` engine. Main validates them in
+  `addons/chats.ts` (it doesn't cross the renderer's IPC, so there is no `validate.ts` schema): a known
+  provider, a model id of letters, digits and `.:-[]_`, and for ChatGPT a sign-in check
+  (`providerStatus`), failing with "ChatGPT isn't signed in: …". `createChat` takes the model instead
+  of the provider's default. `chats.get` tells `provider` and `model`; `AddonProject.provider` is who
+  runs the project's new chats (its own, else Jig's), so add-ons can resolve a default.
+- **SDK UI:** `ProviderMark` and `useChatGptReady()` from `@jig/sdk/ui` (the usage footer's mark,
+  D-298), menu items take `provider` (the mark in front) and `detail`, and `ctx.openGetStarted()`.
+- **The queue's choice:** `Queue.provider` (none = the project's default), set from **Runs on** in the
+  Tasks view's header beside the project picker: a menu (Jig's menus) in a fixed slot; in a narrow
+  view the slot shows the mark only. "Default" names what it stands for in the menu.
+- **Per task:** `Task.provider` / `Task.model`, in Add tasks per chat (it goes on the chat's first
+  task; a split chat keeps it) and in Edit, as one Runs on menu with each provider's models in a
+  submenu ("Default model", then the families, "(latest)"). A model alone names its provider
+  (`providerOfModel`). A task that continues a chat runs on that chat's provider: Edit shows it
+  greyed out with the reason, the tools refuse a choice there (`checkProviderChoices`), and a stored
+  choice of a task that is later moved into a chat is ignored (not cleared), so it comes back if the
+  task starts its own chat again.
+- **Resolution** (`runsOn`, pure, tested): once started, the provider its chat ran on (`ranOn`,
+  `ranModel`, from `chats.get` for a continued chat); a task that continues a chat, that chat's; else
+  the task's choice, the queue's, the project's default. Run again and runs from History keep the
+  choice; putting a task back forgets where it ran.
+- **Signed out at run time:** creating the chat fails; the task ends **Blocked** with "ChatGPT isn't
+  signed in: sign in on Get Started, then run it again" (`startFailed`), so it pauses the queue when
+  "stop when a task fails" is on, like a blocked report. Other start failures stay errors.
+- **Showing it:** every task row and chat card has the provider's mark in one fixed column before the
+  row's ⋯ (the effective provider, always shown; the tooltip says from where), the details have a
+  "Runs on" fact with the model, and the All queues card shows the queue's provider beside its state.
+- **Codex chats:** nothing new was needed: the queue's context reaches every chat through
+  `turnContext`, and `addon_tasks_report` is on the `jig` MCP server Codex chats get (D-313). The fake
+  engine's Codex chats now report over that MCP server, so the e2e test covers it.
+- **Claude's tools:** `addon_tasks_add` tasks take `provider` and `model`; `addon_tasks_edit` takes them
+  per task (`"default"` / `null` back to the queue's choice) and `runsOn` for the queue (tasks then
+  optional); listings say who runs each task and the queue's Runs on.
+- The fallback-provider task (carry on with the other provider when a chat hits its limit) hadn't
+  landed; it should keep `ranOn` true to the chat that actually ran.

@@ -2,7 +2,7 @@
   "$schema": "../../packages/sdk/addon.schema.json",
   "id": "tasks",
   "name": "Tasks",
-  "description": "A queue of prompts Claude does one after another, each in its own chat or continuing the one before. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them.",
+  "description": "A queue of prompts Claude or ChatGPT does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them.",
   "version": "1.0.0",
   "icon": "list-todo",
   "permissions": ["chat"],
@@ -94,7 +94,7 @@
         "params": {
           "tasks": {
             "type": "array",
-            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat } (newChat false continues the previous task's chat)"
+            "description": "The tasks in order: each a prompt string, or { title, prompt, newChat, provider, model } (newChat false continues the previous task's chat; provider \"claude\" or \"chatgpt\" and model, e.g. opus, sonnet, sol, only on a task that starts a chat: by default the queue's Runs on)"
           },
           "project": {
             "type": "string",
@@ -116,11 +116,18 @@
       },
       {
         "id": "edit",
-        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, whether they are left out of the run, whether they continue the previous task's chat (newChat), and where they are in the queue (moveTo). Moves follow the Queue tab's rules: never above or between tasks that ran; a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue. addon_tasks_list gives the ids.",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, whether they are left out of the run, whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn changes the whole queue's provider. Moves follow the Queue tab's rules: never above or between tasks that ran; a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue. addon_tasks_list gives the ids.",
         "params": {
           "tasks": {
             "type": "array",
-            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut?, newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat) }"
+            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut?, newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat), provider? (\"claude\", \"chatgpt\", or \"default\" for the queue's choice; only on a task that starts a chat), model? (e.g. opus, sol; null for the default) }",
+            "optional": true
+          },
+          "runsOn": {
+            "type": "string",
+            "enum": ["default", "claude", "chatgpt"],
+            "description": "The queue's Runs on: who runs its new chats (default: the project's default)",
+            "optional": true
           },
           "project": {
             "type": "string",

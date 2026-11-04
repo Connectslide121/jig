@@ -215,8 +215,11 @@ export async function providerModels(provider: AiProvider): Promise<ModelInfo[]>
  * when the Codex CLI is installed and signed in (`codex login status`; only yes/no is kept). */
 export async function providerStatus(): Promise<ProviderStatus[]> {
   const claude: ProviderStatus = { provider: "claude", ready: true, detail: "Claude Code" };
+  // The fake engine is signed in unless a test signs ChatGPT out (JIG_FAKE_CHATGPT_USAGE=signedout).
   if (getEngine().kind === "fake")
-    return [claude, { provider: "chatgpt", ready: true, detail: "the fake engine" }];
+    return process.env.JIG_FAKE_CHATGPT_USAGE === "signedout"
+      ? [claude, { provider: "chatgpt", ready: false, detail: "Not signed in (the fake engine)." }]
+      : [claude, { provider: "chatgpt", ready: true, detail: "the fake engine" }];
   const binary = codexBinary();
   if (!binary)
     return [claude, { provider: "chatgpt", ready: false, detail: "The Codex CLI isn't installed." }];

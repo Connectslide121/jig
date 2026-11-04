@@ -4,13 +4,16 @@ import {
   afterTurn,
   applyReport,
   BACKGROUND_WAIT_MS,
+  CHATGPT_SIGNED_OUT,
   type ChatState,
   canReportLate,
   chatFinished,
   chatGroups,
   chatToContinue,
+  checkProviderChoices,
   closeRun,
   compactListing,
+  continuesChat,
   counts,
   currentSlot,
   dropSlots,
@@ -29,9 +32,11 @@ import {
   openRun,
   parseNewTasks,
   parsePrompts,
+  parseQueueProvider,
   parseReport,
   parseTaskEdits,
   pendingReportsNote,
+  providerOfModel,
   type Queue,
   type Run,
   recordRuns,
@@ -40,9 +45,12 @@ import {
   resetTask,
   resetTasks,
   runOutcome,
+  runsOn,
   setLeftOut,
+  setProviderChoice,
   shouldPause,
   splitQueue,
+  startFailed,
   stepTasks,
   type Task,
   tally,
@@ -622,13 +630,17 @@ describe("taskContext, counts, duration, listing", () => {
   it("lists the queue for Claude", () => {
     expect(listing(emptyQueue())).toMatch(/empty/);
     const q = queued(["a"]);
-    expect(listing(q)).toContain("1. [Queued] a (id t1)");
+    expect(listing(q)).toContain("1. [Queued] a (id t1, on Claude, the project's)");
+    expect(listing(q)).toContain("New chats run on the project's default.");
+    expect(listing({ ...q, provider: "chatgpt" }, "claude")).toContain("(id t1, on ChatGPT, the queue's)");
   });
   it("lists a queue compactly: id, status and title per task", () => {
     const q = queued(["a", "b"]);
     q.tasks[0]!.status = "done";
     q.tasks[1]!.leftOut = true;
-    expect(compactListing(q)).toBe("2 tasks, paused.\n- t1 [Done] a\n- t2 [Queued, left out] b");
+    expect(compactListing(q)).toBe(
+      "2 tasks, paused. New chats run on the project's default.\n- t1 [Done] a\n- t2 [Queued, left out] b",
+    );
   });
 });
 
@@ -785,5 +797,126 @@ describe("per-project queues", () => {
     expect(joined.tasks.map((t) => t.id)).toEqual(["t1", "t2", "t3"]);
     expect(joined.tasks[2]!.from).toBe("t2");
     expect(joined.seq).toBe(3);
+  });
+});
+
+describe("who runs a task (D-330)", () => {
+  const two = (): Queue =>
+    addTasks(
+      emptyQueue(),
+      [
+        { prompt: "a", newChat: true },
+        { prompt: "b", newChat: false },
+        { prompt: "c", newChat: true },
+      ],
+      { projectId: "p1", newChat: true },
+    );
+
+  it("takes the task's choice, then the queue's, then the project's default", () => {
+    let q = two();
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "claude", from: "project" });
+    expect(runsOn(q, q.tasks[0]!, "chatgpt")).toEqual({ provider: "chatgpt", from: "project" });
+    q = { ...q, provider: "chatgpt" };
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "queue" });
+    q = editTasks(q, [{ id: "t1", provider: "claude", model: "opus" }]);
+    expect(runsOn(q, q.tasks[0]!, "chatgpt")).toEqual({ provider: "claude", model: "opus", from: "task" });
+    expect(runsOn(q, q.tasks[2]!, "claude")).toEqual({ provider: "chatgpt", from: "queue" });
+  });
+
+  it("runs a task that continues a chat on that chat's provider, whatever it says itself", () => {
+    let q = editTasks({ ...two(), provider: "chatgpt" }, [{ id: "t1", provider: "claude" }]);
+    expect(continuesChat(q, q.tasks[1]!)).toBe(true);
+    expect(continuesChat(q, q.tasks[0]!)).toBe(false);
+    expect(runsOn(q, q.tasks[1]!, "chatgpt")).toEqual({ provider: "claude", from: "chat" });
+    // A stored choice (from before it joined the chat) is ignored.
+    q = { ...q, tasks: q.tasks.map((t) => (t.id === "t2" ? { ...t, provider: "chatgpt" as const } : t)) };
+    expect(runsOn(q, q.tasks[1]!, "claude").provider).toBe("claude");
+    // Once the chat ran, the provider it ran on wins.
+    q = { ...q, tasks: q.tasks.map((t) => (t.id === "t1" ? { ...t, ranOn: "chatgpt" as const } : t)) };
+    expect(runsOn(q, q.tasks[1]!, "claude")).toEqual({ provider: "chatgpt", from: "chat" });
+    expect(runsOn(q, q.tasks[0]!, "claude")).toEqual({ provider: "chatgpt", from: "ran" });
+  });
+
+  it("refuses a provider or model for a task that continues a chat", () => {
+    const q = two();
+    expect(() => editTasks(q, [{ id: "t2", provider: "chatgpt" }])).toThrow(/continues the chat before it/);
+    expect(() => editTasks(q, [{ id: "t2", model: "sol" }])).toThrow(/continues the chat before it/);
+    expect(() =>
+      checkProviderChoices(
+        addTasks(q, [{ prompt: "d", provider: "chatgpt" }], { projectId: "p1", newChat: false }),
+        ["t4"],
+      ),
+    ).toThrow(/t4 continues/);
+    expect(() =>
+      checkProviderChoices(
+        addTasks(q, [{ prompt: "d", provider: "chatgpt" }], { projectId: "p1", newChat: true }),
+        ["t4"],
+      ),
+    ).not.toThrow();
+    // Starting its own chat in the same edit makes the choice fine.
+    expect(editTasks(q, [{ id: "t2", newChat: true, provider: "chatgpt" }]).tasks[1]!.provider).toBe(
+      "chatgpt",
+    );
+  });
+
+  it("reads Claude's provider and model, a model alone naming its provider", () => {
+    const [a, b, c] = parseNewTasks([
+      { prompt: "a", provider: "chatgpt", model: "sol" },
+      { prompt: "b", model: "opus" },
+      { prompt: "c", model: "terra" },
+    ]);
+    expect(a).toMatchObject({ provider: "chatgpt", model: "sol" });
+    expect(
+      addTasks(emptyQueue(), [b!, c!], { newChat: true }).tasks.map((t) => [t.provider, t.model]),
+    ).toEqual([
+      ["claude", "opus"],
+      ["chatgpt", "terra"],
+    ]);
+    expect(() => parseNewTasks([{ prompt: "a", provider: "gemini" }])).toThrow(/claude" or "chatgpt/);
+    expect(() => parseNewTasks([{ prompt: "a", provider: "claude", model: "sol" }])).toThrow(
+      /isn't a Claude model/,
+    );
+    expect(() => parseNewTasks([{ prompt: "a", model: "rm -rf /" }])).toThrow(/model id/);
+    expect(providerOfModel("gpt-6.1-sol")).toBe("chatgpt");
+    expect(providerOfModel("claude-opus-5-5[1m]")).toBe("claude");
+    expect(parseQueueProvider("default")).toBeUndefined();
+    expect(parseQueueProvider("chatgpt")).toBe("chatgpt");
+    expect(() => parseQueueProvider("gemini")).toThrow();
+  });
+
+  it("changes a task's choice: back to the queue's, a model of the same provider, or another provider", () => {
+    const [t] = addTasks(emptyQueue(), [{ prompt: "a", provider: "chatgpt", model: "sol" }], {
+      newChat: true,
+    }).tasks;
+    expect(setProviderChoice(t!, undefined, undefined)).toBe(t);
+    expect(setProviderChoice(t!, null, undefined)).not.toHaveProperty("provider");
+    expect(setProviderChoice(t!, null, undefined)).not.toHaveProperty("model");
+    expect(setProviderChoice(t!, undefined, "luna")).toMatchObject({ provider: "chatgpt", model: "luna" });
+    expect(setProviderChoice(t!, undefined, null)).toMatchObject({ provider: "chatgpt" });
+    expect(setProviderChoice(t!, undefined, null)).not.toHaveProperty("model");
+    expect(setProviderChoice(t!, "claude", undefined)).toEqual({
+      ...t,
+      provider: "claude",
+      model: undefined,
+    });
+    expect(setProviderChoice(t!, undefined, "haiku")).toMatchObject({ provider: "claude", model: "haiku" });
+  });
+
+  it("keeps the choice when a task runs again, and forgets where it ran when it is put back", () => {
+    let q = addTasks(emptyQueue(), [{ prompt: "a", provider: "chatgpt", model: "sol" }], { newChat: true });
+    q = { ...q, tasks: [{ ...q.tasks[0]!, status: "done", ranOn: "chatgpt", ranModel: "sol" }] };
+    expect(requeue(q, "t1").tasks[1]).toMatchObject({ provider: "chatgpt", model: "sol", status: "queued" });
+    expect(requeue(q, "t1").tasks[1]).not.toHaveProperty("ranOn");
+    expect(resetTask(q.tasks[0]!)).not.toHaveProperty("ranOn");
+    expect(resetTask(q.tasks[0]!)).toMatchObject({ provider: "chatgpt" });
+  });
+
+  it("blocks a task whose ChatGPT chat can't start because ChatGPT isn't signed in, and pauses", () => {
+    const q = two();
+    const blocked = startFailed(q.tasks[0]!, `${CHATGPT_SIGNED_OUT}: sign in on Get Started`, "2025-01-01");
+    expect(blocked).toMatchObject({ status: "blocked", finishedAt: "2025-01-01" });
+    expect(blocked.error).toMatch(/^ChatGPT isn't signed in/);
+    expect(shouldPause(q, blocked)).toBe(true);
+    expect(startFailed(q.tasks[0]!, "That project no longer exists").status).toBe("error");
   });
 });

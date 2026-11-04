@@ -636,6 +636,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Chats board: every chat across projects in columns — needs you, working, unread, errors, recent",
                 "Task queue (Chats menu): tasks grouped in chats, one field each, with pasted or attached images and documents; Claude does them in order and reports outcome, summary, things to know and follow-ups in a card per chat, linked to it; Claude can queue tasks too (you review and edit them first); tick the tasks a run takes, put a task back or start the queue over; one queue per project, and every run kept in History with its results",
                 "All queues: one tab with every project's task queue: what runs now, what needs you and why, what's next and how it went, with today's tasks and cost",
+                "Claude or ChatGPT per task queue: Runs on in the queue's header (the project's default, Claude or ChatGPT), and per task in Add tasks and Edit with a model; every row shows who runs it",
               ]}
             />
           </Section>

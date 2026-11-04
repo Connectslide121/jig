@@ -11,6 +11,7 @@ import {
   Input,
   Markdown,
   ProjectSwatch,
+  ProviderMark,
   Select,
   Spinner,
   Switch,
@@ -57,6 +58,7 @@ import {
   removeFile,
   removeStep,
   setChatProject,
+  setChatProvider,
   setStep,
   splitAt,
   spreadStep,
@@ -79,15 +81,19 @@ import {
   type PermissionMode,
   type Queue,
   type Run,
+  type RunsOn,
   runOutcome,
+  runsOn,
   STATUS_LABEL,
   stepTasks,
   type Task,
   type TaskFile,
+  type TaskProvider,
   type TaskStatus,
   tally,
 } from "./lib/tasks";
 import { BAR, money, onQueueRequest, STATUS_TONE, StatusIcon, takeRequestedQueue } from "./parts";
+import { type ProviderChoice, RunsOnButton, runsOnText, SOURCE_TEXT } from "./RunsOn";
 
 const MODES: Array<{ value: PermissionMode; label: string }> = [
   { value: "acceptEdits", label: "Accept file edits" },
@@ -162,6 +168,8 @@ const COL = {
   time: "@max-xl:hidden @xl:block w-16",
   cost: "@max-xl:hidden @xl:block w-16",
   status: "w-28",
+  /** Who runs the chat: always the mark, in the same place on every row (D-330). */
+  provider: "flex w-4 shrink-0 items-center justify-center",
 };
 /** Every value column: one line, right-aligned, digits of equal width. */
 const CELL = "shrink-0 whitespace-nowrap text-right tabular-nums";
@@ -331,6 +339,8 @@ interface QueueOverview {
   needsYou: number;
   running: boolean;
   runs: number;
+  /** Who runs the queue's new chats: its "Runs on", else the project's default (D-330). */
+  provider: TaskProvider;
 }
 
 /**
@@ -355,6 +365,8 @@ export function TasksView({ ctx }: AddonComponentProps) {
   const [run, setRun] = useState<string | undefined>();
   const projectId = project?.id;
   useEffect(() => setRun(undefined), [projectId]);
+  // Loaded here: the header's "Runs on" and the Queue tab both show it.
+  const { queue, error } = useQueue(projectId);
   // The dashboard asked for a project's queue: show it (now, or when this view mounts).
   useEffect(() => {
     const show = (id: string) => {
@@ -407,7 +419,8 @@ export function TasksView({ ctx }: AddonComponentProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="tasks-view">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line pl-1 pr-3">
+      {/* A container: in a narrow place the "Runs on" control shows only its mark (its slot stays). */}
+      <div className="@container flex h-9 shrink-0 items-center gap-2 border-b border-line pl-1 pr-3">
         <Tabs
           className="border-b-0 px-1"
           items={[
@@ -428,6 +441,32 @@ export function TasksView({ ctx }: AddonComponentProps) {
           data-testid="tasks-all-queues"
           onClick={() => openDashboard(ctx)}
         />
+        {/* "Runs on": who runs this queue's new chats (D-330); a fixed slot, reserved while it loads. */}
+        <span className="flex @max-md:w-12 @md:w-32 shrink-0">
+          {queue && (
+            <RunsOnButton
+              ctx={ctx}
+              value={{ provider: queue.provider }}
+              shown={
+                queue.provider
+                  ? { provider: queue.provider, from: "queue" }
+                  : { provider: project.provider, from: "project" }
+              }
+              fallback={project.provider}
+              defaultLabel="Project default"
+              models={false}
+              label={queue.provider ? undefined : "Default"}
+              className="w-full"
+              labelClassName="@max-md:hidden @md:inline"
+              testId="tasks-runs-on"
+              onPick={(choice) =>
+                void ctx.host
+                  .call("setProvider", { projectId: project.id, provider: choice.provider ?? null })
+                  .catch((e: Error) => ctx.notify({ title: e.message, tone: "danger" }))
+              }
+            />
+          )}
+        </span>
         <button
           type="button"
           className="flex h-7 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
@@ -441,11 +480,20 @@ export function TasksView({ ctx }: AddonComponentProps) {
         </button>
       </div>
       {tab === "queue" ? (
-        <QueuePanel key={project.id} ctx={ctx} projectId={project.id} onHistory={() => setTab("history")} />
+        <QueuePanel
+          key={project.id}
+          ctx={ctx}
+          projectId={project.id}
+          projectDefault={project.provider}
+          queue={queue}
+          error={error}
+          onHistory={() => setTab("history")}
+        />
       ) : run ? (
         <RunPanel
           ctx={ctx}
           projectId={project.id}
+          projectDefault={project.provider}
           runId={run}
           onBack={() => setRun(undefined)}
           onQueued={() => setTab("queue")}
@@ -480,13 +528,19 @@ function openEntries(ctx: AddonUiContext, task: Task, onDetails: () => void) {
 function QueuePanel({
   ctx,
   projectId,
+  projectDefault,
+  queue,
+  error,
   onHistory,
 }: {
   ctx: AddonUiContext;
   projectId: string;
+  /** Who runs the project's new chats when neither the task nor the queue says. */
+  projectDefault: TaskProvider;
+  queue: Queue | undefined;
+  error?: string;
   onHistory: () => void;
 }) {
-  const { queue, error } = useQueue(projectId);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>();
   const [open, setOpen] = useState<string | undefined>();
@@ -692,6 +746,7 @@ function QueuePanel({
         <TaskTable
           ctx={ctx}
           queue={queue}
+          projectDefault={projectDefault}
           projectName={projectName}
           onOpen={setOpen}
           onMenu={menuFor}
@@ -719,6 +774,8 @@ function QueuePanel({
       {editing && (
         <EditDialog
           task={editing}
+          queue={queue}
+          projectDefault={projectDefault}
           onClose={() => setEditing(undefined)}
           onSave={async (input) => {
             await call("update", { id: editing.id, ...input });
@@ -732,6 +789,7 @@ function QueuePanel({
           task={openTask}
           index={queue.tasks.indexOf(openTask)}
           projectName={projectName(openTask.projectId)}
+          on={runsOn(queue, openTask, projectDefault)}
           onClose={() => setOpen(undefined)}
           onQueue={async (prompts) => {
             await call("add", { prompts, newChat: true, from: openTask.id });
@@ -809,6 +867,7 @@ function DropLine({ at }: { at: "above" | "below" | "row" }) {
 function TaskTable({
   ctx,
   queue,
+  projectDefault,
   projectName,
   onOpen,
   onMenu,
@@ -817,6 +876,7 @@ function TaskTable({
 }: {
   ctx: AddonUiContext;
   queue: Queue;
+  projectDefault: TaskProvider;
   projectName: (id?: string) => string;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
@@ -948,6 +1008,7 @@ function TaskTable({
         <span className={cn(COL.files, CELL)}>Files</span>
         <span className={cn(COL.time, CELL)}>Time</span>
         <span className={cn(COL.cost, CELL)}>Cost</span>
+        <span className={COL.provider} title="Runs on: Claude or ChatGPT" />
         <span className="w-7 shrink-0" />
         <span className={cn(COL.status, CELL)}>Status</span>
       </div>
@@ -960,6 +1021,7 @@ function TaskTable({
               group={group}
               number={gi + 1}
               projectName={projectName(group.projectId)}
+              runsOnOf={(task) => runsOn(queue, task, projectDefault)}
               onOpen={onOpen}
               onMenu={onMenu}
               onTick={onTick}
@@ -1065,12 +1127,14 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
 function RunPanel({
   ctx,
   projectId,
+  projectDefault,
   runId,
   onBack,
   onQueued,
 }: {
   ctx: AddonUiContext;
   projectId: string;
+  projectDefault: TaskProvider;
   runId: string;
   onBack: () => void;
   onQueued: () => void;
@@ -1167,13 +1231,21 @@ function RunPanel({
         </div>
       </div>
       <QueueSummary tasks={run.tasks} />
-      <TaskTable ctx={ctx} queue={queue} projectName={projectName} onOpen={setOpen} onMenu={menuFor} />
+      <TaskTable
+        ctx={ctx}
+        queue={queue}
+        projectDefault={projectDefault}
+        projectName={projectName}
+        onOpen={setOpen}
+        onMenu={menuFor}
+      />
       {openTask && (
         <TaskDialog
           ctx={ctx}
           task={openTask}
           index={run.tasks.indexOf(openTask)}
           projectName={projectName(openTask.projectId)}
+          on={runsOn(queue, openTask, projectDefault)}
           onClose={() => setOpen(undefined)}
           onQueue={async (prompts) => {
             await ctx.host
@@ -1281,6 +1353,7 @@ function ChatCard({
   group,
   number,
   projectName,
+  runsOnOf,
   onOpen,
   onMenu,
   onTick,
@@ -1290,6 +1363,7 @@ function ChatCard({
   group: ChatGroup;
   number: number;
   projectName: string;
+  runsOnOf: (task: Task) => RunsOn;
   onOpen: (id: string) => void;
   onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): ticks that include or leave out queued tasks. */
@@ -1359,6 +1433,7 @@ function ChatCard({
         </div>
         <span className={cn(COL.time, CELL, "text-xs text-muted")}>{formatMs(t.ms)}</span>
         <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
+        <ProviderSlot on={runsOnOf(tasks[0]!)} testId={`task-group-provider-${number - 1}`} />
         <span className="w-7 shrink-0" />
         <span className={cn(COL.status, CELL, "text-xs text-muted")}>
           {t.finished} of {tasks.length} finished
@@ -1371,6 +1446,7 @@ function ChatCard({
           task={task}
           index={index}
           continues={task !== tasks[0]}
+          on={runsOnOf(task)}
           onOpen={() => onOpen(task.id)}
           onMenu={(at) => onMenu(task, at)}
           onTick={onTick && ((on) => onTick([task.id], on))}
@@ -1390,6 +1466,7 @@ function TaskRow({
   task,
   index,
   continues,
+  on,
   onOpen,
   onMenu,
   onTick,
@@ -1400,6 +1477,8 @@ function TaskRow({
   task: Task;
   index: number;
   continues: boolean;
+  /** Who runs its chat. */
+  on: RunsOn;
   onOpen: () => void;
   onMenu: (at: MouseEvent | HTMLElement) => void;
   /** In the queue (not a past run): the tick that includes or leaves out a queued task. */
@@ -1517,6 +1596,7 @@ function TaskRow({
       </span>
       <span className={cn(COL.time, CELL, "text-xs text-muted")}>{duration(task)}</span>
       <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(task.costUsd)}</span>
+      <ProviderSlot on={on} testId={`task-provider-${task.id}`} />
       <span className="w-7 shrink-0">
         <IconButton
           size="sm"
@@ -1549,6 +1629,19 @@ function TaskRow({
   );
 }
 
+/** A row's provider: the mark alone, the provider, model and where they come from in its tooltip. */
+function ProviderSlot({ on, testId }: { on: RunsOn; testId: string }) {
+  return (
+    <span
+      className={COL.provider}
+      title={`Runs on ${runsOnText(on)} (${SOURCE_TEXT[on.from]})`}
+      data-testid={testId}
+    >
+      <ProviderMark provider={on.provider} iconOnly />
+    </span>
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -1563,6 +1656,7 @@ function TaskDialog({
   task,
   index,
   projectName,
+  on,
   onClose,
   onQueue,
   onRunAgain,
@@ -1572,6 +1666,8 @@ function TaskDialog({
   task: Task;
   index: number;
   projectName: string;
+  /** Who runs (or ran) its chat. */
+  on: RunsOn;
   onClose: () => void;
   onQueue: (prompts: string[]) => Promise<void>;
   onRunAgain: () => Promise<void>;
@@ -1589,9 +1685,21 @@ function TaskDialog({
   };
   const when = (iso?: string) =>
     iso ? new Date(iso).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) : "";
-  const facts: Array<[string, string]> = (
+  const facts: Array<[string, ReactNode]> = (
     [
       ["Project", projectName],
+      [
+        "Runs on",
+        <span
+          key="on"
+          className="flex min-w-0 items-center gap-1"
+          title={`${runsOnText(on)} (${SOURCE_TEXT[on.from]})`}
+          data-testid="task-runs-on"
+        >
+          <ProviderMark provider={on.provider} iconOnly />
+          <span className="truncate">{runsOnText(on)}</span>
+        </span>,
+      ],
       ["Chat", task.newChat || index === 0 ? "starts a new one" : "continues the one before"],
       ["Permissions", MODES.find((m) => m.value === (task.permissionMode ?? "acceptEdits"))?.label ?? ""],
       ["Started", when(task.sentAt)],
@@ -1599,7 +1707,7 @@ function TaskDialog({
       ["Time", duration(task)],
       ["Cost", money(task.costUsd)],
       ["Queued by", task.addedBy ? "Claude, from a chat" : "you"],
-    ] as Array<[string, string]>
+    ] as Array<[string, ReactNode]>
   ).filter(([, v]) => v);
   return (
     <Dialog
@@ -1686,7 +1794,7 @@ function TaskDialog({
           </Section>
         )}
         {!report && task.answer && (
-          <Section title="Claude's last answer (it didn't report)">
+          <Section title="Its chat's last answer (it didn't report)">
             <div className="text-sm">
               <Markdown text={task.answer} />
             </div>
@@ -1766,6 +1874,12 @@ function AddDialog({
   const projects = useProjectList();
   const firstProject = chosenProject ?? active?.id ?? projects[0]?.id ?? "";
   const [chats, setChats] = useState<DraftChat[]>(() => [draftChat(firstProject)]);
+  // What "Queue's choice" means in each project: its queue's "Runs on", else the project's default.
+  const { data: overview } = useHostCall<QueueOverview[]>("overview");
+  const queueProvider = (projectId: string): TaskProvider =>
+    overview?.find((o) => o.projectId === projectId)?.provider ??
+    projects.find((p) => p.id === projectId)?.provider ??
+    "claude";
   const [mode, setMode] = useState<PermissionMode>("acceptEdits");
   const [busy, setBusy] = useState(false);
   const [focus, setFocus] = useState<string>();
@@ -1937,6 +2051,24 @@ function AddDialog({
                 <span className="min-w-0 flex-1 truncate text-xs text-hint">
                   {chat.steps.length} {chat.steps.length === 1 ? "task" : "tasks"} · a new chat
                 </span>
+                <RunsOnButton
+                  ctx={ctx}
+                  value={{ provider: chat.provider, model: chat.model }}
+                  shown={
+                    chat.provider
+                      ? { provider: chat.provider, model: chat.model, from: "task" }
+                      : { provider: queueProvider(chat.projectId), from: "queue" }
+                  }
+                  fallback={queueProvider(chat.projectId)}
+                  defaultLabel="Queue's choice"
+                  models
+                  label={chat.provider ? undefined : "Queue's choice"}
+                  className="w-52"
+                  testId={`tasks-add-runs-on-${ci}`}
+                  onPick={(choice: ProviderChoice) =>
+                    setChats(setChatProvider(chats, ci, choice.provider, choice.model))
+                  }
+                />
                 <Select
                   aria-label="Project"
                   className="w-40"
@@ -2053,16 +2185,23 @@ function AddDialog({
 /** Edit a queued task: its prompt and files, whether it starts a new chat, its permissions. */
 function EditDialog({
   task,
+  queue,
+  projectDefault,
   onClose,
   onSave,
 }: {
   task: Task;
+  queue: Queue;
+  projectDefault: TaskProvider;
   onClose: () => void;
   onSave: (input: {
     prompt: string;
     newChat: boolean;
     permissionMode: PermissionMode;
     attachments: TaskFile[];
+    /** Its own provider and model; null = the queue's choice / the provider's default (D-330). */
+    provider: TaskProvider | null;
+    model: string | null;
   }) => Promise<void>;
 }) {
   const ctx = useAddon();
@@ -2083,12 +2222,32 @@ function EditDialog({
   const empty = !text.trim() && !files.length;
   const [sameChat, setSameChat] = useState(!task.newChat);
   const [mode, setMode] = useState<PermissionMode>(task.permissionMode ?? "acceptEdits");
+  const [choice, setChoice] = useState<ProviderChoice>({ provider: task.provider, model: task.model });
   const [busy, setBusy] = useState(false);
+  // Who it runs on as the switch stands: the chat before it's provider when it continues that chat,
+  // else its own choice or the queue's (worked out on the queue as it would be saved).
+  const as = (t: Task) => ({ ...queue, tasks: queue.tasks.map((x) => (x.id === task.id ? t : x)) });
+  const { provider: _p, model: _m, ...plain } = task;
+  const inherited = runsOn(as({ ...plain, newChat: false }), { ...plain, newChat: false }, projectDefault);
+  const queueChoice = runsOn(as({ ...plain, newChat: true }), { ...plain, newChat: true }, projectDefault);
+  const shown: RunsOn = sameChat
+    ? inherited
+    : choice.provider
+      ? { provider: choice.provider, model: choice.model, from: "task" }
+      : queueChoice;
   const save = async () => {
     if (empty) return;
     setBusy(true);
     try {
-      await onSave({ prompt: text.trim(), newChat: !sameChat, permissionMode: mode, attachments: files });
+      await onSave({
+        prompt: text.trim(),
+        newChat: !sameChat,
+        permissionMode: mode,
+        attachments: files,
+        // A task that continues a chat runs on that chat's provider: its own choice goes.
+        provider: sameChat ? null : (choice.provider ?? null),
+        model: sameChat ? null : (choice.model ?? null),
+      });
       discard(added.filter((p) => !files.some((f) => f.path === p)));
     } catch (e) {
       ctx.notify({ title: (e as Error).message, tone: "danger" });
@@ -2158,13 +2317,30 @@ function EditDialog({
             </div>
           )}
         </div>
+        <LabeledSwitch
+          checked={sameChat}
+          onChange={setSameChat}
+          label="Continue the chat of the task before"
+        />
         <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <LabeledSwitch
-              checked={sameChat}
-              onChange={setSameChat}
-              label="Continue the chat of the task before"
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted">
+            <span className="shrink-0">Runs on</span>
+            <RunsOnButton
+              ctx={ctx}
+              value={choice}
+              shown={shown}
+              fallback={queueChoice.provider}
+              defaultLabel="Queue's choice"
+              models
+              label={!sameChat && !choice.provider ? "Queue's choice" : undefined}
+              disabledReason={sameChat ? "it continues the chat before, which keeps its provider" : undefined}
+              className="w-52"
+              testId="tasks-edit-runs-on"
+              onPick={setChoice}
             />
+            <span className="min-w-0 truncate text-hint" data-testid="tasks-edit-runs-on-hint">
+              {sameChat ? "Same as the chat it continues" : ""}
+            </span>
           </div>
           <label htmlFor="tasks-edit-mode" className="flex shrink-0 items-center gap-2 text-xs text-muted">
             Permissions
@@ -2232,6 +2408,9 @@ interface ReviewItem {
   title: string;
   prompt: string;
   newChat: boolean;
+  /** Who Claude asked to run it (D-330), kept as given; checked by the add tool. */
+  provider?: unknown;
+  model?: unknown;
 }
 
 /** The tasks Claude asked to queue, as the add tool got them (strings or `{ title, prompt, newChat }`). */
@@ -2250,6 +2429,8 @@ function reviewItems(input: Record<string, unknown>): ReviewItem[] {
         title: typeof o.title === "string" ? o.title : "",
         prompt,
         newChat: typeof o.newChat === "boolean" ? o.newChat : !sameChat,
+        ...(o.provider !== undefined ? { provider: o.provider } : {}),
+        ...(o.model !== undefined ? { model: o.model } : {}),
       },
     ];
   });
@@ -2298,10 +2479,13 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
       }
       const tasks = items
         .filter((i) => i.prompt.trim())
-        .map((i) => ({
+        .map((i, n) => ({
           prompt: i.prompt.trim(),
           newChat: i.newChat,
           ...(i.title.trim() ? { title: i.title.trim() } : {}),
+          // A task that continues a chat runs on that chat's provider: its own choice goes.
+          ...((i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
+          ...((i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
         }));
       await respond({
         behavior: "allow",
@@ -2364,13 +2548,21 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
               />
             </div>
             <div className="flex w-32 shrink-0 flex-col items-end gap-1">
-              <IconButton
-                size="sm"
-                icon={X}
-                label={`Remove task ${i + 1}`}
-                onClick={() => setItems((list) => list.filter((x) => x.key !== item.key))}
-                data-testid={`tasks-review-remove-${i}`}
-              />
+              <div className="flex items-center gap-1">
+                {/* Who Claude asked to run it, when it said (else the queue's choice). */}
+                <span className="flex w-4 justify-center" data-testid={`tasks-review-provider-${i}`}>
+                  {(item.provider === "claude" || item.provider === "chatgpt") && (
+                    <ProviderMark provider={item.provider} iconOnly />
+                  )}
+                </span>
+                <IconButton
+                  size="sm"
+                  icon={X}
+                  label={`Remove task ${i + 1}`}
+                  onClick={() => setItems((list) => list.filter((x) => x.key !== item.key))}
+                  data-testid={`tasks-review-remove-${i}`}
+                />
+              </div>
               {i > 0 && (
                 <LabeledSwitch
                   checked={!item.newChat}

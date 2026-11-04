@@ -10,7 +10,7 @@ import {
   sortCards,
   summarize,
 } from "./dashboard";
-import { emptyQueue, type Queue, type Task } from "./tasks";
+import { addTasks, emptyQueue, type Queue, type Task } from "./tasks";
 
 const task = (id: string, over: Partial<Task> = {}): Task => ({
   id,
@@ -193,5 +193,14 @@ describe("finishedToday and summarize", () => {
       finishedToday: 3,
       costToday: 3.25,
     });
+  });
+});
+
+describe("a card's provider (D-330)", () => {
+  it("is the queue's Runs on, else the project's default", () => {
+    const q = addTasks(emptyQueue(), ["a"], { projectId: "p1", newChat: true });
+    expect(queueCard("p1", q)!.provider).toBe("claude");
+    expect(queueCard("p1", q, "chatgpt")!.provider).toBe("chatgpt");
+    expect(queueCard("p1", { ...q, provider: "claude" }, "chatgpt")!.provider).toBe("claude");
   });
 });
