@@ -38,6 +38,7 @@ import { personalInstructions } from "./codexInstructions";
 import { JIG_MCP_TOKEN_ENV, jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
 import { type LocalMcp, newMcpToken, startLocalMcp } from "./localMcp";
+import { projectMcpConfig } from "./projectMcp";
 import {
   type Completer,
   codexSessionEnv,
@@ -418,9 +419,11 @@ export class CodexEngine implements Engine {
       }
       const common = {
         cwd: options.cwd,
-        ...(localMcp && toolServers
-          ? { config: jigMcpConfig(toolServers, (name) => localMcp!.url(name)) }
-          : {}),
+        config: {
+          // The project's approved .mcp.json servers, as a Claude chat here gets them; Jig's last.
+          ...projectMcpConfig(options.cwd, options.env),
+          ...(localMcp && toolServers ? jigMcpConfig(toolServers, (name) => localMcp!.url(name)) : {}),
+        },
         model: resolved.model || null,
         approvalPolicy: policy.approvalPolicy,
         sandbox: policy.sandbox,
