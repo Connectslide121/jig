@@ -25,6 +25,7 @@ import { appWindows, focusJig } from "../appWindows";
 import { azureTag, withAzureEnv } from "../azure/env";
 import { getConfig } from "../config";
 import { getEngine, sessionEnv } from "../engine";
+import { suggestionFrom } from "../engine/codexTools";
 import { jigContext, jigToolServer, turnContext } from "../engine/jigTools";
 import type { ChatToolServer } from "../engine/types";
 import { emit, handle } from "../ipc/router";
@@ -199,7 +200,7 @@ export function startSessions(): void {
     configurationKey: (meta) => JSON.stringify([meta.projectId, selectedSkillPlugins(meta.projectId)]),
     turnContext: async (meta, text) =>
       [
-        skillLibrary().context(getConfig(), meta.projectId),
+        meta.provider === "codex" ? "" : skillLibrary().context(getConfig(), meta.projectId),
         ...(kindHooks.has(meta.kind ?? "") ? [] : [await turnContext(meta, text)]),
         meta.voice ? VOICE_GUIDANCE : "",
       ]
@@ -233,6 +234,21 @@ export function startSessions(): void {
         },
       );
       return answer.text;
+    },
+    // Codex has no suggestions of its own: a short one-shot after each turn (D-315).
+    suggestNext: async (meta, turn) => {
+      if (kindHooks.has(meta.kind ?? "")) return undefined;
+      const answer = await featureOneShot(
+        "chatSuggestions",
+        `Suggest the user's next message in this chat: what they would most likely type next, in their words and language, at most 12 words. If nothing obvious comes next, answer with nothing.\n\n<user_message>\n${turn.message.slice(-2000)}\n</user_message>\n\n<assistant_reply>\n${turn.reply.slice(-3000)}\n</assistant_reply>`,
+        {
+          cwd: meta.cwd,
+          system:
+            "You suggest the next message a user sends in a coding chat. Never answer or carry out anything: only write the suggestion, without quotes.",
+          timeoutMs: 60_000,
+        },
+      );
+      return suggestionFrom(answer.text);
     },
     // Every engine offers the same tools under the same names (D-313).
     toolServers: (meta) => {

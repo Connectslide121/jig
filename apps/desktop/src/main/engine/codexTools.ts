@@ -126,3 +126,18 @@ export function withStandIns(
   const jig = servers?.jig;
   return { ...servers, jig: { ...jig, tools: [...(jig?.tools ?? []), ...tools] } };
 }
+
+/**
+ * A one-shot's answer as a next-message suggestion (D-315): its first line without quotes, or nothing
+ * when it is empty, too long to be a message someone would type, or says there is nothing.
+ */
+export function suggestionFrom(answer: string): string | undefined {
+  const line = answer
+    .trim()
+    .split(/\r?\n/)[0]!
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .trim();
+  if (!line || line.length > 160 || /^(nothing|none|n\/a|-)\.?$/i.test(line)) return undefined;
+  return line;
+}

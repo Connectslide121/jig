@@ -77,6 +77,11 @@ export interface StartOptions {
   codexSkills?: "claude" | "off";
   /** Claude Code suggests the next message after each turn (`suggestion` events). */
   promptSuggestions?: boolean;
+  /**
+   * Engines without suggestions of their own (Codex, D-315): a next message for the turn that just
+   * ended, from a one-shot (Settings → AI features → Next-message suggestions); undefined = none.
+   */
+  suggestNext?: (turn: { message: string; reply: string }) => Promise<string | undefined>;
   /** Claude Code keeps copies of files before editing them (`rewindFiles`). */
   fileCheckpoints?: boolean;
   /** With `resume`: continue the conversation as a new session (a fork) instead of the original. */

@@ -113,6 +113,8 @@ export interface SessionManagerOptions {
    * chat is called by the message's first words; a name you gave meanwhile is kept.
    */
   nameChat?: (meta: SessionMeta, text: string) => Promise<string | undefined>;
+  /** A next message after a turn, for engines that don't suggest one themselves (Codex, D-315). */
+  suggestNext?: (meta: SessionMeta, turn: { message: string; reply: string }) => Promise<string | undefined>;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
   onUpdate: (sessionId: string, updates: ChatUpdate[]) => void;
@@ -345,6 +347,9 @@ export class SessionManager {
         codexInstructions: settings.codexInstructions,
         codexSkills: settings.codexSkills,
         promptSuggestions: settings.promptSuggestions,
+        suggestNext: this.options.suggestNext
+          ? (turn) => this.options.suggestNext!(live.state.meta, turn)
+          : undefined,
         forkSession: meta.forkPending,
         fileCheckpoints: settings.fileCheckpoints,
         toolServers: this.options.toolServers?.(meta),

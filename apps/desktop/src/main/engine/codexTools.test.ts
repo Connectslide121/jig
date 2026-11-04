@@ -8,6 +8,7 @@ import {
   JIG_ADDED_TEXT,
   PLAN_MODE_PROMPT,
   standInTools,
+  suggestionFrom,
 } from "./codexTools";
 
 function tools(decision: PermissionDecision) {
@@ -71,5 +72,12 @@ describe("Codex stand-in tools (D-315)", () => {
 
   it("Jig's added text is recognised in a message", () => {
     expect(`${PLAN_MODE_PROMPT}\nHello`.replace(JIG_ADDED_TEXT, "")).toBe("Hello");
+  });
+
+  it("turns a one-shot's answer into a suggestion, or none", () => {
+    expect(suggestionFrom('"Run the tests"\nbecause…')).toBe("Run the tests");
+    expect(suggestionFrom("  Nothing. ")).toBeUndefined();
+    expect(suggestionFrom("")).toBeUndefined();
+    expect(suggestionFrom("x".repeat(200))).toBeUndefined();
   });
 });

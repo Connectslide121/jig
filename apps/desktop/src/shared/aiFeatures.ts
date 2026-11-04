@@ -20,6 +20,8 @@ export interface AiFeature {
   chatgpt: ChatGptFamily;
   /** It asks for JSON: Jig checks the answer and says so when it doesn't parse. */
   json?: boolean;
+  /** The provider it runs on until you pick one (default Claude). */
+  provider?: AiProvider;
 }
 
 export const AI_FEATURE_IDS = [
@@ -30,6 +32,7 @@ export const AI_FEATURE_IDS = [
   "attemptsJudge",
   "standup",
   "chatTitles",
+  "chatSuggestions",
   "learning",
   "meetingTranslation",
   "addonQuick",
@@ -81,6 +84,15 @@ export const AI_FEATURES: AiFeature[] = [
   },
   { id: "standup", label: "Standup", where: "Tools → Standup", fallback: chat, chatgpt: "sol" },
   { id: "chatTitles", label: "Chat names", where: "New chats", fallback: quick, chatgpt: "luna" },
+  {
+    // Claude chats get Claude Code's own suggestion; Codex has none, so Jig asks after each turn (D-315).
+    id: "chatSuggestions",
+    label: "Next-message suggestions",
+    where: "ChatGPT chats",
+    fallback: quick,
+    chatgpt: "luna",
+    provider: "chatgpt",
+  },
   {
     id: "learning",
     label: "Weekly patterns",

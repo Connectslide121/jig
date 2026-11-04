@@ -4315,3 +4315,10 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   built-in skills) through `skills/extraRoots/set`, one root per skill, skipping names Codex already
   has (Jig's own `jig-release` would otherwise show twice). Copying into `.agents/skills` was left
   out: it would write into the user's repository and leave two copies to keep in step.
+- **Suggestions** (plan; details Claude, on my own): Codex suggests nothing, so after a Codex turn
+  that ended well Jig asks a one-shot for the next message (the new AI feature row "Next-message
+  suggestions", ChatGPT and Luna by default; Claude chats keep Claude Code's own) with your last
+  message and Codex's last reply, behind the existing `engine.promptSuggestions`. A suggestion that
+  arrives after you sent something else is dropped. AGENTS.md's list of background AI calls names it.
+- **Capabilities**: Codex's `planMode`, `questions`, `history` and `promptSuggestions` are on; it
+  still has no subagents, rewind or fork from Jig's menus.

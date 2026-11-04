@@ -76,7 +76,7 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
     fork: false,
     history: true,
     effortLevels: CODEX_EFFORT_LEVELS,
-    promptSuggestions: false,
+    promptSuggestions: true,
   },
 };
 

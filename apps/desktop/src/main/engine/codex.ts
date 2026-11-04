@@ -47,6 +47,7 @@ import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
 import { claudeSkillFolders, missingSkills } from "./codexSkills";
 import {
+  JIG_ADDED_TEXT,
   PLAN_APPROVED_PROMPT,
   PLAN_MODE_PROMPT,
   STAND_IN_INSTRUCTIONS,
@@ -284,6 +285,21 @@ export class CodexEngine implements Engine {
     let carryOutPlan = false;
     /** The planning turn's result, added to the next turn's so the chat shows one turn. */
     let heldResult: ResultEvent | undefined;
+    /** For the next-message suggestion: your last message, Codex's last reply, and turns so far. */
+    let lastMessage = "";
+    let lastReply = "";
+    let turns = 0;
+    /** After a turn that ended well: a suggested next message, unless another turn started (D-315). */
+    const suggest = () => {
+      const turn = ++turns;
+      if (!options.promptSuggestions || !options.suggestNext || !lastMessage || !lastReply) return;
+      void options
+        .suggestNext({ message: lastMessage, reply: lastReply })
+        .then((text) => {
+          if (text && turn === turns && !ended) onEvent({ type: "suggestion", text });
+        })
+        .catch((error: Error) => log.debug(`No suggestion for a Codex chat: ${error.message}`));
+    };
     // Jig's tools reach Codex over a local MCP server with this chat's own token (D-313), with the
     // stand-ins for Claude Code's own tools (D-315).
     const toolServers = withStandIns(
@@ -319,6 +335,7 @@ export class CodexEngine implements Engine {
     const emit = (events: EngineEvent[]) => {
       for (const event of events) {
         if (event.type !== "result") {
+          if (event.type === "block_end" && event.block === "text" && event.text) lastReply = event.text;
           onEvent(event);
           continue;
         }
@@ -334,6 +351,7 @@ export class CodexEngine implements Engine {
         const held = heldResult;
         heldResult = undefined;
         onEvent(held ? mergeResults(held, event) : event);
+        if (event.ok) suggest();
       }
     };
 
@@ -578,6 +596,10 @@ export class CodexEngine implements Engine {
     const session: EngineSession = {
       send(text, attachments, priority) {
         const clientUserMessageId = randomUUID();
+        // A suggestion still on its way is for a turn that's over now.
+        turns++;
+        lastMessage = text.replace(JIG_ADDED_TEXT, "").trim() || lastMessage;
+        lastReply = "";
         const input = inputFrom(text, attachments);
         void ready
           .then(async () => {
