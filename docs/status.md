@@ -1,5 +1,10 @@
 # Status
 
+No provider in the chat header (2026-11-04, D-340, Jon): the chat tab's top bar no longer shows
+Claude or ChatGPT; the composer's provider picker already says who runs the chat. The header's
+right-hand group (context meter, tokens, buttons) closes up; nothing else moves. Checked in Jig Dark
+on a Claude and a ChatGPT chat with the fake engine.
+
 Hand a chat over to the other provider whenever you want (2026-11-04, D-339): after the first message
 the composer's provider picker reads **Hand this chat over to**, and the chat's ⋯ menu has **Hand over
 to ChatGPT…** (or Claude…). Both open a confirmation dialog: Claude → ChatGPT, the model and
@@ -15,7 +20,7 @@ fake engine; unit tests, `e2e/handover.spec.ts` and the affected specs pass.
 **Check on your machine:** hand a real chat over both ways and check the new provider picks up from
 the handoff with the mapped model.
 **Known gap:** the header's context meter disappears after a handover until the new provider's first
-turn, so the provider mark beside it slides (as on a new chat's first turn).
+turn (the header no longer shows the provider since D-340, so nothing slides).
 
 A chat that hits its plan's limit carries on with the other provider (2026-11-04, D-338): when
 Claude's (or ChatGPT's) limit stops a chat, the plain error is now a **limit card**: "Claude's limit
@@ -24,8 +29,8 @@ the ChatGPT meter has room), **Wait and resume at 14:00** (Jig sends "carry on" 
 also after a restart) and **Dismiss**. Continuing keeps the same chat: a divider "Continued with
 ChatGPT · Claude's limit reached", then ChatGPT gets a handoff Jig builds from the transcript (the
 goal, your latest messages, Claude's last messages, the plan, open to-dos, the files changed and
-`git diff --stat`, where it stopped; no AI involved, capped) and carries on. The header and composer
-show ChatGPT from then on; going back later works the same way. Messages before the divider can't be
+`git diff --stat`, where it stopped; no AI involved, capped) and carries on. The composer
+shows ChatGPT from then on; going back later works the same way. Messages before the divider can't be
 rewound to. **Settings → Chats → When a chat hits its limit**: Ask me (default), Continue with the
 other provider (falls back to waiting when that plan is full too), Wait for the reset; a project can
 choose its own in its dialog. Queued tasks follow it: a limited task needs you (Ask) or keeps running
@@ -133,7 +138,7 @@ and `runsOn`. Add-ons can start chats on a provider and model (`api.chats.create
 Checked with screenshots in Jig Dark and Jig Light, wide and narrow (fake engine, signed in and out).
 Unit tests pass; e2e updated, not run (D-258).
 **Check on your machine:** set Podium's queue to ChatGPT and run a task: its chat should be a ChatGPT
-chat (the mark in its header), and the task should end with ChatGPT's report in the table.
+chat (ChatGPT in its composer), and the task should end with ChatGPT's report in the table.
 
 Teams status in Meetings (2026-11-04, D-329): in the lobby's Chats, each one-to-one chat's picture has
 the person's Teams status as a dot, like Teams (green check Available, red Busy or In a call, red
@@ -299,8 +304,8 @@ Picking Claude or ChatGPT for a chat (2026-11-04, D-314): a new chat has a provi
 model picker, Claude or ChatGPT (greyed out with a link to Get started while Codex isn't signed in).
 It can change until the first message; then it is the chat's mark. ChatGPT chats show ChatGPT's
 models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and hide what Codex can't do
-(rewind and edit-and-resend, fork; Plan only, questions and suggestions came with D-315). The chat header shows the chat's
-mark, and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
+(rewind and edit-and-resend, fork; Plan only, questions and suggestions came with D-315). The chat's
+mark stays in the composer (no longer in the header, D-340), and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
 (was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
 group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the
 default one badged. A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the

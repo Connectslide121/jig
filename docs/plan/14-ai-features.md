@@ -64,7 +64,7 @@ checks, tours, standups, failed scripts), and previews for the files Claude writ
   `codex-tools.spec.ts`).
 - [x] Codex chats D: the provider picker beside the model picker (`sessions.setProvider`, until the
   first message), provider-aware model/effort pickers, Codex chats without Plan only, rewind, fork
-  and suggestions, provider marks in the chat header and the Chats list, Settings → Chats (default
+  and suggestions, provider marks in the chat header (dropped by D-340, the composer shows it) and the Chats list, Settings → Chats (default
   provider, a group per provider with `engine.codexModel`/`codexEffort`/`codexInstructions`/
   `codexAllowApiKey`), the project's "Chats run on", Codex chats refreshing the ChatGPT meter (D-314;
   unit tests in `sessions/manager.test.ts`, `composerInput.test.ts`; e2e in `chat-provider.spec.ts`).

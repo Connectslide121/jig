@@ -52,8 +52,10 @@ test("the limit card: continue with ChatGPT, a divider, and ChatGPT picks up the
   ).toBeVisible({
     timeout: 15000,
   });
-  // The chat's header and composer say who runs it now.
-  await expect(page.getByTestId("chat").locator("header").getByTestId("provider-mark-chatgpt")).toBeVisible();
+  // The composer's provider picker says who runs it now (the header doesn't, D-340).
+  await expect(
+    page.getByTestId("provider-menu").getByTestId("provider-mark-chatgpt").filter({ visible: true }),
+  ).toBeVisible();
   const { value: list } = (await hostCall(page, "sessions.list")) as {
     value: Array<{ provider?: string; providers?: Array<{ provider: string; reason: string }> }>;
   };

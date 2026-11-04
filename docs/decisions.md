@@ -4267,7 +4267,7 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   edit-and-resend, fork or Claude Code's suggestion chip. The composer has no reserved row for them:
   Claude chats show the suggestion only when there is one, so a Codex chat simply never has it.
 - **Marks** (plan): the usage footer's provider marks are one component (`ProviderMark`). The chat
-  header always shows the chat's mark. In the Chats list, once any ChatGPT chat exists, every row
+  header always shows the chat's mark _(removed by D-340: the composer's provider picker shows it)_. In the Chats list, once any ChatGPT chat exists, every row
   keeps a slot at the far right; ChatGPT chats show their mark there and Claude chats, the default,
   leave it empty (Claude, on my own: a mark on every row would be noise for the common case).
 - **Usage** (plan): a Codex chat's turn refreshes the ChatGPT meter (at most every 15 s), not
@@ -5164,3 +5164,16 @@ provider, capabilities and Claude as the default still hold.
   follow `providers` (D-338); usage tokens add up across providers and the cost stays Claude Code's
   estimate. Add-ons still can't change a started chat's provider (`chats.send` with `provider` and
   a `sessionId` is refused): handing over is your choice, in the dialog.
+
+## D-340: The chat header doesn't show the provider; the composer does
+
+- Status: accepted. Amends D-309/D-314's "the chat header always shows the chat's mark".
+- **Who:** Jon, 2026-11-04: "in the chat, I don't need the provider in the top bar, I already have it
+  in the input area."
+- **What:** the chat tab's header no longer has a `ProviderMark`. Who runs a chat is shown once, by
+  the composer's provider picker (D-314), which is also where you hand it over (D-339). The handover
+  divider, the Chats list, saved chats and the Tasks queue keep their marks. `ProviderMark` itself
+  stays (picker, lists, dialogs).
+- **Layout** (Claude, on my own): nothing takes the freed slot; the tenant spacer before the context
+  meter absorbs it, so the header's right-hand group simply starts one item later. This also ends the
+  slide D-339's status noted (the mark moving while the context meter is hidden after a handover).

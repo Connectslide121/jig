@@ -8,7 +8,6 @@ import { useProjects } from "../../workbench/projects";
 import { runAction, type TabProps, useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
 import { TenantTagLabel } from "../azure/TenantTag";
-import { ProviderMark } from "../usage/ProviderMark";
 import { ChatChanges } from "./ChatChanges";
 import { ChatDetailsDialog, ChatOverview } from "./ChatOverview";
 import { BackgroundTasks, ChatWelcome, FindBar, TodoPanel } from "./ChatPanels";
@@ -128,8 +127,6 @@ export function ChatTab({ params, active, focused }: TabProps) {
         <div className="flex min-w-0 flex-1 justify-end">
           <TenantTagLabel tag={meta.azureTenant} />
         </div>
-        {/* Who runs this chat now (D-309, D-314, D-338): always there, so nothing moves. */}
-        <ProviderMark provider={chatProvider(meta)} className="text-xs" />
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
         {meta.turns > 0 && (
