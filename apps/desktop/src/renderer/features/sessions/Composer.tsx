@@ -237,7 +237,7 @@ export function Composer({
     { label: "Folders for this chat…", icon: FolderPlus, onSelect: () => openFoldersDialog(meta.id) },
     { label: "Export as Markdown…", icon: Download, onSelect: () => void exportChat(meta) },
     { label: "New chat", icon: SquarePlus, onSelect: () => void newSession(meta.projectId, meta.cwd) },
-    { label: "Open a Claude Code chat…", icon: MessageSquareShare, onSelect: openSavedChatsDialog },
+    { label: "Open a saved chat…", icon: MessageSquareShare, onSelect: openSavedChatsDialog },
   ];
   const userHistory = (sent ?? []).flatMap((i) => (i.kind === "user" && i.text && !i.from ? [i.text] : []));
 

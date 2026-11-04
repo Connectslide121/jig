@@ -69,7 +69,9 @@ On Linux as root, Electron needs `--no-sandbox` (the fixture adds it on Linux).
 Codex chats run the same script. Its saved Claude Code chats (Open a Claude Code chat…,
 D-150) are two scripted ones: "Fix the cart total" (`saved-1`, with a transcript: a reminder,
 your message, a reply with an Edit, a subagent's message, the result, a last reply) and "Plan the
-checkout", in `JIG_FAKE_SAVED_CWD` (your home folder by default). What it does depends on the message. The first match wins,
+checkout", in `JIG_FAKE_SAVED_CWD` (your home folder by default). Standing in for Codex it has one saved
+thread instead, "Tidy the README" (`codex-thread-1`: your message with Jig's plan-mode text, a command, a
+file change with its diff and a reply), read through the same conversion as real Codex threads (D-315). What it does depends on the message. The first match wins,
 in this order:
 
 | Message | What happens |

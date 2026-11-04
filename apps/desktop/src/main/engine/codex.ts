@@ -26,6 +26,11 @@ import type {
   ModelListResponse,
   SandboxMode,
   SandboxPolicy,
+  ThreadForkParams,
+  ThreadListParams,
+  ThreadListResponse,
+  ThreadReadParams,
+  ThreadReadResponse,
   ThreadResumeParams,
   ThreadStartParams,
   ThreadStartResponse,
@@ -34,6 +39,7 @@ import type {
   UserInput,
 } from "./codex-protocol/v2";
 import { CODEX_PROTOCOL_VERSION } from "./codex-protocol/version";
+import { savedThread, threadMessages } from "./codexHistory";
 import { personalInstructions } from "./codexInstructions";
 import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
@@ -480,12 +486,13 @@ export class CodexEngine implements Engine {
       };
       let response: ThreadStartResponse | undefined;
       if (options.resume) {
+        // A saved thread opened in Jig continues as a copy (thread/fork), like Claude's (D-315).
         response = await rpc
-          .request<ThreadStartResponse>("thread/resume", {
+          .request<ThreadStartResponse>(options.forkSession ? "thread/fork" : "thread/resume", {
             threadId: options.resume,
             ...common,
             excludeTurns: true,
-          } satisfies ThreadResumeParams)
+          } satisfies ThreadResumeParams & ThreadForkParams)
           .catch((error: Error) => {
             log.warn("Couldn't resume a Codex thread", error);
             onEvent({
@@ -656,30 +663,55 @@ export class CodexEngine implements Engine {
     env: Record<string, string | undefined>;
     claudePath: string;
   }): Promise<ModelInfo[]> {
-    const env = codexSessionEnv(options.env, false);
-    const binary = codexBinary(undefined, env);
-    if (!binary) throw new Error(NO_CODEX);
-    let rpc: CodexRpc | undefined;
-    let timer: NodeJS.Timeout | undefined;
-    try {
-      return await Promise.race([
-        (async () => {
-          rpc = new CodexRpc(binary, process.cwd(), env, {
-            notification: () => {},
-            request: (m) => rpc?.fail(m.id, "Not now"),
-            exit: () => {},
-          });
-          await rpc.initialize();
-          return modelsFrom((await rpc.request<ModelListResponse>("model/list", {})).data);
-        })(),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error("Codex didn't answer in time")), 45_000);
-        }),
-      ]);
-    } finally {
-      clearTimeout(timer);
-      rpc?.kill();
-    }
+    return oneOff(options.env, async (rpc) =>
+      modelsFrom((await rpc.request<ModelListResponse>("model/list", {})).data),
+    );
+  }
+
+  /**
+   * Codex's saved threads, newest first (D-315): the ones you had in Codex's terminal, its IDE
+   * extensions and Jig's own Codex chats; not `codex exec` runs (Jig's one-shots). Empty when Codex
+   * isn't installed.
+   */
+  async savedSessions(options: { limit: number }): Promise<SavedClaudeSession[]> {
+    return oneOff(process.env, async (rpc) => {
+      const list = await rpc.request<ThreadListResponse>("thread/list", {
+        limit: Math.min(options.limit, 200),
+        sortKey: "updated_at",
+        sourceKinds: ["cli", "vscode", "appServer"],
+      } satisfies ThreadListParams);
+      return list.data.flatMap((t) => savedThread(t) ?? []);
+    }).catch((error: Error) => {
+      if (error.message !== NO_CODEX) log.warn("Couldn't list Codex's saved threads", error);
+      return [];
+    });
+  }
+
+  /** A saved thread's messages, as Claude Code transcript messages (codexHistory.ts). */
+  async savedMessages(threadId: string): Promise<SavedClaudeMessage[]> {
+    return oneOff(process.env, async (rpc) => {
+      const read = await rpc.request<ThreadReadResponse>("thread/read", {
+        threadId,
+        includeTurns: true,
+      } satisfies ThreadReadParams);
+      return threadMessages(read.thread);
+    });
+  }
+
+  async savedToolUses(threadId: string): Promise<SavedToolUse[]> {
+    return (await this.savedMessages(threadId).catch(() => [])).flatMap((m) =>
+      m.type !== "assistant"
+        ? []
+        : (
+            (
+              m.message as {
+                content?: Array<{ type?: string; name?: string; input?: Record<string, unknown> }>;
+              }
+            ).content ?? []
+          )
+            .filter((b) => b.type === "tool_use" && b.name)
+            .map((b) => ({ name: b.name!, input: b.input ?? {} })),
+    );
   }
 
   // Jig's non-chat calls run on Claude's engine or through main/providers (D-294, D-309).
@@ -695,15 +727,36 @@ export class CodexEngine implements Engine {
   planUsage(): Promise<RawUsage> {
     return Promise.reject(new Error("ChatGPT's plan usage comes from main/providers."));
   }
-  // Opening Codex's saved conversations comes later (capabilities.history is off).
-  async savedSessions(): Promise<SavedClaudeSession[]> {
-    return [];
-  }
-  async savedMessages(): Promise<SavedClaudeMessage[]> {
-    return [];
-  }
-  async savedToolUses(): Promise<SavedToolUse[]> {
-    return [];
+}
+
+/** Runs `fn` against a short-lived app-server (no thread), stopped afterwards or after 45 seconds. */
+async function oneOff<T>(
+  baseEnv: Record<string, string | undefined>,
+  fn: (rpc: CodexRpc) => Promise<T>,
+): Promise<T> {
+  const env = codexSessionEnv(baseEnv, false);
+  const binary = codexBinary(undefined, env);
+  if (!binary) throw new Error(NO_CODEX);
+  let rpc: CodexRpc | undefined;
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      (async () => {
+        rpc = new CodexRpc(binary, process.cwd(), env, {
+          notification: () => {},
+          request: (m) => rpc?.fail(m.id, "Not now"),
+          exit: () => {},
+        });
+        await rpc.initialize();
+        return fn(rpc);
+      })(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Codex didn't answer in time")), 45_000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    rpc?.kill();
   }
 }
 

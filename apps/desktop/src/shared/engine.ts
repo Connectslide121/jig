@@ -74,7 +74,7 @@ export const ENGINE_CAPABILITIES: Record<ChatProvider, EngineCapabilities> = {
     subagents: false,
     rewind: false,
     fork: false,
-    history: false,
+    history: true,
     effortLevels: CODEX_EFFORT_LEVELS,
     promptSuggestions: false,
   },
@@ -167,6 +167,8 @@ export interface ContextUsage {
  */
 export interface SavedClaudeSession {
   sessionId: string;
+  /** Whose saved conversation it is (D-315): Claude Code's (missing) or Codex's thread. */
+  provider?: ChatProvider;
   /** Its /rename title, Claude Code's summary or the first prompt. */
   title: string;
   /** The folder it ran in. */
@@ -193,6 +195,8 @@ export interface SavedClaudeMessage {
   message: unknown;
   /** Set for a subagent's message. */
   parent_tool_use_id: string | null;
+  /** A tool result's structured result (an Edit's `structuredPatch`), for its diff. */
+  tool_use_result?: unknown;
 }
 
 export interface SessionMeta {

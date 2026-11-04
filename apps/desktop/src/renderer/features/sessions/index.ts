@@ -20,7 +20,7 @@ import { applySessionUpdates, loadSessions, useSeenTurns, useSessions } from "./
 export function registerSessions(): void {
   registerAction({
     id: "jig.openSavedChat",
-    title: "Open a Claude Code chat…",
+    title: "Open a saved chat…",
     group: "Chats",
     icon: MessageSquareShare,
     run: openSavedChatsDialog,

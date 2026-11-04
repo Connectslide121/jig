@@ -4293,3 +4293,14 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   skip or a spoken answer comes back as the card's message. Every Codex chat's developer instructions
   say which Jig tools stand in for ExitPlanMode and AskUserQuestion, so instructions that name
   Claude's tools (voice mode's) work in Codex chats too.
+- **History** (plan; details Claude, on my own): "Open a Claude Code chat…" becomes "Open a saved
+  chat…" and lists Claude Code's conversations and Codex's threads together, newest first, each with
+  its provider's mark in a fixed slot at the start of the row (the filter also matches "claude",
+  "codex", "chatgpt"). Codex's come from a short-lived `codex app-server` (`thread/list`, sources
+  cli, vscode and appServer: not `codex exec`, which is Jig's one-shots). Opening one reads it with
+  `thread/read` and converts its items into Claude Code transcript messages (`codexHistory.ts`), so
+  it becomes a chat through the same `savedChatItems`; file changes keep their diffs (the converted
+  structured patch now passes through). The chat runs on the provider that saved it, with that
+  provider's defaults, and continues as a copy: Codex's `thread/fork` stands in for Claude's
+  `forkSession`. Jig's own text (its context, the plan-mode instructions, the turn after an approved
+  plan) is left out.

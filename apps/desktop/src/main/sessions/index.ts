@@ -441,12 +441,14 @@ export function startSessions(): void {
   handle("sessions.openSaved", async ({ sessionId }) => {
     // The folder and title come from Claude Code's own list, not from the caller.
     const saved = (await m.savedSessions()).find((s) => s.sessionId === sessionId);
-    if (!saved) throw new JigError("not_found", "Claude Code has no saved chat with that id");
-    const { engine } = getConfig();
+    if (!saved) throw new JigError("not_found", "There's no saved chat with that id");
+    // It runs on the provider that saved it, with that provider's defaults (D-315).
+    const { model, effort, provider } = chatDefaults(undefined, saved.provider ?? "claude");
     return m.openSaved({
       saved,
-      model: engine.defaultModel,
-      permissionMode: engine.defaultPermissionMode as PermissionMode,
+      model,
+      effort,
+      permissionMode: modeFor(provider, getConfig().engine.defaultPermissionMode as PermissionMode),
     });
   });
   handle("sessions.rewindFiles", ({ id, itemId, dryRun }) => m.rewindFiles(id, itemId, dryRun));

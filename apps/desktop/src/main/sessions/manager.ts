@@ -687,9 +687,16 @@ export class SessionManager {
     return live.state.meta;
   }
 
+  /** The engine whose saved conversation it is (Claude Code's, or Codex's thread, D-315). */
+  private savedEngine(saved: { provider?: ChatProvider }): Engine {
+    return saved.provider === "codex"
+      ? (this.options.engineFor?.("codex") ?? this.options.engine)
+      : this.options.engine;
+  }
+
   /**
-   * The conversations Claude Code saved on this machine (D-150), newest first; one already in Jig (as
-   * a chat Jig ran, or opened before) says which chat.
+   * The conversations Claude Code and Codex saved on this machine (D-150, D-315), newest first; one
+   * already in Jig (as a chat Jig ran, or opened before) says which chat.
    */
   async savedSessions(limit = 300): Promise<SavedClaudeSession[]> {
     await this.load();
@@ -698,9 +705,18 @@ export class SessionManager {
       if (state.meta.engineSessionId) chats.set(state.meta.engineSessionId, state.meta.id);
       if (state.meta.importedFrom) chats.set(state.meta.importedFrom, state.meta.id);
     }
-    return (await this.options.engine.savedSessions({ limit })).map((s) =>
-      chats.has(s.sessionId) ? { ...s, chatId: chats.get(s.sessionId) } : s,
-    );
+    const codex = this.options.engineFor?.("codex");
+    const lists = await Promise.all([
+      this.options.engine.savedSessions({ limit }),
+      codex?.capabilities.history && codex !== this.options.engine
+        ? codex.savedSessions({ limit }).catch(() => [])
+        : [],
+    ]);
+    return lists
+      .flat()
+      .sort((a, b) => b.lastModified - a.lastModified)
+      .slice(0, limit)
+      .map((s) => (chats.has(s.sessionId) ? { ...s, chatId: chats.get(s.sessionId) } : s));
   }
 
   /**
@@ -712,20 +728,24 @@ export class SessionManager {
     saved: SavedClaudeSession;
     model: string;
     permissionMode: PermissionMode;
+    effort?: SessionMeta["effort"];
   }): Promise<SessionMeta> {
     const { saved } = input;
     const known = (await this.savedSessions()).find((s) => s.sessionId === saved.sessionId)?.chatId;
     if (known && this.sessions.has(known)) return (await this.live(known)).state.meta;
-    const messages = await this.options.engine.savedMessages(saved.sessionId, saved.cwd);
-    if (messages.length === 0)
-      throw new JigError("not_found", "Claude Code has no messages saved for that chat");
+    const provider = saved.provider ?? "claude";
+    const from = provider === "codex" ? "Codex" : "Claude Code";
+    const messages = await this.savedEngine(saved).savedMessages(saved.sessionId, saved.cwd);
+    if (messages.length === 0) throw new JigError("not_found", `${from} has no messages saved for that chat`);
     const cwd =
       saved.cwd && (await stat(saved.cwd).catch(() => undefined))?.isDirectory() ? saved.cwd : homedir();
     const meta = await this.create({
       cwd,
-      title: summarize(saved.title) || "Claude Code chat",
+      title: summarize(saved.title) || `${from} chat`,
       model: input.model,
       permissionMode: input.permissionMode,
+      provider,
+      effort: input.effort,
     });
     const live = await this.live(meta.id);
     const at = new Date(saved.lastModified || Date.now()).toISOString();
@@ -737,8 +757,8 @@ export class SessionManager {
       tone: "info",
       text:
         cwd === saved.cwd
-          ? "Opened from Claude Code. What you send here continues it as a copy; the original chat stays as it was."
-          : `Opened from Claude Code. Its folder (${saved.cwd ?? "unknown"}) isn't there any more, so this chat works in your home folder.`,
+          ? `Opened from ${from}. What you send here continues it as a copy; the original chat stays as it was.`
+          : `Opened from ${from}. Its folder (${saved.cwd ?? "unknown"}) isn't there any more, so this chat works in your home folder.`,
     });
     this.setMeta(live, {
       engineSessionId: saved.sessionId,

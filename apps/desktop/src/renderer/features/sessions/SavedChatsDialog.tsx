@@ -6,11 +6,15 @@ import { call, errorMessage } from "../../lib/host";
 import { Button, Dialog, formatBytes, SearchInput, Spinner } from "../../ui";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { ProviderMark } from "../usage/ProviderMark";
 import { ensureTranscript } from "./store";
 
 const useDialog = create<{ open: boolean }>(() => ({ open: false }));
 
-/** Chats you had in Claude Code (its CLI, the desktop app's Code tab, an IDE), to open in Jig (D-150). */
+/**
+ * Chats you had in Claude Code (its CLI, the desktop app's Code tab, an IDE) or Codex (its CLI, an IDE),
+ * to open in Jig (D-150, D-315).
+ */
 export const openSavedChatsDialog = () => useDialog.setState({ open: true });
 
 function when(ms: number): string {
@@ -37,7 +41,8 @@ function SavedChatsDialog({ onClose }: { onClose: () => void }) {
   }, []);
   const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = (list ?? []).filter((s) => {
-    const text = `${s.title} ${s.cwd ?? ""} ${s.gitBranch ?? ""}`.toLowerCase();
+    const who = s.provider === "codex" ? "codex chatgpt" : "claude";
+    const text = `${s.title} ${s.cwd ?? ""} ${s.gitBranch ?? ""} ${who}`.toLowerCase();
     return words.every((w) => text.includes(w));
   });
   const open = async (saved: SavedClaudeSession) => {
@@ -65,26 +70,27 @@ function SavedChatsDialog({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <Dialog open onClose={onClose} title="Open a Claude Code chat" width="lg" testId="saved-chats">
+    <Dialog open onClose={onClose} title="Open a saved chat" width="lg" testId="saved-chats">
       <div className="flex min-h-0 flex-col gap-3">
         <p className="text-sm text-muted">
-          Chats you had in Claude Code: its terminal, the Claude desktop app's Code tab, an IDE. Opening one
-          brings its history here, in <span className="text-fg">No project</span>; what you send continues it
-          as a copy, and the original stays as it was.
+          Chats you had in Claude Code (its terminal, the Claude desktop app's Code tab, an IDE) or in Codex
+          (its terminal, an IDE). Opening one brings its history here, in{" "}
+          <span className="text-fg">No project</span>, on the same provider; what you send continues it as a
+          copy, and the original stays as it was.
         </p>
         <SearchInput
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           onClear={() => setFilter("")}
-          placeholder="Filter by title, folder or branch"
-          aria-label="Filter Claude Code chats"
+          placeholder="Filter by title, folder, branch or provider"
+          aria-label="Filter saved chats"
           data-testid="saved-chats-filter"
         />
         {error && <div className="text-sm text-danger">{error}</div>}
         {!list && !error && <Spinner center />}
         {list && shown.length === 0 && (
           <div className="py-6 text-center text-sm text-hint">
-            {list.length ? "No chat matches." : "Claude Code has no saved chats on this computer."}
+            {list.length ? "No chat matches." : "There are no saved chats on this computer."}
           </div>
         )}
         <div className="-mx-1 flex max-h-96 flex-col overflow-y-auto">
@@ -94,6 +100,8 @@ function SavedChatsDialog({ onClose }: { onClose: () => void }) {
               className="group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-hover"
               data-testid={`saved-chat-${s.title}`}
             >
+              {/* A fixed slot: who saved it, the same column in every row. */}
+              <ProviderMark provider={s.provider ?? "claude"} iconOnly className="w-4 justify-center" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium" title={s.title}>
                   {s.title}

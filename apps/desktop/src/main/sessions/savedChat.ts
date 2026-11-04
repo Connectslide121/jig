@@ -60,7 +60,12 @@ export function savedChatItems(messages: SavedClaudeMessage[], meta: SessionMeta
         applyUpdate(state.items, { op: "upsert", item: { kind: "user", id: `user-${m.uuid}`, text, at } });
     }
     if (m.type !== "user" && m.type !== "assistant") continue;
-    for (const event of normalizer.handle({ type: m.type, uuid: m.uuid, message: m.message }))
+    for (const event of normalizer.handle({
+      type: m.type,
+      uuid: m.uuid,
+      message: m.message,
+      tool_use_result: m.tool_use_result,
+    }))
       reduceEvent(state, event);
   }
   // Every item gets the conversation's time; a tool cut off without a result reads as done.

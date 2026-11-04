@@ -19,7 +19,8 @@ import {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
-import { ASK_USER_TOOL, EXIT_PLAN_TOOL, standInTools, withStandIns } from "./codexTools";
+import { savedThread, threadMessages } from "./codexHistory";
+import { ASK_USER_TOOL, EXIT_PLAN_TOOL, PLAN_MODE_PROMPT, standInTools, withStandIns } from "./codexTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
 import { FakeMcpClient } from "./fakeMcp";
@@ -93,6 +94,57 @@ const FAKE_MODELS = [
 
 /** The fake saved conversation with a transcript (e2e opens it). */
 export const FAKE_SAVED_ID = "saved-1";
+
+/**
+ * The fake Codex engine's one saved thread (D-315), as `thread/read` returns it: your message (with
+ * Jig's plan-mode text, which an opened chat leaves out), a command, a file change and a reply.
+ */
+function fakeCodexThread(cwd: string, at: number) {
+  return {
+    id: "codex-thread-1",
+    name: null,
+    preview: "Tidy the README",
+    cwd,
+    gitInfo: { sha: null, branch: "main", originUrl: null },
+    createdAt: Math.floor((at - 7_200_000) / 1000),
+    updatedAt: Math.floor((at - 1_800_000) / 1000),
+    turns: [
+      {
+        id: "turn-1",
+        items: [
+          {
+            type: "userMessage",
+            id: "u1",
+            content: [
+              { type: "text", text: `${PLAN_MODE_PROMPT}\n` },
+              { type: "text", text: "Tidy the README" },
+            ],
+          },
+          {
+            type: "commandExecution",
+            id: "c1",
+            command: "cat README.md",
+            aggregatedOutput: "# Shop",
+            exitCode: 0,
+          },
+          {
+            type: "fileChange",
+            id: "f1",
+            status: "completed",
+            changes: [
+              {
+                path: join(cwd, "README.md"),
+                kind: { type: "update" },
+                diff: "@@ -1 +1 @@\n-# Shop\n+# Shop app",
+              },
+            ],
+          },
+          { type: "agentMessage", id: "a1", text: "I tidied the README's title." },
+        ],
+      },
+    ],
+  };
+}
 
 /**
  * Scripted engine for tests and `JIG_ENGINE=fake` (D-015): no Claude Code process, no credentials,
@@ -1443,6 +1495,8 @@ export class FakeEngine implements Engine {
   async savedSessions(): Promise<SavedClaudeSession[]> {
     const cwd = process.env.JIG_FAKE_SAVED_CWD ?? homedir();
     const at = Date.now();
+    // Standing in for Codex: its one saved thread, through the same conversion as Codex's (D-315).
+    if (this.provider === "codex") return [savedThread(fakeCodexThread(cwd, at))!];
     return [
       {
         sessionId: FAKE_SAVED_ID,
@@ -1483,6 +1537,8 @@ export class FakeEngine implements Engine {
   }
 
   async savedMessages(sessionId: string): Promise<SavedClaudeMessage[]> {
+    if (this.provider === "codex")
+      return threadMessages(fakeCodexThread(process.env.JIG_FAKE_SAVED_CWD ?? homedir(), Date.now()));
     if (sessionId !== FAKE_SAVED_ID)
       return [
         {
