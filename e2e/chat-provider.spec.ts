@@ -15,10 +15,10 @@ test("a new chat switches to ChatGPT before its first message, then keeps it", a
   await picker.click();
   await page.getByTestId("provider-codex").click();
   await expect(picker).toContainText("ChatGPT");
-  // ChatGPT's families in the model picker, and no Plan only.
+  // ChatGPT's families in the model picker, and Plan only (Jig's exit_plan tool, D-315).
   await expect(page.getByTestId("model-menu")).toContainText("Sol");
   await page.getByTestId("permission-menu").click();
-  await expect(page.getByTestId("mode-plan")).toHaveCount(0);
+  await expect(page.getByTestId("mode-plan")).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.getByTestId("composer-input").fill("Hello");

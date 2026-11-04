@@ -4271,3 +4271,19 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   leave it empty (Claude, on my own: a mark on every row would be noise for the common case).
 - **Usage** (plan): a Codex chat's turn refreshes the ChatGPT meter (at most every 15 s), not
   Claude's.
+
+## D-315: Codex chats get plan mode, questions, history, skills and suggestions
+
+- Status: accepted. Task Codex chat E (Jon's plan "Codex chats in Jig", phase E, 2026-11-04): the
+  list of gaps and the tool names `exit_plan` / `ask_user` are Jon's; how each works is Claude's, on
+  my own, unless it says otherwise.
+- **Plan mode** (plan; details Claude, on my own): Codex's own plan mode (`collaborationMode`) needs
+  the experimental API, so Plan only is Jig's: the read-only sandbox, Jig declining every command or
+  file approval Codex asks for, and `PLAN_MODE_PROMPT` (in a `<jig_plan_mode>` tag) put before your
+  message in each turn. Codex presents the plan with the Jig MCP tool `exit_plan`, which raises the
+  existing plan card (the permission request carries Claude's tool name `ExitPlanMode`; Codex's card
+  for the call is mapped to that name too). Approving switches the mode first (the card's own
+  `sessions.setPermissionMode`), but Codex takes a new sandbox only with a new turn, so when the
+  planning turn ends Jig starts the next one itself (`PLAN_APPROVED_PROMPT`, hidden) and shows both
+  as one turn (`mergeResults`). The stand-ins are pre-approved in Codex's config and run on Jig's
+  side, so Codex never asks before calling them.

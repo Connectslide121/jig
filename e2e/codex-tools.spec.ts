@@ -32,3 +32,22 @@ test("a Codex chat calls Jig's tools over its local MCP server, asking only befo
     timeout: 15000,
   });
 });
+
+// Plan only in a Codex chat (D-315): Codex presents the plan with Jig's exit_plan tool over MCP, which
+// raises the same plan card as Claude's ExitPlanMode; approving switches the mode first.
+test("a Codex chat in Plan only presents its plan on the plan card", async ({ page, jigHome }) => {
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  await hostCall(page, "projects.add", { path: dir });
+  await hostCall(page, "config.update", { engine: { provider: "codex", defaultPermissionMode: "plan" } });
+  await page.keyboard.press("Control+N");
+  await expect(page.getByTestId("permission-menu")).toContainText("Plan");
+
+  await page.getByTestId("composer-input").fill("make a plan for discounts");
+  await page.keyboard.press("Enter");
+  const plan = page.getByTestId("plan-card");
+  await expect(plan).toContainText("Apply it in total()", { timeout: 15000 });
+  await plan.getByTestId("plan-approve-auto").click();
+  await expect(page.getByText("Starting on the plan (mode: acceptEdits)")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("permission-menu")).toContainText("Accept edits");
+});

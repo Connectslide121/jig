@@ -37,6 +37,13 @@ import { CODEX_PROTOCOL_VERSION } from "./codex-protocol/version";
 import { personalInstructions } from "./codexInstructions";
 import { jigMcpConfig } from "./codexMcp";
 import { CodexNormalizer, mcpToolApproval } from "./codexNormalize";
+import {
+  PLAN_APPROVED_PROMPT,
+  PLAN_MODE_PROMPT,
+  STAND_IN_INSTRUCTIONS,
+  standInTools,
+  withStandIns,
+} from "./codexTools";
 import { type LocalMcp, newMcpToken, startLocalMcp } from "./localMcp";
 import { projectMcpConfig } from "./projectMcp";
 import {
@@ -52,8 +59,9 @@ import {
 const log = logger("engine");
 
 /**
- * How each permission mode runs in Codex (D-311). Codex has no plan mode (the capability is off, so
- * the menu hides it); a chat that somehow has it asks like the default.
+ * How each permission mode runs in Codex (D-311, D-315).
+ * - plan (Plan only): read-only sandbox; Jig declines anything that writes or leaves it, and each turn
+ *   tells Codex to plan and present it with Jig's exit_plan tool (`PLAN_MODE_PROMPT`).
  * - default (Ask before changes): read-only sandbox, Codex asks for anything that writes or leaves it.
  * - acceptEdits: workspace-write sandbox, file changes it still asks about are accepted.
  * - bypassPermissions (Don't ask): workspace-write with network, Codex never asks.
@@ -257,10 +265,30 @@ export class CodexEngine implements Engine {
 
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     const normalizer = new CodexNormalizer();
-    // Jig's tools reach Codex over a local MCP server with this chat's own token (D-313).
-    const toolServers =
-      options.toolServers && Object.keys(options.toolServers).length ? options.toolServers : undefined;
-    const mcpToken = toolServers ? newMcpToken() : undefined;
+    /** Aborted when a turn ends or the chat closes: a stand-in's card waiting for you goes away. */
+    let turnAbort = new AbortController();
+    const endTurn = () => {
+      turnAbort.abort();
+      turnAbort = new AbortController();
+    };
+    /** The plan was approved during this turn: when it ends, the next one carries it out (D-315). */
+    let carryOutPlan = false;
+    /** The planning turn's result, added to the next turn's so the chat shows one turn. */
+    let heldResult: ResultEvent | undefined;
+    // Jig's tools reach Codex over a local MCP server with this chat's own token (D-313), with the
+    // stand-ins for Claude Code's own tools (D-315).
+    const toolServers = withStandIns(
+      options.toolServers,
+      standInTools({
+        askPermission: options.askPermission,
+        callId: (tool) => waitFor(() => normalizer.mcpCallId("jig", tool)),
+        signal: () => turnAbort.signal,
+        planApproved: () => {
+          carryOutPlan = true;
+        },
+      }),
+    );
+    const mcpToken = newMcpToken();
     let localMcp: LocalMcp | undefined;
     let ended = false;
     const closeMcp = () => {
@@ -280,7 +308,24 @@ export class CodexEngine implements Engine {
     /** Codex's approval requests waiting for you, by JSON-RPC id. */
     const asking = new Map<string, AbortController>();
     const emit = (events: EngineEvent[]) => {
-      for (const event of events) onEvent(event);
+      for (const event of events) {
+        if (event.type !== "result") {
+          onEvent(event);
+          continue;
+        }
+        endTurn();
+        // An approved plan: this turn's result waits for the turn that carries it out.
+        if (carryOutPlan && event.ok) {
+          carryOutPlan = false;
+          heldResult = event;
+          startTurn([{ type: "text", text: PLAN_APPROVED_PROMPT, text_elements: [] }]);
+          continue;
+        }
+        carryOutPlan = false;
+        const held = heldResult;
+        heldResult = undefined;
+        onEvent(held ? mergeResults(held, event) : event);
+      }
     };
 
     if (!binary) {
@@ -304,6 +349,7 @@ export class CodexEngine implements Engine {
       request: (message) => void answer(message),
       exit: (error) => {
         closeMcp();
+        endTurn();
         for (const controller of asking.values()) controller.abort();
         asking.clear();
         if (error) onEvent({ type: "error", code: "process", message: error });
@@ -321,6 +367,11 @@ export class CodexEngine implements Engine {
       if (!request) {
         // Questions and other requests come with Codex chats' later phases.
         rpc.fail(message.id, `Jig doesn't handle ${message.method} yet`);
+        return;
+      }
+      // Plan only: nothing that writes or leaves the read-only sandbox (Codex hears "declined").
+      if (permissionMode === "plan") {
+        rpc.respond(message.id, { decision: "decline" satisfies CommandExecutionApprovalDecision });
         return;
       }
       const isEdit = message.method === "item/fileChange/requestApproval";
@@ -382,6 +433,7 @@ export class CodexEngine implements Engine {
             })()
           : "",
         options.appendSystemPrompt,
+        STAND_IN_INSTRUCTIONS,
       ]
         .filter(Boolean)
         .join("\n\n") || undefined;
@@ -400,7 +452,7 @@ export class CodexEngine implements Engine {
       const resolved = resolveChatGptModel(options.model, models);
       if (resolved.notice) onEvent({ type: "notice", tone: "warning", text: resolved.notice });
       const policy = codexPolicy(permissionMode, options.additionalDirectories);
-      if (toolServers && mcpToken) {
+      {
         const started = await startLocalMcp(toolServers, mcpToken).catch((error: Error) => {
           log.warn("Jig's MCP server for a Codex chat didn't start", error);
           onEvent({
@@ -419,9 +471,7 @@ export class CodexEngine implements Engine {
         config: {
           // The project's approved .mcp.json servers, as a Claude chat here gets them; Jig's last.
           ...projectMcpConfig(options.cwd, options.env),
-          ...(localMcp && toolServers && mcpToken
-            ? jigMcpConfig(toolServers, (name) => localMcp!.url(name), mcpToken)
-            : {}),
+          ...(localMcp ? jigMcpConfig(toolServers, (name) => localMcp!.url(name), mcpToken) : {}),
         },
         model: resolved.model || null,
         approvalPolicy: policy.approvalPolicy,
@@ -481,6 +531,39 @@ export class CodexEngine implements Engine {
       return input;
     };
 
+    /** A turn's request with the overrides waiting for it; in Plan only, the instruction to plan first. */
+    const turnParams = (input: UserInput[], clientUserMessageId: string): TurnStartParams => {
+      const overrides = next;
+      next = {};
+      return {
+        threadId: threadId!,
+        clientUserMessageId,
+        input:
+          permissionMode === "plan"
+            ? [{ type: "text", text: PLAN_MODE_PROMPT, text_elements: [] }, ...input]
+            : input,
+        summary: "auto",
+        ...overrides,
+      };
+    };
+    const turnFailed = (error: Error) => {
+      if (rpc.closed) return;
+      log.warn("Codex didn't take a message", error);
+      onEvent({
+        type: "result",
+        ok: false,
+        durationMs: 0,
+        error: `Codex didn't take the message: ${error.message}`,
+      });
+    };
+    /** A turn Jig starts itself (carrying out an approved plan), in the chat's mode now. */
+    const startTurn = (input: UserInput[]) =>
+      void ready
+        .then(async () => {
+          if (threadId) await rpc.request<TurnStartResponse>("turn/start", turnParams(input, randomUUID()));
+        })
+        .catch(turnFailed);
+
     const session: EngineSession = {
       send(text, attachments, priority) {
         const clientUserMessageId = randomUUID();
@@ -498,26 +581,9 @@ export class CodexEngine implements Engine {
               });
               return;
             }
-            const overrides = next;
-            next = {};
-            await rpc.request<TurnStartResponse>("turn/start", {
-              threadId,
-              clientUserMessageId,
-              input,
-              summary: "auto",
-              ...overrides,
-            } satisfies TurnStartParams);
+            await rpc.request<TurnStartResponse>("turn/start", turnParams(input, clientUserMessageId));
           })
-          .catch((error: Error) => {
-            if (rpc.closed) return;
-            log.warn("Codex didn't take a message", error);
-            onEvent({
-              type: "result",
-              ok: false,
-              durationMs: 0,
-              error: `Codex didn't take the message: ${error.message}`,
-            });
-          });
+          .catch(turnFailed);
         return clientUserMessageId;
       },
       async interrupt() {
@@ -576,6 +642,7 @@ export class CodexEngine implements Engine {
         return { canRewind: false, error: "Codex chats can't restore files." };
       },
       close() {
+        endTurn();
         if (threadId) rpc.request("thread/unsubscribe", { threadId }).catch(() => {});
         rpc.kill();
         closeMcp();
@@ -638,6 +705,37 @@ export class CodexEngine implements Engine {
   async savedToolUses(): Promise<SavedToolUse[]> {
     return [];
   }
+}
+
+/** Waits up to a second for a value another message brings (Codex announces a tool call before making it). */
+async function waitFor<T>(get: () => T | undefined, ms = 1000): Promise<T | undefined> {
+  for (let waited = 0; ; waited += 50) {
+    const value = get();
+    if (value !== undefined || waited >= ms) return value;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
+type ResultEvent = Extract<EngineEvent, { type: "result" }>;
+
+/** Two turns shown as one: the planning turn and the one that carried the plan out (D-315). */
+export function mergeResults(first: ResultEvent, second: ResultEvent): ResultEvent {
+  const a = first.usage;
+  const b = second.usage;
+  return {
+    ...second,
+    durationMs: first.durationMs + second.durationMs,
+    ...(a && b
+      ? {
+          usage: {
+            inputTokens: a.inputTokens + b.inputTokens,
+            outputTokens: a.outputTokens + b.outputTokens,
+            cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
+            cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
+          },
+        }
+      : {}),
+  };
 }
 
 /** A chat whose Codex couldn't start: every call fails with the reason. */

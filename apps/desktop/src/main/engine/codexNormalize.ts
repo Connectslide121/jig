@@ -1,4 +1,5 @@
 import type { AuthSource, EngineEvent, PermissionRequest, Usage } from "../../shared/engine";
+import { codexToolCardName } from "./codexTools";
 
 /**
  * Codex app-server notifications → Jig engine events (D-311), the Codex counterpart of
@@ -344,7 +345,8 @@ export class CodexNormalizer {
           {
             type: "tool_use",
             id,
-            name: `mcp__${item.server ?? "mcp"}__${item.tool ?? "tool"}`,
+            // Jig's stand-ins show as Claude's tools' cards (exit_plan → ExitPlanMode, D-315).
+            name: codexToolCardName(String(item.server ?? "mcp"), String(item.tool ?? "tool")),
             input: this.args(item.arguments),
             model: this.model || undefined,
           },

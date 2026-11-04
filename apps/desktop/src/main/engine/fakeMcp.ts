@@ -37,7 +37,10 @@ export class FakeMcpClient {
       }),
     );
     try {
-      const result = (await client.callTool({ name: tool, arguments: args })) as McpToolResult;
+      // A stand-in waits for your answer on its card: no 60-second limit.
+      const result = (await client.callTool({ name: tool, arguments: args }, undefined, {
+        timeout: 30 * 60_000,
+      })) as McpToolResult;
       const text: string[] = [];
       const images: Array<{ mime: string; data: string }> = [];
       for (const block of result.content)

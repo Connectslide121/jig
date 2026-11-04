@@ -19,14 +19,14 @@ describe("getEngine", () => {
     expect(codex).not.toBe(claude);
     expect(codex.kind).toBe("fake");
     expect(codex.provider).toBe("codex");
-    expect(codex.capabilities.planMode).toBe(false);
+    expect(codex.capabilities.rewind).toBe(false);
   });
 
   it("runs Codex chats on the Codex engine and Claude's on Claude's", async () => {
     vi.stubEnv("JIG_ENGINE", "");
     const { getEngine } = await import("./index");
     expect(getEngine("codex").kind).toBe("codex");
-    expect(getEngine("codex").capabilities.planMode).toBe(false);
+    expect(getEngine("codex").capabilities.rewind).toBe(false);
     expect(getEngine().kind).toBe("claude");
   });
 });

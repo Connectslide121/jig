@@ -10,6 +10,7 @@ import {
   type EngineCapabilities,
   type EngineEvent,
   type McpServerInfo,
+  type PermissionDecision,
   type PermissionMode,
   type SavedClaudeMessage,
   type SavedClaudeSession,
@@ -18,6 +19,7 @@ import {
 } from "../../shared/engine";
 import type { RawUsage } from "../../shared/usage";
 import { isReadOnlyChatTool, toolHandlersOf } from "./chatTools";
+import { EXIT_PLAN_TOOL, standInTools, withStandIns } from "./codexTools";
 import { runFakeBuilder } from "./fakeBuilder";
 import { FakeCloud } from "./fakeCloud";
 import { FakeMcpClient } from "./fakeMcp";
@@ -111,10 +113,37 @@ export class FakeEngine implements Engine {
   start(options: StartOptions, onEvent: (event: EngineEvent) => void): EngineSession {
     // A fork continues the conversation under a new id, like Claude Code's forkSession.
     const engineSessionId = options.resume && !options.forkSession ? options.resume : `fake-${randomUUID()}`;
+    /** The card of the stand-in call in progress (Codex chats, D-315). */
+    let standInCall: string | undefined;
+    // A Codex chat's `jig` server has the stand-ins for Claude's plan and question tools, as in Codex.
+    const toolServers =
+      this.provider === "codex"
+        ? withStandIns(
+            options.toolServers,
+            standInTools({
+              askPermission: options.askPermission,
+              callId: async () => standInCall,
+              signal: () => turn?.signal ?? new AbortController().signal,
+              planApproved: () => {},
+            }),
+          )
+        : options.toolServers;
     // Jig's tools as plain functions; scripts call them directly like Claude Code's in-process server.
-    const toolHandlers = options.toolServers ? toolHandlersOf(options.toolServers) : undefined;
+    const toolHandlers = toolServers ? toolHandlersOf(toolServers) : undefined;
     // "call <tool> over mcp": the same tools through the chat's local MCP server, as Codex calls them.
-    const mcpClient = options.toolServers ? new FakeMcpClient(options.toolServers) : undefined;
+    const mcpClient = toolServers ? new FakeMcpClient(toolServers) : undefined;
+    /**
+     * A Codex chat's stand-in tool, called over the chat's MCP server like Codex does: the card shows
+     * as Claude's tool and the stand-in asks on it. Returns what the tool answered.
+     */
+    const callStandIn = async (tool: string, toolId: string, input: Record<string, unknown>) => {
+      standInCall = toolId;
+      try {
+        return (await mcpClient!.call("jig", tool, input)).text;
+      } finally {
+        standInCall = undefined;
+      }
+    };
     let model = options.model || "fake-model";
     let permissionMode: PermissionMode = options.permissionMode;
     let initialised = false;
@@ -586,15 +615,23 @@ export class FakeEngine implements Engine {
             name: "ExitPlanMode",
             input,
           });
-          const decision = await options.askPermission(
-            {
-              requestId: toolId,
-              toolName: "ExitPlanMode",
-              input,
-              canAlwaysAllow: false,
-            },
-            signal,
-          );
+          // A Codex chat presents it with Jig's exit_plan tool over MCP (D-315).
+          const decision: PermissionDecision =
+            mcpClient && this.provider === "codex"
+              ? await callStandIn(EXIT_PLAN_TOOL, toolId, input).then((answer) =>
+                  answer.startsWith("The user approved")
+                    ? { behavior: "allow" as const }
+                    : { behavior: "deny" as const, message: answer },
+                )
+              : await options.askPermission(
+                  {
+                    requestId: toolId,
+                    toolName: "ExitPlanMode",
+                    input,
+                    canAlwaysAllow: false,
+                  },
+                  signal,
+                );
           const approved = decision.behavior === "allow";
           onEvent({
             type: "tool_result",
@@ -770,7 +807,7 @@ export class FakeEngine implements Engine {
           const toolId = `tool-${randomUUID()}`;
           onEvent({ type: "tool_use", id: toolId, name, input });
           const decision =
-            permissionMode === "bypassPermissions" || isReadOnlyChatTool(options.toolServers, name)
+            permissionMode === "bypassPermissions" || isReadOnlyChatTool(toolServers, name)
               ? { behavior: "allow" as const }
               : await options.askPermission(
                   { requestId: toolId, toolName: name, input, canAlwaysAllow: true },
