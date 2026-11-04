@@ -34,6 +34,8 @@ function setup(permitted = true) {
     hasPermission: vi.fn(() => permitted),
     create: vi.fn(async (input: { title?: string }) => meta({ id: "new", title: input.title ?? "New chat" })),
     send: vi.fn(async () => {}),
+    sendFrom: vi.fn(async () => {}),
+    icon: vi.fn(() => "list-todo"),
     copyAttachments: vi.fn(async (_addon: string, sessionId: string, list: ChatAttachment[]) =>
       list.map((a) => ({ ...a, path: `/att/${sessionId}/${a.name}` })),
     ),
@@ -44,6 +46,32 @@ function setup(permitted = true) {
 }
 
 describe("chatInfo", () => {
+  it("counts background work and tells when you last stopped a turn or rejected a tool", () => {
+    const base = snap({ backgroundTasks: [{ id: "b1", description: "npm run dev", type: "local_bash" }] });
+    const items: SessionSnapshot["items"] = [
+      ...base.items,
+      { kind: "result", id: "r1", at: "2025-01-01T10:03:00Z", ok: true, durationMs: 1, stopped: true },
+      {
+        kind: "permission",
+        id: "p1",
+        at: "2025-01-01T10:05:00Z",
+        status: "denied",
+        request: { requestId: "x", toolName: "Bash", input: {}, canAlwaysAllow: false },
+      },
+      {
+        kind: "permission",
+        id: "p2",
+        at: "2025-01-01T10:06:00Z",
+        status: "allowed",
+        request: { requestId: "y", toolName: "Bash", input: {}, canAlwaysAllow: false },
+      },
+    ];
+    const info = chatInfo({ ...base, items });
+    expect(info.background).toBe(1);
+    expect(info.userStoppedAt).toBe("2025-01-01T10:05:00Z");
+    expect(chatInfo(snap()).userStoppedAt).toBeUndefined();
+  });
+
   it("takes the last top-level answer, the queue and the error", () => {
     expect(chatInfo(snap({ lastError: "boom", projectId: "p1" }))).toEqual({
       id: "s1",
@@ -53,6 +81,7 @@ describe("chatInfo", () => {
       cwd: "/w/shop",
       costUsd: 0.25,
       queued: 1,
+      background: 0,
       lastAnswer: "last",
       lastAnswerAt: "2025-01-01T10:01:00Z",
       error: "boom",
@@ -101,6 +130,15 @@ describe("addonChats", () => {
     await expect(
       chats.send("tasks", { text: "x", permissionMode: "bypassPermissions" as never }),
     ).rejects.toThrow(/permission mode/);
+  });
+
+  it("sends a message from the add-on with its line and icon, only to an existing chat", async () => {
+    const { chats, deps } = setup();
+    await chats.send("tasks", { text: "report please", sessionId: "s1", from: "Task queue:\n asked" });
+    expect(deps.sendFrom).toHaveBeenCalledWith("s1", "report please", "Task queue: asked", "list-todo");
+    expect(deps.send).not.toHaveBeenCalled();
+    await expect(chats.send("tasks", { text: "x", from: "Task queue" })).rejects.toThrow(/sessionId/);
+    await expect(chats.send("tasks", { text: "x", sessionId: "s1", from: " " })).rejects.toThrow(/from/);
   });
 
   it("tells only the add-ons following a chat about its status", async () => {

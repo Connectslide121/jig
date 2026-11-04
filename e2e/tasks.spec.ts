@@ -355,3 +355,41 @@ test("Tasks: drag queued tasks and chats into a new order, or move them with Alt
   await page.getByRole("menuitem", { name: "Move to top" }).click();
   await expect.poll(order).toBe("T1 T3 t2");
 });
+
+test("Tasks: a turn without a report is asked once for it, and a chat reports late when asked", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: ["skip the report while the server starts", "skip two reports for the screenshot"],
+      newChat: true,
+    },
+  });
+  await view.getByTestId("tasks-start").click();
+  // The first ends its turn without a report: the queue asks once, and the chat reports.
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 30000 });
+  // The second ignores that request too: No report, and the row keeps its place and size.
+  await expect(view.getByTestId("task-status-t2")).toContainText("No report", { timeout: 30000 });
+  const row = await view.getByTestId("task-t2").boundingBox();
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Ask for a report" }).click();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Done", { timeout: 30000 });
+  await expect(view.getByTestId("task-t2")).toContainText("reported late");
+  expect(await view.getByTestId("task-t2").boundingBox()).toEqual(row);
+  await view.getByTestId("task-t2").click();
+  await expect(page.getByTestId("task-details")).toContainText("Reported late");
+  await expect(page.getByTestId("task-ask-report")).toHaveCount(0);
+  // The chat shows the requests as the task queue's, not as yours.
+  await page.getByTestId("task-open-chat").click();
+  await expect(page.getByTestId("jig-message").first()).toContainText(
+    "Task queue: asked for the report of task 2",
+  );
+  await expect(page.getByTestId("jig-message")).toHaveCount(2);
+});

@@ -407,6 +407,12 @@ export interface AddonChatSend {
   title?: string;
   /** For a new chat; never bypasses permissions. Default: the project's (or Jig's) default. */
   permissionMode?: "default" | "acceptEdits" | "plan";
+  /**
+   * Sent by the add-on, not typed by you: the one line the transcript shows for it, with the add-on's
+   * icon (e.g. "Task queue: asked for the report of task 3"). Needs `sessionId`, no attachments; an
+   * idle chat starts a turn, a busy one gets it in its running turn.
+   */
+  from?: string;
 }
 
 export interface AddonChatInfo {
@@ -422,6 +428,10 @@ export interface AddonChatInfo {
   lastAnswer?: string;
   lastAnswerAt?: string;
   error?: string;
+  /** Commands, subagents and monitors still running in the background (they wake the chat when they end). */
+  background: number;
+  /** When you last stopped one of its turns (Stop) or rejected a tool call in it. */
+  userStoppedAt?: string;
 }
 
 /** The Azure tenant every `az` Jig runs uses (D-282): `default` is your own az login. */

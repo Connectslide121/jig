@@ -479,21 +479,33 @@ export class SessionManager {
   }
 
   /** Starts a turn; while it starts, `live.starting` lets a message sent "now" wait to join it. */
-  private async startTurn(live: Live, text: string, attachments: ChatAttachment[] = [], from?: string) {
+  private async startTurn(
+    live: Live,
+    text: string,
+    attachments: ChatAttachment[] = [],
+    from?: string,
+    icon?: string,
+  ) {
     let started = () => {};
     const starting = new Promise<void>((resolve) => {
       started = resolve;
     });
     live.starting = starting;
     try {
-      await this.beginTurn(live, text, attachments, from);
+      await this.beginTurn(live, text, attachments, from, icon);
     } finally {
       if (live.starting === starting) live.starting = undefined;
       started();
     }
   }
 
-  private async beginTurn(live: Live, text: string, attachments: ChatAttachment[], from?: string) {
+  private async beginTurn(
+    live: Live,
+    text: string,
+    attachments: ChatAttachment[],
+    from?: string,
+    icon?: string,
+  ) {
     // Never interrupt in-flight work for a library change. At a turn boundary, resume the same
     // conversation with the new plugins and prompt. Old process events are ignored by stop().
     if (live.engine && live.configurationKey !== this.options.configurationKey?.(live.state.meta)) {
@@ -531,6 +543,7 @@ export class SessionManager {
       at: new Date().toISOString(),
       ...(attachments.length ? { attachments } : {}),
       ...(from ? { from } : {}),
+      ...(from && icon ? { fromIcon: icon } : {}),
     };
     const updates: ChatUpdate[] = [{ op: "upsert", item }];
     live.state.items.push(item);
@@ -632,9 +645,10 @@ export class SessionManager {
   /**
    * A message from Jig, not the user (a terminal Claude started has finished): it starts a turn in an
    * idle chat, or goes into the running turn, so Claude reacts without polling. `from` is the line the
-   * transcript shows for it. A chat that no longer exists is skipped.
+   * transcript shows for it, `icon` the Lucide icon beside it (an add-on's; a terminal by default). A
+   * chat that no longer exists is skipped.
    */
-  async notify(id: string, text: string, from: string): Promise<void> {
+  async notify(id: string, text: string, from: string, icon?: string): Promise<void> {
     const live = await this.live(id).catch(() => undefined);
     if (!live) return;
     if (live.starting) await live.starting;
@@ -645,6 +659,7 @@ export class SessionManager {
         text,
         at: new Date().toISOString(),
         from,
+        ...(icon ? { fromIcon: icon } : {}),
       };
       live.state.items.push(item);
       this.emit(live, [{ op: "upsert", item }]);
@@ -653,7 +668,7 @@ export class SessionManager {
       this.emit(live, [{ op: "upsert", item: { ...item, messageId } }]);
       return;
     }
-    await this.startTurn(live, text, [], from);
+    await this.startTurn(live, text, [], from, icon);
   }
 
   /**

@@ -1,6 +1,9 @@
 import type { AddonChatInfo, AddonHostApi } from "@jig/sdk";
 import {
   addTasks,
+  afterTurn,
+  applyReport,
+  canReportLate,
   chatFinished,
   chatToContinue,
   closeRun,
@@ -9,20 +12,25 @@ import {
   emptyQueue,
   finishTask,
   historyFiles,
+  interruptedTurn,
   isActive,
   joinQueues,
   listing,
   moveTasks,
   type NewTask,
   nextTask,
+  nudgeFrom,
+  nudgeText,
   openRun,
   type PermissionMode,
   parseNewTasks,
   parseReport,
   parseTaskEdits,
+  pendingReportsNote,
   type Queue,
   type Run,
   recordRuns,
+  reportTarget,
   requeue,
   resetTasks,
   STATUS_LABEL,
@@ -123,9 +131,11 @@ async function projectOfChat(
   api: AddonHostApi,
   sessionId: string,
   hint?: string,
+  /** Also a chat whose tasks all ended (a late report), not only one running a task. */
+  anyTask = false,
 ): Promise<string | undefined> {
   const has = async (projectId: string) =>
-    (await load(api, projectId)).tasks.some((t) => t.sessionId === sessionId && isActive(t));
+    (await load(api, projectId)).tasks.some((t) => t.sessionId === sessionId && (anyTask || isActive(t)));
   const known = chatProjects.get(sessionId) ?? hint;
   if (known && (await has(known))) return known;
   for (const p of await api.projects())
@@ -160,6 +170,31 @@ function settle(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Q
     });
   }
   return next;
+}
+
+/**
+ * A task's chat stopped working (D-318): still busy in the background → wait; ended without a report
+ * → ask it once for the report (a message from the task queue, not from you), and follow that turn;
+ * otherwise record the task. Never asks when you stopped the turn or rejected a tool call yourself.
+ */
+async function turnEnded(api: AddonHostApi, q: Queue, task: Task, chat: AddonChatInfo): Promise<Queue> {
+  const next = afterTurn(task, chat);
+  if (next === "wait") return q;
+  if (next === "finish" || !task.sessionId) return settle(api, q, task, chat);
+  const asked: Task = { ...task, nudgedAt: new Date().toISOString(), sawBusy: false };
+  const saved = replace(q, asked);
+  // Saved before the message goes, so its turn is followed as this task's.
+  if (task.projectId) await api.storage.set(KEY, saved, scope(task.projectId));
+  try {
+    await api.chats.send({
+      sessionId: task.sessionId,
+      text: nudgeText(saved, asked),
+      from: nudgeFrom(saved, asked),
+    });
+    return saved;
+  } catch {
+    return settle(api, saved, asked, chat);
+  }
 }
 
 /** Starts the next queued task when the queue runs and nothing else does; the run ends with the queue. */
@@ -205,7 +240,10 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
         ...(q.runId ? { runId: q.runId } : {}),
       });
       if (task.projectId) await api.storage.set(KEY, q, scope(task.projectId));
-      await api.chats.send({ text: task.prompt, sessionId, attachments: task.attachments });
+      // A chat whose earlier tasks still miss their report is told which, by id, before this one.
+      const note = continued ? pendingReportsNote(q, continued) : "";
+      const text = note ? (task.prompt ? `${note}\n\n${task.prompt}` : note) : task.prompt;
+      await api.chats.send({ text, sessionId, attachments: task.attachments });
       return q;
     } catch (error) {
       const failed: Task = {
@@ -244,13 +282,14 @@ async function reconcile(api: AddonHostApi, q: Queue): Promise<Queue> {
         finishedAt: new Date().toISOString(),
       });
     } else if (chatFinished(task, chat)) {
-      q = settle(api, q, task, chat);
-    } else if (chat.status === "idle" && !chat.queued) {
+      q = await turnEnded(api, q, task, chat);
+    } else if (interruptedTurn(task, chat) && !chat.queued) {
       // Idle with no answer since the task was sent: Jig closed before the chat got to it.
       q = replace(q, {
         ...task,
         status: "error",
         error: "Interrupted: Jig closed before the chat finished",
+        interrupted: true,
         finishedAt: new Date().toISOString(),
       });
     }
@@ -514,6 +553,25 @@ export async function reset(args: ProjectArgs & { ids?: string[] }, api: AddonHo
   if (dropped) await dropRun(api, projectId, dropped, false);
 }
 
+/**
+ * Ask for a report (a No report or Interrupted task's ⋯ and details): sends its chat the queue's
+ * request for the report; the chat answers with a late one (D-318). Only to an idle chat.
+ */
+export async function askReport(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  await ready(api);
+  const q = await load(api, projectId);
+  const task = q.tasks.find((t) => t.id === args.id);
+  if (!task || !canReportLate(task) || !task.sessionId)
+    throw new Error("Only a task that ended without a report can be asked for one");
+  const chat = await api.chats.get(task.sessionId).catch(() => undefined);
+  if (!chat) throw new Error("Its chat is gone");
+  if (chat.status !== "idle" && chat.status !== "error")
+    throw new Error("Its chat is busy; ask again once it's idle");
+  chatProjects.set(task.sessionId, projectId);
+  await api.chats.send({ sessionId: task.sessionId, text: nudgeText(q, task), from: nudgeFrom(q, task) });
+}
+
 /** Ticks (`on`) or unticks queued tasks: unticked ones stay queued but Start passes them by. */
 export async function select(
   args: ProjectArgs & { ids?: string[]; on: boolean },
@@ -577,8 +635,7 @@ export async function chatChanged(
       return [replace(q, { ...task, status: "needs_you", sawBusy: true }), undefined];
     }
     const chat = await api.chats.get(sessionId);
-    if (!chatFinished(task, chat)) return [q, undefined];
-    return [await advance(api, settle(api, q, task, chat)), undefined];
+    return [await advance(api, await turnEnded(api, q, task, chat)), undefined];
   });
 }
 
@@ -616,23 +673,44 @@ export async function context(args: ChatArgs, api: AddonHostApi): Promise<string
   return projectId ? taskContext(await load(api, projectId), sessionId) : "";
 }
 
+/**
+ * A chat reports its task: the one it runs, or (D-318) one of its own tasks that ended without a
+ * report (`taskId`, or the rules in `reportTarget`). A late report sets the task's status at once.
+ */
 export async function toolReport(
-  args: ChatArgs & { outcome?: string; summary?: string; notes?: unknown; followUps?: unknown },
+  args: ChatArgs & {
+    outcome?: string;
+    summary?: string;
+    notes?: unknown;
+    followUps?: unknown;
+    taskId?: unknown;
+  },
   api: AddonHostApi,
 ): Promise<string> {
   const sessionId = args.chat?.sessionId;
   const report = parseReport(args);
+  const taskId = typeof args.taskId === "string" && args.taskId.trim() ? args.taskId.trim() : undefined;
   await ready(api);
-  const projectId = sessionId ? await projectOfChat(api, sessionId, args.chat?.projectId) : undefined;
-  if (!projectId)
-    throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
+  const projectId = sessionId ? await projectOfChat(api, sessionId, args.chat?.projectId, true) : undefined;
+  if (!sessionId || !projectId)
+    throw new Error("This chat hasn't run a task from the task queue; there is nothing to report.");
   return change(api, projectId, (q) => {
-    const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
-    if (!task)
-      throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
+    const task = reportTarget(q, sessionId, taskId);
+    const n = q.tasks.indexOf(task) + 1;
+    const { queue, late, pause } = applyReport(q, task, report);
+    if (pause)
+      api.notify({
+        title: `Task queue paused: task ${n} reported ${STATUS_LABEL[report.outcome].toLowerCase()}`,
+        message: task.title,
+        tone: "warning",
+        system: true,
+        actions: OPEN,
+      });
     return [
-      replace(q, { ...task, report }),
-      `Reported: ${report.outcome}. The user sees it in the task queue.`,
+      queue,
+      late
+        ? `Reported task ${n} ("${task.title}") late: ${report.outcome}.${pause ? " The queue is paused." : ""} The user sees it in the task queue.`
+        : `Reported task ${n}: ${report.outcome}. The user sees it in the task queue.`,
     ];
   });
 }

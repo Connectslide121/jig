@@ -203,15 +203,16 @@ export function activate(api: AddonHostApi) { … }   // optional, runs once at 
 | `projects()` | — | the user's projects |
 | `workspaces()` | — | every folder the user added, with its repositories |
 | `chats.create({ projectId?, cwd?, title?, permissionMode? })` → `{ sessionId }` | `chat` | an empty chat with the project's defaults (or in `cwd`); `permissionMode` is `default`, `acceptEdits` or `plan`, never bypass |
-| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode?, attachments? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId`. `attachments` are files kept with `ctx.attachments` (copied into the chat, so the add-on's stay its own); the text may be empty when there are files |
+| `chats.send({ text, sessionId?, projectId?, cwd?, title?, permissionMode?, attachments?, from? })` → `{ sessionId, sentAt }` | `chat` | sends a message (a busy chat queues it), creating a chat first unless `sessionId`. `attachments` are files kept with `ctx.attachments` (copied into the chat, so the add-on's stay its own); the text may be empty when there are files. `from` (D-318): a message from the add-on, not the user: the transcript shows that one line with the add-on's icon (`ChatItem.fromIcon`) and "Jig told Claude", like a finished terminal's notice; it needs `sessionId` and no files, starts a turn in an idle chat and joins a running one |
 | `attachments.remove(list)` | — | deletes files this add-on kept (only its own, in `attachments/addon-<id>/`) |
-| `chats.get(sessionId)` → `{ id, title, status, projectId?, cwd, costUsd, queued, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and Claude's last answer |
+| `chats.get(sessionId)` → `{ id, title, status, projectId?, cwd, costUsd, queued, background, userStoppedAt?, lastAnswer?, lastAnswerAt?, error? }` | `chat` | a chat's state and Claude's last answer. `background` (D-318): commands, subagents and monitors still running in the background (they wake the chat when they end); `userStoppedAt`: when the user last pressed Stop in it or rejected a tool call (a permission or question card) |
 | `log(message, detail?)` | — | to `~/.jig/logs/main.log` |
 | `addon` | — | `{ id, dir, dataDir }` (`dataDir` = `~/.jig/addon-data/<id>/`) |
 
 **Following chats** (D-182): when a chat the add-on created, sent to or asked about (`chats.*`) changes
 status, main calls the host export `chatChanged({ sessionId, status })` if there is one (status:
-`idle`, `starting`, `working`, `needs_you`, `error`). Main remembers this in memory only, so after a
+`idle`, `starting`, `working`, `needs_you`, `error`), and again when its last background task
+ends (D-318: the status may be the same; ask `chats.get`). Main remembers this in memory only, so after a
 restart the add-on asks again with `chats.get` (a watcher). The `chat` permission is checked in the
 host and again in main. The Tasks add-on (`addons/tasks`) is the example.
 

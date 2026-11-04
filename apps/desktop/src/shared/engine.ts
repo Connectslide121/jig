@@ -304,6 +304,8 @@ export type ChatItem =
       images?: ChatAttachment[];
       /** Sent by Jig, not typed by you (a terminal Claude started has finished): the line shown for it. */
       from?: string;
+      /** The Lucide icon beside `from`: the add-on's that sent it (a terminal when absent). */
+      fromIcon?: string;
     }
   | {
       kind: "assistant";

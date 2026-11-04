@@ -39,6 +39,7 @@ import {
   ListTodo,
   LoaderCircle,
   MessageSquare,
+  MessageSquareReply,
   MoreHorizontal,
   Paperclip,
   Pause,
@@ -67,6 +68,7 @@ import {
 } from "./lib/draft";
 import {
   type ChatGroup,
+  canReportLate,
   chatGroups,
   counts,
   currentSlot,
@@ -525,11 +527,29 @@ function QueuePanel({
     if (ok) await call("reset");
   };
 
+  const askReport = async (task: Task) => {
+    try {
+      await ctx.host.call("askReport", { projectId, id: task.id });
+      ctx.notify({ title: "Asked its chat for the report", message: task.title, tone: "info" });
+    } catch (e) {
+      ctx.notify({ title: (e as Error).message, tone: "danger" });
+    }
+  };
+
   const menuFor = (task: Task, at: MouseEvent | HTMLElement) => {
     const queued = task.status === "queued";
     ctx.menu(
       [
         ...openEntries(ctx, task, () => setOpen(task.id)),
+        ...(canReportLate(task) && task.sessionId
+          ? [
+              {
+                label: "Ask for a report",
+                icon: "message-square-reply",
+                onSelect: () => void askReport(task),
+              },
+            ]
+          : []),
         { separator: true as const },
         ...(queued
           ? [
@@ -738,6 +758,7 @@ function QueuePanel({
             await call("runAgain", { id: openTask.id });
             setOpen(undefined);
           }}
+          onAskReport={() => void askReport(openTask)}
         />
       )}
     </>
@@ -1418,6 +1439,8 @@ function TaskRow({
   const followUps = task.report?.followUps.length ?? 0;
   const files = task.attachments ?? [];
   const tags = [
+    task.reportedLate ? "reported late" : "",
+    isActive(task) && task.nudgedAt ? "asked for its report" : "",
     continues ? "same chat" : "",
     task.addedBy ? "queued by Claude" : "",
     task.from ? "a follow-up" : "",
@@ -1566,6 +1589,7 @@ function TaskDialog({
   onClose,
   onQueue,
   onRunAgain,
+  onAskReport,
 }: {
   ctx: AddonUiContext;
   task: Task;
@@ -1574,6 +1598,8 @@ function TaskDialog({
   onClose: () => void;
   onQueue: (prompts: string[]) => Promise<void>;
   onRunAgain: () => Promise<void>;
+  /** In the queue: ask the chat of a task that ended without a report for one (D-318). */
+  onAskReport?: () => void;
 }) {
   const report = task.report;
   const [queued, setQueued] = useState<Set<number>>(new Set());
@@ -1628,6 +1654,17 @@ function TaskDialog({
               Open chat
             </Button>
           )}
+          {onAskReport && task.sessionId && canReportLate(task) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={MessageSquareReply}
+              onClick={onAskReport}
+              data-testid="task-ask-report"
+            >
+              Ask for a report
+            </Button>
+          )}
           {isFinished(task) && (
             <Button size="sm" variant="ghost" onClick={() => void onRunAgain()}>
               Run again
@@ -1642,6 +1679,7 @@ function TaskDialog({
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
+          {task.reportedLate && <Badge tone="neutral">Reported late</Badge>}
         </div>
         <div className="grid grid-cols-4 gap-x-4 gap-y-2 rounded-md bg-surface p-3" data-testid="task-facts">
           {facts.map(([label, value]) => (

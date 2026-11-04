@@ -54,6 +54,12 @@ export interface Task {
   runId?: string;
   /** Unticked: stays queued but Start passes it by, until it is ticked again. */
   leftOut?: boolean;
+  /** When the queue asked its chat for the report, after a turn ended without one (once per task). */
+  nudgedAt?: string;
+  /** Its report came after it was marked No report or Interrupted (`addon_tasks_report` with taskId). */
+  reportedLate?: boolean;
+  /** Jig closed while its chat worked on it (status error); it can still be reported late. */
+  interrupted?: boolean;
 }
 
 export interface Queue {
@@ -85,6 +91,10 @@ export interface ChatState {
   lastAnswer?: string;
   lastAnswerAt?: string;
   error?: string;
+  /** Commands, subagents and monitors still running in the background. */
+  background?: number;
+  /** When you last stopped one of its turns or rejected a tool call in it. */
+  userStoppedAt?: string;
 }
 
 export const OUTCOMES: Outcome[] = ["done", "partial", "failed", "blocked"];
@@ -252,11 +262,142 @@ export function chatToContinue(queue: Queue, task: Task): string | undefined {
   return undefined;
 }
 
-/** Whether the chat finished the task's turn: idle (or failed) after working on it. */
-export function chatFinished(task: Task, chat: ChatState): boolean {
-  if (chat.status !== "idle" && chat.status !== "error") return false;
-  if (task.sawBusy || chat.status === "error") return true;
-  return !!(chat.lastAnswerAt && task.sentAt && chat.lastAnswerAt >= task.sentAt);
+/**
+ * How long an idle chat with work still running in the background (a dev server, a long build) keeps
+ * its task open before the queue asks it for the report anyway (D-318).
+ */
+export const BACKGROUND_WAIT_MS = 20 * 60_000;
+
+/** The chat answered since the task (or the queue's request for its report) was sent. */
+function answeredSince(task: Task, chat: ChatState): boolean {
+  const since = task.nudgedAt ?? task.sentAt;
+  return !!task.sawBusy || !!(chat.lastAnswerAt && since && chat.lastAnswerAt >= since);
+}
+
+/**
+ * Whether the chat finished the task's turn: idle (or failed) after working on it, with nothing left
+ * running in the background. A command or subagent still running wakes the chat when it ends, so the
+ * task stays open until then, or until `BACKGROUND_WAIT_MS` passed since the last answer (D-318). A
+ * question or permission waiting for you is `needs_you`, never finished.
+ */
+export function chatFinished(task: Task, chat: ChatState, now = Date.now()): boolean {
+  if (chat.status === "error") return true;
+  if (chat.status !== "idle" || !answeredSince(task, chat)) return false;
+  if (chat.background && !task.nudgedAt) {
+    const last = Date.parse(chat.lastAnswerAt ?? task.sentAt ?? "");
+    if (!(now - last >= BACKGROUND_WAIT_MS)) return false;
+  }
+  return true;
+}
+
+/** Idle without an answer since the task was sent: Jig closed before the chat got to it. */
+export function interruptedTurn(task: Task, chat: ChatState): boolean {
+  return chat.status === "idle" && !chat.background && !answeredSince(task, chat);
+}
+
+/**
+ * What the queue does when a task's chat stops working (D-318): `wait` (not finished yet), `nudge`
+ * (it ended without a report: ask once for it), or `finish` (record it: a report, a failed chat, a
+ * second turn without one, or you stopped the turn or rejected a tool call yourself, so nothing
+ * restarts work you stopped).
+ */
+export function afterTurn(task: Task, chat: ChatState, now = Date.now()): "wait" | "nudge" | "finish" {
+  if (!chatFinished(task, chat, now)) return "wait";
+  if (task.report || chat.status === "error" || task.nudgedAt) return "finish";
+  if (chat.userStoppedAt && task.sentAt && chat.userStoppedAt >= task.sentAt) return "finish";
+  return "nudge";
+}
+
+/** The message that asks a chat for a task's report: only the report, never more work (D-318). */
+export function nudgeText(queue: Pick<Queue, "tasks">, task: Task): string {
+  const n = queue.tasks.findIndex((t) => t.id === task.id) + 1;
+  return [
+    `The task queue asks for the report of task ${n} ("${task.title}", taskId "${task.id}").`,
+    `If it's done, call addon_tasks_report with taskId "${task.id}".`,
+    "If the work isn't finished, call it anyway with outcome partial or blocked and a one-line summary of where it stands.",
+    "Don't continue the task's work unless the user asks.",
+  ].join(" ");
+}
+
+/** The line the chat's transcript shows for that message. */
+export function nudgeFrom(queue: Pick<Queue, "tasks">, task: Task): string {
+  return `Task queue: asked for the report of task ${queue.tasks.findIndex((t) => t.id === task.id) + 1}`;
+}
+
+/** A task that ended without a report and can still get one: No report, or Interrupted by Jig closing. */
+export function canReportLate(task: Task): boolean {
+  return (
+    task.status === "no_report" ||
+    (task.status === "error" && (!!task.interrupted || !!task.error?.startsWith("Interrupted")))
+  );
+}
+
+/** This chat's tasks that still miss their report, in queue order. */
+export function unreported(queue: Pick<Queue, "tasks">, sessionId: string): Task[] {
+  return queue.tasks.filter((t) => t.sessionId === sessionId && canReportLate(t));
+}
+
+const named = (queue: Pick<Queue, "tasks">, t: Task) =>
+  `task ${queue.tasks.indexOf(t) + 1} "${t.title}" (taskId "${t.id}")`;
+
+/**
+ * Which task a chat's `addon_tasks_report` is for (D-318). With `taskId`: that task, when this chat
+ * ran it and it is still running or misses its report; never another chat's. Without: the chat's
+ * running task while it has no report; once it has one, the chat's earliest task still missing one
+ * (a late report never lands on a newer task); with no running task, the most recent one missing it.
+ */
+export function reportTarget(queue: Pick<Queue, "tasks">, sessionId: string, taskId?: string): Task {
+  const active = queue.tasks.find((t) => t.sessionId === sessionId && isActive(t));
+  if (taskId) {
+    const task = queue.tasks.find((t) => t.id === taskId);
+    if (!task) throw new Error(`There is no task ${taskId} in this chat's queue`);
+    if (task.sessionId !== sessionId)
+      throw new Error(`Task ${taskId} didn't run in this chat; a chat can only report its own tasks`);
+    if (task === active || canReportLate(task)) return task;
+    throw new Error(
+      `Task ${taskId} is ${STATUS_LABEL[task.status].toLowerCase()}; only a running task or one without a report can be reported`,
+    );
+  }
+  if (active && !active.report) return active;
+  const missing = unreported(queue, sessionId);
+  if (missing.length) return active ? missing[0]! : missing[missing.length - 1]!;
+  if (active) return active;
+  throw new Error("This chat isn't running a task from the task queue; there is nothing to report.");
+}
+
+/**
+ * A report on `task`: a running task keeps running with it (its status comes when the chat ends). A
+ * late one sets the status from the outcome and keeps the task's times and cost, marked
+ * `reportedLate`. A late failed or blocked report pauses a running queue when "stop when a task
+ * fails" is on, as an on-time one would, unless the chat already went on with a later task (D-318).
+ */
+export function applyReport(
+  queue: Queue,
+  task: Task,
+  report: TaskReport,
+): { queue: Queue; late: boolean; pause: boolean } {
+  const swap = (q: Queue, t: Task): Queue => ({ ...q, tasks: q.tasks.map((x) => (x.id === t.id ? t : x)) });
+  if (isActive(task)) return { queue: swap(queue, { ...task, report }), late: false, pause: false };
+  const { error: _error, interrupted: _interrupted, ...rest } = task;
+  const done: Task = { ...rest, report, status: report.outcome, reportedLate: true };
+  const next = swap(queue, done);
+  const index = queue.tasks.findIndex((t) => t.id === task.id);
+  const movedOn = queue.tasks.slice(index + 1).some((t) => t.sessionId && t.sessionId === task.sessionId);
+  const pause = queue.running && shouldPause(next, done) && !movedOn;
+  return { queue: pause ? { ...next, running: false } : next, late: true, pause };
+}
+
+/**
+ * Said before a task sent into a chat whose earlier tasks still miss their report, so the chat
+ * reports those first, by id (D-318). Empty when none do.
+ */
+export function pendingReportsNote(queue: Pick<Queue, "tasks">, sessionId: string): string {
+  const missing = unreported(queue, sessionId);
+  if (!missing.length) return "";
+  const one = missing.length === 1;
+  return `Before this task: ${missing.map((t) => named(queue, t)).join(", ")} in this chat ${
+    one ? "has" : "have"
+  } no report yet. Report ${one ? "it" : "each"} first with addon_tasks_report and its taskId, then do this task.`;
 }
 
 /** The task once its chat is done: its status from Claude's report, or no_report / error without one. */
@@ -670,6 +811,15 @@ export function recordRuns(
     if (old && JSON.stringify(old) === JSON.stringify(run)) continue;
     next = [run, ...next.filter((r) => r.id !== id)];
   }
+  // A task of a closed run that changed since (a late report) changes in that run too, in its place.
+  const was = new Map(before.tasks.map((t) => [t.id, JSON.stringify(t)]));
+  for (const task of after.tasks) {
+    if (!task.runId || ids.includes(task.runId) || was.get(task.id) === JSON.stringify(task)) continue;
+    const run = next.find((r) => r.id === task.runId);
+    if (!run?.tasks.some((t) => t.id === task.id)) continue;
+    const updated = { ...run, tasks: run.tasks.map((t) => (t.id === task.id ? task : t)) };
+    next = next.map((r) => (r === run ? updated : r));
+  }
   return next === history ? history : next.slice(0, HISTORY_LIMIT);
 }
 
@@ -732,12 +882,20 @@ export function taskContext(queue: Queue, sessionId: string): string {
   const n = queue.tasks.indexOf(task) + 1;
   const waiting = queue.tasks.filter((t) => t.status === "queued");
   const shown = waiting.slice(0, MAX_QUEUED_IN_CONTEXT);
+  const missing = unreported(queue, sessionId);
   return [
-    `This chat is running task ${n} of ${queue.tasks.length} in the user's task queue: "${task.title}".`,
+    `This chat is running task ${n} of ${queue.tasks.length} in the user's task queue: "${task.title}" (taskId "${task.id}").`,
     "Do the task fully without stopping to ask unless you really must. When you are done, or can't go on,",
     "call the addon_tasks_report tool once: outcome (done, partial, failed or blocked), a short summary of",
     "what you did, notes the user should know (decisions, risks, anything surprising), and follow-up",
     "tasks you suggest (each a prompt that could be queued). The user reads these reports in a table.",
+    ...(missing.length
+      ? [
+          "Earlier tasks of this chat still have no report: report each first with addon_tasks_report and its taskId:",
+          ...missing.map((t) => `- ${named(queue, t)}`),
+        ]
+      : []),
+    "Report only with addon_tasks_report; never change the task queue's data with jig_set_addon_data.",
     ...(waiting.length
       ? [
           "Already queued, so never suggest these (or work they cover) as follow-ups, and leave their work to them:",
@@ -841,7 +999,7 @@ export function listing(queue: Queue): string {
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}.`, ...lines].join("\n");

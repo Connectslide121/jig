@@ -216,6 +216,8 @@ export class FakeEngine implements Engine {
     let suggestTimer: NodeJS.Timeout | undefined;
     let effort: EffortLevel | undefined = options.effort;
     const backgroundTasks = new Map<string, BackgroundTask>();
+    /** Requests for a task's report this chat still answers without one ("skip two reports"). */
+    let reportsToSkip = 0;
     const mcp: McpServerInfo[] = [
       { name: "github", status: "connected", scope: "user", tools: 12 },
       { name: "jira", status: "needs-auth", scope: "project" },
@@ -403,9 +405,30 @@ export class FakeEngine implements Engine {
           else await stream(`${msg}:text:0`, `Running the ${command.name} skill: ${text.trim()}`, signal);
         } else if (
           toolHandlers?.addon_tasks_report &&
-          sent.includes("addon_tasks_report") &&
-          !/skip the report/.test(lower)
+          /^the task queue asks for the report of task/.test(lower)
         ) {
+          // The task queue asks for a report (D-318): a late report with the task's id, unless this
+          // chat was told to skip that one too.
+          const taskId = /taskId "([^"]+)"/.exec(text)?.[1];
+          if (reportsToSkip > 0) {
+            reportsToSkip--;
+            await stream(`${msg}:text:0`, "Still waiting for the local server to come up.", signal);
+          } else {
+            const toolId = `tool-${randomUUID()}`;
+            const input = { outcome: "done", summary: "Reported when the queue asked", taskId };
+            onEvent({ type: "tool_use", id: toolId, name: "mcp__jig__addon_tasks_report", input });
+            const output = outputText(
+              await toolHandlers.addon_tasks_report(input).catch((e: Error) => `Error: ${e.message}`),
+            );
+            onEvent({ type: "tool_result", toolUseId: toolId, output, isError: output.startsWith("Error") });
+            await stream(`${msg}:text:1`, "Reported.", signal);
+          }
+        } else if (/skip (?:the report|two reports)/.test(lower)) {
+          // A task that ends its turn without reporting (waiting for something); "two" also skips the
+          // queue's first request for the report.
+          reportsToSkip = /two reports/.test(lower) ? 1 : 0;
+          await stream(`${msg}:text:0`, "Waiting for the local server to come up.", signal);
+        } else if (toolHandlers?.addon_tasks_report && sent.includes("addon_tasks_report")) {
           // A task from the Tasks add-on's queue (its context says so): do it and report back.
           const toolId = `tool-${randomUUID()}`;
           const failed = /fail this task/.test(lower);

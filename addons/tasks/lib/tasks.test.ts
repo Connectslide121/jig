@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   addTasks,
+  afterTurn,
+  applyReport,
+  BACKGROUND_WAIT_MS,
   type ChatState,
+  canReportLate,
   chatFinished,
   chatGroups,
   chatToContinue,
@@ -14,18 +18,23 @@ import {
   emptyQueue,
   finishTask,
   historyFiles,
+  interruptedTurn,
   joinQueues,
   listing,
   moveTasks,
   nextTask,
+  nudgeFrom,
+  nudgeText,
   openRun,
   parseNewTasks,
   parsePrompts,
   parseReport,
   parseTaskEdits,
+  pendingReportsNote,
   type Queue,
   type Run,
   recordRuns,
+  reportTarget,
   requeue,
   resetTask,
   resetTasks,
@@ -240,6 +249,143 @@ describe("finishTask", () => {
       status: "error",
       error: "boom",
     });
+  });
+});
+
+describe("ending a task's turn (D-318)", () => {
+  const sentAt = "2025-01-01T10:00:00Z";
+  const answeredAt = "2025-01-01T10:05:00Z";
+  const task: Task = { id: "t1", title: "a", prompt: "a", newChat: true, status: "running", sentAt };
+  const at = (iso: string) => Date.parse(iso);
+  it("waits while work still runs in the background, up to a limit", () => {
+    const busy = chat({ lastAnswerAt: answeredAt, background: 1 });
+    expect(chatFinished({ ...task, sawBusy: true }, busy, at("2025-01-01T10:06:00Z"))).toBe(false);
+    expect(afterTurn(task, busy, at("2025-01-01T10:06:00Z"))).toBe("wait");
+    const later = at(answeredAt) + BACKGROUND_WAIT_MS;
+    expect(chatFinished(task, busy, later)).toBe(true);
+    // Once asked for the report, background work no longer holds the task open.
+    const asked = { ...task, nudgedAt: "2025-01-01T10:30:00Z" };
+    expect(chatFinished(asked, chat({ lastAnswerAt: "2025-01-01T10:31:00Z", background: 1 }))).toBe(true);
+  });
+  it("asks once for the report, then finishes without one", () => {
+    const idle = chat({ lastAnswerAt: answeredAt });
+    expect(afterTurn(task, idle)).toBe("nudge");
+    const asked = { ...task, nudgedAt: "2025-01-01T10:06:00Z" };
+    // The turn the question started hasn't answered yet: still waiting for it.
+    expect(afterTurn(asked, idle)).toBe("wait");
+    expect(afterTurn(asked, chat({ lastAnswerAt: "2025-01-01T10:07:00Z" }))).toBe("finish");
+    expect(finishTask(asked, chat({ lastAnswer: "Still waiting" })).status).toBe("no_report");
+  });
+  it("finishes at once with a report, a failed chat, or when you stopped the turn", () => {
+    const report = parseReport({ outcome: "done", summary: "ok" });
+    expect(afterTurn({ ...task, report }, chat({ lastAnswerAt: answeredAt }))).toBe("finish");
+    expect(afterTurn(task, chat({ status: "error" }))).toBe("finish");
+    expect(afterTurn(task, chat({ lastAnswerAt: answeredAt, userStoppedAt: "2025-01-01T10:04:00Z" }))).toBe(
+      "finish",
+    );
+    // A stop before the task was sent is not about this task.
+    expect(afterTurn(task, chat({ lastAnswerAt: answeredAt, userStoppedAt: "2025-01-01T09:00:00Z" }))).toBe(
+      "nudge",
+    );
+  });
+  it("tells a turn Jig interrupted from one still waiting on the background", () => {
+    expect(interruptedTurn(task, chat())).toBe(true);
+    expect(interruptedTurn(task, chat({ background: 1 }))).toBe(false);
+    expect(interruptedTurn(task, chat({ lastAnswerAt: answeredAt }))).toBe(false);
+  });
+  it("asks only for the report, by task number and id", () => {
+    const q = pic("Ab");
+    const text = nudgeText(q, q.tasks[1]!);
+    expect(text).toContain('report of task 2 ("b", taskId "b")');
+    expect(text).toContain("Don't continue the task's work unless the user asks");
+    expect(nudgeFrom(q, q.tasks[1]!)).toBe("Task queue: asked for the report of task 2");
+  });
+});
+
+describe("late reports (D-318)", () => {
+  const report = (outcome: string) => parseReport({ outcome, summary: `it was ${outcome}` });
+  /** a, b and c ran in chat s1 (c still running), d in s2. */
+  const ran = (over: Partial<Record<string, Partial<Task>>> = {}): Queue => {
+    const q = pic("Abc D");
+    const base: Record<string, Partial<Task>> = {
+      a: { status: "no_report", sessionId: "s1", finishedAt: "2025-01-01T10:10:00Z", costUsd: 0.4 },
+      b: { status: "done", sessionId: "s1", report: report("done") },
+      c: { status: "running", sessionId: "s1" },
+      d: { status: "no_report", sessionId: "s2" },
+    };
+    return {
+      ...q,
+      running: true,
+      tasks: q.tasks.map((t) => ({ ...t, ...base[t.id], ...over[t.id] }) as Task),
+    };
+  };
+  it("goes to the running task, or with a taskId to one of this chat's tasks without a report", () => {
+    expect(reportTarget(ran(), "s1").id).toBe("c");
+    expect(reportTarget(ran(), "s1", "a").id).toBe("a");
+    expect(() => reportTarget(ran(), "s1", "d")).toThrow(/didn't run in this chat/);
+    expect(() => reportTarget(ran(), "s1", "b")).toThrow(/done/);
+    expect(() => reportTarget(ran(), "s1", "x")).toThrow(/no task x/);
+  });
+  it("never lands on a newer task when an earlier one of the chat is missing its report", () => {
+    const q = ran({ c: { report: report("done") } });
+    expect(reportTarget(q, "s1").id).toBe("a");
+  });
+  it("goes to the most recent task without a report once nothing runs", () => {
+    const q = ran({ b: { status: "no_report", report: undefined }, c: { status: "done" } });
+    expect(reportTarget(q, "s1").id).toBe("b");
+    expect(() => reportTarget(pic("A"), "s1")).toThrow(/nothing to report/);
+  });
+  it("may report a task Jig interrupted", () => {
+    const q = ran({ a: { status: "error", interrupted: true, error: "Interrupted: Jig closed" } });
+    expect(canReportLate(q.tasks[0]!)).toBe(true);
+    expect(canReportLate({ ...q.tasks[0]!, interrupted: undefined, error: "boom" })).toBe(false);
+    const { queue } = applyReport(q, q.tasks[0]!, report("done"));
+    expect(queue.tasks[0]).toMatchObject({ status: "done", reportedLate: true });
+    expect(queue.tasks[0]!.error).toBeUndefined();
+  });
+  it("sets the status from the outcome and keeps the time and cost", () => {
+    const q = ran();
+    const { queue, late } = applyReport(q, q.tasks[0]!, report("partial"));
+    expect(late).toBe(true);
+    expect(queue.tasks[0]).toMatchObject({
+      status: "partial",
+      reportedLate: true,
+      finishedAt: "2025-01-01T10:10:00Z",
+      costUsd: 0.4,
+    });
+    const onTime = applyReport(q, q.tasks[2]!, report("done"));
+    expect(onTime.late).toBe(false);
+    expect(onTime.queue.tasks[2]!.status).toBe("running");
+  });
+  it("pauses on a late failure unless the chat went on with a later task", () => {
+    // d's chat (s2) went on with nothing after it: a failed late report pauses the queue.
+    const q = ran();
+    const failed = applyReport(q, q.tasks[3]!, report("failed"));
+    expect(failed.pause).toBe(true);
+    expect(failed.queue.running).toBe(false);
+    // a's chat went on with b and c: no pause.
+    expect(applyReport(q, q.tasks[0]!, report("blocked")).pause).toBe(false);
+    expect(applyReport({ ...q, stopOnFailure: false }, q.tasks[3]!, report("failed")).pause).toBe(false);
+    expect(applyReport({ ...q, running: false }, q.tasks[3]!, report("failed")).pause).toBe(false);
+  });
+  it("names the chat's tasks missing a report before a new one and in its context", () => {
+    const q = ran();
+    expect(pendingReportsNote(q, "s1")).toBe(
+      'Before this task: task 1 "A" (taskId "a") in this chat has no report yet. Report it first with addon_tasks_report and its taskId, then do this task.',
+    );
+    expect(pendingReportsNote(q, "s3")).toBe("");
+    const context = taskContext(q, "s1");
+    expect(context).toContain('task 3 of 4 in the user\'s task queue: "c" (taskId "c")');
+    expect(context).toContain('- task 1 "A" (taskId "a")');
+    expect(context).toContain("never change the task queue's data with jig_set_addon_data");
+  });
+  it("updates a closed run in the history too", () => {
+    const before = ran({ a: { runId: "r1" } });
+    const history: Run[] = [{ id: "r1", startedAt: "x", finishedAt: "y", tasks: [before.tasks[0]!] }];
+    const { queue } = applyReport(before, before.tasks[0]!, report("done"));
+    const next = recordRuns(history, before, queue);
+    expect(next[0]!.tasks[0]).toMatchObject({ status: "done", reportedLate: true });
+    expect(next[0]!.finishedAt).toBe("y");
   });
 });
 

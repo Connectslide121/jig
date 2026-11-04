@@ -144,7 +144,7 @@ export function sessionManager(): SessionManager {
 }
 
 export function startSessions(): void {
-  const statusOf = new Map<string, SessionStatus>();
+  const statusOf = new Map<string, string>();
   const drafts = new Set<string>();
   // Names and instructions of the projects, for Jig's addition to the system prompt.
   const projects = new Map<string, { name: string; instructions?: string }>();
@@ -283,8 +283,10 @@ export function startSessions(): void {
               logger("layout").error("Saving sent chat tab failed", error),
             );
           notifyStatus(u.meta);
-          if (statusOf.get(u.meta.id) !== u.meta.status) {
-            statusOf.set(u.meta.id, u.meta.status);
+          // Also when the last background task ends: an idle chat's work may only now be done (D-318).
+          const status = `${u.meta.status}${u.meta.backgroundTasks?.length ? "+background" : ""}`;
+          if (statusOf.get(u.meta.id) !== status) {
+            statusOf.set(u.meta.id, status);
             for (const listener of statusListeners) listener(u.meta);
           }
         }

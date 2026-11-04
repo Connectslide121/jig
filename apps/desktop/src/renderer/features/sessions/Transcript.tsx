@@ -19,6 +19,7 @@ import {
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChatItem } from "../../../shared/engine";
 import { agentModels } from "../../../shared/toolModels";
+import { Icon } from "../../addons/icons";
 import { copyText } from "../../lib/clipboard";
 import { clockTime, eventTime, sameDay, shortDay } from "../../lib/time";
 import { useConfig } from "../../stores/config";
@@ -196,8 +197,9 @@ const Item = memo(function Item({
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
-      // Sent by Jig, not typed by you (a terminal Claude started has finished): one line, what Claude got
-      // in its tooltip, no edit or rewind.
+      // Sent by Jig, not typed by you (a terminal Claude started has finished; an add-on such as the task
+      // queue asking for a report, with its icon): one line, what Claude got in its tooltip, no edit or
+      // rewind.
       if (item.from)
         return (
           <div
@@ -205,7 +207,11 @@ const Item = memo(function Item({
             title={item.text}
             data-testid="jig-message"
           >
-            <SquareTerminal className="size-3.5 shrink-0" />
+            {item.fromIcon ? (
+              <Icon name={item.fromIcon} className="size-3.5 shrink-0" />
+            ) : (
+              <SquareTerminal className="size-3.5 shrink-0" />
+            )}
             <span className="selectable min-w-0 flex-1 truncate">{item.from}</span>
             <span className="shrink-0 text-hint">Jig told Claude</span>
           </div>

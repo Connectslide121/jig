@@ -170,6 +170,8 @@ export async function startAddons(): Promise<void> {
         ?.manifest?.permissions.includes("chat"),
     create: (input) => createChat(input),
     send: (sessionId, text, attachments) => sessionManager().send(sessionId, text, attachments),
+    sendFrom: (sessionId, text, from, icon) => sessionManager().notify(sessionId, text, from, icon),
+    icon: (id) => service?.list().find((a) => a.id === id)?.manifest?.icon,
     copyAttachments: (addonId, sessionId, list) =>
       copyAddonAttachments(paths.attachments(), addonId, sessionId, list),
     snapshot: (sessionId) => sessionManager().snapshot(sessionId),

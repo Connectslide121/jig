@@ -49,7 +49,7 @@
     "tools": [
       {
         "id": "report",
-        "description": "Reports how the task-queue task this chat is running went. Call it once when the task is done or can't go on (only in a chat that runs a queued task; the instructions say so). The user reads the reports as a table instead of reading the chat.",
+        "description": "Reports how the task-queue task this chat is running went. Call it once when the task is done or can't go on (only in a chat that runs a queued task; the instructions say so). The user reads the reports as a table instead of reading the chat. It also takes late reports: an earlier task of this chat that ended without a report (No report, or interrupted) is reported with its taskId, which the instructions and the queue's request name; report those first. Only this chat's own tasks. Never change the task queue with jig_set_addon_data: this tool is the only way to report.",
         "params": {
           "outcome": {
             "type": "string",
@@ -68,6 +68,11 @@
           "followUps": {
             "type": "array",
             "description": "Follow-up tasks you suggest, each a prompt that could be queued on its own",
+            "optional": true
+          },
+          "taskId": {
+            "type": "string",
+            "description": "The task to report when it isn't the one running now: an earlier task of this chat without a report (its id, e.g. t3). Leave out for the running task",
             "optional": true
           }
         },

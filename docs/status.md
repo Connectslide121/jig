@@ -67,6 +67,19 @@ dialog keeps its size: attachments have their own row. Checked on Windows with s
 Dark and Jig Light (fake engine). Needs testing on your machine: dictating into the dialog, and
 dropping a file from Explorer onto it.
 
+Task queue: late reports, and no moving on while a chat still works (2026-11-04, D-318): a task isn't
+finished while its chat still runs a command, subagent or monitor in the background (up to 20 minutes
+idle), or waits for you. A turn that ends without a report gets one request from the task queue
+(shown in the chat with the queue's icon, not as your message), asking only for the report; only a
+second turn without one makes it No report. No request when you stopped the turn or rejected a tool
+call yourself. A chat can report its earlier No report or Interrupted tasks late with `taskId`
+(never another chat's): the row turns to the real status with "reported late" beside the title, and
+the run in History follows. A No report row has **Ask for a report** in its ⋯ and details. A
+same-chat task sent while an earlier one misses its report names it first. Unit tests pass; the e2e
+test is written but not run (D-258). Needs testing on your machine: a real chat with a dev server in
+the background (the task should stay Running until it reports or 20 minutes pass), and Stop or a
+rejected tool call in a task (it should end as No report with no request).
+
 Claude moves and regroups queued tasks (2026-11-04, D-317): `addon_tasks_edit` can now make a queued
 task continue the previous task's chat or start its own (`newChat`), and move it (`moveTo`: top,
 bottom, before or after a task; `wholeChat` for its whole chat), by the same rules as dragging in the

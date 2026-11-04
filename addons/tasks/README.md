@@ -35,9 +35,29 @@ went, so you read the results as a table instead of scrolling one long chat.
   and "finished" are also system notifications when Jig isn't in front, with **Open Tasks** (D-215). With **Stop when a task fails** on (the default) a failed, blocked or broken task
   pauses the queue.
 - **The report:** while a task runs, its chat is told (each turn, `contributes.context`) that it is
-  task N of the queue and to call `addon_tasks_report` when done: outcome (done, partial, failed,
-  blocked), a summary, things to know, and follow-up tasks. A chat that ends without reporting shows
-  "No report" with Claude's last answer.
+  task N of the queue (with its taskId) and to call `addon_tasks_report` when done: outcome (done,
+  partial, failed, blocked), a summary, things to know, and follow-up tasks.
+- **When a task is finished (D-318):** not while its chat works, waits for you (a question or a
+  permission) or still runs something in the background (a command, a subagent, a monitor:
+  `chats.get`'s `background`); that work wakes the chat when it ends. An idle chat with background
+  work counts as finished only after 20 minutes without an answer (`BACKGROUND_WAIT_MS`). A turn that
+  ends without a report gets one request from the queue (`nudgeText`, shown in the chat as "Task
+  queue: asked for the report of task N" with the add-on's icon, not as your message): report it, or
+  report partial/blocked with where it stands, and don't go on with the work. Only when that turn
+  also ends without a report is the task "No report" (with Claude's last answer). No request when you
+  stopped the turn or rejected a tool call in it (`chats.get`'s `userStoppedAt`): it stays No report,
+  so nothing restarts work you stopped. The rules are `chatFinished`/`afterTurn` in `lib/tasks.ts`.
+- **Late reports (D-318):** `addon_tasks_report` takes an optional `taskId`: a chat may report its
+  own tasks that ended as No report or Interrupted (Jig closed), never another chat's. Without it, the
+  report goes to the running task; once that has a report, to the chat's earliest task still missing
+  one; with no running task, to the most recent one missing it (`reportTarget`). A late report sets
+  the status from the outcome, keeps the times and cost, marks the row "reported late" (beside the
+  title), and updates the run in History too. A late failed or blocked report pauses the queue (with
+  "stop when a task fails") unless the chat already went on with a later task (`applyReport`).
+  A same-chat task sent while earlier tasks of that chat miss their report starts by naming them by
+  id and title (`pendingReportsNote`), as the running task's context does. **Ask for a report** (a No
+  report row's ⋯, and its details) sends the chat the same request; it answers with a late report.
+  The chat never needs `jig_set_addon_data` for the queue, and the tool says so.
 - **The results** (D-186): a bar and counts per status with the total time and cost, then a card per
   chat: its link (opens the chat), number of tasks, project, time, cost and "n of m finished". In it,
   a row per task: #, title (with "same chat", "queued by Claude", "a follow-up", non-default

@@ -4378,3 +4378,53 @@ rewriting the whole stored queue with `jig_set_addon_data`, a 60 KB copy one typ
   nothing is saved. The queue's running state and other tasks are never touched, so it stays safe while
   the queue runs. The tool's description now names these options and says to use it instead of
   `jig_set_addon_data`; the tasks guidance lives in the tool descriptions, not in `jigContext`.
+
+## D-318: The task queue waits for background work, asks once for a missing report, and takes late reports
+
+Jon, 2026-11-04: "this happens quite a bit, we need to handle the queues better, or at least let the
+AI report without having it touch the data directly." A task ended its turn with "Waiting for the
+local backend and frontend to come up so I can screenshot" (a background command still running); the
+queue marked it No report and sent the next same-chat task. When the chat then reported the earlier
+task, `addon_tasks_report` refused (only the running task), so it edited the stored queue with
+`jig_set_addon_data`. Later the queue sent task 3 into a chat whose task 1 had no report, and the
+chat only learned its current task number.
+
+- **Not finished while work goes on (Jon).** A task's turn isn't over while its chat works, waits for
+  you (`needs_you`: a question or permission), or still runs something in the background. The host API
+  gains `AddonChatInfo.background` (Claude Code's background tasks: shell commands, subagents, and
+  monitors when Claude Code lists them) and `chatChanged` also fires when the last one ends, since the
+  status may stay `idle`. **Claude, on my own:** an idle chat with background work still running counts
+  as finished after 20 minutes without an answer (`BACKGROUND_WAIT_MS`), checked by the minute
+  watcher. Why: a dev server started in the background never ends, and the queue must not wait forever.
+- **One request for a missing report (Jon).** A turn that ends without a report (and nothing running)
+  isn't No report yet: the queue sends the chat one message, as the task queue (`chats.send` gained
+  `from`; the transcript shows the line with the add-on's icon, `ChatItem.fromIcon`, never as your
+  message). Only when that turn also ends without a report is the task No report. At most one per task
+  (`nudgedAt`).
+- **It asks only for the report, never more work (Jon).** The text names task N, its title and
+  taskId, asks to report it, and says not to continue the task unless the user asks. **Claude, on my
+  own:** an unfinished task is asked to report partial or blocked with a one-line summary of where it
+  stands, rather than only to answer with a status line, so the row gets a real status. When you
+  stopped the turn yourself (Stop) or rejected a tool call or question in it, there is no request and
+  the task stays No report: `AddonChatInfo.userStoppedAt` (the latest stopped result or denied
+  permission), compared with the task's start.
+- **Late reports through the tool, never raw data (Jon).** `addon_tasks_report` takes `taskId`: a
+  chat may report its own tasks that ended No report or Interrupted (Jig closed; now flagged
+  `interrupted`), never another chat's. Without it: the running task while it has no report; once it
+  has one, the chat's **earliest** task still missing one, so a late report never lands on a newer
+  task (Jon); with no running task, the **most recent** one missing it (Jon's first rule; the request
+  and context always name the id, so the default rarely decides). A late report sets the status from
+  the outcome, keeps finishedAt, time and cost, marks `reportedLate` (the row shows "reported late"
+  beside the title; the status column keeps its width), and updates the task in its closed run in
+  History.
+- **A late failure pauses like an on-time one, unless the chat moved on (Claude, on my own).** A late
+  failed or blocked report pauses a running queue when "stop when a task fails" is on, unless a later
+  task already ran in the same chat. Why: that later task built on this one and its own report
+  carries the news; pausing then would stop the run on stale information. Another chat's later tasks
+  don't count: the failure would have paused before them had it come on time.
+- **Name the missing reports (Jon).** A same-chat task sent while earlier tasks of that chat miss
+  their report starts by naming them (task N, title, taskId) and asking to report them first; the
+  running task's context lists them too, and says never to change the queue with
+  `jig_set_addon_data`. The tool's description says the same.
+- **Ask for a report (Jon).** A No report or Interrupted row has it in its ⋯ and in its details: the
+  same request, sent only to an idle chat.
