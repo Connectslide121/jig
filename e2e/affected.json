@@ -200,6 +200,23 @@
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
     { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts", "tasks-dashboard.spec.ts"] },
+    {
+      "files": [
+        "apps/desktop/src/main/sessions/**",
+        "apps/desktop/src/main/engine/normalize.ts",
+        "apps/desktop/src/main/engine/codexNormalize.ts",
+        "apps/desktop/src/main/engine/fake.ts",
+        "apps/desktop/src/main/addons/chats.ts",
+        "apps/desktop/src/shared/chat.ts",
+        "apps/desktop/src/shared/handoff.ts",
+        "apps/desktop/src/shared/usage.ts",
+        "apps/desktop/src/renderer/features/sessions/LimitCard.tsx",
+        "apps/desktop/src/renderer/features/sessions/Transcript.tsx",
+        "addons/tasks/host.ts",
+        "addons/tasks/lib/tasks.ts"
+      ],
+      "specs": ["limit-handoff.spec.ts"]
+    },
     { "files": ["addons/workflows/**"], "specs": ["workflows.spec.ts", "pipelines.spec.ts"] },
     { "files": ["addons/tests/**"], "specs": ["tests-addon.spec.ts"] },
     {

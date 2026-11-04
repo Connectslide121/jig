@@ -24,6 +24,32 @@ export function authSourceFrom(apiKeySource: string | undefined): AuthSource {
 const LOGIN_ERRORS = new Set(["authentication_failed", "oauth_org_not_allowed", "verification_required"]);
 const LOGIN_TEXT = /(not logged in|please run \/login|invalid api key|authentication|log in)/i;
 
+/** Seconds or milliseconds since 1970 (the SDK doesn't say) as an ISO time: both give a sensible date. */
+function epochIso(value: unknown): string | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+  return new Date(value > 1e12 ? value : value * 1000).toISOString();
+}
+
+/**
+ * Claude Code's "limit reached" message as a typed limit (D-338). Older versions end the text with
+ * `|<unix seconds>` (the reset); newer ones say it in words, and the rate-limit event before has it.
+ */
+export function limitError(
+  text: string | undefined,
+  rejected?: { window?: string; resetsAt?: string },
+): Extract<EngineEvent, { type: "error" }> {
+  const raw = text?.trim() || "Claude's usage limit is reached.";
+  const stamp = /\|(\d{9,13})\s*$/.exec(raw);
+  const resetsAt = rejected?.resetsAt ?? (stamp ? epochIso(Number(stamp[1])) : undefined);
+  return {
+    type: "error",
+    code: "rate_limit",
+    message: stamp ? raw.slice(0, stamp.index).trim() || "Claude's usage limit is reached." : raw,
+    ...(rejected?.window ? { window: rejected.window } : {}),
+    ...(resetsAt ? { resetsAt } : {}),
+  };
+}
+
 function usageFrom(u: Msg): Usage | undefined {
   if (!u) return undefined;
   return {
@@ -124,6 +150,8 @@ export class Normalizer {
   /** message id → ordinal counters for blocks from complete assistant messages. */
   private completed = new Map<string, { text: number; thinking: number }>();
   private currentStreamMessage: string | undefined;
+  /** The last rate-limit event, while it says a window is used up. */
+  private rejected: { window?: string; resetsAt?: string } | undefined;
 
   handle(message: Msg): EngineEvent[] {
     switch (message?.type) {
@@ -139,18 +167,16 @@ export class Normalizer {
         return this.result(message);
       case "rate_limit_event": {
         const info = message.rate_limit_info ?? {};
-        return [
-          {
-            type: "rate_limit",
-            status: info.status ?? "allowed",
-            window: info.rateLimitType,
-            // Seconds or milliseconds since 1970 (the SDK doesn't say): both give a sensible date.
-            resetsAt:
-              typeof info.resetsAt === "number"
-                ? new Date(info.resetsAt > 1e12 ? info.resetsAt : info.resetsAt * 1000).toISOString()
-                : undefined,
-          },
-        ];
+        const event: EngineEvent = {
+          type: "rate_limit",
+          status: info.status ?? "allowed",
+          window: info.rateLimitType,
+          resetsAt: epochIso(info.resetsAt),
+        };
+        // A used-up window: the limit error that follows says when it resets (D-338).
+        this.rejected =
+          event.status === "rejected" ? { window: event.window, resetsAt: event.resetsAt } : undefined;
+        return [event];
       }
       case "prompt_suggestion":
         return typeof message.suggestion === "string" && message.suggestion.trim()
@@ -376,16 +402,14 @@ export class Normalizer {
     if (m.error) {
       const login = LOGIN_ERRORS.has(m.error);
       const text = (message.content ?? []).find((b: Msg) => b?.type === "text")?.text;
+      if (m.error === "rate_limit") {
+        events.push(limitError(text, this.rejected));
+        return events;
+      }
       events.push({
         type: "error",
         message: text || `Claude Code reported: ${m.error}`,
-        code: login
-          ? "not_signed_in"
-          : m.error === "billing_error"
-            ? "billing"
-            : m.error === "rate_limit"
-              ? "rate_limit"
-              : undefined,
+        code: login ? "not_signed_in" : m.error === "billing_error" ? "billing" : undefined,
       });
       return events;
     }

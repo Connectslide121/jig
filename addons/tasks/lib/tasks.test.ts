@@ -24,6 +24,7 @@ import {
   historyFiles,
   interruptedTurn,
   joinQueues,
+  limitedTask,
   listing,
   moveTasks,
   nextTask,
@@ -223,6 +224,10 @@ describe("chatFinished", () => {
     expect(chatFinished({ ...task, sawBusy: true }, chat({ status: "working" }))).toBe(false);
     expect(chatFinished({ ...task, sawBusy: true }, chat({ status: "needs_you" }))).toBe(false);
   });
+  it("isn't finished while its plan's limit holds it (D-338)", () => {
+    const limit = { provider: "claude" as const, state: "ask" as const };
+    expect(chatFinished({ ...task, sawBusy: true }, chat({ status: "error", limit }))).toBe(false);
+  });
   it("is finished when idle after working, or after an answer since it was sent", () => {
     expect(chatFinished({ ...task, sawBusy: true }, chat())).toBe(true);
     expect(chatFinished(task, chat())).toBe(false);
@@ -257,6 +262,33 @@ describe("finishTask", () => {
     expect(finishTask(task, chat({ status: "error", error: "boom" }))).toMatchObject({
       status: "error",
       error: "boom",
+    });
+  });
+  it("records the provider that finished it after a limit handoff (D-338)", () => {
+    const ran: Task = { ...task, ranOn: "claude", ranModel: "opus" };
+    expect(finishTask(ran, chat({ provider: "chatgpt", model: "sol" }))).toMatchObject({
+      ranOn: "chatgpt",
+      ranModel: "sol",
+      startedOn: "claude",
+    });
+    expect(finishTask(ran, chat({ provider: "claude" })).startedOn).toBeUndefined();
+  });
+});
+
+describe("limitedTask (D-338)", () => {
+  const task: Task = { id: "t1", title: "a", prompt: "a", newChat: true, status: "running" };
+  it("needs you when the limit card asks, and keeps running while it waits or carries on", () => {
+    expect(limitedTask(task, { provider: "claude", state: "ask" })).toMatchObject({
+      status: "needs_you",
+      waitingFor: "limit",
+    });
+    expect(
+      limitedTask({ ...task, waitingFor: "limit" }, { provider: "claude", state: "waiting", resetsAt: "T" }),
+    ).toEqual({ ...task, status: "running", sawBusy: true, limitResetsAt: "T" });
+    expect(limitedTask(task, { provider: "chatgpt", state: "continuing" })).toEqual({
+      ...task,
+      status: "running",
+      sawBusy: true,
     });
   });
 });

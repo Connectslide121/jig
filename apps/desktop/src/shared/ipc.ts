@@ -583,6 +583,14 @@ export interface HostMethods {
    * provider for life (D-309).
    */
   "sessions.setProvider": { args: { id: string; provider: ChatProvider }; result: SessionMeta };
+  /**
+   * Your choice on a limit card (D-338): `continue` with the other provider, `wait` for the reset and
+   * resume, `cancel` the wait, or `dismiss` the card.
+   */
+  "sessions.limitAction": {
+    args: { id: string; itemId: string; action: "continue" | "wait" | "cancel" | "dismiss" };
+    result: void;
+  };
   "sessions.setPermissionMode": { args: { id: string; mode: PermissionMode }; result: void };
   "sessions.rename": { args: { id: string; title: string }; result: void };
   "sessions.archive": { args: { id: string; archived: boolean }; result: void };

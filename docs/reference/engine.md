@@ -46,8 +46,8 @@ interface EngineSession {
 
 ## Chat providers (D-309)
 
-A chat runs on Claude Code (the default) or on OpenAI's Codex, and keeps that provider for its whole
-life (`SessionMeta.provider`; missing = `claude`, so chats from before read as Claude chats,
+A chat runs on Claude Code (the default) or on OpenAI's Codex, and keeps that provider unless a plan
+limit hands it over to the other one (D-338, below) (`SessionMeta.provider`; missing = `claude`, so chats from before read as Claude chats,
 `chatProvider(meta)`). New chats take the provider asked for (`sessions.create { provider }`), else
 the project's `provider`, else `engine.provider`. The project's `model` and `effort` are for its own
 provider's chats; a chat on the other provider gets `engine.defaultModel` (Claude) or
@@ -73,6 +73,33 @@ controls a provider doesn't have instead of showing dead buttons:
 
 Jig's tools (`toolServers`) go to both: in-process for Claude, over a local MCP server for Codex (see
 Jig's tools in Codex chats below, D-313). Routines and Artifacts stay on Claude (Claude's cloud).
+
+### When a chat hits its plan's limit (D-338)
+
+- **Detection:** both normalizers emit `{ type: "error", code: "rate_limit", message, window?,
+  resetsAt? }`. Claude: the assistant message with `error: "rate_limit"`; its reset comes from the
+  `rate_limit_event` before it (`status: "rejected"`) or an older message's `|<unix seconds>` ending
+  (`limitError`). Codex: the `error` notification with `codexErrorInfo` `usageLimitExceeded` or
+  `rateLimitExceeded`; its reset from the latest `account/rateLimits/updated` (`limitReset`: the full
+  window's, else the fullest's). A warning never stops anything.
+- **The card:** `reduceEvent` turns it into a `limit` item (`status: open | waiting | continued |
+  resumed | dismissed`, `provider`, `resetsAt`, `to`). The session manager (`limitHit`) sets
+  `SessionMeta.limit = { itemId, provider, state: ask | waiting | continuing, resetsAt? }` by the
+  policy (`limitPolicy`: the project's `onLimit`, else `engine.onLimit`; builder chats always ask), the
+  other plan's room (`providerRoom`, the usage meter's `planHasRoom`) and the reset (`resetsAt`, else
+  `providerResetsAt` from the meter). The limited turn doesn't start queued messages.
+- **Waiting:** a timer sends "Your usage limit has reset. Carry on…" 30 s after `resetsAt` on the same
+  provider (re-armed when Jig starts again). A message you send yourself ends the wait (the card
+  says Dismissed).
+- **Continuing** (`continueWith(to, reason)`): stops the old process, pushes a `handoff` item (the
+  divider), moves the old provider's `engineSessionId` and model into `SessionMeta.providers`, sets
+  `provider`, `model`, `effort` and `permissionMode` from `providerDefaults` (a new chat's defaults),
+  clears the engine session, and sets `handoffPending`. The next turn prepends
+  `buildHandoff(...)` (`shared/handoff.ts`; rules, no AI, ≤ 16 000 characters, `diffStat` from
+  `git diff --stat HEAD`) inside `<jig-handoff>`. After a limit Jig sends that turn itself ("Carry on
+  with this chat's work from where it stopped.", a Jig message in the transcript).
+- **Rewind** to a message before the last handoff is refused (it belongs to the other provider's
+  session); the transcript hides rewind on those messages.
 
 ## Codex chats (D-311)
 
@@ -439,7 +466,8 @@ button from 70%; the session ⋯ menu has the same entries. The fake engine coun
 `Engine.planUsage()` returns the data behind Claude Code's `/usage` (5-hour and weekly windows) by
 asking a prompt-less Claude Code process — no message is sent to Claude, and Jig never sees the login.
 `rate_limit_event` messages become `{ type: "rate_limit", status, window?, resetsAt? }` engine events,
-which the session manager hands to the usage service instead of the transcript. Details:
+which the session manager hands to the usage service instead of the transcript (a used-up window's
+reset also goes with the limit error that follows, D-338). Details:
 `docs/reference/usage.md`.
 
 ## Jig's tools in every chat

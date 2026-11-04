@@ -268,3 +268,26 @@ export function formatUsageAmount(amount: number, currency = "USD"): string {
     return `${(amount / 100).toFixed(2)} ${currency}`;
   }
 }
+
+/**
+ * Whether a plan has room for a chat to carry on with it (D-338): its usage is known, no window is
+ * used up and it reports no limit. `reason` says why not, for the limit card.
+ */
+export function planHasRoom(usage: PlanUsage | undefined, name: string): { ok: boolean; reason?: string } {
+  if (!usage || usage.state === "unknown") return { ok: false, reason: `Jig hasn't heard from ${name} yet` };
+  if (usage.state === "unavailable") return { ok: false, reason: `${name} isn't signed in with a plan` };
+  if (usage.state === "error" && !usage.windows.length)
+    return { ok: false, reason: `Jig couldn't ask ${name}` };
+  if (usage.warning?.status === "rejected" || usage.windows.some((w) => (w.percent ?? 0) >= 100))
+    return { ok: false, reason: `${name}'s limit is reached too` };
+  return { ok: true };
+}
+
+/** When a used-up plan has room again: the latest reset of its full windows, or of its limit warning. */
+export function planResetsAt(usage: PlanUsage | undefined): string | undefined {
+  const full = (usage?.windows ?? [])
+    .filter((w) => (w.percent ?? 0) >= 100 && w.resetsAt)
+    .map((w) => w.resetsAt!);
+  const warned = usage?.warning?.status === "rejected" ? usage.warning.resetsAt : undefined;
+  return [...full, ...(warned ? [warned] : [])].sort().at(-1);
+}

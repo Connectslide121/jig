@@ -24,14 +24,56 @@ export const ANY_EFFORT_LEVELS = CODEX_EFFORT_LEVELS;
 export type EffortLevel = (typeof ANY_EFFORT_LEVELS)[number];
 
 /**
- * Which agent runs a chat (D-309): Claude Code (the default) or OpenAI's Codex. A chat keeps its
- * provider for its whole life; a chat saved without one runs on Claude.
+ * Which agent runs a chat (D-309): Claude Code (the default) or OpenAI's Codex. A chat saved without
+ * one runs on Claude. A chat that hits its plan's limit can carry on with the other one (D-338).
  */
 export const CHAT_PROVIDERS = ["claude", "codex"] as const;
 export type ChatProvider = (typeof CHAT_PROVIDERS)[number];
 
 /** A chat's provider; chats from before D-309 have none and run on Claude. */
 export const chatProvider = (meta: { provider?: ChatProvider }): ChatProvider => meta.provider ?? "claude";
+
+/** The other provider: who a chat carries on with when its own hits its limit (D-338). */
+export const otherProvider = (provider: ChatProvider): ChatProvider =>
+  provider === "codex" ? "claude" : "codex";
+
+/**
+ * What a chat does when its provider's plan limit stops it (D-338): `ask` shows the limit card with
+ * its choices, `switch` carries on with the other provider when it has room (else waits, else asks),
+ * `wait` resumes on the same provider when the limit resets.
+ */
+export const LIMIT_POLICIES = ["ask", "switch", "wait"] as const;
+export type LimitPolicy = (typeof LIMIT_POLICIES)[number];
+
+export const LIMIT_POLICY_LABELS: Record<LimitPolicy, string> = {
+  ask: "Ask me",
+  switch: "Continue with the other provider",
+  wait: "Wait for the reset, then resume",
+};
+
+/**
+ * A chat stopped by its plan's limit, while that matters (D-338): `ask` waits for your choice on the
+ * limit card, `waiting` resumes at `resetsAt`, `continuing` is carrying on with the other provider.
+ * Cleared when the chat's next turn starts.
+ */
+export interface ChatLimit {
+  /** The limit card's item id. */
+  itemId: string;
+  provider: ChatProvider;
+  state: "ask" | "waiting" | "continuing";
+  resetsAt?: string;
+}
+
+/** One stretch of a chat on one provider, kept when it continued with the other (D-338). */
+export interface ProviderSpan {
+  provider: ChatProvider;
+  /** That provider's own session id then (its CLI keeps the conversation). */
+  engineSessionId?: string;
+  model: string;
+  /** When the chat left it. */
+  until: string;
+  reason: "limit" | "manual";
+}
 
 /** What a chat engine can do, so the UI hides controls a provider doesn't have (D-309). */
 export interface EngineCapabilities {
@@ -209,8 +251,14 @@ export interface SavedClaudeMessage {
 
 export interface SessionMeta {
   id: string;
-  /** Which agent runs it, for its whole life (D-309); missing = Claude (chats from before). */
+  /** Which agent runs it now (D-309); missing = Claude (chats from before). Changes only by a handoff (D-338). */
   provider?: ChatProvider;
+  /** The providers it ran on before the current one, oldest first (D-338). */
+  providers?: ProviderSpan[];
+  /** It continued with another provider: the next message goes with the handoff Jig builds (D-338). */
+  handoffPending?: { from: ChatProvider; reason: ProviderSpan["reason"] };
+  /** Its provider's plan limit stopped it (D-338). */
+  limit?: ChatLimit;
   /** New regular chat with no submitted prompt yet: memory-only, absent from saved layout/history. */
   draft?: boolean;
   /** The project you put the chat in (D-101); none = the "No project" group. Never set by the folder. */
@@ -396,6 +444,31 @@ export type ChatItem =
       text: string;
       tone: "info" | "warning" | "danger";
     }
+  | {
+      /**
+       * The chat's provider hit its plan limit (D-338). `status` follows your choice: `open` (the
+       * choices), `waiting` (resumes at `resetsAt`), `continued` (with `to`), `resumed`, `dismissed`.
+       */
+      kind: "limit";
+      id: string;
+      at: string;
+      provider: ChatProvider;
+      /** What the provider said. */
+      message: string;
+      window?: string;
+      resetsAt?: string;
+      status: "open" | "waiting" | "continued" | "resumed" | "dismissed";
+      to?: ChatProvider;
+    }
+  | {
+      /** The chat carries on with another provider from here (D-338): a divider in the transcript. */
+      kind: "handoff";
+      id: string;
+      at: string;
+      from: ChatProvider;
+      to: ChatProvider;
+      reason: ProviderSpan["reason"];
+    }
   /** A build this chat asked for (jig_request_build); the card follows the build's status. */
   | { kind: "build"; id: string; at: string; buildId: string }
   | {
@@ -564,6 +637,9 @@ export type EngineEvent =
       type: "error";
       message: string;
       code?: "not_signed_in" | "process" | "billing" | "rate_limit";
+      /** `rate_limit`: the plan's window that ran out and when it resets, when the provider says (D-338). */
+      window?: string;
+      resetsAt?: string;
     }
   | {
       /** Claude Code reported plan rate-limit state (a warning, or a window used up). */

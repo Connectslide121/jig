@@ -4,6 +4,8 @@ import {
   CHAT_PROVIDERS,
   type ChatProvider,
   type EffortLevel,
+  LIMIT_POLICIES,
+  type LimitPolicy,
   PERMISSION_MODES,
   type PermissionMode,
 } from "./engine";
@@ -41,6 +43,8 @@ export const ProjectSchema = z.object({
   /** Defaults for new chats in this project; empty = Jig's own defaults. */
   /** Who runs its new chats (D-309); empty = `engine.provider`. `model` and `effort` are for it. */
   provider: z.enum(CHAT_PROVIDERS).optional(),
+  /** When its chats hit their plan's limit (D-338); empty = `engine.onLimit`. */
+  onLimit: z.enum(LIMIT_POLICIES).optional(),
   model: z.string().optional(),
   effort: z.enum(ANY_EFFORT_LEVELS).optional(),
   permissionMode: z.enum(PERMISSION_MODES).optional(),
@@ -62,7 +66,12 @@ export type Project = z.infer<typeof ProjectSchema>;
 /** What `projects.update` can change; an empty string or list clears a preference. */
 export type ProjectPatch = Partial<
   Pick<Project, "name" | "color" | "path" | "model" | "instructions" | "starters" | "links" | "azureTenant">
-> & { effort?: EffortLevel | ""; permissionMode?: PermissionMode | ""; provider?: ChatProvider | "" };
+> & {
+  effort?: EffortLevel | "";
+  permissionMode?: PermissionMode | "";
+  provider?: ChatProvider | "";
+  onLimit?: LimitPolicy | "";
+};
 
 export const ProjectsFileSchema = z.object({
   workspaces: z.array(WorkspaceSchema).default([]),

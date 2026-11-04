@@ -31,8 +31,9 @@ import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
 import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
 import { chatInlineCode } from "./FileLink";
+import { HandoffDivider, LimitCard } from "./LimitCard";
 import { PermissionCard } from "./PermissionCard";
-import { useChatCapabilities } from "./provider";
+import { providerName, useChatCapabilities } from "./provider";
 import { restoreFiles, rewindChat } from "./restore";
 import { useSessions } from "./store";
 import { ToolCard } from "./ToolCard";
@@ -182,6 +183,7 @@ const Item = memo(function Item({
   nested,
   waiting,
   prevAt,
+  beforeHandoff,
 }: {
   item: ChatItem;
   sessionId: string;
@@ -190,10 +192,13 @@ const Item = memo(function Item({
   waiting?: boolean;
   /** When the event before it happened (its time's tooltip says how long after). */
   prevAt?: string;
+  /** From before the chat continued with another provider: no rewind to it (D-338). */
+  beforeHandoff?: boolean;
 }) {
   // Paths Claude writes in inline code are links to the files, from the chat's folder (D-261).
   const cwd = useSessions((s) => s.metas[sessionId]?.cwd);
-  const rewind = useChatCapabilities(sessionId).rewind;
+  const told = useSessions((s) => providerName(s.metas[sessionId] ?? {}));
+  const rewind = useChatCapabilities(sessionId).rewind && !beforeHandoff;
   const inlineCode = useMemo(() => chatInlineCode(cwd), [cwd]);
   switch (item.kind) {
     case "user":
@@ -213,7 +218,7 @@ const Item = memo(function Item({
               <SquareTerminal className="size-3.5 shrink-0" />
             )}
             <span className="selectable min-w-0 flex-1 truncate">{item.from}</span>
-            <span className="shrink-0 text-hint">Jig told Claude</span>
+            <span className="shrink-0 text-hint">Jig told {told}</span>
           </div>
         );
       return (
@@ -317,6 +322,10 @@ const Item = memo(function Item({
       return <ShellCard item={item} />;
     case "change":
       return <ChangeCard item={item} sessionId={sessionId} />;
+    case "limit":
+      return <LimitCard item={item} sessionId={sessionId} />;
+    case "handoff":
+      return <HandoffDivider item={item} />;
     case "notice": {
       const Icon = item.tone === "danger" ? CircleAlert : item.tone === "warning" ? TriangleAlert : Info;
       return (
@@ -497,6 +506,25 @@ export function Transcript({
       ),
     [items],
   );
+  // The limit card says why the turn stopped: its "Failed" line would only repeat it (D-338).
+  const shown = useMemo(
+    () => items.filter((item, i) => !(item.kind === "result" && !item.ok && items[i - 1]?.kind === "limit")),
+    [items],
+  );
+  // Messages before the chat's last handoff belong to the provider before it: no rewind to them.
+  const handoffAt = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) if (items[i]!.kind === "handoff") return items[i]!.id;
+    return undefined;
+  }, [items]);
+  const earlier = useMemo(() => {
+    if (!handoffAt) return undefined;
+    const ids = new Set<string>();
+    for (const item of items) {
+      if (item.id === handoffAt) break;
+      ids.add(item.id);
+    }
+    return ids;
+  }, [items, handoffAt]);
   useLayoutEffect(() => {
     const el = ref.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
@@ -536,7 +564,7 @@ export function Transcript({
             times ? "pr-6 pl-2" : "px-6",
           )}
         >
-          {rowsOf(groupItems(items), compact, pending).map((row, index, rows) => {
+          {rowsOf(groupItems(shown), compact, pending).map((row, index, rows) => {
             const prevAt = index > 0 ? rowAt(rows[index - 1]!) : undefined;
             const content =
               row.kind === "steps" ? (
@@ -573,6 +601,7 @@ export function Transcript({
                     nested={row.entry.children}
                     waiting={row.entry.item.kind === "tool" && pending.has(row.entry.item.id)}
                     prevAt={prevAt}
+                    beforeHandoff={earlier?.has(row.entry.item.id)}
                   />
                 </div>
               );

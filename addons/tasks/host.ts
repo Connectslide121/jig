@@ -25,6 +25,7 @@ import {
   interruptedTurn,
   isActive,
   joinQueues,
+  limitedTask,
   listing,
   moveTasks,
   type NewTask,
@@ -241,19 +242,21 @@ async function advance(api: AddonHostApi, q: Queue): Promise<Queue> {
       const before = continued ? await api.chats.get(continued) : undefined;
       // Who runs it (D-330): the chat it continues, else the task's choice, the queue's, the project's.
       const on = runsOn(q, task, await projectProvider(api, task.projectId));
-      const sessionId =
-        continued ??
-        (
-          await api.chats.create({
+      // A new chat starts on the other provider when this one's plan is used up and the limit
+      // setting says to carry on with it (D-338): `created.provider` says who runs it.
+      const created = continued
+        ? undefined
+        : await api.chats.create({
             projectId: task.projectId,
             title: task.title,
             permissionMode: task.permissionMode,
             provider: on.provider,
             ...(on.model ? { model: on.model } : {}),
-          })
-        ).sessionId;
-      const ranOn = before?.provider ?? on.provider;
-      const ranModel = before ? before.model : on.model;
+          });
+      const sessionId = continued ?? created!.sessionId;
+      const switched = created && created.provider !== on.provider;
+      const ranOn = before?.provider ?? created?.provider ?? on.provider;
+      const ranModel = before ? before.model : switched ? undefined : on.model;
       if (task.projectId) chatProjects.set(sessionId, task.projectId);
       // Saved as running before the message goes, so the chat's first turn gets the task's instructions.
       q = replace(q, {
@@ -307,6 +310,8 @@ async function reconcile(api: AddonHostApi, q: Queue): Promise<Queue> {
         error: "Its chat is gone",
         finishedAt: new Date().toISOString(),
       });
+    } else if (chat.limit) {
+      q = replace(q, limitedTask(task, chat.limit));
     } else if (chatFinished(task, chat)) {
       q = await turnEnded(api, q, task, chat);
     } else if (interruptedTurn(task, chat) && !chat.queued) {
@@ -707,7 +712,7 @@ export async function chatChanged(
     const task = q.tasks.find((t) => t.sessionId === sessionId && isActive(t));
     if (!task) return [q, undefined];
     if (status === "working" || status === "starting") {
-      const { waitingFor: _answered, ...rest } = task;
+      const { waitingFor: _answered, limitResetsAt: _resumed, ...rest } = task;
       return [replace(q, { ...rest, status: "running", sawBusy: true }), undefined];
     }
     if (status === "needs_you") {
@@ -726,6 +731,19 @@ export async function chatChanged(
       ];
     }
     const chat = await api.chats.get(sessionId);
+    // Its plan's limit stopped it (D-338): the queue waits for you, for the reset, or for the other
+    // provider to carry on; the next task doesn't start meanwhile.
+    if (chat.limit) {
+      if (chat.limit.state === "ask" && task.waitingFor !== "limit")
+        api.notify({
+          title: `A queued task hit ${chat.limit.provider === "chatgpt" ? "ChatGPT" : "Claude"}'s limit`,
+          message: task.title,
+          tone: "warning",
+          system: true,
+          actions: OPEN,
+        });
+      return [replace(q, limitedTask(task, chat.limit)), undefined];
+    }
     return [await advance(api, await turnEnded(api, q, task, chat)), undefined];
   });
 }

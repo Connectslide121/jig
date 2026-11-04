@@ -1,5 +1,6 @@
 import { app } from "electron";
-import { codexUsageFrom, planUsageFrom, type UsageByProvider } from "../../shared/usage";
+import type { ChatProvider } from "../../shared/engine";
+import { codexUsageFrom, type PlanUsage, planUsageFrom, type UsageByProvider } from "../../shared/usage";
 import { getConfig } from "../config";
 import { getEngine } from "../engine";
 import { sessionEnv } from "../engine/types";
@@ -14,6 +15,11 @@ let chatgpt: UsageService | undefined;
 export function usageService(): UsageService {
   if (!claude) throw new Error("Usage not started");
   return claude;
+}
+
+/** A chat provider's plan usage as last known (Codex chats run on the ChatGPT plan), for limit handoffs (D-338). */
+export function planUsageOf(provider: ChatProvider): PlanUsage | undefined {
+  return (provider === "codex" ? chatgpt : claude)?.current();
 }
 
 /** A Codex chat used some of the ChatGPT plan: ask Codex again (a burst of turns asks once). */

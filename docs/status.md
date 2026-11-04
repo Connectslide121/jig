@@ -1,5 +1,26 @@
 # Status
 
+A chat that hits its plan's limit carries on with the other provider (2026-11-04, D-338): when
+Claude's (or ChatGPT's) limit stops a chat, the plain error is now a **limit card**: "Claude's limit
+is reached", when it resets ("Resets 14:00 · in 2 h 13 min"), and **Continue with ChatGPT** (only when
+the ChatGPT meter has room), **Wait and resume at 14:00** (Jig sends "carry on" just after the reset,
+also after a restart) and **Dismiss**. Continuing keeps the same chat: a divider "Continued with
+ChatGPT · Claude's limit reached", then ChatGPT gets a handoff Jig builds from the transcript (the
+goal, your latest messages, Claude's last messages, the plan, open to-dos, the files changed and
+`git diff --stat`, where it stopped; no AI involved, capped) and carries on. The header and composer
+show ChatGPT from then on; going back later works the same way. Messages before the divider can't be
+rewound to. **Settings → Chats → When a chat hits its limit**: Ask me (default), Continue with the
+other provider (falls back to waiting when that plan is full too), Wait for the reset; a project can
+choose its own in its dialog. Queued tasks follow it: a limited task needs you (Ask) or keeps running
+while it waits or carries on, so the next task doesn't start; a new task's chat starts on the other
+provider when the default one is used up and the setting is Continue; a task that finished elsewhere
+says "ChatGPT · started on Claude" in its details. Checked in Jig Dark and Light with the fake engine
+("hit the limit"); unit tests and `e2e/limit-handoff.spec.ts` pass.
+**Check on your machine:** when a real limit hits, the card should show the reset time (Claude
+says it in its rate-limit event; ChatGPT in its rate limits). Continue, and check that the other
+provider picks up the work from the handoff and that reopening the chat after a restart keeps it on
+the new provider.
+
 ChatGPT chats get Claude's helper roles (2026-11-04, D-337): a ChatGPT (Codex) chat now hands code
 searches to Jig's **jig_search_code** tool and page tests to **jig_test_page**, as Claude chats hand
 them to the jig-search and jig-tester subagents. Each is a separate ChatGPT call: the search runs a

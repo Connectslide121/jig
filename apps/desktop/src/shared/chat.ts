@@ -267,6 +267,21 @@ export function reduceEvent(state: ChatState, event: EngineEvent): ChatUpdate[] 
       });
       break;
     case "error":
+      // The plan's limit: a card with what you can do instead of a plain error (D-338).
+      if (event.code === "rate_limit") {
+        upsert({
+          kind: "limit",
+          id: `limit-${state.items.length}-${Date.now()}`,
+          at: now(),
+          provider: state.meta.provider ?? "claude",
+          message: event.message,
+          ...(event.window ? { window: event.window } : {}),
+          ...(event.resetsAt ? { resetsAt: event.resetsAt } : {}),
+          status: "open",
+        });
+        meta({ status: "error", lastError: event.message });
+        break;
+      }
       upsert({
         kind: "notice",
         id: `error-${state.items.length}-${Date.now()}`,

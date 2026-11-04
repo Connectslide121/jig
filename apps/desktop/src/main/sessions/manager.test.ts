@@ -632,3 +632,97 @@ it("reloads selected skills only between turns, preserves resume, and follows a 
   expect(starts[2]?.plugins).toEqual([]);
   await m.shutdown();
 });
+
+describe("limits (D-338)", () => {
+  function twoEngines(policy: "ask" | "switch" | "wait", room = true) {
+    const claude = new FakeEngine(1);
+    const codex = new FakeEngine(1, "codex");
+    const sent: Array<{ provider: string; text: string }> = [];
+    for (const engine of [claude, codex]) {
+      const start = engine.start.bind(engine);
+      engine.start = (options, onEvent) => {
+        const session = start(options, onEvent);
+        const send = session.send.bind(session);
+        session.send = (text, ...rest) => {
+          sent.push({ provider: engine.provider, text });
+          return send(text, ...rest);
+        };
+        return session;
+      };
+    }
+    const m = new SessionManager({
+      dir,
+      attachmentsDir: join(dir, "attachments"),
+      engine: claude,
+      engineFor: (provider) => (provider === "codex" ? codex : claude),
+      engineSettings: () => ({ claudePath: "", allowApiKey: false, env: {} }),
+      appendSystemPrompt: () => "",
+      onUpdate: () => {},
+      limitPolicy: () => policy,
+      providerRoom: () => (room ? { ok: true } : { ok: false, reason: "no room" }),
+      providerDefaults: (meta, provider) => ({
+        model: provider === "codex" ? "sol" : "opus",
+        permissionMode: meta.permissionMode,
+      }),
+      diffStat: async () => " cart.ts | 2 +-",
+    });
+    return { m, sent };
+  }
+
+  it("asks on the card, holds queued messages, and continues with the other provider on request", async () => {
+    const { m, sent } = twoEngines("ask");
+    const chat = await create(m);
+    await m.send(chat.id, "Fix the cart, then hit the limit");
+    // Queued while the turn runs.
+    await m.send(chat.id, "And the tests");
+    await until(async () => (await metaOf(m, chat.id)).limit);
+    const meta = await metaOf(m, chat.id);
+    expect(meta.limit).toMatchObject({ provider: "claude", state: "ask" });
+    const card = (await m.snapshot(chat.id)).items.find((i) => i.kind === "limit");
+    expect(card).toMatchObject({ status: "open", provider: "claude" });
+    await until(async () => ["idle", "error"].includes((await metaOf(m, chat.id)).status));
+    // The turn its limit stopped leaves the queued message for later.
+    expect((await m.snapshot(chat.id)).queue).toHaveLength(1);
+
+    await m.limitAction(chat.id, card!.id, "continue");
+    await until(async () => (await metaOf(m, chat.id)).turns >= 2);
+    const after = await m.snapshot(chat.id);
+    expect(after.meta).toMatchObject({ provider: "codex", model: "sol" });
+    expect(after.meta.providers?.[0]).toMatchObject({ provider: "claude", reason: "limit" });
+    expect(after.items.find((i) => i.kind === "limit")).toMatchObject({ status: "continued", to: "codex" });
+    expect(after.items.some((i) => i.kind === "handoff")).toBe(true);
+    const handed = sent.find((s) => s.provider === "codex")!.text;
+    expect(handed).toContain("<jig-handoff>");
+    expect(handed).toContain("> Fix the cart, then hit the limit");
+    expect(handed).toContain("cart.ts | 2 +-");
+    expect(handed).toContain("Carry on with this chat's work");
+    // Rewinding stops at the handoff.
+    const first = after.items.find((i) => i.kind === "user")!;
+    await expect(m.rewind(chat.id, first.id, false)).rejects.toMatchObject({ code: "invalid_args" });
+    await m.shutdown();
+  });
+
+  it("carries on by itself with `switch`, and waits for the reset when the other has no room", async () => {
+    const { m } = twoEngines("switch");
+    const chat = await create(m);
+    await m.send(chat.id, "hit the limit");
+    await until(
+      async () => (await metaOf(m, chat.id)).provider === "codex" && (await metaOf(m, chat.id)).turns >= 2,
+    );
+    await m.shutdown();
+
+    const waiting = twoEngines("switch", false);
+    const other = await create(waiting.m);
+    await waiting.m.send(other.id, "hit the limit");
+    await until(async () => (await metaOf(waiting.m, other.id)).limit?.state === "waiting");
+    const card = (await waiting.m.snapshot(other.id)).items.find((i) => i.kind === "limit");
+    expect(card).toMatchObject({ status: "waiting" });
+    expect(card?.kind === "limit" && card.resetsAt).toBeTruthy();
+    await expect(waiting.m.limitAction(other.id, card!.id, "continue")).rejects.toMatchObject({
+      code: "unavailable",
+    });
+    await waiting.m.limitAction(other.id, card!.id, "dismiss");
+    expect((await metaOf(waiting.m, other.id)).limit).toBeUndefined();
+    await waiting.m.shutdown();
+  });
+});

@@ -4076,7 +4076,7 @@ He wants the chat's message box there, reused rather than rebuilt, without the c
   empty when files remain (as when sending); both empty is `invalid_args`. Files are still checked to
   be the chat's attachments when the message is sent.
 
-## D-309: Two chat engines: Claude Code the default, Codex optional
+## D-309: Two chat engines: Claude Code the default, Codex optional _("provider for life" superseded by D-338 for limit handoffs)_
 
 Supersedes the chat part of D-294 ("Claude Code stays the engine for chats"), and with it the
 "Claude Code is the only engine" wording of D-002 and principle 1 for chats. The non-chat parts of
@@ -5067,3 +5067,48 @@ Default, Subagent fallback, Tester, Search). How it's built: Claude, on my own.
   protected (D-077): they run programs and spend the plan.
 - **Settings:** three rows after ChatGPT's Default model, in the Claude group's order, same picker
   width.
+
+## D-338: A chat that hits its plan's limit carries on with the other provider, in the same chat
+
+Supersedes D-309's "a chat is Claude or Codex for its whole life" for this case: a chat's provider
+can change after it started, through a handoff. Everything else of D-309 (one engine per provider,
+capabilities, Claude the default, everything non-chat on Claude Code) still holds.
+
+- **Who:** Jon, 2026-11-04 ("if the chat stops because it hit a limit, resume with the fallback
+  provider", in the same chat). How it's built: Claude, on my own, from his design.
+- **A typed limit.** Both normalizers turn a plan limit into `{ type: "error", code: "rate_limit",
+  window?, resetsAt? }`: Claude's from its `rate_limit` assistant error (the reset from the
+  `rate_limit_event` before it, or an old message's `|<seconds>` ending); Codex's from
+  `usageLimitExceeded` / `rateLimitExceeded`, the reset from the latest `account/rateLimits/updated`
+  (the full window's, else the fullest's). A warning (`allowed_warning`) never stops anything. When
+  the provider doesn't say when it resets, the usage meter's full window does (`planResetsAt`).
+- **The limit card** (`ChatItem` `limit`) replaces the plain error, with the turn's "Failed" line
+  hidden under it: what happened, when it resets, and Continue with the other provider (primary,
+  only when its meter has room: `planHasRoom`), Wait and resume at the reset (Jig sends "carry on"
+  then, a timer that survives a restart through `SessionMeta.limit`), Dismiss. Three fixed lines;
+  the third swaps its buttons for what was chosen, so nothing moves. A turn its limit stopped
+  leaves the chat's queued messages queued. Builder chats only get Dismiss and Wait (they stay on
+  Claude Code).
+- **Continuing in the same chat.** The old provider's process ends, a divider goes into the
+  transcript ("Continued with ChatGPT · Claude's limit reached"), and the chat's provider, model and
+  effort become the new provider's (its project's or Jig's defaults; the permission mode stays,
+  mapped like a new chat's). The old provider's session id and model go into
+  `SessionMeta.providers` (so the saved-conversations list still maps it to this chat); the new
+  provider starts a fresh session. Its first message brings a handoff Jig builds from the
+  transcript by rules, without an AI call (`shared/handoff.ts`, at most 16 000 characters): the
+  goal (your first message), your latest messages, the last replies, the latest plan, open to-dos,
+  the files the chat edited plus `git diff --stat`, and where it stopped. It goes inside
+  `<jig-handoff>` and isn't shown in the transcript. Switching back is the same mechanism.
+- **Rewind stops at the handoff:** messages before the divider belong to the other provider's
+  session, so they get no rewind and the host refuses it.
+- **Setting:** `engine.onLimit` (`ask` default, `switch`, `wait`; Settings → Chats) and per project
+  (`Project.onLimit`, the project dialog). `switch` continues when the other plan has room, else
+  waits for the reset, else asks. Protected (D-077): it decides which plan pays.
+- **Task queue:** the same setting. A chat with a limit hasn't finished: with `ask` its task needs
+  you ("Hit its plan's limit"), otherwise it keeps running while the chat waits or carries on, so
+  the queue doesn't start the next task meanwhile. A queued task's new chat starts on the other
+  provider when its own plan is used up and the setting is `switch` (`chats.create` returns
+  `provider`). A task that finished on another provider records it (`ranOn`, `startedOn`), and its
+  details say "started on Claude".
+- **Left for later:** handing a chat over by hand at any time (its own queued task) uses the same
+  `continueWith` with reason `manual`; the divider and handoff already say "moved".

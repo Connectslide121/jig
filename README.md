@@ -47,7 +47,9 @@ for pipelines and a few scripts you keep retyping. Jig puts it in one place:
   doesn't replace the agent.
 - **Or ChatGPT, if you have it.** Sign in to OpenAI's Codex CLI and a chat can run on your ChatGPT plan
   instead: pick Claude or ChatGPT beside the model picker, set the default in Settings → Chats or per
-  project. Codex chats get Jig's tools under the same names and your personal instructions.
+  project. Codex chats get Jig's tools under the same names and your personal instructions. When one
+  plan's limit stops a chat, it can carry on in the same chat with the other, reading a handoff of
+  what happened so far.
 - **Everything Claude Code's terminal does, with menus.**
   - Commands and skills on `/`, files on `@`, shell on `!`, memory on `#`.
   - Todo lists, plan approval, diffs, subagent progress and background tasks.

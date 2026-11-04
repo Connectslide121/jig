@@ -34,6 +34,9 @@ function toolText(item: Extract<ChatItem, { kind: "tool" }>): string {
  */
 export function chatToMarkdown(meta: SessionMeta, items: ChatItem[]): string {
   const out = [`# ${meta.title}`, "", `_${meta.cwd} · ${new Date(meta.createdAt).toLocaleString()}_`, ""];
+  const names = { claude: "Claude", codex: "ChatGPT" } as const;
+  // Who answered: the provider it started on, then the one each handoff continued with (D-338).
+  let speaker = names[meta.providers?.[0]?.provider ?? meta.provider ?? "claude"];
   for (const item of items) {
     if ("parentId" in item && item.parentId) continue;
     switch (item.kind) {
@@ -41,7 +44,7 @@ export function chatToMarkdown(meta: SessionMeta, items: ChatItem[]): string {
         out.push("## You", "", item.text || "_(attachments)_", "");
         break;
       case "assistant":
-        if (item.text.trim()) out.push("## Claude", "", item.text, "");
+        if (item.text.trim()) out.push(`## ${speaker}`, "", item.text, "");
         break;
       case "tool":
         if (item.name !== "AskUserQuestion") out.push(toolText(item), "");
@@ -51,6 +54,18 @@ export function chatToMarkdown(meta: SessionMeta, items: ChatItem[]): string {
         break;
       case "notice":
         out.push(`> ${item.text}`, "");
+        break;
+      case "limit":
+        out.push(`> ${names[item.provider]}'s limit is reached: ${item.message}`, "");
+        break;
+      case "handoff":
+        speaker = names[item.to];
+        out.push(
+          `---`,
+          "",
+          `_Continued with ${names[item.to]}${item.reason === "limit" ? ` · ${names[item.from]}'s limit reached` : ""}_`,
+          "",
+        );
         break;
       case "permission":
         if (item.request.toolName === "ExitPlanMode" && str(item.request.input.plan))

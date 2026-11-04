@@ -267,7 +267,11 @@ export class FakeEngine implements Engine {
     const runTurn = async (sent: string, uuid: string) => {
       // The script answers what the user typed: add-ons' context (D-151) is left out of the matching
       // (it follows the "[1 image]" tags when the message has files).
-      const text = sent.replace(/<jig-context>[\s\S]*?<\/jig-context>\s*/, "");
+      const text = sent
+        .replace(/<jig-context>[\s\S]*?<\/jig-context>\s*/, "")
+        .replace(/<jig-handoff>[\s\S]*?<\/jig-handoff>\s*/, "");
+      // A chat that continued from the other provider brings Jig's handoff (D-338): its goal line.
+      const handoffGoal = /<jig-handoff>[\s\S]*?## The goal[^\n]*\n\n> ([^\n]*)/.exec(sent)?.[1];
       messageOrder.push(uuid);
       const controller = new AbortController();
       turn = controller;
@@ -322,10 +326,36 @@ export class FakeEngine implements Engine {
           });
           return;
         }
+        if (lower.includes("hit the limit")) {
+          // The plan's limit, as each provider reports it (D-338): resets in 2 h 13 min.
+          await stream(`${msg}:text:0`, "Starting on it.", signal);
+          const resetsAt = new Date(
+            Math.ceil((Date.now() + (2 * 60 + 13) * 60_000) / 60_000) * 60_000,
+          ).toISOString();
+          onEvent({
+            type: "error",
+            code: "rate_limit",
+            message:
+              this.provider === "codex"
+                ? "ChatGPT's limit is reached: You've hit your usage limit. Try again later."
+                : "You've hit your limit · resets later today",
+            window: this.provider === "codex" ? "primary" : "five_hour",
+            resetsAt,
+          });
+          onEvent({
+            type: "result",
+            ok: false,
+            durationMs: Date.now() - started,
+            error: "Usage limit reached",
+          });
+          return;
+        }
         contextTokens = Math.min(CONTEXT_MAX, contextTokens + (lower.includes("big file") ? 130_000 : 9_000));
         // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
         const isTestChat = lower.startsWith("test this in claude's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
+        if (handoffGoal)
+          await stream(`${msg}:text:handoff`, `Picked up from the handoff: “${handoffGoal}”.`, signal);
         if (toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {
           const match = /\(([a-f\d-]{36})\), captured through ([^\n]+)\.\n/.exec(text);
           if (!match) throw new Error("Missing meeting snapshot");

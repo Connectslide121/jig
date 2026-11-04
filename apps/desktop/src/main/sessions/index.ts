@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+import { exec, execFile } from "node:child_process";
 import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -11,6 +11,7 @@ import {
   chatProvider,
   type EffortLevel,
   ENGINE_CAPABILITIES,
+  otherProvider,
   type PermissionMode,
   type SessionMeta,
   type SessionStatus,
@@ -26,6 +27,7 @@ import {
 } from "../../shared/searcher";
 import { aiTransparencyGuidance } from "../../shared/skills";
 import { TESTER_AGENT, testerAgent } from "../../shared/tester";
+import { planHasRoom, planResetsAt } from "../../shared/usage";
 import { publishActivity } from "../activity/bus";
 import { appWindows, focusJig } from "../appWindows";
 import { azureTag, withAzureEnv } from "../azure/env";
@@ -44,7 +46,7 @@ import { routinesChanged } from "../routines";
 import { selectedSkillPlugins, skillLibrary } from "../skills";
 import { VOICE_GUIDANCE } from "../speech/voice";
 import { paths } from "../state/paths";
-import { chatGptChatUsed, usageService } from "../usage";
+import { chatGptChatUsed, planUsageOf, usageService } from "../usage";
 import { APP_ICON } from "../window";
 import { SessionManager } from "./manager";
 import { notificationFor, notificationsAllowed } from "./notify";
@@ -131,6 +133,11 @@ export async function createChat(input: {
   /** Instead of the provider's default (an add-on's new chat, D-330). */
   model?: string;
   meetingNotes?: string;
+  /**
+   * Start on the other provider when this one's plan is used up and "When a chat hits its limit" is
+   * "continue with the other provider" (D-338): a queued task's new chat.
+   */
+  limitFallback?: boolean;
 }): Promise<SessionMeta> {
   const project = input.projectId ? await projectStore().get(input.projectId) : undefined;
   const folder = input.cwd || project?.path;
@@ -138,13 +145,30 @@ export async function createChat(input: {
   const info = await stat(folder).catch(() => undefined);
   if (!info?.isDirectory()) throw new JigError("not_a_folder", `${folder} is not a folder`);
   const { engine } = getConfig();
-  const defaults = chatDefaults(project, input.provider);
-  return sessionManager().create({
+  let defaults = chatDefaults(project, input.provider);
+  let model = input.model;
+  let switched: string | undefined;
+  if (input.limitFallback && (project?.onLimit ?? engine.onLimit) === "switch") {
+    const name = (p: ChatProvider) => (p === "codex" ? "ChatGPT" : "Claude");
+    const other = otherProvider(defaults.provider);
+    const own = planHasRoom(planUsageOf(defaults.provider), name(defaults.provider));
+    if (
+      !own.ok &&
+      /limit is reached/.test(own.reason ?? "") &&
+      planHasRoom(planUsageOf(other), name(other)).ok
+    ) {
+      switched = `Started on ${name(other)}: ${name(defaults.provider)}'s limit is reached.`;
+      defaults = chatDefaults(project, other);
+      // The model asked for was the other provider's.
+      model = undefined;
+    }
+  }
+  const meta = await sessionManager().create({
     projectId: input.projectId,
     cwd: folder,
     title: input.title,
     provider: defaults.provider,
-    model: input.model ?? defaults.model,
+    model: model ?? defaults.model,
     permissionMode: modeFor(
       defaults.provider,
       input.permissionMode ?? ((project?.permissionMode ?? engine.defaultPermissionMode) as PermissionMode),
@@ -152,6 +176,15 @@ export async function createChat(input: {
     effort: defaults.effort,
     meetingNotes: input.meetingNotes,
   });
+  if (switched)
+    await sessionManager().addItem(meta.id, {
+      kind: "notice",
+      id: `limit-start-${meta.id}`,
+      at: meta.createdAt,
+      tone: "info",
+      text: switched,
+    });
+  return meta;
 }
 
 export function sessionManager(): SessionManager {
@@ -163,11 +196,11 @@ export function startSessions(): void {
   const statusOf = new Map<string, string>();
   const drafts = new Set<string>();
   // Names and instructions of the projects, for Jig's addition to the system prompt.
-  const projects = new Map<string, { name: string; instructions?: string }>();
+  const projects = new Map<string, Project>();
   const known = new Set<string>();
-  const remember = (list: Array<{ id: string; name: string; instructions?: string }>) => {
+  const remember = (list: Project[]) => {
     projects.clear();
-    for (const p of list) projects.set(p.id, { name: p.name, instructions: p.instructions });
+    for (const p of list) projects.set(p.id, p);
   };
   void projectStore()
     .list()
@@ -304,6 +337,18 @@ export function startSessions(): void {
       for (const listener of closedListeners) listener(id);
     },
     onRateLimit: (event) => usageService().rateLimit(event),
+    // A chat stopped by its plan's limit (D-338): the project's choice, else Jig's.
+    limitPolicy: (meta) =>
+      (meta.projectId ? projects.get(meta.projectId)?.onLimit : undefined) ?? getConfig().engine.onLimit,
+    providerRoom: (provider) =>
+      planHasRoom(planUsageOf(provider), provider === "codex" ? "ChatGPT" : "Claude"),
+    providerResetsAt: (provider) => planResetsAt(planUsageOf(provider)),
+    providerDefaults: (meta, provider) => {
+      const project = meta.projectId ? projects.get(meta.projectId) : undefined;
+      const { model, effort } = chatDefaults(project, provider);
+      return { model, effort, permissionMode: modeFor(provider, meta.permissionMode) };
+    },
+    diffStat: (cwd) => gitDiffStat(cwd),
     runShell: (cwd, command) => runShellCommand(cwd, command),
     onUpdate: (sessionId, updates) => {
       emit("sessions.update", { sessionId, updates });
@@ -486,6 +531,7 @@ export function startSessions(): void {
     const permissionMode = modeFor(provider, fallback as PermissionMode);
     return m.setProvider(id, provider, { model, effort, permissionMode });
   });
+  handle("sessions.limitAction", ({ id, itemId, action }) => m.limitAction(id, itemId, action));
   handle("sessions.setPermissionMode", ({ id, mode }) => m.setPermissionMode(id, mode));
   handle("sessions.rename", ({ id, title }) => m.rename(id, title));
   handle("sessions.archive", ({ id, archived }) => m.setArchived(id, archived));
@@ -518,6 +564,18 @@ export function startSessions(): void {
       .shutdown()
       .catch(() => {})
       .finally(() => app.quit());
+  });
+}
+
+/** `git diff --stat` against HEAD in a folder, for a limit handoff (D-338); "" outside a repository. */
+function gitDiffStat(cwd: string): Promise<string> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["diff", "--stat", "HEAD"],
+      { cwd, timeout: 10_000, maxBuffer: 1024 * 1024, windowsHide: true },
+      (error, stdout) => resolve(error ? "" : stdout.trim()),
+    );
   });
 }
 

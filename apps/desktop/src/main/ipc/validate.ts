@@ -1,7 +1,7 @@
 import { isTenantInput } from "@jig/azure";
 import { z } from "zod";
 import { ADDON_AI_FEATURES } from "../../shared/aiFeatures";
-import { ANY_EFFORT_LEVELS, CHAT_PROVIDERS, PERMISSION_MODES } from "../../shared/engine";
+import { ANY_EFFORT_LEVELS, CHAT_PROVIDERS, LIMIT_POLICIES, PERMISSION_MODES } from "../../shared/engine";
 import type { MethodName } from "../../shared/ipc";
 import { LinkGroupSchema } from "../../shared/links";
 import { CHAT_MESSAGE_ID, HOSTED_CONTENT_ID, TEAMS_CHAT_ID } from "../../shared/meetingChat";
@@ -60,6 +60,7 @@ const projectPatch = z.object({
   color: z.enum(PROJECT_COLORS).optional(),
   path: path.optional(),
   provider: z.union([z.enum(CHAT_PROVIDERS), z.literal("")]).optional(),
+  onLimit: z.union([z.enum(LIMIT_POLICIES), z.literal("")]).optional(),
   model: z.string().max(200).optional(),
   effort: z.union([z.enum(ANY_EFFORT_LEVELS), z.literal("")]).optional(),
   permissionMode: z.union([z.enum(PERMISSION_MODES), z.literal("")]).optional(),
@@ -347,6 +348,11 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   }),
   "sessions.setProject": z.object({ id, projectId: id.optional() }),
   "sessions.setProvider": z.object({ id, provider: z.enum(CHAT_PROVIDERS) }),
+  "sessions.limitAction": z.object({
+    id,
+    itemId: z.string().min(1).max(200),
+    action: z.enum(["continue", "wait", "cancel", "dismiss"]),
+  }),
   "sessions.openSaved": z.object({ sessionId: z.string().regex(/^[\w-]{1,100}$/) }),
   "links.azure": z.object({
     subscription: z

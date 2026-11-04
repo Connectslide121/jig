@@ -122,13 +122,13 @@ export function ChatTab({ params, active, focused }: TabProps) {
         {project && <span className="truncate text-xs text-muted">{project.name}</span>}
         {meta.kind === "builder" && <Badge tone="accent">Builder</Badge>}
         <span className="text-xs text-hint" data-testid="chat-status">
-          {STATUS_LABEL[meta.status]}
+          {meta.limit ? "Limit reached" : STATUS_LABEL[meta.status]}
         </span>
         {/* The spacer is the tenant label's slot: it appears at its right end and nothing moves. */}
         <div className="flex min-w-0 flex-1 justify-end">
           <TenantTagLabel tag={meta.azureTenant} />
         </div>
-        {/* Who runs this chat, for its whole life (D-309, D-314): always there, so nothing moves. */}
+        {/* Who runs this chat now (D-309, D-314, D-338): always there, so nothing moves. */}
         <ProviderMark provider={chatProvider(meta)} className="text-xs" />
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}

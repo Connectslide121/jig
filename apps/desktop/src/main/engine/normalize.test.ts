@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authSourceFrom,
   contextFrom,
+  limitError,
   modelUsageFrom,
   Normalizer,
   patchText,
@@ -698,5 +699,44 @@ describe("more Claude Code messages", () => {
     expect(patchText({ type: "create", content: "x\ny\n" })).toBe("@@ -0,0 +1,2 @@\n+x\n+y");
     expect(patchText({})).toBeUndefined();
     expect(patchText({ type: "create", content: "a\nb\nc" }, 2)).toBe("@@ -0,0 +1,3 @@\n+a\n… 2 more lines");
+  });
+});
+
+describe("limits (D-338)", () => {
+  it("types Claude Code's limit message, with the reset from the rate-limit event before", () => {
+    const n = new Normalizer();
+    n.handle({
+      type: "rate_limit_event",
+      rate_limit_info: { status: "rejected", rateLimitType: "five_hour", resetsAt: 1793178000 },
+    });
+    expect(
+      n.handle({
+        type: "assistant",
+        error: "rate_limit",
+        uuid: "a",
+        message: { content: [{ type: "text", text: "You've hit your limit · resets 2pm" }] },
+      }),
+    ).toEqual([
+      {
+        type: "error",
+        code: "rate_limit",
+        message: "You've hit your limit · resets 2pm",
+        window: "five_hour",
+        resetsAt: new Date(1793178000 * 1000).toISOString(),
+      },
+    ]);
+  });
+  it("reads the reset from older messages' |seconds ending", () => {
+    expect(limitError("Claude AI usage limit reached|1793178000")).toEqual({
+      type: "error",
+      code: "rate_limit",
+      message: "Claude AI usage limit reached",
+      resetsAt: new Date(1793178000 * 1000).toISOString(),
+    });
+    expect(limitError(undefined)).toEqual({
+      type: "error",
+      code: "rate_limit",
+      message: "Claude's usage limit is reached.",
+    });
   });
 });

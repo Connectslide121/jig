@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { EngineEvent, PermissionRequest } from "../../shared/engine";
-import { CodexNormalizer, changeDiff, displayCommand, mcpToolApproval } from "./codexNormalize";
+import { CodexNormalizer, changeDiff, displayCommand, limitReset, mcpToolApproval } from "./codexNormalize";
 
 /**
  * Recorded `codex app-server` traffic (Codex 0.166.0, signed in with ChatGPT; paths renamed):
@@ -576,5 +576,46 @@ describe("Codex asking before an MCP tool (D-313)", () => {
   it("ignores other elicitations", () => {
     expect(mcpToolApproval({ ...params, _meta: { codex_approval_kind: "other" } })).toBeUndefined();
     expect(mcpToolApproval({ serverName: "jig", message: "Pick one" })).toBeUndefined();
+  });
+});
+
+describe("ChatGPT's limit (D-338)", () => {
+  it("is a typed limit, resetting when the full window resets", () => {
+    const n = new CodexNormalizer();
+    expect(
+      n.handle({
+        method: "account/rateLimits/updated",
+        params: {
+          rateLimits: {
+            primary: { usedPercent: 100, windowDurationMins: 300, resetsAt: 1793178000 },
+            secondary: { usedPercent: 40, windowDurationMins: 10080, resetsAt: 1793600000 },
+          },
+        },
+      }),
+    ).toEqual([]);
+    expect(
+      n.handle({
+        method: "error",
+        params: { error: { message: "You've hit your usage limit.", codexErrorInfo: "usageLimitExceeded" } },
+      }),
+    ).toEqual([
+      {
+        type: "error",
+        code: "rate_limit",
+        message: "ChatGPT's limit is reached: You've hit your usage limit.",
+        window: "primary",
+        resetsAt: new Date(1793178000 * 1000).toISOString(),
+      },
+    ]);
+  });
+  it("picks the fullest window when none is full, and nothing without resets", () => {
+    expect(
+      limitReset({
+        primary: { usedPercent: 60, resetsAt: 100 },
+        secondary: { usedPercent: 90, resetsAt: 200 },
+      }),
+    ).toEqual({ window: "secondary", resetsAt: new Date(200_000).toISOString() });
+    expect(limitReset(undefined)).toBeUndefined();
+    expect(limitReset({ primary: { usedPercent: 100, resetsAt: null } })).toBeUndefined();
   });
 });

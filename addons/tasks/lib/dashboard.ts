@@ -35,6 +35,7 @@ export const WAITING_LABEL: Record<WaitingFor, string> = {
   permission: "Waits for a permission",
   question: "Asks you a question",
   plan: "Waits for you to approve a plan",
+  limit: "Hit its plan's limit",
 };
 
 /** The progress bar's parts, in the order they are drawn. */

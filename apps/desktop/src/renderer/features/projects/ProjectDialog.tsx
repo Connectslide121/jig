@@ -6,6 +6,9 @@ import {
   type ChatProvider,
   type EffortLevel,
   ENGINE_CAPABILITIES,
+  LIMIT_POLICIES,
+  LIMIT_POLICY_LABELS,
+  type LimitPolicy,
   PERMISSION_MODE_LABELS,
   PERMISSION_MODES,
   type PermissionMode,
@@ -61,6 +64,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
   const [path, setPath] = useState(project?.path ?? workspaces[0]?.path ?? "");
   const [repo, setRepo] = useState(project?.focusRepo ?? "");
   const [provider, setProvider] = useState<ChatProvider | "">(project?.provider ?? "");
+  const [onLimit, setOnLimit] = useState<LimitPolicy | "">(project?.onLimit ?? "");
   const [model, setModel] = useState(project?.model ?? "");
   const [effort, setEffort] = useState<EffortLevel | "">(project?.effort ?? "");
   const [mode, setMode] = useState<PermissionMode | "">(project?.permissionMode ?? "");
@@ -74,6 +78,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const globalProvider = useConfig((s) => s.config?.engine.provider) ?? "claude";
+  const globalOnLimit = useConfig((s) => s.config?.engine.onLimit) ?? "ask";
   const chatgpt = useChatGptStatus();
   // The model and effort lists are those of the provider this project's chats run on (D-314).
   const runsOn = provider || globalProvider;
@@ -115,6 +120,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
         name,
         path,
         provider,
+        onLimit,
         model,
         effort,
         permissionMode: mode,
@@ -257,7 +263,7 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
         </Field>
         <Field
           label="Chats run on"
-          hint="Who runs new chats in this project. A chat keeps it for its whole life; a new chat can still pick the other one."
+          hint="Who runs new chats in this project; a new chat can still pick the other one."
         >
           <Select
             value={provider}
@@ -274,6 +280,23 @@ function ProjectDialog({ project, onClose }: { project: ProjectInfo | undefined;
             <option value="codex" disabled={provider !== "codex" && chatgpt?.ready !== true}>
               {chatgpt?.ready === false ? "ChatGPT (sign in on Get started)" : "ChatGPT"}
             </option>
+          </Select>
+        </Field>
+        <Field
+          label="When a chat hits its limit"
+          hint="Its plan's limit stops a chat: ask, carry on in the same chat with the other provider, or wait for the reset and resume."
+        >
+          <Select
+            value={onLimit}
+            onChange={(e) => setOnLimit(e.target.value as LimitPolicy | "")}
+            data-testid="project-on-limit"
+          >
+            <option value="">Jig's default ({LIMIT_POLICY_LABELS[globalOnLimit]})</option>
+            {LIMIT_POLICIES.map((policy) => (
+              <option key={policy} value={policy}>
+                {LIMIT_POLICY_LABELS[policy]}
+              </option>
+            ))}
           </Select>
         </Field>
         <div className="grid grid-cols-3 gap-2">

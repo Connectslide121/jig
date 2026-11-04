@@ -145,7 +145,11 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
   tools) from the user's PATH, signed in with their ChatGPT account.
 - **Two chat engines** (D-309): `getEngine(provider)` keeps one engine per provider. Claude Code is the
   default; a chat can run on OpenAI's Codex instead (`SessionMeta.provider`, chosen per chat or
-  project, `engine.provider`) and keeps it for life. `Engine.capabilities` (`ENGINE_CAPABILITIES`)
+  project, `engine.provider`). When a plan limit stops a chat it can continue with the other provider in
+  the same chat (D-338): the session manager ends the old process, records it in `SessionMeta.providers`,
+  adds a `handoff` divider and sends the new provider a handoff built from the transcript
+  (`shared/handoff.ts`, no AI); `engine.onLimit` / `Project.onLimit` decide ask, switch or wait.
+  `Engine.capabilities` (`ENGINE_CAPABILITIES`)
   says what each provider's chats can do, so the UI hides what a provider lacks. Both drive an
   official, unmodified CLI; Jig never runs an agent loop of its own.
 - `CodexEngine` runs one `codex app-server` per chat (JSON-RPC on stdio, types generated from the

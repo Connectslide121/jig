@@ -111,6 +111,8 @@ export function itemText(item: ChatItem): string {
       return `${item.command} ${item.output}`;
     case "permission":
       return `${item.request.title ?? ""} ${typeof item.request.input.plan === "string" ? item.request.input.plan : ""}`;
+    case "limit":
+      return item.message;
     default:
       return "";
   }

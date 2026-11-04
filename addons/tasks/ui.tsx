@@ -79,6 +79,7 @@ import {
   isReady,
   type NewTask,
   type PermissionMode,
+  PROVIDER_LABEL,
   type Queue,
   type Run,
   type RunsOn,
@@ -1697,7 +1698,13 @@ function TaskDialog({
           data-testid="task-runs-on"
         >
           <ProviderMark provider={on.provider} iconOnly />
-          <span className="truncate">{runsOnText(on)}</span>
+          <span className="truncate">
+            {runsOnText(on)}
+            {/* Its chat hit that provider's limit and carried on with this one (D-338). */}
+            {task.startedOn && task.startedOn !== on.provider
+              ? ` · started on ${PROVIDER_LABEL[task.startedOn]}`
+              : ""}
+          </span>
         </span>,
       ],
       ["Chat", task.newChat || index === 0 ? "starts a new one" : "continues the one before"],

@@ -614,6 +614,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Chats on Claude or ChatGPT: pick it beside the model picker before the first message (the chat keeps it), set the default in Settings → Chats and per project in its settings; each chat shows its mark",
                 "ChatGPT chats work like Claude's: Plan only with the plan card, question cards, a suggested next message, Claude Code's skills next to Codex's own, and their saved Codex chats in Open a saved chat",
                 "ChatGPT chats have helpers like Claude's subagents: a code search and a page tester, each a separate ChatGPT call on its own model (Settings → Chats → ChatGPT chats)",
+                "When a chat hits its plan's limit, carry on in the same chat with the other provider (it reads a handoff of what happened so far), or wait and resume at the reset; ask, switch or wait is a setting, per project too, and queued tasks follow it",
                 "Tool calls with diffs and file previews",
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",

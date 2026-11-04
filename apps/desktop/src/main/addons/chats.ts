@@ -23,6 +23,8 @@ export interface ChatsDeps {
     permissionMode?: PermissionMode;
     provider?: ChatProvider;
     model?: string;
+    /** Start on the other provider when this one's plan is used up and the limit setting allows it (D-338). */
+    limitFallback?: boolean;
   }): Promise<SessionMeta>;
   /** Whether ChatGPT can run chats now (the Codex CLI installed and signed in). */
   chatGptReady(): Promise<boolean>;
@@ -70,6 +72,7 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
   const answer = [...items].reverse().find((i) => i.kind === "assistant" && !i.parentId);
   const stoppedAt = userStoppedAt(items);
   const waiting = meta.status === "needs_you" ? waitingFor(items) : undefined;
+  const limit = meta.limit;
   return {
     id: meta.id,
     title: meta.title,
@@ -83,6 +86,15 @@ export function chatInfo({ meta, items, queue }: SessionSnapshot): AddonChatInfo
     background: meta.backgroundTasks?.length ?? 0,
     ...(stoppedAt ? { userStoppedAt: stoppedAt } : {}),
     ...(waiting ? { waitingFor: waiting } : {}),
+    ...(limit
+      ? {
+          limit: {
+            provider: limit.provider === "codex" ? ("chatgpt" as const) : ("claude" as const),
+            state: limit.state,
+            ...(limit.resetsAt ? { resetsAt: limit.resetsAt } : {}),
+          },
+        }
+      : {}),
     ...(answer?.kind === "assistant" ? { lastAnswer: answer.text, lastAnswerAt: answer.at } : {}),
     ...(meta.lastError ? { error: meta.lastError } : {}),
   };
@@ -122,15 +134,20 @@ export function addonChats(deps: ChatsDeps) {
       permissionMode: input?.permissionMode,
       provider,
       model,
+      limitFallback: true,
     });
     watch(addonId, meta.id);
-    return meta.id;
+    return meta;
   };
 
   return {
     async create(addonId: string, input: Omit<AddonChatSend, "text" | "sessionId">) {
       check(addonId);
-      return { sessionId: await create(addonId, input) };
+      const meta = await create(addonId, input);
+      return {
+        sessionId: meta.id,
+        provider: chatProvider(meta) === "codex" ? ("chatgpt" as const) : ("claude" as const),
+      };
     },
     async send(addonId: string, input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }> {
       check(addonId);
@@ -158,7 +175,7 @@ export function addonChats(deps: ChatsDeps) {
       if (sessionId) {
         await deps.snapshot(sessionId);
         watch(addonId, sessionId);
-      } else sessionId = await create(addonId, input);
+      } else sessionId = (await create(addonId, input)).id;
       const attachments = files.length ? await deps.copyAttachments(addonId, sessionId, files) : [];
       const sentAt = new Date().toISOString();
       await deps.send(sessionId, text, attachments);

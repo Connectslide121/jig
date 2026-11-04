@@ -75,8 +75,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   with ad-hoc `fs.writeFile` on state files.
 - **Two chat engines, Claude the default (D-309).** Chats run on Claude Code or, optionally, on
   OpenAI's Codex (signed in with ChatGPT), behind the one `Engine` interface (`getEngine(provider)`).
-  A chat keeps its provider for life (`SessionMeta.provider`; missing = Claude). Everything else
-  agentic (the builder, attempts, worktree chats, routines, artifacts, Claude's browser) stays on
+  A chat keeps its provider (`SessionMeta.provider`; missing = Claude) unless it continues with the
+  other one after a plan limit (D-338: `continueWith` in the session manager, a divider in the
+  transcript, a handoff built from the transcript without AI; never two providers in one turn).
+  Everything else agentic (the builder, attempts, worktree chats, routines, artifacts, Claude's browser) stays on
   Claude Code. Never add an agent runtime of Jig's own (each engine drives an official CLI), never call
   the Anthropic or OpenAI API directly, never assemble Claude's system prompt yourself (only `append`
   to the `claude_code` preset). A chat feature a provider lacks is a flag in `ENGINE_CAPABILITIES`

@@ -4,7 +4,9 @@ import {
   formatResetIn,
   formatResetShort,
   formatUsageAmount,
+  planHasRoom,
   planName,
+  planResetsAt,
   planUsageFrom,
   usageTone,
   windowShort,
@@ -208,5 +210,32 @@ describe("planName and windowShort", () => {
     expect(u.windows.map((w) => windowShort(w))).toEqual(["5h", "wk"]);
     expect(windowShort(undefined, "5h")).toBe("5h");
     expect(windowShort({ id: "x", label: "x", percent: 1, minutes: 1440 })).toBe("day");
+  });
+});
+
+describe("planHasRoom and planResetsAt (D-338)", () => {
+  const ok = (percent: number, resetsAt = "2026-11-04T14:00:00.000Z") => ({
+    state: "ok" as const,
+    windows: [{ id: "five_hour", label: "5 h", percent, resetsAt }],
+  });
+  it("has room when known, signed in and not used up", () => {
+    expect(planHasRoom(ok(40), "ChatGPT")).toEqual({ ok: true });
+    expect(planHasRoom(ok(100), "ChatGPT")).toEqual({ ok: false, reason: "ChatGPT's limit is reached too" });
+    expect(planHasRoom({ ...ok(10), warning: { window: "x", status: "rejected" } }, "Claude").ok).toBe(false);
+    expect(planHasRoom({ state: "unavailable", windows: [] }, "ChatGPT").reason).toBe(
+      "ChatGPT isn't signed in with a plan",
+    );
+    expect(planHasRoom(undefined, "Claude").ok).toBe(false);
+  });
+  it("resets when its latest full window does", () => {
+    expect(planResetsAt(ok(100))).toBe("2026-11-04T14:00:00.000Z");
+    expect(planResetsAt(ok(50))).toBeUndefined();
+    expect(
+      planResetsAt({
+        state: "ok",
+        windows: [],
+        warning: { window: "w", status: "rejected", resetsAt: "2026-11-05T00:00:00Z" },
+      }),
+    ).toBe("2026-11-05T00:00:00Z");
   });
 });

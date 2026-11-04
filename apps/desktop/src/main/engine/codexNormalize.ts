@@ -190,6 +190,26 @@ export interface CodexMcpServer {
   error?: string;
 }
 
+type CodexWindow = { usedPercent?: number; windowDurationMins?: number | null; resetsAt?: number | null };
+
+/**
+ * When a used-up ChatGPT plan has room again (D-338): the reset of the window that is full (the later
+ * one when both are), else of the fullest. Codex's `resetsAt` is unix seconds.
+ */
+export function limitReset(
+  limits: { primary?: CodexWindow | null; secondary?: CodexWindow | null } | undefined,
+): { window: string; resetsAt: string } | undefined {
+  const windows = (["primary", "secondary"] as const)
+    .map((id) => ({ id, w: limits?.[id] }))
+    .filter((x): x is { id: "primary" | "secondary"; w: CodexWindow } => typeof x.w?.resetsAt === "number");
+  if (!windows.length) return undefined;
+  const full = windows.filter((x) => (x.w.usedPercent ?? 0) >= 100);
+  const pick = full.length
+    ? full.sort((a, b) => b.w.resetsAt! - a.w.resetsAt!)[0]!
+    : windows.sort((a, b) => (b.w.usedPercent ?? 0) - (a.w.usedPercent ?? 0))[0]!;
+  return { window: pick.id, resetsAt: new Date(pick.w.resetsAt! * 1000).toISOString() };
+}
+
 export class CodexNormalizer {
   /** The model the thread runs on (Codex reports it when the thread starts). */
   model = "";
@@ -197,6 +217,8 @@ export class CodexNormalizer {
   turnId: string | undefined;
   private turnStarted = 0;
   private authSource: AuthSource = "unknown";
+  /** Codex's latest rate limits (`account/rateLimits/updated`), for when a limit resets. */
+  private rateLimits: { primary?: CodexWindow | null; secondary?: CodexWindow | null } | undefined;
   private initialized = false;
   /** Streamed messages and reasoning not completed yet: item id → kind and text so far. */
   private open = new Map<string, { block: "text" | "thinking"; text: string }>();
@@ -270,6 +292,14 @@ export class CodexNormalizer {
         return this.error(p);
       case "account/updated":
         return this.account(p);
+      case "account/rateLimits/updated":
+        // Sparse: merge what it says into what Codex said before.
+        if (p.rateLimits && typeof p.rateLimits === "object")
+          this.rateLimits = {
+            primary: p.rateLimits.primary ?? this.rateLimits?.primary ?? null,
+            secondary: p.rateLimits.secondary ?? this.rateLimits?.secondary ?? null,
+          };
+        return [];
       case "mcpServer/startupStatus/updated":
         return this.mcpStatus(p);
       case "model/rerouted":
@@ -593,11 +623,16 @@ export class CodexNormalizer {
     if (isLoginError(error)) return [{ type: "error", code: "not_signed_in", message: NOT_SIGNED_IN }];
     const limit =
       error?.codexErrorInfo === "usageLimitExceeded" || error?.codexErrorInfo === "rateLimitExceeded";
+    if (!limit) return [{ type: "notice", tone: "danger", text: message }];
+    // The plan's limit, typed like Claude's (D-338): when it resets comes from the latest rate limits.
+    const reset = limitReset(this.rateLimits);
     return [
       {
-        type: "notice",
-        tone: "danger",
-        text: limit ? `Your ChatGPT plan's limit is reached: ${message}` : message,
+        type: "error",
+        code: "rate_limit",
+        message: `ChatGPT's limit is reached: ${message}`,
+        ...(reset?.window ? { window: reset.window } : {}),
+        ...(reset?.resetsAt ? { resetsAt: reset.resetsAt } : {}),
       },
     ];
   }

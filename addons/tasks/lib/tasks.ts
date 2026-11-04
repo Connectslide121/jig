@@ -9,7 +9,7 @@ export type PermissionMode = "default" | "acceptEdits" | "plan";
 /** Who runs a task's chat (D-330): Claude Code, or ChatGPT through Codex. */
 export type TaskProvider = "claude" | "chatgpt";
 /** Why a task's chat waits for you: the kind of card pending in it. */
-export type WaitingFor = "permission" | "question" | "plan";
+export type WaitingFor = "permission" | "question" | "plan" | "limit";
 
 export interface TaskReport {
   outcome: Outcome;
@@ -70,9 +70,13 @@ export interface Task {
   provider?: TaskProvider;
   /** A model of `provider` (a family alias like `opus` or `sol`, or an exact id); empty = its default. */
   model?: string;
-  /** The provider and model its chat ran on, set when it starts. */
+  /** The provider and model its chat ran on: set when it starts, and when it ends on another (D-338). */
   ranOn?: TaskProvider;
   ranModel?: string;
+  /** Its chat started on this provider and hit its plan limit, so another one finished it (D-338). */
+  startedOn?: TaskProvider;
+  /** Its chat waits for its plan's limit to reset at this time, then carries on by itself (D-338). */
+  limitResetsAt?: string;
 }
 
 export interface Queue {
@@ -110,6 +114,11 @@ export interface ChatState {
   background?: number;
   /** When you last stopped one of its turns or rejected a tool call in it. */
   userStoppedAt?: string;
+  /** Who runs it now. */
+  provider?: TaskProvider;
+  model?: string;
+  /** Its plan's limit stopped it (D-338): it hasn't finished. */
+  limit?: { provider: TaskProvider; state: "ask" | "waiting" | "continuing"; resetsAt?: string };
 }
 
 export const OUTCOMES: Outcome[] = ["done", "partial", "failed", "blocked"];
@@ -248,6 +257,8 @@ export function resetTask(task: Task): Task {
     runId: _run,
     ranOn: _ranOn,
     ranModel: _ranModel,
+    startedOn: _startedOn,
+    limitResetsAt: _resets,
     ...rest
   } = task;
   return { ...rest, status: "queued" };
@@ -301,6 +312,8 @@ function answeredSince(task: Task, chat: ChatState): boolean {
  * question or permission waiting for you is `needs_you`, never finished.
  */
 export function chatFinished(task: Task, chat: ChatState, now = Date.now()): boolean {
+  // Stopped by its plan's limit: it waits for you, for the reset, or carries on elsewhere (D-338).
+  if (chat.limit) return false;
   if (chat.status === "error") return true;
   if (chat.status !== "idle" || !answeredSince(task, chat)) return false;
   if (chat.background && !task.nudgedAt) {
@@ -435,6 +448,32 @@ export function finishTask(task: Task, chat: ChatState, at = new Date().toISOStr
     costUsd: Math.max(0, chat.costUsd - (task.costAtStart ?? 0)),
     ...(!task.report && chat.lastAnswer ? { answer: chat.lastAnswer.slice(0, 4000) } : {}),
     ...(chat.status === "error" && chat.error ? { error: chat.error } : {}),
+    ...finishedOn(task, chat),
+  };
+}
+
+/** The provider that finished a task, when its chat continued with another after a limit (D-338). */
+function finishedOn(task: Task, chat: ChatState): Partial<Task> {
+  if (!chat.provider || !task.ranOn || chat.provider === task.ranOn) return {};
+  return {
+    ranOn: chat.provider,
+    ...(chat.model ? { ranModel: chat.model } : { ranModel: undefined }),
+    startedOn: task.startedOn ?? task.ranOn,
+  };
+}
+
+/**
+ * A task's chat its plan's limit stopped (D-338): with `ask` it needs you (the limit card), otherwise
+ * it keeps running while the chat waits for the reset or carries on with the other provider.
+ */
+export function limitedTask(task: Task, limit: NonNullable<ChatState["limit"]>): Task {
+  const { waitingFor: _was, limitResetsAt: _at, ...rest } = task;
+  if (limit.state === "ask") return { ...rest, status: "needs_you", sawBusy: true, waitingFor: "limit" };
+  return {
+    ...rest,
+    status: "running",
+    sawBusy: true,
+    ...(limit.state === "waiting" && limit.resetsAt ? { limitResetsAt: limit.resetsAt } : {}),
   };
 }
 

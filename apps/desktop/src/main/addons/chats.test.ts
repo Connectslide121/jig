@@ -133,6 +133,7 @@ describe("addonChats", () => {
       permissionMode: "plan",
       provider: undefined,
       model: undefined,
+      limitFallback: true,
     });
     expect(deps.send).toHaveBeenCalledWith("new", "do it", []);
     expect(deps.copyAttachments).not.toHaveBeenCalled();
@@ -214,5 +215,31 @@ describe("addonChats", () => {
     expect(deps.notify).toHaveBeenCalledWith("tasks", { sessionId: "s1", status: "working" });
     chats.statusChanged(meta({ id: "s2", status: "idle" }));
     expect(deps.notify).toHaveBeenLastCalledWith("other", { sessionId: "s2", status: "idle" });
+  });
+});
+
+describe("chatInfo: a limit (D-338)", () => {
+  it("says the chat's limit, and who runs it", () => {
+    const info = chatInfo({
+      meta: {
+        id: "s",
+        provider: "claude",
+        cwd: "/x",
+        title: "T",
+        createdAt: "",
+        updatedAt: "",
+        model: "",
+        permissionMode: "default",
+        status: "error",
+        authSource: "subscription",
+        costUsd: 0,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        turns: 1,
+        limit: { itemId: "l", provider: "codex", state: "waiting", resetsAt: "2026-11-04T14:00:00Z" },
+      },
+      items: [],
+      queue: [],
+    });
+    expect(info.limit).toEqual({ provider: "chatgpt", state: "waiting", resetsAt: "2026-11-04T14:00:00Z" });
   });
 });

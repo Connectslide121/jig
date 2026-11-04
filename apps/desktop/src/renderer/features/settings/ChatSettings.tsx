@@ -1,7 +1,14 @@
 import { LogIn, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChatProvider, ModelInfo } from "../../../shared/engine";
-import { CODEX_EFFORT_LEVELS, PERMISSION_MODE_LABELS, PERMISSION_MODES } from "../../../shared/engine";
+import {
+  CODEX_EFFORT_LEVELS,
+  LIMIT_POLICIES,
+  LIMIT_POLICY_LABELS,
+  type LimitPolicy,
+  PERMISSION_MODE_LABELS,
+  PERMISSION_MODES,
+} from "../../../shared/engine";
 import { chatGptModelChoices, resolveChatGptModel } from "../../../shared/providers";
 import { call, errorMessage } from "../../lib/host";
 import { updateConfig, useConfig } from "../../stores/config";
@@ -46,7 +53,7 @@ export function ChatSettings() {
     <div className="flex flex-col gap-4">
       <SettingsSection
         title="Chats"
-        description="Each chat runs on Claude (Claude Code) or ChatGPT (OpenAI's Codex), signed in with your own account. You choose when the chat starts, and it stays on that one for its whole life. Jig never sees your logins."
+        description="Each chat runs on Claude (Claude Code) or ChatGPT (OpenAI's Codex), signed in with your own account. You choose when the chat starts; when its plan's limit stops it, the chat can carry on with the other one. Jig never sees your logins."
       >
         <SettingRow
           label="New chats run on"
@@ -69,6 +76,24 @@ export function ChatSettings() {
               },
             ]}
           />
+        </SettingRow>
+        <SettingRow
+          label="When a chat hits its limit"
+          description="Ask me: the chat shows what you can do. Continue: the same chat carries on with the other provider when its plan has room (else it waits for the reset), reading what happened so far. Wait: the chat resumes by itself when the limit resets. A project can choose its own."
+        >
+          <Select
+            className={PICKER}
+            value={e.onLimit}
+            aria-label="When a chat hits its limit"
+            data-testid="settings-on-limit"
+            onChange={(ev) => void updateConfig({ engine: { onLimit: ev.target.value as LimitPolicy } })}
+          >
+            {LIMIT_POLICIES.map((policy) => (
+              <option key={policy} value={policy}>
+                {LIMIT_POLICY_LABELS[policy]}
+              </option>
+            ))}
+          </Select>
         </SettingRow>
       </SettingsSection>
       <ClaudeChats isDefault={provider === "claude"} />

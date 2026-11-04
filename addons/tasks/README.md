@@ -35,7 +35,7 @@ went, so you read the results as a table instead of scrolling one long chat.
   Claude or ChatGPT, each with a model: Default model or a family, "Opus (latest)", "Sol (latest)");
   it goes on the chat's first task (`Task.provider`, `Task.model`). **Edit** has the same; a task that
   continues the chat before shows that chat's provider, greyed out ("Same as the chat it continues"):
-  a chat keeps its provider for life (D-309), so its own choice is dropped. ChatGPT is greyed out with
+  a chat keeps its provider (D-309; only a limit handoff changes it, D-338), so its own choice is dropped. ChatGPT is greyed out with
   "Sign in on Get Started" (and an entry that opens it) while Codex isn't signed in. Every row and
   chat card shows the provider's mark in one column (the usage footer's), its tooltip says from where
   ("the queue's", "the project's default", "the chat it continues"); the details show provider and

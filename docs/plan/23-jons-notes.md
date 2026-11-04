@@ -49,6 +49,12 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       with a countdown and "Needs you", declined unanswered after `engine.dontAskWaitSeconds` (default
       60, 0 = at once); a queue chat goes on afterwards and still gets asked for its report.
 - [ ] Try a real "Dangerous rm operation" check in a Don't ask chat and in a queue task (D-336).
+- [x] **When a chat hits its limit, carry on with the other provider** (added 2026-11-04, D-338):
+      typed limits from both providers, the limit card (continue, wait and resume, dismiss), the
+      same chat continuing with a divider and a handoff built from the transcript, `engine.onLimit` /
+      `Project.onLimit`, the task queue following it, fake "hit the limit", `e2e/limit-handoff.spec.ts`.
+- [ ] Try a real limit with both providers signed in: the reset time on the card, Continue, and the
+      handoff the other provider gets (D-338).
 
 ## Session 2 — Add-ons: restore and share edited built-ins
 

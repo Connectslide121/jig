@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AI_FEATURE_IDS, AI_FEATURES, type AiFeatureId } from "./aiFeatures";
-import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS } from "./engine";
+import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS, LIMIT_POLICIES } from "./engine";
 import { AI_PROVIDERS, type AiProvider } from "./providers";
 
 /** One AI feature's provider and model (D-297); the provider defaults to the feature's own. */
@@ -48,6 +48,12 @@ export const ConfigSchema = z.object({
        * can override it (`Project.provider`); a chat keeps the provider it started with.
        */
       provider: z.enum(CHAT_PROVIDERS).default("claude"),
+      /**
+       * When a chat hits its plan's limit (D-338): `ask` shows the limit card, `switch` carries on with
+       * the other provider when it has room (else waits for the reset), `wait` resumes when the limit
+       * resets. A project can choose its own (`Project.onLimit`). Protected: it decides which plan pays.
+       */
+      onLimit: z.enum(LIMIT_POLICIES).default("ask"),
       /** Path to the user's own `codex` binary; empty = the one on PATH (D-294). */
       codexPath: z.string().default(""),
       /** Model for new Codex chats: a ChatGPT family (`sol`, `terra`, `luna`; D-310) or an exact slug. */
@@ -362,6 +368,7 @@ export const PROTECTED_SETTINGS = [
   "engine.codexTesterModel",
   "engine.codexHelperFallbackModel",
   "engine.provider",
+  "engine.onLimit",
   "engine.allowApiKey",
   "editor.claudeCompletion",
   "editor.claudeCompletionModel",

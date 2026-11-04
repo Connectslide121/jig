@@ -8,16 +8,20 @@ import { type ChatState, reduceEvent } from "../../shared/chat";
 import {
   type ChatAttachment,
   type ChatItem,
+  type ChatLimit,
   type ChatProvider,
   type ChatUpdate,
   chatProvider,
   type EffortLevel,
   type EngineEvent,
+  type LimitPolicy,
   type McpServerInfo,
   type ModelInfo,
+  otherProvider,
   type PermissionDecision,
   type PermissionMode,
   type PermissionRequest,
+  type ProviderSpan,
   type QueuedMessage,
   type RewindResult,
   type SavedClaudeSession,
@@ -25,6 +29,7 @@ import {
   type SessionSnapshot,
   type SlashCommandInfo,
 } from "../../shared/engine";
+import { buildHandoff } from "../../shared/handoff";
 import { JigError } from "../../shared/ipc";
 import { abortJigToolCalls } from "../engine/jigTools";
 import type { ChatToolServer, Engine, EngineSession } from "../engine/types";
@@ -52,6 +57,17 @@ const DONT_ASK_WAIT_SECONDS = 60;
 /** What Claude reads when Jig declines a request in "Don't ask" mode (D-293). */
 const DONT_ASK_DENIAL =
   "Declined automatically: this chat runs in Don't ask mode, so nobody is there to approve it. Don't retry the same call; do it a safer way (for an rm -rf safety check, use a folder under the repository's .tmp/ or the system temp folder, never a drive root or the home folder) or skip it and say so in your reply.";
+
+/** Providers by name, for the lines Jig writes in a chat. */
+const NAME: Record<ChatProvider, string> = { claude: "Claude", codex: "ChatGPT" };
+/** What the next provider is asked after the handoff when a chat continues with it (D-338). */
+const CONTINUE_TEXT = "Carry on with this chat's work from where it stopped.";
+/** What the same provider is asked when its limit has reset (D-338). */
+const RESUME_TEXT = "Your usage limit has reset. Carry on from where you stopped.";
+/** A little after the reset, so the plan has room when the message arrives. */
+const RESUME_GRACE_MS = 30_000;
+/** Longest a timer can wait (setTimeout's limit); a later reset waits again then. */
+const MAX_TIMER_MS = 2_000_000_000;
 
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
@@ -113,6 +129,19 @@ export interface SessionManagerOptions {
   agents?: (meta: SessionMeta) => Record<string, unknown> | undefined;
   /** Claude Code reported plan rate-limit state (the usage meter refreshes). */
   onRateLimit?: (event: Extract<EngineEvent, { type: "rate_limit" }>) => void;
+  /** What a chat does when its plan's limit stops it (D-338); without it, the limit card asks. */
+  limitPolicy?: (meta: SessionMeta) => LimitPolicy;
+  /** Whether a provider's plan has room for a chat to carry on with it (the usage meter, D-338). */
+  providerRoom?: (provider: ChatProvider) => { ok: boolean; reason?: string };
+  /** When a provider's used-up plan has room again (the usage meter), for a limit that didn't say. */
+  providerResetsAt?: (provider: ChatProvider) => string | undefined;
+  /** The model, effort and mode a chat gets when it continues with a provider (D-338). */
+  providerDefaults?: (
+    meta: SessionMeta,
+    provider: ChatProvider,
+  ) => { model: string; effort?: EffortLevel; permissionMode: PermissionMode };
+  /** `git diff --stat` in the chat's folder for the handoff; "" when it isn't a repository. */
+  diffStat?: (cwd: string) => Promise<string>;
   /**
    * A short name for a new chat from its first message (the quick model, D-288). Until it answers the
    * chat is called by the message's first words; a name you gave meanwhile is kept.
@@ -168,6 +197,12 @@ interface Live {
   toolErrors?: number;
   /** A turn being started (attachments read, add-ons' context asked): settles once its message is sent. */
   starting?: Promise<void>;
+  /** This turn was stopped by the plan's limit: its queued messages wait (D-338). */
+  limited?: boolean;
+  /** Carry on with the other provider when this turn ends (`engine.onLimit` is switch). */
+  autoContinue?: boolean;
+  /** Resumes the chat when its limit resets. */
+  limitTimer?: NodeJS.Timeout;
 }
 
 /**
@@ -213,16 +248,21 @@ export class SessionManager {
           if (data.meta.draft || legacyEmpty) continue;
           // A process can't survive a restart: anything "working" is idle now.
           const status = data.meta.status === "error" ? "error" : "idle";
-          this.sessions.set(data.meta.id, {
+          // A chat that was carrying on with the other provider when Jig closed asks again (D-338).
+          const limit: ChatLimit | undefined =
+            data.meta.limit?.state === "continuing" ? { ...data.meta.limit, state: "ask" } : data.meta.limit;
+          const live: Live = {
             // Nor do its background tasks.
             state: {
-              meta: { ...data.meta, status, backgroundTasks: undefined, azureTenant: undefined },
+              meta: { ...data.meta, status, limit, backgroundTasks: undefined, azureTenant: undefined },
               items: data.items,
             },
             queue: data.queue,
             permissions: new Map(),
             loaded: true,
-          });
+          };
+          this.sessions.set(data.meta.id, live);
+          if (limit?.state === "waiting") this.armWait(live);
         } catch (error) {
           log.warn(`Skipping unreadable session file ${file}`, error);
         }
@@ -486,13 +526,24 @@ export class SessionManager {
       if (live.toolErrors === 3) this.friction(live, "tool-errors", "3 failed tool calls in one turn");
     }
     this.emit(live, reduceEvent(live.state, event));
+    if (event.type === "error" && event.code === "rate_limit") this.limitHit(live);
+    // Stopped by its limit with `switch`: the chat carries on with the other provider (D-338).
+    if ((event.type === "result" || event.type === "exit") && live.autoContinue) {
+      live.autoContinue = false;
+      const to = otherProvider(chatProvider(live.state.meta));
+      void this.continueWith(live, to, "limit").catch((error: Error) => {
+        log.warn("Couldn't continue with the other provider", error);
+        this.limitState(live, "ask");
+      });
+    }
     // A fork has its own Claude Code session id from its first start on.
     if (event.type === "init" && live.state.meta.forkPending) this.setMeta(live, { forkPending: undefined });
     if (event.type === "result" || event.type === "exit") this.options.onTurnEnd?.(live.state.meta);
     if (event.type === "result") {
       this.scheduleSave(live, true);
       void this.refreshContext(live);
-      const next = live.queue.shift();
+      // A turn its limit stopped leaves the queue for later: the next message would hit it too.
+      const next = live.limited ? undefined : live.queue.shift();
       if (next) {
         this.emit(live, [{ op: "queue", queue: live.queue }]);
         void this.startTurn(live, next.text, next.attachments);
@@ -556,6 +607,15 @@ export class SessionManager {
       this.commandCache.clear();
     }
 
+    // A new turn ends the limit's wait: a card still open or waiting is passed by (D-338).
+    live.limited = false;
+    if (live.state.meta.limit) {
+      clearTimeout(live.limitTimer);
+      const card = live.state.items.find((i) => i.id === live.state.meta.limit?.itemId);
+      if (card?.kind === "limit" && (card.status === "open" || card.status === "waiting"))
+        this.replaceItem(live, { ...card, status: "dismissed" });
+      live.state.meta = { ...live.state.meta, limit: undefined };
+    }
     // Busy from now on, before any await: a second send right away is queued, not started twice.
     live.state.meta = { ...live.state.meta, status: "starting" };
     let data: EnginePart[] = [];
@@ -621,7 +681,21 @@ export class SessionManager {
       live.state.items[live.state.items.indexOf(shell)] = sent;
       this.emit(live, [{ op: "upsert", item: sent }]);
     }
-    const withShell = shells.length ? `${shells.map(shellContext).join("\n")}\n\n${text}` : text;
+    let withShell = shells.length ? `${shells.map(shellContext).join("\n")}\n\n${text}` : text;
+    // The first message to a provider the chat continued with brings the handoff (D-338).
+    const handoff = live.state.meta.handoffPending;
+    if (handoff) {
+      const diffStat = (await this.options.diffStat?.(live.state.meta.cwd).catch(() => "")) ?? "";
+      const summary = buildHandoff({
+        items: live.state.items,
+        from: handoff.from,
+        to: chatProvider(live.state.meta),
+        reason: handoff.reason,
+        diffStat,
+      });
+      live.state.meta = { ...live.state.meta, handoffPending: undefined };
+      if (summary) withShell = `${summary}\n\n${withShell}`;
+    }
     const context = (await this.options.turnContext?.(live.state.meta, text).catch(() => "")) ?? "";
     const message = context
       ? `<jig-context>\nWhat Jig's add-ons tell you for this message (not written by the user):\n${context}\n</jig-context>\n\n${withShell}`
@@ -768,6 +842,8 @@ export class SessionManager {
     const chats = new Map<string, string>();
     for (const { state } of this.sessions.values()) {
       if (state.meta.engineSessionId) chats.set(state.meta.engineSessionId, state.meta.id);
+      for (const span of state.meta.providers ?? [])
+        if (span.engineSessionId) chats.set(span.engineSessionId, state.meta.id);
       if (state.meta.importedFrom) chats.set(state.meta.importedFrom, state.meta.id);
     }
     const codex = this.options.engineFor?.("codex");
@@ -848,6 +924,12 @@ export class SessionManager {
         canRewind: false,
         error: "Jig has no checkpoint for this message (sent before checkpoints were on).",
       };
+    const handoff = this.handoffAfter(live, live.state.items.indexOf(item));
+    if (handoff)
+      return {
+        canRewind: false,
+        error: `This message is from before the chat continued with ${NAME[handoff.to]}.`,
+      };
     if (["working", "needs_you", "starting"].includes(live.state.meta.status))
       return { canRewind: false, error: "Wait until Claude has finished, or stop it first." };
     const result = await this.startEngine(live).rewindFiles(item.messageId, dryRun);
@@ -880,6 +962,7 @@ export class SessionManager {
     const index = live.state.items.findIndex((i) => i.id === itemId);
     const item = live.state.items[index];
     if (item?.kind !== "user") throw new JigError("not_found", "That message isn't in this chat");
+    this.beforeHandoffCheck(live, index);
     this.friction(live, "rewind", files ? "rewound the chat and its files" : "rewound the chat");
     let restored: RewindResult | undefined;
     if (files) {
@@ -1085,6 +1168,201 @@ export class SessionManager {
     this.emit(live, [{ op: "queue", queue: live.queue }]);
   }
 
+  /** Replaces a transcript item (by id) and sends it. */
+  private replaceItem(live: Live, item: ChatItem) {
+    const index = live.state.items.findIndex((i) => i.id === item.id);
+    if (index < 0) return;
+    live.state.items[index] = item;
+    this.emit(live, [{ op: "upsert", item }]);
+  }
+
+  /** The first handoff divider after an item: the chat continued with another provider since (D-338). */
+  private handoffAfter(live: Live, index: number): Extract<ChatItem, { kind: "handoff" }> | undefined {
+    return live.state.items
+      .slice(index + 1)
+      .find((i): i is Extract<ChatItem, { kind: "handoff" }> => i.kind === "handoff");
+  }
+
+  /** Rewinding goes back only as far as the last handoff: the provider before it has its own conversation. */
+  private beforeHandoffCheck(live: Live, index: number) {
+    const handoff = this.handoffAfter(live, index);
+    if (handoff)
+      throw new JigError(
+        "invalid_args",
+        `This message is from before the chat continued with ${NAME[handoff.to]}: rewind to one after that.`,
+      );
+  }
+
+  /**
+   * The chat's provider hit its plan limit (D-338; the card is the latest `limit` item). What happens
+   * follows `engine.onLimit`: carry on with the other provider when it has room, wait for the reset,
+   * or ask on the card. Builder chats only ask (they stay on Claude Code).
+   */
+  private limitHit(live: Live) {
+    const card = [...live.state.items].reverse().find((i) => i.kind === "limit");
+    if (card?.kind !== "limit") return;
+    live.limited = true;
+    const meta = live.state.meta;
+    const provider = chatProvider(meta);
+    const policy: LimitPolicy = meta.kind ? "ask" : (this.options.limitPolicy?.(meta) ?? "ask");
+    const resetsAt = card.resetsAt ?? this.options.providerResetsAt?.(provider);
+    const room = this.options.providerRoom?.(otherProvider(provider));
+    let state: ChatLimit["state"] = "ask";
+    if (policy === "switch" && room?.ok && this.options.engineFor) state = "continuing";
+    else if (policy !== "ask" && resetsAt) state = "waiting";
+    live.autoContinue = state === "continuing";
+    this.replaceItem(live, {
+      ...card,
+      ...(resetsAt ? { resetsAt } : {}),
+      status: state === "waiting" ? "waiting" : "open",
+    });
+    this.setMeta(live, {
+      limit: { itemId: card.id, provider, state, ...(resetsAt ? { resetsAt } : {}) },
+    });
+    if (state === "waiting") this.armWait(live);
+  }
+
+  /** Changes the open limit's state and its card. */
+  private limitState(live: Live, state: ChatLimit["state"]) {
+    const limit = live.state.meta.limit;
+    if (!limit) return;
+    const card = live.state.items.find((i) => i.id === limit.itemId);
+    if (card?.kind === "limit")
+      this.replaceItem(live, { ...card, status: state === "waiting" ? "waiting" : "open" });
+    if (state !== "waiting") clearTimeout(live.limitTimer);
+    this.setMeta(live, { limit: { ...limit, state } });
+    if (state === "waiting") this.armWait(live);
+  }
+
+  /** Resumes the chat on its own provider shortly after its limit resets. */
+  private armWait(live: Live) {
+    clearTimeout(live.limitTimer);
+    const resetsAt = live.state.meta.limit?.resetsAt;
+    if (!resetsAt) return;
+    const ms = new Date(resetsAt).getTime() + RESUME_GRACE_MS - Date.now();
+    live.limitTimer = setTimeout(
+      () => {
+        if (ms > MAX_TIMER_MS) return this.armWait(live);
+        void this.resumeAfterLimit(live);
+      },
+      Math.min(MAX_TIMER_MS, Math.max(1_000, ms)),
+    );
+    live.limitTimer.unref?.();
+  }
+
+  private async resumeAfterLimit(live: Live) {
+    const limit = live.state.meta.limit;
+    if (live.deleted || limit?.state !== "waiting") return;
+    if (["working", "needs_you", "starting"].includes(live.state.meta.status)) return;
+    const card = live.state.items.find((i) => i.id === limit.itemId);
+    if (card?.kind === "limit") this.replaceItem(live, { ...card, status: "resumed" });
+    live.state.meta = { ...live.state.meta, limit: undefined };
+    await this.startTurn(
+      live,
+      RESUME_TEXT,
+      [],
+      `Resumed: ${NAME[limit.provider]}'s limit has reset`,
+      "clock",
+    );
+  }
+
+  /**
+   * The chat carries on with another provider (D-338): the old one's process ends, a divider goes into
+   * the transcript, the chat's provider, model and effort become the new one's, and its first message
+   * brings the handoff Jig builds from the transcript. After a limit Jig sends that message itself.
+   * The old provider's session is kept in `providers`; the new one starts its own.
+   */
+  private async continueWith(live: Live, to: ChatProvider, reason: ProviderSpan["reason"]) {
+    const meta = live.state.meta;
+    const from = chatProvider(meta);
+    if (from === to) return;
+    if (["working", "needs_you", "starting"].includes(meta.status))
+      throw new JigError("invalid_args", "Wait until the chat has finished, or stop it first.");
+    live.autoContinue = false;
+    clearTimeout(live.limitTimer);
+    this.stop(live);
+    const at = new Date().toISOString();
+    const limit = live.state.meta.limit;
+    const card = limit && live.state.items.find((i) => i.id === limit.itemId);
+    if (card?.kind === "limit") this.replaceItem(live, { ...card, status: "continued", to });
+    const divider: ChatItem = { kind: "handoff", id: `handoff-${randomUUID()}`, at, from, to, reason };
+    live.state.items.push(divider);
+    this.emit(live, [{ op: "upsert", item: divider }]);
+    const defaults = this.options.providerDefaults?.(meta, to) ?? {
+      model: "",
+      permissionMode: meta.permissionMode,
+    };
+    const span: ProviderSpan = {
+      provider: from,
+      ...(meta.engineSessionId ? { engineSessionId: meta.engineSessionId } : {}),
+      model: meta.activeModel ?? meta.model,
+      until: at,
+      reason,
+    };
+    this.setMeta(live, {
+      provider: to,
+      providers: [...(meta.providers ?? []), span],
+      handoffPending: { from, reason },
+      model: defaults.model,
+      effort: defaults.effort,
+      permissionMode: defaults.permissionMode,
+      engineSessionId: undefined,
+      activeModel: undefined,
+      authSource: "unknown",
+      resumeAt: undefined,
+      resetPending: undefined,
+      forkPending: undefined,
+      context: undefined,
+      mcpServers: undefined,
+      suggestion: undefined,
+      limit: undefined,
+      lastError: undefined,
+      needsLogin: false,
+      status: "idle",
+    });
+    this.scheduleSave(live, true);
+    if (reason === "limit")
+      await this.startTurn(
+        live,
+        CONTINUE_TEXT,
+        [],
+        `Continued with ${NAME[to]}: ${NAME[from]}'s limit is reached`,
+        "arrow-right-left",
+      );
+  }
+
+  /**
+   * What you chose on a limit card (D-338): carry on with the other provider, wait for the reset and
+   * resume, stop waiting (the card asks again), or dismiss it.
+   */
+  async limitAction(
+    id: string,
+    itemId: string,
+    action: "continue" | "wait" | "cancel" | "dismiss",
+  ): Promise<void> {
+    const live = await this.live(id);
+    const limit = live.state.meta.limit;
+    if (!limit || limit.itemId !== itemId) throw new JigError("not_found", "This limit is no longer current");
+    if (action === "continue") {
+      if (live.state.meta.kind) throw new JigError("not_allowed", "This chat stays on Claude Code");
+      const to = otherProvider(limit.provider);
+      const room = this.options.providerRoom?.(to);
+      if (room && !room.ok) throw new JigError("unavailable", room.reason ?? `${NAME[to]} has no room now`);
+      return this.continueWith(live, to, "limit");
+    }
+    if (action === "wait") {
+      if (!limit.resetsAt)
+        throw new JigError("invalid_args", `${NAME[limit.provider]} didn't say when it resets`);
+      return this.limitState(live, "waiting");
+    }
+    if (action === "cancel") return this.limitState(live, "ask");
+    clearTimeout(live.limitTimer);
+    const card = live.state.items.find((i) => i.id === itemId);
+    if (card?.kind === "limit") this.replaceItem(live, { ...card, status: "dismissed" });
+    live.limited = false;
+    this.setMeta(live, { limit: undefined });
+  }
+
   /** Friction for the learning log (no AI): what made a chat harder. */
   private friction(live: Live, signal: string, text: string) {
     this.options.onActivity?.({ kind: "friction", session: live.state.meta, text, signal });
@@ -1202,6 +1480,7 @@ export class SessionManager {
   async delete(id: string): Promise<void> {
     const live = await this.live(id);
     live.deleted = true;
+    clearTimeout(live.limitTimer);
     this.stop(live);
     clearTimeout(live.saveTimer);
     this.sessions.delete(id);
@@ -1215,6 +1494,7 @@ export class SessionManager {
   async shutdown(): Promise<void> {
     const writes: Array<Promise<void> | undefined> = [];
     for (const live of this.sessions.values()) {
+      clearTimeout(live.limitTimer);
       const unsaved = Boolean(live.saveTimer) || Boolean(live.engine);
       this.stop(live);
       writes.push(live.saving);

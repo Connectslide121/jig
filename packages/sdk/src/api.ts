@@ -440,7 +440,7 @@ export interface AddonChatSend {
 export interface AddonChatInfo {
   id: string;
   title: string;
-  /** Who runs it; a chat keeps its provider for life. */
+  /** Who runs it now; a chat stopped by its plan's limit can carry on with the other one (D-338). */
   provider: AddonChatProvider;
   /** Its model as chosen (an alias or exact id); empty = the provider's default. */
   model: string;
@@ -460,6 +460,12 @@ export interface AddonChatInfo {
   userStoppedAt?: string;
   /** While it needs you: what waits for you in it, a question, a plan to approve or a permission. */
   waitingFor?: "permission" | "question" | "plan";
+  /**
+   * Its provider's plan limit stopped it (D-338): `ask` waits for your choice on the limit card,
+   * `waiting` resumes on its own at `resetsAt`, `continuing` carries on with the other provider. A
+   * chat with a limit hasn't finished its work.
+   */
+  limit?: { provider: AddonChatProvider; state: "ask" | "waiting" | "continuing"; resetsAt?: string };
 }
 
 /** The Azure tenant every `az` Jig runs uses (D-282): `default` is your own az login. */
@@ -552,7 +558,14 @@ export interface AddonHostApi {
    * changes to the host export `chatChanged({ sessionId, status })`.
    */
   chats: {
-    create(input: Omit<AddonChatSend, "text" | "sessionId">): Promise<{ sessionId: string }>;
+    /**
+     * A new chat. When its provider's plan is used up and the project's (or Jig's) "When a chat hits
+     * its limit" is "continue with the other provider", it starts on the other one (D-338): `provider`
+     * says who runs it.
+     */
+    create(
+      input: Omit<AddonChatSend, "text" | "sessionId">,
+    ): Promise<{ sessionId: string; provider: AddonChatProvider }>;
     send(input: AddonChatSend): Promise<{ sessionId: string; sentAt: string }>;
     get(sessionId: string): Promise<AddonChatInfo>;
   };
