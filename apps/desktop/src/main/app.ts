@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog } from "electron";
 import type { AppInfo } from "../shared/ipc";
 import { JigError } from "../shared/ipc";
 import { openExternal, openPath, showInFolder } from "./appWindows";
+import { releaseHeld } from "./engine/fake";
 import { handle } from "./ipc/router";
 import { EXECUTABLE } from "./ipc/validate";
 import { jigHome } from "./state/paths";
@@ -22,6 +23,11 @@ export function registerAppHandlers(): void {
     safeMode: process.env.JIG_SAFE_MODE === "1",
     startedAfterFailure: process.env.JIG_STARTED_AFTER_FAILURE === "1",
   }));
+  handle("fake.release", (args) => {
+    if (engineKind() !== "fake")
+      throw new JigError("not_fake", "Only with the fake engine (JIG_ENGINE=fake)");
+    return releaseHeld(args?.match);
+  });
   handle("app.openExternal", async ({ url }) => {
     if (!/^(https?|mailto):/.test(url))
       throw new JigError("invalid_url", "Only http(s) and mailto links can be opened");

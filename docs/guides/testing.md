@@ -97,6 +97,7 @@ in this order:
 | contains "login" (first message) | acts like a Claude Code that isn't signed in |
 | contains "hit the limit" | says "Starting on it.", then the chat's provider reports its plan limit (Claude's "You've hit your limit…", ChatGPT's "ChatGPT's limit is reached…"), resetting in 2 h 13 min: the limit card (D-338) |
 | starts with Jig's handoff (`<jig-handoff>`, a chat that continued with the other provider) | first says "Picked up from the handoff: “<the goal>”." (the handoff is left out of the matching, like add-ons' context). After a limit (D-338, `e2e/limit-handoff.spec.ts`) or a handover by hand: the first message you send after Hand over in the handover dialog (D-339, `e2e/handover.spec.ts`) |
+| contains "hold until released" (anywhere, also in a task's prompt) | after its thinking, says "Working…" and keeps the turn running until the test calls the host's `fake.release` (`{ match? }`: the held turns whose message contains it, or all; answers how many) or the turn is stopped; then it goes on with the rest of the script (a task's chat still reports). For looking at a view mid-turn, e.g. a Running task |
 | `/compact …` | compacts the conversation (context drops to 21k tokens) |
 | `/name …` | a Claude Code command prints its output; a skill (`/explain-code`) answers like Claude |
 | a message whose Jig context names a mentioned meeting (`@meeting:…`, D-250) | reads it with `jig_meeting_read` and answers "From the mentioned meeting:" with the start of its transcript |
@@ -198,6 +199,30 @@ you send are kept while Jig runs.
 
 `e2e/screenshots.spec.ts` regenerates the pictures of the "What Jig can do" page and the README
 (skipped unless `JIG_SCREENSHOTS=1`; see `docs/reference/about.md`).
+
+### Put the UI in a state and screenshot it
+
+For a design check of a change, take the view in the state you need at every width it can be shown
+at, in one test run, instead of clicking through `npm run dev`:
+
+1. **Make the state through the host**, not the screen: `hostCall(page, "addons.call", { id, method,
+   args })` for an add-on's data (the Tasks queue: `add`, `select`, `setStopOnFailure`, `start`),
+   `projects.add`, `sessions.send`… State the view reads from the host survives the reload below;
+   an open modal or menu does not, so open those after the last placement (or screenshot them
+   yourself). Writing add-on storage by hand rarely sticks: add-ons reconcile it (a "running" task
+   with an idle chat is put back), so drive them through their own methods.
+2. **Something in progress:** a message with "hold until released" keeps the fake engine's turn
+   running (a Running task, a busy chat) until `hostCall(page, "fake.release", { match })`.
+3. **Screenshot it:** `shootView(page, viewId, name, { ready })` from `e2e/shots.ts` puts the view in
+   the right sidebar (320 px), the bottom panel (320 px high, the window's width) and a main-area tab,
+   each time saving the layout and reloading the window as on start, so its `@container` sizes respond
+   as in real use. It writes `.tmp/shots/<name>-sidebar.png`, `-bottom.png` and `-tab.png` and returns
+   the paths; `placements` picks fewer. View ids: a core view's id, or `addon.<add-on>.<view>`.
+
+`e2e/ui-shots.spec.ts` is the worked example (a Tasks queue with done, failed, running, up next and
+left-out tasks): copy its test, change the state and the view, and run it with
+`npm run build && JIG_UI_SHOTS=1 npx playwright test e2e/ui-shots.spec.ts`, then read the PNGs. It is
+skipped in normal runs and ignored by `e2e:changed`.
 
 ## Rules
 

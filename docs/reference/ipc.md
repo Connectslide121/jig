@@ -25,6 +25,7 @@ settings, add-on permissions.
 | Method | Args | Result | Notes |
 |---|---|---|---|
 | `app.info` | — | `AppInfo` | version, platform, `jigHome`, dev flag, engine kind, `packaged`, `updated` (started again by the installer after an in-app update), `safeMode`, `startedAfterFailure` (set by the launcher after a failed update) |
+| `fake.release` | `{ match? }` | `number` | fake engine only (`JIG_ENGINE=fake`, e2e): lets the turns held by "hold until released" finish (those whose message contains `match`, or all); how many it let go. Fails with `not_fake` otherwise |
 | `iconThemes.list` / `iconThemes.rescan` | — | `{ themes, vscodeSetting?, vscodeMatch? }` | file icon themes found, VS Code's `workbench.iconTheme` and the matching theme (`docs/reference/file-icons.md`) |
 | `iconThemes.get` | `{ id }` | `{ id, label, theme }` | a file icon theme with `jig-icons:` URLs |
 | `iconThemes.active` | — | `{ id, label, theme } \| null` | the theme chosen in Settings (`null` = Jig's icons) |

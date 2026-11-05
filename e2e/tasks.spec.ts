@@ -660,3 +660,23 @@ test("Tasks: a task for ChatGPT while it isn't signed in is blocked and pauses t
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test("Tasks: a task held by the fake engine stays Running until the test releases it", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["hold until released"], newChat: true },
+  });
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Running", { timeout: 20000 });
+  // Held: it doesn't finish on its own.
+  await page.waitForTimeout(1000);
+  await expect(view.getByTestId("task-status-t1")).toContainText("Running");
+  expect(await hostCall(page, "fake.release", {})).toEqual({ ok: true, value: 1 });
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done", { timeout: 20000 });
+});

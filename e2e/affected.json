@@ -26,6 +26,8 @@
     "apps/desktop/electron-builder.yml",
     "e2e/affected.json",
     "e2e/screenshots.spec.ts",
+    "e2e/ui-shots.spec.ts",
+    "e2e/shots.ts",
     "e2e/packaged.spec.ts"
   ],
   "fallback": ["navigation.spec.ts", "workbench.spec.ts"],

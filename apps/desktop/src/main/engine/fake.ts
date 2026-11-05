@@ -40,6 +40,38 @@ import {
 /** "report the task as done" / "report task t2 as failed": a task's chat reports again (D-353). */
 const REPORT_AGAIN = /^report (?:the task|task (t\d+)) as (done|partial|failed|blocked)\b/;
 
+/**
+ * Turns that said "hold until released" (e2e): they stay running, after "Working…", until a test lets
+ * them go with the `fake.release` host call, so a view can be looked at mid-turn (a running task).
+ */
+const held = new Set<{ text: string; release: () => void }>();
+
+/** Lets held turns finish: those whose message contains `match`, or all. Returns how many. */
+export function releaseHeld(match?: string): number {
+  const which = [...held].filter((h) => !match || h.text.toLowerCase().includes(match.toLowerCase()));
+  for (const h of which) h.release();
+  return which.length;
+}
+
+/** Waits until `releaseHeld` lets this turn go, or the turn is stopped. */
+function holdUntilReleased(text: string, signal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) return reject(new Error("aborted"));
+    const entry = {
+      text,
+      release: () => {
+        held.delete(entry);
+        resolve();
+      },
+    };
+    held.add(entry);
+    signal.addEventListener("abort", () => {
+      held.delete(entry);
+      reject(new Error("aborted"));
+    });
+  });
+}
+
 const FAKE_COMMANDS: SlashCommandInfo[] = [
   {
     name: "compact",
@@ -359,6 +391,12 @@ export class FakeEngine implements Engine {
         // A test chat's message mentions PASS/FAIL, which must not end the turn with an error.
         const isTestChat = lower.startsWith("test this in claude's browser");
         await stream(`${msg}:thinking:0`, "Thinking about the request.", signal, "thinking");
+        if (lower.includes("hold until released")) {
+          // Stays running until the test calls `fake.release`, then goes on with the rest of the script
+          // (a task's chat still reports).
+          await stream(`${msg}:text:hold`, "Working…", signal);
+          await holdUntilReleased(text, signal);
+        }
         if (handoffGoal)
           await stream(`${msg}:text:handoff`, `Picked up from the handoff: “${handoffGoal}”.`, signal);
         if (toolHandlers?.jig_meeting_read && text.startsWith("Question about meeting ")) {

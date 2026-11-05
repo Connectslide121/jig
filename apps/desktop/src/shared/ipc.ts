@@ -326,6 +326,8 @@ export interface HostMethods {
   "skills.details": { args: { id: string }; result: SkillDetails };
 
   "app.info": { args: void; result: AppInfo };
+  /** Fake engine only (e2e): lets turns held by "hold until released" finish; returns how many. */
+  "fake.release": { args: { match?: string } | void; result: number };
   /** An image file as a data URL, for previews (image types only, ≤ 25 MB). */
   "files.image": { args: { path: string }; result: ImageData };
   /** A file for the Preview tab: its kind, text or extracted content, and a `jig-file:` address. */

@@ -246,7 +246,9 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - A new spec gets a rule in `e2e/affected.json`. Tests run in parallel: no dependence on other tests or
   timing; keep each test short (the slowest sets the suite's time).
 - **UI is still looked at before it's done:** a screenshot in Claude's browser or a quick `npm run dev`
-  look, not a test run (the hard UI rules above still apply).
+  look, not a test run (the hard UI rules above still apply). For a view in a given state at all its
+  widths (sidebar, bottom panel, tab) use `shootView` (`e2e/shots.ts`), with "hold until released"
+  for something running: `docs/guides/testing.md` → "Put the UI in a state and screenshot it".
 - **Scratch files go in `.tmp/`** (git-ignored, inside this repository): screenshots, throwaway
   scripts, temporary `JIG_HOME`s. Never create them at a drive root or elsewhere outside the repo;
   Claude Code asks before `rm -rf` on such paths even in "Don't ask" mode, which stops the task queue.
