@@ -75,6 +75,11 @@ export class UsageService {
     if (this.ageMs() > maxAgeMs) void this.refresh();
   }
 
+  /** The numbers, asked again first when older than `maxAgeMs` (or while a question is out). */
+  async fresh(maxAgeMs: number): Promise<PlanUsage> {
+    return this.inflight || this.ageMs() > maxAgeMs ? this.refresh() : this.usage;
+  }
+
   /** Claude Code reported a rate limit during a chat. */
   rateLimit(event: Extract<EngineEvent, { type: "rate_limit" }>): void {
     const warning =

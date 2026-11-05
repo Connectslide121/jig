@@ -1399,6 +1399,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   Claude's reply) or stops. Reply to a message to answer that chat; plain text goes to the last chat
   it told you about; /chats picks one. A request answered on the computer is marked so on the phone.
   Claude can text you itself (`jig_phone_send`). The token is encrypted with the OS.
+- Ask any chat or Jig on your phone "how much usage is left?": `jig_usage_limits` gives both
+  providers' windows (used, left, when each resets) from the footer's numbers, or says a provider
+  has no limit data. "Close that chat's room" closes it like /close (`jig_phone_close_room`, D-386):
+  only the room; the chat goes on. To check on a real bot: the concierge finds both via tool search.
 - Jig on your phone through Teams (D-370, D-377–D-381): Settings → Phone → Teams → Set up Teams…
   creates your own bot and its relay in your Azure with your az (every command listed first), writes
   the Teams app package and pairs by a code. The bot's 1:1 chat gets what needs you (Adaptive Cards,

@@ -77,6 +77,14 @@ call the provider layer makes (`onChatGptCall`, at most every 15 s), after the C
 | `usage.refresh` | `UsageByProvider` | asks Claude Code and Codex now |
 | event `usage.changed` | `UsageByProvider` | after every refresh or rate-limit event, of either provider |
 
+## Claude's tool (D-386)
+
+`jig_usage_limits` (read only, on the `jig` server, so every chat and the phone's concierge have it)
+returns the same numbers as text (`usageReport`): per provider its plan, then per window % used,
+% left and when it resets (relative and ISO), extra usage, a reached limit. It asks again first when
+the numbers are over a minute old. A provider without windows says "no limit data" and why; never a
+guess.
+
 The fake engine (`JIG_ENGINE=fake`) reports 42 % (5 h), 18 % (week) and 31 % (Fable, a per-model weekly limit as the server names it);
 `JIG_FAKE_USAGE=unavailable` acts like an API-key login, and a JSON value replaces the answer. For
 ChatGPT it reports a Plus plan at 27 % (5 h) and 64 % (week); `JIG_FAKE_CHATGPT_USAGE=signedout` acts

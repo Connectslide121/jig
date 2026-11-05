@@ -159,6 +159,10 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       messages, /chats (with topics), the chat's ⋯ menu → Open on my phone (`phone.open`), and by
       itself for a chat Jig starts from the phone. /close deletes the topic. Rooms get everything
       also while you're at the computer. Needs topics; kept in `phone.json` (`rooms`).
+- [x] Claude closes rooms and tells usage limits (D-386): `jig_phone_close_room` (as /close: only
+      the room, never the chat; says when there's none) and `jig_usage_limits` (both providers' used,
+      left and reset, from the footer's numbers), for every chat and the concierge. Fake engine:
+      "close my phone room", "my usage limits".
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

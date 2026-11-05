@@ -32,6 +32,14 @@ test("plan usage is always in the status bar and on the chat header, with a card
   await page.keyboard.press("Control+N");
   await expect(page.getByTestId("composer-input")).toBeVisible();
   await expect(page.getByTestId("usage-ring")).toHaveCount(0);
+
+  // Claude reads the same numbers with jig_usage_limits, for both providers.
+  await page.getByTestId("composer-input").fill("my usage limits");
+  await page.keyboard.press("Enter");
+  const reply = page.getByTestId("assistant-message").last();
+  await expect(reply).toContainText("Claude (Max plan):", { timeout: 15000 });
+  await expect(reply).toContainText("42 % used, 58 % left, resets in 2 h");
+  await expect(reply).toContainText("ChatGPT (Plus plan):");
 });
 
 test("usage says so when plan limits don't apply, and warns near the limit", async () => {

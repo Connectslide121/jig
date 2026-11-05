@@ -768,7 +768,8 @@ backs off after failures (up to a minute) with the "can't be reached" warning; `
 current poll or pause and asks again at once, and any call that gets through (a send, `getMe`)
 clears that warning (never the 401/409 ones). `index.ts`
 wires it to Electron (safeStorage, `powerMonitor` idle, and `resume`/`unlock-screen` → `wake()`, `phone.*` IPC, `onSessionStatus`,
-`onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send`. The
+`onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send` and
+`jig_phone_close_room` (what /close does in a room, asked by Claude; D-386). The
 renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, never the token.
 `concierge.ts` registers the `concierge` session kind (`registerSessionKind`: its prompt, Jig's tool
 server plus the chat tools, `builtinTools: ["ToolSearch"]`, passed to the SDK as `tools`) and finds or

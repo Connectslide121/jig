@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   codexUsageFrom,
+  EMPTY_USAGE,
   formatResetIn,
   formatResetShort,
   formatUsageAmount,
@@ -8,6 +9,7 @@ import {
   planName,
   planResetsAt,
   planUsageFrom,
+  usageReport,
   usageTone,
   windowShort,
 } from "./usage";
@@ -237,5 +239,54 @@ describe("planHasRoom and planResetsAt (D-338)", () => {
         warning: { window: "w", status: "rejected", resetsAt: "2026-11-05T00:00:00Z" },
       }),
     ).toBe("2026-11-05T00:00:00Z");
+  });
+});
+
+describe("usageReport", () => {
+  it("tells each window's use, what is left and its reset, for both providers", () => {
+    const claude = planUsageFrom(
+      {
+        subscription_type: "max",
+        rate_limits: {
+          five_hour: { utilization: 42, resets_at: "2026-10-28T12:00:00Z" },
+          seven_day: { utilization: null, resets_at: null },
+        },
+      },
+      now,
+    );
+    const chatgpt = codexUsageFrom(
+      { planType: "plus", primary: { usedPercent: 27, windowDurationMins: 300, resetsAt: null } },
+      now,
+    );
+    const text = usageReport({ claude, chatgpt }, now);
+    expect(text).toContain("Claude (Max plan):");
+    expect(text).toContain(
+      "- Current session (5 h): 42 % used, 58 % left, resets in 2 h (2026-10-28T12:00:00.000Z)",
+    );
+    expect(text).not.toContain("This week (all models)");
+    expect(text).toContain("ChatGPT (Plus plan):");
+    expect(text).toContain("- Current session (5 h): 27 % used, 73 % left, reset time not reported");
+  });
+
+  it("says plainly when a provider has no limit data", () => {
+    const text = usageReport(
+      { claude: planUsageFrom({ rate_limits_available: false }, now), chatgpt: EMPTY_USAGE },
+      now,
+    );
+    expect(text).toContain("Claude: no limit data. Plan limits apply to a Claude subscription.");
+    expect(text).toContain("ChatGPT: Jig hasn't heard from ChatGPT about its limits yet.");
+  });
+
+  it("keeps the last numbers when asking failed, and tells a reached limit", () => {
+    const claude = {
+      ...planUsageFrom({ rate_limits: { five_hour: { utilization: 100, resets_at: null } } }, now),
+      state: "error" as const,
+      message: "Couldn't ask Claude Code: timed out",
+      warning: { window: "five_hour", status: "rejected" as const, resetsAt: "2026-10-28T10:30:00Z" },
+    };
+    const text = usageReport({ claude, chatgpt: EMPTY_USAGE }, now);
+    expect(text).toContain("100 % used, 0 % left");
+    expect(text).toContain("- Limit reached (five_hour), resets in 30 min");
+    expect(text).toContain("last known numbers: Couldn't ask Claude Code: timed out");
   });
 });

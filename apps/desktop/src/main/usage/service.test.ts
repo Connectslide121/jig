@@ -9,6 +9,21 @@ const raw = (five: number): RawUsage => ({
 });
 
 describe("UsageService", () => {
+  it("fresh asks again only when the numbers are older than asked", async () => {
+    let calls = 0;
+    let now = new Date("2026-10-28T10:00:00Z");
+    const service = new UsageService({
+      read: async () => planUsageFrom(raw(10 * ++calls), now),
+      onChange: () => undefined,
+      now: () => now,
+    });
+    expect((await service.fresh(60_000)).windows[0]?.percent).toBe(10);
+    expect((await service.fresh(60_000)).windows[0]?.percent).toBe(10);
+    now = new Date("2026-10-28T10:02:00Z");
+    expect((await service.fresh(60_000)).windows[0]?.percent).toBe(20);
+    expect(calls).toBe(2);
+  });
+
   it("asks once at a time, keeps the last numbers on failure, and tracks warnings", async () => {
     let calls = 0;
     let fail = false;

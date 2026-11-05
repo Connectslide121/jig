@@ -6548,3 +6548,26 @@ stopped for good.
   for your own name finds it; it sorts by its last message like every chat.
 - Opening, sending, `@chat` and `jig_teams_chat_read` then work unchanged, since they go through the
   messages endpoints. Avatar initials skip words that don't start with a letter ("(You)").
+
+## D-386: Usage limits and closing a phone room as Jig tools
+
+- Status: accepted.
+- **Who:**
+  Jon asked for both tools (2026-11-05, task queue): a tool that reports both providers' usage
+  limits, reusing what Jig already shows, and one that closes a chat's room on the phone like /close.
+  Names, shapes and wording are Claude, on my own.
+- **`jig_usage_limits`** (read only, `main/usage/index.ts`): the footer's numbers, the same two
+  `UsageService`s (Claude Code's `/usage`, Codex's `account/rateLimits/read`, D-298), no new way to
+  fetch. It asks again first when the numbers are over a minute old (`UsageService.fresh`), then
+  `usageReport` (`shared/usage.ts`) writes per window: % used, % left, when it resets (relative and
+  ISO), extra usage, a reached limit and, after a failed ask, that these are the last known numbers.
+  A provider with no windows says "no limit data" with the reason the footer gives; one not asked yet
+  says Jig hasn't heard from it. Never a guessed number.
+- **`jig_phone_close_room`** (`main/phone/index.ts`, `PhoneService.closeRoomOf`): the same
+  `closeRoom` as /close (Telegram deletes the topic; Teams stops following live, the thread stays). It
+  never touches the chat. Without `chatId` it closes the calling chat's own room. It answers plainly
+  when the phone isn't connected, the chat doesn't exist, or it has no room open. Marked `readOnly`
+  like `jig_chat_open`: it only stops the phone following a chat, and the room opens again.
+- Both are on the `jig` server, so every chat and the phone's concierge get them (the concierge
+  finds them with the tool search; its prompt and `jigContext` name them). Neither is `alwaysLoad`,
+  to keep every chat's prompt small.

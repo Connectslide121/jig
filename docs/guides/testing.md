@@ -135,6 +135,8 @@ in this order:
 | "change the queued task" | Claude appends "Don't run the e2e tests." to queued task `t1` with `addon_tasks_edit` (only queued tasks; the queue's state is left alone) |
 | "move the queued task" | Claude moves queued task `t2` to the top of the queue, in a chat of its own, with `addon_tasks_edit` (`moveTo`, `newChat`) |
 | "text my phone" | Claude sends the phone "The build is done. Shall I deploy it?" with `jig_phone_send` (D-350), then says "I sent it to your phone." (`e2e/phone.spec.ts`, against a fake Telegram server) |
+| "close my phone room" | Claude closes this chat's room on the phone with `jig_phone_close_room` (D-386) and says what the tool answered ("Closed the room of …", or that there is none) (`e2e/phone.spec.ts`) |
+| "my usage limits" | Claude reads both providers' plan limits with `jig_usage_limits` (D-386) and says them as the tool wrote them (`e2e/usage.spec.ts`) |
 | "in the releases data" | Claude looks at the Releases add-on (`jig_get_addon`) and saves `fake-note` in its data (`jig_set_addon_data`, card with Undo) |
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |

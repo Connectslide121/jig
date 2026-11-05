@@ -1102,7 +1102,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|any pipelines running)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|close my phone room|my usage limits|any pipelines running)\b/.test(
             lower,
           )
         ) {
@@ -1151,6 +1151,14 @@ ${output.slice(0, 600)}`,
             // Jig on your phone (D-350): a message to the user's phone; their reply comes back here.
             await call("jig_phone_send", { text: "The build is done. Shall I deploy it?" });
             await stream(`${msg}:text:0`, "I sent it to your phone.", signal);
+          } else if (/close my phone room/.test(lower)) {
+            // As /close in the room: only the room goes, the chat stays.
+            const output = await call("jig_phone_close_room", {});
+            await stream(`${msg}:text:0`, output, signal);
+          } else if (/my usage limits/.test(lower)) {
+            // The footer's numbers for both providers, as text.
+            const output = await call("jig_usage_limits", {});
+            await stream(`${msg}:text:0`, output, signal);
           } else if (/in a jig terminal/.test(lower)) {
             // A command in a terminal the user sees: when it exits, Jig tells this chat (a new turn).
             await call("jig_terminal_run", { command: "echo build finished", title: "Build" });

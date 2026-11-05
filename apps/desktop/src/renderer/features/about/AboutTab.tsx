@@ -623,7 +623,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Idle chats free their memory: after 20 minutes unused (Settings → Chats) a chat lets go of its Claude Code or Codex process, and your next message picks it up where it was",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
                 "Times in chats: the clock button puts a time beside every message and step (hover any message for its time and the gap before it)",
-                "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in",
+                "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in; ask any chat (or Jig on your phone) how much is left and when it resets",
                 "How full the context window is, with a breakdown on hover and Compact on click",
                 "Claude Code's suggestion for your next message: click it, or Tab in the empty box",
                 "Restore files to before any of your messages, and fork a chat to try another approach",

@@ -819,6 +819,15 @@ describe("PhoneService rooms", () => {
     expect(t.saves.at(-1)?.rooms).toEqual({});
   });
 
+  it("closes a room for Claude as /close does, and says when there is none", async () => {
+    const t = await opened();
+    expect(await t.service.closeRoomOf("s1")).toContain("Closed the room of “Shop”");
+    expect(t.calls.find((c) => c.method === "deleteForumTopic")?.params.message_thread_id).toBe(501);
+    expect(t.saves.at(-1)?.rooms).toEqual({});
+    expect(await t.service.closeRoomOf("s1")).toContain("has no room open");
+    expect(await t.service.closeRoomOf("nope")).toContain("No chat has that id");
+  });
+
   it("offers Open chat under a chat's messages, and opens it from the button", async () => {
     const t = setup({ saved: paired, topics: true });
     current = t.service;

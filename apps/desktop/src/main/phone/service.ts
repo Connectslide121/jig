@@ -1273,6 +1273,25 @@ export class PhoneService {
         .catch((error) => this.deps.log?.warn("Deleting the room's topic failed", error));
   }
 
+  /**
+   * Claude's `jig_phone_close_room`: what /close does in the room, asked from a chat. Only the room
+   * goes; the chat and its work go on. Says so plainly when there is no room to close.
+   */
+  async closeRoomOf(sessionId: string): Promise<string> {
+    if (!this.channel || this.saved?.owner?.chatId === undefined)
+      return "The user's phone isn't connected to Jig, so there is no room to close.";
+    const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
+    if (!snapshot) return "No chat has that id, so there is no room to close.";
+    const title = `“${snapshot.meta.title}”`;
+    if (!this.rooms.has(sessionId))
+      return `${title} has no room open on the user's phone (it's already closed or was never opened). Nothing changed.`;
+    const teams = this.threads();
+    await this.closeRoom(sessionId);
+    return teams
+      ? `The thread of ${title} on the user's phone stopped following the chat live (Teams keeps the thread; writing there still reaches the chat). The chat itself goes on.`
+      : `Closed the room of ${title} on the user's phone. The chat itself goes on.`;
+  }
+
   /** A chat changed: its room syncs a moment later (changes come in bursts while Claude writes). */
   chatChanged(sessionId: string): void {
     const room = this.rooms.get(sessionId);

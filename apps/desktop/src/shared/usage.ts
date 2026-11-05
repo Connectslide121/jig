@@ -291,3 +291,60 @@ export function planResetsAt(usage: PlanUsage | undefined): string | undefined {
   const warned = usage?.warning?.status === "rejected" ? usage.warning.resetsAt : undefined;
   return [...full, ...(warned ? [warned] : [])].sort().at(-1);
 }
+
+const PROVIDER_NAMES: Record<AiProvider, string> = { claude: "Claude", chatgpt: "ChatGPT" };
+
+/** One window as a line: "Current session (5 h): 42 % used, 58 % left, resets in 2 h (2026-…Z)". */
+function windowLine(w: UsageWindow, now: Date): string {
+  const used =
+    w.percent === null
+      ? "use unknown"
+      : `${Math.round(w.percent)} % used, ${Math.round(100 - w.percent)} % left`;
+  const reset = w.resetsAt
+    ? `, resets ${formatResetIn(w.resetsAt, now)} (${new Date(w.resetsAt).toISOString()})`
+    : ", reset time not reported";
+  return `- ${w.label}: ${used}${reset}`;
+}
+
+/** One provider's part of `usageReport`. */
+function providerReport(provider: AiProvider, usage: PlanUsage, now: Date): string {
+  const name = PROVIDER_NAMES[provider];
+  const plan = planName(usage.subscription);
+  const head = `${name}${plan ? ` (${plan} plan)` : ""}`;
+  if (usage.state === "unknown") return `${head}: Jig hasn't heard from ${name} about its limits yet.`;
+  if (!usage.windows.length)
+    return `${head}: no limit data. ${usage.message ?? `${name} reports no plan limits.`}`;
+  const lines = [`${head}:`, ...usage.windows.map((w) => windowLine(w, now))];
+  const x = usage.extra;
+  if (x?.enabled) {
+    const spent =
+      x.usedCredits !== null && x.monthlyLimit !== null
+        ? `${formatUsageAmount(x.usedCredits, x.currency)} of ${formatUsageAmount(x.monthlyLimit, x.currency)} this month`
+        : x.percent !== null
+          ? `${Math.round(x.percent)} % of this month's limit`
+          : "amount unknown";
+    lines.push(`- Extra usage (paid): on, ${spent}`);
+  }
+  if (usage.warning?.status === "rejected")
+    lines.push(
+      `- Limit reached${usage.warning.window ? ` (${usage.warning.window})` : ""}${usage.warning.resetsAt ? `, resets ${formatResetIn(usage.warning.resetsAt, now)}` : ""}`,
+    );
+  else if (usage.warning?.status === "allowed_warning")
+    lines.push(`- Close to the limit${usage.warning.window ? ` (${usage.warning.window})` : ""}`);
+  if (usage.state === "error" && usage.message)
+    lines.push(`- These are the last known numbers: ${usage.message}`);
+  if (usage.updatedAt) lines.push(`- As of ${new Date(usage.updatedAt).toISOString()}`);
+  return lines.join("\n");
+}
+
+/**
+ * Both plans' limits as text, for Claude's `jig_usage_limits` tool: per window how much is used, what
+ * is left and when it resets; a provider with no limit data says so instead of guessing.
+ */
+export function usageReport(usage: UsageByProvider, now = new Date()): string {
+  return [
+    `Now: ${now.toISOString()}`,
+    providerReport("claude", usage.claude, now),
+    providerReport("chatgpt", usage.chatgpt, now),
+  ].join("\n\n");
+}

@@ -16,6 +16,7 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
   const queue: Array<Record<string, unknown>> = [];
   const photos: number[] = [];
   const topics: Array<Record<string, unknown>> = [];
+  const deleted: number[] = [];
   const voices: string[] = [];
   let nextUpdate = 1;
   let nextMessage = 1;
@@ -52,6 +53,10 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
         topics.push(params);
         return reply({ message_thread_id: nextTopic++, name: params.name });
       }
+      if (method === "deleteForumTopic") {
+        deleted.push(params.message_thread_id);
+        return reply(true);
+      }
       if (method === "sendMessage") {
         sent.push(params);
         return reply({ message_id: nextMessage++ });
@@ -77,6 +82,7 @@ async function fakeTelegram(opts: { topics?: boolean } = {}) {
     edits,
     photos,
     topics,
+    deleted,
     voices,
     say: () =>
       queue.push({
@@ -289,6 +295,15 @@ test("phone: open a chat on the phone and talk to it there", async ({ jigHome })
     // Written in the room: it goes to the chat.
     telegram.write("from the phone", undefined, room);
     await expect(page.getByTestId("user-message-text").last()).toHaveText("from the phone", {
+      timeout: 15000,
+    });
+
+    // Claude closes the room when asked (jig_phone_close_room): the topic goes, the chat stays.
+    await expect(page.getByTestId("chat-status")).toHaveText("Idle", { timeout: 15000 });
+    await page.getByTestId("composer-input").fill("close my phone room");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => telegram.deleted, { timeout: 15000 }).toContain(room);
+    await expect(page.getByTestId("assistant-message").last()).toContainText("Closed the room of", {
       timeout: 15000,
     });
   } finally {

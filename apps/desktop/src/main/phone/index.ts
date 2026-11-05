@@ -380,6 +380,21 @@ export async function startPhone(): Promise<void> {
           ...(args.browserScreenshot === true ? { browser: true } : {}),
         }),
     },
+    {
+      name: "jig_phone_close_room",
+      description:
+        "Close a chat's room on the user's phone (the topic or thread jig_chat_open or Open chat made, where it is followed live), as /close in that room does. Only the room closes: the chat and its work go on. Without chatId it closes this chat's own room. Says so when there is no room to close.",
+      shape: {
+        chatId: z
+          .string()
+          .optional()
+          .describe("The chat whose room to close (an id from jig_chats_list); default: this chat"),
+      },
+      // Like /close: it only stops the phone following a chat, and the room can be opened again.
+      readOnly: true,
+      handler: (args, meta) =>
+        s.closeRoomOf(typeof args.chatId === "string" && args.chatId ? args.chatId : meta.id),
+    },
   ]);
 
   await s.start();
