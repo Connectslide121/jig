@@ -19,7 +19,7 @@ import { fillComposer } from "./drafts";
 import { renameSession, sessionMenu } from "./menus";
 import { canChangeProject, showProjectOf, switchChatProject } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
-import { ensureTranscript, markSeen, useSessions } from "./store";
+import { holdTranscript, markSeen, useSessions } from "./store";
 import { formatTokens, Transcript } from "./Transcript";
 
 function LoginBanner() {
@@ -71,9 +71,8 @@ export function ChatTab({ params, active, focused }: TabProps) {
   }, [showOverview]);
   const [match, setMatch] = useState<string>();
   const onMatch = useCallback((m: string | undefined) => setMatch(m), []);
-  useEffect(() => {
-    if (id) void ensureTranscript(id).catch(() => {});
-  }, [id]);
+  // The open tab keeps its chat's transcript loaded; closed, it may be let go (D-366).
+  useEffect(() => (id ? holdTranscript(id) : undefined), [id]);
   // Bringing a chat to the front makes its project the active one (D-163): from the Chats list, a
   // tab, Home, a notification… Only when the chat comes to the front, so moving it to another project
   // or choosing a project while it stays open leaves the choice alone. A chat without a project

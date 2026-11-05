@@ -3,7 +3,7 @@ import type { ChatItem, PermissionMode } from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { useConfig } from "../../stores/config";
 import { notify } from "../../workbench/toasts";
-import { ensureTranscript, useSessions } from "../sessions/store";
+import { ensureTranscript, holdTranscript, useSessions } from "../sessions/store";
 import { followWork, playCue, unfollowWork, WorkCue } from "./cues";
 import { cancelDictation, type DictationText, useDictation } from "./dictation";
 import { Capture, FRAME, LiveText, prepareSpeech, speechSettings } from "./engine";
@@ -223,6 +223,8 @@ class Conversation {
   private fakeVoice?: ReturnType<typeof setInterval>;
   /** The plan on screen (kept as the same object while it doesn't change). */
   private shown?: VoicePlan;
+  /** Keeps the chat's transcript loaded while you talk (D-366). */
+  private letGo?: () => void;
 
   constructor(
     private readonly target: string,
@@ -234,6 +236,7 @@ class Conversation {
   ) {}
 
   async begin(): Promise<void> {
+    this.letGo = holdTranscript(this.target);
     const { metas, transcripts } = useSessions.getState();
     for (const item of transcripts[this.target]?.items ?? []) {
       if (item.kind !== "permission" || item.status !== "pending") this.before.add(item.id);
@@ -279,6 +282,7 @@ class Conversation {
     this.capture?.close();
     this.queue.length = 0;
     stopSpeaking();
+    this.letGo?.();
     const id = this.target;
     void call("sessions.setVoice", { id, voice: false }).catch(() => undefined);
     const meta = useSessions.getState().metas[id];

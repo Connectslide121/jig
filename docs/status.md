@@ -1180,6 +1180,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Lighter chats (D-366): a long chat renders only its latest rows and more as you scroll up (what
+  you're reading stays where it is); Find in chat still reaches every message. Chats you close are let
+  go from memory after the five most recent, and load again when you open them. With 15 long chats
+  open the window used about a third of the memory it did. Needs testing on your machine: a day of
+  real chats, then Task Manager's figure for Jig's main window.
 - Jig on your phone (D-350): Settings → Phone → Set up… connects a Telegram bot you make with
   @BotFather (paste its token, then send the 6-digit code to the bot from your phone). While you're
   away from the computer (or always), the bot tells you when a chat needs you (Allow / Deny, a

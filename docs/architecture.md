@@ -229,6 +229,10 @@ The transcript and composer share one conversation column, with matching content
 and a reserved scrollbar gutter (the composer uses `--jig-scrollbar-size` padding so its pickers can
 extend above the input without clipping). The overview card has a permanently reserved column alongside it,
 including empty/loading chats and when hidden, so its visibility never moves the conversation (D-189).
+The renderer keeps a chat's transcript only while a tab (or a voice conversation) holds it, a turn
+runs in it, or it is one of the five chats let go most recently; the rest load again from the host
+when needed. Host updates are applied once a frame, and a long chat renders only a window of its
+latest rows, growing as you scroll up (D-366).
 
 **User browser (D-225).** Tools → Open Browser opens a main-panel tab backed by a native
 `WebContentsView`, owned by main per workbench window, with its own persistent cookie partition,

@@ -29,7 +29,16 @@ import { BuildCard } from "../builder/BuildCard";
 import { toggleReadAloud, useReading } from "../speech/speak";
 import { ChangeCard } from "./ChangeCard";
 import { ChatAttachments } from "./ChatAttachments";
-import { compactRows, type Entry, type Row, stepsSummary } from "./compact";
+import {
+  BATCH,
+  compactRows,
+  type Entry,
+  type Row,
+  rowIndexOf,
+  stepsSummary,
+  WINDOW,
+  windowStart,
+} from "./compact";
 import { chatInlineCode } from "./FileLink";
 import { HandoffDivider, LimitCard } from "./LimitCard";
 import { PermissionCard } from "./PermissionCard";
@@ -491,6 +500,7 @@ export function Transcript({
   highlight?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const compact = useConfig((s) => s.config?.chat.view ?? "compact") === "compact";
   const times = useConfig((s) => s.config?.chat.times ?? false);
@@ -525,26 +535,65 @@ export function Transcript({
     }
     return ids;
   }, [items, handoffAt]);
+  const rows = useMemo(() => rowsOf(groupItems(shown), compact, pending), [shown, compact, pending]);
+  const [start, setStart] = useState(() => Math.max(0, rows.length - WINDOW));
+  const first = windowStart(rows.length, start);
+  // A row on screen and where it was, while rows are added above it: it stays where it was.
+  const anchor = useRef<{ el: Element; top: number }>(undefined);
+  const scrolledTo = useRef<string>(undefined);
+  /** Renders `BATCH` more rows above, keeping what's on screen where it is. */
+  const revealEarlier = () => {
+    const el = ref.current;
+    if (!el || first === 0) return;
+    const top = el.getBoundingClientRect().top;
+    const seen = [...(list.current?.children ?? [])].find((c) => c.getBoundingClientRect().bottom > top);
+    if (seen) anchor.current = { el: seen, top: seen.getBoundingClientRect().top };
+    setStart(Math.max(0, first - BATCH));
+  };
+  /** At the bottom again: back to the latest rows only. */
+  const trimToLatest = () => {
+    if (rows.length - first > WINDOW + BATCH) setStart(rows.length - WINDOW);
+  };
   useLayoutEffect(() => {
     const el = ref.current;
+    const held = anchor.current;
+    if (el && held) {
+      anchor.current = undefined;
+      // Chromium's scroll anchoring may have done it already; then this moves nothing.
+      el.scrollTop += held.el.getBoundingClientRect().top - held.top;
+    }
     if (el && stick.current) el.scrollTop = el.scrollHeight;
+    // Too few rows to scroll: there's nothing to scroll up with, so show more right away.
+    if (el && first > 0 && el.clientHeight > 0 && el.scrollHeight <= el.clientHeight * 2) revealEarlier();
   });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on switching tabs and new rows, with the latest rows.
   useEffect(() => {
     const el = ref.current;
     if (active && el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [active]);
+    if (stick.current) trimToLatest();
+  }, [active, rows.length]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: on a new match, and once its row is rendered.
   useEffect(() => {
     if (!highlight) {
+      scrolledTo.current = undefined;
       // Find closed: follow new messages again if you're at the bottom.
       const el = ref.current;
       if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
       return;
     }
     stick.current = false;
+    if (scrolledTo.current === highlight) return;
+    const index = rowIndexOf(rows, highlight);
+    // A match above the rendered rows: render down from a little before it, then show it.
+    if (index >= 0 && index < first) {
+      setStart(Math.max(0, index - 5));
+      return;
+    }
+    scrolledTo.current = highlight;
     ref.current
       ?.querySelector(`[data-item-id="${CSS.escape(highlight)}"]`)
       ?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }, [highlight]);
+  }, [highlight, first]);
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
@@ -555,16 +604,21 @@ export function Transcript({
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
           setAway(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
+          if (el.scrollTop < el.clientHeight) revealEarlier();
+          else if (stick.current) trimToLatest();
         }}
         data-testid="transcript"
       >
         <div
+          ref={list}
           className={cn(
             "mx-auto flex max-w-[var(--jig-chat-width)] min-w-0 flex-col gap-3 py-4 wrap-anywhere",
             times ? "pr-6 pl-2" : "px-6",
           )}
+          data-first-row={first}
         >
-          {rowsOf(groupItems(shown), compact, pending).map((row, index, rows) => {
+          {rows.slice(first).map((row, shownIndex) => {
+            const index = first + shownIndex;
             const prevAt = index > 0 ? rowAt(rows[index - 1]!) : undefined;
             const content =
               row.kind === "steps" ? (

@@ -122,3 +122,22 @@ export function stepsSummary(entries: Entry[]): StepsSummary {
     ...(current ? { running: toolLabel(current.name) } : {}),
   };
 }
+
+/**
+ * A long chat renders only its latest rows (D-366): `WINDOW` of them, and `BATCH` more each time you
+ * scroll within a screen of the top. Back at the bottom it shrinks to the latest again.
+ */
+export const WINDOW = 60;
+export const BATCH = 40;
+
+/** The first row to render: at least `WINDOW` rows (or all), never past the asked start. */
+export function windowStart(rows: number, start: number): number {
+  return Math.max(0, Math.min(start, rows - WINDOW));
+}
+
+/** The index of the row that shows an item (a top-level one or a step in a folded run), or -1. */
+export function rowIndexOf(rows: Row[], id: string): number {
+  return rows.findIndex((row) =>
+    row.kind === "steps" ? row.entries.some((e) => e.item.id === id) : row.entry.item.id === id,
+  );
+}

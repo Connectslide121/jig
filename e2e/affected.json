@@ -100,6 +100,7 @@
       "specs": [
         "chat.spec.ts",
         "chat-parity.spec.ts",
+        "long-chat.spec.ts",
         "chat-changes.spec.ts",
         "context.spec.ts",
         "images.spec.ts",

@@ -5841,3 +5841,38 @@ choice of Telegram and everything below: Claude, on my own.
 - **Left out: "Add to Tasks queue".** The Tasks queue is an add-on and the composer is core: core
   must not depend on an add-on (it would have to come through a slot the Tasks add-on contributes).
   Parking already covers "later", and Tasks has its own Add dialog with the fields a task needs.
+
+## D-366: Chat memory: transcripts are let go when no tab holds them, and long chats render a window of their latest rows
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05: the main window's renderer was at ~1.8 GB after a day of use; cut it. How:
+  Claude, on my own.
+- **Transcripts in memory** (`features/sessions/store.ts`): a chat's items stay in the renderer while
+  something holds them (`holdTranscript(id)` returns the let-go: an open chat tab, a voice
+  conversation) or a turn runs (`starting`, `working`, `needs_you`), and the `KEEP_RECENT` (5) newest
+  of the rest, so reopening a chat you just closed is instant. Others are dropped and `ensureTranscript`
+  loads them from the host again (`sessions.get`, the host's own copy). Code that reads a transcript
+  without a tab awaits `ensureTranscript` and reads it right away, which eviction can't interrupt (it
+  runs only when a hold ends, a transcript loads or a turn ends). Metas are never dropped: every list
+  needs them.
+- **Live item updates are batched per frame** (16 ms): item updates wait in a per-chat list and are applied
+  together, so a streaming answer copies the item list once a frame instead of once per update, and
+  a meta-only change keeps the item list as it was (no re-render of the transcript). A meta, queue or
+  parked update is applied at once, with that chat's waiting item updates before it: code reads a
+  chat's status right after a host call, and a status a frame late made the header lag. Updates that
+  arrived before a loading transcript's snapshot are dropped when it lands: the host sends in order,
+  so the snapshot has them (applying an `append` twice would double the text).
+- **A long chat renders a window of its latest rows** (`Transcript.tsx`, `WINDOW` 60 rows, `BATCH` 40
+  more each time you scroll within a screen of the top; `windowStart`, `rowIndexOf` in `compact.ts`).
+  Rows added above keep what you read in place: the row at the top of the view is measured before
+  and corrected after (Chromium's own scroll anchoring may already have done it; then nothing moves).
+  Back at the bottom (following the chat) it shrinks to the latest rows again, so a tab left open
+  costs only its window. Find in chat renders down from just before a match above the window, then
+  scrolls to it. No spacer above the window: a spacer's height would be an estimate, and reaching it
+  would jump; the scrollbar thumb grows as rows load instead, as in other chat apps.
+- **Not unmounting inactive tabs:** a hidden tab keeps its DOM (its scroll position and open cards),
+  which with the window is only its latest rows. Unmounting would re-render every Markdown message
+  on each tab switch.
+- **Measured** (fake engine, 15 chats of 600 items each, compact view): with all 15 open, JS heap
+  211 → 57 MB, DOM elements 377k → 41k, renderer working set 755 → 267 MB; all closed again, JS heap
+  44 → 37 MB (5 chats kept).

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "../../../shared/engine";
-import { compactRows, type Entry, stepsSummary } from "./compact";
+import { compactRows, type Entry, type Row, rowIndexOf, stepsSummary, WINDOW, windowStart } from "./compact";
 
 const at = "";
 const tool = (
@@ -67,5 +67,27 @@ describe("the compact chat view", () => {
     const edit = { ...tool("e", "Edit", { file_path: "cart.ts" }), diff: "@@\n-a\n+b\n+c" } as ChatItem;
     expect(stepsSummary([entry(edit)])).toMatchObject({ text: "Edited cart.ts", added: 2, removed: 1 });
     expect(stepsSummary([entry(tool("m", "SubagentMessage", {}))]).text).toBe("Received a message");
+  });
+});
+
+describe("the transcript's window", () => {
+  it("renders at least WINDOW rows, from the asked start", () => {
+    expect(windowStart(10, 0)).toBe(0);
+    expect(windowStart(500, 0)).toBe(0);
+    expect(windowStart(500, 300)).toBe(300);
+    expect(windowStart(500, 480)).toBe(500 - WINDOW);
+    // A chat rewound to fewer rows still shows its latest ones.
+    expect(windowStart(20, 300)).toBe(0);
+  });
+
+  it("finds the row that shows an item, also inside a folded run", () => {
+    const user = (id: string) => entry({ kind: "user", id, text: "", at });
+    const rows: Row[] = [
+      { kind: "item", entry: user("a") },
+      { kind: "steps", id: "s", entries: [user("b"), user("c")] },
+    ];
+    expect(rowIndexOf(rows, "a")).toBe(0);
+    expect(rowIndexOf(rows, "c")).toBe(1);
+    expect(rowIndexOf(rows, "x")).toBe(-1);
   });
 });
