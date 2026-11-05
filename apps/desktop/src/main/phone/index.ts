@@ -81,7 +81,7 @@ function keepAwake(on: boolean): void {
   }
 }
 
-/** Jig on your phone through your own Telegram bot (D-348). */
+/** Jig on your phone through your own Telegram bot (D-350). */
 export async function startPhone(): Promise<void> {
   const m = sessionManager();
   registerConcierge();

@@ -120,7 +120,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
 | `suggestions.json` | the suggestion inbox and the user's past answers |
-| `phone.json` | your phone's Telegram bot: its token encrypted with the OS, and who it's paired with (D-348) |
+| `phone.json` | your phone's Telegram bot: its token encrypted with the OS, and who it's paired with (D-350) |
 | `logs/` | host logs |
 | `window-state.json`, `builds.json`, `scripts.json`, `addons-state.json`, `addon-data/`, `cache/`, `app-builds/`, `launcher/` | see `docs/reference/state.md` |
 
@@ -708,7 +708,7 @@ message context gives Claude the notes in full and the document names; `jig_note
 notes, `jig_knowledge_read` reads a document. The renderer shows them on the project's Home
 (`features/knowledge/KnowledgeCard.tsx`) and in the `jig.notes` view (`Notes.tsx`).
 
-## Jig on your phone (D-348)
+## Jig on your phone (D-350)
 
 `main/phone/` connects Jig to a Telegram bot of the user's own. `telegram.ts` is the Bot API client
 (POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API` only with the fake engine);

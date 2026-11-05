@@ -222,7 +222,7 @@ settings, add-on permissions.
 | `azure.cancelSignIn` | — | — | stops the running `az login` (its process tree); the waiting call rejects with `cancelled` |
 | `azure.renameTenant` | `{ key, label? }` | `TenantsState` | any tenant, `default` (your az login) too: it keeps its key and behaviour, only its name is stored (D-301). No `label` goes back to the first name ("Your az login", an added tenant's display name); `not_found` for an unknown key (schema) |
 | `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
-| `phone.state` | — | `PhoneState` | Jig on your phone (D-348): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error` |
+| `phone.state` | — | `PhoneState` | Jig on your phone (D-350): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error` |
 | `phone.connect` | `{ token }` | `PhoneState` | checks a @BotFather token with Telegram (`getMe`), keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable` (schema: the token's shape) |
 | `phone.test` | — | — | sends the paired phone a test message; `not_connected` |
 | `phone.disconnect` | — | `PhoneState` | tells the phone, forgets the token and pairing (deletes `phone.json`) |

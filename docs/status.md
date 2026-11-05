@@ -1,5 +1,16 @@
 # Status
 
+Chats list marks every chat's provider (2026-11-04, D-348, Jon): each row shows Claude's asterisk or
+ChatGPT's aperture at the far right, in one aligned column; hovering a row still shows the pin button
+there.
+
+Permission mode in the chat's header (2026-11-04, D-347, Jon): the message box no longer has its own
+permission button. The mode shows in the chat's header, right after the status (icon and label; only
+the icon in a narrow chat; red for Don't ask, the accent for Accept edits and Plan only), and
+clicking it opens the modes. The model picker's menu has the same list as "Permissions: <mode> ›"
+under Effort. Shift+Tab in the box still switches. Checked with the fake engine in Claude and ChatGPT
+chats, Jig Dark and Light, narrow and wide.
+
 Composer's Send and Stop are icons (2026-11-04, D-346, Jon): the chat's message box shows Send (the
 accent square: arrow, terminal for `!`, bookmark for `#`) and Stop (a square) without labels; hover
 for what they do and their key ("Send (Enter)", "Queue: read after this turn (Enter)", "Stop (Esc)").
@@ -319,12 +330,20 @@ test was run once for its screenshot). **Check in the next daily (Sprinta Daily,
 6. The New Podium Daily (external organiser) may refuse captions for real: its orange line should now
    say so, and the local transcript should cover it.
 
+Claude's browser stays out of your way (2026-11-05, D-349): when a chat browses while you work on
+another tab of the panel the browser is in (a sidebar, the bottom panel or a main-area pane), the panel
+no longer switches; the browser's tab gets a badge with the number of chats that browsed, cleared when
+you show it. In any other case (you're in another panel, in a chat, or outside Jig) it still shows
+itself. Covered by `e2e/browser-reveal.spec.ts` and the `revealAction` unit tests. Needs testing on
+your machine: a queue chat browsing while you read Pipelines in the browser's sidebar (badge, no
+switch), and while you type in another chat (switches).
+
 Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.
 The **Claude's browser** view has a one-line tab per page (the chat's name and project, a dot while
 Claude drives it, the page title in its tooltip); click one to watch that page with its Console and
-Network, ⋯ → Open chat or Close page. Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
+Network; hover a tab for its Open chat and Close page buttons (always shown on the selected tab, or right-click it). Pages close with their chat (archived or deleted), after 15 minutes unused, and at most 4
 are open. Logins are shared between the pages by default (sign in once); Settings → Chats → **Chats’
 pages in Claude’s browser** → Separate keeps each chat's cookies apart. Covered by
 `e2e/browser-pages.spec.ts` (not run in this change, D-258). Needs testing on your machine: two
@@ -356,7 +375,7 @@ model picker, Claude or ChatGPT (greyed out with a link to Get started while Cod
 It can change until the first message; then it is the chat's mark. ChatGPT chats show ChatGPT's
 models (Sol, Terra, Luna first, then exact versions) and reasoning levels, and hide what Codex can't do
 (rewind and edit-and-resend, fork; Plan only, questions and suggestions came with D-315). The chat's
-mark stays in the composer (no longer in the header, D-340), and once a ChatGPT chat exists the Chats list marks them at the far right. **Settings → Chats**
+mark stays in the composer (no longer in the header, D-340), and every row of the Chats list shows its provider's mark at the far right, Claude's too (D-348). **Settings → Chats**
 (was Claude Code): "New chats run on" Claude | ChatGPT, then a Claude chats group and a ChatGPT chats
 group (default model, reasoning effort, personal instructions, Codex binary, OpenAI API keys), the
 default one badged. A project's settings have "Chats run on". A ChatGPT chat's turn refreshes the
@@ -607,6 +626,13 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.11.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.11.0),
+source/tag `3e2bb4b815957ca5f208597fbc5606f065fa36fd`. Installer: 388,962,178 bytes;
+SHA-256 `6b83ea698d67c2b3466e3e4f9d874fa346814b66579b721c64cecace163e72f7`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.11.0 with its feed and installer. In 0.11.0: Chats can move between Claude and ChatGPT (after a plan limit or by hand), Boards cards show what Azure DevOps shows, add-ons can ask before Jig quits, and the chat, Files and Claude's browser got a round of polish.
+
 Jig 0.10.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.10.0),
 source/tag `8eef63465b5e3d0dd03779acf81b0aade332f038`. Installer: 388,925,532 bytes;
 SHA-256 `4c8141b5470c0443e203e6dc1d43cfb49ad1e7ed6f202b51e6a17e6a5fc902d8`.
@@ -731,7 +757,9 @@ on wide screens and still fill narrow panels.
 Browser access (2026-11-02, D-226): the top-right globe icon opens your Browser in the main panel.
 Claude’s browser uses MonitorCog (your Browser keeps the globe), with an explicit heading and read-only address; navigation, viewport and test-launch
 controls are removed from its toolbar. Clicking/typing/pasting inside the page remains available
-for sign-ins. A permanent hint links directly to your own Browser.
+for sign-ins. A permanent hint links directly to your own Browser; since 2026-11-04 it is the view's
+footer (tabs and address at the top, the page in the middle, the hint as the last row, below Console
+and Network, which only resize the page). Covered by `e2e/browser.spec.ts`.
 
 Native user browser (2026-11-02, D-225): Tools → Open Browser opens a Browser tab in the main panel,
 with direct Chromium rendering/input, navigation, stop/reload, zoom, developer tools and opening in
@@ -1063,7 +1091,7 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
-- Jig on your phone (D-348): Settings → Phone → Set up… connects a Telegram bot you make with
+- Jig on your phone (D-350): Settings → Phone → Set up… connects a Telegram bot you make with
   @BotFather (paste its token, then send the 6-digit code to the bot from your phone). While you're
   away from the computer (or always), the bot tells you when a chat needs you (Allow / Deny, a
   question's options, a plan's Approve / Keep planning as buttons), finishes (with the end of
@@ -1636,7 +1664,7 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
-- **Jig on your phone (D-348).** Covered against a fake Telegram server (`e2e/phone.spec.ts`).
+- **Jig on your phone (D-350).** Covered against a fake Telegram server (`e2e/phone.spec.ts`).
   Check with a real bot on your iPhone: pairing by the code, the buttons (Allow, an option,
   Approve), a reply going to the right chat, "Send a test", that "When I'm away" waits for 5 idle
   minutes or a locked screen on Windows, that the token is remembered after restarting Jig, and what

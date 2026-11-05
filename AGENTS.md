@@ -126,7 +126,7 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   calling credentials stay in memory and only the owned media window receives the calling token.
   Never retrieve resource keys or pass credentials to add-on code.
   Its typed host-managed data cannot be changed through generic add-on storage tools.
-- **Jig on your phone (D-348)** goes through the user's own Telegram bot (`main/phone/`). Its token is
+- **Jig on your phone (D-350)** goes through the user's own Telegram bot (`main/phone/`). Its token is
   a credential: OS-encrypted (safeStorage) or in memory only, never in the renderer, logs or add-ons.
   Read only the paired account's private chat, and mask and cut chat text before sending it.
 - **Settings are configurable from chats too.** A new setting goes into `ConfigSchema`, the

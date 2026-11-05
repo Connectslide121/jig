@@ -69,10 +69,17 @@ test("Claude's browser: two chats browse at once, each on its own page, one tab 
   await expect(view.getByTestId("browser-address")).toHaveValue(/b\.html$/);
   await window.screenshot({ path: "test-results/claude-browser-pages.png" });
 
-  // Close page from the tab's ⋯: its tab goes, and nothing below the tabs moves.
+  // The other tab's buttons appear on hover without moving its name.
+  const name = tabOf(checkout).getByTestId("browser-tab-chat");
+  const before = await name.boundingBox();
+  await expect(tabOf(checkout).getByTestId("browser-tab-close").locator("..")).toHaveCSS("opacity", "0");
+  await tabOf(checkout).hover();
+  await expect(tabOf(checkout).getByTestId("browser-tab-close").locator("..")).toHaveCSS("opacity", "1");
+  expect(await name.boundingBox()).toEqual(before);
+
+  // Close page from the tab's × button: its tab goes, and nothing below the tabs moves.
   const address = await view.getByTestId("browser-address").boundingBox();
-  await tabOf(search).getByTestId("browser-tab-menu").click();
-  await window.getByTestId("browser-tab-close").click();
+  await tabOf(search).getByTestId("browser-tab-close").click();
   await expect(tabs).toHaveCount(1);
   expect((await view.getByTestId("browser-address").boundingBox())?.y).toBe(address?.y);
   await expect(view.getByTestId("browser-address")).toHaveValue(/a\.html$/);

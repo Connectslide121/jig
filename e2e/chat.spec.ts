@@ -177,6 +177,13 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
   await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
+  // The model menu's Permissions submenu picks the mode too; the header's chip follows (D-347).
+  await page.getByTestId("model-menu").click();
+  await expect(page.getByTestId("permission-submenu")).toContainText("Permissions: Plan only");
+  await page.getByTestId("permission-submenu").hover();
+  await page.getByTestId("mode-acceptEdits").click();
+  await expect(page.getByTestId("permission-menu")).toContainText("Accept edits");
+  await expect(page.getByTestId("permission-menu")).toHaveAttribute("data-mode", "acceptEdits");
 });
 
 test("chat: sessions list across projects and survive a restart", async ({ app, page, jigHome }) => {
@@ -187,6 +194,8 @@ test("chat: sessions list across projects and survive a restart", async ({ app, 
   await say(page, "first in two");
   await expect(page.getByTestId("turn-result")).toBeVisible();
   await expect(page.getByTestId("session-first in two")).toBeVisible();
+  // Every row shows its provider's mark, Claude's too (D-348).
+  await expect(page.getByTestId("session-first in two").getByTestId("provider-mark-claude")).toBeVisible();
   await page.waitForTimeout(700);
   await app.close();
   const again = await launchJig(jigHome);

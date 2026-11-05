@@ -94,7 +94,7 @@ export function onSessionStatus(listener: (meta: SessionMeta) => void): () => vo
   return () => statusListeners.delete(listener);
 }
 
-/** Called when a permission, question or plan card is added or answered in a chat (your phone, D-348). */
+/** Called when a permission, question or plan card is added or answered in a chat (your phone, D-350). */
 type PermissionCard = Extract<ChatItem, { kind: "permission" }>;
 const permissionListeners = new Set<(sessionId: string, item: PermissionCard) => void>();
 export function onPermissionCard(listener: (sessionId: string, item: PermissionCard) => void): () => void {

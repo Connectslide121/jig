@@ -27,7 +27,7 @@ function topicsText(state: PhoneState): string {
   return "Off: everything arrives in one thread. To split it by project, open @BotFather, pick your bot, turn on topics (threaded mode) in its settings, then check again.";
 }
 
-/** Settings → Phone: Jig on your phone through your own Telegram bot (D-348). */
+/** Settings → Phone: Jig on your phone through your own Telegram bot (D-350). */
 export function PhoneSettings() {
   const state = usePhone((s) => s.state);
   const config = useConfig((s) => s.config);

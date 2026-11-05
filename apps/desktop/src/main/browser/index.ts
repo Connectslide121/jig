@@ -25,7 +25,7 @@ const NO_PAGE = {
   failedRequests: 0,
 };
 
-/** A screenshot of a chat's page, if it has one (never makes a page): your phone (D-348). */
+/** A screenshot of a chat's page, if it has one (never makes a page): your phone (D-350). */
 export async function chatPageScreenshot(chatId: string): Promise<Buffer | undefined> {
   const page = pages?.get(chatId);
   if (!page) return undefined;

@@ -4270,6 +4270,7 @@ D-294 (one-shot providers, no credentials, Codex from PATH) still hold.
   header always shows the chat's mark _(removed by D-340: the composer's provider picker shows it)_. In the Chats list, once any ChatGPT chat exists, every row
   keeps a slot at the far right; ChatGPT chats show their mark there and Claude chats, the default,
   leave it empty (Claude, on my own: a mark on every row would be noise for the common case).
+  _(Amended by D-348: every row shows its provider's mark, Claude's too.)_
 - **Usage** (plan): a Codex chat's turn refreshes the ChatGPT meter (at most every 15 s), not
   Claude's.
 
@@ -5354,7 +5355,62 @@ provider, capabilities and Claude as the default still hold.
 - **One height in the row:** Send now (`IconButton`) moved from `md` (32 px) to `sm` (28 px), so Stop,
   Send now and Send are the same square in one line; the row's height doesn't change when Send now
   appears, and Send keeps its slot in every mode and busy state.
-## D-348: Jig on your phone through a Telegram bot of your own
+
+## D-347: The permission mode moves to the chat's header and the model menu
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-04: the composer's row was cluttered; the permission button goes, the model
+  picker's menu gets a Permissions submenu under Effort, and the mode shows in the chat's header so
+  it's always visible. The details (fixed status slot, colours, narrow behaviour): Claude, on my own,
+  along the lines Jon's task asked for.
+- **One list of modes:** `permissionMenu(meta)` in `sessions/menus.ts` is the only list: the header's
+  chip opens it, the model menu nests it as "Permissions: <mode> ›" (`permission-submenu`), and
+  `/permissions` and the + menu's "Permission mode…" open it. The modes come from `permissionModesOf`
+  (Plan only only where `ENGINE_CAPABILITIES` has plan mode); switching goes through
+  `sessions.setPermissionMode` as before. `permissionIcon` (ListChecks for Plan only, Shield for the
+  rest) and `permissionTone` (red for Don't ask, the accent for Accept edits and Plan only, muted for
+  Ask before changes) are shared by the chip and the menus.
+- **The header's chip** (`permission-menu`, moved from the composer): right after the status, the
+  whole chip is the button. The status text sits in a fixed slot (`w-20`, "Limit reached" fits), so
+  the chip doesn't move when the status changes; what follows it is the flexible spacer, so a longer
+  mode label moves nothing on the right. The header is a container: below `@2xl` the chip shows only
+  its icon (the label stays in its tooltip and accessible name).
+- **Shift+Tab** in the message box still goes through the modes; the hint under the box still says
+  so, and the chip updates with the chat's meta.
+
+## D-348: Every chat in the Chats list shows its provider's mark
+
+- Status: accepted. Amends D-314.
+- **Who:** Jon, 2026-11-04: every row should say who runs the chat, Claude's included, instead of
+  Claude's rows leaving the slot empty (and the slot appearing only once a ChatGPT chat existed).
+- **What:** the far-right slot of every row (`size-3.5`, fixed) always holds
+  `<ProviderMark provider={chatProvider(m)} iconOnly />`: Claude's asterisk or ChatGPT's aperture, in
+  the provider's colour, its name in the tooltip. On hover the pin button still takes the slot's place
+  (`group-hover:hidden`), so the columns stay aligned. The `mixedProviders` gate is gone.
+
+## D-349: Claude's browser doesn't take over the panel you are working in
+
+- Status: accepted. Amends the `browser.showWhenUsed` behaviour (the view opens by itself).
+- **Who:** Jon, 2026-11-05: switching the panel to Claude's browser every time a chat browses is
+  disruptive while he works on another tab of that same panel. Details below are Claude, on my own.
+- **Rule:** when a chat uses its page (`browser.reveal`), the renderer asks
+  `revealAction(layout, view, focusedPanel())` (`shared/layout.ts`):
+  - the view is already on screen → nothing;
+  - its panel is the one you are working in (and is open) → no switch; its tab or icon gets a badge
+    instead, counting the chats that browsed meanwhile, cleared as soon as the view is on screen;
+  - anything else (another panel, a chat, Jig's window not focused, the view not open) → it shows
+    itself as before.
+- **"The panel you are working in"** is one shared helper, `useFocusedPanel` / `focusedPanel()`
+  (`renderer/workbench/focusedPanel.ts`): the closest `data-panel` of the last `focusin` or
+  `pointerdown`, cleared when Jig's window loses focus. Panels are a sidebar or its lower half, the
+  bottom panel and each main-area pane (`main-left`, `main-right`; `WorkbenchPanel`). A chat marks
+  itself `data-panel="chat"`, which counts as no panel: typing in a chat isn't working in the
+  browser's panel, so the view still shows itself while you talk to the chat that browses.
+- **The badge** is the existing view badge (`ViewBadge`, laid over the icon, no layout shift): Jig's
+  own badges live in `workbench/viewBadges.ts` (`setViewBadge`) beside add-ons' `ctx.setBadge`, which
+  win when both set one.
+
+## D-350: Jig on your phone through a Telegram bot of your own
 
 **Who:** Jon asked, 2026-11 ("I want something like a message bot or even emails … I want Jig to be
 able to reach me if needed and vice versa", from his iPhone, for free, not remote desktop). The

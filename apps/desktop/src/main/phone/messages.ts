@@ -2,7 +2,7 @@ import { maskSecrets } from "@jig/learning";
 import type { ChatItem, PermissionDecision, PermissionRequest, SessionMeta } from "../../shared/engine";
 
 /**
- * What Jig says to your phone and how it reads what you send back (D-348). Pure: the service sends
+ * What Jig says to your phone and how it reads what you send back (D-350). Pure: the service sends
  * these through Telegram. Text is Telegram HTML; everything from a chat is masked and escaped.
  */
 

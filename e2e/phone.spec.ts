@@ -96,7 +96,7 @@ async function start(jigHome: string, telegram: { url: string }): Promise<Page> 
   return page;
 }
 
-// Jig on your phone (D-348): pair a Telegram bot in Settings → Phone, then answer a waiting request
+// Jig on your phone (D-350): pair a Telegram bot in Settings → Phone, then answer a waiting request
 // and talk to a chat from the phone.
 test("phone: pair a Telegram bot, then answer a chat from the phone", async ({ jigHome }) => {
   const telegram = await fakeTelegram();
@@ -181,7 +181,7 @@ test("phone: Claude texts the phone and the reply comes back to the chat", async
   }
 });
 
-// Anything else you write goes to Jig itself (D-348): its own chat answers, and the answer reaches
+// Anything else you write goes to Jig itself (D-350): its own chat answers, and the answer reaches
 // the phone even while you're at the computer.
 test("phone: plain text goes to Jig itself, and its answer comes back", async ({ jigHome }) => {
   const telegram = await fakeTelegram();

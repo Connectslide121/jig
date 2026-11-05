@@ -85,7 +85,7 @@ export interface PhoneDeps {
   api(token: string): TelegramApi;
   /** A project's name and colour, for its topic. */
   project?(id: string): Promise<{ name: string; color?: string } | undefined>;
-  /** Jig itself (D-348): sends what you wrote to today's chat with Jig; returns that chat's id. */
+  /** Jig itself (D-350): sends what you wrote to today's chat with Jig; returns that chat's id. */
   concierge?: { ask(text: string): Promise<string> };
   /** Pictures for the phone: Jig's window, a chat's browser page, a file a chat names. */
   screens?: {
@@ -142,7 +142,7 @@ const defaultPause = (ms: number, signal: AbortSignal) =>
   });
 
 /**
- * Jig on your phone (D-348): one Telegram bot, paired with your own Telegram account by a code. It
+ * Jig on your phone (D-350): one Telegram bot, paired with your own Telegram account by a code. It
  * tells you when a chat needs you, finishes or stops while you're away, takes Allow/Deny and answers
  * from buttons, and sends what you write to a chat. Only your account is listened to.
  */

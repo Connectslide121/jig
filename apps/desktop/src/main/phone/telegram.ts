@@ -1,7 +1,7 @@
 import type { Button } from "./messages";
 
 /**
- * The few Telegram Bot API calls Jig uses (D-348), over HTTPS with the bot's token. Jig asks Telegram
+ * The few Telegram Bot API calls Jig uses (D-350), over HTTPS with the bot's token. Jig asks Telegram
  * for new messages (long polling), so nothing on this computer listens to the internet.
  */
 

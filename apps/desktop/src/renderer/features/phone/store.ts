@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { PhoneState } from "../../../shared/phone";
 import { call } from "../../lib/host";
 
-/** Jig on your phone (D-348): the host's state, kept current by `phone.changed`. */
+/** Jig on your phone (D-350): the host's state, kept current by `phone.changed`. */
 export const usePhone = create<{ state: PhoneState | undefined }>(() => ({ state: undefined }));
 
 let started = false;

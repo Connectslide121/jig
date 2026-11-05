@@ -521,7 +521,7 @@ export interface HostMethods {
   /** Makes a tenant the one `az` uses (`default` = your own az login); the `azure.activeTenant` setting. */
   "azure.setActiveTenant": { args: { key: string }; result: TenantsState };
   /**
-   * Jig on your phone (D-348): your Telegram bot, whether it is paired with you, and the code to send
+   * Jig on your phone (D-350): your Telegram bot, whether it is paired with you, and the code to send
    * it while pairing. The bot's token never comes back to the renderer.
    */
   "phone.state": { args: void; result: PhoneState };
@@ -919,7 +919,7 @@ export interface HostEvents {
   "azure.tenantChanged": TenantsState;
   /** A line of `az login`'s output while a tenant signs in (`done` once it ended). */
   "azure.signInProgress": { key: string; text: string; done?: boolean };
-  /** Your phone's bot was set up, paired, lost its connection or was forgotten (D-348). */
+  /** Your phone's bot was set up, paired, lost its connection or was forgotten (D-350). */
   "phone.changed": PhoneState;
   /** An add-on's host code called api.emit(topic, payload). */
   "addons.event": { id: string; topic: string; payload: unknown };

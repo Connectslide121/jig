@@ -83,7 +83,6 @@ export function SessionsView() {
     return () => clearInterval(timer);
   }, []);
   const visible = metas.filter((m) => showArchived || !m.archived);
-  const mixedProviders = metas.some((m) => chatProvider(m) === "codex");
   const groups = groupChats(view, visible, projects, activeId, pinnedOrder);
   const open = (m: SessionMeta) => {
     workbench.openTab("jig.chat", { sessionId: m.id });
@@ -162,13 +161,10 @@ export function SessionsView() {
             >
               {project && <ProjectSwatch color={project.color} />}
             </span>
-            {/* Once a ChatGPT chat exists, every row keeps a slot at the far right; ChatGPT's
-                chats show their mark there, Claude's (the default) leave it empty (D-314). */}
-            {mixedProviders && (
-              <span className="flex size-3.5 shrink-0 items-center justify-center group-hover:hidden">
-                {chatProvider(m) === "codex" && <ProviderMark provider="codex" iconOnly />}
-              </span>
-            )}
+            {/* Every row shows its provider's mark at the far right, in a fixed slot (D-348). */}
+            <span className="flex size-3.5 shrink-0 items-center justify-center group-hover:hidden">
+              <ProviderMark provider={chatProvider(m)} iconOnly />
+            </span>
             <IconButton
               icon={m.pinned ? PinOff : Pin}
               label={m.pinned ? "Unpin" : "Pin to the top"}

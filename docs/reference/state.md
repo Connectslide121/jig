@@ -105,7 +105,7 @@ A new state file is documented here in the same commit that adds it.
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
-| `phone.enabled` | `false` | Jig on your phone (D-348): message your paired Telegram bot and read your replies; turned on by pairing; protected |
+| `phone.enabled` | `false` | Jig on your phone (D-350): message your paired Telegram bot and read your replies; turned on by pairing; protected |
 | `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
 | `phone.awayMinutes` | `5` | 1–60; protected |
 | `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
@@ -170,7 +170,7 @@ re-enabling. New projects are included automatically. Selections affect the next
 the chat's project even if another project is selected in the UI. Catalogue/instructions are
 read-only application resources, not user state. Personal/project Claude skills remain independent.
 
-## Phone (D-348)
+## Phone (D-350)
 
 `phone.json`: `{ token, bot, owner?, replies?, targets?, topics? }`. `token` is the Telegram bot token encrypted with the OS
 (Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written

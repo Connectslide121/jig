@@ -65,9 +65,15 @@
       "specs": ["ai.spec.ts"]
     },
     {
-      "files": ["apps/desktop/src/main/browser/**", "apps/desktop/src/renderer/features/browser/**"],
+      "files": [
+        "apps/desktop/src/main/browser/**",
+        "apps/desktop/src/renderer/features/browser/**",
+        "apps/desktop/src/renderer/workbench/focusedPanel.ts",
+        "apps/desktop/src/renderer/workbench/viewBadges.ts"
+      ],
       "specs": [
         "browser.spec.ts",
+        "browser-reveal.spec.ts",
         "browser-hangs.spec.ts",
         "browser-pages.spec.ts",
         "user-browser.spec.ts",

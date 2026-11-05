@@ -1,7 +1,11 @@
 import { FlaskConical, Globe, MonitorCog } from "lucide-react";
+import { useEffect } from "react";
+import { revealAction, viewVisible } from "../../../shared/layout";
 import { useHostEvent } from "../../lib/host";
+import { focusedPanel } from "../../workbench/focusedPanel";
 import { registerAction, registerTopbarItem, registerView } from "../../workbench/registry";
-import { workbench } from "../../workbench/store";
+import { useWorkbench, workbench } from "../../workbench/store";
+import { setViewBadge } from "../../workbench/viewBadges";
 import { BrowserButton } from "./BrowserButton";
 import { BrowserView } from "./BrowserView";
 import { testSomething } from "./testing";
@@ -55,7 +59,27 @@ export function registerBrowser(): void {
   });
 }
 
-/** Mounted once: a chat started using its page of Claude's browser, so show the view. */
+/** Chats that browsed while the view stayed out of sight in your panel: the badge counts them. */
+const unseen = new Set<string>();
+
+/**
+ * Mounted once: a chat started using its page of Claude's browser. The view shows itself, unless
+ * you are working on another tab of its panel: then its tab gets a badge instead (D-349), which
+ * clears once the view is on screen.
+ */
 export function useBrowserReveal(): void {
-  useHostEvent("browser.reveal", () => workbench.showView(BROWSER_VIEW));
+  useHostEvent("browser.reveal", ({ chatId }) => {
+    const layout = useWorkbench.getState().layout;
+    const action = layout ? revealAction(layout, BROWSER_VIEW, focusedPanel()) : "show";
+    if (action === "show") workbench.showView(BROWSER_VIEW);
+    if (action !== "badge") return;
+    unseen.add(chatId);
+    setViewBadge(BROWSER_VIEW, String(unseen.size));
+  });
+  const visible = useWorkbench((s) => (s.layout ? viewVisible(s.layout, BROWSER_VIEW) : false));
+  useEffect(() => {
+    if (!visible) return;
+    unseen.clear();
+    setViewBadge(BROWSER_VIEW);
+  }, [visible]);
 }

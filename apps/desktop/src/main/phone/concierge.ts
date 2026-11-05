@@ -12,7 +12,7 @@ import { jigHome } from "../state/paths";
 import { lastReply } from "./messages";
 
 /**
- * Jig itself on your phone (D-348): a chat of its own kind that answers what you write to the bot
+ * Jig itself on your phone (D-350): a chat of its own kind that answers what you write to the bot
  * outside a chat's messages. It has Jig's tools (projects, queues, boards…) and the chat tools below,
  * and none of Claude Code's own (no files, no shell): work goes to a chat it starts in a project.
  */

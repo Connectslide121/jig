@@ -129,6 +129,45 @@ export function findView(layout: Layout, viewId: string): SideRegion | "hidden" 
   return regionOf(layout, viewId) ?? (layout.hidden.includes(viewId) ? "hidden" : undefined);
 }
 
+/** A part of the workbench with its own tabs: a sidebar (or its lower half), the bottom panel, a main-area pane. */
+export type WorkbenchPanel = SideRegion | `main-${MainPane}`;
+
+/** The panel a view is in: its region, or the main-area pane of its tab. Undefined when it isn't open. */
+export function panelOfView(layout: Layout, viewId: string): WorkbenchPanel | undefined {
+  const region = regionOf(layout, viewId);
+  if (region) return region;
+  const tab = layout.main.tabs.find(isViewTab(viewId));
+  return tab ? `main-${paneOf(layout, tab.id)}` : undefined;
+}
+
+/** The view is on screen: the shown view of an open region, or the active tab of its main-area pane. */
+export function viewVisible(layout: Layout, viewId: string): boolean {
+  const region = regionOf(layout, viewId);
+  if (region) {
+    const state = layout[region];
+    return (state.active ?? state.views[0]) === viewId && !layout[columnOf(region)].collapsed;
+  }
+  const tab = layout.main.tabs.find(isViewTab(viewId));
+  return tab ? paneActive(layout, paneOf(layout, tab.id)) === tab.id : false;
+}
+
+/**
+ * What a view that wants attention does (D-349): nothing when it is on screen, a badge when you are
+ * working in its panel (on another of its tabs), otherwise it shows itself. `focused` is the panel you
+ * last worked in (undefined: a chat, or Jig's window isn't focused).
+ */
+export function revealAction(
+  layout: Layout,
+  viewId: string,
+  focused: WorkbenchPanel | undefined,
+): "none" | "show" | "badge" {
+  if (viewVisible(layout, viewId)) return "none";
+  const panel = panelOfView(layout, viewId);
+  // A collapsed sidebar or panel isn't one you work in, whatever had focus last.
+  const open = !panel || panel.startsWith("main-") || !layout[columnOf(panel as SideRegion)].collapsed;
+  return panel && open && panel === focused ? "badge" : "show";
+}
+
 function removeEverywhere(layout: Layout, viewId: string) {
   for (const r of SIDE_REGIONS) {
     const region = layout[r];

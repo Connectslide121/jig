@@ -1,6 +1,6 @@
 # Phase 26 — Jig on your phone
 
-Status: built; needs checking with a real bot and phone (D-348). Asked for by Jon: "a way to
+Status: built; needs checking with a real bot and phone (D-350). Asked for by Jon: "a way to
 communicate to Jig from my phone … for free. I have an iPhone … I often leave Jig working and go for
 a walk", then "something like a message bot or even emails … I want Jig to be able to reach me if
 needed and vice versa" (not remote desktop).

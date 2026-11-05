@@ -1061,7 +1061,7 @@ ${output.slice(0, 600)}`,
             await call("addon_releases_changes", {});
             await stream(`${msg}:text:0`, "Here is what changed since the last release.", signal);
           } else if (/text my phone/.test(lower)) {
-            // Jig on your phone (D-348): a message to the user's phone; their reply comes back here.
+            // Jig on your phone (D-350): a message to the user's phone; their reply comes back here.
             await call("jig_phone_send", { text: "The build is done. Shall I deploy it?" });
             await stream(`${msg}:text:0`, "I sent it to your phone.", signal);
           } else if (/in a jig terminal/.test(lower)) {

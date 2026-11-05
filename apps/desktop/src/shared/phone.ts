@@ -1,5 +1,5 @@
 /**
- * Jig on your phone through a Telegram bot of your own (D-348). The bot's token never reaches the
+ * Jig on your phone through a Telegram bot of your own (D-350). The bot's token never reaches the
  * renderer: it sees only this state.
  */
 export interface PhoneState {

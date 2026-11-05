@@ -261,7 +261,7 @@ export const ConfigSchema = z.object({
       desktop: z.boolean().default(true),
     })
     .prefault({}),
-  /** Jig on your phone through your own Telegram bot (D-348); the bot itself is set up in Settings → Phone. */
+  /** Jig on your phone through your own Telegram bot (D-350); the bot itself is set up in Settings → Phone. */
   phone: z
     .object({
       /** Send messages to your phone (the bot stays paired when it's off). */
@@ -374,7 +374,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
  * Settings Claude may not change from a chat (Settings only): they decide billing (API keys), which
  * program runs as Claude Code, the credentials programs run with (the Azure tenant, D-282), shell
  * commands Jig runs (updates), where add-on code comes from (the gallery's sources), and what leaves
- * this computer for your phone (D-348). D-077.
+ * this computer for your phone (D-350). D-077.
  */
 export const PROTECTED_SETTINGS = [
   "ai",
