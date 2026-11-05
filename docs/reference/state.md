@@ -177,7 +177,8 @@ read-only application resources, not user state. Personal/project Claude skills 
 and the token lives only until Jig closes. `bot` is its username; `owner` (`{ chatId, name }`) the
 Telegram account it is paired with. `replies` maps the last 300 Telegram messages to their chats and `targets` (per topic, 0 without
 topics) the chat plain text written there goes to, so replies keep working after Jig restarts.
-`topics` `{ jig?, projects? }` are the topics Jig made in the bot's chat (Jig's own, per project id). Disconnect deletes the file.
+`topics` `{ jig?, projects? }` are the topics Jig made in the bot's chat (Jig's own, per project id);
+`rooms` maps chats open as rooms on the phone to their topics. Disconnect deletes the file.
 
 ## Meetings (D-217)
 

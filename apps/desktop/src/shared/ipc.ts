@@ -535,6 +535,11 @@ export interface HostMethods {
   "phone.test": { args: void; result: void };
   /** Forgets the bot and your Telegram account; nothing more goes to your phone. */
   "phone.disconnect": { args: void; result: PhoneState };
+  /**
+   * Opens a chat as a room on your phone (D-350): a topic of its own, live, where you write to it.
+   * Errors: `not_connected`, `no_topics` (the bot has no topics).
+   */
+  "phone.open": { args: { sessionId: string }; result: void };
   /** Puts a chat in a project, moves it to another, or takes it out (`projectId` left out). */
   "sessions.setProject": { args: { id: string; projectId?: string }; result: void };
   /**

@@ -18,6 +18,7 @@ import {
   Plug,
   Power,
   Shield,
+  Smartphone,
   Trash2,
   Wand2,
 } from "lucide-react";
@@ -46,6 +47,7 @@ import { useProjects } from "../../workbench/projects";
 import { updateLayout, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { openBuildDialog } from "../builder/BuildDialog";
+import { startPhone, usePhone } from "../phone/store";
 import { startTour } from "../tour/actions";
 import { worktreeMenu } from "../worktrees";
 import { compactMenu } from "./ContextMeter";
@@ -296,6 +298,26 @@ function handoverEntryState(meta: SessionMeta): { disabled: boolean; detail?: st
   return { disabled: !state.ok, detail: state.why };
 }
 
+/** Open on my phone (D-350): the chat as a room in your Telegram, when the phone is connected. */
+function phoneMenu(meta: SessionMeta): MenuEntry[] {
+  startPhone();
+  const phone = usePhone.getState().state;
+  if (meta.kind || phone?.status !== "connected") return [];
+  return [
+    {
+      label: "Open on my phone",
+      icon: Smartphone,
+      disabled: !phone.topics,
+      detail: phone.topics ? undefined : "Turn on topics for your bot (Settings → Phone)",
+      onSelect: () =>
+        void call("phone.open", { sessionId: meta.id })
+          .then(() => notify({ tone: "success", title: "Open on your phone", message: "It's in a topic of its own." }))
+          .catch((error) => notify({ tone: "danger", title: "Couldn't open it", message: errorMessage(error) })),
+      testId: "session-open-phone",
+    },
+  ];
+}
+
 export function sessionMenu(meta: SessionMeta): MenuEntry[] {
   return [
     { label: "Rename…", icon: Pencil, onSelect: () => void renameSession(meta), testId: "session-rename" },
@@ -329,6 +351,7 @@ export function sessionMenu(meta: SessionMeta): MenuEntry[] {
       onSelect: () => void exportChat(meta),
       testId: "session-export",
     },
+    ...phoneMenu(meta),
     // Claude ⇄ ChatGPT between turns, through the handover dialog (D-339); builder chats stay on Claude.
     ...(meta.kind
       ? []

@@ -7,10 +7,12 @@ import {
   chatTitle,
   codeIn,
   conciergeReply,
+  escapeHtml,
   excerpt,
   findProject,
   HELP,
   HELP_TOPICS,
+  isUserChat,
   lastReply,
   type OutMessage,
   optionDecision,
@@ -28,6 +30,7 @@ import {
   tapDecision,
   usedBrowser,
 } from "./messages";
+import { chunkMarkdown, historyItems, roomPieces, toTelegramHtml } from "./mirror";
 import {
   keyboard,
   nameOf,
@@ -48,6 +51,20 @@ export interface SavedPhone {
   targets?: Array<[number, string]>;
   /** The topics Jig made in your bot's chat: its own and one per project. */
   topics?: { jig?: number; projects?: Record<string, number> };
+  /** Chats open as rooms on your phone: chat id → its topic. */
+  rooms?: Record<string, number>;
+}
+
+/** A chat open as a room: what was there when it opened, what it shows, your messages from the phone. */
+interface Room {
+  thread: number;
+  known: Set<string>;
+  skip: Set<string>;
+  echo: string[];
+  shown: Map<string, { messageId: number; text?: string }>;
+  syncing: Promise<void>;
+  again: boolean;
+  timer?: ReturnType<typeof setTimeout>;
 }
 
 /** Telegram's topic colours, nearest to a project's colour. */
@@ -112,6 +129,8 @@ export interface PhoneDeps {
   onChange(state: PhoneState): void;
   code(): string;
   now?(): number;
+  /** Waits `ms`, then runs `fn` (a room collects a chat's changes for a moment before syncing). */
+  later?(fn: () => void, ms: number): ReturnType<typeof setTimeout>;
   /** Wait between polls after an error, and after an empty answer that came back at once. */
   pause?(ms: number, signal: AbortSignal): Promise<void>;
   log?: { warn(message: string, error?: unknown): void };
@@ -165,6 +184,7 @@ export class PhoneService {
   /** Jig's own chat with you, and the topic you last wrote to it in (its answers go there). */
   private conciergeId: string | undefined;
   private conciergeThread: number | undefined;
+  private readonly rooms = new Map<string, Room>();
   private readonly previous = new Map<string, SessionMeta["status"]>();
   /** Telegram message → the chat it was about, so a reply goes there. */
   private readonly replies = new Map<number, string>();
@@ -183,6 +203,10 @@ export class PhoneService {
     if (this.saved) this.api = this.deps.api(this.saved.token);
     for (const [messageId, sessionId] of this.saved?.replies ?? []) this.replies.set(messageId, sessionId);
     for (const [thread, sessionId] of this.saved?.targets ?? []) this.targets.set(thread, sessionId);
+    for (const [sessionId, thread] of Object.entries(this.saved?.rooms ?? {})) {
+      const items = (await this.deps.chats.snapshot(sessionId).catch(() => undefined))?.items;
+      if (items) this.rooms.set(sessionId, this.newRoom(thread, items));
+    }
     this.refresh();
     if (this.saved) await this.checkTopics().catch(() => undefined);
     if (this.saved?.owner) await this.setCommands();
@@ -198,6 +222,7 @@ export class PhoneService {
           { command: "pause", description: "Pause a project's queue" },
           { command: "resume", description: "Resume a project's queue" },
           { command: "screen", description: "A screenshot of Jig on your computer" },
+          { command: "close", description: "Close this chat's room (the chat stays)" },
           { command: "chats", description: "Pick the chat your messages go to" },
           { command: "help", description: "What Jig on your phone does" },
         ],
@@ -347,6 +372,7 @@ export class PhoneService {
     if (previous === meta.status) return;
     this.updateKeepAwake();
     if (meta.kind === "concierge") return this.conciergeStatus(previous, meta);
+    if (this.rooms.has(meta.id)) return this.roomStatus(previous, meta);
     if (!this.shouldTell()) return;
     const settings = this.deps.settings();
     const items =
@@ -357,7 +383,11 @@ export class PhoneService {
       settings.screenshots && items && usedBrowser(items)
         ? await this.deps.screens?.browser(meta.id).catch(() => undefined)
         : undefined;
-    await this.send(message, { sessionId: meta.id, thread: await this.threadFor(meta) }, photo);
+    await this.send(
+      this.withOpen(message, meta),
+      { sessionId: meta.id, thread: await this.threadFor(meta) },
+      photo,
+    );
   }
 
   /** A permission card changed in a chat: send it when it waits; update the phone's copy when answered. */
@@ -382,11 +412,13 @@ export class PhoneService {
       return;
     }
     const concierge = meta.kind === "concierge";
-    if (sent || this.sending.has(id) || !(concierge ? this.connected() : this.shouldTell())) return;
+    const room = this.rooms.has(meta.id);
+    if (sent || this.sending.has(id) || !(concierge || room ? this.connected() : this.shouldTell())) return;
     this.sending.add(id);
     try {
       const key = (this.nextKey++).toString(36);
-      const message = permissionMessage(meta, item, key);
+      const message = this.withOpen(permissionMessage(meta, item, key), meta);
+      if (room) await this.syncRoom(meta.id);
       const thread = concierge ? this.conciergeThread : await this.threadFor(meta);
       const messageId = await this.send(message, { sessionId: meta.id, thread });
       if (messageId === undefined) return;
@@ -460,8 +492,10 @@ export class PhoneService {
    * The topic a chat's messages go to: its project's (made the first time), or Jig's own for chats
    * without a project and for Jig itself. Undefined without topics: everything in one thread.
    */
-  private async threadFor(meta?: Pick<SessionMeta, "projectId">): Promise<number | undefined> {
+  private async threadFor(meta?: Pick<SessionMeta, "projectId" | "id">): Promise<number | undefined> {
     if (!this.topics || !this.saved?.owner) return undefined;
+    const room = meta?.id ? this.rooms.get(meta.id) : undefined;
+    if (room) return room.thread;
     const projectId = meta?.projectId;
     const known = projectId ? this.saved.topics?.projects?.[projectId] : this.saved.topics?.jig;
     if (known) return known;
@@ -656,6 +690,9 @@ export class PhoneService {
     const command = /^\/(\w+)/.exec(text)?.[1]?.toLowerCase();
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
+    const roomChat = this.roomOfThread(here);
+    if (roomChat && command === "close") return this.closeRoom(roomChat);
+    if (roomChat && !command) return this.toChat(roomChat, text, message.reply_to_message?.message_id, here);
     if (command === "chats") return void (await this.send(await this.picker(here), { thread: here }));
     if (command === "screen") return this.screen(here);
     if (command === "status") return void (await this.send(await this.overview(), { thread: here }));
@@ -720,6 +757,206 @@ export class PhoneService {
     const items = (await this.deps.chats.snapshot(meta.id).catch(() => undefined))?.items ?? [];
     const reply = lastReply(items);
     if (reply) await this.send({ text: conciergeReply(reply) }, { sessionId: meta.id, thread });
+  }
+
+  // --- rooms: a chat, whole and live, in a topic of its own -------------------------------------
+
+  private newRoom(thread: number, items: ChatItem[]): Room {
+    return {
+      thread,
+      known: new Set(items.map((i) => i.id)),
+      skip: new Set(),
+      echo: [],
+      shown: new Map(),
+      syncing: Promise.resolve(),
+      again: false,
+    };
+  }
+
+  private roomOfThread(thread: number | undefined): string | undefined {
+    if (thread === undefined) return undefined;
+    for (const [sessionId, room] of this.rooms) if (room.thread === thread) return sessionId;
+    return undefined;
+  }
+
+  /** "💬 Open chat" under a chat's message, when it can have a room and has none yet. */
+  private withOpen(message: OutMessage, meta: SessionMeta): OutMessage {
+    if (!this.topics || this.rooms.has(meta.id) || !isUserChat(meta)) return message;
+    return {
+      ...message,
+      buttons: [...(message.buttons ?? []), [{ text: "💬 Open chat", data: `o:${meta.id}` }]],
+    };
+  }
+
+  /**
+   * Opens a chat as a room on your phone: a topic of its own with its last turns, then everything
+   * that happens in it, live; what you write there goes to the chat. Needs topics.
+   */
+  async openRoom(sessionId: string, from?: number): Promise<void> {
+    const chatId = this.saved?.owner?.chatId;
+    if (!this.api || chatId === undefined) throw new JigError("not_connected", "Pair your phone first.");
+    await this.checkTopics().catch(() => undefined);
+    const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
+    if (!snapshot) return void (await this.send({ text: "That chat no longer exists." }, { thread: from }));
+    const title = chatTitle(snapshot.meta);
+    if (!this.topics) {
+      const text =
+        "Chats open in a topic of their own: turn on topics for your bot in @BotFather first (Settings → Phone says how).";
+      await this.send({ text }, { thread: from });
+      throw new JigError("no_topics", text);
+    }
+    const open = this.rooms.get(sessionId);
+    if (open)
+      return void (await this.send(
+        { text: `💬 ${title} is already open in its own topic.` },
+        { thread: from },
+      ));
+    const project = snapshot.meta.projectId
+      ? await this.deps.project?.(snapshot.meta.projectId).catch(() => undefined)
+      : undefined;
+    const topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
+      chat_id: chatId,
+      name: `💬 ${snapshot.meta.title}`.slice(0, 128),
+      icon_color: TOPIC_COLOR[project?.color ?? "jig"],
+    });
+    const room = this.newRoom(topic.message_thread_id, snapshot.items);
+    this.rooms.set(sessionId, room);
+    this.saved = { ...this.saved!, rooms: { ...this.saved?.rooms, [sessionId]: room.thread } };
+    this.persist();
+    const thread = room.thread;
+    await this.send(
+      {
+        text: `💬 <b>${title}</b>${project ? ` · ${escapeHtml(project.name)}` : ""}\n\nThis is the chat, live: its replies, steps and screenshots arrive here, and what you write here goes to it. /close closes the room (the chat stays).`,
+        silent: true,
+      },
+      { thread },
+    );
+    for (const item of historyItems(snapshot.items)) {
+      if (item.kind === "user")
+        await this.send({ text: `🧑 <i>You:</i>\n${toTelegramHtml(item.text)}`, silent: true }, { thread });
+      else if (item.kind === "assistant")
+        for (const chunk of chunkMarkdown(item.text))
+          await this.send({ text: toTelegramHtml(chunk), silent: true }, { sessionId, thread });
+    }
+    for (const item of snapshot.items)
+      if (
+        item.kind === "permission" &&
+        item.status === "pending" &&
+        !this.requests.has(`${sessionId}/${item.request.requestId}`)
+      )
+        await this.permission(snapshot.meta, item);
+    if (from !== undefined && from !== thread)
+      await this.send({ text: `💬 Opened ${title} in its own topic.`, silent: true }, { thread: from });
+  }
+
+  /** The topic you last wrote to Jig itself in (a chat it starts opens from there). */
+  askedIn(): number | undefined {
+    return this.conciergeThread;
+  }
+
+  /** /close in a room: the topic goes, the chat stays. */
+  async closeRoom(sessionId: string): Promise<void> {
+    const room = this.rooms.get(sessionId);
+    if (!room) return;
+    if (room.timer) clearTimeout(room.timer);
+    this.rooms.delete(sessionId);
+    const { [sessionId]: _closed, ...rooms } = this.saved?.rooms ?? {};
+    if (this.saved) this.saved = { ...this.saved, rooms };
+    this.persist();
+    await this.api
+      ?.call("deleteForumTopic", { chat_id: this.saved?.owner?.chatId, message_thread_id: room.thread })
+      .catch((error) => this.deps.log?.warn("Deleting the room's topic failed", error));
+  }
+
+  /** A chat changed: its room syncs a moment later (changes come in bursts while Claude writes). */
+  chatChanged(sessionId: string): void {
+    const room = this.rooms.get(sessionId);
+    if (!room || room.timer || !this.connected()) return;
+    const later = this.deps.later ?? setTimeout;
+    room.timer = later(() => {
+      room.timer = undefined;
+      void this.syncRoom(sessionId).catch((error) => this.deps.log?.warn("Syncing a room failed", error));
+    }, 1500);
+  }
+
+  /** Brings a room up to date: new messages sent, grown replies and steps edited, pictures sent once. */
+  syncRoom(sessionId: string): Promise<void> {
+    const room = this.rooms.get(sessionId);
+    if (!room) return Promise.resolve();
+    room.syncing = room.syncing
+      .then(() => this.syncNow(sessionId, room))
+      .catch((error) => this.deps.log?.warn("Syncing a room failed", error));
+    return room.syncing;
+  }
+
+  private async syncNow(sessionId: string, room: Room): Promise<void> {
+    const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
+    if (!snapshot || !this.api || this.rooms.get(sessionId) !== room) return;
+    for (const item of snapshot.items)
+      if (
+        item.kind === "user" &&
+        !room.known.has(item.id) &&
+        !room.skip.has(item.id) &&
+        !room.shown.has(`u:${item.id}`) &&
+        room.echo[0] !== undefined &&
+        item.text.trim() === room.echo[0]
+      ) {
+        room.skip.add(item.id);
+        room.echo.shift();
+      }
+    const working = ["working", "starting"].includes(snapshot.meta.status);
+    for (const piece of roomPieces(snapshot.items, room.known, room.skip, working)) {
+      const shown = room.shown.get(piece.key);
+      if (piece.photo) {
+        if (shown) continue;
+        const photo = await this.deps.screens?.file(snapshot.meta, piece.photo).catch(() => undefined);
+        const messageId = photo
+          ? await this.send({ text: "", silent: true }, { sessionId, thread: room.thread }, photo)
+          : undefined;
+        room.shown.set(piece.key, { messageId: messageId ?? 0 });
+      } else if (!shown) {
+        const messageId = await this.send(
+          { text: piece.text!, silent: true },
+          { sessionId, thread: room.thread },
+        );
+        if (messageId !== undefined) room.shown.set(piece.key, { messageId, text: piece.text });
+      } else if (shown.text !== piece.text) {
+        shown.text = piece.text;
+        await this.api
+          .call("editMessageText", {
+            chat_id: this.saved?.owner?.chatId,
+            message_id: shown.messageId,
+            text: piece.text,
+            parse_mode: "HTML",
+            link_preview_options: { is_disabled: true },
+          })
+          .catch((error) => {
+            if (!/not modified/i.test(String((error as Error).message)))
+              this.deps.log?.warn("Editing a room's message failed", error);
+          });
+      }
+    }
+  }
+
+  /** A room's chat ended a turn: the rest of it, then a line that buzzes. */
+  private async roomStatus(previous: SessionMeta["status"] | undefined, meta: SessionMeta): Promise<void> {
+    if (!this.connected()) return;
+    const room = this.rooms.get(meta.id)!;
+    if (room.timer) {
+      clearTimeout(room.timer);
+      room.timer = undefined;
+    }
+    await this.syncRoom(meta.id);
+    if (previous !== "working" && previous !== "starting") return;
+    if (meta.status === "idle")
+      await this.send({ text: "✅ <b>Finished</b>" }, { sessionId: meta.id, thread: room.thread });
+    if (meta.status === "error")
+      await this.send(
+        {
+          text: `⚠️ <b>Stopped</b>\n\n${excerpt(meta.lastError?.split("\n")[0] ?? "The turn ended with an error.", 400)}`,
+        },
+        { sessionId: meta.id, thread: room.thread },
+      );
   }
 
   /** /status: what every project is doing. */
@@ -788,7 +1025,7 @@ export class PhoneService {
   private async picker(thread: number | undefined) {
     const projectId = this.projectOfThread(thread);
     const chats = (await this.deps.chats.list()).filter((m) => !projectId || m.projectId === projectId);
-    return chatPicker(chats, this.targets.get(thread ?? 0), 8, Boolean(this.deps.concierge));
+    return chatPicker(chats, this.targets.get(thread ?? 0), 8, Boolean(this.deps.concierge), this.topics);
   }
 
   private async pair(chatId: number, from: TelegramUser | undefined, text: string): Promise<void> {
@@ -845,6 +1082,7 @@ export class PhoneService {
         await this.send({ text: `↩️ Answered in ${title}.`, silent: true }, { sessionId, thread: here });
       } else {
         const busy = ["working", "starting", "needs_you"].includes(snapshot.meta.status);
+        this.rooms.get(sessionId)?.echo.push(text.trim());
         await this.deps.chats.send(sessionId, text);
         await this.send(
           { text: `↩️ Sent to ${title}${busy ? ": Claude reads it at its next step" : ""}.`, silent: true },
@@ -868,6 +1106,10 @@ export class PhoneService {
     const parsed = tap.data ? parseTap(tap.data) : undefined;
     if (!owner || tap.from.id !== owner.chatId || !parsed) return void (await answer());
     const here = tap.message?.is_topic_message ? tap.message.message_thread_id : undefined;
+    if (parsed.kind === "open") {
+      await answer();
+      return this.openRoom(parsed.sessionId, here);
+    }
     if (parsed.kind === "queue") {
       await answer();
       const project = ((await this.deps.projects?.()) ?? []).find((p) => p.id === parsed.projectId);

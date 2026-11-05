@@ -23,7 +23,7 @@ export const CONCIERGE_PROMPT = `You are Jig itself, the user's desktop workbenc
 - jig_chats_list and jig_chat_read tell how chats are doing; jig_chat_send writes to a running chat (the user approves it). The Tasks add-on's tools read and change task queues; the Boards add-on's tools read and update Azure DevOps cards; jig_list_projects lists projects.
 - Each message says which topic it was written in. A project's topic means that project unless the user names another. When it's unclear which project, ask.
 - Never approve, deny or answer anything waiting in another chat: the user does that with the buttons. Never run pipelines or deploys.
-- After starting a chat, say its title and that its updates arrive in the project's topic.`;
+- After starting a chat, say so briefly: it opens on their phone as a room of its own, where they follow it live and write to it.`;
 
 const chatLine = (m: SessionMeta, projects: Map<string, string>) =>
   `${m.id} · ${m.title} · ${m.projectId ? (projects.get(m.projectId) ?? "unknown project") : "no project"} · ${m.status} · ${m.updatedAt}`;
@@ -33,6 +33,12 @@ async function projectNames(): Promise<Map<string, string>> {
 }
 
 const userChat = (m: SessionMeta) => !m.draft && (!m.kind || m.kind === "chat");
+
+let startedChat: ((sessionId: string) => void) | undefined;
+/** A chat Jig started for you from the phone (it opens as a room there). */
+export function onConciergeStartedChat(listener: (sessionId: string) => void): void {
+  startedChat = listener;
+}
 
 /** The chat tools only Jig's own chat on your phone has. */
 export const conciergeTools: ChatTool[] = [
@@ -96,7 +102,8 @@ export const conciergeTools: ChatTool[] = [
         limitFallback: true,
       });
       await sessionManager().send(meta.id, String(args.prompt), [], true);
-      return `Started a chat (id ${meta.id}) in ${project.name}. Its title comes from the prompt; its updates reach the user's phone in the project's topic.`;
+      startedChat?.(meta.id);
+      return `Started a chat (id ${meta.id}) in ${project.name}. It opens on the user's phone as a room of its own (when their bot has topics), where they follow it and write to it.`;
     },
   },
   {

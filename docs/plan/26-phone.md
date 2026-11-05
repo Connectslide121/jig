@@ -127,6 +127,16 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       `/screen` sends Jig's window (JPEG, at most 1600 wide); a finished turn that used Claude's
       browser comes with its page (`phone.screenshots`, default on). The text is the caption, or
       follows the picture when longer than Telegram's 1,024 characters.
+- [x] Chats as rooms (Jon: "I want the full chat experience … open any of the chats here directly in
+      Telegram"): a chat opens in a topic of its own ("💬 title"), with its last four turns, then
+      live (`mirror.ts`, `onChatUpdates`, synced 1.5 s after a change): your messages from the
+      computer, Claude's replies (Markdown as Telegram HTML, cut at 3,500 characters, edited while
+      they grow), its steps grouped between replies, every picture in the chat (Claude's
+      screenshots, images you attached), what waits for you with its buttons, and Finished. What you
+      write there goes to the chat (not shown back). Opened from "💬 Open chat" under a chat's
+      messages, /chats (with topics), the chat's ⋯ menu → Open on my phone (`phone.open`), and by
+      itself for a chat Jig starts from the phone. /close deletes the topic. Rooms get everything
+      also while you're at the computer. Needs topics; kept in `phone.json` (`rooms`).
 
 **Order:** check the first version with a real bot (above) → persistence, keep awake, quiet finished
 messages → topics → fixed commands → concierge and its chat tools → digest, questions, voice.

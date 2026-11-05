@@ -30,6 +30,7 @@ function setup(
   } = {},
 ) {
   let topicId = 500;
+  const timers: Array<() => void> = [];
   const asked: string[] = [];
   const queue = {
     running: true,
@@ -119,7 +120,7 @@ function setup(
       window: async () => Buffer.from("window"),
       browser: async (id: string) => (id === "s1" ? Buffer.from("page") : undefined),
       file: async (_meta: SessionMeta, path: string) => {
-        if (path !== "shot.png") throw new Error("there is no file at shot.png.");
+        if (!path.endsWith(".png")) throw new Error(`there is no file at ${path}.`);
         return Buffer.from("file");
       },
     },
@@ -153,6 +154,10 @@ function setup(
     code: () => "123456",
     now: () => NOW * 1000,
     pause: async () => undefined,
+    later: (fn: () => void) => {
+      timers.push(fn);
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    },
   });
   const handle = (update: Omit<TelegramUpdate, "update_id">) =>
     (service as unknown as { handle(u: TelegramUpdate): Promise<void> }).handle({ update_id: 1, ...update });
@@ -207,6 +212,7 @@ function setup(
     queue,
     asked,
     photos,
+    timers,
   };
 }
 
@@ -639,7 +645,7 @@ describe("PhoneService pictures", () => {
     await t.service.start();
     await t.service.fromChat(meta(), "The chart", { path: "shot.png" });
     expect(t.photos).toHaveLength(1);
-    expect(await t.service.fromChat(meta(), "Missing", { path: "nope.png" })).toContain("Nothing was sent");
+    expect(await t.service.fromChat(meta(), "Missing", { path: "notes.txt" })).toContain("Nothing was sent");
     expect(t.photos).toHaveLength(1);
   });
 
@@ -691,5 +697,133 @@ describe("PhoneService pictures", () => {
     await t.service.chatStatus(meta({ status: "idle" }));
     expect(t.photos).toHaveLength(0);
     expect(t.messages().at(-1)).toContain("Finished");
+  });
+});
+
+describe("PhoneService rooms", () => {
+  const user = (id: string, text: string, extra: Record<string, unknown> = {}) =>
+    ({ kind: "user", id, text, at: "", ...extra }) as ChatItem;
+  const said = (id: string, text: string) => ({ kind: "assistant", id, text }) as ChatItem;
+  const step = (
+    id: string,
+    name: string,
+    input: Record<string, unknown>,
+    extra: Record<string, unknown> = {},
+  ) => ({ kind: "tool", id, name, input, status: "done", at: "", ...extra }) as ChatItem;
+  const inRoom = (t: ReturnType<typeof setup>, thread: number) =>
+    t.calls.filter((c) => c.method === "sendMessage" && c.params.message_thread_id === thread);
+
+  async function opened(opts: Parameters<typeof setup>[0] = {}) {
+    const t = setup({ saved: paired, topics: true, ...opts });
+    current = t.service;
+    await t.service.start();
+    t.items.set("s1", [user("u1", "fix the login"), said("a1", "On it.")]);
+    await t.service.openRoom("s1");
+    return t;
+  }
+
+  it("opens a chat in a topic of its own with its last turns", async () => {
+    const t = await opened();
+    expect(t.calls.find((c) => c.method === "createForumTopic")?.params.name).toBe("💬 Shop");
+    const texts = inRoom(t, 501).map((c) => String(c.params.text));
+    expect(texts[0]).toContain("This is the chat, live");
+    expect(texts.slice(1)).toEqual(["🧑 <i>You:</i>\nfix the login", "On it."]);
+    expect(t.saves.at(-1)?.rooms).toEqual({ s1: 501 });
+  });
+
+  it("follows the chat live: your messages from the computer, replies growing, steps and screenshots", async () => {
+    const t = await opened();
+    const before = inRoom(t, 501).length;
+    t.items.set("s1", [
+      user("u1", "fix the login"),
+      said("a1", "On it."),
+      user("u2", "and the logout"),
+      step("t1", "Read", { file_path: "src/auth.ts" }),
+      step(
+        "t2",
+        "mcp__jig__jig_browser_screenshot",
+        {},
+        { images: [{ path: "C:/shots/page.png", mime: "image/png" }] },
+      ),
+      said("a2", "Looking"),
+    ]);
+    t.service.chatChanged("s1");
+    expect(t.timers).toHaveLength(1);
+    t.timers.shift()!();
+    await t.service.syncRoom("s1");
+    const texts = inRoom(t, 501)
+      .slice(before)
+      .map((c) => String(c.params.text));
+    expect(texts[0]).toBe("🖥 <i>You, on the computer:</i>\nand the logout");
+    expect(texts[1]).toContain("✓ Read <code>auth.ts</code>");
+    expect(texts.at(-1)).toBe("Looking");
+    expect(t.photos).toHaveLength(1);
+
+    // The reply grows: its message is edited, not sent again.
+    t.items.set("s1", [...t.items.get("s1")!.slice(0, -1), said("a2", "Looking at the logout handler.")]);
+    await t.service.syncRoom("s1");
+    expect(inRoom(t, 501).slice(before)).toHaveLength(texts.length);
+    expect(t.calls.filter((c) => c.method === "editMessageText").at(-1)?.params.text).toBe(
+      "Looking at the logout handler.",
+    );
+    expect(t.photos).toHaveLength(1);
+  });
+
+  it("sends what you write in the room to the chat, and doesn't show it back", async () => {
+    const t = await opened();
+    await t.text("also check the tests", { message_thread_id: 501, is_topic_message: true });
+    expect(t.sent).toEqual([{ id: "s1", text: "also check the tests" }]);
+    const before = inRoom(t, 501).length;
+    t.items.set("s1", [...t.items.get("s1")!, user("u3", "also check the tests"), said("a3", "Will do.")]);
+    await t.service.syncRoom("s1");
+    expect(
+      inRoom(t, 501)
+        .slice(before)
+        .map((c) => String(c.params.text)),
+    ).toEqual(["Will do."]);
+  });
+
+  it("tells a finished turn in the room, also while you're at the computer", async () => {
+    const t = await opened({ settings: { when: "away" }, away: false });
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    expect(String(inRoom(t, 501).at(-1)?.params.text)).toBe("✅ <b>Finished</b>");
+  });
+
+  it("puts what waits in the room, with its buttons", async () => {
+    const t = await opened({ settings: { when: "away" }, away: false });
+    t.items.set("s1", [...t.items.get("s1")!, bash()]);
+    await t.service.permission(meta(), bash());
+    const card = inRoom(t, 501).at(-1)?.params;
+    expect(String(card?.text)).toContain("npm test");
+    expect(card?.reply_markup).toBeDefined();
+  });
+
+  it("/close deletes the room's topic; the chat goes back to its project's topic", async () => {
+    const t = await opened();
+    await t.text("/close", { message_thread_id: 501, is_topic_message: true });
+    expect(t.calls.find((c) => c.method === "deleteForumTopic")?.params.message_thread_id).toBe(501);
+    expect(t.saves.at(-1)?.rooms).toEqual({});
+  });
+
+  it("offers Open chat under a chat's messages, and opens it from the button", async () => {
+    const t = setup({ saved: paired, topics: true });
+    current = t.service;
+    await t.service.start();
+    await t.service.chatStatus(meta({ status: "working" }));
+    await t.service.chatStatus(meta({ status: "idle" }));
+    const markup = t.calls.filter((c) => c.method === "sendMessage").at(-1)?.params.reply_markup as {
+      inline_keyboard: Array<Array<{ callback_data: string }>>;
+    };
+    expect(markup.inline_keyboard.at(-1)?.[0]?.callback_data).toBe("o:s1");
+    await t.tap("o:s1");
+    expect(t.calls.some((c) => c.method === "createForumTopic" && c.params.name === "💬 Shop")).toBe(true);
+  });
+
+  it("can't open rooms without topics", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    await t.service.start();
+    await expect(t.service.openRoom("s1")).rejects.toThrow(/topics/);
   });
 });

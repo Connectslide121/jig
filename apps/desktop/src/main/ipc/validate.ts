@@ -481,6 +481,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
   }),
   "azure.tenants": z.object({ check: z.boolean().optional() }).strict(),
   "phone.connect": z.object({ token: z.string().trim().regex(TELEGRAM_TOKEN) }).strict(),
+  "phone.open": z.object({ sessionId: z.string().min(1).max(100) }).strict(),
   "azure.addTenant": z
     .object({ tenant: tenantInput, label: z.string().max(80).optional(), method: signInMethod.optional() })
     .strict(),

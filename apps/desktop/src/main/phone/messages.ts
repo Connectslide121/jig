@@ -172,6 +172,7 @@ export type Tap =
   | { kind: "permission"; key: string; allow: boolean }
   | { kind: "option"; key: string; index: number }
   | { kind: "chat"; sessionId: string }
+  | { kind: "open"; sessionId: string }
   | { kind: "queue"; action: "q" | "p" | "r"; projectId: string };
 
 export function parseTap(data: string): Tap | undefined {
@@ -181,6 +182,8 @@ export function parseTap(data: string): Tap | undefined {
   if (option) return { kind: "option", key: option[1]!, index: Number(option[2]) };
   const chat = /^c:([\w-]+)$/.exec(data);
   if (chat) return { kind: "chat", sessionId: chat[1]! };
+  const open = /^o:([\w-]+)$/.exec(data);
+  if (open) return { kind: "open", sessionId: open[1]! };
   const queue = /^k:([qpr]):([\w-]+)$/.exec(data);
   if (queue) return { kind: "queue", action: queue[1] as "q" | "p" | "r", projectId: queue[2]! };
   return undefined;
@@ -257,6 +260,8 @@ export function chatPicker(
   current: string | undefined,
   max = 8,
   jig = false,
+  /** Buttons open the chat as a room (topics) instead of sending your messages there. */
+  rooms = false,
 ): OutMessage {
   const rank = (m: SessionMeta) =>
     m.status === "needs_you" ? 0 : m.status === "working" || m.status === "starting" ? 1 : 2;
@@ -268,13 +273,15 @@ export function chatPicker(
   if (!list.length)
     return { text: "No chats yet. Start one in Jig on your computer, or ask Jig to.", buttons: back };
   return {
-    text: "Which chat? Your next messages here go to the one you pick.",
+    text: rooms
+      ? "Which chat? It opens in a topic of its own, live, and you write to it there."
+      : "Which chat? Your next messages here go to the one you pick.",
     buttons: [
       ...back,
       ...list.map((m) => [
         {
           text: `${m.id === current ? "• " : ""}${STATUS_MARK[m.status] ? `${STATUS_MARK[m.status]} ` : ""}${m.title.slice(0, 50)}`,
-          data: `c:${m.id}`,
+          data: `${rooms ? "o" : "c"}:${m.id}`,
         },
       ]),
     ],

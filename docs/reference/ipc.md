@@ -226,6 +226,7 @@ settings, add-on permissions.
 | `phone.connect` | `{ token }` | `PhoneState` | checks a @BotFather token with Telegram (`getMe`), keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable` (schema: the token's shape) |
 | `phone.test` | — | — | sends the paired phone a test message; `not_connected` |
 | `phone.disconnect` | — | `PhoneState` | tells the phone, forgets the token and pairing (deletes `phone.json`) |
+| `phone.open` | `{ sessionId }` | — | opens a chat as a room on the phone: a topic of its own, mirrored live, where you write to it (D-350); `not_connected`, `no_topics` |
 | `azure.setActiveTenant` | `{ key }` | `TenantsState` | sets `azure.activeTenant` (`default` → empty); the renderer may also change the setting directly (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |

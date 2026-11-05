@@ -11,10 +11,10 @@ import { registerJigTools } from "../engine/jigTools";
 import { emit, handle } from "../ipc/router";
 import { logger } from "../log";
 import { projectStore } from "../projects";
-import { onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
+import { onChatUpdates, onPermissionCard, onSessionStatus, sessionManager } from "../sessions";
 import { readJson, writeJson } from "../state/jsonStore";
 import { paths } from "../state/paths";
-import { conciergeChat, registerConcierge } from "./concierge";
+import { conciergeChat, onConciergeStartedChat, registerConcierge } from "./concierge";
 import type { QueueCounts, QueueView } from "./messages";
 import { PhoneService, type SavedPhone } from "./service";
 import { telegramApi } from "./telegram";
@@ -150,6 +150,15 @@ export async function startPhone(): Promise<void> {
   handle("phone.connect", ({ token }) => s.connect(token));
   handle("phone.test", () => s.test());
   handle("phone.disconnect", () => s.disconnect());
+  handle("phone.open", ({ sessionId }) => s.openRoom(sessionId));
+  onChatUpdates((sessionId, updates) => {
+    if (updates.some((u) => u.op !== "meta" && u.op !== "queue")) s.chatChanged(sessionId);
+  });
+  // A chat Jig starts for you from the phone opens as a room there.
+  onConciergeStartedChat(
+    (sessionId) =>
+      void s.openRoom(sessionId, s.askedIn()).catch((error) => log.warn("Opening the room failed", error)),
+  );
 
   onConfigChange(() => s.refresh());
   onSessionStatus((meta) => void s.chatStatus(meta).catch((error) => log.warn("Phone status failed", error)));

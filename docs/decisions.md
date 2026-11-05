@@ -5460,6 +5460,10 @@ choice of Telegram and everything below: Claude, on my own.
   sends Jig's window, and a finished turn that used Claude's browser comes with its page. Pictures
   can't be masked like text; Jon: "there is no privacy to worry about", so the page comes by default
   (`phone.screenshots`, which turns it off).
+- **Chats as rooms:** a chat opens in a topic of its own and is mirrored there live (messages,
+  replies edited as they grow, steps, pictures, requests); writing there writes to the chat. One room
+  per chat, only on request (a button, /chats, the chat's menu, or a chat Jig started from the phone),
+  so the phone doesn't fill with topics; /close deletes the topic and leaves the chat.
 - **Commands without Claude:** `/status`, `/queue`, `/pause`, `/resume` read the Tasks add-on
   (`overview`, `list`, `start`, `pause` through `addonService().call`) and the chats, and answer at
   once: asking how things are going costs nothing from the plan.

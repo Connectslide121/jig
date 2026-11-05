@@ -9,11 +9,13 @@ const TOKEN = `123456789:${"A".repeat(35)}`;
 const ME = 42;
 
 /** A Telegram Bot API on 127.0.0.1: records what Jig sends, hands it what "the phone" writes. */
-async function fakeTelegram() {
+async function fakeTelegram(opts: { topics?: boolean } = {}) {
+  let nextTopic = 900;
   const sent: Array<Record<string, unknown>> = [];
   const edits: Array<Record<string, unknown>> = [];
   const queue: Array<Record<string, unknown>> = [];
   const photos: number[] = [];
+  const topics: Array<Record<string, unknown>> = [];
   let nextUpdate = 1;
   let nextMessage = 1;
   const server: Server = createServer((req, res) => {
@@ -31,7 +33,18 @@ async function fakeTelegram() {
         res.statusCode = 401;
         return res.end(JSON.stringify({ ok: false, description: "Unauthorized" }));
       }
-      if (method === "getMe") return reply({ id: 1, is_bot: true, first_name: "Shop", username: "shop_bot" });
+      if (method === "getMe")
+        return reply({
+          id: 1,
+          is_bot: true,
+          first_name: "Shop",
+          username: "shop_bot",
+          has_topics_enabled: opts.topics ?? false,
+        });
+      if (method === "createForumTopic") {
+        topics.push(params);
+        return reply({ message_thread_id: nextTopic++, name: params.name });
+      }
       if (method === "sendMessage") {
         sent.push(params);
         return reply({ message_id: nextMessage++ });
@@ -56,8 +69,11 @@ async function fakeTelegram() {
     sent,
     edits,
     photos,
+    topics,
+    inThread: (thread: number) =>
+      sent.filter((m) => m.message_thread_id === thread).map((m) => String(m.text)),
     texts: () => sent.map((m) => String(m.text)),
-    write: (text: string, replyTo?: number) =>
+    write: (text: string, replyTo?: number, thread?: number) =>
       queue.push({
         update_id: nextUpdate++,
         message: {
@@ -66,6 +82,7 @@ async function fakeTelegram() {
           chat: { id: ME, type: "private" },
           from,
           text,
+          ...(thread ? { message_thread_id: thread, is_topic_message: true } : {}),
           ...(replyTo
             ? { reply_to_message: { message_id: replyTo, date: now(), chat: { id: ME, type: "private" } } }
             : {}),
@@ -208,6 +225,53 @@ test("phone: plain text goes to Jig itself, and its answer comes back", async ({
     // /screen sends a picture of Jig's window.
     telegram.write("/screen");
     await expect.poll(() => telegram.photos.length, { timeout: 15000 }).toBe(1);
+  } finally {
+    await telegram.close();
+  }
+});
+
+// A chat as a room on the phone (D-350): opened from its menu, followed live, written to from there.
+test("phone: open a chat on the phone and talk to it there", async ({ jigHome }) => {
+  const telegram = await fakeTelegram({ topics: true });
+  try {
+    const page = await start(jigHome, telegram);
+    const connected = (await hostCall(page, "phone.connect", { token: TOKEN })) as {
+      value: { code: string };
+    };
+    telegram.write(connected.value.code);
+    await expect
+      .poll(
+        async () => ((await hostCall(page, "phone.state")) as { value: { status: string } }).value.status,
+        { timeout: 15000 },
+      )
+      .toBe("connected");
+
+    await page.keyboard.press("Control+N");
+    await page.getByTestId("composer-input").fill("first idea");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("chat-status")).toHaveText("Idle", { timeout: 15000 });
+
+    await page.getByRole("button", { name: "Chat options" }).click();
+    await page.getByTestId("session-open-phone").click();
+    await expect
+      .poll(() => telegram.topics.map((t) => String(t.name)).join("|"), { timeout: 15000 })
+      .toContain("💬");
+    const room = 900 + telegram.topics.findIndex((t) => String(t.name).startsWith("💬"));
+    await expect.poll(() => telegram.inThread(room).join("\n"), { timeout: 15000 }).toContain("first idea");
+
+    // Written on the computer: it shows in the room, with Claude's answer.
+    await page.getByTestId("composer-input").fill("second idea");
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => telegram.inThread(room).join("\n"), { timeout: 20000 })
+      .toContain("You, on the computer:</i>\nsecond idea");
+    await expect.poll(() => telegram.inThread(room).join("\n"), { timeout: 20000 }).toContain("Finished");
+
+    // Written in the room: it goes to the chat.
+    telegram.write("from the phone", undefined, room);
+    await expect(page.getByTestId("user-message-text").last()).toHaveText("from the phone", {
+      timeout: 15000,
+    });
   } finally {
     await telegram.close();
   }

@@ -9,6 +9,7 @@ import { toolUse } from "../../shared/chatStats";
 import {
   type ChatItem,
   type ChatProvider,
+  type ChatUpdate,
   chatProvider,
   type EffortLevel,
   ENGINE_CAPABILITIES,
@@ -100,6 +101,13 @@ const permissionListeners = new Set<(sessionId: string, item: PermissionCard) =>
 export function onPermissionCard(listener: (sessionId: string, item: PermissionCard) => void): () => void {
   permissionListeners.add(listener);
   return () => permissionListeners.delete(listener);
+}
+
+/** Called with every change of a chat's transcript (a chat open as a room on your phone, D-350). */
+const updateListeners = new Set<(sessionId: string, updates: ChatUpdate[]) => void>();
+export function onChatUpdates(listener: (sessionId: string, updates: ChatUpdate[]) => void): () => void {
+  updateListeners.add(listener);
+  return () => updateListeners.delete(listener);
 }
 
 /**
@@ -387,6 +395,7 @@ export function startSessions(): void {
             for (const listener of statusListeners) listener(u.meta);
           }
         }
+      for (const listener of updateListeners) listener(sessionId, updates);
       for (const u of updates)
         if (u.op === "upsert" && u.item.kind === "permission")
           for (const listener of permissionListeners) listener(sessionId, u.item);
