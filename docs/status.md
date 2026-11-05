@@ -90,6 +90,17 @@ try Cancel, then each button. Checked with the fake engine in Jig Dark and Light
 your machine: Alt+F4, quitting from the taskbar's Close window, an update install while a timer runs,
 and a meeting plus a timer together (two rows).
 
+A new board card filled in at once (2026-11-05, D-372, Jon): + in a column (or New card in the board's
+toolbar) opens a dialog shaped like the card's own: title on top, the type's rich text on the left
+(description, acceptance criteria for stories, repro steps for bugs…), and on the right Type, Column,
+State, Assigned to, Tags, Priority, Story points, Area and Iteration (the team's area and current
+iteration picked). Switching the type changes the sections and states; fields a type doesn't have are
+greyed out. Create sends everything in one go. Area and Iteration are now editable in an opened card
+too, and `addon_boards_create` takes the same fields. How to try it: Code → Boards, + on a column,
+fill it in, Create, then open the card. Checked with the fake az at 900 px and 1920 px windows. Needs
+testing on your machine: a real create with description, acceptance criteria, tags and an iteration
+(Agile, Scrum and Basic processes), and moving an existing card to another iteration.
+
 A board card like Azure DevOps' form (2026-11-04, D-342, Jon): opening a card in Code → Boards shows
 tabs **Details · Links (n) · Attachments (n)**. Details shows the description, acceptance criteria, repro
 steps, system info and custom HTML fields as rich text with their images (pasted screenshots

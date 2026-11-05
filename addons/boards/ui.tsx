@@ -522,7 +522,13 @@ function BoardBody({
         />
       ) : null}
       {adding ? (
-        <NewCardDialog ctx={ctx} board={board} column={adding} onClose={() => setAdding(undefined)} />
+        <NewCardDialog
+          ctx={ctx}
+          board={board}
+          column={adding}
+          columns={data.columns}
+          onClose={() => setAdding(undefined)}
+        />
       ) : null}
     </>
   );

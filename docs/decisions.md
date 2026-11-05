@@ -6054,3 +6054,32 @@ choice of Telegram and everything below: Claude, on my own.
   Repos' status covers the phone).
 - The phone concierge's prompt names the new tools for pipeline and repository questions, so it
   answers them itself instead of starting a chat.
+
+## D-372: Boards: the New card dialog is the card's form
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05 (task queue): fill in everything when creating a card instead of creating
+  it, opening it and editing it; ideally the edit form's own fields. The details below are Claude, on
+  my own.
+- **What:** "New card in <column>" has the card dialog's size (xl, fixed body height) and layout: the
+  title on top, the picked type's rich-text sections on the left (Description, then acceptance
+  criteria, repro steps, system info… as the type's fields say), Type and the card dialog's editable
+  fields on the right. Those fields are one component, `EditFields` in `cards.tsx`, shared with the
+  card dialog: Column, State, Assigned to, Tags, Priority and Story points, Area, Iteration. Area and
+  Iteration became editable in the card dialog too (they were read-only rows), so both forms match.
+- **Type-driven:** the host's `typeForm({ board, type })` answers the type's states, rich sections
+  and whether it has priority and story points (from `workitemtypes/{type}/fields`, cached an hour).
+  Switching type swaps the sections (text in a section both types share stays; the last type's form
+  stays on screen until the next arrives) and disables number fields the type lacks rather than hiding
+  them, so nothing moves. If the fields can't be read, every field shows, as in the card dialog.
+- **Paths:** `paths({ board })` reads the team's areas (`teamfieldvalues`), settings and iterations
+  (cached an hour). A new card defaults to the team's area and default iteration: the team's set one,
+  the current iteration when it is `@currentIteration`, else the backlog iteration (the project root).
+  Claude's `_create` uses the same default when no iteration is given. Pickers show the card's own
+  value (or "—") until the lists arrive.
+- **Create in one go:** one `az boards work-item create` with every field (`createArgs`, reusing
+  `updateArgs`), then one update for the column and state (Azure DevOps starts a card in its type's
+  first state; the board's column field needs the state that goes with it), then the parent link.
+  `update` takes the new card's type, since the board's cached cards don't have it yet (before, a
+  new card's column move sent no state). `addon_boards_create` accepts the same fields;
+  `addon_boards_update` gained area and iteration.

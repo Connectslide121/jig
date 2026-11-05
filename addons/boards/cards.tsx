@@ -37,6 +37,9 @@ import {
   type DevelopmentLink,
   downloadUrl,
   groupLinks,
+  type NewCard,
+  type TeamPaths,
+  type TypeForm,
   type WorkItemDetail,
   type WorkItemPatch,
 } from "./lib/boards";
@@ -67,6 +70,41 @@ interface Section {
   html: string;
 }
 
+type Editors = Map<string, RefObject<HTMLDivElement | null>>;
+
+/** One editor ref per rich section, made on first use and kept, so its text survives re-renders. */
+function useEditors() {
+  const editors = useRef<Editors>(new Map());
+  const editorRef = (ref: string) => {
+    let r = editors.current.get(ref);
+    if (!r) {
+      r = createRef<HTMLDivElement>();
+      editors.current.set(ref, r);
+    }
+    return r;
+  };
+  return { editors, editorRef };
+}
+
+/** The rich sections you changed, read from their editors: images back on their attachment URLs. */
+function richPatch(
+  sections: Array<Pick<Section, "ref" | "html">>,
+  editors: Editors,
+  dirty: ReadonlySet<string>,
+): Pick<WorkItemPatch, "descriptionHtml" | "acceptanceHtml" | "html"> {
+  const p: Pick<WorkItemPatch, "descriptionHtml" | "acceptanceHtml" | "html"> = {};
+  for (const s of sections) {
+    const el = editors.get(s.ref)?.current;
+    if (!dirty.has(s.ref) || !el) continue;
+    const html = restoreSources(el.innerHTML);
+    if (html === s.html) continue;
+    if (s.ref === DESCRIPTION) p.descriptionHtml = html;
+    else if (s.ref === ACCEPTANCE) p.acceptanceHtml = html;
+    else p.html = { ...p.html, [s.ref]: html };
+  }
+  return p;
+}
+
 /**
  * A card, opened in Jig (D-262, D-342): what Azure DevOps' work item form shows, in its tabs: Details
  * (rich text with images, editable without losing them; the discussion; every field), Links (work
@@ -94,14 +132,8 @@ export function CardDialog({
   onOpenCard?: (id: number) => void;
 }) {
   const { data, error, reload } = useHostCall<WorkItemDetail>("item", { board, id, columnField });
-  const [draft, setDraft] = useState<
-    Required<Pick<WorkItemPatch, "title" | "state" | "assignedTo">> & {
-      column: string;
-      tags: string;
-      priority: string;
-      storyPoints: string;
-    }
-  >();
+  const paths = useHostCall<TeamPaths>("paths", { board });
+  const [draft, setDraft] = useState<FieldsDraft & { title: string }>();
   const [tab, setTab] = useState<Tab>("details");
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState<"save" | "comment" | "delete">();
@@ -109,15 +141,7 @@ export function CardDialog({
   const [opened, setOpened] = useState<Opened>();
   /** The rich sections you've changed (their editors' HTML is read when you save). */
   const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
-  const editors = useRef(new Map<string, RefObject<HTMLDivElement | null>>());
-  const editorRef = (ref: string) => {
-    let r = editors.current.get(ref);
-    if (!r) {
-      r = createRef<HTMLDivElement>();
-      editors.current.set(ref, r);
-    }
-    return r;
-  };
+  const { editors, editorRef } = useEditors();
   useEffect(() => {
     if (!data) return;
     setDraft({
@@ -128,6 +152,8 @@ export function CardDialog({
       tags: data.tags.join(", "),
       priority: data.priority === undefined ? "" : String(data.priority),
       storyPoints: data.storyPoints === undefined ? "" : String(data.storyPoints),
+      area: data.areaPath ?? "",
+      iteration: data.iteration ?? "",
     });
   }, [data]);
 
@@ -169,31 +195,17 @@ export function CardDialog({
     if (draft.column && draft.column !== (data.column ?? "")) p.column = draft.column;
     else if (draft.state !== data.state) p.state = draft.state;
     if (draft.assignedTo.trim() !== (data.assignedTo ?? "")) p.assignedTo = draft.assignedTo.trim();
-    const tags = draft.tags
-      .split(/[,;]/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const tags = parseTags(draft.tags);
     if (tags.join(";") !== data.tags.join(";")) p.tags = tags;
-    const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
-    if (num(draft.priority) !== data.priority && num(draft.priority) !== undefined)
-      p.priority = num(draft.priority);
-    if (num(draft.storyPoints) !== data.storyPoints && num(draft.storyPoints) !== undefined)
-      p.storyPoints = num(draft.storyPoints);
+    const priority = parseNumber(draft.priority);
+    if (priority !== undefined && priority !== data.priority) p.priority = priority;
+    const storyPoints = parseNumber(draft.storyPoints);
+    if (storyPoints !== undefined && storyPoints !== data.storyPoints) p.storyPoints = storyPoints;
+    if (draft.area && draft.area !== (data.areaPath ?? "")) p.area = draft.area;
+    if (draft.iteration && draft.iteration !== (data.iteration ?? "")) p.iteration = draft.iteration;
     return p;
   };
-  const patch = (): WorkItemPatch => {
-    const p = fieldsPatch();
-    for (const s of sections) {
-      const el = editors.current.get(s.ref)?.current;
-      if (!dirty.has(s.ref) || !el) continue;
-      const html = restoreSources(el.innerHTML);
-      if (html === s.html) continue;
-      if (s.ref === DESCRIPTION) p.descriptionHtml = html;
-      else if (s.ref === ACCEPTANCE) p.acceptanceHtml = html;
-      else p.html = { ...p.html, [s.ref]: html };
-    }
-    return p;
-  };
+  const patch = (): WorkItemPatch => ({ ...fieldsPatch(), ...richPatch(sections, editors.current, dirty) });
   const changed = Object.keys(fieldsPatch()).length > 0 || dirty.size > 0;
   const save = () =>
     run("save", async () => {
@@ -397,6 +409,7 @@ export function CardDialog({
                   data={data}
                   draft={draft}
                   columns={columns}
+                  paths={paths.data}
                   onDraft={(d) => setDraft({ ...draft, ...d })}
                 />
               </div>
@@ -443,47 +456,76 @@ function TabLabel({ text, count }: { text: string; count: number }) {
   );
 }
 
-type Draft = {
+/** The fields a card's form edits, as typed (D-372): the card dialog and the New card dialog share them. */
+export interface FieldsDraft {
   state: string;
   assignedTo: string;
   column: string;
   tags: string;
   priority: string;
   storyPoints: string;
+  area: string;
+  iteration: string;
+}
+
+/** Tags as typed (comma or semicolon separated) → the list. */
+const parseTags = (s: string) =>
+  s
+    .split(/[,;]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+/** A number field as typed → its number (undefined when empty or not a number). */
+const parseNumber = (s: string) => {
+  const n = s.trim() === "" ? Number.NaN : Number(s.replace(",", "."));
+  return Number.isFinite(n) ? n : undefined;
 };
 
-/** The side column of Details: what you can change, then every other field Azure DevOps has on it. */
-function SideFields({
-  data,
+/** A path picker's options: the team's, with the card's own first when it isn't one of them. */
+const pathOptions = (list: string[] | undefined, current: string) =>
+  current && !list?.includes(current) ? [current, ...(list ?? [])] : (list ?? []);
+
+/**
+ * The fields you edit in a card's side column, in a fixed order (D-372): Column, State, Assigned to,
+ * Tags, Priority and Story points, Area and Iteration. Every control has its slot from the start: a
+ * type without priority or story points shows them disabled, the path pickers hold the card's own
+ * value (or "—") until the team's lists arrive.
+ */
+function EditFields({
+  type,
+  states,
   draft,
   columns,
+  paths,
+  numbers = { priority: true, storyPoints: true },
+  saved,
   onDraft,
+  testId,
 }: {
-  data: WorkItemDetail;
-  draft: Draft;
+  type: string;
+  states: string[];
+  draft: FieldsDraft;
   columns: BoardColumn[];
-  onDraft: (d: Partial<Draft>) => void;
+  paths?: TeamPaths;
+  numbers?: Pick<TypeForm, "priority" | "storyPoints">;
+  /** The saved assignee (their picture shows while the field still names them). */
+  saved?: { assignedTo?: string; assignedEmail?: string };
+  onDraft: (d: Partial<FieldsDraft>) => void;
+  testId: string;
 }) {
-  const rows: Array<[string, string | undefined]> = [
-    ...data.fields.map((f): [string, string] => [f.label, f.kind === "date" ? day(f.value) : f.value]),
-    ["Area", data.areaPath],
-    ["Iteration", data.iteration],
-    [
-      "Created",
-      data.created ? `${when(data.created)}${data.createdBy ? ` · ${data.createdBy}` : ""}` : undefined,
-    ],
-    ["Changed", when(data.changed)],
-  ];
+  const stateOptions = states.includes(draft.state) || !draft.state ? states : [draft.state, ...states];
+  const areas = pathOptions(paths?.areas, draft.area);
+  const iterations = pathOptions(paths?.iterations, draft.iteration);
+  const who = draft.assignedTo.trim();
   return (
-    <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
+    <>
       <Field label="Column">
         <Select
           value={draft.column}
           onChange={(e) => {
             const col = columns.find((c) => c.name === e.target.value);
-            onDraft({ column: e.target.value, state: col?.stateMappings[data.type] ?? draft.state });
+            onDraft({ column: e.target.value, state: col?.stateMappings[type] ?? draft.state });
           }}
-          data-testid="board-card-column"
+          data-testid={`${testId}-column`}
         >
           {!draft.column ? <option value="">—</option> : null}
           {columns.map((c) => (
@@ -494,8 +536,14 @@ function SideFields({
         </Select>
       </Field>
       <Field label="State">
-        <Select value={draft.state} onChange={(e) => onDraft({ state: e.target.value })}>
-          {data.states.map((s) => (
+        <Select
+          value={draft.state}
+          disabled={!stateOptions.length}
+          onChange={(e) => onDraft({ state: e.target.value })}
+          data-testid={`${testId}-state`}
+        >
+          {!stateOptions.length ? <option value="">—</option> : null}
+          {stateOptions.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -507,21 +555,18 @@ function SideFields({
           {/* The saved assignee's picture; while you type someone else, their initials. */}
           <PersonAvatar
             size="md"
-            name={draft.assignedTo.trim()}
+            name={who}
             email={
-              draft.assignedTo.trim() === (data.assignedTo ?? "")
-                ? data.assignedEmail
-                : draft.assignedTo.includes("@")
-                  ? draft.assignedTo.trim()
-                  : undefined
+              who === (saved?.assignedTo ?? "") ? saved?.assignedEmail : who.includes("@") ? who : undefined
             }
-            data-testid="board-card-avatar"
+            data-testid={`${testId}-avatar`}
           />
           <Input
             className="min-w-0 flex-1"
             value={draft.assignedTo}
             placeholder="Email or name"
             onChange={(e) => onDraft({ assignedTo: e.target.value })}
+            data-testid={`${testId}-assigned`}
           />
         </span>
       </Field>
@@ -530,24 +575,101 @@ function SideFields({
           value={draft.tags}
           placeholder="Comma separated"
           onChange={(e) => onDraft({ tags: e.target.value })}
+          data-testid={`${testId}-tags`}
         />
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Priority">
           <Input
             inputMode="numeric"
-            value={draft.priority}
+            value={numbers.priority ? draft.priority : ""}
+            disabled={!numbers.priority}
+            title={numbers.priority ? undefined : `A ${type} has no priority`}
             onChange={(e) => onDraft({ priority: e.target.value })}
+            data-testid={`${testId}-priority`}
           />
         </Field>
         <Field label="Story points">
           <Input
             inputMode="decimal"
-            value={draft.storyPoints}
+            value={numbers.storyPoints ? draft.storyPoints : ""}
+            disabled={!numbers.storyPoints}
+            title={numbers.storyPoints ? undefined : `A ${type} has no story points`}
             onChange={(e) => onDraft({ storyPoints: e.target.value })}
+            data-testid={`${testId}-points`}
           />
         </Field>
       </div>
+      <Field label="Area">
+        <Select
+          value={draft.area}
+          disabled={!areas.length}
+          title={draft.area}
+          onChange={(e) => onDraft({ area: e.target.value })}
+          data-testid={`${testId}-area`}
+        >
+          {!areas.length ? <option value="">—</option> : null}
+          {areas.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Iteration">
+        <Select
+          value={draft.iteration}
+          disabled={!iterations.length}
+          title={draft.iteration}
+          onChange={(e) => onDraft({ iteration: e.target.value })}
+          data-testid={`${testId}-iteration`}
+        >
+          {!iterations.length ? <option value="">—</option> : null}
+          {iterations.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </Select>
+      </Field>
+    </>
+  );
+}
+
+/** The side column of Details: what you can change, then every other field Azure DevOps has on it. */
+function SideFields({
+  data,
+  draft,
+  columns,
+  paths,
+  onDraft,
+}: {
+  data: WorkItemDetail;
+  draft: FieldsDraft;
+  columns: BoardColumn[];
+  paths?: TeamPaths;
+  onDraft: (d: Partial<FieldsDraft>) => void;
+}) {
+  const rows: Array<[string, string | undefined]> = [
+    ...data.fields.map((f): [string, string] => [f.label, f.kind === "date" ? day(f.value) : f.value]),
+    [
+      "Created",
+      data.created ? `${when(data.created)}${data.createdBy ? ` · ${data.createdBy}` : ""}` : undefined,
+    ],
+    ["Changed", when(data.changed)],
+  ];
+  return (
+    <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
+      <EditFields
+        type={data.type}
+        states={data.states}
+        draft={draft}
+        columns={columns}
+        paths={paths}
+        saved={data}
+        onDraft={onDraft}
+        testId="board-card"
+      />
       <dl className="mt-1 space-y-1 border-t border-line pt-2 text-xs" data-testid="board-card-fields">
         {rows
           .filter((r): r is [string, string] => !!r[1])
@@ -724,30 +846,115 @@ function AttachmentsTab({
   );
 }
 
-/** A new card in a column: its title and type (the types this board shows). */
+const NO_HANDLERS = (ctx: AddonUiContext): RichHandlers => ({
+  onImage: () => undefined,
+  onLink: (href) => ctx.openExternal(href),
+});
+
+/**
+ * A new card in a column, filled in like the card's own form (D-372): the title on top, the type's rich
+ * text on the left (description, acceptance criteria, repro steps… whatever the picked type has), the
+ * type and the fields the card dialog edits on the right. Switching the type changes the rich sections
+ * and states (text in a section both types have stays). The dialog has the card dialog's size and its
+ * panes scroll, so nothing moves while the type's form or the team's paths load. Create sends it all at once.
+ */
 export function NewCardDialog({
   ctx,
   board,
   column,
+  columns,
   onClose,
 }: {
   ctx: AddonUiContext;
   board: Board;
   column: BoardColumn;
+  columns: BoardColumn[];
   onClose: () => void;
 }) {
-  const types = Object.keys(column.stateMappings);
+  // The types this board shows, those of the column you add in first.
+  const types = [...new Set([column, ...columns].flatMap((c) => Object.keys(c.stateMappings)))];
   const [type, setType] = useState(
     types.find((t) => /story|backlog item|requirement/i.test(t)) ?? types[0] ?? "Task",
   );
   const [title, setTitle] = useState("");
+  const [draft, setDraft] = useState<FieldsDraft>(() => ({
+    state: "",
+    assignedTo: "",
+    column: column.name,
+    tags: "",
+    priority: "",
+    storyPoints: "",
+    area: "",
+    iteration: "",
+  }));
+  const [forms, setForms] = useState<Record<string, TypeForm>>({});
+  const [formError, setFormError] = useState("");
+  const shown = useRef<TypeForm>(undefined);
+  const paths = useHostCall<TeamPaths>("paths", { board });
+  const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
+  const { editors, editorRef } = useEditors();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
+
+  // The picked type's form, once per type; the last one stays on screen until the next arrives.
+  useEffect(() => {
+    if (forms[type]) return;
+    let live = true;
+    setFormError("");
+    ctx.host.call<TypeForm>("typeForm", { board, type }).then(
+      (f) => live && setForms((all) => ({ ...all, [type]: f })),
+      (e: unknown) => live && setFormError(e instanceof Error ? e.message : String(e)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [ctx, board, type, forms]);
+  const form = forms[type] ?? shown.current;
+  if (forms[type]) shown.current = forms[type];
+  // The state follows the column for the type; the team's area and default iteration once known.
+  const columnState = columns.find((c) => c.name === draft.column)?.stateMappings[type];
+  useEffect(() => {
+    if (columnState) setDraft((d) => ({ ...d, state: columnState }));
+  }, [columnState]);
+  useEffect(() => {
+    const p = paths.data;
+    if (p)
+      setDraft((d) => ({
+        ...d,
+        area: d.area || p.areas[0] || "",
+        iteration: d.iteration || p.defaultIteration || "",
+      }));
+  }, [paths.data]);
+
+  const ready = !!title.trim() && !busy;
   const create = async () => {
+    if (!ready) return;
     setBusy(true);
     setFailure("");
     try {
-      await ctx.host.call("create", { board, type, title, column: column.name });
+      const numbers = form ?? { priority: true, storyPoints: true };
+      const card: NewCard = {
+        type,
+        title: title.trim(),
+        ...(draft.column ? { column: draft.column } : {}),
+        ...(draft.state ? { state: draft.state } : {}),
+        ...(draft.assignedTo.trim() ? { assignedTo: draft.assignedTo.trim() } : {}),
+        ...(parseTags(draft.tags).length ? { tags: parseTags(draft.tags) } : {}),
+        ...(numbers.priority && parseNumber(draft.priority) !== undefined
+          ? { priority: parseNumber(draft.priority) }
+          : {}),
+        ...(numbers.storyPoints && parseNumber(draft.storyPoints) !== undefined
+          ? { storyPoints: parseNumber(draft.storyPoints) }
+          : {}),
+        ...(draft.area ? { area: draft.area } : {}),
+        ...(draft.iteration ? { iteration: draft.iteration } : {}),
+        ...richPatch(
+          (form?.rich ?? []).map((s) => ({ ref: s.ref, html: "" })),
+          editors.current,
+          dirty,
+        ),
+      };
+      await ctx.host.call("create", { board, ...card });
       onClose();
     } catch (e) {
       setFailure(e instanceof Error ? e.message : String(e));
@@ -755,19 +962,29 @@ export function NewCardDialog({
       setBusy(false);
     }
   };
+  const look = typeLook(type);
+
   return (
     <Dialog
       open
       onClose={onClose}
-      title={`New card in ${column.name}`}
-      testId="board-new-card"
+      width="xl"
+      testId="board-new-card-dialog"
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <look.Icon className={cn("size-4 shrink-0", look.text)} aria-hidden />
+          <span className="min-w-0 truncate">
+            New {type} in {draft.column || column.name}
+          </span>
+        </span>
+      }
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
           <Button
             variant="primary"
             busy={busy}
-            disabled={!title.trim()}
+            disabled={!ready}
             onClick={() => void create()}
             data-testid="board-new-card-create"
           >
@@ -776,26 +993,78 @@ export function NewCardDialog({
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <Field label="Title">
+      <div className="relative h-152">
+        <div className="flex h-full flex-col gap-3">
           <Input
             autoFocus
             value={title}
+            placeholder="Title"
+            aria-label="Title"
+            className="h-9 shrink-0 text-base font-semibold"
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && title.trim() && void create()}
+            onKeyDown={(e) => e.key === "Enter" && void create()}
             data-testid="board-new-card-title"
           />
-        </Field>
-        <Field label="Type">
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
-            {types.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <p role="alert" className={cn("h-4 text-xs text-danger", !failure && "invisible")}>
+          <div className="flex min-h-0 flex-1 gap-5">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pr-1" data-testid="board-new-card-details">
+              {form ? (
+                <div className="flex flex-col gap-4">
+                  {form.rich.map((s) => (
+                    <RichEditor
+                      key={s.ref}
+                      ctx={ctx}
+                      label={s.label}
+                      html=""
+                      editorRef={editorRef(s.ref)}
+                      onDirty={() => setDirty((d) => new Set(d).add(s.ref))}
+                      onRefuse={setFailure}
+                      handlers={NO_HANDLERS(ctx)}
+                      testId={`board-new-card-rich-${s.label.toLowerCase().replace(/\s+/g, "-")}`}
+                    />
+                  ))}
+                </div>
+              ) : formError ? (
+                <p className="p-4 text-sm whitespace-pre-wrap text-danger" role="alert">
+                  {formError}
+                </p>
+              ) : (
+                <Spinner center />
+              )}
+            </div>
+            <div className="flex min-h-0 w-72 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
+              <Field label="Type">
+                <Select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  data-testid="board-new-card-type"
+                >
+                  {types.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <EditFields
+                type={type}
+                states={form && forms[type] ? form.states : []}
+                draft={draft}
+                columns={columns}
+                paths={paths.data}
+                numbers={forms[type]}
+                onDraft={(d) => setDraft((prev) => ({ ...prev, ...d }))}
+                testId="board-new-card"
+              />
+            </div>
+          </div>
+        </div>
+        <p
+          role="alert"
+          className={cn(
+            "absolute right-0 -bottom-2 left-0 truncate text-xs text-danger",
+            !failure && "invisible",
+          )}
+        >
           {failure || "."}
         </p>
       </div>

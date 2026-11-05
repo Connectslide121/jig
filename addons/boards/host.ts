@@ -11,26 +11,31 @@ import {
   buildInfo,
   columnField,
   commitInfo,
+  createArgs,
   type DevelopmentLink,
   defaultArea,
   type FoundBoard,
   findBoard,
   itemLine,
   linkedIds,
+  type NewCard,
   orgName,
   orgUrl,
   parseRelations,
   pullRequestInfo,
   sniffImageMime,
   stateForColumn,
+  type TeamPaths,
+  type TypeForm,
   tabName,
   teamApi,
-  textToHtml,
+  teamPaths,
   toColumns,
   toDetail,
   toolDetail,
   toWorkItem,
   typeFieldNames,
+  typeForm as typeForm_,
   updateArgs,
   type WorkItem,
   type WorkItemDetail,
@@ -49,7 +54,18 @@ import {
   readCache,
 } from "./lib/cache";
 
-export type { Board, BoardData, BoardState, FoundBoard, WorkItem, WorkItemDetail, WorkItemPatch };
+export type {
+  Board,
+  BoardData,
+  BoardState,
+  FoundBoard,
+  NewCard,
+  TeamPaths,
+  TypeForm,
+  WorkItem,
+  WorkItemDetail,
+  WorkItemPatch,
+};
 
 /**
  * Azure DevOps team boards through the user's `az` CLI (az login + the azure-devops extension), like
@@ -548,9 +564,12 @@ export async function attachment(
   return flight;
 }
 
-/** Changes a card: fields, state, column (with the column's state for its type), a comment. */
+/**
+ * Changes a card: fields, state, column (with the column's state for its type), a comment. `type` is
+ * the card's type when the board doesn't have it yet (a card just created).
+ */
 export async function update(
-  { board: b, id, patch }: { board: Board; id: number; patch: WorkItemPatch },
+  { board: b, id, patch, type: known }: { board: Board; id: number; patch: WorkItemPatch; type?: string },
   api: AddonHostApi,
 ): Promise<{ savedAt: number }> {
   let field: string | undefined;
@@ -564,7 +583,7 @@ export async function update(
       throw new Error(
         `The board has no column "${patch.column}". Columns: ${data.columns.map((c) => c.name).join(", ")}`,
       );
-    const type = data.items.find((i) => i.id === id)?.type;
+    const type = known ?? data.items.find((i) => i.id === id)?.type;
     field = data.columnField;
     columnState = type ? stateForColumn(column, type) : undefined;
     next = { ...patch, column: column.name };
@@ -578,57 +597,90 @@ export async function update(
   return { savedAt };
 }
 
-export interface NewCard {
-  board: Board;
-  type: string;
-  title: string;
-  description?: string;
-  column?: string;
-  assignedTo?: string;
-  parentId?: number;
+/** What a work item type's form has: states, rich-text fields, number fields (D-372), cached by `typeFields`. */
+export async function typeForm(
+  { board: b, type }: { board: Board; type: string },
+  api: AddonHostApi,
+): Promise<TypeForm> {
+  const [names, states] = await Promise.all([
+    typeFields(b, type, api),
+    rest<unknown>(api, `${projectUrl(b)}/_apis/wit/workitemtypes/${encodeURIComponent(type)}/states`).catch(
+      () => undefined,
+    ),
+  ]);
+  return typeForm_(names, states);
 }
 
-/** A new card on the board (in the team's area, so it shows there), optionally in a column. */
-export async function create(input: NewCard, api: AddonHostApi): Promise<WorkItem> {
-  const b = input.board;
-  if (!input.title.trim()) throw new Error("A card needs a title.");
-  const data = await boardData(b, api, FRESH_FOR_TOOLS);
+const pathsCache = remembered<TeamPaths>(HOUR);
+
+/** The team's areas and iterations (for the card form's pickers) and the iteration new cards get. */
+export function paths({ board: b }: { board: Board }, api: AddonHostApi): Promise<TeamPaths> {
+  const base = `${teamApi(b)}/teamsettings`;
+  return pathsCache(api, cacheKey(b), async () => {
+    const [areas, settings, iterations] = await Promise.all([
+      rest<unknown>(api, `${base}/teamfieldvalues`).catch(() => undefined),
+      rest<unknown>(api, base).catch(() => undefined),
+      rest<unknown>(api, `${base}/iterations`).catch(() => undefined),
+    ]);
+    return teamPaths(areas, settings, iterations);
+  });
+}
+
+/**
+ * A new card on the board with every field filled in at once (D-372): one `az boards work-item create`
+ * (in the team's area and default iteration unless others are given), then its column and state, then
+ * its parent.
+ */
+export async function create(input: NewCard & { board: Board }, api: AddonHostApi): Promise<WorkItem> {
+  const { board: b, ...card } = input;
+  if (!card.title?.trim()) throw new Error("A card needs a title.");
+  const [data, team] = await Promise.all([
+    boardData(b, api, FRESH_FOR_TOOLS),
+    card.iteration ? undefined : paths({ board: b }, api).catch(() => undefined),
+  ]);
+  const iteration = card.iteration || team?.defaultIteration;
   const created = await az<unknown>(api, [
     "boards",
     "work-item",
     "create",
-    "--type",
-    input.type,
-    "--title",
-    input.title.trim(),
     "--org",
     orgUrl(b.org),
     "--project",
     b.project,
-    ...(data.area ? ["--area", data.area] : []),
-    ...(input.description?.trim() ? ["--description", textToHtml(input.description)] : []),
-    ...(input.assignedTo ? ["--assigned-to", input.assignedTo] : []),
+    ...createArgs({ ...card, ...(iteration ? { iteration } : {}) }, data.area),
   ]);
-  const card = toWorkItem(created, b, data.columnField);
-  if (!card) throw new Error("Azure DevOps didn't return the new card.");
-  if (input.column) await update({ board: b, id: card.id, patch: { column: input.column } }, api);
-  if (input.parentId)
+  const made = toWorkItem(created, b, data.columnField);
+  if (!made) throw new Error("Azure DevOps didn't return the new card.");
+  if (card.column || card.state)
+    await update(
+      {
+        board: b,
+        id: made.id,
+        type: card.type,
+        patch: {
+          ...(card.column ? { column: card.column } : {}),
+          ...(card.state ? { state: card.state } : {}),
+        },
+      },
+      api,
+    );
+  if (card.parentId)
     await az(api, [
       "boards",
       "work-item",
       "relation",
       "add",
       "--id",
-      String(card.id),
+      String(made.id),
       "--relation-type",
       "parent",
       "--target-id",
-      String(input.parentId),
+      String(card.parentId),
       "--org",
       orgUrl(b.org),
     ]);
   changed(b, api);
-  return card;
+  return made;
 }
 
 /**
@@ -719,10 +771,7 @@ export async function toolUpdate(
   return `Updated: ${itemLine(d)}${d.column ? ` · column ${d.column}` : ""}`;
 }
 
-export async function toolCreate(
-  args: ChatArgs & Omit<NewCard, "board">,
-  api: AddonHostApi,
-): Promise<string> {
+export async function toolCreate(args: ChatArgs & NewCard, api: AddonHostApi): Promise<string> {
   const b = await chatBoard(args, api);
   const { chat: _chat, board: _board, ...input } = args;
   const card = await create({ ...input, board: b }, api);

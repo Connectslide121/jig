@@ -120,6 +120,9 @@ go. Agreed with Jon on 2026-11-02 (D-246, D-247). Each session ends with `npm ru
       rich text with images (fetched with az), editable without losing them; comments as rich text;
       every field; links with titles and states, development (PRs, commits, branches, builds),
       attachments. Pasting/uploading images is left for later (99-backlog).
+- [x] **New card with the card's whole form (Jon, 2026-11-05, D-372):** the New card dialog shares the
+      card dialog's fields and the type's rich text, follows the picked type, and creates it all at
+      once; Area and Iteration became editable in both.
 - [x] **Board search and filters (Jon, 2026-11-04, D-304):** a toolbar like Azure DevOps': search,
       Type / Assigned to / State / Tags / Iteration / Area pickers (multi-select menus), Clear filters;
       client-side, columns never move, remembered per board.

@@ -397,8 +397,117 @@ export interface WorkItemPatch {
   tags?: string[];
   priority?: number;
   storyPoints?: number;
+  /** An area path (`Shop\Web`). */
+  area?: string;
+  /** An iteration path (`Shop\Sprint 4`). */
+  iteration?: string;
   /** A comment added to the card's discussion. */
   comment?: string;
+}
+
+/** A new card: its type and title, and any of the fields the card's form edits (state and column too). */
+export interface NewCard extends Omit<WorkItemPatch, "title" | "comment"> {
+  type: string;
+  title: string;
+  parentId?: number;
+}
+
+/** What the form of a work item type has (D-372): its states, rich-text fields and number fields. */
+export interface TypeForm {
+  states: string[];
+  /** Description first, then acceptance criteria and the type's other rich-text fields. */
+  rich: Array<{ ref: string; label: string }>;
+  priority: boolean;
+  storyPoints: boolean;
+}
+
+const PRIORITY = "Microsoft.VSTS.Common.Priority";
+const STORY_POINTS = "Microsoft.VSTS.Scheduling.StoryPoints";
+
+/** `workitemtypes/{type}/states` → the state names, in order. */
+export function parseStates(raw: unknown): string[] {
+  return (((raw as { value?: unknown[] })?.value ?? []) as Array<{ name?: string }>)
+    .map((s) => s.name)
+    .filter((s): s is string => !!s);
+}
+
+/**
+ * A type's form from its fields (`typeFieldNames`) and states. Fields that couldn't be read (an empty
+ * list) leave every field on, as the card dialog shows them.
+ */
+export function typeForm(names: Record<string, string>, states: unknown): TypeForm {
+  const known = Object.keys(names).length > 0;
+  return {
+    states: parseStates(states),
+    rich: [
+      { ref: DESCRIPTION, label: "Description" },
+      ...(!known || names[ACCEPTANCE] ? [{ ref: ACCEPTANCE, label: "Acceptance criteria" }] : []),
+      ...Object.entries(RICH_FIELDS)
+        .filter(([ref]) => names[ref])
+        .map(([ref, label]) => ({ ref, label })),
+    ],
+    priority: !known || !!names[PRIORITY],
+    storyPoints: !known || !!names[STORY_POINTS],
+  };
+}
+
+/** The team's areas and iterations, for the card form's pickers, and the iteration a new card gets. */
+export interface TeamPaths {
+  areas: string[];
+  iterations: string[];
+  defaultIteration?: string;
+}
+
+/**
+ * `teamfieldvalues`, `teamsettings` and `teamsettings/iterations` → the team's paths. The backlog
+ * iteration (the project's root when its path is empty) comes first; a new card gets the team's
+ * default iteration, the current one when that is `@currentIteration`, else the backlog iteration.
+ */
+export function teamPaths(areasRaw: unknown, settingsRaw: unknown, iterationsRaw: unknown): TeamPaths {
+  const a = areasRaw as { defaultValue?: unknown; values?: Array<{ value?: unknown }> } | undefined;
+  const areas = [a?.defaultValue, ...(Array.isArray(a?.values) ? a.values.map((v) => v?.value) : [])].filter(
+    (v): v is string => typeof v === "string" && !!v,
+  );
+  type Node = { name?: unknown; path?: unknown; attributes?: { timeFrame?: unknown } } | null | undefined;
+  const pathOf = (n: Node) =>
+    typeof n?.path === "string" && n.path ? n.path : typeof n?.name === "string" ? n.name : undefined;
+  const s = settingsRaw as
+    | { backlogIteration?: Node; defaultIteration?: Node; defaultIterationMacro?: unknown }
+    | undefined;
+  const list = ((iterationsRaw as { value?: unknown })?.value ?? []) as Node[];
+  const team = (Array.isArray(list) ? list : []).map(pathOf).filter((p): p is string => !!p);
+  const backlog = pathOf(s?.backlogIteration);
+  const current = (Array.isArray(list) ? list : []).find((n) => n?.attributes?.timeFrame === "current");
+  const defaultIteration =
+    pathOf(s?.defaultIteration) ??
+    (s?.defaultIterationMacro === "@currentIteration" ? pathOf(current) : undefined) ??
+    backlog;
+  return {
+    areas: [...new Set(areas)],
+    iterations: [...new Set([...(backlog ? [backlog] : []), ...team])],
+    ...(defaultIteration ? { defaultIteration } : {}),
+  };
+}
+
+/**
+ * The `az boards work-item create` arguments for a new card (no org/project): every field at once.
+ * State and column aren't set on create (Azure DevOps starts a card in its first state); `create`
+ * moves it there right after. The team's area unless another is picked.
+ */
+export function createArgs(card: NewCard, teamArea?: string): string[] {
+  const { type, title, state: _state, column: _column, parentId: _parent, area, ...fields } = card;
+  const assignedTo = fields.assignedTo?.trim();
+  return [
+    "--type",
+    type,
+    ...updateArgs({
+      ...fields,
+      title: title.trim(),
+      assignedTo: assignedTo || undefined,
+      tags: fields.tags?.some((t) => t.trim()) ? fields.tags : undefined,
+    }),
+    ...((area ?? teamArea) ? ["--area", (area ?? teamArea) as string] : []),
+  ];
 }
 
 /** Azure DevOps rich text as plain text: paragraphs and line breaks kept, tags and entities gone. */
@@ -442,6 +551,8 @@ export function updateArgs(patch: WorkItemPatch, columnField?: string, columnSta
   const state = patch.state ?? columnState;
   if (state) args.push("--state", state);
   if (patch.assignedTo !== undefined) args.push("--assigned-to", patch.assignedTo);
+  if (patch.area) args.push("--area", patch.area);
+  if (patch.iteration) args.push("--iteration", patch.iteration);
   if (patch.descriptionHtml !== undefined) args.push("--description", patch.descriptionHtml);
   else if (patch.description !== undefined) args.push("--description", textToHtml(patch.description));
   if (patch.comment?.trim()) args.push("--discussion", textToHtml(patch.comment));
@@ -506,9 +617,7 @@ export function toDetail(
       html: c.text ?? "",
     }))
     .filter((c) => c.text);
-  const states = (((extra.states as { value?: unknown[] })?.value ?? []) as Array<{ name?: string }>)
-    .map((s) => s.name)
-    .filter((s): s is string => !!s);
+  const states = parseStates(extra.states);
   const html = (k: string) => (typeof f[k] === "string" ? (f[k] as string) : "");
   const num = (k: string) => (typeof f[k] === "number" ? (f[k] as number) : undefined);
   const { rich, empty } = richFields(f, names);

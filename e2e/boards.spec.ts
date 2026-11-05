@@ -57,6 +57,18 @@ if (has("boards", "work-item", "show")) say({ id: Number(arg("--id")), fields: {
 if (/\\/_apis\\/wit\\/workitems$/.test(uri)) say({ value: [{ id: 100, fields: { "System.WorkItemType": "Feature", "System.Title": "Saved cards", "System.State": "Active" } }] });
 if (uri.endsWith("/_apis/git/pullrequests/7")) say({ title: "Fix saved card payments", status: "active", repository: { name: "web" } });
 if (uri.endsWith("/comments")) say({ comments: [{ text: "<div>Seen on mobile too.</div>", createdBy: { displayName: "Ben Sample" }, createdDate: "2026-11-01T10:00:00Z" }] });
+// A type's fields (the New card form follows them, D-372) and the team's iterations.
+const TYPE_FIELDS = {
+  Bug: ["System.Description", "Microsoft.VSTS.TCM.ReproSteps", "Microsoft.VSTS.Common.Priority"],
+  "User Story": ["System.Description", "Microsoft.VSTS.Common.AcceptanceCriteria", "Microsoft.VSTS.Common.Priority", "Microsoft.VSTS.Scheduling.StoryPoints"],
+};
+const fieldsOf = /\\/workitemtypes\\/([^/]+)\\/fields$/.exec(uri);
+if (fieldsOf) say({ value: (TYPE_FIELDS[decodeURIComponent(fieldsOf[1])] ?? []).map((r) => ({ referenceName: r, name: r.split(".").pop() })) });
+if (uri.endsWith("/teamsettings/iterations")) say({ value: [
+  { name: "Sprint 1", path: "Shop\\\\Sprint 1", attributes: { timeFrame: "past" } },
+  { name: "Sprint 2", path: "Shop\\\\Sprint 2", attributes: { timeFrame: "current" } },
+]});
+if (uri.endsWith("/teamsettings")) say({ backlogIteration: { name: "Shop", path: "" }, defaultIteration: null, defaultIterationMacro: "@currentIteration" });
 if (uri.includes("/workitemtypes/")) say({ value: [{ name: "New" }, { name: "Active" }, { name: "Closed" }] });
 if (has("boards", "work-item", "update")) { log("update " + args.join(" ")); say(card(Number(arg("--id")), "x", "Bug", "Active", "Doing")); }
 if (has("boards", "work-item", "create")) { log("create " + args.join(" ")); say(card(105, arg("--title"), arg("--type"), "New", "New")); }
@@ -207,13 +219,45 @@ test("Boards: open a card in Jig, edit it, drag it, add and delete cards; Claude
   await expect.poll(writes).toContain("--id 102");
   expect(await writes()).toMatch(/--id 102 .*--state Active .*WEF_1_Kanban\.Column=Doing/);
 
-  // A new card in a column.
+  // A new card in a column, filled in like the card's form (D-372): the type's rich text and fields.
   await view.getByTestId("board-new-New").click();
+  const added = page.getByTestId("board-new-card-dialog");
+  const story = added.getByTestId("board-new-card-rich-acceptance-criteria");
+  await expect(story).toBeVisible();
+  // The team's current iteration is picked; the state follows the column.
+  await expect(added.getByTestId("board-new-card-iteration")).toHaveValue("Shop\\Sprint 2");
+  await expect(added.getByTestId("board-new-card-state")).toHaveValue("New");
+  const titleBox = await settledBox(added.getByTestId("board-new-card-title"));
+  const sideBox = await settledBox(added.getByTestId("board-new-card-tags"));
+  // Another type: its own rich sections (text in the description stays) and number fields; nothing moves.
+  await added.getByTestId("board-new-card-rich-description").click();
+  await page.keyboard.type("Paying with gift cards.");
+  await added.getByTestId("board-new-card-type").selectOption("Bug");
+  await expect(added.getByTestId("board-new-card-rich-repro-steps")).toBeVisible();
+  await expect(story).toBeHidden();
+  await expect(added.getByTestId("board-new-card-points")).toBeDisabled();
+  await expect(added.getByTestId("board-new-card-rich-description")).toContainText("Paying with gift cards.");
+  expect(await settledBox(added.getByTestId("board-new-card-title"))).toEqual(titleBox);
+  expect(await settledBox(added.getByTestId("board-new-card-tags"))).toEqual(sideBox);
+  await page.screenshot({ path: test.info().outputPath("new-card.png") });
+  await added.getByTestId("board-new-card-tags").fill("gift, checkout");
+  await added.getByTestId("board-new-card-priority").fill("2");
+  await added.getByTestId("board-new-card-column").selectOption("Doing");
+  await expect(added.getByTestId("board-new-card-state")).toHaveValue("Active");
   // Free text reaches az as written: quotes, %, and non-ASCII (D-290).
-  await page.getByTestId("board-new-card-title").fill('Gift cards – "10 % off" › Malmö…');
-  await page.getByTestId("board-new-card-create").click();
+  await added.getByTestId("board-new-card-title").fill('Gift cards – "10 % off" › Malmö…');
+  await added.getByTestId("board-new-card-create").click();
+  await expect(added).toBeHidden();
   await expect.poll(writes).toContain('--title Gift cards – "10 % off" › Malmö… ');
-  expect(await writes()).toMatch(/create .*--area Shop/);
+  const created = (await writes()).split("\n").find((l) => l.startsWith("create ")) ?? "";
+  expect(created).toContain("--type Bug");
+  expect(created).toMatch(/--description (<div>)?Paying with gift cards\./);
+  expect(created).toContain("System.Tags=gift; checkout");
+  expect(created).toContain("Microsoft.VSTS.Common.Priority=2");
+  expect(created).toContain("--iteration Shop\\Sprint 2");
+  expect(created).toMatch(/--area Shop/);
+  // Its column and the column's state right after.
+  await expect.poll(writes).toMatch(/update .*--id 105 .*--state Active .*WEF_1_Kanban\.Column=Doing/);
 
   // Delete from the card menu, after asking.
   await view.getByTestId("board-item-103").click({ button: "right" });

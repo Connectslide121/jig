@@ -3,7 +3,7 @@
   "id": "boards",
   "name": "Boards",
   "description": "Azure DevOps boards per project, laid out like Azure DevOps: each project follows the team boards you pick from your organisations, one tab per board. Open, edit, drag between columns, create and delete cards right here, and Claude can read and update them from your chats. Uses your own az login.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "icon": "kanban",
   "permissions": ["exec:az", "fs:read", "chat"],
   "storage": {
@@ -73,7 +73,7 @@
       },
       {
         "id": "update",
-        "description": "Change an Azure DevOps work item: title, description, acceptance criteria, state, move it to a board column (its state follows the column), assignee, tags, priority, story points, or add a comment. Only the given fields change. Keep the board up to date as work progresses in the chat.",
+        "description": "Change an Azure DevOps work item: title, description, acceptance criteria, state, move it to a board column (its state follows the column), assignee, tags, priority, story points, area, iteration, or add a comment. Only the given fields change. Keep the board up to date as work progresses in the chat.",
         "params": {
           "id": { "type": "number", "description": "The work item id" },
           "board": {
@@ -120,13 +120,15 @@
           "tags": { "type": "array", "description": "Replaces the tags", "optional": true },
           "priority": { "type": "number", "optional": true },
           "storyPoints": { "type": "number", "optional": true },
+          "area": { "type": "string", "description": "Area path", "optional": true },
+          "iteration": { "type": "string", "description": "Iteration path", "optional": true },
           "comment": { "type": "string", "description": "Added to the card's discussion", "optional": true }
         },
         "run": "toolUpdate"
       },
       {
         "id": "create",
-        "description": "Create a work item on an Azure DevOps board of this project (in the team's area, so it shows on the board), optionally in a column, assigned, or under a parent item.",
+        "description": "Create a work item on an Azure DevOps board of this project with everything filled in at once: title, description, acceptance criteria, column or state, assignee, tags, priority, story points, area and iteration (default: the team's area and default iteration, so it shows on the board), and a parent item.",
         "params": {
           "type": { "type": "string", "description": "Work item type: User Story, Bug, Task, Feature…" },
           "title": { "type": "string" },
@@ -136,8 +138,41 @@
             "optional": true
           },
           "description": { "type": "string", "description": "Plain text", "optional": true },
-          "column": { "type": "string", "description": "The board column to put it in", "optional": true },
-          "assignedTo": { "type": "string", "optional": true },
+          "descriptionHtml": {
+            "type": "string",
+            "description": "HTML instead of the plain-text description",
+            "optional": true
+          },
+          "acceptance": {
+            "type": "string",
+            "description": "Plain text acceptance criteria (types that have them)",
+            "optional": true
+          },
+          "acceptanceHtml": { "type": "string", "description": "HTML acceptance criteria", "optional": true },
+          "column": {
+            "type": "string",
+            "description": "The board column to put it in (its state follows the column)",
+            "optional": true
+          },
+          "state": {
+            "type": "string",
+            "description": "One of the states its type can be in",
+            "optional": true
+          },
+          "assignedTo": { "type": "string", "description": "Email or display name", "optional": true },
+          "tags": { "type": "array", "optional": true },
+          "priority": { "type": "number", "optional": true },
+          "storyPoints": { "type": "number", "optional": true },
+          "area": {
+            "type": "string",
+            "description": "Area path (default: the team's area)",
+            "optional": true
+          },
+          "iteration": {
+            "type": "string",
+            "description": "Iteration path (default: the team's default iteration)",
+            "optional": true
+          },
           "parentId": { "type": "number", "description": "A parent work item id", "optional": true }
         },
         "run": "toolCreate"
