@@ -5783,3 +5783,21 @@ choice of Telegram and everything below: Claude, on my own.
   Tasks host checks the mode the view sends (`parsePermissionMode`). Requests reviewed from other
   add-ons (`addReviewed`) stay Plan only.
 
+## D-364: Permission mode: back in the message box, beside the provider picker
+
+- Status: accepted; amends D-347 (its placement; the shared `permissionMenu`, `permissionIcon` and
+  `permissionTone` stay).
+- **Who:** Jon, 2026-11-05: he wants the permission button back in the message box's bottom row,
+  where it was before D-347, right next to the provider picker; the chip in the chat's header and the
+  model menu's "Permissions: <mode> ›" entry go. The slot sizes and the narrow breakpoint: Claude, on
+  my own.
+- **The button** (`permission-menu`, `PermissionButton` in `sessions/Composer.tsx`): right after the
+  provider picker, before the model picker; icon and label as before D-347 (Shield, ListChecks for
+  Plan only; red for Don't ask, the accent for Accept edits and Plan only, muted for Ask before
+  changes), the whole button opens `permissionMenu`. It sits in a fixed slot: `w-48` from
+  `@2xl/toolbar` up ("Ask before changes" fits), so switching modes moves nothing beside it; below that
+  it is the icon alone in a `w-7` slot (label in its tooltip and accessible name), so the model name
+  keeps its room. Container variants on both sides (D-297).
+- **Gone:** the header's chip, its fixed status slot (`w-20`) and the header's `@container`; the model
+  menu lists only models, Effort and Other model…. `/permissions`, the + menu's "Permission mode…"
+  and Shift+Tab still open or switch the modes.

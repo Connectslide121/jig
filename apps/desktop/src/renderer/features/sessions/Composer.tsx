@@ -20,7 +20,12 @@ import {
   Zap,
 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { ChatAttachment, QueuedMessage, SessionMeta } from "../../../shared/engine";
+import {
+  type ChatAttachment,
+  PERMISSION_MODE_LABELS,
+  type QueuedMessage,
+  type SessionMeta,
+} from "../../../shared/engine";
 import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
@@ -34,7 +39,15 @@ import { newSession } from "./actions";
 import { type BoxCommand, ComposerBox, useComposerText } from "./ComposerBox";
 import { historyStep, inputMode, nextPermissionMode, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
-import { exportChat, modelMenu, openModelMenu, permissionMenu, useModelLabel } from "./menus";
+import {
+  exportChat,
+  modelMenu,
+  openModelMenu,
+  permissionIcon,
+  permissionMenu,
+  permissionTone,
+  useModelLabel,
+} from "./menus";
 import { ProviderPicker } from "./ProviderPicker";
 import { usePrompts } from "./prompts";
 import { canChangeProvider, capabilitiesOf, providerName } from "./provider";
@@ -451,6 +464,7 @@ export function Composer({
                   fresh={canChangeProvider(meta, sent?.length ?? 0, queue.length)}
                 />
               )}
+              <PermissionButton meta={meta} who={who} />
               <button
                 type="button"
                 data-testid="model-menu"
@@ -506,5 +520,37 @@ export function Composer({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The chat's permission mode, beside the provider picker (D-347, amended by D-364): its icon and
+ * label in a fixed slot that fits the longest mode, so nothing moves when it changes; only the icon
+ * in a narrow message box. Red for Don't ask, the accent for the other modes but Ask.
+ */
+function PermissionButton({ meta, who }: { meta: SessionMeta; who: string }) {
+  const mode = meta.permissionMode;
+  const Icon = permissionIcon(mode);
+  const label = PERMISSION_MODE_LABELS[mode];
+  return (
+    <button
+      type="button"
+      data-testid="permission-menu"
+      data-mode={mode}
+      aria-label={`Permission mode: ${label}`}
+      title={`${label} · What ${who} may do without asking (Shift+Tab to switch)`}
+      onClick={(e) => openMenuAt(e.currentTarget, permissionMenu(meta), true)}
+      className={cn(
+        // Container variants on both sides: a plain utility would win over them (D-297).
+        "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md text-sm leading-none hover:bg-hover",
+        "@max-2xl/toolbar:w-7 @max-2xl/toolbar:justify-center @2xl/toolbar:w-48 @2xl/toolbar:px-2",
+        permissionTone(mode),
+        mode === "default" && "hover:text-fg",
+      )}
+    >
+      <Icon className="block size-3.5 shrink-0" />
+      <span className="min-w-0 truncate @max-2xl/toolbar:hidden @2xl/toolbar:inline">{label}</span>
+      <ChevronDown className="block size-3.5 shrink-0 @max-2xl/toolbar:hidden @2xl/toolbar:block" />
+    </button>
   );
 }

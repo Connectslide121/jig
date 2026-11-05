@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, hostCall, launchJig, test } from "./fixtures";
+import { expect, hostCall, launchJig, settledBox, test } from "./fixtures";
 
 /** A 1×1 PNG, base64. */
 const TINY_PNG =
@@ -180,13 +180,24 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
   await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
-  // The model menu's Permissions submenu picks the mode too; the header's chip follows (D-347).
+  // The mode's button is in the message box, beside the provider picker; the model menu and the
+  // chat's header don't have it (D-364).
+  const toolbar = page.getByTestId("composer-toolbar");
+  await expect(toolbar.getByTestId("permission-menu")).toBeVisible();
+  await expect(page.getByTestId("chat").locator("header").getByTestId("permission-menu")).toHaveCount(0);
+  const provider = await settledBox(toolbar.getByTestId("provider-menu"));
+  const before = await settledBox(toolbar.getByTestId("permission-menu"));
+  expect(Math.abs(before!.x - (provider!.x + provider!.width) - 4)).toBeLessThanOrEqual(1);
   await page.getByTestId("model-menu").click();
-  await expect(page.getByTestId("permission-submenu")).toContainText("Permissions: Plan only");
-  await page.getByTestId("permission-submenu").hover();
-  await page.getByTestId("mode-acceptEdits").click();
-  await expect(page.getByTestId("permission-menu")).toContainText("Accept edits");
-  await expect(page.getByTestId("permission-menu")).toHaveAttribute("data-mode", "acceptEdits");
+  await expect(page.getByTestId("model-opus")).toBeVisible();
+  await expect(page.getByTestId("permission-submenu")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // Its slot is fixed: switching to a mode with a longer label moves nothing.
+  await toolbar.getByTestId("permission-menu").click();
+  await page.getByTestId("mode-default").click();
+  await expect(toolbar.getByTestId("permission-menu")).toHaveAttribute("data-mode", "default");
+  await expect(toolbar.getByTestId("permission-menu")).toContainText("Ask before changes");
+  expect(await settledBox(toolbar.getByTestId("permission-menu"))).toEqual(before);
 });
 
 test("chat: sessions list across projects and survive a restart", async ({ app, page, jigHome }) => {

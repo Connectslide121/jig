@@ -4,12 +4,12 @@ Chats list marks every chat's provider (2026-11-04, D-348, Jon): each row shows 
 ChatGPT's aperture at the far right, in one aligned column; hovering a row still shows the pin button
 there.
 
-Permission mode in the chat's header (2026-11-04, D-347, Jon): the message box no longer has its own
-permission button. The mode shows in the chat's header, right after the status (icon and label; only
-the icon in a narrow chat; red for Don't ask, the accent for Accept edits and Plan only), and
-clicking it opens the modes. The model picker's menu has the same list as "Permissions: <mode> ›"
-under Effort. Shift+Tab in the box still switches. Checked with the fake engine in Claude and ChatGPT
-chats, Jig Dark and Light, narrow and wide.
+Permission mode back in the message box (2026-11-05, D-364, Jon; amends D-347): the permission
+button is in the box's bottom row again, right after the provider picker (Claude/ChatGPT): icon and
+label, red for Don't ask, the accent for Accept edits and Plan only. It keeps one fixed width, so
+switching modes moves nothing; in a narrow box it is the icon alone. The chat's header no longer shows
+the mode and the model menu no longer has "Permissions: <mode> ›". Shift+Tab still switches. Checked
+with the fake engine at wide and narrow widths, every mode.
 
 Composer's Send and Stop are icons (2026-11-04, D-346, Jon): the chat's message box shows Send (the
 accent square: arrow, terminal for `!`, bookmark for `#`) and Stop (a square) without labels; hover
