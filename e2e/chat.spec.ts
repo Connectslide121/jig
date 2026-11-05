@@ -410,6 +410,10 @@ test("chat: the overview card counts tools, skills, subagents, add-ons and MCP; 
   await expect(card.getByTestId("chat-overview-skills")).toContainText("1");
   await expect(card.getByTestId("chat-overview-addons")).toContainText("1");
   await expect(card.getByTestId("chat-overview-models")).toHaveText("Models2");
+  // Tokens and cost live only here, not in the header; the fake engine reports no total cost.
+  await expect(card.getByTestId("chat-overview-tokens")).toHaveText("Tokens240");
+  await expect(card.getByTestId("chat-overview-cost")).toHaveText("Cost—");
+  await expect(tab.locator("header").first()).not.toContainText("tokens");
   await expect(tab.getByTestId("tool-caller-model").filter({ hasText: "Opus" }).first()).toBeVisible();
   await expect(tab.getByTestId("tool-agent-model")).toContainText("Sonnet");
   // The input and messages share their edges, both below and above the max chat width.

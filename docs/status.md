@@ -1,5 +1,11 @@
 # Status
 
+Calmer chat header (2026-11-05, Jon): the chat's header no longer shows "3380k tokens · ≈ $2.03".
+Tokens and cost are only in the chat overview (the chart button): the "This chat" card has a Tokens
+row and a new Cost row ("≈ $2.03", or "—" when there's no estimate, e.g. ChatGPT chats), and Show
+details keeps the cost under Tokens. The API key billing badge stays in the header. Covered by
+`chat.spec.ts`.
+
 Default reasoning effort for Claude chats (2026-11-05, D-390): **Settings → Chats → Claude chats →
 Reasoning effort** (Model's default, low … max) sets how hard new Claude chats think, unless their
 project sets its own; a chat can still change it, and a model without effort levels ignores it. Fixed

@@ -21,7 +21,7 @@ import { renameSession, sessionMenu } from "./menus";
 import { canChangeProject, showProjectOf, switchChatProject } from "./project";
 import { STATUS_LABEL, StatusDot } from "./status";
 import { holdTranscript, markSeen, useSessions } from "./store";
-import { formatTokens, Transcript } from "./Transcript";
+import { Transcript } from "./Transcript";
 
 function LoginBanner() {
   const canOpen = useRegistry((s) => Boolean(s.actions["jig.claudeLogin"]));
@@ -115,11 +115,6 @@ export function ChatTab({ params, active, focused }: TabProps) {
   }, [focused]);
   if (!meta)
     return loaded ? <Empty icon={MessageSquareX} title="This chat was deleted" /> : <Spinner center />;
-  const tokens =
-    meta.usage.inputTokens +
-    meta.usage.cacheReadTokens +
-    meta.usage.cacheWriteTokens +
-    meta.usage.outputTokens;
   return (
     <div className="flex h-full flex-col" data-testid="chat" data-panel="chat">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4">
@@ -150,14 +145,6 @@ export function ChatTab({ params, active, focused }: TabProps) {
         </div>
         <ContextMeter meta={meta} />
         {meta.authSource === "api_key" && <Badge tone="warning">API key billing</Badge>}
-        {meta.turns > 0 && (
-          <span
-            className="whitespace-nowrap text-2xs text-hint"
-            title="Tokens used in this chat, and Claude Code's cost estimate"
-          >
-            {formatTokens(tokens)} tokens{meta.costUsd > 0 ? ` · ≈ $${meta.costUsd.toFixed(2)}` : ""}
-          </span>
-        )}
         <ChatViewSwitch />
         <IconButton
           icon={Clock}

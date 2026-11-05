@@ -102,8 +102,9 @@ resolved active model is recorded separately and never replaces the selected ali
   queue and composer share a column and matching content edges. The overview's space stays reserved
   when hidden and before the first message, so showing it never shifts the conversation. It shows
   turns and time Claude worked, tool calls, files changed (+/−),
-  skills, subagents, add-ons, MCP calls and tokens. An add-on is used when Claude calls one of its tools
-  or Jig's tools for its data. **Show details** (or ⋯ → Chat overview…) opens a modal: tiles, then
+  skills, subagents, add-ons, MCP calls, tokens and cost ("—" without an estimate, e.g. ChatGPT
+  chats). Tokens and cost are shown only here, not in the chat's header. An add-on is used when
+  Claude calls one of its tools or Jig's tools for its data. **Show details** (or ⋯ → Chat overview…) opens a modal: tiles, then
   tables of tools (calls, failed), skills and commands, subagents (tools, tokens, time, status),
   add-ons, MCP servers, files changed (click to preview), activity (commands, `!` commands, web,
   thinking, permissions) and tokens. The counting is `chatStats()` in `shared/chatStats.ts`, computed

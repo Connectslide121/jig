@@ -3,6 +3,7 @@ import {
   Brain,
   ChartColumn,
   Clock,
+  Coins,
   FilePen,
   Globe,
   Maximize2,
@@ -82,7 +83,7 @@ function Row({
 /**
  * The chat overview (D-184): a small card at the top right of the chat, in its own column beside the
  * transcript (it never covers it), with what happened so far: turns, tool calls, files, skills,
- * subagents, add-ons, MCP, tokens. Show details opens everything in a modal.
+ * subagents, add-ons, MCP, tokens and cost. Show details opens everything in a modal.
  */
 export function ChatOverview({
   meta,
@@ -149,6 +150,13 @@ export function ChatOverview({
         icon={MessageSquare}
         label="Tokens"
         value={meta.turns > 0 ? formatTokens(totalTokens(meta)) : "—"}
+        testId="chat-overview-tokens"
+      />
+      <Row
+        icon={Coins}
+        label="Cost"
+        value={meta.costUsd > 0 ? `≈ $${meta.costUsd.toFixed(2)}` : "—"}
+        testId="chat-overview-cost"
       />
       <div className="px-1 pt-1">
         <Button
