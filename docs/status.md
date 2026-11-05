@@ -1114,8 +1114,11 @@ what's happening, read the last answer, the queue, tests, pipeline status, run t
 stage or production and pull (both after a spoken yes), fetch, run a workflow, start a script, save
 a note, mute, repeat, stop listening, what can I say. A chat opened by voice starts in Talk mode.
 Everything is understood and run on this computer, without Claude (only "ask Claude" starts a
-chat). Jig also says when a chat finishes or needs you. The status bar shows it listening; Jig menu →
-Voice commands (or the status bar item) lists every command. Covered by `voice-commands.spec.ts`
+chat). Jig also says when a chat finishes or needs you. The status bar's "Hey Jig" is always there
+(D-387): dimmed with a crossed-out microphone while off, a click turns listening on or off, and a
+right-click offers Voice commands…, Speech settings… and (soon) Train Hey Jig…; a crossed-out speaker
+after the label means Jig's voice is muted (Settings → Speech → Hey Jig → Jig's voice unmutes it).
+Jig menu → Voice commands lists every command. Covered by `voice-commands.spec.ts`
 with the fake engine; the real microphone, waking from minimized and CPU need a real machine.
 
 Language servers (2026-11-03, D-259): in the file editor, the language servers you install give

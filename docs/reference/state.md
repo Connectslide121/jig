@@ -126,7 +126,7 @@ A new state file is documented here in the same commit that adds it.
 | `speech.noiseFilter` | `"strong"` | talking with Claude: `strong`, `light` or `off`; how strictly noise that isn't a voice is ignored (Silero voice detector on this computer, D-275; `off` = loudness alone) |
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | a soft note while Claude thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
-| `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Claude; protected (only Settings → Speech turns it on) |
+| `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Claude; protected (only you turn it on: Settings → Speech or a click on the status bar item, D-387) |
 | `speech.announce` | `true` | with `speech.wake`: say out loud when a chat finishes or needs you |
 | `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `browser.pageSessions` | `"shared"` | each chat has its own page in Claude’s browser (D-320); `shared`: the pages share the `persist:jig-browser` session (cookies, logins, storage), so a logout in one chat logs out the others; `separate`: each page gets an in-memory session of its own that ends with the page. Applies to pages opened afterwards |

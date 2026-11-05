@@ -17,6 +17,13 @@ subscription"; "somewhere where we can see all the voice commands that we suppor
       Whisper reads the first 2 s of it, the matcher looks for the wake words; only then is the rest
       read. Off by default; `speech.wake` (protected); Settings → Speech → Hey Jig; Jig menu action;
       a status bar item (`WakeStatus.tsx`) of fixed width that opens the commands.
+- [x] The status bar item always shows (D-387): dimmed while off, a click turns listening on or off
+      (`toggleWake`, the same as the Jig menu action), a right-click opens Train Hey Jig… (soon),
+      Voice commands… and Speech settings…; one icon per meaning (Mic listening, MicOff not
+      listening, VolumeX Jig's voice muted). Settings → Speech → Hey Jig: Jig's voice Mute/Unmute,
+      Train…, Show the commands.
+- [ ] Train Hey Jig on your voice (its own task); no audio stored unless template matching proves
+      necessary (D-388).
 - [x] A chime on waking, spoken answers through the existing voices; "I didn't get that" for unknown
       commands (nothing goes to Claude unless you say "ask Claude"). "Hey Jig" alone waits 8 s for
       the command; a yes/no question waits 8 s for the answer.

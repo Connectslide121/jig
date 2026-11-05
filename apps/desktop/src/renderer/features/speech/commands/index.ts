@@ -1,6 +1,6 @@
 import { Mic } from "lucide-react";
-import { updateConfig, useConfig } from "../../../stores/config";
 import { registerAction, registerStatusItem } from "../../../workbench/registry";
+import { toggleWake } from "./toggle";
 import { WakeStatusItem } from "./WakeStatus";
 
 /** "Hey Jig" voice commands (D-278): the status bar item and the on/off action. */
@@ -12,6 +12,6 @@ export function registerVoiceCommands(): void {
     group: "Jig",
     icon: Mic,
     keywords: ["voice", "commands", "hey jig", "wake", "microphone", "speech"],
-    run: () => void updateConfig({ speech: { wake: !useConfig.getState().config?.speech.wake } }),
+    run: toggleWake,
   });
 }

@@ -6571,3 +6571,41 @@ stopped for good.
 - Both are on the `jig` server, so every chat and the phone's concierge get them (the concierge
   finds them with the tool search; its prompt and `jigContext` name them). Neither is `alwaysLoad`,
   to keep every chat's prompt small.
+
+## D-387: Hey Jig in the status bar: always shown, click on/off, right-click menu, one icon per meaning
+
+- Status: accepted.
+- **Who:**
+  Jon asked for it (2026-11-05, task queue): the status bar's "Hey Jig" always shown and working as
+  an on/off switch. With Jon the same day: a left click toggles, a right-click opens the menu, no
+  chevron, and the same entries are in Settings → Speech → Hey Jig so nothing is right-click-only.
+  The icon scheme and the disabled "Train" entry are Claude, on my own.
+- **Always shown** (`commands/WakeStatus.tsx`), in its fixed `w-24` slot, so turning it on or off
+  never moves the status bar. Off: dimmed, "Hey Jig", title "Hey Jig is off · Click to listen ·
+  Right-click for more". On: the phases as before (D-278), title ending "Click to turn off ·
+  Right-click for more".
+- **A click** runs `toggleWake` (`commands/toggle.ts`), the same function as the Jig menu action
+  `jig.wake.toggle`. `speech.wake` stays protected (D-077): chats still can't turn it on; a click on
+  the item is the user's own action, like the switch in Settings.
+- **Right-click** (`contextMenu(wakeMenu)` through `ui/Menu.tsx`): Train Hey Jig… (disabled, "Soon",
+  until the training task builds it), Voice commands… (What Jig can do → Voice commands), Speech
+  settings…. Settings → Speech → Hey Jig has Train…, Show the commands and the rest of the settings.
+- **One icon per meaning:** Mic = listening for "Hey Jig"; MicOff = not listening (Hey Jig off, as
+  MicOff means a muted microphone in the talking window); VolumeX = Jig's own voice muted (shown
+  after the label while on; Volume2/VolumeX on Settings' new "Jig's voice" Mute/Unmute row, which
+  sets the same in-memory mute as "Hey Jig, mute"); ScrollText = the voice commands list (was Mic in
+  Settings); AudioLines = training. The muted voice used to share MicOff with nothing else, which read
+  as "not listening" although Jig was.
+
+## D-388: Training Hey Jig stores no audio unless template matching proves necessary
+
+- Status: accepted.
+- **Who:**
+  Jon approved it (2026-11-05) for the training task ("Train Hey Jig on your voice"), before it is
+  built.
+- **The rule:** training keeps no recordings of the user's voice. It keeps only what the training
+  learns as text or numbers (the spellings Whisper writes for "Hey Jig" in this voice, thresholds),
+  and the audio of each attempt is dropped once it is read, like listening itself (D-278).
+- **Exception:** only if matching against audio templates (comparing sound, not text) proves
+  necessary for "Hey Jig" to be heard reliably may training store audio, and then it gets its own
+  decision first: what is kept, where in `JIG_HOME`, and a way to delete it in Settings.

@@ -8,8 +8,17 @@ test('voice commands: "Hey Jig" opens a chat in Talk mode and answers from Jig\'
 }) => {
   await mkdir(join(jigHome, "shop"), { recursive: true });
   await hostCall(page, "projects.add", { path: join(jigHome, "shop") });
+  // Always in the status bar (D-387): off and dimmed until a click turns it on.
   const status = page.getByTestId("wake-status");
-  await expect(status).toHaveCount(0);
+  await expect(status).toHaveAttribute("data-phase", "off");
+  await expect(status).toHaveAttribute("title", /^Hey Jig is off · Click to listen/);
+  const box = await status.boundingBox();
+  await status.click();
+  await expect(status).toHaveAttribute("data-phase", "listening");
+  expect((await status.boundingBox())?.width).toBe(box?.width);
+  await status.click();
+  await expect(status).toHaveAttribute("data-phase", "off");
+  // Settings → Speech → Hey Jig turns it on too.
   await page.keyboard.press("Control+,");
   await page.getByTestId("settings-nav-speech").click();
   await page.getByRole("switch", { name: "Listen for Hey Jig" }).click();
@@ -44,14 +53,16 @@ test('voice commands: "Hey Jig" opens a chat in Talk mode and answers from Jig\'
   await say("what can I say");
   await expect(status).toHaveAttribute("data-said", /^Chats: new chat/);
 
-  // The page lists the commands; the status bar opens it.
-  await status.click();
+  // The page lists the commands; the status bar's right-click menu opens it.
+  await status.click({ button: "right" });
+  await expect(page.getByTestId("wake-menu-train")).toHaveAttribute("aria-disabled", "true");
+  await page.getByTestId("wake-menu-commands").click();
   await expect(page.getByTestId("voice-commands")).toBeVisible();
   await expect(page.getByTestId("voice-commands")).toContainText("Asks for a yes");
 
   // "Stop listening" turns it off.
   await say("Hey Jig, stop listening");
-  await expect(status).toHaveCount(0);
+  await expect(status).toHaveAttribute("data-phase", "off");
   expect(
     ((await hostCall(page, "config.get")) as { value: { speech: { wake: boolean } } }).value.speech.wake,
   ).toBe(false);

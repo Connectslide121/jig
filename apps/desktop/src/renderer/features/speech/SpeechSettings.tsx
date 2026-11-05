@@ -1,4 +1,4 @@
-import { Download, Mic, Trash2, Volume2 } from "lucide-react";
+import { AudioLines, Download, ScrollText, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   NATURAL_VOICES,
@@ -19,6 +19,7 @@ import { notify } from "../../workbench/toasts";
 import { openAbout } from "../about";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { AudioDeviceRows } from "./AudioDevicesDialog";
+import { useWakeVoice } from "./commands/state";
 import { DICTATION_SHORTCUT } from "./DictationButton";
 import { hasGpu } from "./engine";
 import { downloadNaturalVoice, resetNaturalVoice, useNaturalVoice } from "./naturalVoice";
@@ -75,6 +76,7 @@ export function SpeechSettings() {
   const [gpu, setGpu] = useState<boolean>();
   const [voiceModel, setVoiceModel] = useState<VoiceModelStatus>();
   const natural = useNaturalVoice();
+  const wakeMuted = useWakeVoice((v) => v.muted);
   const refresh = () => {
     void call("speech.models")
       .then(setModels)
@@ -325,10 +327,36 @@ export function SpeechSettings() {
             onChange={(v) => void updateConfig({ speech: { announce: v } })}
           />
         </SettingRow>
+        <SettingRow
+          label="Jig's voice"
+          description={
+            wakeMuted
+              ? "Muted: Jig shows its answers in the status bar without saying them. Commands still run."
+              : "Jig says its answers out loud. Say “Hey Jig, mute” to only show them."
+          }
+        >
+          <Button
+            variant="ghost"
+            icon={wakeMuted ? VolumeX : Volume2}
+            disabled={!s.wake}
+            data-testid="settings-speech-wake-voice"
+            onClick={() => useWakeVoice.setState({ muted: !wakeMuted })}
+          >
+            {wakeMuted ? "Unmute" : "Mute"}
+          </Button>
+        </SettingRow>
+        <SettingRow
+          label="Train Hey Jig"
+          description="Say “Hey Jig” a few times so Jig hears your voice better. Coming soon."
+        >
+          <Button variant="ghost" icon={AudioLines} disabled data-testid="settings-speech-train">
+            Train…
+          </Button>
+        </SettingRow>
         <SettingRow label="Voice commands" description="Everything you can say, on What Jig can do.">
           <Button
             variant="ghost"
-            icon={Mic}
+            icon={ScrollText}
             data-testid="settings-speech-commands"
             onClick={() => openAbout("voice")}
           >
