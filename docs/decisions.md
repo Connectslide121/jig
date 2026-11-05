@@ -6357,3 +6357,41 @@ stopped for good.
 - **Pictures** are fitted to Teams' inline limit in main (`nativeImage`: ≤ 1024², JPEG at falling
   quality until ≤ 1 MB); one that can't fit is left out with a note. No typing indicator (the relay
   has none), no silent messages, no voice (D-370).
+
+## D-380: Teams phone: the Jig team, a channel per project, a thread per chat
+
+- Status: accepted (phase 27 session 4).
+- **Who:** Jon asked for the team, channels and rooms (D-370); how they map onto `PhoneChannel`:
+  Claude, on my own.
+- **Places on Teams:** Jig's place is the team's General channel (its id is the team's), a
+  project's is a channel of its own (`POST /api/channels`, named after the project), a chat's is a
+  thread in its project's place (`createPlace` kind `chat` posts the thread's first message, the new
+  `PlaceSpec.heading` "💬 chat · project", and returns `<channel>;messageid=<root>`). Sending to a
+  thread replies in it; sending to a bare channel id starts a post. The team comes from the relay's
+  `/api/health` (learned from the install event); no team = no places, and `identify` returns a
+  `note` that Settings → Phone → Team shows (`PhoneState.topicsNote`).
+- **A thread per chat, not per room** (capability `threads`, Teams only): unlike Telegram, where a
+  project's chats share its topic, every chat that writes gets its own thread (`SavedPhone.threads`),
+  and what you write there goes to it. A room is that same thread following the chat live
+  (`mirror.ts` as for Telegram), so Open thread / `/chats` / Open on my phone reuse it; `/close`
+  stops following and posts a note (a bot can't delete a thread; Jig never deletes channels).
+  Jig itself, the test and pairing stay in the 1:1 chat; a new post in a project's channel goes to
+  Jig itself with that project (`PhoneUpdate.area`: the thread's channel).
+- **What waits goes twice:** the full card in the chat's thread with an @mention (channels only
+  buzz for mentions) and a short card in the 1:1 chat (`shortCopy`: head, project, one line, the same
+  buttons). Both are kept on the `SentRequest` and both are updated when it's answered, from either
+  or from the computer.
+- **Places change on the phone:** the channel reports `PhoneUpdate` kind `places` from the relay's
+  events: the bot added to a team (Jig says hello in General), a channel deleted (its project and
+  chat threads are forgotten and made again on the next message), the bot removed or the team
+  deleted (everything but the 1:1 chat forgotten). A send that answers 404 is treated the same.
+- **Renamed with the project:** `names` keeps the name each project's place got; when projects
+  change, `renameTopics` renames Telegram topics and Teams channels (not General, not threads).
+  This also closes Telegram's old gap.
+- **Without RSC:** a 403 `rsc_missing` (or health saying `missing`) makes project places General;
+  threads are headed with their project, a post in General isn't tied to any project, and the note
+  says why. Granting it later only helps projects that haven't written yet (gap, until Disconnect).
+- **Reading threads needs another grant:** a bot receives channel messages only when @mentioned
+  unless the team grants `ChannelMessage.Read.Group`; the tenant check's package now asks for it and
+  session 5's app package must too. Without it you @mention Jig in the thread (the mention is
+  stripped from the text).

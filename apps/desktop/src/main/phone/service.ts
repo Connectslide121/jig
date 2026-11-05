@@ -21,6 +21,7 @@ import {
   excerpt,
   findProject,
   HELP,
+  HELP_TEAMS,
   HELP_TOPICS,
   isUserChat,
   lastReply,
@@ -37,6 +38,7 @@ import {
   queueMessage,
   replyDecision,
   rich,
+  shortCopy,
   speakable,
   statusMessage,
   tapDecision,
@@ -63,6 +65,13 @@ export interface SavedPhone {
   topics?: { jig?: Place; projects?: Record<string, Place> };
   /** Chats open as rooms on your phone: chat id → its place. */
   rooms?: Record<string, Place>;
+  /**
+   * Channels with threads (Teams, D-380): each chat's thread (chat id → the thread and the place it
+   * is in), made on the chat's first message there.
+   */
+  threads?: Record<string, { place: Place; parent: Place }>;
+  /** The name each project's place was made or last renamed with: a renamed project renames it. */
+  names?: Record<string, string>;
 }
 
 /** A chat open as a room: what was there when it opened, what it shows, your messages from the phone. */
@@ -173,6 +182,8 @@ interface SentRequest {
   /** The place it was sent to (Teams updates a message in its conversation). */
   place?: Place;
   text: string;
+  /** The short copy in the main chat (Teams: the full one is in the chat's thread), updated with it. */
+  copy?: { messageId: MessageRef; text: string };
 }
 
 const defaultPause = (ms: number, signal: AbortSignal) =>
@@ -209,6 +220,10 @@ export class PhoneService {
   private readonly targets = new Map<Place, string>();
   /** The channel has places now (Telegram: the bot has topics on): one per project and one for Jig. */
   private topics = false;
+  /** What limits the places, from the channel (Teams: no team yet, or General only). */
+  private topicsNote: string | undefined;
+  /** A thread → the place it is in (Teams: its channel), from what you wrote and the threads Jig made. */
+  private readonly areas = new Map<Place, Place>();
   private readonly creating = new Map<string, Promise<Place | undefined>>();
   /** Jig's own chat with you, and the place you last wrote to it in (its answers go there). */
   private conciergeId: string | undefined;
@@ -244,8 +259,13 @@ export class PhoneService {
     this.replies.clear();
     this.targets.clear();
     this.rooms.clear();
+    this.areas.clear();
     for (const [messageId, sessionId] of this.saved?.replies ?? []) this.replies.set(messageId, sessionId);
     for (const [thread, sessionId] of this.saved?.targets ?? []) this.targets.set(thread, sessionId);
+    for (const [sessionId, { place, parent }] of Object.entries(this.saved?.threads ?? {})) {
+      this.areas.set(place, parent);
+      if (!this.targets.has(place)) this.targets.set(place, sessionId);
+    }
     for (const [sessionId, thread] of Object.entries(this.saved?.rooms ?? {})) {
       const items = (await this.deps.chats.snapshot(sessionId).catch(() => undefined))?.items;
       if (items) this.rooms.set(sessionId, this.newRoom(thread, items));
@@ -290,9 +310,20 @@ export class PhoneService {
     const me = await this.channel.identify();
     this.reached();
     const places = this.channel.capabilities.places && me.places;
-    if (this.topics === places) return;
+    if (this.topics === places && this.topicsNote === me.note) return;
     this.topics = places;
+    this.topicsNote = me.note;
     this.changed();
+  }
+
+  /** Each chat writes in a thread of its own inside its project's place (Teams, D-380). */
+  private threads(): boolean {
+    return Boolean(this.channel?.capabilities.threads);
+  }
+
+  /** What a chat's own place is called on this channel. */
+  private roomWord(): "thread" | "topic" {
+    return this.threads() ? "thread" : "topic";
   }
 
   stop(): void {
@@ -315,6 +346,7 @@ export class PhoneService {
       ...(s && !s.owner && this.code ? { code: this.code } : {}),
       remembered: this.deps.store.remembered,
       ...(s?.owner ? { topics: this.topics } : {}),
+      ...(s?.owner && this.topicsNote ? { topicsNote: this.topicsNote } : {}),
       ...(this.error ? { error: this.error } : {}),
     };
   }
@@ -326,7 +358,7 @@ export class PhoneService {
     const channel = this.open(token.trim());
     if (!channel)
       throw new JigError("unavailable", `${CHANNEL_NAMES[this.kind]} isn't in this version of Jig yet.`);
-    let me: { bot: string; places: boolean };
+    let me: { bot: string; places: boolean; note?: string };
     try {
       me = await channel.identify();
     } catch (error) {
@@ -343,8 +375,10 @@ export class PhoneService {
     this.saved = { token: token.trim(), bot: me.bot };
     this.channel = channel;
     this.topics = channel.capabilities.places && me.places;
+    this.topicsNote = me.note;
     this.targets.clear();
     this.replies.clear();
+    this.areas.clear();
     this.code = this.deps.code();
     this.wrongCodes = 0;
     this.error = undefined;
@@ -370,6 +404,9 @@ export class PhoneService {
     this.error = undefined;
     this.targets.clear();
     this.topics = false;
+    this.topicsNote = undefined;
+    this.areas.clear();
+    this.rooms.clear();
     this.replies.clear();
     this.requests.clear();
     this.keys.clear();
@@ -383,9 +420,12 @@ export class PhoneService {
     await this.checkTopics().catch(() => undefined);
     await this.send(
       {
-        text: this.topics
-          ? "👋 A test from Jig. Each project's chats write in their own topic when they need you, finish or stop while you're away."
-          : "👋 A test from Jig. When a chat needs you, finishes or stops while you're away, it shows up here.",
+        text:
+          this.topics && this.threads()
+            ? "👋 A test from Jig. Each chat writes in its own thread of its project's channel in your Jig team; what needs you also shows up here."
+            : this.topics
+              ? "👋 A test from Jig. Each project's chats write in their own topic when they need you, finish or stop while you're away."
+              : "👋 A test from Jig. When a chat needs you, finishes or stops while you're away, it shows up here.",
       },
       { thread: await this.threadFor() },
     );
@@ -468,11 +508,19 @@ export class PhoneService {
       this.requests.delete(id);
       this.keys.delete(sent.key);
       const where = this.answeredHere.delete(sent.key) ? "phone" : "computer";
+      const channel = this.channel;
       const to = this.address(sent.place);
-      if (!to || !this.channel?.capabilities.edits) return;
-      await this.channel
-        .edit(to, sent.messageId, { text: sent.text + answeredLine(item, where) })
+      if (!to || !channel?.capabilities.edits) return;
+      const line = answeredLine(item, where);
+      await channel
+        .edit(to, sent.messageId, { text: sent.text + line })
         .catch((error) => this.deps.log?.warn("Updating the phone's message failed", error));
+      // Its copy in the main chat says the same, wherever it was answered.
+      const main = this.address();
+      if (sent.copy && main)
+        await channel
+          .edit(main, sent.copy.messageId, { text: sent.copy.text + line })
+          .catch((error) => this.deps.log?.warn("Updating the phone's message failed", error));
       return;
     }
     const concierge = meta.kind === "concierge";
@@ -486,6 +534,16 @@ export class PhoneService {
       const thread = concierge ? this.conciergeThread : await this.threadFor(meta);
       const messageId = await this.send(message, { sessionId: meta.id, thread, mention: true });
       if (messageId === undefined) return;
+      // Teams: the full card is in the chat's thread (a mention); a short one in the main chat buzzes.
+      let copy: SentRequest["copy"];
+      if (this.threads() && thread !== undefined && !concierge) {
+        const project = meta.projectId
+          ? await this.deps.project?.(meta.projectId).catch(() => undefined)
+          : undefined;
+        const short = shortCopy(message, project?.name);
+        const copyId = await this.send(short, { sessionId: meta.id });
+        if (copyId !== undefined) copy = { messageId: copyId, text: short.text };
+      }
       const request: SentRequest = {
         key,
         sessionId: meta.id,
@@ -493,6 +551,7 @@ export class PhoneService {
         messageId,
         ...(thread !== undefined ? { place: thread } : {}),
         text: message.text,
+        ...(copy ? { copy } : {}),
       };
       this.requests.set(id, request);
       this.keys.set(key, request);
@@ -561,13 +620,22 @@ export class PhoneService {
    * The topic a chat's messages go to: its project's (made the first time), or Jig's own for chats
    * without a project and for Jig itself. Undefined without topics: everything in one thread.
    */
-  private async threadFor(meta?: Pick<SessionMeta, "projectId" | "id">): Promise<Place | undefined> {
+  private async threadFor(
+    meta?: Pick<SessionMeta, "projectId" | "id" | "title" | "kind">,
+  ): Promise<Place | undefined> {
     if (!this.topics || !this.saved?.owner) return undefined;
     const room = meta?.id ? this.rooms.get(meta.id) : undefined;
     if (room) return room.thread;
-    const projectId = meta?.projectId;
+    // Teams: a chat writes in its own thread; Jig itself and the rest stay in the 1:1 chat.
+    if (this.threads()) return meta && isUserChat(meta) ? this.chatThread(meta) : undefined;
+    return this.topicFor(meta?.projectId);
+  }
+
+  /** A project's place (made the first time, renamed with the project), or Jig's own. */
+  private async topicFor(projectId: string | undefined): Promise<Place | undefined> {
+    if (!this.saved?.owner) return undefined;
     const known = projectId ? this.saved.topics?.projects?.[projectId] : this.saved.topics?.jig;
-    if (known) return known;
+    if (known !== undefined) return known;
     const key = projectId ?? "";
     let pending = this.creating.get(key);
     if (!pending) {
@@ -595,6 +663,7 @@ export class PhoneService {
         topics: projectId
           ? { ...topics, projects: { ...topics.projects, [projectId]: place } }
           : { ...topics, jig: place },
+        ...(projectId ? { names: { ...this.saved.names, [projectId]: name } } : {}),
       };
       this.persist();
       return place;
@@ -604,25 +673,134 @@ export class PhoneService {
     }
   }
 
-  /** You deleted a place on the phone (a topic): forget it, so the next message makes a new one. */
-  private forgetTopic(thread: Place): void {
-    const topics = this.saved?.topics;
-    if (!this.saved || !topics) return;
-    const projects = Object.fromEntries(
-      Object.entries(topics.projects ?? {}).filter(([, t]) => t !== thread),
-    );
+  /**
+   * A chat's own thread in its project's place (Teams, D-380), made on its first message there with
+   * a heading naming the chat and its project; what you write in it goes to the chat.
+   */
+  private async chatThread(
+    meta: Pick<SessionMeta, "projectId" | "id" | "title">,
+  ): Promise<Place | undefined> {
+    const known = this.saved?.threads?.[meta.id];
+    if (known) return known.place;
+    const key = `chat:${meta.id}`;
+    let pending = this.creating.get(key);
+    if (!pending) {
+      pending = this.createThread(meta).finally(() => this.creating.delete(key));
+      this.creating.set(key, pending);
+    }
+    return pending;
+  }
+
+  private async createThread(
+    meta: Pick<SessionMeta, "projectId" | "id" | "title">,
+  ): Promise<Place | undefined> {
+    const chatId = this.saved?.owner?.chatId;
+    const parent = await this.topicFor(meta.projectId);
+    if (!this.channel || chatId === undefined || parent === undefined) return undefined;
+    const project = meta.projectId
+      ? await this.deps.project?.(meta.projectId).catch(() => undefined)
+      : undefined;
+    try {
+      const place = await this.channel.createPlace(chatId, {
+        kind: "chat",
+        name: `💬 ${meta.title}`,
+        color: project?.color ?? "jig",
+        parent,
+        heading: `💬 <b>${chatTitle(meta)}</b>${project ? ` · ${escapeHtml(project.name)}` : ""}`,
+      });
+      if (!this.saved) return undefined;
+      this.saved = { ...this.saved, threads: { ...this.saved.threads, [meta.id]: { place, parent } } };
+      this.areas.set(place, parent);
+      this.targets.set(place, meta.id);
+      this.persist();
+      return place;
+    } catch (error) {
+      // Its project's place was deleted: forget it, so the next message makes both again.
+      if (error instanceof ChannelError && error.reason === "gone") this.forgetPlace(parent);
+      this.deps.log?.warn("Making a chat's thread on the phone failed", error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Projects renamed since their places were made: the places follow (Telegram's topics, Teams'
+   * channels; D-380). Runs when the projects change, and quietly does nothing for a channel that
+   * can't rename.
+   */
+  async renameTopics(): Promise<void> {
+    const chatId = this.saved?.owner?.chatId;
+    const channel = this.channel;
+    if (!channel?.renamePlace || chatId === undefined || !this.saved) return;
+    for (const [projectId, place] of Object.entries(this.saved.topics?.projects ?? {})) {
+      const project = await this.deps.project?.(projectId).catch(() => undefined);
+      const before: string | undefined = this.saved?.names?.[projectId];
+      if (!project || project.name === before || !this.saved) continue;
+      // Places made before names were kept: remember the name, rename next time.
+      if (before !== undefined)
+        try {
+          await channel.renamePlace(chatId, place, project.name);
+        } catch (error) {
+          this.deps.log?.warn("Renaming a project's place on the phone failed", error);
+          continue;
+        }
+      this.saved = { ...this.saved, names: { ...this.saved.names, [projectId]: project.name } };
+      this.persist();
+    }
+  }
+
+  /**
+   * You deleted a place on the phone (a topic, a channel) or the team went: forget it and what was
+   * in it (chat threads, rooms), so the next message makes it again.
+   */
+  private forgetPlace(place: Place): void {
+    const saved = this.saved;
+    if (!saved) return;
+    const topics = saved.topics ?? {};
+    const projects = Object.fromEntries(Object.entries(topics.projects ?? {}).filter(([, t]) => t !== place));
+    const inside = (p: { place: Place; parent: Place }) => p.place === place || p.parent === place;
+    const threads = Object.fromEntries(Object.entries(saved.threads ?? {}).filter(([, t]) => !inside(t)));
+    for (const [sessionId, t] of Object.entries(saved.threads ?? {}))
+      if (inside(t)) {
+        this.targets.delete(t.place);
+        this.areas.delete(t.place);
+        const room = this.rooms.get(sessionId);
+        if (room?.thread === t.place) this.dropRoom(sessionId);
+      }
+    for (const [sessionId, room] of this.rooms)
+      if (room.thread === place || this.areas.get(room.thread) === place) this.dropRoom(sessionId);
     this.saved = {
-      ...this.saved,
-      topics: { ...(topics.jig === thread ? {} : { jig: topics.jig }), projects },
+      ...this.saved!,
+      topics: { ...(topics.jig === place ? {} : { jig: topics.jig }), projects },
+      threads,
     };
-    this.targets.delete(thread);
+    this.targets.delete(place);
     this.persist();
   }
 
-  /** The project whose topic this is (undefined: Jig's own, or no topics). */
+  /** Forgets everything Jig made on the phone apart from the main chat (Teams: the team went). */
+  private forgetPlaces(): void {
+    if (!this.saved) return;
+    for (const sessionId of [...this.rooms.keys()]) this.dropRoom(sessionId);
+    for (const t of Object.values(this.saved.threads ?? {})) this.targets.delete(t.place);
+    for (const t of Object.values(this.saved.topics?.projects ?? {})) this.targets.delete(t);
+    this.areas.clear();
+    this.saved = { ...this.saved, topics: {}, threads: {}, rooms: {} };
+    this.persist();
+  }
+
+  /**
+   * The project whose place this is, or whose place it is in (Teams: a post in its channel).
+   * Undefined for Jig's own, no places, or a place several projects share (Teams' General).
+   */
   private projectOfThread(thread: Place | undefined): string | undefined {
     if (thread === undefined) return undefined;
-    return Object.entries(this.saved?.topics?.projects ?? {}).find(([, t]) => t === thread)?.[0];
+    const projects = Object.entries(this.saved?.topics?.projects ?? {});
+    for (const place of [thread, this.areas.get(thread)]) {
+      if (place === undefined) continue;
+      const matches = projects.filter(([, t]) => t === place);
+      if (matches.length) return matches.length === 1 ? matches[0]![0] : undefined;
+    }
+    return undefined;
   }
 
   private async send(
@@ -640,8 +818,10 @@ export class PhoneService {
     try {
       const sent = await deliver(to.thread).catch(async (error) => {
         if (!to.thread || !(error instanceof ChannelError) || error.reason !== "gone") throw error;
-        // You deleted that place on the phone: forget it and send to the main chat.
-        this.forgetTopic(to.thread);
+        // You deleted that place on the phone (a thread's: its channel): forget it, send to the main chat.
+        const area = this.areas.get(to.thread);
+        this.forgetPlace(to.thread);
+        if (area !== undefined) this.forgetPlace(area);
         return deliver(undefined);
       });
       if (sent === undefined) return undefined;
@@ -748,12 +928,18 @@ export class PhoneService {
   private async handle(raw: unknown): Promise<void> {
     const update = this.channel?.read(raw);
     if (update?.kind === "tap") return this.handleTap(update);
+    if (update?.kind === "places") return this.placesChanged(update);
     if (!update?.private) return;
     const now = (this.deps.now?.() ?? Date.now()) / 1000;
     if (now - update.date > STALE_SECONDS) return;
     const owner = this.saved?.owner;
-    if (!owner) return this.pair(update.chat, update.from, update.text ?? "");
+    // The code counts only in the main chat with the bot.
+    if (!owner)
+      return update.place === undefined || !this.threads()
+        ? this.pair(update.chat, update.from, update.text ?? "")
+        : undefined;
     if (update.chat !== owner.chatId) return;
+    if (update.place !== undefined && update.area !== undefined) this.areas.set(update.place, update.area);
     // Answers go to the place you wrote in.
     const here = update.place;
     let text = update.text?.trim() ?? "";
@@ -782,6 +968,27 @@ export class PhoneService {
     } finally {
       this.speaking = false;
     }
+  }
+
+  /**
+   * The bot was added to a team (it says hello in General), a place was deleted, or the team went
+   * (Teams, D-380): forget what's gone and ask the channel what it has now.
+   */
+  private async placesChanged(update: Extract<PhoneUpdate, { kind: "places" }>): Promise<void> {
+    if (!this.saved) return;
+    if (update.reset) this.forgetPlaces();
+    if (update.gone !== undefined) this.forgetPlace(update.gone);
+    await this.checkTopics().catch(() => undefined);
+    if (update.added !== undefined && this.saved?.owner && this.topics)
+      await this.send(
+        {
+          text: this.topicsNote
+            ? `👋 <b>Jig is in this team.</b>\n\nEach chat writes in a thread here, headed with its project: what it says, and what needs you (with a mention). Write in a chat's thread to talk to it.\n\n<i>${escapeHtml(this.topicsNote)}</i>`
+            : "👋 <b>Jig is in this team.</b>\n\nEach project gets a channel here on its first message, and each chat a thread in it: what it says, and what needs you (with a mention). Write in a chat's thread to talk to it; a new post in a project's channel goes to Jig itself, for that project.",
+          silent: true,
+        },
+        { thread: update.added },
+      );
   }
 
   /** True while handling a voice message: the chat it goes to answers read aloud. */
@@ -840,6 +1047,11 @@ export class PhoneService {
       return void (await this.send({ text: this.help() }, { thread: here }));
     const roomChat = this.roomOfThread(here);
     if (roomChat && command === "close") return this.closeRoom(roomChat);
+    if (command === "close")
+      return void (await this.send(
+        { text: `/close works in a chat's ${this.roomWord()} that follows it live.` },
+        { thread: here },
+      ));
     if (roomChat && !command) return this.toChat(roomChat, text, replyTo, here);
     if (command === "chats") return void (await this.send(await this.picker(here), { thread: here }));
     if (command === "screen") return this.screen(here);
@@ -864,11 +1076,14 @@ export class PhoneService {
   private async askConcierge(text: string, here: Place | undefined): Promise<void> {
     const projectId = this.projectOfThread(here);
     const project = projectId ? await this.deps.project?.(projectId).catch(() => undefined) : undefined;
+    const teams = this.threads();
     const where = projectId
-      ? `the topic of project “${project?.name ?? projectId}” (id ${projectId})`
+      ? `the ${teams ? "channel" : "topic"} of project “${project?.name ?? projectId}” (id ${projectId})`
       : here === undefined
         ? "the bot's chat"
-        : "Jig's topic";
+        : teams
+          ? "the Jig team's General channel"
+          : "Jig's topic";
     try {
       this.conciergeId = await this.deps.concierge!.ask(
         `[${this.speaking ? "Said in a voice message" : "Written"} on the phone, in ${where}]\n\n${text}`,
@@ -925,12 +1140,13 @@ export class PhoneService {
     return undefined;
   }
 
-  /** "💬 Open chat" under a chat's message, when it can have a room and has none yet. */
+  /** "💬 Open chat" (Teams: "Open thread") under a chat's message, when it can have a room and has none yet. */
   private withOpen(message: OutMessage, meta: SessionMeta): OutMessage {
     if (!this.topics || this.rooms.has(meta.id) || !isUserChat(meta)) return message;
+    const text = this.threads() ? "💬 Open thread" : "💬 Open chat";
     return {
       ...message,
-      buttons: [...(message.buttons ?? []), [{ text: "💬 Open chat", data: `o:${meta.id}` }]],
+      buttons: [...(message.buttons ?? []), [{ text, data: `o:${meta.id}` }]],
     };
   }
 
@@ -945,29 +1161,43 @@ export class PhoneService {
     const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
     if (!snapshot) return void (await this.send({ text: "That chat no longer exists." }, { thread: from }));
     const title = chatTitle(snapshot.meta);
+    const teams = this.threads();
+    const word = this.roomWord();
     if (!this.topics) {
-      const text =
-        "Chats open in a topic of their own: turn on topics for your bot in @BotFather first (Settings → Phone says how).";
+      const text = teams
+        ? "Chats open in their thread of your Jig team: add the Jig app to a private team of yours first (Settings → Phone says how)."
+        : "Chats open in a topic of their own: turn on topics for your bot in @BotFather first (Settings → Phone says how).";
       await this.send({ text }, { thread: from });
       throw new JigError("no_topics", text);
     }
     const open = this.rooms.get(sessionId);
     if (open)
       return void (await this.send(
-        { text: `💬 ${title} is already open in its own topic.` },
+        { text: `💬 ${title} is already open in its own ${word}.` },
         { thread: from },
       ));
     const project = snapshot.meta.projectId
       ? await this.deps.project?.(snapshot.meta.projectId).catch(() => undefined)
       : undefined;
     const projectId = snapshot.meta.projectId;
-    const parent = projectId ? this.saved?.topics?.projects?.[projectId] : this.saved?.topics?.jig;
-    const place = await this.channel.createPlace(chatId, {
-      kind: "chat",
-      name: `💬 ${snapshot.meta.title}`,
-      color: project?.color ?? "jig",
-      ...(parent !== undefined ? { parent } : {}),
-    });
+    let place: Place | undefined;
+    if (teams) {
+      // Teams: the chat's own thread (made now if it has none) starts following it.
+      place = await this.chatThread(snapshot.meta);
+      if (place === undefined) {
+        const text = "Jig couldn't make the chat's thread in your Jig team. Try again in a moment.";
+        await this.send({ text }, { thread: from });
+        throw new JigError("unavailable", text);
+      }
+    } else {
+      const parent = projectId ? this.saved?.topics?.projects?.[projectId] : this.saved?.topics?.jig;
+      place = await this.channel.createPlace(chatId, {
+        kind: "chat",
+        name: `💬 ${snapshot.meta.title}`,
+        color: project?.color ?? "jig",
+        ...(parent !== undefined ? { parent } : {}),
+      });
+    }
     const room = this.newRoom(place, snapshot.items);
     this.rooms.set(sessionId, room);
     this.saved = { ...this.saved!, rooms: { ...this.saved?.rooms, [sessionId]: room.thread } };
@@ -975,7 +1205,9 @@ export class PhoneService {
     const thread = room.thread;
     await this.send(
       {
-        text: `💬 <b>${title}</b>${project ? ` · ${escapeHtml(project.name)}` : ""}\n\nThis is the chat, live: its replies, steps and screenshots arrive here, and what you write here goes to it. /close closes the room (the chat stays).`,
+        text: teams
+          ? "▶️ <b>Following the chat live.</b> Its replies, steps and screenshots arrive in this thread, and what you write here goes to it. /close stops following (the chat and the thread stay)."
+          : `💬 <b>${title}</b>${project ? ` · ${escapeHtml(project.name)}` : ""}\n\nThis is the chat, live: its replies, steps and screenshots arrive here, and what you write here goes to it. /close closes the room (the chat stays).`,
         silent: true,
       },
       { thread },
@@ -995,7 +1227,7 @@ export class PhoneService {
       )
         await this.permission(snapshot.meta, item);
     if (from !== undefined && from !== thread)
-      await this.send({ text: `💬 Opened ${title} in its own topic.`, silent: true }, { thread: from });
+      await this.send({ text: `💬 Opened ${title} in its own ${word}.`, silent: true }, { thread: from });
   }
 
   /** The topic you last wrote to Jig itself in (a chat it starts opens from there). */
@@ -1003,15 +1235,32 @@ export class PhoneService {
     return this.conciergeThread;
   }
 
-  /** /close in a room: the topic goes, the chat stays. */
-  async closeRoom(sessionId: string): Promise<void> {
+  /** A room stops following its chat (closed, or its place is gone). */
+  private dropRoom(sessionId: string): void {
     const room = this.rooms.get(sessionId);
-    if (!room) return;
-    if (room.timer) clearTimeout(room.timer);
+    if (room?.timer) clearTimeout(room.timer);
     this.rooms.delete(sessionId);
     const { [sessionId]: _closed, ...rooms } = this.saved?.rooms ?? {};
     if (this.saved) this.saved = { ...this.saved, rooms };
     this.persist();
+  }
+
+  /**
+   * /close in a room: the topic goes, the chat stays. Teams can't delete a thread: it stops following
+   * the chat live and stays its thread (what you write there still goes to it).
+   */
+  async closeRoom(sessionId: string): Promise<void> {
+    const room = this.rooms.get(sessionId);
+    if (!room) return;
+    this.dropRoom(sessionId);
+    if (this.threads())
+      return void (await this.send(
+        {
+          text: "⏹ Stopped following the chat live. Jig still writes here when it needs you, finishes or stops, and what you write here still goes to it.",
+          silent: true,
+        },
+        { thread: room.thread },
+      ));
     const chatId = this.saved?.owner?.chatId;
     if (chatId !== undefined)
       await this.channel
@@ -1168,6 +1417,7 @@ export class PhoneService {
   }
 
   private help(): string {
+    if (this.threads()) return HELP_TEAMS;
     return this.topics ? HELP_TOPICS : HELP;
   }
 
@@ -1175,7 +1425,14 @@ export class PhoneService {
   private async picker(thread: Place | undefined) {
     const projectId = this.projectOfThread(thread);
     const chats = (await this.deps.chats.list()).filter((m) => !projectId || m.projectId === projectId);
-    return chatPicker(chats, this.targets.get(thread ?? 0), 8, Boolean(this.deps.concierge), this.topics);
+    return chatPicker(
+      chats,
+      this.targets.get(thread ?? 0),
+      8,
+      Boolean(this.deps.concierge),
+      this.topics,
+      this.roomWord(),
+    );
   }
 
   private async pair(chatId: Account, from: PhoneUser | undefined, text: string): Promise<void> {
@@ -1224,7 +1481,7 @@ export class PhoneService {
       (i): i is PermissionItem => i.kind === "permission" && i.status === "pending",
     );
     const replied = [...this.requests.values()].find(
-      (r) => r.messageId === replyTo && r.sessionId === sessionId,
+      (r) => (r.messageId === replyTo || r.copy?.messageId === replyTo) && r.sessionId === sessionId,
     );
     const waiting = pending.find((i) => i.request.requestId === replied?.requestId) ?? pending.at(-1);
     try {

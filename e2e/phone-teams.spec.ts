@@ -10,20 +10,26 @@ const KEY = "k".repeat(43);
 const CREDENTIAL = `https://shop-relay.azurewebsites.net#${KEY}`;
 
 interface Sent {
-  to: { kind: string; conversationId?: string };
+  to: { kind: string; conversationId?: string; channelId?: string };
   text?: string;
   card?: { body: Array<{ type: string; text?: string; actions?: Array<{ data: { jig: string } }> }> };
   image?: { contentType: string };
 }
 
+const TEAM = "19:general@thread.tacv2";
+
 /**
  * The Teams relay (D-370) on 127.0.0.1, as `relay/teams/src/protocol.ts` describes it: records what
- * Jig sends and updates, hands Jig what "Teams" posted to the bot.
+ * Jig sends and updates, hands Jig what "Teams" posted to the bot. With `team` the bot is in your
+ * Jig team (D-380): it makes channels and starts threads in them.
  */
-async function fakeRelay() {
+async function fakeRelay(options: { team?: boolean } = {}) {
   const sent: Sent[] = [];
+  /** Where each sent message went: its conversation (a thread's is `<channel>;messageid=<root>`). */
+  const where: string[] = [];
   const updates: Array<{ id: string; body: Sent }> = [];
   const pairing: string[] = [];
+  const channels: Array<{ id: string; name: string }> = [];
   const queue: Array<{ cursor: number; received: number; activity: Record<string, unknown> }> = [];
   let cursor = 0;
   let nextId = 1;
@@ -44,9 +50,15 @@ async function fakeRelay() {
           version: "test",
           paired: pairing.length > 0,
           personal: true,
-          channels: 0,
-          rsc: "unknown",
+          ...(options.team ? { team: { id: TEAM, name: "Jig" } } : {}),
+          channels: channels.length,
+          rsc: options.team ? "granted" : "unknown",
         });
+      if (url.pathname === "/api/channels") {
+        const made = { id: params.id ?? `19:ch${channels.length + 1}@thread.tacv2`, name: params.name };
+        if (!params.id) channels.push(made);
+        return reply(200, made);
+      }
       if (url.pathname === "/api/updates") {
         const after = Number(url.searchParams.get("after") ?? 0);
         const ready = () => queue.filter((u) => u.cursor > after);
@@ -58,8 +70,17 @@ async function fakeRelay() {
         return reply(200, { paired: req.method !== "DELETE" });
       }
       if (url.pathname === "/api/send" && req.method === "POST") {
+        const id = `a${nextId++}`;
+        const to = (params as Sent).to;
+        const conversationId =
+          to.kind === "thread"
+            ? `${to.channelId};messageid=${id}`
+            : to.kind === "conversation"
+              ? (to.conversationId ?? "")
+              : "a:personal";
         sent.push(params);
-        return reply(200, { id: `a${nextId++}`, conversationId: "a:personal" });
+        where.push(conversationId);
+        return reply(200, { id, conversationId });
       }
       if (url.pathname.startsWith("/api/send/") && req.method === "PUT") {
         updates.push({ id: url.pathname.split("/").pop() ?? "", body: params });
@@ -88,8 +109,21 @@ async function fakeRelay() {
     sent,
     updates,
     pairing,
+    channels,
     texts: () => sent.map(words).join("\n"),
+    /** What Jig wrote in a channel thread. */
+    inThread: (thread: string) => sent.filter((_, i) => where[i] === thread).map(words),
+    /** The threads Jig started in a channel. */
+    threads: (channel: string) =>
+      sent.flatMap((s, i) => (s.to.kind === "thread" && s.to.channelId === channel ? [where[i]!] : [])),
     write: (text: string) => post({ text }),
+    /** You wrote in a channel thread of the team (Teams adds the bot's @mention). */
+    writeIn: (thread: string, text: string) =>
+      post({
+        text: `<at>Jig</at> ${text}`,
+        conversation: { id: thread, conversationType: "channel", tenantId: "contoso" },
+        channelData: { team: { id: TEAM }, channel: { id: thread.split(";")[0] } },
+      }),
     tap: (data: string) => post({ value: { jig: data } }),
     close: () => new Promise((r) => server.close(r)),
   };
@@ -163,6 +197,57 @@ test("phone on Teams: pair, Allow from a card, /status and Jig itself", async ({
     // Anything else goes to Jig itself; its answer comes back to the 1:1 chat.
     relay.write("how is everything going?");
     await expect.poll(() => relay.texts(), { timeout: 20000 }).toContain("<b>Jig</b> · AI");
+  } finally {
+    await relay.close();
+  }
+});
+
+// The Jig team (D-380): a project's first message makes its channel, the chat opens as its thread
+// there and follows the chat live, and what you write in the thread goes to the chat.
+test("phone on Teams: a project's channel, a chat's thread live, a reply from the thread", async ({
+  jigHome,
+}) => {
+  const relay = await fakeRelay({ team: true });
+  try {
+    const page = await start(jigHome, relay);
+    const connected = (await hostCall(page, "phone.connect", { token: CREDENTIAL })) as {
+      value: { code: string };
+    };
+    relay.write(connected.value.code);
+    await expect
+      .poll(
+        async () => ((await hostCall(page, "phone.state")) as { value: { topics?: boolean } }).value.topics,
+        { timeout: 15000 },
+      )
+      .toBe(true);
+
+    await page.keyboard.press("Control+N");
+    await page.getByTestId("composer-input").fill("first idea");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("chat-status")).toHaveText("Idle", { timeout: 15000 });
+
+    // Open on my phone: the project's channel is made, then the chat's thread in it.
+    await page.getByRole("button", { name: "Chat options" }).click();
+    await page.getByTestId("session-open-phone").click();
+    await expect.poll(() => relay.channels.map((c) => c.name), { timeout: 15000 }).toEqual(["shop"]);
+    const channel = relay.channels[0]!.id;
+    await expect.poll(() => relay.threads(channel).length, { timeout: 15000 }).toBe(1);
+    const thread = relay.threads(channel)[0]!;
+    await expect.poll(() => relay.inThread(thread).join("\n"), { timeout: 15000 }).toContain("first idea");
+
+    // A turn from the computer is mirrored into the thread, then Finished.
+    await page.getByTestId("composer-input").fill("second idea");
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => relay.inThread(thread).join("\n"), { timeout: 20000 })
+      .toContain("You, on the computer:</i><br>second idea");
+    await expect.poll(() => relay.inThread(thread).join("\n"), { timeout: 20000 }).toContain("Finished");
+
+    // Written in the thread: it goes to the chat.
+    relay.writeIn(thread, "from the phone");
+    await expect(page.getByTestId("user-message-text").last()).toHaveText("from the phone", {
+      timeout: 15000,
+    });
   } finally {
     await relay.close();
   }

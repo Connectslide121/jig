@@ -6,8 +6,15 @@
  */
 import { crc32, deflateSync } from "node:zlib";
 
-/** The RSC permissions Jig's bot asks a team for: make channels, rename them (D-370). */
-export const RSC_PERMISSIONS = ["Channel.Create.Group", "ChannelSettings.ReadWrite.Group"] as const;
+/**
+ * The RSC permissions Jig's bot asks a team for: make channels, rename them (D-370), and read what
+ * you write in its threads without @mentioning the bot (D-380).
+ */
+export const RSC_PERMISSIONS = [
+  "Channel.Create.Group",
+  "ChannelSettings.ReadWrite.Group",
+  "ChannelMessage.Read.Group",
+] as const;
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isGuid = (s: string | undefined): s is string => !!s && GUID.test(s);

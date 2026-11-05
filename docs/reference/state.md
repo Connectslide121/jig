@@ -184,7 +184,10 @@ account it is paired with (Telegram: the private chat's id; Teams: the Entra obj
 the chat plain text written there goes to, so replies keep working after Jig restarts. Message and
 place ids are the channel's own (numbers on Telegram, strings on Teams).
 `topics` `{ jig?, projects? }` are the places Jig made (Telegram: topics in the bot's chat; Jig's own, per project id);
-`rooms` maps chats open as rooms on the phone to their places. Disconnect (or switching
+`rooms` maps chats open as rooms on the phone to their places. Teams (D-380) adds `threads`
+(chat id → `{ place, parent }`: each chat's thread and the channel it is in; Jig's place there is the
+team's General channel) and both channels keep `names` (project id → the name its place was made or
+last renamed with, so a renamed project renames its topic or channel). Disconnect (or switching
 `phone.channel`) removes that channel's entry; the file goes with the last one.
 
 ## Meetings (D-217)

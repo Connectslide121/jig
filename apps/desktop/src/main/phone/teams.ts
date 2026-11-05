@@ -1,8 +1,12 @@
 import {
+  type ChannelRequest,
+  type ChannelResult,
+  type Health,
   MAX_IMAGE_BYTES,
   MAX_WAIT_S,
   READER_HEADER,
   RELAY_KEY_HEADER,
+  type RelayActivity,
   type RelayUpdate,
   type SendRequest,
   type SendResult,
@@ -19,6 +23,7 @@ import {
   type PhoneCommand,
   type PhoneUpdate,
   type Place,
+  type PlaceSpec,
 } from "./channel";
 import { type Button, escapeHtml, type OutMessage } from "./messages";
 
@@ -26,8 +31,9 @@ import { type Button, escapeHtml, type OutMessage } from "./messages";
  * Jig on your phone through your own Teams bot (D-370, phase 27): Microsoft delivers what you write
  * to the bot's relay (an Azure Function of yours, `relay/teams/`), and Jig long-polls the relay with
  * its key, like Telegram's `getUpdates`, so nothing on this computer listens to the internet. The
- * contract is `relay/teams/src/protocol.ts`. This session's channel is the 1:1 chat with the bot;
- * the team, its channels and threads come next (places, session 4).
+ * contract is `relay/teams/src/protocol.ts`. Places (D-380): the private team the bot was added to,
+ * a channel per project (made through the relay's RSC endpoint; its General channel when the team's
+ * owner didn't grant that) and a thread per chat in it.
  */
 
 /** The relay's address; only the fake engine (tests) may point it elsewhere. */
@@ -240,6 +246,9 @@ const remember = <K, V>(map: Map<K, V>, key: K, value: V) => {
 
 const isJpeg = (photo: Buffer) => photo[0] === 0xff && photo[1] === 0xd8;
 
+/** A channel thread's conversation id: its channel's id and its first message's. */
+const isThread = (place: string) => place.includes(";messageid=");
+
 /**
  * The Teams channel (D-370, D-379): the 1:1 chat with your bot, through the relay. Messages are
  * Jig's HTML subset (Teams renders it); a message with buttons is an Adaptive Card, updated when the
@@ -257,6 +266,10 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
   private readonly sent = new Map<MessageRef, { conversationId: string; card: boolean }>();
   /** A tap's conversation, for a notice in reply ("This is no longer waiting."). */
   private readonly taps = new Map<string, string>();
+  /** The team the bot is in (its id is also its General channel's), as the relay last said. */
+  private team: string | undefined;
+  /** No channels of Jig's own in it (the owner didn't grant RSC): projects use General (D-380). */
+  private general = false;
 
   constructor(private readonly deps: TeamsDeps) {}
 
@@ -280,14 +293,22 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
     return new ChannelError("other", error.message);
   }
 
-  async identify(): Promise<{ bot: string; places: boolean }> {
+  /** The relay's health: the team the bot is in (places) and whether it may make channels there. */
+  async identify(): Promise<{ bot: string; places: boolean; note?: string }> {
+    let health: Health;
     try {
-      await this.deps.api.request("GET", "health");
+      health = await this.deps.api.request<Health>("GET", "health");
     } catch (error) {
       throw this.failure(error, "call");
     }
-    // The team, its channels and threads are the next step (phase 27 session 4): the 1:1 chat for now.
-    return { bot: "Jig", places: false };
+    this.team = health.team?.id;
+    if (health.rsc !== "unknown") this.general = health.rsc === "missing";
+    const note = !this.team
+      ? "Add the Jig app to a private team of yours named Jig: each project then gets a channel there, each chat a thread."
+      : this.general
+        ? "Chats write in threads of the team's General channel, headed with their project: the team's owner didn't let the Jig app make channels (its permission to create channels wasn't granted when it was added)."
+        : undefined;
+    return { bot: "Jig", places: Boolean(this.team), ...(note ? { note } : {}) };
   }
 
   async poll(signal: AbortSignal): Promise<RelayUpdate[]> {
@@ -312,16 +333,39 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
     return updates;
   }
 
+  /** The bot's install and the team's channel events, as changes of places (D-380). */
+  private event(a: RelayActivity): PhoneUpdate | undefined {
+    const cd = a.channelData;
+    const team = cd?.team?.id;
+    if (!team) return undefined;
+    const removed =
+      cd?.eventType === "teamDeleted" || (a.type === "installationUpdate" && a.action?.startsWith("remove"));
+    if (removed) {
+      if (this.team === team) this.team = undefined;
+      return { kind: "places", reset: true };
+    }
+    if (a.type === "installationUpdate" && a.action?.startsWith("add")) {
+      this.team = team;
+      return { kind: "places", added: team };
+    }
+    if (cd?.eventType === "channelDeleted" && cd.channel?.id) return { kind: "places", gone: cd.channel.id };
+    return undefined;
+  }
+
   read(update: RelayUpdate): PhoneUpdate | undefined {
     const a = update.activity;
+    if (a.type === "installationUpdate" || a.type === "conversationUpdate") return this.event(a);
     const account = a.from?.aadObjectId;
     if (a.type !== "message" || !account) return undefined;
     const from = { id: account, name: a.from?.name || "you" };
     const stamp = a.timestamp ? Date.parse(a.timestamp) : Number.NaN;
     const date = Math.floor((Number.isFinite(stamp) ? stamp : update.received) / 1000);
     const personal = a.conversation.conversationType === "personal";
-    // Places (a channel, a thread in one) come with the team (session 4).
-    const place = personal ? undefined : a.conversation.id;
+    // A channel post or a reply in its thread: the thread is the place, its channel the area. Only
+    // the 1:1 chat and the team's channels are yours (a group chat the bot is in is not).
+    const team = !personal && Boolean(a.channelData?.team?.id);
+    const place = team ? a.conversation.id : undefined;
+    const area = team ? (a.channelData?.channel?.id ?? a.conversation.id.split(";")[0]) : undefined;
     const value = a.value as { jig?: unknown } | undefined;
     if (typeof value?.jig === "string") {
       const now = (this.deps.now?.() ?? Date.now()) / 1000;
@@ -339,19 +383,26 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
       id: a.id ?? `m-${update.cursor}`,
       date,
       chat: account,
-      private: personal,
+      private: personal || team,
       from,
       ...(place ? { place } : {}),
+      ...(area && area !== place ? { area } : {}),
       ...(reply ? { replyTo: reply } : {}),
       ...(text ? { text } : {}),
       ...(attachment && !text ? { attachment } : {}),
     };
   }
 
+  /**
+   * A place is a thread (`<channel>;messageid=<root>`: a reply in it) or a channel (a new post in it);
+   * no place is the 1:1 chat.
+   */
   private target(to: Address): SendTarget {
-    return to.place !== undefined
-      ? { kind: "conversation", conversationId: String(to.place) }
-      : { kind: "personal" };
+    if (to.place === undefined) return { kind: "personal" };
+    const place = String(to.place);
+    return isThread(place)
+      ? { kind: "conversation", conversationId: place }
+      : { kind: "thread", channelId: place };
   }
 
   async send(to: Address, message: OutMessage, photo?: Buffer): Promise<MessageRef> {
@@ -432,10 +483,57 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
     } satisfies SendRequest);
   }
 
-  async createPlace(): Promise<Place> {
-    throw new ChannelError("other", "Teams channels and threads come in a later version of Jig.");
+  /**
+   * Jig's place is the team's General channel; a project's, a channel of its own (General when the
+   * owner didn't grant channels); a chat's, a thread in its project's place, started with its heading.
+   */
+  async createPlace(_chat: Account, spec: PlaceSpec): Promise<Place> {
+    if (!this.team) await this.identify();
+    const team = this.team;
+    if (!team) throw new ChannelError("other", "Add the Jig app to a team of yours first.");
+    if (spec.kind === "jig") return team;
+    if (spec.kind === "project") {
+      if (this.general) return team;
+      try {
+        const made = await this.deps.api.request<ChannelResult>("POST", "channels", {
+          name: spec.name,
+          description: "Jig: this project's chats, a thread each.",
+        } satisfies ChannelRequest);
+        return made.id;
+      } catch (error) {
+        if (error instanceof RelayError && error.status === 403) {
+          this.general = true;
+          return team;
+        }
+        throw this.failure(error, "call");
+      }
+    }
+    try {
+      const result = await this.deps.api.request<SendResult>("POST", "send", {
+        to: { kind: "thread", channelId: String(spec.parent ?? team) },
+        text: teamsHtml(spec.heading ?? escapeHtml(spec.name)),
+      } satisfies SendRequest);
+      remember(this.sent, result.id, { conversationId: result.conversationId, card: false });
+      return result.conversationId;
+    } catch (error) {
+      if (error instanceof RelayError && error.status === 404)
+        throw new ChannelError("gone", "The Teams channel was deleted.");
+      throw this.failure(error, "call");
+    }
   }
 
+  /** A project's channel follows its name; General and threads keep theirs (Teams can't rename a thread). */
+  async renamePlace(_chat: Account, place: Place, name: string): Promise<void> {
+    const id = String(place);
+    if (id === this.team || isThread(id)) return;
+    try {
+      await this.deps.api.request("POST", "channels", { id, name } satisfies ChannelRequest);
+    } catch (error) {
+      throw this.failure(error, "call");
+    }
+  }
+
+  /** A bot can't delete a thread, and Jig never deletes your channels: a closed room stays as it is. */
   async deletePlace(): Promise<void> {}
 
   async pair(account: Account): Promise<void> {
@@ -449,6 +547,7 @@ export class TeamsChannel implements PhoneChannel<RelayUpdate> {
   async unpair(): Promise<void> {
     await this.deps.api.request("DELETE", "pairing");
     this.personal = undefined;
+    this.team = undefined;
     this.sent.clear();
     this.taps.clear();
   }

@@ -21,6 +21,14 @@ function connectionText(state: PhoneState): string {
 
 /** The line under "Topics": on, off and how to turn it on, or what happens once connected. */
 function topicsText(state: PhoneState): string {
+  if (state.channel === "teams") {
+    if (state.status !== "connected")
+      return "Once connected: add the Jig app to a private team of yours named Jig, and each project gets a channel there, each chat a thread.";
+    if (state.topicsNote) return state.topicsNote;
+    return state.topics
+      ? "On: each project has a channel in your Jig team, and each chat a thread there."
+      : "Off: everything arrives in the 1:1 chat with the bot.";
+  }
   if (state.status !== "connected")
     return "Once connected: if your bot has topics turned on, each project gets a topic of its own.";
   if (state.topics) return "On: each project's chats write in their own topic, and Jig has one too.";
@@ -55,7 +63,11 @@ export function PhoneSettings() {
     try {
       usePhone.setState({ state: await call("phone.state") });
     } catch (error) {
-      notify({ tone: "danger", title: "Couldn't ask Telegram", message: errorMessage(error) });
+      notify({
+        tone: "danger",
+        title: `Couldn't ask ${state.channel === "teams" ? "the Teams relay" : "Telegram"}`,
+        message: errorMessage(error),
+      });
     } finally {
       setChecking(false);
     }
@@ -107,7 +119,7 @@ export function PhoneSettings() {
           </>
         )}
       </SettingRow>
-      <SettingRow label="Topics" description={topicsText(state)}>
+      <SettingRow label={state.channel === "teams" ? "Team" : "Topics"} description={topicsText(state)}>
         <Button
           icon={RefreshCw}
           busy={checking}

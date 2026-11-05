@@ -38,6 +38,8 @@ export type PhoneUpdate =
       private: boolean;
       from?: PhoneUser;
       place?: Place;
+      /** The place `place` is in (Teams: the channel of a thread), so a new post means its project. */
+      area?: Place;
       /** The message it answers (a reply). */
       replyTo?: MessageRef;
       text?: string;
@@ -53,6 +55,16 @@ export type PhoneUpdate =
       from: PhoneUser;
       data?: string;
       place?: Place;
+    }
+  | {
+      /**
+       * The channel's places changed on the phone (Teams, D-380): the bot was added to a team
+       * (`added`: where to say hello), a place was deleted (`gone`), or the team went (`reset`).
+       */
+      kind: "places";
+      added?: Place;
+      gone?: Place;
+      reset?: boolean;
     };
 
 /** Where a message goes: the paired account, a place of its chat, and what it answers. */
@@ -72,6 +84,8 @@ export interface PlaceSpec {
   color: string;
   /** A chat's room inside its project's place, where the channel nests them. */
   parent?: Place;
+  /** A thread's first message (Teams starts a thread by posting it), in the phone markup. */
+  heading?: string;
 }
 
 export interface PhoneCommand {
@@ -98,8 +112,11 @@ export interface PhoneChannel<Raw = unknown> {
   /** Its name in messages and Settings ("Telegram"). */
   readonly name: string;
   readonly capabilities: PhoneChannelCapabilities;
-  /** Checks the credential: the bot's name, and whether it has places now (Telegram: topics on). */
-  identify(): Promise<{ bot: string; places: boolean }>;
+  /**
+   * Checks the credential: the bot's name, whether it has places now (Telegram: topics on; Teams: in
+   * a team), and what limits them (`note`, for Settings).
+   */
+  identify(): Promise<{ bot: string; places: boolean; note?: string }>;
   /** The next updates: waits for them (long polling) until `signal` ends it. */
   poll(signal: AbortSignal): Promise<Raw[]>;
   /** One update in Jig's words; undefined for what Jig doesn't read. */

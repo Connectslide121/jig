@@ -38,6 +38,8 @@ const SavedChannel = z.object({
   targets: z.array(z.tuple([Ref, z.string()])).optional(),
   topics: z.object({ jig: Ref.optional(), projects: z.record(z.string(), Ref).optional() }).optional(),
   rooms: z.record(z.string(), Ref).optional(),
+  threads: z.record(z.string(), z.object({ place: Ref, parent: Ref })).optional(),
+  names: z.record(z.string(), z.string()).optional(),
 });
 
 /** `phone.json`: each channel's state apart; the flat file from before D-377 is Telegram's. */
@@ -252,6 +254,10 @@ export async function startPhone(): Promise<void> {
   onConciergeStartedChat((sessionId) => s.openRoom(sessionId, s.askedIn()));
 
   onConfigChange(() => s.refresh());
+  // A renamed project renames its place on the phone (a topic, a Teams channel; D-380).
+  projectStore().onChange(
+    () => void s.renameTopics().catch((error) => log.warn("Renaming a project's place failed", error)),
+  );
   // Back from sleep or the lock screen: ask Telegram now instead of after a stale poll or a backoff.
   // Electron's main process has no "online" event (only net.isOnline()), so a network that returns
   // while awake is caught by the next backoff round or a send that gets through.

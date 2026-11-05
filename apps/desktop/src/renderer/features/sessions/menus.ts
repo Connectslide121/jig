@@ -302,11 +302,22 @@ function phoneMenu(meta: SessionMeta): MenuEntry[] {
       label: "Open on my phone",
       icon: Smartphone,
       disabled: !phone.topics,
-      detail: phone.topics ? undefined : "Turn on topics for your bot (Settings → Phone)",
+      detail: phone.topics
+        ? undefined
+        : phone.channel === "teams"
+          ? "Add the Jig app to a team first (Settings → Phone)"
+          : "Turn on topics for your bot (Settings → Phone)",
       onSelect: () =>
         void call("phone.open", { sessionId: meta.id })
           .then(() =>
-            notify({ tone: "success", title: "Open on your phone", message: "It's in a topic of its own." }),
+            notify({
+              tone: "success",
+              title: "Open on your phone",
+              message:
+                phone.channel === "teams"
+                  ? "It follows the chat live in its thread of your Jig team."
+                  : "It's in a topic of its own.",
+            }),
           )
           .catch((error) =>
             notify({ tone: "danger", title: "Couldn't open it", message: errorMessage(error) }),

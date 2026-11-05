@@ -1,7 +1,7 @@
 # Phase 27 — Jig on your phone through Teams
 
 Status: in progress (D-370): session 1, the channel layer, done (D-377); session 2, the relay, done
-(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379); session 4, the team, channels and rooms, done (D-380). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -152,7 +152,7 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
    stop here.
 2. **Make the package** in this repository: `npm run teams:check -- package --app-id <client id>`
    writes `.tmp/teams-check/jig-tenant-check.zip` (a tab-only app, no bot, no code, asking a team
-   for `Channel.Create.Group` and `ChannelSettings.ReadWrite.Group`).
+   for `Channel.Create.Group`, `ChannelSettings.ReadWrite.Group` and `ChannelMessage.Read.Group`).
 3. **Create a team:** Teams → Teams → Join or create a team → Create team → From scratch → Private
    → "Jig check". Refused means members can't create teams: setup must then use a team you already
    own, or ask an admin.
@@ -194,22 +194,28 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
   message's id is used when Teams sends it (check on a real tenant); threads (session 4) are the
   dependable way to talk to one chat. Teams can't show a typing indicator through the relay.
 
-### 4. The Teams channel in Jig: the team, channels and rooms
-- [ ] The "Jig" team: setup asks you to create a private team named Jig and add the app to it (Teams
-      can't let a bot create a team without admin consent); the relay learns the team from the
-      install event.
-- [ ] A channel per project, made on its first message (named after the project, renamed with it —
-      also fixes the Telegram gap "renaming a project doesn't rename its topic"), remade when deleted.
-- [ ] A thread per chat in its project's channel: opened from "Open thread" on a chat's messages,
-      `/chats`, the chat's ⋯ menu → Open on my phone, and by itself for chats Jig starts from the
-      phone; `mirror.ts` drives it like a Telegram room (last four turns, then live, edits while
-      Claude's reply grows, pictures, cards for what waits, Finished). `/close` in a thread stops
-      mirroring.
-- [ ] What waits: in the thread (with an @mention of you) and as a short card in the 1:1 chat,
+### 4. The Teams channel in Jig: the team, channels and rooms — done (D-380)
+- [x] The "Jig" team: the relay learns the team from the install event (`/api/health`'s `team`);
+      without one Jig has no places and Settings → Phone → Team says to add the app to a private
+      team (session 5's setup walks you through it). On the install Jig says hello in General.
+- [x] A channel per project, made on its first message (named after the project, renamed with it —
+      also fixes the Telegram gap "renaming a project doesn't rename its topic"), remade when deleted
+      (the relay's `channelDeleted` event, or a 404).
+- [x] A thread per chat in its project's channel (every chat that writes gets one, headed
+      "💬 chat · project"; writing there goes to the chat); it follows the chat live when opened from
+      "Open thread" on a chat's messages, `/chats`, the chat's ⋯ menu → Open on my phone, and by
+      itself for chats Jig starts from the phone; `mirror.ts` drives it like a Telegram room. `/close`
+      in a thread stops mirroring (the thread stays the chat's).
+- [x] What waits: in the thread (with an @mention of you) and as a short card in the 1:1 chat,
       answered from either, both updated.
-- [ ] Without RSC: rooms are threads in General headed with the project; setup says why.
-- [ ] e2e: a project's first message makes its channel, a room thread mirrors a turn, a reply in the
+- [x] Without RSC: rooms are threads in General headed with the project; Settings → Phone → Team
+      says why (`PhoneState.topicsNote`).
+- [x] e2e: a project's first message makes its channel, a room thread mirrors a turn, a reply in the
       thread reaches the chat.
+- Found on the way: a bot only receives channel messages that @mention it unless the team grants
+  `ChannelMessage.Read.Group`; the tenant check's package asks for it now, and session 5's app
+  package must. Granting RSC after projects already wrote in General leaves them there until
+  Disconnect.
 
 ### 5. Setup in Settings → Phone
 - [ ] Settings → Phone starts with the channel: Telegram or Teams (segmented control, always in the
@@ -227,7 +233,7 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
          app settings (bot id, tenant, secret, relay key; the names under "Relay" above), Azure Bot
          (F0, single-tenant, endpoint = `/api/messages`, Teams channel on; in a subscription of the
          Teams tenant unless the tenant check proved another one works).
-      3. **Add to Teams:** Jig writes the app package (bot, personal + team scopes, RSC, Jig's icons,
+      3. **Add to Teams:** Jig writes the app package (bot, personal + team scopes, RSC with `ChannelMessage.Read.Group` too (D-380), Jig's icons,
          command list) and shows it in Explorer, with the clicks: upload for yourself, create the
          private team "Jig", add the app to it. Each row ticks when the relay sees the install.
       4. **Pair:** a 6-digit code you send the bot in the 1:1 chat.

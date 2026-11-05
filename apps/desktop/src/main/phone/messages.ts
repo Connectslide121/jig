@@ -316,6 +316,8 @@ export function chatPicker(
   jig = false,
   /** Buttons open the chat as a room (topics) instead of sending your messages there. */
   rooms = false,
+  /** What a room is in this channel: a topic (Telegram) or a thread in its project's channel (Teams). */
+  room: "topic" | "thread" = "topic",
 ): OutMessage {
   const rank = (m: SessionMeta) =>
     m.status === "needs_you" ? 0 : m.status === "working" || m.status === "starting" ? 1 : 2;
@@ -328,7 +330,9 @@ export function chatPicker(
     return { text: "No chats yet. Start one in Jig on your computer, or ask Jig to.", buttons: back };
   return {
     text: rooms
-      ? "Which chat? It opens in a topic of its own, live, and you write to it there."
+      ? room === "thread"
+        ? "Which chat? It opens in its thread in the project's channel, live, and you write to it there."
+        : "Which chat? It opens in a topic of its own, live, and you write to it there."
       : "Which chat? Your next messages here go to the one you pick.",
     buttons: [
       ...back,
@@ -467,6 +471,32 @@ export const HELP =
 /** The help when your bot has topics: one per project, and Jig's own. */
 export const HELP_TOPICS =
   "This is Jig on your phone.\n\n• Each project has its own topic here; chats without a project write in Jig.\n• Jig messages you when a chat needs you, finishes or stops while you're away from the computer.\n• Reply to one of its messages to answer that chat.\n• Write anything else and Jig itself answers, in that topic: how things are going, or start a chat (\"look at card 29992 and make a plan\"). In a project's topic it means that project.\n• /chats in a topic sends what you write there to one chat instead.\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue\n/screen a screenshot of Jig on your computer";
+
+/** The help on Teams (D-380): the 1:1 chat, the team's channel per project and thread per chat. */
+export const HELP_TEAMS =
+  "This is Jig on your phone.\n\n• Each project has a channel in your Jig team, and each chat writes in a thread of its own there; chats without a project write in General.\n• What needs you arrives in the chat's thread and here, so you can answer from either.\n• Write in a chat's thread to talk to that chat. Open thread under a message (or /chats) follows the chat there live; /close in the thread stops that.\n• Write anything else, here or as a new post in a project's channel, and Jig itself answers: how things are going, or start a chat (\"look at card 29992 and make a plan\").\n\n/status what every project is doing\n/queue a project's task queue (/queue podium)\n/pause and /resume a queue\n/screen a screenshot of Jig on your computer";
+
+/**
+ * The short copy of what waits for you, for the main chat when the full one is in the chat's thread
+ * (Teams, D-380): its first line with the project, a line of what it is about, the same buttons.
+ */
+export function shortCopy(full: OutMessage, project?: string): OutMessage {
+  const [head = "", body = ""] = full.text.split("\n\n");
+  const plain = body
+    .replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  const line = plain.length > 160 ? `${plain.slice(0, 159)}…` : plain;
+  return {
+    text: `${head}${project ? ` · ${escapeHtml(project)}` : ""}${line ? `\n\n${escapeHtml(line)}` : ""}\n\n<i>Answer here, or in the chat's thread.</i>`,
+    ...(full.buttons ? { buttons: full.buttons } : {}),
+  };
+}
 
 /** The digits in what you sent ("123456", "123 456"). */
 export const codeIn = (text: string) => text.replace(/\D/g, "");

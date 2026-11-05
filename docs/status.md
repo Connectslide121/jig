@@ -1,5 +1,22 @@
 # Status
 
+Jig on your phone through Teams, the team (2026-11-05, D-380, phase 27 session 4): once you add the
+Jig app to a private team of yours (the relay learns it from the install; the bot says hello in
+General), each project gets a channel on its first message (named after the project, renamed with
+it, made again when you delete it) and each chat a thread there, headed "💬 chat · project": its
+finished and stopped messages, and what needs you with an @mention. What needs you also arrives as a
+short card in the 1:1 chat (it buzzes); answering either updates both. Write in a chat's thread to
+talk to it; a new post in a project's channel goes to Jig itself for that project. "Open thread"
+under a message, `/chats`, the chat's ⋯ menu → Open on my phone and chats Jig starts from the phone
+make the thread follow the chat live (last four turns, then replies as they grow, steps, pictures,
+Finished); `/close` there stops following (Teams can't delete a thread). Without the team's channel
+grant, chats write in threads of General and Settings → Phone → Team says why. Renaming a project
+now also renames its Telegram topic. Covered by `teams.test.ts` and `e2e/phone-teams.spec.ts`
+against a fake relay. **Needs a real tenant:** that the bot receives replies in a thread without
+being @mentioned (needs the `ChannelMessage.Read.Group` grant, now also asked by the tenant check's
+package; without it, @mention Jig in the thread), the install and channelDeleted events, mentions
+buzzing the phone.
+
 Jig on your phone through Teams, the 1:1 chat (2026-11-05, D-379, phase 27 session 3): with
 `phone.channel` set to `teams`, Jig talks to your bot's relay instead of Telegram: pairing by the
 6-digit code you send the bot, requests and questions as Adaptive Cards whose buttons work like

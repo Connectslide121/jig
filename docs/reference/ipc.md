@@ -226,12 +226,12 @@ settings, add-on permissions.
 | `azure.cancelSignIn` | — | — | stops the running `az login` (its process tree); the waiting call rejects with `cancelled` |
 | `azure.renameTenant` | `{ key, label? }` | `TenantsState` | any tenant, `default` (your az login) too: it keeps its key and behaviour, only its name is stored (D-301). No `label` goes back to the first name ("Your az login", an added tenant's display name); `not_found` for an unknown key (schema) |
 | `azure.removeTenant` | `{ key }` | `TenantsState` | forgets the tenant and deletes its folder (its sign-in); the active one falls back to your az login (schema) |
-| `phone.state` | — | `PhoneState` | Jig on your phone (D-350): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error` |
+| `phone.state` | — | `PhoneState` | Jig on your phone (D-350): `off` / `pairing` (with `code`) / `connected` (with `owner`), the bot's name, whether the token is `remembered` (encrypted) and a connection `error`; once paired, whether it has places (`topics`: Telegram's topics on, Teams' bot in a team) and `topicsNote` saying what limits them (Teams: no team yet, or threads in General without the channel grant, D-380) |
 | `phone.connect` | `{ token }` | `PhoneState` | the picked channel's credential: a @BotFather token checked with Telegram (`getMe`), or the Teams relay's `https://<relay>#<key>` checked with its `/api/health` (D-379); keeps it (encrypted) and starts pairing with a new code; `invalid_token`, `unreachable`, `unavailable` (schema: either shape) |
 | `phone.test` | — | — | sends the paired phone a test message; `not_connected` |
 | `phone.disconnect` | — | `PhoneState` | tells the phone, forgets the token and pairing (deletes `phone.json`) |
 | `phone.voiceDone` | `{ id, text?, data?, error? }` | — | the window's answer to a `phone.voiceJob`: the transcript, the Ogg voice message (base64) or the error |
-| `phone.open` | `{ sessionId }` | — | opens a chat as a room on the phone: a topic of its own, mirrored live, where you write to it (D-350); `not_connected`, `no_topics` |
+| `phone.open` | `{ sessionId }` | — | opens a chat as a room on the phone: a topic of its own, mirrored live, where you write to it (D-350); on Teams the chat's thread in its project's channel starts following it (D-380); `not_connected`, `no_topics`, `unavailable` |
 | `azure.setActiveTenant` | `{ key }` | `TenantsState` | sets `azure.activeTenant` (`default` → empty); the renderer may also change the setting directly (schema) |
 | `speech.models` | — | `SpeechModelStatus[]` | the dictation models (tiny, base, small): downloaded or not, for which `variants` (`gpu`, `cpu`), bytes on disk (D-208, D-209) |
 | `speech.removeModel` | `{ model }` | — | deletes a downloaded model from `~/.jig/models` (schema: one of Jig's models) |

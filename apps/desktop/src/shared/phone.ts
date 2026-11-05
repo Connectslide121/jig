@@ -17,13 +17,20 @@ export interface PhoneChannelCapabilities {
   places: boolean;
   /** A menu of the fixed commands where you type. */
   commands: boolean;
+  /**
+   * Teams (D-380): each chat writes in a thread of its own inside its project's place (a channel),
+   * and Jig itself, the test and a short copy of what waits for you stay in the main chat (it buzzes).
+   * Without it (Telegram), a project's chats share its place and only rooms get one of their own.
+   */
+  threads: boolean;
 }
 
 export const PHONE_CHANNEL_CAPABILITIES: Record<PhoneChannelId, PhoneChannelCapabilities> = {
   // Places only while the bot has topics turned on (the service asks Telegram).
-  telegram: { voice: true, silent: true, edits: true, places: true, commands: true },
+  telegram: { voice: true, silent: true, edits: true, places: true, commands: true, threads: false },
   // Bots don't receive Teams voice messages; in the 1:1 chat every message buzzes (D-370).
-  teams: { voice: false, silent: false, edits: true, places: true, commands: true },
+  // Places once the bot is in a team of yours: a channel per project, a thread per chat (D-380).
+  teams: { voice: false, silent: false, edits: true, places: true, commands: true, threads: true },
 };
 
 /**
@@ -45,6 +52,11 @@ export interface PhoneState {
   remembered: boolean;
   /** Once paired: your bot has topics turned on, so each project gets its own topic. */
   topics?: boolean;
+  /**
+   * What limits the places, in the user's words (Teams: no team yet, or rooms in General because the
+   * team's owner didn't grant the app channels, D-380).
+   */
+  topicsNote?: string;
   /** Telegram can't be reached or refused the token (Jig keeps trying while it can). */
   error?: string;
 }
