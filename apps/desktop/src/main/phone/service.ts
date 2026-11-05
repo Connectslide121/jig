@@ -537,11 +537,13 @@ export class PhoneService {
       const message = this.withOpen(permissionMessage(meta, item, key), meta);
       if (room) await this.syncRoom(meta.id);
       const thread = concierge ? this.conciergeThread : await this.threadFor(meta);
-      const messageId = await this.send(message, { sessionId: meta.id, thread, mention: true });
+      // Teams: the full card is in the chat's thread; a short one in the main chat buzzes. Only one of
+      // them notifies you: the thread's card mentions you only when there is no copy.
+      const withCopy = this.threads() && thread !== undefined && !concierge;
+      const messageId = await this.send(message, { sessionId: meta.id, thread, mention: !withCopy });
       if (messageId === undefined) return;
-      // Teams: the full card is in the chat's thread (a mention); a short one in the main chat buzzes.
       let copy: SentRequest["copy"];
-      if (this.threads() && thread !== undefined && !concierge) {
+      if (withCopy) {
         const project = meta.projectId
           ? await this.deps.project?.(meta.projectId).catch(() => undefined)
           : undefined;

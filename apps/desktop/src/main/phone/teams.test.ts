@@ -628,15 +628,16 @@ describe("PhoneService on Teams, in the team (D-380)", () => {
     return { relay, service, store, meta, answers, sent, asked, project, settle, item, finish };
   }
 
-  it("asks in the chat's thread with a mention and in the 1:1 chat; answering one updates both", async () => {
+  it("asks in the chat's thread and in the 1:1 chat, notifying once; answering one updates both", async () => {
     const t = setup();
     await t.service.start();
     await t.service.permission(t.meta, t.item());
     const sends = t.relay.sends();
-    // The channel, the chat's thread headed with it, the full card there (a mention), a short one here.
+    // The channel, the chat's thread headed with it, the full card there (no mention), a short one here.
     expect(t.relay.calls.find((c) => c.path === "channels")?.body).toMatchObject({ name: "Shop" });
     expect(sends[0]).toMatchObject({ to: { kind: "thread" }, text: "💬 <b>Fix login</b> · Shop" });
-    expect(sends[1]).toMatchObject({ to: { kind: "conversation" }, mention: true });
+    expect(sends[1]).toMatchObject({ to: { kind: "conversation" } });
+    expect(sends[1]?.mention).toBeUndefined();
     expect(sends[2]?.to).toEqual({ kind: "personal" });
     expect(JSON.stringify(sends[2]?.card)).toContain("Shop");
     expect(JSON.stringify(sends[2]?.card)).toContain("Open thread");

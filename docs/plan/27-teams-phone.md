@@ -206,8 +206,9 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
       "Open thread" on a chat's messages, `/chats`, the chat's ⋯ menu → Open on my phone, and by
       itself for chats Jig starts from the phone; `mirror.ts` drives it like a Telegram room. `/close`
       in a thread stops mirroring (the thread stays the chat's).
-- [x] What waits: in the thread (with an @mention of you) and as a short card in the 1:1 chat,
-      answered from either, both updated.
+- [x] What waits: in the thread and as a short card in the 1:1 chat, answered from either, both
+      updated. Only the 1:1 card notifies you: the thread's card @mentions you only when there is
+      no 1:1 copy (Jon, 2026-11-05: one notification, not two).
 - [x] Without RSC: rooms are threads in General headed with the project; Settings → Phone → Team
       says why (`PhoneState.topicsNote`).
 - [x] e2e: a project's first message makes its channel, a room thread mirrors a turn, a reply in the

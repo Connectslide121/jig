@@ -49,7 +49,7 @@ the `az` flags come from the CLI's docs. Jon's real check, step by step:
    Finished message. On the chat's ⋯ menu → **Open on my phone**: send it another message on the
    computer and watch the thread follow it live (your message, Claude's reply growing, Finished).
 7. **A permission from the phone:** in that chat ask for something that needs permission (run a
-   command). Expect a card in the thread with an @mention and a short card in the 1:1 chat; the
+   command). Expect a card in the thread (no @mention) and a short card in the 1:1 chat; the
    phone buzzes once. Tap **Allow** on the phone: the chat goes on, both cards say it was allowed.
    Do it once more and answer on the computer: both cards update.
 8. **A reply in a thread:** write in the chat's thread on the phone **without** @mentioning Jig.
@@ -68,8 +68,9 @@ Jig on your phone through Teams, the team (2026-11-05, D-380, phase 27 session 4
 Jig app to a private team of yours (the relay learns it from the install; the bot says hello in
 General), each project gets a channel on its first message (named after the project, renamed with
 it, made again when you delete it) and each chat a thread there, headed "💬 chat · project": its
-finished and stopped messages, and what needs you with an @mention. What needs you also arrives as a
-short card in the 1:1 chat (it buzzes); answering either updates both. Write in a chat's thread to
+finished and stopped messages, and what needs you. What needs you also arrives as a short card in
+the 1:1 chat, the one that buzzes (the thread's card mentions you only when there is no 1:1 copy, so
+you're notified once); answering either updates both. Write in a chat's thread to
 talk to it; a new post in a project's channel goes to Jig itself for that project. "Open thread"
 under a message, `/chats`, the chat's ⋯ menu → Open on my phone and chats Jig starts from the phone
 make the thread follow the chat live (last four turns, then replies as they grow, steps, pictures,
