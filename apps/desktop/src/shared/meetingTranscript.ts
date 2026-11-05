@@ -192,6 +192,41 @@ export interface SpeakingSpan {
 
 export const UNKNOWN_SPEAKER = { id: "unknown", name: "Unknown speaker" } as const;
 
+/** You in the call: your Teams id (`8:orgid:<object id>`) and your name from the meeting sign-in. */
+export interface MeetingSelf {
+  id: string;
+  name: string;
+}
+
+/** The Entra object id in a Teams raw id (`8:orgid:<id>`), lower-cased; other ids as they are. */
+function teamsUserKey(id: string): string {
+  return (/^(?:8:orgid:)?([0-9a-f-]{36})$/i.exec(id.trim())?.[1] ?? id.trim()).toLowerCase();
+}
+
+/** Whether two Teams ids name the same person (with or without the `8:orgid:` prefix). */
+export function sameTeamsUser(a: string, b: string): boolean {
+  return Boolean(a && b) && teamsUserKey(a) === teamsUserKey(b);
+}
+
+/**
+ * The name to write for a caption's speaker (D-383). Teams sends your own captions with your id
+ * but no display name: your name from the meeting sign-in then, else the participant's name from
+ * the call, and "Unknown speaker" only when nothing matches. Always your real name, never "You",
+ * so notes say who spoke and you read the same in Teams' and the local transcript.
+ */
+export function captionSpeakerName(
+  speaker: { id: string; displayName?: string },
+  self: MeetingSelf | undefined,
+  people: Array<{ id: string; name?: string }>,
+): string {
+  const given = speaker.displayName?.trim();
+  if (given) return given;
+  if (!speaker.id || speaker.id === UNKNOWN_SPEAKER.id) return UNKNOWN_SPEAKER.name;
+  if (self?.name && sameTeamsUser(speaker.id, self.id)) return self.name;
+  const name = people.find((p) => p.name?.trim() && sameTeamsUser(p.id, speaker.id))?.name?.trim();
+  return name || UNKNOWN_SPEAKER.name;
+}
+
 /**
  * Who spoke a piece of the call's audio: the person whose speaking overlaps it most, when they
  * spoke for at least a third of it and at least twice as long as anyone else; otherwise "Unknown

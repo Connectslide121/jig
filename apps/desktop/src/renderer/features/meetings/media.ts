@@ -37,7 +37,9 @@ import {
   capabilityPending,
   capabilityText,
   captionErrorText,
+  captionSpeakerName,
   captionStartDecision,
+  type MeetingSelf,
   nextSource,
   type TranscriptSwitch,
 } from "../../../shared/meetingTranscript";
@@ -139,6 +141,8 @@ export class MeetingMedia {
   private client?: CallClient;
   private agent?: TeamsCallAgent;
   private credential?: AzureCommunicationTokenCredential;
+  /** You, from the meeting sign-in: your own captions come without a name (D-383). */
+  private self?: MeetingSelf;
   private deviceManager?: DeviceManager;
   private active?: TeamsCall;
   private record?: MeetingRecord;
@@ -502,6 +506,7 @@ export class MeetingMedia {
       try {
         this.client ??= new CallClient();
         const credential = await call("meetings.credential", {});
+        this.self = credential.self;
         this.credential = new AzureCommunicationTokenCredential({
           token: credential.token,
           tokenRefresher: async () => (await call("meetings.credential", {})).token,
@@ -881,7 +886,14 @@ export class MeetingMedia {
       const caption: MeetingCaption = {
         id: `${speakerId}:${timestamp}`,
         speakerId,
-        speaker: data.speaker.displayName || "Unknown speaker",
+        speaker: captionSpeakerName(
+          { id: speakerId, displayName: data.speaker.displayName },
+          this.self,
+          (this.active?.remoteParticipants ?? []).map((p) => ({
+            id: getIdentifierRawId(p.identifier),
+            name: p.displayName,
+          })),
+        ),
         timestamp,
         text,
         final: data.resultType === "Final",
@@ -1098,6 +1110,7 @@ export class MeetingMedia {
       call: c,
       language: this.spokenLanguage.split("-")[0] ?? "",
       microphoneId: this.deviceManager?.selectedMicrophone?.id ?? "",
+      self: this.self,
       source: () => this.transcriptSwitch,
       onCaption: (caption) => {
         if (this.record?.id === id && !this.leaving) this.sendCaption(id, caption);

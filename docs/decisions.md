@@ -4556,7 +4556,7 @@ made on this computer when Teams captions aren't available.
   (`SpeechChunker`), and each piece goes to dictation's Whisper worker (the Speech settings' model and
   graphics card choice, the meeting's spoken language). Audio stays in the call window's memory until
   its piece is transcribed and is never written or sent; only the text goes to main through
-  `meetings.caption`, with `source: "local"`. Your microphone's lines are "You"; a piece of the call's
+  `meetings.caption`, with `source: "local"`. Your microphone's lines are "You" (your real name since D-383); a piece of the call's
   audio goes to the participant whose `isSpeaking` overlaps it most (at least a third of it and twice
   anyone else), else "Unknown speaker" (`attributePiece`). More than 4 pieces waiting: newer ones are
   skipped with one notice, so the call stays smooth. The model isn't downloaded: the notice says to
@@ -6478,3 +6478,23 @@ stopped for good.
   "Starting captions" and keeps the call's Connected time and whether capabilities arrived.
 - Pure logic: `shared/meetingTranscript.ts` (`captionStartDecision` with `early`, `capabilityPending`,
   `capabilityText`).
+
+## D-383: Meeting transcripts name you by your real name, in Teams captions and the local transcript
+
+- Status: accepted. Amends D-321 (local lines said "You").
+- **Who:** Jon reported it (2026-11-05, Sprinta Daily): with Teams captions running, his own lines
+  showed his picture but "Unknown speaker"; colleagues' lines had names. Asked for the real name in
+  the stored transcript so notes say who spoke. The details are Claude, on my own.
+- **Cause.** Teams sends your own captions with your identifier but an empty `displayName`; Jig wrote
+  `displayName || "Unknown speaker"`. The picture matched because it is looked up by `speakerId`.
+- **Decision.** `captionSpeakerName` (`shared/meetingTranscript.ts`): the name Teams sends; else, when
+  the id is yours, your name from the meeting sign-in; else the matching remote participant's name;
+  "Unknown speaker" only when nothing matches. Ids compare with or without `8:orgid:`, case-blind
+  (`sameTeamsUser`). Your identity reaches the call window with `meetings.credential`'s new `self`
+  (`8:orgid:<object id>` and the MSAL account's name, else the username): an id and a name, not a
+  credential.
+- **One name per person.** The local transcript (D-321) now writes your microphone's lines with the
+  same id and real name (it still says "You" with id "you" when the sign-in has no name), so your
+  Teams and local lines carry one name and your picture. Others' local lines already use the
+  participant's raw id and name (`attributePiece`). Notes already tell Claude your display name, so
+  `mine` actions keep working.

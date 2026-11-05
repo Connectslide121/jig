@@ -305,7 +305,11 @@ export interface HostMethods {
   };
   "meetings.setRinging": { args: { on: boolean }; result: void };
   "meetings.incoming": { args: { name?: string }; result: void };
-  "meetings.credential": { args: { id?: string }; result: { token: string } };
+  "meetings.credential": {
+    args: { id?: string };
+    /** `self`: your Teams id and name, to name your own captions (D-383); not a credential. */
+    result: { token: string; self?: import("./meetingTranscript").MeetingSelf };
+  };
   "meetings.caption": { args: { id: string; caption: import("./meetings").MeetingCaption }; result: void };
   "meetings.status": {
     args: {

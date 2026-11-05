@@ -6,12 +6,14 @@ import {
   capabilityPending,
   capabilityText,
   captionErrorText,
+  captionSpeakerName,
   captionStartDecision,
   keepLocalPiece,
   nextSource,
   pruneSpans,
   SpeechChunker,
   type SpeechPiece,
+  sameTeamsUser,
   UNKNOWN_SPEAKER,
 } from "./meetingTranscript";
 
@@ -240,5 +242,35 @@ describe("Teams captions and the local transcript", () => {
 
   it("keeps pieces said while transcribing locally", () => {
     expect(keepLocalPiece({ source: "local", since: 1000 }, 2000, 9000)).toBe(true);
+  });
+});
+
+describe("captionSpeakerName (D-383)", () => {
+  const oid = "11111111-2222-4333-8444-555555555555";
+  const self = { id: `8:orgid:${oid}`, name: "Alex Contoso" };
+  const people = [{ id: "8:orgid:99999999-2222-4333-8444-555555555555", name: "Sam Fabrikam" }];
+
+  it("keeps the name Teams sends", () => {
+    expect(captionSpeakerName({ id: self.id, displayName: " Alex C " }, self, people)).toBe("Alex C");
+  });
+  it("names your own captions, which come without a name, from the sign-in", () => {
+    expect(captionSpeakerName({ id: self.id, displayName: "" }, self, people)).toBe("Alex Contoso");
+    expect(captionSpeakerName({ id: oid.toUpperCase() }, self, people)).toBe("Alex Contoso");
+  });
+  it("looks a nameless speaker up among the participants", () => {
+    expect(captionSpeakerName({ id: people[0]!.id }, self, people)).toBe("Sam Fabrikam");
+  });
+  it("says Unknown speaker only when nothing matches", () => {
+    expect(captionSpeakerName({ id: "8:orgid:00000000-0000-4000-8000-000000000000" }, self, people)).toBe(
+      UNKNOWN_SPEAKER.name,
+    );
+    expect(captionSpeakerName({ id: "unknown" }, self, people)).toBe(UNKNOWN_SPEAKER.name);
+    expect(captionSpeakerName({ id: self.id }, undefined, [])).toBe(UNKNOWN_SPEAKER.name);
+  });
+  it("compares Teams ids with or without the prefix", () => {
+    expect(sameTeamsUser(`8:orgid:${oid}`, oid.toUpperCase())).toBe(true);
+    expect(sameTeamsUser("8:acs:x", "8:acs:x")).toBe(true);
+    expect(sameTeamsUser("", "")).toBe(false);
+    expect(sameTeamsUser(self.id, people[0]!.id)).toBe(false);
   });
 });

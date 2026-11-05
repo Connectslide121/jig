@@ -97,6 +97,12 @@ export class MeetingAuth {
   get displayName(): string | undefined {
     return this.account?.name;
   }
+  /** You as the call sees you: your Teams id and name, to name your own captions (D-383). */
+  get self(): { id: string; name: string } | undefined {
+    const oid = this.account?.localAccountId;
+    const name = this.account?.name?.trim() || this.account?.username;
+    return oid && name ? { id: `8:orgid:${oid}`, name } : undefined;
+  }
   reset(): void {
     this.epoch++;
     this.restored = undefined;

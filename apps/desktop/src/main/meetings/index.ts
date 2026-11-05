@@ -1382,7 +1382,10 @@ export async function startMeetings(): Promise<void> {
     own(ctx);
     enabled();
     if (id) current(id);
-    return fake() ? { token: "fake-meeting-credential" } : auth.credential();
+    if (fake())
+      return { token: "fake-meeting-credential", self: { id: `8:orgid:${FAKE_ME}`, name: "Test account" } };
+    const self = auth.self;
+    return { ...(await auth.credential()), ...(self ? { self } : {}) };
   });
   handle("meetings.caption", async ({ id, caption }, ctx) => {
     own(ctx);

@@ -472,7 +472,8 @@ a policy read in the first seconds one more try; **Retry captions** starts the t
 (also in the status bar's tooltip and in Jig's log). When Teams captions aren't available, Jig
 **transcribes the meeting on this computer**: everyone's audio from the call and your microphone,
 with Whisper (the model in Settings → Speech), the same as captions: nothing is recorded or sent, only
-the text is kept. Those lines carry a small **Local** mark; your own lines say "You", others get the
+the text is kept. Those lines carry a small **Local** mark; your own lines carry your name (D-383: also
+in Teams' captions, which used to say "Unknown speaker" for you), others get the
 name of whoever was speaking then, or "Unknown speaker". The status bar says **Transcribing locally**;
 when Teams captions start working, Jig switches back without writing lines twice. Turn it off in the
 transcript's ⋯ menu (**Transcribe on this computer without Teams captions**). Not measured yet: CPU

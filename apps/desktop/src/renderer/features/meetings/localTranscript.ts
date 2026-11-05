@@ -4,6 +4,7 @@ import type { MeetingCaption } from "../../../shared/meetings";
 import {
   attributePiece,
   keepLocalPiece,
+  type MeetingSelf,
   pruneSpans,
   type SpeakingSpan,
   SpeechChunker,
@@ -38,6 +39,8 @@ export interface LocalTranscriptOptions {
   language: string;
   /** The microphone the call uses (the calling SDK's device id); empty = the system's default. */
   microphoneId: string;
+  /** You (your Teams id and name), so your lines read as in Teams' captions (D-383); else "You". */
+  self?: MeetingSelf;
   /** Which source writes the transcript now (pieces Teams' captions already have are dropped). */
   source(): TranscriptSwitch;
   onCaption(caption: MeetingCaption): void;
@@ -179,7 +182,9 @@ export class LocalTranscript {
     }
     // Who spoke is decided now, while the speaking marks are fresh.
     const who =
-      kind === "you" ? { id: "you", name: "You" } : attributePiece(this.spans, piece.from, piece.to);
+      kind === "you"
+        ? (this.options.self ?? { id: "you", name: "You" })
+        : attributePiece(this.spans, piece.from, piece.to);
     this.waiting++;
     this.queue = this.queue
       .then(async () => {
