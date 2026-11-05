@@ -683,7 +683,12 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
-Jig 0.12.0 being prepared (2026-11-05): Jig 0.12.0 puts Jig on your phone through a Telegram bot of your own (requests with buttons, chats as live rooms, Jig itself to ask, voice messages and screenshots, a switch at the top right), and the task queue gains a summary strip that adds up, run reports, provider columns, revised reports and marking failed tasks done. Publication not yet verified.
+Jig 0.12.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.12.0),
+source/tag `ea06e509e878523cf93b8c5e48890891c20a7851`. Installer: 389,003,721 bytes;
+SHA-256 `8673811a31abb7f9612d8bb348595bd26524d9dc273ec420901162319c124b8a`.
+Published by `npm run release`: npm run check, the whole e2e suite and the packaged app test passed;
+the draft's installer matched the local one, and unauthenticated latest-release discovery returns
+v0.12.0 with its feed and installer. In 0.12.0: Jig 0.12.0 puts Jig on your phone through a Telegram bot of your own (requests with buttons, chats as live rooms, Jig itself to ask, voice messages and screenshots, a switch at the top right), and the task queue gains a summary strip that adds up, run reports, provider columns, revised reports and marking failed tasks done.
 
 Jig 0.11.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.11.0),
 source/tag `3e2bb4b815957ca5f208597fbc5606f065fa36fd`. Installer: 388,962,178 bytes;
