@@ -196,6 +196,13 @@ team's General channel) and both channels keep `names` (project id → the name 
 last renamed with, so a renamed project renames its topic or channel). Disconnect (or switching
 `phone.channel`) removes that channel's entry; the file goes with the last one.
 
+Outside `JIG_HOME`, Teams' relay (D-378) keeps its own state in Azure, in a table of the Function's
+storage account: what the paired account wrote (up to 24 hours, deleted once Jig has read it), the
+pairing, the 1:1 chats, the team and its channels; no logs of message text. Its app settings hold
+the bot's id, tenant and client secret and `JIG_RELAY_KEY`; the secret never comes back to Jig.
+Disconnect forgets the pairing and waiting updates there (`DELETE /api/pairing`); the Azure
+resources stay until you delete them.
+
 ## Meetings (D-217)
 
 Global addon-data/meetings.json contains settings {tenantId, clientId, endpoint}, an optional room layout

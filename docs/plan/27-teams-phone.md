@@ -1,7 +1,7 @@
 # Phase 27 — Jig on your phone through Teams
 
 Status: in progress (D-370): session 1, the channel layer, done (D-377); session 2, the relay, done
-(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379); session 4, the team, channels and rooms, done (D-380); session 5, setup in Settings → Phone, done (D-381). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+(D-378), its tenant check waiting for Jon; session 3, the Teams channel's 1:1 chat, done (D-379); session 4, the team, channels and rooms, done (D-380); session 5, setup in Settings → Phone, done (D-381); session 6, the docs, done, the real check waits for Jon (its checklist is at the top of `docs/status.md`). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -254,14 +254,15 @@ Note what each step shows (a screenshot of any error) and tell a Jig chat; the r
   Not tried against real Azure: the command flags are from the CLI's docs, session 6's real check
   proves them.
 
-### 6. Docs and the real check
-- [ ] `docs/architecture.md` (phone: channels, relay), `docs/reference/ipc.md`,
+### 6. Docs and the real check — docs done; the real check waits for Jon
+- [x] `docs/architecture.md` (phone: channels, relay), `docs/reference/ipc.md`,
       `docs/reference/state.md`, `docs/status.md` (what works, how to try it, what needs a real
       tenant), the "What Jig can do" line, `AGENTS.md` phone rule (the relay key is a credential; the
-      bot secret never leaves Azure), README headline.
+      bot secret never leaves Azure), README headline. Also the missing `phone.teamsSetupChanged`
+      event in `ipc.md` and where the relay keeps its state (`state.md`).
 - [ ] Real check with Jon (not in the queue, he does it): set up in his tenant, the team and a
       project channel, a room, a permission from the phone, a reply in a thread, a picture, a
-      sleeping PC catching up.
+      sleeping PC catching up. Step by step: the checklist at the top of `docs/status.md`.
 
 ## Left out (for now)
 

@@ -277,7 +277,8 @@ settings, add-on permissions.
 | `addons.badges` | `Record<string, string>` | the add-on views' badges changed |
 | `addons.jigEvent` | `{ name, payload }` | something happened that add-ons follow (`JIG_EVENTS`: chat finished/needs you/failed, commit, branch switch, active project, Azure tenant; D-215) |
 | `phone.voiceJob` | `{ id, kind, data }` | a voice message needs the window: `transcribe` (Ogg, base64) with Whisper or `speak` a text with the natural voice into Ogg Opus; answered with `phone.voiceDone` |
-| `phone.changed` | `PhoneState` | pairing finished, a new code, connected/disconnected, or Telegram became (un)reachable |
+| `phone.changed` | `PhoneState` | pairing finished, a new code, connected/disconnected, the channel (Telegram or the Teams relay) became (un)reachable, or anything else in `PhoneState` changed (Teams: the team or its channel grant, `topics` / `topicsNote`) |
+| `phone.teamsSetupChanged` | `TeamsSetupView` | the "Set up Teams" modal's state changed while Create runs (a step started, finished or failed) or the relay saw the app added (D-381); never a secret or the key |
 | `azure.tenantChanged` | `TenantsState` | a tenant was added, checked, renamed or removed, or another became active (then add-ons also get `azure.tenant`, D-282) |
 | `azure.signInProgress` | `{ key, text, done? }` | a line of `az login`'s output (WARNING lines left out; never tokens: `--output none`), then `done` |
 | `usage.changed` | `UsageByProvider` | either provider's usage refreshed, or Claude Code reported a rate limit |

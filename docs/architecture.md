@@ -733,8 +733,31 @@ with the fake engine). It renders messages as Teams' XML text (the same HTML sub
 breaks) and messages with buttons as Adaptive Cards 1.5 whose `Action.Submit` carries the same data
 as Telegram's callbacks (`{ jig: "p:3:a" }`), kept a card when updated; pictures inline (fitted to
 1024² and 1 MB with `nativeImage`); menu commands arrive bare ("status") and become commands. Its
-credential is `https://<relay>#<key>` (`TEAMS_CREDENTIAL`), stored like the Telegram token. The
-1:1 chat only for now: places (the team's channels and threads) come in phase 27 session 4.
+credential is `https://<relay>#<key>` (`TEAMS_CREDENTIAL`), stored like the Telegram token.
+Places on Teams (D-380): Jig's is the "Jig" team's General channel (the relay learns the team from
+the bot's install event), a project's is a channel of its own (`POST /api/channels`, renamed with the
+project), and every chat that writes gets a thread in its project's channel (capability `threads`,
+`SavedPhone.threads`); a room is that thread following the chat live through `mirror.ts`. What waits
+for you goes to the thread with an @mention and as a short card to the 1:1 chat, both updated when
+answered. Without the team's resource-specific consent the relay answers `rsc_missing` and project
+places fall back to General (`PhoneState.topicsNote` says why).
+
+| Teams | Telegram | What's there |
+|---|---|---|
+| 1:1 chat with the bot | the private chat | Jig itself, commands, what waits for you (buzzes), pairing, the test |
+| "Jig" team → General | — | the hello, chats without a project |
+| a channel per project | a topic per project | that project's chats, a thread each |
+| a chat's thread | a room | the chat's messages; live while it is a room; writing there goes to the chat |
+
+Setup (D-381, `teamsSetup.ts` in main, `TeamsSetupDialog.tsx` in the renderer): the "Set up Teams"
+modal lists every `az` command before Create runs them in order with Jig's az for the active tenant
+(`runAz` + `azureContext`): app registration, providers, group, storage, Function app, relay
+deployed from `resources/relay/teams-relay.zip`, app settings, Azure Bot with its Teams channel.
+The bot's secret goes from `credential reset`'s answer to the Function's settings through a private
+temporary file and is dropped; Jig keeps only the relay key. It writes the app package
+(`teamsAppManifest`: bot in personal and team scope, command list, RSC) and ticks Add to Teams from
+the relay's `Health.app` / `Health.team`. It never deletes Azure resources: Disconnect lists them
+with the commands to copy. The same pieces made in the portal: `docs/guides/teams-phone.md`.
 `telegram.ts` is the Bot API client (POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API`
 only with the fake engine) and `TelegramChannel`, which renders Jig's messages (a small HTML subset
 and button rows) as Telegram HTML and inline keyboards; `messages.ts` is pure (what to send for a
@@ -757,4 +780,17 @@ Consumption). It checks Bot Framework's JWT on every activity, keeps the paired 
 activities in Table storage (24 h, pruned hourly) for Jig's long poll (`GET /api/updates`), and
 sends, updates, opens threads and makes channels as the bot (`/api/send`, `/api/channels`) for a
 request with the relay key. `relay/teams/src/protocol.ts` is the contract; Jig imports its types
-only. The app-side `TeamsChannel` comes in phase 27 session 3.
+only.
+
+```
+Teams (phone) ⇄ Bot Framework ⇄ relay (Azure Function, yours) ⇄ Jig (long polling, relay key)
+```
+
+Credentials: the bot's client secret lives only in the Function's app settings (`MicrosoftAppPassword`)
+and never reaches Jig; the relay key (`JIG_RELAY_KEY` there, ≥ 32 characters) is the one thing Jig
+holds, encrypted like the Telegram token, sent only in the `x-jig-relay-key` header. Because the
+relay keeps the paired account's messages for 24 hours, what you write while the PC sleeps or Jig
+is closed arrives when Jig polls again. `relay.ts` routes the endpoints, `botAuth.ts` checks the JWT,
+`microsoft.ts` gets tokens and calls the Bot Connector and Graph, `tableStore.ts` keeps updates,
+pairing and conversation references; `npm run relay:build` bundles it into one zip that the
+installer carries.

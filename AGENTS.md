@@ -133,9 +133,15 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   calling credentials stay in memory and only the owned media window receives the calling token.
   Never retrieve resource keys or pass credentials to add-on code.
   Its typed host-managed data cannot be changed through generic add-on storage tools.
-- **Jig on your phone (D-350)** goes through the user's own Telegram bot (`main/phone/`). Its token is
-  a credential: OS-encrypted (safeStorage) or in memory only, never in the renderer, logs or add-ons.
-  Read only the paired account's private chat, and mask and cut chat text before sending it.
+- **Jig on your phone (D-350, D-370)** goes through the user's own bot (`main/phone/`), one channel at
+  a time behind `PhoneChannel`: Telegram, or Teams through the user's own relay (`relay/teams/`).
+  Telegram's token and Teams' relay key (`https://<relay>#<key>`) are credentials: OS-encrypted
+  (safeStorage) or in memory only, never in the renderer, logs, URLs or add-ons; the key travels only
+  in the relay's header. The Teams bot's client secret never leaves Azure: setup hands it to the
+  Function's settings through a private temp file and drops it; Jig never stores, shows or logs it.
+  Setup runs only the `az` commands it listed, on Create, and never deletes Azure resources. Read
+  only the paired account (private chat, or its Teams chat and threads), and mask and cut chat text
+  before sending it.
 - **Settings are configurable from chats too.** A new setting goes into `ConfigSchema`, the
   `SETTINGS_GUIDE` in `main/configure/tools.ts` and `docs/reference/state.md`; one that decides billing
   or runs programs also goes into `PROTECTED_SETTINGS` (D-077).

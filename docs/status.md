@@ -1,5 +1,56 @@
 # Status
 
+Jig on your phone through Teams, complete in code (2026-11-05, D-370, D-377–D-381, phase 27): in
+**Settings → Phone** pick **Teams** instead of Telegram and press **Set up Teams…**. One modal does
+it all: **Where** (the top bar's tenant, a subscription, a region, the group `jig-phone`), **Create**
+(every `az` command listed first, then run in order with your az: app registration, providers,
+resource group, storage, Function app on Flex Consumption, the relay deployed, its settings, the
+Azure Bot with the Teams channel), **Add to Teams** (Jig writes the app package; you upload it for
+yourself, make a private team "Jig" and add the app to it; each row ticks when the relay sees it) and
+**Pair** (send the bot the 6-digit code). From then on the bot's 1:1 chat buzzes with what needs you
+(cards with buttons) and Jig itself answers there; each project gets a channel in the team and each
+chat a thread, where its messages arrive and what you write goes to the chat. What you write while
+the PC sleeps waits in the relay (24 h) and arrives when Jig wakes. Disconnect lists the Azure pieces
+with the commands to delete them; Jig never deletes them. A tenant where your az can't register an
+app: `docs/guides/teams-phone.md` (by hand in the portal, and what to ask an admin). The bot's secret
+stays in Azure; Jig keeps only the relay key, encrypted. Covered by unit tests (relay and app) and
+`e2e/phone-teams.spec.ts` against a fake relay. **Not yet run against real Azure or a real tenant:**
+the `az` flags come from the CLI's docs. Jon's real check, step by step:
+
+1. **Before:** update Jig to a build with phase 27; in the top bar's tenant menu, pick the tenant
+   where your Teams is (sign in again there if it shows ⚠). Optional: the tenant check in
+   `docs/plan/27-teams-phone.md` first, if you want to know about RSC before creating anything.
+2. **Setup:** Settings → Phone → Teams → **Set up Teams…** → Where: your subscription, a region, keep
+   `jig-phone` → **Create**. Expect every row to tick in a few minutes. If one fails, note the row
+   and az's error (screenshot), then Retry. A refused app registration means the portal guide.
+3. **The 1:1 chat:** **Make the app package** → Teams → Apps → Manage your apps → Upload an app →
+   Upload a custom app → the zip → **Add** (for yourself). The "Upload it for yourself" row ticks.
+4. **The team:** Teams → create a team → From scratch → **Private** → "Jig". Then upload the same zip
+   again and **Add to a team** → "Jig"; accept the permissions (create channels, channel settings,
+   read channel messages). Expect both rows to tick and the bot to say hello in General.
+5. **Pair:** send the bot the 6-digit code in its 1:1 chat. Settings → Phone shows Connected, and
+   Team without a warning (a note there means no channel grant: rooms will be threads in General;
+   note the text). **Send a test**: it arrives in the 1:1 chat and the phone buzzes.
+6. **A project channel and a room:** set **When** to **Always**, then in a project (say Shop) start a
+   chat that finishes. Expect a channel "Shop" in the team with a thread "💬 chat · Shop" holding the
+   Finished message. On the chat's ⋯ menu → **Open on my phone**: send it another message on the
+   computer and watch the thread follow it live (your message, Claude's reply growing, Finished).
+7. **A permission from the phone:** in that chat ask for something that needs permission (run a
+   command). Expect a card in the thread with an @mention and a short card in the 1:1 chat; the
+   phone buzzes once. Tap **Allow** on the phone: the chat goes on, both cards say it was allowed.
+   Do it once more and answer on the computer: both cards update.
+8. **A reply in a thread:** write in the chat's thread on the phone **without** @mentioning Jig.
+   Expect it in the chat on the computer and Claude's answer in the thread. If nothing arrives, try
+   again with @Jig: then the `ChannelMessage.Read.Group` grant isn't there (note it).
+9. **A picture:** write `/screen` in the 1:1 chat (a screenshot of Jig, inline), and in a chat that
+   used Claude's browser, check the Finished message carries the page's screenshot.
+10. **A sleeping PC catching up:** put the PC to sleep, write in the chat's thread and in the 1:1
+    chat ("how are things going?"), wait a few minutes, wake the PC. Expect both to arrive within
+    seconds of Jig waking, with answers on the phone.
+11. **Note anything off** (cards on the iPhone, a quoted message in the 1:1 chat reaching the right
+    chat, menu commands, renaming the project renames its channel) and tell a Jig chat. When done
+    for good: Disconnect, then run the `az group delete` / `az ad app delete` commands it lists.
+
 Jig on your phone through Teams, the team (2026-11-05, D-380, phase 27 session 4): once you add the
 Jig app to a private team of yours (the relay learns it from the install; the bot says hello in
 General), each project gets a channel on its first message (named after the project, renamed with
@@ -1305,7 +1356,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
    the top bar tenant switch, add/manage modals, the views, chats, terminals and projects following
    it, reviewed in Jig Dark and Light at narrow and wide sizes with a fake `az`. Next: Jon tries it
    with a real second tenant ("Needs testing on your machine" → Azure tenants).
-7. Run `npm run check` before every commit; keep plan, docs and decisions true.
+7. Phase 27 (`docs/plan/27-teams-phone.md`, Jig on your phone through Teams) is done in code
+   (sessions 1–6, D-377–D-381). Next: Jon's real check in his tenant (the checklist at the top of
+   this file); what it finds goes into the plan's "What we know" and gets fixed.
+8. Run `npm run check` before every commit; keep plan, docs and decisions true.
 
 ## What works today
 
@@ -1329,6 +1383,13 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   Claude's reply) or stops. Reply to a message to answer that chat; plain text goes to the last chat
   it told you about; /chats picks one. A request answered on the computer is marked so on the phone.
   Claude can text you itself (`jig_phone_send`). The token is encrypted with the OS.
+- Jig on your phone through Teams (D-370, D-377–D-381): Settings → Phone → Teams → Set up Teams…
+  creates your own bot and its relay in your Azure with your az (every command listed first), writes
+  the Teams app package and pairs by a code. The bot's 1:1 chat gets what needs you (Adaptive Cards,
+  updated when answered anywhere) and Jig itself; a private "Jig" team gets a channel per project and
+  a thread per chat (the chat's messages; write there to talk to it; live after Open thread / Open on
+  my phone). The relay keeps what you write for 24 h, so a sleeping PC catches up. No voice notes.
+  By hand in the portal: `docs/guides/teams-phone.md`.
 - Azure tenants (D-282, D-283): the round avatar at the far right of the top bar shows the tenant
   Jig's `az` uses (initials; tooltip with name, user, domain; a warning dot when its sign-in
   expired). Its menu lists your az login and the tenants you added (user and domain in columns,
@@ -1896,6 +1957,10 @@ npm run dev          # opens Jig
   itself: …" → the build shows the proposed extension point.
 - Jig on your phone: Settings → Phone → Set up… (needs Telegram on your phone and a bot from
   @BotFather; free). Then Send a test, and leave a chat asking for a permission while you're away.
+- Jig on your phone through Teams: Settings → Phone → Teams → Set up Teams… (needs a subscription in
+  your Teams tenant and Teams on your phone); the full walk-through is the checklist at the top of
+  this file. Without Azure, only `e2e/phone-teams.spec.ts` (a fake relay, `JIG_TEAMS_RELAY` with the
+  fake engine) exercises it.
 - Everything the fake engine can play (todo lists, plans, subagents, edits, the browser…):
   `docs/guides/testing.md` → The fake engine.
 
@@ -1914,6 +1979,13 @@ Things the cloud build environment couldn't verify:
   minutes or a locked screen on Windows, that the token is remembered after restarting Jig, and what
   happens when the PC sleeps (nothing arrives until it wakes: set Windows not to sleep while Jig
   works if you need it).
+- **Jig on your phone through Teams (D-370–D-381).** Covered against a fake relay
+  (`e2e/phone-teams.spec.ts`) and the relay's unit tests; never run against real Azure or Teams.
+  Needs a real tenant: setup's `az` commands (flags from the CLI docs), whether members may register
+  an app, create a team and grant the app's channel permissions (else rooms are General threads), the
+  bot reading thread replies without an @mention, cards and their updates on the iPhone, mentions
+  buzzing, the install and channel-deleted events, a quoted message in the 1:1 chat, and a sleeping
+  PC catching up. Step by step: the checklist at the top of this file.
 - **Claude's browser never hangs (D-319).** Covered by `e2e/browser-hangs.spec.ts` (a load that never
   finishes, `alert`/`confirm` on load, a page stuck in a loop). Watch for, in real chats:
   - A browser call that waits on a rebuilding dev server ends after about 30 s with "The page didn't
