@@ -269,6 +269,10 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
 - **Scratch files go in `.tmp/`** (git-ignored, inside this repository): screenshots, throwaway
   scripts, temporary `JIG_HOME`s. Never create them at a drive root or elsewhere outside the repo;
   Claude Code asks before `rm -rf` on such paths even in "Don't ask" mode, which stops the task queue.
+  **Delete the scratch files your task made when it's done** (one-off edit scripts, logs, screenshots
+  nobody will look at again), before the final commit or report; keep only what the docs or Jon need.
+  Give a script a name of its own (`.tmp/<task>-edit.py`), never a module's name (`types.py`,
+  `json.py`): Python imports it from the script's folder instead of its own module.
 
 ## Commits
 
