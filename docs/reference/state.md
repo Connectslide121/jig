@@ -106,7 +106,8 @@ A new state file is documented here in the same commit that adds it.
 | `editor.languageServers` | `true` | run the language servers found on PATH for files in the editor (D-259) |
 | `editor.claudeCompletionModel` | `"haiku"` | the model Claude completes with (from Claude Code's model list); protected |
 | `notifications.desktop` | `true` | a system notification when a chat needs you or finishes while Jig is in the background |
-| `phone.enabled` | `false` | Jig on your phone (D-350): message your paired Telegram bot and read your replies; turned on by pairing; protected |
+| `phone.channel` | `"telegram"` | where Jig reaches your phone (D-377): `telegram` (your own Telegram bot, D-350) or `teams` (your own Teams bot through a relay in your Azure, D-370; not in this version yet). One at a time: switching disconnects the other and forgets its saved state; protected |
+| `phone.enabled` | `false` | Jig on your phone (D-350): message your paired bot and read your replies; turned on by pairing; protected |
 | `phone.when` | `"away"` | `away`: only while this computer is idle for `phone.awayMinutes` or locked; `always`; protected |
 | `phone.awayMinutes` | `5` | 1–60; protected |
 | `phone.finished` | `true` | also when a chat finishes or stops with an error (requests and questions are always sent); protected |
@@ -173,13 +174,18 @@ read-only application resources, not user state. Personal/project Claude skills 
 
 ## Phone (D-350)
 
-`phone.json`: `{ token, bot, owner?, replies?, targets?, topics? }`. `token` is the Telegram bot token encrypted with the OS
+`phone.json`: `{ telegram?, teams? }`, each channel's saved state apart (D-377), each
+`{ token, bot, owner?, replies?, targets?, topics?, rooms? }`. A file from before D-377 (those fields
+at the top level) is read as Telegram's and rewritten in the new shape on the next save. `token` is
+the channel's credential (the Telegram bot token; the Teams relay's key) encrypted with the OS
 (Electron safeStorage, base64); without OS encryption (Linux without a keyring) nothing is written
-and the token lives only until Jig closes. `bot` is its username; `owner` (`{ chatId, name }`) the
-Telegram account it is paired with. `replies` maps the last 300 Telegram messages to their chats and `targets` (per topic, 0 without
-topics) the chat plain text written there goes to, so replies keep working after Jig restarts.
-`topics` `{ jig?, projects? }` are the topics Jig made in the bot's chat (Jig's own, per project id);
-`rooms` maps chats open as rooms on the phone to their topics. Disconnect deletes the file.
+and the credential lives only until Jig closes. `bot` is the bot's name; `owner` (`{ chatId, name }`) the
+account it is paired with (Telegram: the private chat's id). `replies` maps the last 300 messages to their chats and `targets` (per place, 0 for the main chat)
+the chat plain text written there goes to, so replies keep working after Jig restarts. Message and
+place ids are the channel's own (numbers on Telegram, strings on Teams).
+`topics` `{ jig?, projects? }` are the places Jig made (Telegram: topics in the bot's chat; Jig's own, per project id);
+`rooms` maps chats open as rooms on the phone to their places. Disconnect (or switching
+`phone.channel`) removes that channel's entry; the file goes with the last one.
 
 ## Meetings (D-217)
 

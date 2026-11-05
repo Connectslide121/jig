@@ -1,6 +1,17 @@
 import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
-import type { PhoneState } from "../../shared/phone";
+import type { PhoneChannelId, PhoneState } from "../../shared/phone";
+import {
+  type Account,
+  type Address,
+  ChannelError,
+  type MessageRef,
+  type PhoneChannel,
+  type PhoneCommand,
+  type PhoneUpdate,
+  type PhoneUser,
+  type Place,
+} from "./channel";
 import {
   answeredLine,
   chatPicker,
@@ -33,54 +44,56 @@ import {
   usedBrowser,
 } from "./messages";
 import { chunkMarkdown, conciergeReply, historyItems, roomPieces } from "./mirror";
-import {
-  keyboard,
-  nameOf,
-  type TelegramApi,
-  TelegramError,
-  type TelegramUpdate,
-  type TelegramUser,
-} from "./telegram";
+import { type TelegramApi, TelegramChannel } from "./telegram";
 
-/** What is kept on this computer: the bot, its token (encrypted by the store) and who it is paired with. */
+/**
+ * What one channel keeps on this computer (D-377: each channel its own, in `phone.json`): the bot,
+ * its credential (Telegram's token, the Teams relay's key; encrypted by the store) and who it is
+ * paired with. Places and messages are the channel's own ids.
+ */
 export interface SavedPhone {
   token: string;
   bot: string;
-  owner?: { chatId: number; name: string };
-  /** Telegram message → the chat it was about (the latest), so replies still work after a restart. */
-  replies?: Array<[number, string]>;
-  /** Per thread (a topic's id, 0 without topics): the chat plain text written there goes to. */
-  targets?: Array<[number, string]>;
-  /** The topics Jig made in your bot's chat: its own and one per project. */
-  topics?: { jig?: number; projects?: Record<string, number> };
-  /** Chats open as rooms on your phone: chat id → its topic. */
-  rooms?: Record<string, number>;
+  owner?: { chatId: Account; name: string };
+  /** Message → the chat it was about (the latest), so replies still work after a restart. */
+  replies?: Array<[MessageRef, string]>;
+  /** Per place (a topic's id, 0 for the main chat): the chat plain text written there goes to. */
+  targets?: Array<[Place, string]>;
+  /** The places Jig made on the phone: its own and one per project. */
+  topics?: { jig?: Place; projects?: Record<string, Place> };
+  /** Chats open as rooms on your phone: chat id → its place. */
+  rooms?: Record<string, Place>;
 }
 
 /** A chat open as a room: what was there when it opened, what it shows, your messages from the phone. */
 interface Room {
-  thread: number;
+  thread: Place;
   known: Set<string>;
   skip: Set<string>;
   echo: string[];
-  shown: Map<string, { messageId: number; text?: string }>;
+  shown: Map<string, { messageId: MessageRef; text?: string }>;
   syncing: Promise<void>;
   again: boolean;
   timer?: ReturnType<typeof setTimeout>;
 }
 
-/** Telegram's topic colours, nearest to a project's colour. */
-const TOPIC_COLOR: Record<string, number> = {
-  jig: 16766590,
-  accent: 13338331,
-  info: 7322096,
-  success: 9367192,
-  warning: 16766590,
-  danger: 16478047,
-  muted: 16749490,
-};
+/** The commands the channel's menu offers when you type "/". */
+const COMMANDS: PhoneCommand[] = [
+  { command: "status", description: "What every project is doing" },
+  { command: "queue", description: "A project's task queue (/queue podium)" },
+  { command: "pause", description: "Pause a project's queue" },
+  { command: "resume", description: "Resume a project's queue" },
+  { command: "screen", description: "A screenshot of Jig on your computer" },
+  { command: "close", description: "Close this chat's room (the chat stays)" },
+  { command: "chats", description: "Pick the chat your messages go to" },
+  { command: "help", description: "What Jig on your phone does" },
+];
+
+const CHANNEL_NAMES: Record<PhoneChannelId, string> = { telegram: "Telegram", teams: "Teams" };
 
 export interface PhoneSettings {
+  /** The channel (`phone.channel`); missing = Telegram. */
+  channel?: PhoneChannelId;
   enabled: boolean;
   when: "away" | "always";
   awayMinutes: number;
@@ -96,12 +109,16 @@ export interface PhoneDeps {
     send(id: string, text: string): Promise<void>;
     answer(id: string, requestId: string, decision: PermissionDecision): Promise<void>;
   };
+  /** Each channel's saved state, apart (`undefined` forgets that channel's). */
   store: {
-    load(): Promise<SavedPhone | undefined>;
-    save(saved: SavedPhone | undefined): Promise<void>;
+    load(channel?: PhoneChannelId): Promise<SavedPhone | undefined>;
+    save(saved: SavedPhone | undefined, channel?: PhoneChannelId): Promise<void>;
     remembered: boolean;
   };
+  /** Telegram's Bot API with a token: the Telegram channel's transport. */
   api(token: string): TelegramApi;
+  /** The other channels (Teams, D-370), from their credential; none: not in this version. */
+  channel?(id: Exclude<PhoneChannelId, "telegram">, credential: string): PhoneChannel | undefined;
   /** A project's name and colour, for its topic. */
   project?(id: string): Promise<{ name: string; color?: string } | undefined>;
   /** Jig itself (D-350): sends what you wrote to today's chat with Jig; returns that chat's id. */
@@ -147,19 +164,16 @@ export interface PhoneDeps {
 const STALE_SECONDS = 10 * 60;
 const MAX_WRONG_CODES = 5;
 const MAX_REMEMBERED = 300;
-/** Telegram's longest caption under a picture. */
-const CAPTION_MAX = 1024;
 
 interface SentRequest {
   key: string;
   sessionId: string;
   requestId: string;
-  messageId: number;
+  messageId: MessageRef;
+  /** The place it was sent to (Teams updates a message in its conversation). */
+  place?: Place;
   text: string;
 }
-
-/** The poll loop's warning while Telegram doesn't answer; any call that gets through clears it. */
-const UNREACHABLE = "Telegram can't be reached. Jig keeps trying.";
 
 const defaultPause = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
@@ -171,37 +185,40 @@ const defaultPause = (ms: number, signal: AbortSignal) =>
   });
 
 /**
- * Jig on your phone (D-350): one Telegram bot, paired with your own Telegram account by a code. It
- * tells you when a chat needs you, finishes or stops while you're away, takes Allow/Deny and answers
- * from buttons, and sends what you write to a chat. Only your account is listened to.
+ * Jig on your phone (D-350): one bot of your own, paired with your own account by a code, through a
+ * `PhoneChannel` (D-377: Telegram, or Teams later). It tells you when a chat needs you, finishes or
+ * stops while you're away, takes Allow/Deny and answers from buttons, and sends what you write to a
+ * chat. Only your account is listened to.
  */
 export class PhoneService {
+  /** The channel picked in `phone.channel`; `saved` and `channel` are its. */
+  private kind: PhoneChannelId = "telegram";
   private saved: SavedPhone | undefined;
-  private api: TelegramApi | undefined;
+  private channel: PhoneChannel | undefined;
+  private switching: Promise<void> | undefined;
   private code: string | undefined;
   private wrongCodes = 0;
   private error: string | undefined;
   private poll: AbortController | undefined;
-  /** Ends the poll loop's current round (its poll or pause), so it asks Telegram again at once. */
+  /** Ends the poll loop's current round (its poll or pause), so it asks the channel again at once. */
   private nudge: AbortController | undefined;
-  private offset = 0;
   /**
-   * Per thread (a topic, 0 without topics): the chat your messages there go to, the last one Jig
+   * Per place (a topic, 0 for the main chat): the chat your messages there go to, the last one Jig
    * told you about there or the one you picked.
    */
-  private readonly targets = new Map<number, string>();
-  /** Your bot has topics turned on (Bot API 9.3+): one per project and one for Jig. */
+  private readonly targets = new Map<Place, string>();
+  /** The channel has places now (Telegram: the bot has topics on): one per project and one for Jig. */
   private topics = false;
-  private readonly creating = new Map<string, Promise<number | undefined>>();
-  /** Jig's own chat with you, and the topic you last wrote to it in (its answers go there). */
+  private readonly creating = new Map<string, Promise<Place | undefined>>();
+  /** Jig's own chat with you, and the place you last wrote to it in (its answers go there). */
   private conciergeId: string | undefined;
-  private conciergeThread: number | undefined;
+  private conciergeThread: Place | undefined;
   private readonly rooms = new Map<string, Room>();
   /** Chats you last spoke to (a voice message): their next answer comes read aloud too. */
   private readonly spoken = new Set<string>();
   private readonly previous = new Map<string, SessionMeta["status"]>();
-  /** Telegram message → the chat it was about, so a reply goes there. */
-  private readonly replies = new Map<number, string>();
+  /** Message → the chat it was about, so a reply goes there. */
+  private readonly replies = new Map<MessageRef, string>();
   /** Waiting requests sent to the phone, by `chat/request` and by their buttons' key. */
   private readonly requests = new Map<string, SentRequest>();
   private readonly keys = new Map<string, SentRequest>();
@@ -213,44 +230,68 @@ export class PhoneService {
   constructor(private readonly deps: PhoneDeps) {}
 
   async start(): Promise<void> {
-    this.saved = await this.deps.store.load().catch(() => undefined);
-    if (this.saved) this.api = this.deps.api(this.saved.token);
+    this.kind = this.deps.settings().channel ?? "telegram";
+    await this.load();
+    this.refresh();
+    if (this.saved) await this.checkTopics().catch(() => undefined);
+    if (this.saved?.owner) await this.setCommands();
+  }
+
+  /** Reads the picked channel's saved state: its credential, what was sent, its rooms. */
+  private async load(): Promise<void> {
+    this.saved = await this.deps.store.load(this.kind).catch(() => undefined);
+    this.channel = this.saved ? this.open(this.saved.token) : undefined;
+    this.replies.clear();
+    this.targets.clear();
+    this.rooms.clear();
     for (const [messageId, sessionId] of this.saved?.replies ?? []) this.replies.set(messageId, sessionId);
     for (const [thread, sessionId] of this.saved?.targets ?? []) this.targets.set(thread, sessionId);
     for (const [sessionId, thread] of Object.entries(this.saved?.rooms ?? {})) {
       const items = (await this.deps.chats.snapshot(sessionId).catch(() => undefined))?.items;
       if (items) this.rooms.set(sessionId, this.newRoom(thread, items));
     }
-    this.refresh();
+  }
+
+  /** The picked channel with a credential; undefined when this version has no such channel. */
+  private open(credential: string): PhoneChannel | undefined {
+    if (this.kind === "telegram") return new TelegramChannel(this.deps.api(credential));
+    return this.deps.channel?.(this.kind, credential);
+  }
+
+  /** `phone.channel` changed: the old channel is disconnected (one at a time, D-370), the new one read. */
+  private async switchTo(kind: PhoneChannelId): Promise<void> {
+    await this.disconnect().catch((error) => this.deps.log?.warn("Disconnecting the phone failed", error));
+    this.kind = kind;
+    await this.load();
     if (this.saved) await this.checkTopics().catch(() => undefined);
     if (this.saved?.owner) await this.setCommands();
   }
 
-  /** The commands Telegram offers in its menu when you type "/". */
+  /** The address of the paired account (a place of its chat); undefined before pairing. */
+  private address(place?: Place, extra: Omit<Address, "chat" | "place"> = {}): Address | undefined {
+    const chat = this.saved?.owner?.chatId;
+    return chat === undefined ? undefined : { chat, ...(place !== undefined ? { place } : {}), ...extra };
+  }
+
+  /** The commands the channel offers in its menu when you type "/". */
   private async setCommands(): Promise<void> {
-    await this.api
-      ?.call("setMyCommands", {
-        commands: [
-          { command: "status", description: "What every project is doing" },
-          { command: "queue", description: "A project's task queue (/queue podium)" },
-          { command: "pause", description: "Pause a project's queue" },
-          { command: "resume", description: "Resume a project's queue" },
-          { command: "screen", description: "A screenshot of Jig on your computer" },
-          { command: "close", description: "Close this chat's room (the chat stays)" },
-          { command: "chats", description: "Pick the chat your messages go to" },
-          { command: "help", description: "What Jig on your phone does" },
-        ],
-      })
+    if (!this.channel?.capabilities.commands || !this.channel.setCommands) return;
+    await this.channel
+      .setCommands(COMMANDS)
       .catch((error) => this.deps.log?.warn("Setting the bot's commands failed", error));
   }
 
-  /** Asks Telegram whether your bot has topics turned on (you can switch it in @BotFather any time). */
+  /**
+   * Asks the channel whether it has places now (Telegram: whether your bot has topics turned on,
+   * which you can switch in @BotFather any time).
+   */
   async checkTopics(): Promise<void> {
-    if (!this.api) return;
-    const me = await this.api.call<TelegramUser>("getMe");
+    if (!this.channel) return;
+    const me = await this.channel.identify();
     this.reached();
-    if (this.topics === (me.has_topics_enabled === true)) return;
-    this.topics = me.has_topics_enabled === true;
+    const places = this.channel.capabilities.places && me.places;
+    if (this.topics === places) return;
+    this.topics = places;
     this.changed();
   }
 
@@ -267,6 +308,7 @@ export class PhoneService {
   state(): PhoneState {
     const s = this.saved;
     return {
+      channel: this.kind,
       status: !s ? "off" : s.owner ? "connected" : "pairing",
       ...(s ? { bot: s.bot } : {}),
       ...(s?.owner ? { owner: s.owner.name } : {}),
@@ -277,50 +319,47 @@ export class PhoneService {
     };
   }
 
-  /** Checks the token with Telegram, keeps it and starts pairing with a new code. */
+  /** Checks the credential (Telegram's token) with the channel, keeps it and starts pairing with a new code. */
   async connect(token: string): Promise<PhoneState> {
-    const api = this.deps.api(token.trim());
-    let me: TelegramUser;
+    const channel = this.open(token.trim());
+    if (!channel)
+      throw new JigError("unavailable", `${CHANNEL_NAMES[this.kind]} isn't in this version of Jig yet.`);
+    let me: { bot: string; places: boolean };
     try {
-      me = await api.call<TelegramUser>("getMe");
+      me = await channel.identify();
     } catch (error) {
-      if (error instanceof TelegramError && (error.status === 401 || error.status === 404))
-        throw new JigError(
-          "invalid_token",
-          "Telegram doesn't know this token. Copy it again from @BotFather.",
-        );
+      if (error instanceof ChannelError && error.reason === "auth")
+        throw new JigError("invalid_token", error.message);
       throw new JigError(
         "unreachable",
-        "Telegram can't be reached. Check the internet connection and try again.",
+        error instanceof ChannelError
+          ? error.message
+          : `${channel.name} can't be reached. Check the internet connection and try again.`,
       );
     }
     this.stop();
-    this.saved = { token: token.trim(), bot: me.username ?? "your bot" };
-    this.api = api;
-    this.topics = me.has_topics_enabled === true;
+    this.saved = { token: token.trim(), bot: me.bot };
+    this.channel = channel;
+    this.topics = channel.capabilities.places && me.places;
     this.targets.clear();
     this.replies.clear();
     this.code = this.deps.code();
     this.wrongCodes = 0;
     this.error = undefined;
-    this.offset = 0;
-    await this.deps.store.save(this.saved);
+    await this.deps.store.save(this.saved, this.kind);
     this.refresh();
     return this.state();
   }
 
   async disconnect(): Promise<PhoneState> {
-    const owner = this.saved?.owner;
-    if (owner && this.api)
-      await this.api
-        .call("sendMessage", {
-          chat_id: owner.chatId,
-          text: "Jig disconnected this bot. It won't message you any more.",
-        })
+    const to = this.address();
+    if (to && this.channel)
+      await this.channel
+        .send(to, { text: "Jig disconnected this bot. It won't message you any more." })
         .catch(() => undefined);
     this.stop();
     this.saved = undefined;
-    this.api = undefined;
+    this.channel = undefined;
     this.code = undefined;
     this.error = undefined;
     this.targets.clear();
@@ -328,7 +367,7 @@ export class PhoneService {
     this.replies.clear();
     this.requests.clear();
     this.keys.clear();
-    await this.deps.store.save(undefined);
+    await this.deps.store.save(undefined, this.kind);
     this.changed();
     return this.state();
   }
@@ -346,8 +385,17 @@ export class PhoneService {
     );
   }
 
-  /** Settings changed: polling follows `phone.enabled`. */
+  /** Settings changed: the channel follows `phone.channel`, polling `phone.enabled`. */
   refresh(): void {
+    const kind = this.deps.settings().channel ?? "telegram";
+    if (this.switching) return;
+    if (kind !== this.kind) {
+      this.switching = this.switchTo(kind).finally(() => {
+        this.switching = undefined;
+        this.refresh();
+      });
+      return;
+    }
     const s = this.saved;
     const wanted = Boolean(s && (!s.owner || this.deps.settings().enabled));
     if (wanted && !this.poll) void this.pollLoop();
@@ -365,7 +413,7 @@ export class PhoneService {
   }
 
   private connected(): boolean {
-    return Boolean(this.saved?.owner && this.api && this.deps.settings().enabled);
+    return Boolean(this.saved?.owner && this.channel && this.deps.settings().enabled);
   }
 
   /** Connected and sending, and (unless set to always) you're away from this computer. */
@@ -414,14 +462,10 @@ export class PhoneService {
       this.requests.delete(id);
       this.keys.delete(sent.key);
       const where = this.answeredHere.delete(sent.key) ? "phone" : "computer";
-      await this.api
-        ?.call("editMessageText", {
-          chat_id: this.saved?.owner?.chatId,
-          message_id: sent.messageId,
-          text: sent.text + answeredLine(item, where),
-          parse_mode: "HTML",
-          link_preview_options: { is_disabled: true },
-        })
+      const to = this.address(sent.place);
+      if (!to || !this.channel?.capabilities.edits) return;
+      await this.channel
+        .edit(to, sent.messageId, { text: sent.text + answeredLine(item, where) })
         .catch((error) => this.deps.log?.warn("Updating the phone's message failed", error));
       return;
     }
@@ -434,13 +478,14 @@ export class PhoneService {
       const message = this.withOpen(permissionMessage(meta, item, key), meta);
       if (room) await this.syncRoom(meta.id);
       const thread = concierge ? this.conciergeThread : await this.threadFor(meta);
-      const messageId = await this.send(message, { sessionId: meta.id, thread });
+      const messageId = await this.send(message, { sessionId: meta.id, thread, mention: true });
       if (messageId === undefined) return;
-      const request = {
+      const request: SentRequest = {
         key,
         sessionId: meta.id,
         requestId: item.request.requestId,
         messageId,
+        ...(thread !== undefined ? { place: thread } : {}),
         text: message.text,
       };
       this.requests.set(id, request);
@@ -490,12 +535,16 @@ export class PhoneService {
       { sessionId: meta.id, thread: await this.threadFor(meta) },
       photo,
     );
-    if (id === undefined) return "Telegram didn't take the message; nothing was sent.";
+    if (id === undefined) return `${this.channelName()} didn't take the message; nothing was sent.`;
     return `Sent to the user's phone${photo ? " with the picture" : ""}.${note} Their reply, if any, arrives in this chat as their next message.`;
   }
 
+  private channelName(): string {
+    return this.channel?.name ?? CHANNEL_NAMES[this.kind];
+  }
+
   /** /screen: what Jig's window shows right now. */
-  private async screen(here: number | undefined): Promise<void> {
+  private async screen(here: Place | undefined): Promise<void> {
     const photo = await this.deps.screens?.window().catch(() => undefined);
     if (!photo)
       return void (await this.send({ text: "Jig's window can't be captured right now." }, { thread: here }));
@@ -506,7 +555,7 @@ export class PhoneService {
    * The topic a chat's messages go to: its project's (made the first time), or Jig's own for chats
    * without a project and for Jig itself. Undefined without topics: everything in one thread.
    */
-  private async threadFor(meta?: Pick<SessionMeta, "projectId" | "id">): Promise<number | undefined> {
+  private async threadFor(meta?: Pick<SessionMeta, "projectId" | "id">): Promise<Place | undefined> {
     if (!this.topics || !this.saved?.owner) return undefined;
     const room = meta?.id ? this.rooms.get(meta.id) : undefined;
     if (room) return room.thread;
@@ -522,35 +571,35 @@ export class PhoneService {
     return pending;
   }
 
-  private async createTopic(projectId: string | undefined): Promise<number | undefined> {
+  private async createTopic(projectId: string | undefined): Promise<Place | undefined> {
     const chatId = this.saved?.owner?.chatId;
-    if (!this.api || chatId === undefined) return undefined;
+    if (!this.channel || chatId === undefined) return undefined;
     const project = projectId ? await this.deps.project?.(projectId).catch(() => undefined) : undefined;
     const name = projectId ? (project?.name ?? "Chats") : "Jig";
     try {
-      const topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
-        chat_id: chatId,
-        name: name.slice(0, 128),
-        icon_color: TOPIC_COLOR[projectId ? (project?.color ?? "accent") : "jig"],
+      const place = await this.channel.createPlace(chatId, {
+        kind: projectId ? "project" : "jig",
+        name,
+        color: projectId ? (project?.color ?? "accent") : "jig",
       });
       if (!this.saved) return undefined;
       const topics = this.saved.topics ?? {};
       this.saved = {
         ...this.saved,
         topics: projectId
-          ? { ...topics, projects: { ...topics.projects, [projectId]: topic.message_thread_id } }
-          : { ...topics, jig: topic.message_thread_id },
+          ? { ...topics, projects: { ...topics.projects, [projectId]: place } }
+          : { ...topics, jig: place },
       };
       this.persist();
-      return topic.message_thread_id;
+      return place;
     } catch (error) {
       this.deps.log?.warn("Making a topic on the phone failed", error);
       return undefined;
     }
   }
 
-  /** You deleted a topic in Telegram: forget it, so the next message makes a new one. */
-  private forgetTopic(thread: number): void {
+  /** You deleted a place on the phone (a topic): forget it, so the next message makes a new one. */
+  private forgetTopic(thread: Place): void {
     const topics = this.saved?.topics;
     if (!this.saved || !topics) return;
     const projects = Object.fromEntries(
@@ -565,64 +614,44 @@ export class PhoneService {
   }
 
   /** The project whose topic this is (undefined: Jig's own, or no topics). */
-  private projectOfThread(thread: number | undefined): string | undefined {
+  private projectOfThread(thread: Place | undefined): string | undefined {
     if (thread === undefined) return undefined;
     return Object.entries(this.saved?.topics?.projects ?? {}).find(([, t]) => t === thread)?.[0];
   }
 
   private async send(
     message: OutMessage,
-    to: { sessionId?: string; thread?: number } = {},
+    to: { sessionId?: string; thread?: Place | undefined; mention?: boolean } = {},
     photo?: Buffer,
-  ): Promise<number | undefined> {
-    const chatId = this.saved?.owner?.chatId;
-    const api = this.api;
-    if (!api || chatId === undefined) return undefined;
+  ): Promise<MessageRef | undefined> {
+    const channel = this.channel;
     const { sessionId } = to;
-    let thread = to.thread;
-    const deliver = async (thread: number | undefined) => {
-      const common = {
-        chat_id: chatId,
-        parse_mode: "HTML",
-        ...(thread ? { message_thread_id: thread } : {}),
-        ...(message.silent ? { disable_notification: true } : {}),
-        ...(message.buttons?.length ? { reply_markup: keyboard(message.buttons) } : {}),
-      };
-      if (photo && message.text.length <= CAPTION_MAX)
-        return api.photo<{ message_id: number }>("sendPhoto", { ...common, caption: message.text }, photo);
-      if (photo)
-        await api.photo(
-          "sendPhoto",
-          { chat_id: chatId, ...(thread ? { message_thread_id: thread } : {}), disable_notification: true },
-          photo,
-        );
-      return api.call<{ message_id: number }>("sendMessage", {
-        ...common,
-        text: message.text,
-        link_preview_options: { is_disabled: true },
-      });
+    const deliver = (place: Place | undefined) => {
+      const address = this.address(place, to.mention ? { mention: true } : {});
+      if (!channel || !address) return Promise.resolve(undefined);
+      return channel.send(address, message, photo);
     };
     try {
-      const sent = await deliver(thread).catch(async (error) => {
-        if (!thread || !(error instanceof TelegramError) || !/thread not found/i.test(error.message))
-          throw error;
-        this.forgetTopic(thread);
-        thread = undefined;
+      const sent = await deliver(to.thread).catch(async (error) => {
+        if (!to.thread || !(error instanceof ChannelError) || error.reason !== "gone") throw error;
+        // You deleted that place on the phone: forget it and send to the main chat.
+        this.forgetTopic(to.thread);
         return deliver(undefined);
       });
+      if (sent === undefined) return undefined;
       this.reached();
       if (sessionId) {
-        this.remember(sent.message_id, sessionId);
+        this.remember(sent, sessionId);
         this.persist();
       }
-      return sent.message_id;
+      return sent;
     } catch (error) {
       this.deps.log?.warn("Sending to the phone failed", error);
       return undefined;
     }
   }
 
-  private remember(messageId: number, sessionId: string) {
+  private remember(messageId: MessageRef, sessionId: string) {
     this.replies.set(messageId, sessionId);
     if (this.replies.size > MAX_REMEMBERED) this.replies.delete(this.replies.keys().next().value!);
   }
@@ -637,7 +666,7 @@ export class PhoneService {
           replies: [...this.replies],
           targets: [...this.targets],
         };
-        await this.deps.store.save(this.saved);
+        await this.deps.store.save(this.saved, this.kind);
       })
       .catch((error) => this.deps.log?.warn("Saving the phone's messages failed", error));
   }
@@ -649,29 +678,23 @@ export class PhoneService {
     this.poll = controller;
     const pause = this.deps.pause ?? defaultPause;
     let failures = 0;
-    while (!controller.signal.aborted && this.api) {
+    for (let channel = this.channel; !controller.signal.aborted && channel; channel = this.channel) {
       const started = Date.now();
       // wake() aborts this round only: the poll or pause in progress ends and the loop asks again now.
       const nudge = new AbortController();
       this.nudge = nudge;
       const signal = AbortSignal.any([controller.signal, nudge.signal]);
       try {
-        const updates = await this.api.call<TelegramUpdate[]>(
-          "getUpdates",
-          { offset: this.offset, timeout: 50, allowed_updates: ["message", "callback_query"] },
-          AbortSignal.any([signal, AbortSignal.timeout(65_000)]),
-        );
+        const updates = await channel.poll(signal);
         failures = 0;
         if (this.error) {
           this.error = undefined;
           this.changed();
         }
-        for (const update of updates) {
-          this.offset = Math.max(this.offset, update.update_id + 1);
+        for (const update of updates)
           await this.handle(update).catch((error) =>
             this.deps.log?.warn("A message from the phone failed", error),
           );
-        }
         if (!updates.length && Date.now() - started < 500) await pause(1000, signal);
       } catch (error) {
         if (controller.signal.aborted) break;
@@ -681,15 +704,12 @@ export class PhoneService {
           continue;
         }
         failures++;
-        const status = error instanceof TelegramError ? error.status : undefined;
+        const reason = error instanceof ChannelError ? error.reason : "unreachable";
+        // The credential and other-reader warnings are the channel's; anything else: it can't be reached.
         this.error =
-          status === 401
-            ? "Telegram no longer accepts the bot's token. Set the phone up again."
-            : status === 409
-              ? "Another program is reading this bot's messages. Use this bot only for Jig."
-              : UNREACHABLE;
+          reason === "auth" || reason === "conflict" ? (error as Error).message : this.unreachable();
         this.changed();
-        if (status === 401) break;
+        if (reason === "auth") break;
         await pause(Math.min(60_000, 2000 * 2 ** Math.min(failures, 5)), signal);
         if (nudge.signal.aborted) failures = 0;
       }
@@ -697,52 +717,62 @@ export class PhoneService {
     if (this.poll === controller) this.poll = undefined;
   }
 
+  /** The poll loop's warning while the channel doesn't answer; any call that gets through clears it. */
+  private unreachable(): string {
+    return `${this.channelName()} can't be reached. Jig keeps trying.`;
+  }
+
   /**
    * The computer woke from sleep or was unlocked: a poll begun before sleeping may hang until its
-   * timeout and the pause after failures grows to a minute, so end both and ask Telegram now.
+   * timeout and the pause after failures grows to a minute, so end both and ask the channel now.
    */
   wake(): void {
     this.nudge?.abort();
   }
 
-  /** A call to Telegram went through: an "unreachable" warning is stale (not a 401/409 one). */
+  /** A call to the channel went through: an "unreachable" warning is stale (not a credential one). */
   private reached(): void {
-    if (this.error !== UNREACHABLE) return;
+    if (this.error !== this.unreachable()) return;
     this.error = undefined;
     this.changed();
     this.wake();
   }
 
-  private async handle(update: TelegramUpdate): Promise<void> {
-    const tap = update.callback_query;
-    if (tap) return this.handleTap(tap);
-    const message = update.message;
-    if (message?.chat.type !== "private") return;
+  /** One update as the channel polled it. */
+  private async handle(raw: unknown): Promise<void> {
+    const update = this.channel?.read(raw);
+    if (update?.kind === "tap") return this.handleTap(update);
+    if (!update?.private) return;
     const now = (this.deps.now?.() ?? Date.now()) / 1000;
-    if (now - message.date > STALE_SECONDS) return;
+    if (now - update.date > STALE_SECONDS) return;
     const owner = this.saved?.owner;
-    if (!owner) return this.pair(message.chat.id, message.from, message.text ?? "");
-    if (message.chat.id !== owner.chatId) return;
-    // Answers go to the topic you wrote in.
-    const here = message.is_topic_message ? message.message_thread_id : undefined;
-    let text = message.text?.trim() ?? "";
+    if (!owner) return this.pair(update.chat, update.from, update.text ?? "");
+    if (update.chat !== owner.chatId) return;
+    // Answers go to the place you wrote in.
+    const here = update.place;
+    let text = update.text?.trim() ?? "";
     let spoken = false;
-    if (!text && message.voice) {
-      text = (await this.listen(message.voice.file_id, message.message_id, here)) ?? "";
+    if (!text && update.voice) {
+      text = (await this.listen(update.voice.file, update.id, here)) ?? "";
       if (!text) return;
       spoken = true;
     }
     if (!text) {
-      // Telegram's own notices (a topic was made, pinned…) are messages too: only answer things you sent.
-      const sent = ["photo", "document", "video", "audio", "sticker", "video_note", "animation"].some(
-        (kind) => kind in message,
-      );
-      if (sent) await this.send({ text: "Jig reads text and voice messages." }, { thread: here });
+      // The channel's own notices (a topic was made, pinned…) are messages too: only answer things you sent.
+      if (update.attachment)
+        await this.send(
+          {
+            text: this.channel?.capabilities.voice
+              ? "Jig reads text and voice messages."
+              : "Jig reads text messages.",
+          },
+          { thread: here },
+        );
       return;
     }
     if (spoken) this.speaking = true;
     try {
-      await this.route(text, message, here);
+      await this.route(text, update.replyTo, here);
     } finally {
       this.speaking = false;
     }
@@ -753,36 +783,25 @@ export class PhoneService {
 
   /** A voice message as text (Whisper on this computer), shown back so you see what was understood. */
   private async listen(
-    fileId: string,
-    messageId: number,
-    here: number | undefined,
+    file: string,
+    messageId: MessageRef,
+    here: Place | undefined,
   ): Promise<string | undefined> {
-    if (!this.deps.voice || !this.api) {
+    const channel = this.channel;
+    const to = this.address(here);
+    if (!this.deps.voice || !channel?.download || !to) {
       await this.send({ text: "Voice messages need Jig's speech on this computer." }, { thread: here });
       return undefined;
     }
     try {
-      await this.api
-        .call("sendChatAction", {
-          chat_id: this.saved?.owner?.chatId,
-          action: "typing",
-          ...(here ? { message_thread_id: here } : {}),
-        })
-        .catch(() => undefined);
-      const text = (await this.deps.voice.transcribe(await this.api.download(fileId))).trim();
+      await channel.typing(to).catch(() => undefined);
+      const text = (await this.deps.voice.transcribe(await channel.download(file))).trim();
       if (!text) {
         await this.send({ text: "🎙 I couldn't make out any words." }, { thread: here });
         return undefined;
       }
-      await this.api
-        .call("sendMessage", {
-          chat_id: this.saved?.owner?.chatId,
-          text: `🎙 <i>${escapeHtml(text)}</i>`,
-          parse_mode: "HTML",
-          disable_notification: true,
-          reply_parameters: { message_id: messageId },
-          ...(here ? { message_thread_id: here } : {}),
-        })
+      await channel
+        .send({ ...to, replyTo: messageId }, { text: `🎙 <i>${escapeHtml(text)}</i>`, silent: true })
         .catch(() => undefined);
       return text;
     } catch (error) {
@@ -795,41 +814,32 @@ export class PhoneService {
   }
 
   /** Reads an answer aloud as a voice message, after a chat you spoke to answered. */
-  private async speak(sessionId: string, text: string, thread: number | undefined): Promise<void> {
-    if (!this.spoken.delete(sessionId) || !this.deps.voice || !this.api) return;
+  private async speak(sessionId: string, text: string, thread: Place | undefined): Promise<void> {
+    const channel = this.channel;
+    const to = this.address(thread);
+    if (!this.spoken.delete(sessionId) || !this.deps.voice || !channel?.sendVoice || !to) return;
     const clean = speakable(text);
     if (!clean) return;
     try {
       const ogg = await this.deps.voice.speak(clean);
-      await this.api.voice(
-        {
-          chat_id: this.saved?.owner?.chatId,
-          ...(thread ? { message_thread_id: thread } : {}),
-        },
-        ogg,
-      );
+      await channel.sendVoice(to, ogg);
     } catch (error) {
       this.deps.log?.warn("Reading the answer aloud failed", error);
     }
   }
 
-  private async route(
-    text: string,
-    message: NonNullable<TelegramUpdate["message"]>,
-    here: number | undefined,
-  ): Promise<void> {
+  private async route(text: string, replyTo: MessageRef | undefined, here: Place | undefined): Promise<void> {
     const command = /^\/(\w+)/.exec(text)?.[1]?.toLowerCase();
     if (command === "start" || command === "help")
       return void (await this.send({ text: this.help() }, { thread: here }));
     const roomChat = this.roomOfThread(here);
     if (roomChat && command === "close") return this.closeRoom(roomChat);
-    if (roomChat && !command) return this.toChat(roomChat, text, message.reply_to_message?.message_id, here);
+    if (roomChat && !command) return this.toChat(roomChat, text, replyTo, here);
     if (command === "chats") return void (await this.send(await this.picker(here), { thread: here }));
     if (command === "screen") return this.screen(here);
     if (command === "status") return void (await this.send(await this.overview(), { thread: here }));
     if (command === "queue" || command === "pause" || command === "resume")
       return this.queueCommand(command, text.replace(/^\/\w+(@\w+)?/, ""), here);
-    const replyTo = message.reply_to_message?.message_id;
     const sessionId =
       (replyTo !== undefined ? this.replies.get(replyTo) : undefined) ?? this.targets.get(here ?? 0);
     if (this.deps.concierge && (!sessionId || sessionId === this.conciergeId))
@@ -845,7 +855,7 @@ export class PhoneService {
   }
 
   /** Text for Jig itself: to today's chat with Jig, saying which topic it was written in. */
-  private async askConcierge(text: string, here: number | undefined): Promise<void> {
+  private async askConcierge(text: string, here: Place | undefined): Promise<void> {
     const projectId = this.projectOfThread(here);
     const project = projectId ? await this.deps.project?.(projectId).catch(() => undefined) : undefined;
     const where = projectId
@@ -859,13 +869,8 @@ export class PhoneService {
       );
       if (this.speaking) this.spoken.add(this.conciergeId);
       this.conciergeThread = here;
-      await this.api
-        ?.call("sendChatAction", {
-          chat_id: this.saved?.owner?.chatId,
-          action: "typing",
-          ...(here ? { message_thread_id: here } : {}),
-        })
-        .catch(() => undefined);
+      const to = this.address(here);
+      if (to) await this.channel?.typing(to).catch(() => undefined);
     } catch (error) {
       await this.send(
         { text: `Couldn't ask Jig: ${excerpt((error as Error).message, 300)}` },
@@ -896,7 +901,7 @@ export class PhoneService {
 
   // --- rooms: a chat, whole and live, in a topic of its own -------------------------------------
 
-  private newRoom(thread: number, items: ChatItem[]): Room {
+  private newRoom(thread: Place, items: ChatItem[]): Room {
     return {
       thread,
       known: new Set(items.map((i) => i.id)),
@@ -908,7 +913,7 @@ export class PhoneService {
     };
   }
 
-  private roomOfThread(thread: number | undefined): string | undefined {
+  private roomOfThread(thread: Place | undefined): string | undefined {
     if (thread === undefined) return undefined;
     for (const [sessionId, room] of this.rooms) if (room.thread === thread) return sessionId;
     return undefined;
@@ -927,9 +932,9 @@ export class PhoneService {
    * Opens a chat as a room on your phone: a topic of its own with its last turns, then everything
    * that happens in it, live; what you write there goes to the chat. Needs topics.
    */
-  async openRoom(sessionId: string, from?: number): Promise<void> {
+  async openRoom(sessionId: string, from?: Place): Promise<void> {
     const chatId = this.saved?.owner?.chatId;
-    if (!this.api || chatId === undefined) throw new JigError("not_connected", "Pair your phone first.");
+    if (!this.channel || chatId === undefined) throw new JigError("not_connected", "Pair your phone first.");
     await this.checkTopics().catch(() => undefined);
     const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
     if (!snapshot) return void (await this.send({ text: "That chat no longer exists." }, { thread: from }));
@@ -949,12 +954,15 @@ export class PhoneService {
     const project = snapshot.meta.projectId
       ? await this.deps.project?.(snapshot.meta.projectId).catch(() => undefined)
       : undefined;
-    const topic = await this.api.call<{ message_thread_id: number }>("createForumTopic", {
-      chat_id: chatId,
-      name: `💬 ${snapshot.meta.title}`.slice(0, 128),
-      icon_color: TOPIC_COLOR[project?.color ?? "jig"],
+    const projectId = snapshot.meta.projectId;
+    const parent = projectId ? this.saved?.topics?.projects?.[projectId] : this.saved?.topics?.jig;
+    const place = await this.channel.createPlace(chatId, {
+      kind: "chat",
+      name: `💬 ${snapshot.meta.title}`,
+      color: project?.color ?? "jig",
+      ...(parent !== undefined ? { parent } : {}),
     });
-    const room = this.newRoom(topic.message_thread_id, snapshot.items);
+    const room = this.newRoom(place, snapshot.items);
     this.rooms.set(sessionId, room);
     this.saved = { ...this.saved!, rooms: { ...this.saved?.rooms, [sessionId]: room.thread } };
     this.persist();
@@ -985,7 +993,7 @@ export class PhoneService {
   }
 
   /** The topic you last wrote to Jig itself in (a chat it starts opens from there). */
-  askedIn(): number | undefined {
+  askedIn(): Place | undefined {
     return this.conciergeThread;
   }
 
@@ -998,9 +1006,11 @@ export class PhoneService {
     const { [sessionId]: _closed, ...rooms } = this.saved?.rooms ?? {};
     if (this.saved) this.saved = { ...this.saved, rooms };
     this.persist();
-    await this.api
-      ?.call("deleteForumTopic", { chat_id: this.saved?.owner?.chatId, message_thread_id: room.thread })
-      .catch((error) => this.deps.log?.warn("Deleting the room's topic failed", error));
+    const chatId = this.saved?.owner?.chatId;
+    if (chatId !== undefined)
+      await this.channel
+        ?.deletePlace(chatId, room.thread)
+        .catch((error) => this.deps.log?.warn("Deleting the room's topic failed", error));
   }
 
   /** A chat changed: its room syncs a moment later (changes come in bursts while Claude writes). */
@@ -1026,7 +1036,8 @@ export class PhoneService {
 
   private async syncNow(sessionId: string, room: Room): Promise<void> {
     const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
-    if (!snapshot || !this.api || this.rooms.get(sessionId) !== room) return;
+    const channel = this.channel;
+    if (!snapshot || !channel || this.rooms.get(sessionId) !== room) return;
     for (const item of snapshot.items)
       if (
         item.kind === "user" &&
@@ -1055,20 +1066,14 @@ export class PhoneService {
           { sessionId, thread: room.thread },
         );
         if (messageId !== undefined) room.shown.set(piece.key, { messageId, text: piece.text });
-      } else if (shown.text !== piece.text) {
+      } else if (shown.text !== piece.text && channel.capabilities.edits) {
         shown.text = piece.text;
-        await this.api
-          .call("editMessageText", {
-            chat_id: this.saved?.owner?.chatId,
-            message_id: shown.messageId,
-            text: piece.text,
-            parse_mode: "HTML",
-            link_preview_options: { is_disabled: true },
-          })
-          .catch((error) => {
-            if (!/not modified/i.test(String((error as Error).message)))
-              this.deps.log?.warn("Editing a room's message failed", error);
-          });
+        const to = this.address(room.thread);
+        if (!to) continue;
+        await channel.edit(to, shown.messageId, { text: piece.text! }).catch((error) => {
+          if (!(error instanceof ChannelError && error.reason === "unchanged"))
+            this.deps.log?.warn("Editing a room's message failed", error);
+        });
       }
     }
   }
@@ -1112,7 +1117,7 @@ export class PhoneService {
   private async queueCommand(
     command: "queue" | "pause" | "resume",
     words: string,
-    here: number | undefined,
+    here: Place | undefined,
   ): Promise<void> {
     const projects = (await this.deps.projects?.()) ?? [];
     const topicProject = this.projectOfThread(here);
@@ -1140,7 +1145,7 @@ export class PhoneService {
   }
 
   /** Shows a project's queue, after pausing or resuming it if asked. */
-  private async queueAction(action: "q" | "p" | "r", project: ProjectInfo, here: number | undefined) {
+  private async queueAction(action: "q" | "p" | "r", project: ProjectInfo, here: Place | undefined) {
     const queues = this.deps.queues;
     if (!queues)
       return void (await this.send({ text: "The Tasks add-on isn't available." }, { thread: here }));
@@ -1161,13 +1166,13 @@ export class PhoneService {
   }
 
   /** The chats to pick from: in a project's topic only that project's. */
-  private async picker(thread: number | undefined) {
+  private async picker(thread: Place | undefined) {
     const projectId = this.projectOfThread(thread);
     const chats = (await this.deps.chats.list()).filter((m) => !projectId || m.projectId === projectId);
     return chatPicker(chats, this.targets.get(thread ?? 0), 8, Boolean(this.deps.concierge), this.topics);
   }
 
-  private async pair(chatId: number, from: TelegramUser | undefined, text: string): Promise<void> {
+  private async pair(chatId: Account, from: PhoneUser | undefined, text: string): Promise<void> {
     if (!this.saved || !this.code) return;
     if (codeIn(text) !== this.code) {
       if (++this.wrongCodes >= MAX_WRONG_CODES) {
@@ -1177,9 +1182,9 @@ export class PhoneService {
       }
       return;
     }
-    this.saved = { ...this.saved, owner: { chatId, name: nameOf(from) } };
+    this.saved = { ...this.saved, owner: { chatId, name: from?.name ?? "you" } };
     this.code = undefined;
-    await this.deps.store.save(this.saved);
+    await this.deps.store.save(this.saved, this.kind);
     await this.deps.enable();
     await this.setCommands();
     await this.send({ text: `✅ Paired with Jig.\n\n${this.help()}` }, { thread: await this.threadFor() });
@@ -1190,8 +1195,8 @@ export class PhoneService {
   private async toChat(
     sessionId: string,
     text: string,
-    replyTo: number | undefined,
-    here: number | undefined,
+    replyTo: MessageRef | undefined,
+    here: Place | undefined,
   ): Promise<void> {
     const snapshot = await this.deps.chats.snapshot(sessionId).catch(() => undefined);
     if (!snapshot) {
@@ -1237,15 +1242,12 @@ export class PhoneService {
     }
   }
 
-  private async handleTap(tap: NonNullable<TelegramUpdate["callback_query"]>): Promise<void> {
-    const answer = (text?: string) =>
-      this.api
-        ?.call("answerCallbackQuery", { callback_query_id: tap.id, ...(text ? { text } : {}) })
-        .catch(() => undefined);
+  private async handleTap(tap: Extract<PhoneUpdate, { kind: "tap" }>): Promise<void> {
+    const answer = (text?: string) => this.channel?.answerTap(tap.id, text).catch(() => undefined);
     const owner = this.saved?.owner;
     const parsed = tap.data ? parseTap(tap.data) : undefined;
     if (!owner || tap.from.id !== owner.chatId || !parsed) return void (await answer());
-    const here = tap.message?.is_topic_message ? tap.message.message_thread_id : undefined;
+    const here = tap.place;
     if (parsed.kind === "open") {
       await answer();
       return this.openRoom(parsed.sessionId, here);

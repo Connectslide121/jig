@@ -3,6 +3,7 @@ import { readFile, rm, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { powerMonitor, powerSaveBlocker, safeStorage } from "electron";
 import { z } from "zod";
+import type { PhoneChannelId } from "../../shared/phone";
 import { addonService } from "../addons";
 import { mainWindow } from "../appWindows";
 import { chatPageScreenshot } from "../browser";
@@ -21,17 +22,35 @@ import { telegramApi } from "./telegram";
 
 const log = logger("phone");
 
-const SavedFile = z.object({
-  /** The bot's token, encrypted with the OS (safeStorage), base64. */
+/** A message's or place's id: Telegram's numbers, Teams' strings. */
+const Ref = z.union([z.number(), z.string()]);
+
+/** One channel's saved state (D-377). */
+const SavedChannel = z.object({
+  /** The channel's credential (the bot's token, the relay's key), encrypted with the OS (safeStorage), base64. */
   token: z.string().optional(),
   bot: z.string().default(""),
-  owner: z.object({ chatId: z.number(), name: z.string() }).optional(),
-  replies: z.array(z.tuple([z.number(), z.string()])).optional(),
-  targets: z.array(z.tuple([z.number(), z.string()])).optional(),
-  topics: z
-    .object({ jig: z.number().optional(), projects: z.record(z.string(), z.number()).optional() })
-    .optional(),
+  owner: z.object({ chatId: Ref, name: z.string() }).optional(),
+  replies: z.array(z.tuple([Ref, z.string()])).optional(),
+  targets: z.array(z.tuple([Ref, z.string()])).optional(),
+  topics: z.object({ jig: Ref.optional(), projects: z.record(z.string(), Ref).optional() }).optional(),
+  rooms: z.record(z.string(), Ref).optional(),
 });
+
+/** `phone.json`: each channel's state apart; the flat file from before D-377 is Telegram's. */
+const SavedFile = SavedChannel.partial().extend({
+  telegram: SavedChannel.optional(),
+  teams: SavedChannel.optional(),
+});
+type Channels = Partial<Record<PhoneChannelId, z.infer<typeof SavedChannel>>>;
+
+function channelsOf(file: z.infer<typeof SavedFile>): Channels {
+  const { telegram, teams, ...flat } = file;
+  return {
+    ...(telegram ? { telegram } : flat.token ? { telegram: { ...flat, bot: flat.bot ?? "" } } : {}),
+    ...(teams ? { teams } : {}),
+  };
+}
 
 /** Like Microsoft's sign-in (D-232): only with the OS's own encryption, never as plain text. */
 function canEncrypt(): boolean {
@@ -41,15 +60,19 @@ function canEncrypt(): boolean {
   );
 }
 
-/** `phone.json`: the token encrypted; without the OS's encryption nothing is written (kept until Jig closes). */
+/**
+ * `phone.json`: each channel's state, its credential encrypted; without the OS's encryption nothing
+ * is written (kept until Jig closes). Forgetting a channel keeps the other's; the file goes with the last.
+ */
 function phoneStore() {
   const remembered = canEncrypt();
+  const read = async () => channelsOf(await readJson(paths.phone(), SavedFile));
   return {
     remembered,
-    async load(): Promise<SavedPhone | undefined> {
+    async load(channel: PhoneChannelId = "telegram"): Promise<SavedPhone | undefined> {
       if (!remembered) return undefined;
-      const saved = await readJson(paths.phone(), SavedFile);
-      if (!saved.token) return undefined;
+      const saved = (await read())[channel];
+      if (!saved?.token) return undefined;
       try {
         const token = safeStorage.decryptString(Buffer.from(saved.token, "base64"));
         const { token: _, ...rest } = saved;
@@ -58,13 +81,17 @@ function phoneStore() {
         return undefined;
       }
     },
-    async save(saved: SavedPhone | undefined): Promise<void> {
-      if (!saved) return rm(paths.phone(), { force: true });
-      if (!remembered) return;
-      await writeJson(paths.phone(), {
-        ...saved,
-        token: safeStorage.encryptString(saved.token).toString("base64"),
-      });
+    async save(saved: SavedPhone | undefined, channel: PhoneChannelId = "telegram"): Promise<void> {
+      if (!remembered && saved) return;
+      const { [channel]: _old, ...others } = remembered ? await read().catch(() => ({}) as Channels) : {};
+      const next: Channels = saved
+        ? {
+            ...others,
+            [channel]: { ...saved, token: safeStorage.encryptString(saved.token).toString("base64") },
+          }
+        : others;
+      if (!Object.keys(next).length) return rm(paths.phone(), { force: true });
+      await writeJson(paths.phone(), next);
     },
   };
 }

@@ -2,13 +2,16 @@ import { maskSecrets } from "@jig/learning";
 import type { ChatItem, PermissionDecision, PermissionRequest, SessionMeta } from "../../shared/engine";
 
 /**
- * What Jig says to your phone and how it reads what you send back (D-350). Pure: the service sends
- * these through Telegram. Text is Telegram HTML; everything from a chat is masked and escaped.
+ * What Jig says to your phone and how it reads what you send back (D-350). Pure and the same for
+ * every channel (D-377): text is Jig's phone markup, a small HTML subset (`<b>`, `<i>`, `<code>`,
+ * `<pre>`, `<a href>`, everything else escaped; Telegram's HTML, which Teams also renders), and
+ * buttons are rows of text + data. Each channel renders them its way. Everything from a chat is
+ * masked and escaped.
  */
 
 export interface Button {
   text: string;
-  /** Telegram allows at most 64 bytes. */
+  /** At most 64 bytes (Telegram's limit, kept for every channel). */
   data: string;
 }
 
@@ -41,7 +44,10 @@ export function excerpt(text: string, max = MAX_EXCERPT): string {
   return escapeHtml(cut);
 }
 
-/** Claude's Markdown as Telegram HTML: code blocks, inline code, bold, italics, headings and links. */
+/**
+ * Claude's Markdown as the phone markup (Telegram's HTML subset, D-377): code blocks, inline code,
+ * bold, italics, headings and links.
+ */
 export function toTelegramHtml(markdown: string): string {
   const parts = maskSecrets(markdown).split(/(```[^\n]*\n[\s\S]*?(?:```|$))/g);
   return parts

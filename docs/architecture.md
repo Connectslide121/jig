@@ -120,7 +120,7 @@ Everything Jig stores lives under **`~/.jig/`** (`JIG_HOME` overrides it; tests 
 | `work/` | builder worktrees (§9) |
 | `activity/YYYY-MM-DD.jsonl` | the local activity log (§10) |
 | `suggestions.json` | the suggestion inbox and the user's past answers |
-| `phone.json` | your phone's Telegram bot: its token encrypted with the OS, and who it's paired with (D-350) |
+| `phone.json` | your phone's bot, per channel (`telegram`, `teams`; D-377): its credential encrypted with the OS, and who it's paired with (D-350) |
 | `logs/` | host logs |
 | `window-state.json`, `builds.json`, `scripts.json`, `addons-state.json`, `addon-data/`, `cache/`, `app-builds/`, `launcher/` | see `docs/reference/state.md` |
 
@@ -719,11 +719,17 @@ notes, `jig_knowledge_read` reads a document. The renderer shows them on the pro
 
 ## Jig on your phone (D-350)
 
-`main/phone/` connects Jig to a Telegram bot of the user's own. `telegram.ts` is the Bot API client
-(POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API` only with the fake engine);
-`messages.ts` is pure (what to send for a status change or a permission card, buttons, and the
-`PermissionDecision` a tap or reply gives); `service.ts` (`PhoneService`, injected dependencies,
-unit-tested) pairs by a code, polls, routes replies to chats and edits answered messages. The poll
+`main/phone/` connects Jig to a bot of the user's own through a `PhoneChannel` (`channel.ts`,
+D-377): identify, poll + read (the channel's updates as Jig's `PhoneUpdate`s), send, edit, typing,
+answer a tap, places (a project's, a chat's room), commands and voice, with failures as a
+`ChannelError` reason and capabilities in `PHONE_CHANNEL_CAPABILITIES` (`shared/phone.ts`).
+`phone.channel` picks the channel (Telegram, or Teams once phase 27 builds it); one at a time.
+`telegram.ts` is the Bot API client (POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API`
+only with the fake engine) and `TelegramChannel`, which renders Jig's messages (a small HTML subset
+and button rows) as Telegram HTML and inline keyboards; `messages.ts` is pure (what to send for a
+status change or a permission card, buttons, and the `PermissionDecision` a tap or reply gives);
+`service.ts` (`PhoneService`, injected dependencies, unit-tested) uses only the interface: it pairs
+by a code, polls, routes replies to chats and edits answered messages. The poll
 backs off after failures (up to a minute) with the "can't be reached" warning; `wake()` ends the
 current poll or pause and asks again at once, and any call that gets through (a send, `getMe`)
 clears that warning (never the 401/409 ones). `index.ts`

@@ -2,15 +2,16 @@ import type { ChatItem } from "../../shared/engine";
 import { escapeHtml, toTelegramHtml } from "./messages";
 
 /**
- * A chat's room on your phone (D-350): its replies as Telegram HTML, cut into messages Telegram
- * takes, and its tool steps as short lines. Pure: the service sends and edits them.
+ * A chat's room on your phone (D-350): its replies as the phone markup (D-377), cut into messages
+ * every channel takes, and its tool steps as short lines. Pure: the service sends and edits them
+ * through the channel.
  */
 
-/** Jig's own answer on the phone, marked as AI, its Markdown as Telegram HTML (the end kept when long). */
+/** Jig's own answer on the phone, marked as AI, its Markdown as the phone markup (the end kept when long). */
 export const conciergeReply = (text: string, max = 3500) =>
   `🤖 <b>Jig</b> · AI\n\n${toTelegramHtml(text.length > max ? `…${text.slice(-(max - 1))}` : text)}`;
 
-/** Telegram allows 4,096 characters per message; HTML tags count, so leave room. */
+/** Telegram allows 4,096 characters per message (Teams far more); HTML tags count, so leave room. */
 export const ROOM_CHUNK = 3500;
 
 /**

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { SessionMeta } from "../../shared/engine";
 import { JigError } from "../../shared/ipc";
+import type { PhoneChannelId } from "../../shared/phone";
 import { getConfig } from "../config";
 import { jigToolServer } from "../engine/jigTools";
 import type { ChatTool } from "../engine/types";
@@ -16,7 +17,9 @@ import { lastReply } from "./messages";
  * outside a chat's messages. It has Jig's tools (projects, queues, boards…) and the chat tools below,
  * and none of Claude Code's own (no files, no shell): work goes to a chat it starts in a project.
  */
-export const CONCIERGE_PROMPT = `You are Jig itself, the user's desktop workbench around Claude Code, answering them on their phone (a Telegram bot) while they're away from the computer.
+export const conciergePrompt = (
+  channel: PhoneChannelId,
+) => `You are Jig itself, the user's desktop workbench around Claude Code, answering them on their phone (a ${channel === "teams" ? "Teams" : "Telegram"} bot) while they're away from the computer.
 
 - Answer briefly: a few short lines of plain text, no tables or headings. The phone shows your last reply of each turn.
 - You can't read or change files or run commands. To get work done, start a chat in the right project with jig_chat_start and a clear prompt (what to look at, what to produce). New chats start in plan mode: when the plan is ready the user approves it on their phone. Use mode "default" only when the user clearly asks for the work to be done directly; the chat still asks before it changes anything.
@@ -144,7 +147,7 @@ export const conciergeTools: ChatTool[] = [
 /** Registers the kind: its prompt and tools, no built-in tools but the tool search. */
 export function registerConcierge(): void {
   registerSessionKind("concierge", {
-    appendSystemPrompt: () => CONCIERGE_PROMPT,
+    appendSystemPrompt: () => conciergePrompt(getConfig().phone.channel),
     toolServers: (meta) => {
       const jig = jigToolServer(meta);
       return { jig: { ...jig, tools: [...jig.tools, ...conciergeTools] } };

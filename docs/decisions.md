@@ -6215,3 +6215,36 @@ stopped for good.
   reached"; a waiting task has a clock mark left of its Running badge (the quiet-mark slot, nothing
   moves) and the dashboard's Now row says "Resumes at 14:00".
 
+## D-377: Phone channels: one PhoneChannel interface, messages in a small HTML subset
+
+- Status: accepted. Phase 27 session 1 (the groundwork for D-370's Teams channel).
+- **Who:** Jon chose one channel at a time and a shared phone product behind a `PhoneChannel`
+  interface (D-370). How it is cut: Claude, on my own.
+- **The interface** (`main/phone/channel.ts`): who the bot is (`identify`), long polling (`poll` +
+  `read`, which turns the channel's update into Jig's `PhoneUpdate`: a message with sender, chat,
+  place, reply-to, text or voice, or a tap), `send` (text, buttons, silent, mention, reply-to,
+  picture), `edit`, `typing`, `answerTap`, places (`createPlace` for Jig / a project / a chat with an
+  optional parent, `renamePlace`, `deletePlace`), and optional `setCommands`, `sendVoice`,
+  `download`. Failures are a `ChannelError` with a reason (`auth`, `conflict`, `unreachable`,
+  `gone`, `unchanged`) and the user's words; the service decides what to do with each. What a
+  channel can do is `PHONE_CHANNEL_CAPABILITIES` in `shared/phone.ts` (voice, silent, edits, places,
+  commands), like `ENGINE_CAPABILITIES`; Telegram's places also depend on its bot having topics on.
+  `PhoneService`, `mirror.ts` and `concierge.ts` use only this; `TelegramChannel` (`telegram.ts`)
+  holds everything Telegram-specific (topic colours, the caption limit, `getUpdates`' offset, the
+  "thread not found" and "not modified" errors).
+- **Messages stay a small HTML subset, not Markdown** (a change from the plan's "Markdown text +
+  button rows"): `messages.ts` and `mirror.ts` already mask and escape everything from a chat and
+  produce `<b>`, `<i>`, `<code>`, `<pre>`, `<a href>`; Teams renders that same subset in bot
+  messages, so a Teams channel needs at most small changes and the masking/escaping stays in one
+  pure place. Markdown would have needed a second escaping layer per channel, and the existing
+  tests (which had to pass unchanged) assert this markup. Buttons stay rows of text + data
+  (≤ 64 bytes, Telegram's limit for all), which Teams turns into Adaptive Card actions.
+- **Ids are the channel's own:** message refs and places are `number | string` (Telegram's
+  numbers, Teams' strings), so `phone.json` keeps Telegram's shape and old files stay valid.
+- **Saved state per channel:** `phone.json` is `{ telegram?, teams? }`; the flat file from before is
+  read as Telegram's. `phone.channel` ("telegram" default, "teams"; protected with the rest of
+  `phone.*`) picks one; switching disconnects the other (its goodbye message, its entry removed)
+  and reads the new one's. Until the Teams channel exists, picking it leaves the phone off and
+  Connect says Teams isn't in this version yet.
+- Found on the way: `rooms` was never read back from `phone.json` (the schema didn't list it), so
+  rooms were forgotten on restart; the per-channel schema keeps it.

@@ -1,6 +1,6 @@
 # Phase 27 — Jig on your phone through Teams
 
-Status: planned (D-370). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+Status: in progress (D-370): session 1, the channel layer, done (D-377). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -75,19 +75,24 @@ Telegram token (safeStorage or memory, never the renderer, logs or add-ons).
 Each session is one queued task: it reads this file, `26-phone.md`, D-350 and D-370 first, keeps
 Telegram working, and ticks its items here.
 
-### 1. The channel layer (no behaviour change)
-- [ ] `PhoneChannel` interface in `main/phone/channel.ts`: who's paired, send (text, buttons,
+### 1. The channel layer (no behaviour change) — done (D-377)
+- [x] `PhoneChannel` interface in `main/phone/channel.ts`: who's paired, send (text, buttons,
       silent, mention), edit, photo, voice (optional), receive (Jig's own `PhoneUpdate`: text, tap,
       voice, with sender, place and reply-to), places (Telegram: topics; Teams: channels and threads;
       "create a place for a project / for a chat", rename, delete), command menu (optional).
       Capabilities as flags (voice, silent, edits, places), like `ENGINE_CAPABILITIES`.
-- [ ] Telegram becomes `TelegramChannel`; `PhoneService`, `mirror.ts` and `concierge.ts` only use the
-      interface. `messages.ts` builds channel-neutral messages (Markdown text + button rows); each
-      channel renders them (Telegram HTML + inline keyboards).
-- [ ] `phone.channel` setting ("telegram" default, "teams"; protected; `SETTINGS_GUIDE`,
-      `docs/reference/state.md`); `phone.json` keeps each channel's saved state apart; switching
-      disconnects the other.
-- [ ] Existing unit tests and `e2e/phone.spec.ts` pass unchanged.
+- [x] Telegram becomes `TelegramChannel`; `PhoneService`, `mirror.ts` and `concierge.ts` only use the
+      interface. `messages.ts` builds channel-neutral messages (button rows and, instead of
+      Markdown, the small HTML subset they already used: escaped and masked in one place, rendered
+      by Teams too; D-377); each channel renders them (Telegram: HTML as is + inline keyboards).
+- [x] `phone.channel` setting ("telegram" default, "teams"; protected; `SETTINGS_GUIDE`,
+      `docs/reference/state.md`); `phone.json` keeps each channel's saved state apart
+      (`{ telegram?, teams? }`, the old flat file read as Telegram's); switching disconnects the
+      other. Until session 3, picking Teams leaves the phone off ("not in this version yet").
+- [x] Existing unit tests and `e2e/phone.spec.ts` pass unchanged; new `telegram.test.ts` (reading
+      updates, offsets, error reasons, rendering) and `switch.test.ts` (switching channels).
+- Found on the way: rooms weren't read back from `phone.json` after a restart (the schema lacked
+  `rooms`); fixed with the per-channel schema.
 
 ### 2. The relay, and the tenant checks
 - [ ] Verify Microsoft's current docs (single-tenant bots, Bot Framework token validation, proactive

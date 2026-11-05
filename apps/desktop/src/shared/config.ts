@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AI_FEATURE_IDS, AI_FEATURES, type AiFeatureId } from "./aiFeatures";
 import { CHAT_PROVIDERS, CODEX_EFFORT_LEVELS, LIMIT_POLICIES } from "./engine";
+import { PHONE_CHANNELS } from "./phone";
 import { AI_PROVIDERS, type AiProvider } from "./providers";
 
 /** One AI feature's provider and model (D-297); the provider defaults to the feature's own. */
@@ -266,9 +267,14 @@ export const ConfigSchema = z.object({
       desktop: z.boolean().default(true),
     })
     .prefault({}),
-  /** Jig on your phone through your own Telegram bot (D-350); the bot itself is set up in Settings → Phone. */
+  /** Jig on your phone through your own bot (D-350, D-370); the bot itself is set up in Settings → Phone. */
   phone: z
     .object({
+      /**
+       * Where (D-377): your Telegram bot, or your Teams bot through its relay. One at a time: switching
+       * disconnects the other.
+       */
+      channel: z.enum(PHONE_CHANNELS).default("telegram"),
       /** Send messages to your phone (the bot stays paired when it's off). */
       enabled: z.boolean().default(false),
       /** `away`: only while this computer has been idle for `awayMinutes` or is locked; `always`. */
