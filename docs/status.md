@@ -732,6 +732,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.13.0 being prepared (2026-11-05): Jig 0.13.0 adds parked prompts and a Send menu, a parked pool and Don't ask mode for queued tasks, and settings pages in Go to; it also uses far less memory by letting idle chats and closed transcripts go. Publication not yet verified.
+
 Jig 0.12.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.12.0),
 source/tag `ea06e509e878523cf93b8c5e48890891c20a7851`. Installer: 389,003,721 bytes;
 SHA-256 `8673811a31abb7f9612d8bb348595bd26524d9dc273ec420901162319c124b8a`.
