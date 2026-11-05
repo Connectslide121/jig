@@ -683,6 +683,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.12.0 being prepared (2026-11-05): Jig 0.12.0 puts Jig on your phone through a Telegram bot of your own (requests with buttons, chats as live rooms, Jig itself to ask, voice messages and screenshots, a switch at the top right), and the task queue gains a summary strip that adds up, run reports, provider columns, revised reports and marking failed tasks done. Publication not yet verified.
+
 Jig 0.11.0 published (2026-11-04): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.11.0),
 source/tag `3e2bb4b815957ca5f208597fbc5606f065fa36fd`. Installer: 388,962,178 bytes;
 SHA-256 `6b83ea698d67c2b3466e3e4f9d874fa346814b66579b721c64cecace163e72f7`.
