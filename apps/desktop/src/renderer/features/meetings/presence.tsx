@@ -94,6 +94,12 @@ const DOT: Record<PresenceKind, string> = {
   offline: "border-2 border-hint",
 };
 const GLYPH: Partial<Record<PresenceKind, typeof Check>> = { available: Check, dnd: Minus, away: Clock3 };
+/**
+ * The glyph fills the dot and is inset by its viewBox, not by layout: a smaller icon centred with flex
+ * lands half a pixel off at display scaling. The check's strokes sit 0.5 high in lucide's box, so its
+ * view moves up to centre it.
+ */
+const VIEW: Partial<Record<PresenceKind, string>> = { available: "-5 -5.5 34 34" };
 
 /**
  * A person's Teams status as a dot on the bottom right of their avatar (which keeps its size), like
@@ -130,7 +136,14 @@ export function PresenceDot({
         ring,
       )}
     >
-      {Glyph && !small && <Glyph aria-hidden strokeWidth={3.5} className="size-2.5 text-surface" />}
+      {Glyph && !small && (
+        <Glyph
+          aria-hidden
+          viewBox={VIEW[status.kind] ?? "-5 -5 34 34"}
+          strokeWidth={3.5}
+          className="size-full text-surface"
+        />
+      )}
     </span>
   );
 }
