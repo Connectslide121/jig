@@ -405,6 +405,13 @@ itself. Covered by `e2e/browser-reveal.spec.ts` and the `revealAction` unit test
 your machine: a queue chat browsing while you read Pipelines in the browser's sidebar (badge, no
 switch), and while you type in another chat (switches).
 
+Terminals stay out of your way too (2026-11-05, D-349): a terminal a chat starts (`jig_terminal_run`)
+no longer switches its panel while you work on another tab of it (e.g. Builds or Pipelines in the
+bottom panel); the Terminals tab gets a badge with the number of terminals started, cleared when you
+show it, and the newest one is selected. Elsewhere it still shows itself; terminals you start yourself
+always do. Covered by `e2e/terminal-reveal.spec.ts`. Needs testing on your machine: a queue chat
+starting a dev server while you read another tab of the bottom panel.
+
 Claude's browser, one page per chat (2026-11-04, D-320): every chat that uses Claude's browser now
 gets its own page, so two chats (a task queue chat and yours) can browse at once without one's clicks,
 element numbers or navigation landing in the other's page; jig-tester helpers use their chat's page.

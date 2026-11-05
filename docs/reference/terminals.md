@@ -64,7 +64,8 @@ and cursor codes removed, at most 12 000 characters). Code: `features/terminals/
 Chats get tools on the `jig` MCP server (`main/terminals/claudeTools.ts`):
 - `jig_terminal_run { command, title?, cwd? }` starts a long-running command (dev server, watcher) in a
   visible terminal. The terminal is titled "Claude: …", tagged with the chat (`TerminalInfo.sessionId`),
-  revealed in the panel (`terminals.reveal`), and returns its first output. Its folder must be inside
+  revealed in the panel (`terminals.reveal`; while you work on another tab of the Terminals view's
+  panel, that tab gets a badge instead of switching, D-349), and returns its first output. Its folder must be inside
   the project.
 - `jig_terminal_read { id, lines? }` (read-only, no prompt) returns the last lines of a terminal of the
   project, plain text: Claude's own terminals, scripts, or your dev server.

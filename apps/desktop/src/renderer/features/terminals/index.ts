@@ -2,9 +2,10 @@ import { KeyRound, SquareTerminal } from "lucide-react";
 import { useEffect } from "react";
 import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerStatusItem, registerView } from "../../workbench/registry";
+import { revealView, useClearViewBadge } from "../../workbench/revealView";
 import { notify } from "../../workbench/toasts";
 import { RunningScripts } from "../scripts/RunningScripts";
-import { claudeLogin, codexLogin, newTerminal, showTerminal } from "./actions";
+import { claudeLogin, codexLogin, newTerminal, showTerminal, TERMINALS_VIEW } from "./actions";
 import { askClaudeAboutTerminal, newlyFailed } from "./askClaude";
 import { loadShells } from "./shells";
 import { routeTerminalData, setTerminals, useTerminals } from "./store";
@@ -12,7 +13,7 @@ import { TerminalsHeaderActions, TerminalsView } from "./TerminalsView";
 
 export function registerTerminals(): void {
   registerView({
-    id: "jig.terminals",
+    id: TERMINALS_VIEW,
     title: "Terminals",
     icon: SquareTerminal,
     defaultRegion: "bottom",
@@ -74,7 +75,13 @@ export function useTerminalsSync(): void {
       });
   });
   useHostEvent("terminals.data", ({ id, data }) => routeTerminalData(id, data));
-  useHostEvent("terminals.reveal", ({ id }) => showTerminal(id));
+  // A chat started a terminal (jig_terminal_run): it shows itself, or badges the Terminals tab while
+  // you work on another tab of its panel (D-349); the new terminal is the one you see when you look.
+  useHostEvent("terminals.reveal", ({ id }) => {
+    useTerminals.setState({ activeId: id });
+    revealView(TERMINALS_VIEW, id);
+  });
+  useClearViewBadge(TERMINALS_VIEW);
   // Claude Code's sign-in ended: say whether it worked (the host closed its terminal if it did).
   useHostEvent("claude.signIn", ({ loggedIn, method }) =>
     notify(

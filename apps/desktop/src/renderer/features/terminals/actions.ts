@@ -4,10 +4,12 @@ import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { useTerminals } from "./store";
 
+export const TERMINALS_VIEW = "jig.terminals";
+
 /** Shows the Terminals view and focuses a terminal. */
 export function showTerminal(id: string): void {
   useTerminals.setState({ activeId: id });
-  workbench.showView("jig.terminals");
+  workbench.showView(TERMINALS_VIEW);
 }
 
 export async function newTerminal(command?: string, title?: string): Promise<void> {

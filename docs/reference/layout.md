@@ -99,7 +99,10 @@ The panel you are working in is `focusedPanel()` / `useFocusedPanel` (`renderer/
 the `data-panel` of the last focus or click (regions, lower halves and main-area panes set it; a chat
 sets `chat`, which counts as none), undefined while Jig's window isn't focused. Jig's own view badges
 go through `setViewBadge(viewId, text?)` (`renderer/workbench/viewBadges.ts`), shown by the same
-`ViewBadge` as add-ons' badges (D-349).
+`ViewBadge` as add-ons' badges (D-349). A view that wants attention on its own (Claude's browser,
+a chat's terminal) calls `revealView(viewId, key)` (`renderer/workbench/revealView.ts`), which shows
+it or badges it by `revealAction`, and mounts `useClearViewBadge(viewId)` once to clear the badge when
+the view is on screen.
 
 ## Registered ids
 

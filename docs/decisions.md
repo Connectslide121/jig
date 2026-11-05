@@ -5413,6 +5413,13 @@ provider, capabilities and Claude as the default still hold.
 - **The badge** is the existing view badge (`ViewBadge`, laid over the icon, no layout shift): Jig's
   own badges live in `workbench/viewBadges.ts` (`setViewBadge`) beside add-ons' `ctx.setBadge`, which
   win when both set one.
+- **Extended to terminals (Jon, 2026-11-05):** a terminal a chat starts (`jig_terminal_run` →
+  `terminals.reveal`) follows the same rule for the Terminals view: the new terminal becomes the
+  selected one, and the view shows itself or badges its tab (counting the terminals started
+  meanwhile). Terminals you start yourself (New terminal, sign-ins, scripts, Show output) still show
+  the view as before: you asked for them. The mechanism is one helper for every view,
+  `revealView(viewId, key)` + `useClearViewBadge(viewId)` (`renderer/workbench/revealView.ts`); a
+  future view that wants attention on its own uses it rather than `workbench.showView`.
 
 ## D-350: Jig on your phone through a Telegram bot of your own
 

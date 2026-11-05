@@ -67,12 +67,7 @@
       "specs": ["ai.spec.ts"]
     },
     {
-      "files": [
-        "apps/desktop/src/main/browser/**",
-        "apps/desktop/src/renderer/features/browser/**",
-        "apps/desktop/src/renderer/workbench/focusedPanel.ts",
-        "apps/desktop/src/renderer/workbench/viewBadges.ts"
-      ],
+      "files": ["apps/desktop/src/main/browser/**", "apps/desktop/src/renderer/features/browser/**"],
       "specs": [
         "browser.spec.ts",
         "browser-reveal.spec.ts",
@@ -81,6 +76,14 @@
         "user-browser.spec.ts",
         "tester.spec.ts"
       ]
+    },
+    {
+      "files": [
+        "apps/desktop/src/renderer/workbench/focusedPanel.ts",
+        "apps/desktop/src/renderer/workbench/viewBadges.ts",
+        "apps/desktop/src/renderer/workbench/revealView.ts"
+      ],
+      "specs": ["browser-reveal.spec.ts", "terminal-reveal.spec.ts"]
     },
     {
       "files": [
@@ -339,7 +342,12 @@
         "apps/desktop/src/shared/terminals.ts",
         "apps/desktop/src/shared/shellNames.ts"
       ],
-      "specs": ["terminals.spec.ts", "terminal-shells.spec.ts", "claude-terminals.spec.ts"]
+      "specs": [
+        "terminals.spec.ts",
+        "terminal-shells.spec.ts",
+        "claude-terminals.spec.ts",
+        "terminal-reveal.spec.ts"
+      ]
     },
     {
       "files": [
