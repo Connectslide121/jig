@@ -338,7 +338,9 @@ describe("SessionManager", () => {
     snap = await m.snapshot(session.id);
     expect(snap.queue.map((q) => q.text)).toEqual(["queued, changed"]);
     expect(snap.parked.map((p) => p.text)).toEqual(["answer first"]);
-    // The turns end; the parked one is still there, and is saved.
+    // The turns end (the slow one is stopped: it streams for 20 s on Windows' coarse timers); the
+    // queued one runs, the parked one is still there, and is saved.
+    await m.interrupt(session.id);
     await until(async () => (await metaOf(m, session.id)).turns === 2);
     await until(async () => (await metaOf(m, session.id)).status === "idle");
     expect((await m.snapshot(session.id)).parked.map((p) => p.text)).toEqual(["answer first"]);
