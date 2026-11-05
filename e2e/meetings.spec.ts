@@ -141,6 +141,12 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await expect(chat.getByTestId("chat-file")).toContainText("Shop spec.docx");
     await picture.click();
     await expect(room.getByTestId("chat-image-viewer")).toBeVisible();
+    // Big enough to look at: the whole window but the dialog's margin.
+    const viewer = await room.getByTestId("chat-image-viewer").boundingBox();
+    const windowSize = await room.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+    expect(viewer!.height).toBeGreaterThan(windowSize.h - 60);
+    expect(viewer!.width).toBeGreaterThan(windowSize.w - 60);
+    await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/picture.png" });
     await room.keyboard.press("Escape");
     await expect(room.getByTestId("chat-image-viewer")).toHaveCount(0);
     await chat.getByTestId("meeting-chat-input").fill("I'll review it today");
@@ -242,8 +248,7 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
         },
       });
     for (let n = 0; n < 30; n++) await say(n);
-    const fromBottom = () =>
-      transcript.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
+    const fromBottom = () => transcript.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight);
     await expect(transcript).toContainText("Line 29 about");
     await expect.poll(fromBottom).toBeLessThan(2);
     const latest = room.getByTestId("meeting-transcript-latest");

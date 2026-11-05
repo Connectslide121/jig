@@ -405,11 +405,12 @@ export function ChatPanel({
           open={Boolean(viewing)}
           onClose={() => setViewing(undefined)}
           title={viewing ? `Picture · ${dayAndTime(viewing.at)}` : "Picture"}
-          width="lg"
+          width="full"
+          column
           testId="chat-image-viewer"
         >
           {viewing && (
-            <div className="h-112">
+            <div className="min-h-0 flex-1">
               <ImagePreview src={viewing.src} alt="Picture from the chat" />
             </div>
           )}

@@ -31,7 +31,8 @@ export function Dialog({
   title: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  width?: "sm" | "md" | "lg" | "xl";
+  /** `full` takes the whole window but its margin, for something to look at (a picture). */
+  width?: "sm" | "md" | "lg" | "xl" | "full";
   /**
    * Lay the content out as a flex column, so a part of it (a list you add to, `min-h-0 flex-1
    * overflow-y-auto`) grows with the dialog up to the window's height and then scrolls on its own.
@@ -100,7 +101,7 @@ export function Dialog({
         }}
         className={cn(
           "jig-modal-panel flex max-h-full w-full flex-col rounded-xl border border-line bg-elevated text-fg shadow-popover outline-none",
-          { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-6xl" }[width],
+          { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-6xl", full: "h-full" }[width],
         )}
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
