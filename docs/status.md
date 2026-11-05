@@ -893,6 +893,8 @@ Get started). When it's downloaded, a toast offers Install and restart, and the 
 shows the progress before Jig starts again. Covered by `e2e/updates.spec.ts` (toasts); the real
 download/visible installer needs a check on an installed build with the next release.
 
+Jig 0.14.0 being prepared (2026-11-05): Jig 0.14.0 adds Microsoft Teams as a phone channel (set up in Settings → Phone), a choice of how far the bottom panel reaches, chats that resume by themselves when a plan limit resets, and never steals focus while you type; Meetings captions and translation are more reliable. Publication not yet verified.
+
 Jig 0.13.0 published (2026-11-05): [GitHub release](https://github.com/Connectslide121/jig/releases/tag/v0.13.0),
 source/tag `58188007d8611b7a9c5bc8ddbc845a09cab0d53e`. Installer: 389,020,068 bytes;
 SHA-256 `abc0a7a49a469bffa78e3f366ddd1b2c02aacfc7423c74c80b3663fc087b4bbf`.
