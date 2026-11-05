@@ -6,7 +6,8 @@
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "relay/*"
   ],
   "engines": {
     "node": ">=22.12"
@@ -15,7 +16,7 @@
     "dev": "npm run dev --workspace @jig/desktop",
     "build": "npm run build --workspace @jig/desktop",
     "start": "npm run start --workspace @jig/desktop",
-    "typecheck": "tsc -p packages/sdk && tsc -p packages/azure && tsc -p packages/themes && tsc -p packages/learning && tsc -p packages/documents && tsc -p apps/desktop/tsconfig.node.json && tsc -p apps/desktop/tsconfig.web.json && tsc -p tsconfig.e2e.json && tsc -p addons",
+    "typecheck": "tsc -p packages/sdk && tsc -p packages/azure && tsc -p packages/themes && tsc -p packages/learning && tsc -p packages/documents && tsc -p apps/desktop/tsconfig.node.json && tsc -p apps/desktop/tsconfig.web.json && tsc -p tsconfig.e2e.json && tsc -p addons && tsc -p relay/teams",
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "vitest run",
@@ -28,6 +29,8 @@
     "e2e": "node scripts/e2e.ts",
     "e2e:changed": "node scripts/e2e-changed.ts",
     "release": "node scripts/release.ts",
+    "relay:build": "npm run build --workspace @jig/teams-relay",
+    "teams:check": "node scripts/teams-check.ts",
     "dist": "npm run build && npm run dist --workspace @jig/desktop"
   },
   "devDependencies": {

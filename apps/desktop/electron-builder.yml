@@ -32,6 +32,9 @@ extraResources:
     to: skills
     filter:
       - "**/*"
+  # The Teams relay's deployment package (D-370), built by dist.mjs (npm run relay:build); setup deploys it.
+  - from: ../../relay/teams/dist/relay.zip
+    to: relay/teams-relay.zip
 npmRebuild: false
 # Generate the update feed; release assets are uploaded explicitly by the agent skill.
 publish:

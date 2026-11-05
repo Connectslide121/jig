@@ -23,6 +23,13 @@ const bin = join(
   ".bin",
   process.platform === "win32" ? "electron-builder.cmd" : "electron-builder",
 );
+// The Teams relay's package goes into resources/relay (D-370): setup deploys it from there.
+const relay = spawnSync("npm", ["run", "relay:build"], {
+  cwd: join(appDir, "..", ".."),
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
+if (relay.status !== 0) process.exit(relay.status ?? 1);
 const result = spawnSync(
   bin,
   [platform, "--publish", "never", ...process.argv.slice(2).filter((a) => a !== "--no-open")],

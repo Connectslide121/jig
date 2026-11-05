@@ -52,6 +52,7 @@ What is inside (`resources/`):
 | `app/dist/` | the built main process, preload, renderer, `tokens.css`, `launcher.mjs` |
 | `app/node_modules/` | runtime dependencies: Agent SDK + this platform's Claude Code binary, node-pty, esbuild, Tailwind, zod, `@jig/*` |
 | `addons/` | the built-in add-ons (Git, Repos, Pipelines, Scripts) |
+| `relay/teams-relay.zip` | the Teams relay's deployment package (D-370), built by `npm run relay:build` before packaging; setup deploys it to your Azure Function |
 
 There is **no asar archive** (D-065): esbuild and Tailwind read files from `node_modules` at runtime
 (add-ons are bundled when they load) and the Claude Code binary must be executable.

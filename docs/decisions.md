@@ -6034,6 +6034,34 @@ choice of Telegram and everything below: Claude, on my own.
   setup window lists every resource and command first, one Create runs them in order (the active
   tenant from the top bar), with a written guide as the fallback. It never
   deletes them by itself; Disconnect says what to remove.
+- **Checked against Microsoft's docs (2026-11-05, phase 27 session 2; the relay's own choices are
+  D-378):**
+  - Multi-tenant bot creation ended after 2025-07-31: single-tenant it is (`MicrosoftAppType`
+    SingleTenant, app id, secret, tenant id). Microsoft says a single-tenant bot can still be
+    installed in any tenant, but RSC needs the app registration in the user's own tenant
+    (`webApplicationInfo.id`; a sideloaded app with another tenant's id is refused), so the app
+    registration stays in the Teams tenant. Whether the Azure Bot resource may sit in a
+    subscription of *another* tenant is not documented (Q&A answers disagree): setup must treat it
+    as unsupported until the tenant check's optional step proves it.
+  - The relay checks the JWT as Microsoft lists it: issuer `https://api.botframework.com` even for
+    single-tenant bots, keys from `login.botframework.com`; outgoing tokens come from the bot's own
+    tenant (`login.microsoftonline.com/<tenant>`), not `botframework.com`.
+  - Proactive messages: a new channel thread is `POST v3/conversations` with `isGroup`,
+    `channelData.channel.id` and the activity; replies go to `<channel id>;messageid=<root id>`;
+    the 1:1 chat can be opened with the user's id once they have the app (personal scope). Save
+    each conversation's `serviceUrl` from its activities; `smba.trafficmanager.net/teams/` is only
+    the fallback.
+  - RSC `Channel.Create.Group` exists (app-only, a team owner consents once when adding the app);
+    renaming needs `ChannelSettings.ReadWrite.Group` too. Whether owners may consent is a tenant
+    setting (since 2024 Teams' own RSC setting, earlier Entra's group-owner consent) and the app
+    permission policy: the tenant check finds out.
+  - Cards are Adaptive Card **1.5** (Teams renders up to 1.6, mobile included; later versions may
+    not render on phones), with `Action.Submit`; no `isEnabled`, no positive/destructive styles.
+  - Pictures go inline as `data:` URLs (≤ 1 MB, ≤ 1024 × 1024, PNG/JPEG; documented, marked preview).
+  - Flex Consumption is GA, Linux, Node **22** or 24 (not 20), not in every region (`az functionapp
+    list-flexconsumption-locations`), deployed only as a package (`config-zip`), HTTP answers within
+    230 s (a 25 s long poll is fine). Table storage has no expiry: the relay prunes itself.
+  - The Bot Framework SDK is archived (support ended 2025-12-31): the relay doesn't use it.
 
 ## D-371: Claude tools for Pipelines and Repos: read-only, never start a run
 
@@ -6248,3 +6276,45 @@ stopped for good.
   Connect says Teams isn't in this version yet.
 - Found on the way: `rooms` was never read back from `phone.json` (the schema didn't list it), so
   rooms were forgotten on restart; the per-channel schema keeps it.
+
+## D-378: Teams relay: plain fetch, what it keeps, pairing and the tenant check
+
+- Status: accepted (phase 27 session 2; nothing deployed yet).
+- **Who:** Claude, on my own, building D-370's relay from the queued task (Jon: "never create Azure
+  resources or deploy in this task").
+- **No Bot Framework SDK.** It was archived and Microsoft stopped supporting it on 2025-12-31; the
+  successors (Teams SDK, M365 Agents SDK) bring a whole app framework for four REST calls. The relay
+  (`relay/teams/`) talks to Microsoft with `fetch`: client-credential tokens from the bot's own
+  tenant (`login.microsoftonline.com/<tenant>`, scopes `api.botframework.com/.default` and
+  `graph.microsoft.com/.default`), the Bot Connector's `v3/conversations` calls, and Graph's
+  channel calls. The incoming JWT is checked by hand with `node:crypto`, every step Microsoft's
+  page lists: RS256, issuer `https://api.botframework.com` (also for single-tenant bots), audience
+  the app id, 5 minutes of skew, a key from the OpenID metadata (cached, refreshed every 12 h and
+  once for an unknown key, at most every 5 minutes), the key's endorsement of `msteams`, and the
+  `serviceurl` claim equal to the activity's. A failure answers 403.
+- **One bundled file.** esbuild bundles the relay with `@azure/functions` and `@azure/data-tables`
+  into one CommonJS `index.js` (zip ~140 KB, no node_modules, no remote build); Flex Consumption
+  runs the zip as deployed (`az functionapp deployment source config-zip`). The installer carries it
+  in `resources/relay/teams-relay.zip`.
+- **What it keeps.** Activities only from the bot's own tenant. Before pairing, only a 6-digit code
+  written in a 1:1 chat; once paired, only the paired account (Entra object id + tenant); the bot's
+  install and channel events always (no text, and they tell Jig the team and channels). Kept
+  trimmed (no attachment contents, text cut at 16 000 characters) in one table of the Function's
+  storage account. Table storage has no expiry of its own, so `after` hides anything older than 24 h,
+  an hourly timer deletes it, and `GET /api/updates?after=n` deletes what Jig confirmed (≤ n).
+  Cursors come from a counter row advanced with its ETag, so instances never share one. Records:
+  the pairing, the 1:1 chat per account, the team (with its Microsoft 365 group id for Graph) and
+  its channels.
+- **Pairing is Jig's call.** The relay doesn't know the code: Jig reads the code from the updates
+  and calls `PUT /api/pairing` with the sender's object id (the relay then forgets the other
+  accounts' 1:1 chats); `DELETE /api/pairing` is Disconnect (forgets the pairing, 1:1 chats and
+  every waiting update). An endpoint the plan didn't list.
+- **Channels with RSC** `Channel.Create.Group` (make) and `ChannelSettings.ReadWrite.Group`
+  (rename); `GET /api/health` probes the grant by listing the team's channels (403 = not granted),
+  cached 5 minutes, and a 403 from making a channel answers `rsc_missing`, so Jig falls back to
+  General threads (D-370).
+- **The tenant check** is a tab-only package (`npm run teams:check -- package --app-id …`, into
+  `.tmp/teams-check/`) with the same RSC request, tied to an app registration Jon makes himself:
+  RSC needs `webApplicationInfo.id` to be an app registered in the user's own tenant, so a made-up
+  id would not show what the real bot meets. `teams:check -- prove` then makes and renames a
+  channel with that app's own token, the same call the relay makes. Instructions in the plan.

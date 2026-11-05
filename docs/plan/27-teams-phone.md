@@ -1,6 +1,7 @@
 # Phase 27 — Jig on your phone through Teams
 
-Status: in progress (D-370): session 1, the channel layer, done (D-377). Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
+Status: in progress (D-370): session 1, the channel layer, done (D-377); session 2, the relay, done
+(D-378), its tenant check waiting for Jon. Asked for by Jon (2026-11-05), happy with the Telegram bot (phase 26): "can
 we do a similar thing with Teams? so I can communicate through Teams?". His choices: a real bot with
 a small relay (so Jig's messages buzz the phone like a colleague's), Telegram **or** Teams ("one or
 the other"), Jig creates the Azure resources ("you have access"), and "a whole system … where i can
@@ -24,10 +25,24 @@ everything phase 26 does works in Teams:
 - Teams notifies only of messages someone else posts: Jig's Graph sign-in (Meetings) posts as you,
   so the phone channel needs a bot identity (D-370).
 - A bot can't poll: Microsoft POSTs every activity to the bot's public endpoint. Hence the relay.
-- New Azure bots are single-tenant: app registration in the tenant where you use Teams.
-- Not yet known, checked in session 2 with a throwaway test: whether members may create teams, and
-  whether team owners may grant an app resource-specific consent (`Channel.Create.Group`) in that
-  tenant. Without RSC, rooms fall back to threads in the team's General channel.
+- New Azure bots are single-tenant (multi-tenant creation ended after 2025-07-31): app registration
+  in the tenant where you use Teams. RSC insists on it: a sideloaded app's `webApplicationInfo.id`
+  must be an app registered in the user's own tenant.
+- Not yet known, checked by Jon with the tenant check below: whether members may register apps and
+  create teams, whether team owners may grant an app resource-specific consent
+  (`Channel.Create.Group`, `ChannelSettings.ReadWrite.Group`) in that tenant, and (optional step)
+  whether the Azure Bot resource may live in a subscription of another tenant than its app
+  registration (not documented). Without RSC, rooms fall back to threads in the team's General
+  channel.
+
+**Checked in Microsoft's docs (2026-11-05, session 2; details in D-370):** the relay validates
+Bot Framework's JWT (issuer `https://api.botframework.com` also for single-tenant bots) and takes
+its own tokens from the bot's tenant; new channel threads are `POST v3/conversations` with
+`isGroup` + `channelData.channel.id`, replies go to `<channel>;messageid=<root>`; cards are Adaptive
+Card **1.5** (Teams renders ≤ 1.6, phones included) with `Action.Submit`; pictures go inline as
+`data:` URLs (≤ 1 MB, ≤ 1024²); Flex Consumption runs Node **22**/24, only in some regions, deployed
+with `config-zip`; Table storage has no expiry (the relay prunes); the Bot Framework SDK is archived
+(the relay uses `fetch`, D-378).
 
 ## How it fits together
 
@@ -52,7 +67,8 @@ Teams (phone) ⇄ Bot Framework ⇄ relay (Azure Function, yours) ⇄ Jig (long 
 - Writing in a chat's thread goes to that chat; in a project channel's new post, to Jig itself with
   that project preset; in the 1:1 chat, to Jig itself. Same rules as phase 26b's table.
 
-**Relay** (`relay/teams/`, TypeScript, Azure Functions v4 Node, Flex Consumption):
+**Relay** (`relay/teams/`, TypeScript, Azure Functions v4 Node 22, Flex Consumption; D-378; the
+contract with Jig is `relay/teams/src/protocol.ts`):
 
 - `POST /api/messages`: Bot Framework endpoint. Validates the JWT (Bot Framework OpenID metadata,
   issuer, audience = the bot's app id, signing keys cached); once paired, drops anything not from the
@@ -63,7 +79,12 @@ Teams (phone) ⇄ Bot Framework ⇄ relay (Azure Function, yours) ⇄ Jig (long 
 - `POST /api/send`, `PUT /api/send/<id>`: send or update an activity as the bot (text, Adaptive
   Card, image, a new thread in a channel or a reply in one), token from the bot's app credentials.
 - `POST /api/channels`: create or rename a channel through Graph with the app's RSC token for the
-  team. `GET /api/health`: version, conversations known, RSC granted.
+  team. `GET /api/health`: version, paired, 1:1 chat and team known, channels, RSC granted.
+- `PUT /api/pairing` (the account that sent the code; the relay doesn't know the code, Jig does),
+  `DELETE /api/pairing` (Disconnect: forgets the pairing, 1:1 chats and waiting updates).
+- Settings (written by setup): `MicrosoftAppId`, `MicrosoftAppPassword`, `MicrosoftAppTenantId`,
+  `JIG_RELAY_KEY` (≥ 32 characters), `JIG_RELAY_STORAGE` (else `AzureWebJobsStorage`); without
+  them every endpoint answers 503 `not_configured` naming what's missing.
 - No other state, no logs of message text. The bot's client secret only in the Function's settings.
 
 **Jig**: a `PhoneChannel` interface between `PhoneService` and the transport, a Teams channel that
@@ -94,28 +115,72 @@ Telegram working, and ticks its items here.
 - Found on the way: rooms weren't read back from `phone.json` after a restart (the schema lacked
   `rooms`); fixed with the per-channel schema.
 
-### 2. The relay, and the tenant checks
-- [ ] Verify Microsoft's current docs (single-tenant bots, Bot Framework token validation, proactive
+### 2. The relay, and the tenant checks — done (D-378)
+- [x] Verify Microsoft's current docs (single-tenant bots, Bot Framework token validation, proactive
       messages to a channel thread, RSC `Channel.Create.Group` and how it is granted, Adaptive Card
       version Teams renders on iOS, Flex Consumption) and note what changes this plan here and in
-      D-370.
-- [ ] `relay/teams/` as its own small package, built to `relay/teams/dist/relay.zip` (`npm run
-      relay:build`), copied into the app's resources so setup can deploy it: the endpoints above,
-      JWT validation, Table storage, Bot Connector and Graph clients, relay-key check (constant-time),
-      paired-user filter.
-- [ ] Unit tests: token validation (good, wrong audience, wrong issuer, expired, unknown key),
-      paired-user filter, cursor paging, TTL, send/update/thread payloads, channel creation.
-- [ ] A test package for Jon (tab-only, like the upload test): can he create a team, and does adding
-      an app with RSC to it show the consent and succeed. Written up in this file; the fallback
-      (General threads) stays planned either way.
+      D-370. (Above under "Checked in Microsoft's docs", details in D-370.)
+- [x] `relay/teams/` as its own small package (`@jig/teams-relay`, a workspace), built to
+      `relay/teams/dist/relay.zip` (`npm run relay:build`: one esbuild bundle + `host.json`,
+      ~140 KB), carried in the installer as `resources/relay/teams-relay.zip` (`npm run dist` builds
+      it first) so setup can deploy it: the endpoints above, JWT validation, Table storage, Bot
+      Connector and Graph clients, relay-key check (constant-time), paired-user filter.
+- [x] Unit tests (`relay/teams/src/*.test.ts`): token validation (good, wrong audience, wrong
+      issuer, expired, unknown key, forged signature, endorsement, service URL), key refresh,
+      paired-user filter, cursor paging and concurrent cursors, TTL, send/update/thread/reply/mention
+      payloads, opening the 1:1 chat, channel creation/rename and a missing RSC grant, health, pairing.
+- [x] A test package for Jon (tab-only, like the upload test), written up below under "Tenant
+      check". The fallback (General threads) stays planned either way.
+- Found on the way: the test package can't use a made-up app id (RSC wants an app registered in
+  the user's tenant), so the check starts with Jon registering a throwaway app, which also answers
+  whether setup's "app registration" step can work in his tenant.
+
+### Tenant check (Jon, by hand; nothing waits for it)
+
+Answers, before setup creates anything: may you register an app, create a team, and grant an app
+resource-specific consent as the team's owner? About 15 minutes, in the tenant where your Teams is.
+Note what each step shows (a screenshot of any error) and tell a Jig chat; the result goes into
+"What we know" above and decides whether session 4 makes channels or uses General threads.
+
+1. **Register a throwaway app** (does setup's app registration work for you?): Azure portal, signed
+   in to your Teams tenant → Microsoft Entra ID → App registrations → New registration → name
+   "Jig tenant check", "Accounts in this organizational directory only" → Register. Copy the
+   Application (client) ID and the Directory (tenant) ID. Then Certificates & secrets → New client
+   secret (shortest expiry) → copy its Value. If New registration is greyed out or refused, members
+   can't register apps there: setup will need the portal guide or an admin (session 5), and you can
+   stop here.
+2. **Make the package** in this repository: `npm run teams:check -- package --app-id <client id>`
+   writes `.tmp/teams-check/jig-tenant-check.zip` (a tab-only app, no bot, no code, asking a team
+   for `Channel.Create.Group` and `ChannelSettings.ReadWrite.Group`).
+3. **Create a team:** Teams → Teams → Join or create a team → Create team → From scratch → Private
+   → "Jig check". Refused means members can't create teams: setup must then use a team you already
+   own, or ask an admin.
+4. **Add the app to it:** Teams → Apps → Manage your apps → Upload an app → Upload a custom app →
+   the zip → **Add to a team** → "Jig check". Expected: a consent screen listing "Create channels in
+   this team" and the channel settings permission, then the app is added. Note whether the consent
+   shows and whether adding succeeds (the tab itself shows a page that won't load; that's fine).
+5. **Prove it** (the same Graph call the relay makes): the team's ⋯ → Get link to team → copy. Then
+   in PowerShell in this repository:
+   `$env:JIG_CHECK_SECRET = "<secret value>"; npm run teams:check -- prove --app-id <client id> --team "<link>"`
+   Expected: "✓ Created a channel" and "✓ Renamed it". A 403 means the grant isn't there or the
+   tenant doesn't allow it: rooms will be General threads.
+6. **Optional, an Azure Bot in another tenant's subscription** (only if the subscription you'd use
+   is in another tenant than your Teams): `az account set --subscription <that one>`,
+   `az group create -n jig-check -l westeurope`, then
+   `az bot create -g jig-check -n jig-check-<random> --app-type SingleTenant --appid <client id> --tenant-id <Teams tenant id>`.
+   Success means setup may put the bot there; an error means a subscription in the Teams tenant.
+   Then `az group delete -n jig-check`.
+7. **Clean up:** delete the "Jig check" team (⋯ → Delete the team), remove the app (Apps → Manage
+   your apps), delete the app registration in the portal, and `Remove-Item Env:JIG_CHECK_SECRET`.
 
 ### 3. The Teams channel in Jig: 1:1 chat
 - [ ] `main/phone/teams.ts`: relay client (long poll with backoff; offline and conflict states as
       Telegram), `TeamsChannel` implementing `PhoneChannel`.
-- [ ] Rendering: Markdown as Teams' supported Markdown/HTML; buttons as Adaptive Cards
+- [ ] Rendering: Markdown as Teams' supported Markdown/HTML; buttons as Adaptive Cards 1.5
       (`Action.Submit` carrying the same ids as Telegram's callback data); answered on the computer →
       the card is updated ("Allowed on the computer"); several questions one card each.
-- [ ] Pictures: inline image attachments (PNG/JPEG, size-capped), caption as text; `/screen`.
+- [ ] Pictures: inline image attachments (PNG/JPEG as `data:` URLs, ≤ 1 MB and ≤ 1024², the
+      relay refuses bigger), caption as text; `/screen`.
 - [ ] Fixed commands as typed text plus the manifest's `commandLists`; Jig itself in the 1:1 chat.
 - [ ] Fake relay server for tests (`JIG_TEAMS_RELAY` honoured only with the fake engine); unit tests;
       `e2e/phone-teams.spec.ts` (pair, permission card Allow, /status, Jig itself) with a rule in
@@ -148,9 +213,12 @@ Telegram working, and ticks its items here.
          region, a resource group (`jig-phone`).
       2. **Create** (every resource and `az` command listed before it runs; one Create runs them in
          order; a failure stops there with its error and Retry): app registration (single-tenant,
-         client secret), resource group, storage account, Function app (Flex Consumption), relay
-         deployed, app settings (bot id, tenant, secret, relay key), Azure Bot (F0, single-tenant,
-         endpoint = `/api/messages`, Teams channel on).
+         client secret), resource group, storage account, Function app (Flex Consumption, Node 22,
+         a region from `az functionapp list-flexconsumption-locations`), relay deployed
+         (`resources/relay/teams-relay.zip` with `az functionapp deployment source config-zip`),
+         app settings (bot id, tenant, secret, relay key; the names under "Relay" above), Azure Bot
+         (F0, single-tenant, endpoint = `/api/messages`, Teams channel on; in a subscription of the
+         Teams tenant unless the tenant check proved another one works).
       3. **Add to Teams:** Jig writes the app package (bot, personal + team scopes, RSC, Jig's icons,
          command list) and shows it in Explorer, with the clicks: upload for yourself, create the
          private team "Jig", add the app to it. Each row ticks when the relay sees the install.

@@ -16,6 +16,7 @@ export default defineConfig({
       "addons/**/*.test.ts",
       "apps/launcher/**/*.test.ts",
       "scripts/**/*.test.ts",
+      "relay/*/src/**/*.test.ts",
     ],
     environment: "node",
     // Tests that run git spawn it many times, which is several times slower on Windows.

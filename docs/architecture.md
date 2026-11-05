@@ -739,3 +739,11 @@ renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, 
 `concierge.ts` registers the `concierge` session kind (`registerSessionKind`: its prompt, Jig's tool
 server plus the chat tools, `builtinTools: ["ToolSearch"]`, passed to the SDK as `tools`) and finds or
 makes today's concierge chat; the service sends it plain text and relays its answers by topic.
+
+**The Teams relay** (`relay/teams/`, phase 27, D-370): Teams can only POST to a public endpoint, so
+the bot's endpoint is a small Azure Function of the user's own (Functions v4 Node, Flex
+Consumption). It checks Bot Framework's JWT on every activity, keeps the paired account's
+activities in Table storage (24 h, pruned hourly) for Jig's long poll (`GET /api/updates`), and
+sends, updates, opens threads and makes channels as the bot (`/api/send`, `/api/channels`) for a
+request with the relay key. `relay/teams/src/protocol.ts` is the contract; Jig imports its types
+only. The app-side `TeamsChannel` comes in phase 27 session 3.

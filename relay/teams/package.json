@@ -1,0 +1,18 @@
+{
+  "name": "@jig/teams-relay",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jig's Teams relay: the bot's endpoint, an Azure Function of the user's own (D-370).",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.ts"
+  },
+  "dependencies": {
+    "@azure/data-tables": "13.3.2",
+    "@azure/functions": "4.17.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "fflate": "0.8.3"
+  }
+}

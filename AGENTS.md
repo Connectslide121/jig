@@ -54,6 +54,7 @@ npm run check          # verify + unit tests — when releasing
 npm run e2e:changed    # the e2e specs a change needs since the last passing e2e run (else uncommitted only) — before committing a change to the app or a spec (D-331, D-357); -- --since origin/main for the old base, -- --list to only print the choice
 npm run e2e            # the whole e2e suite in parallel (~4-5 min): only when releasing (Linux: xvfb-run); a full pass on a clean checkout is recorded, and the release skips the suite when only the version changed since
 npm run dist           # package with electron-builder for this OS (Windows installer: run it on Windows)
+npm run relay:build    # the Teams relay's deployment package: relay/teams/dist/relay.zip (D-370; run by dist)
 JIG_ENGINE=fake npm run dev   # use the scripted fake engine instead of Claude Code
 JIG_HOME=/tmp/x npm run dev   # use a throwaway state directory
 JIG_SCREENSHOTS=1 xvfb-run -a npx playwright test e2e/screenshots.spec.ts   # regenerate screenshots (after a build)
