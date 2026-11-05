@@ -229,6 +229,7 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
       status: z.enum(["joining", "connected", "ended", "interrupted"]),
       capture: z.string().max(500),
       gap: z.string().max(500).optional(),
+      detail: z.string().max(500).optional(),
     })
     .strict(),
   "meetings.ask": z

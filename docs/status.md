@@ -461,12 +461,14 @@ leave it stuck above the end. Scrolled up, a **Latest** button (the chat's) take
 follows again. Try in a long meeting: scroll up, captions keep coming without moving the view; press
 Latest.
 
-Meeting captions in group meetings, and a transcript without them (2026-11-04, D-321): in Teams
+Meeting captions in group meetings, and a transcript without them (2026-11-04, D-321, D-382): in Teams
 meetings with several people, Jig 0.7.0 showed "Captions could not start" right after joining. The
 cause: Jig asked for captions before Teams had said you may start them in that meeting (the meeting's
 permissions arrive a moment after joining, and since 0.7.0 joins are fast enough to beat them); Teams
 then answers "disabled in meeting policy". Jig now waits for them and tries again (after 2, 4, 8, 15
-and 30 s), and when captions really can't start, the transcript says Teams' own reason and code
+and 30 s). Since D-382 an early "FeatureNotSupported" from Teams no longer counts as the organiser's
+policy (it stopped the tries 43 ms after joining in a Daily): Jig waits and retries it too, and gives
+a policy read in the first seconds one more try; **Retry captions** starts the tries over. When captions really can't start, the transcript says Teams' own reason and code
 (also in the status bar's tooltip and in Jig's log). When Teams captions aren't available, Jig
 **transcribes the meeting on this computer**: everyone's audio from the call and your microphone,
 with Whisper (the model in Settings → Speech), the same as captions: nothing is recorded or sent, only

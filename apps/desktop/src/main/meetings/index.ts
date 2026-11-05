@@ -1415,12 +1415,13 @@ export async function startMeetings(): Promise<void> {
         translator.translate(id, { ...c, translated: undefined }, language);
     changed();
   });
-  handle("meetings.status", async ({ id, status, capture, gap }, ctx) => {
+  handle("meetings.status", async ({ id, status, capture, gap, detail }, ctx) => {
     own(ctx);
     current(id);
-    // The capture's timeline in main.log, so a failure's real reason is there afterwards (D-321).
-    if (gap) log.warn("Meeting capture gap", { status, capture, gap });
-    else log.info("Meeting capture", { status, capture });
+    // The capture's timeline in main.log, so a failure's real reason is there afterwards (D-321),
+    // with what the SDK said about the caption capability on each try (D-382).
+    if (gap) log.warn("Meeting capture gap", { status, capture, gap, ...(detail ? { detail } : {}) });
+    else log.info("Meeting capture", { status, capture, ...(detail ? { detail } : {}) });
     await store.update(id, (r) => lifecycle(r, status, capture, gap));
     if (["ended", "interrupted"].includes(status)) {
       translator.stop();

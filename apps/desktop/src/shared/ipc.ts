@@ -308,7 +308,14 @@ export interface HostMethods {
   "meetings.credential": { args: { id?: string }; result: { token: string } };
   "meetings.caption": { args: { id: string; caption: import("./meetings").MeetingCaption }; result: void };
   "meetings.status": {
-    args: { id: string; status: import("./meetings").MeetingRecord["status"]; capture: string; gap?: string };
+    args: {
+      id: string;
+      status: import("./meetings").MeetingRecord["status"];
+      capture: string;
+      gap?: string;
+      /** Only for main.log (e.g. the caption capability the SDK reported), never stored (D-382). */
+      detail?: string;
+    };
     result: void;
   };
   "meetings.ask": {

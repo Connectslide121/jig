@@ -4,6 +4,7 @@ import {
   CAPTION_CODES,
   CAPTION_RETRY_DELAYS,
   capabilityPending,
+  capabilityText,
   captionErrorText,
   captionStartDecision,
   keepLocalPiece,
@@ -62,6 +63,32 @@ describe("captionStartDecision", () => {
     expect(decision.kind === "giveUp" && decision.reason).toMatch(/45203/);
   });
 
+  it("retries FeatureNotSupported and other reasons that name no policy (D-382)", () => {
+    for (const reason of ["FeatureNotSupported", "NotCapable", "CapabilityNotApplicableForTheCallType"]) {
+      const decision = captionStartDecision({
+        error: policy,
+        attempt: 0,
+        capability: { isPresent: false, reason },
+      });
+      expect(decision).toMatchObject({ kind: "retry", delayMs: CAPTION_RETRY_DELAYS[0]! * 1000 });
+    }
+    const last = captionStartDecision({
+      error: policy,
+      attempt: CAPTION_RETRY_DELAYS.length,
+      capability: { isPresent: false, reason: "FeatureNotSupported" },
+    });
+    expect(last.kind).toBe("giveUp");
+    expect(last.kind === "giveUp" && last.reason).toMatch(/Teams reported FeatureNotSupported/);
+    expect(last.kind === "giveUp" && last.reason).not.toMatch(/organiser/);
+  });
+
+  it("gives a policy read right after Connected one more try (D-382)", () => {
+    const capability = { isPresent: false, reason: "UserPolicyRestricted" };
+    expect(captionStartDecision({ error: policy, attempt: 0, capability, early: true }).kind).toBe("retry");
+    expect(captionStartDecision({ error: policy, attempt: 1, capability, early: true }).kind).toBe("giveUp");
+    expect(captionStartDecision({ error: policy, attempt: 0, capability, early: false }).kind).toBe("giveUp");
+  });
+
   it("gives up at once on errors no retry fixes", () => {
     const error = sdkError(
       "Spoken language requested is not supported.",
@@ -80,8 +107,17 @@ describe("captionStartDecision", () => {
 
   it("knows a loading capability", () => {
     expect(capabilityPending({ isPresent: false, reason: "NotInitialized" })).toBe(true);
+    expect(capabilityPending({ isPresent: false, reason: "FeatureNotSupported" })).toBe(true);
+    expect(capabilityPending({ isPresent: false, reason: "MeetingRestricted" })).toBe(false);
     expect(capabilityPending({ isPresent: true, reason: "Capable" })).toBe(false);
     expect(capabilityPending(undefined)).toBe(false);
+  });
+
+  it("describes the capability for the logs", () => {
+    expect(
+      capabilityText("startLiveMeetingCaptions", { isPresent: false, reason: "FeatureNotSupported" }),
+    ).toBe("startLiveMeetingCaptions: not present (FeatureNotSupported)");
+    expect(capabilityText("startLiveMeetingCaptions", undefined)).toBe("startLiveMeetingCaptions: unknown");
   });
 });
 

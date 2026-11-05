@@ -4538,7 +4538,7 @@ made on this computer when Teams captions aren't available.
   (`capabilitiesChanged` ends the wait early). A failed start is retried after 2, 4, 8, 15 and 30 s
   (a capability change during a wait retries at once); "already active" (someone else started them)
   counts as running; a real restriction (`MeetingRestricted`, `UserPolicyRestricted`, `RoleRestricted`,
-  Teams Premium…) or an unsupported language stops at once and says that the organiser or the
+  Teams Premium; not `FeatureNotSupported`, see D-382) or an unsupported language stops at once and says that the organiser or the
   organisation's policy turned captions off. After `startCaptions` resolves Jig waits up to 20 s for
   `CaptionsActiveChanged`, since several SDK refusals return without an error. When running captions
   stop, Jig tries once more after 3 s. `CaptionsKindChanged` re-binds the captions object. Pure logic:
@@ -6447,3 +6447,34 @@ stopped for good.
   the Telegram token's paste, and marks Create done.
 - **Never deletes Azure:** Disconnect (Teams) and Start over list what setup made with `az group
   delete …` and `az ad app delete …` to copy, then forget the record; they run nothing.
+
+## D-382: Teams captions: FeatureNotSupported right after Connected means not known yet, not a policy
+
+- Status: accepted. Amends D-321.
+- **Who:** Jon reported it (2026-11-05, Sprinta Daily, on a build with D-321); the fix and its
+  timings are Claude, on my own.
+- **What happened.** The transcript said "Captions could not start: Captions feature is disabled in
+  meeting policy. (403/45203). Teams says captions aren't allowed for you here (FeatureNotSupported)…"
+  43 ms after Connected, after one try, although captions were on in that meeting, the same meeting
+  worked on 0.3.0 and colleagues on older Jig got captions. D-321 listed `FeatureNotSupported` (and
+  `NotCapable`, `CapabilityNotApplicableForTheCallType`) as restrictions and treated only
+  `NotInitialized` as "still loading". With the warm call agent (D-292) the SDK evidently reports
+  `FeatureNotSupported` for `startLiveMeetingCaptions` before the meeting's capabilities arrive: the
+  same race D-321 fixed, under another reason name.
+- **Decision.** Only reasons that name a policy (`MeetingRestricted`, `UserPolicyRestricted`,
+  `RoleRestricted`, `TeamsPremiumLicenseRestricted`) can stop the tries. `FeatureNotSupported` counts
+  as "not known yet" like `NotInitialized`: the start waits up to 8 s for `capabilitiesChanged`, and a
+  failure is retried with D-321's backoff (2, 4, 8, 15, 30 s). Every other non-policy reason is
+  retried too; when the tries run out the notice says what Teams reported, without blaming the
+  organiser. A policy reason read before the meeting's capabilities arrived (within 10 s of Connected,
+  `CAPABILITY_GRACE_MS`, and no `capabilitiesChanged` yet) gets one more try, since right after
+  Connected the SDK's answer isn't the meeting's yet; a `capabilitiesChanged` during that wait tries
+  at once. Read later, or on the second try, a policy reason stops at once as before.
+- **Logs.** `meetings.status` takes an optional `detail` that only main.log gets (never the record):
+  the caption capability's `isPresent` and reason, the try number and the ms since Connected, on
+  "Starting captions", each failed try and "Capturing live captions"
+  (`startLiveMeetingCaptions: not present (FeatureNotSupported); attempt 1, 43 ms after Connected`).
+- **Retry captions** starts the tries from the first (attempt 0, pending retry cancelled), logs
+  "Starting captions" and keeps the call's Connected time and whether capabilities arrived.
+- Pure logic: `shared/meetingTranscript.ts` (`captionStartDecision` with `early`, `capabilityPending`,
+  `capabilityText`).

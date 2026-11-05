@@ -21,19 +21,33 @@ export interface CaptionCapability {
   reason: string;
 }
 
-/** Reasons that mean the organiser, your organisation or your role turned captions off: no retry helps. */
+/**
+ * Reasons that name a policy: the organiser, your organisation, your role or your licence turned
+ * captions off. Only these stop the tries, and only once the meeting's capabilities have arrived
+ * (`early`). Any other reason (`FeatureNotSupported`, `NotCapable`…) isn't proof of a policy: right
+ * after Connected the SDK reports them before the meeting's capabilities arrive (D-382).
+ */
 const RESTRICTED = new Set([
   "MeetingRestricted",
   "UserPolicyRestricted",
   "RoleRestricted",
   "TeamsPremiumLicenseRestricted",
-  "FeatureNotSupported",
-  "CapabilityNotApplicableForTheCallType",
-  "NotCapable",
 ]);
+
+/** Reasons that mean the capability isn't known yet: wait for `capabilitiesChanged` before trying. */
+const NOT_KNOWN_YET = new Set(["NotInitialized", "FeatureNotSupported"]);
 
 /** Seconds to wait before each new try (after Connected the meeting's capabilities come late). */
 export const CAPTION_RETRY_DELAYS = [2, 4, 8, 15, 30];
+
+/** A restriction read this soon after Connected, before any `capabilitiesChanged`, gets one more try (D-382). */
+export const CAPABILITY_GRACE_MS = 10_000;
+
+/** The capability for the logs, e.g. "startLiveMeetingCaptions: not present (FeatureNotSupported)". */
+export function capabilityText(name: string, capability?: CaptionCapability): string {
+  if (!capability) return `${name}: unknown`;
+  return `${name}: ${capability.isPresent ? "present" : "not present"} (${capability.reason || "no reason"})`;
+}
 
 /** The error's message with Teams' codes, e.g. "Captions feature is disabled in meeting policy. (403/45203)". */
 export function captionErrorText(error: unknown): string {
@@ -52,18 +66,22 @@ export type CaptionStartDecision =
 /**
  * What to do after captions failed to start: they are already on (someone else started them), try
  * again later (the meeting's capabilities hadn't arrived; Teams was still starting them), or stop
- * and say why. `attempt` counts the tries so far (0 = the first failed).
+ * and say why. `attempt` counts the tries so far (0 = the first failed). `early`: the capability
+ * was read before the meeting's capabilities arrived (within `CAPABILITY_GRACE_MS` of Connected and
+ * no `capabilitiesChanged` yet), so even a policy reason gets one more try (D-382).
  */
 export function captionStartDecision(input: {
   error: unknown;
   attempt: number;
   capability?: CaptionCapability;
+  early?: boolean;
 }): CaptionStartDecision {
-  const { error, attempt, capability } = input;
+  const { error, attempt, capability, early } = input;
   const subCode = (error as { subCode?: number } | undefined)?.subCode;
   if (subCode === CAPTION_CODES.alreadyActive) return { kind: "active" };
   const text = captionErrorText(error);
-  if (capability && !capability.isPresent && RESTRICTED.has(capability.reason))
+  const restricted = capability && !capability.isPresent && RESTRICTED.has(capability.reason);
+  if (restricted && !(early && attempt === 0))
     return {
       kind: "giveUp",
       reason: `${text}. Teams says captions aren't allowed for you here (${capability.reason}): the organiser or your organisation's policy turned them off`,
@@ -71,13 +89,18 @@ export function captionStartDecision(input: {
   if (subCode === CAPTION_CODES.disabled || subCode === CAPTION_CODES.languageUnsupported)
     return { kind: "giveUp", reason: text };
   const delay = CAPTION_RETRY_DELAYS[attempt];
-  if (delay === undefined) return { kind: "giveUp", reason: text };
+  // Out of tries: say what Teams reported, without blaming a policy it didn't name.
+  if (delay === undefined)
+    return {
+      kind: "giveUp",
+      reason: capability && !capability.isPresent ? `${text}. Teams reported ${capability.reason}` : text,
+    };
   return { kind: "retry", delayMs: delay * 1000, reason: text };
 }
 
-/** Whether the capability is still loading, so starting captions now would fail for nothing. */
+/** Whether the capability isn't known yet, so starting captions now would fail for nothing. */
 export function capabilityPending(capability?: CaptionCapability): boolean {
-  return Boolean(capability && !capability.isPresent && capability.reason === "NotInitialized");
+  return Boolean(capability && !capability.isPresent && NOT_KNOWN_YET.has(capability.reason));
 }
 
 // ── Local transcription: pieces of audio ───────────────────────────────────────────────────────

@@ -31,9 +31,11 @@ import {
 } from "../../../shared/meetingDevices";
 import type { MeetingCaption, MeetingRecord } from "../../../shared/meetings";
 import {
+  CAPABILITY_GRACE_MS,
   CAPTION_RETRY_DELAYS,
   type CaptionCapability,
   capabilityPending,
+  capabilityText,
   captionErrorText,
   captionStartDecision,
   nextSource,
@@ -147,6 +149,9 @@ export class MeetingMedia {
   /** Failed tries to start Teams captions in this call, and the next one waiting (D-321). */
   private captionAttempt = 0;
   private captionRetry?: ReturnType<typeof setTimeout>;
+  /** When the call said Connected, and whether the meeting's capabilities changed since (D-382). */
+  private connectedAt?: number;
+  private capabilitiesSeen = false;
   /** Teams captions run; they failed (or stopped) so the local transcript may take over. */
   private teamsActive = false;
   private teamsFailed = false;
@@ -204,11 +209,12 @@ export class MeetingMedia {
     this.state = { ...this.state, ...next };
     for (const fn of this.listeners) fn(this.state);
   }
-  private status(status: MeetingRecord["status"], capture: string, gap?: string): void {
+  /** `detail` only goes into main.log (e.g. what the SDK said about captions), never the record. */
+  private status(status: MeetingRecord["status"], capture: string, gap?: string, detail?: string): void {
     const id = this.record?.id;
     if (!id) return;
     this.statusChain = this.statusChain
-      .then(() => call("meetings.status", { id, status, capture, gap }))
+      .then(() => call("meetings.status", { id, status, capture, gap, detail: detail?.slice(0, 500) }))
       .catch(this.error);
   }
   private async prepare(): Promise<SdkDevices> {
@@ -717,8 +723,9 @@ export class MeetingMedia {
         this.sync();
         if (c.state === "Connected" && this.noiseStream !== c.localAudioStreams[0])
           this.applyNoiseSuppression();
+        if (c.state === "Connected") this.connectedAt ??= Date.now();
         if (c.state === "Connected" && !this.teamsActive && !this.captionsStarting && !this.captionRetry) {
-          this.status("connected", "Starting captions");
+          this.status("connected", "Starting captions", undefined, this.captionDetail());
           void this.startCaptions(options.language, false);
         }
         if (c.state === "Disconnected" && !this.leaving && !joining) {
@@ -820,6 +827,7 @@ export class MeetingMedia {
       };
       // Capabilities arrived while a try waits: try now instead of at the end of the wait.
       const capabilitiesChanged = () => {
+        if (this.active === c && this.connectedAt !== undefined) this.capabilitiesSeen = true;
         if (this.active !== c || this.leaving || !this.captionRetry) return;
         if (!capabilityPending(this.captionCapability())) this.retryCaptionsSoon(0);
       };
@@ -841,6 +849,13 @@ export class MeetingMedia {
     } catch {
       return undefined;
     }
+  }
+  /** The capability and the try, for main.log's capture lines (D-382). */
+  private captionDetail(): string {
+    const name = this.record?.call ? "startLiveCallingCaptions" : "startLiveMeetingCaptions";
+    const since =
+      this.connectedAt === undefined ? "" : `, ${Date.now() - this.connectedAt} ms after Connected`;
+    return `${capabilityText(name, this.captionCapability())}; attempt ${this.captionAttempt + 1}${since}`;
   }
   /** Listens to the call's captions object (Teams captions, or ACS captions if the SDK gives those). */
   private bindCaptions(): TeamsCaptions | Captions | undefined {
@@ -905,6 +920,8 @@ export class MeetingMedia {
     }
     const c = this.active;
     if (!c || this.captionsStarting || this.leaving) return;
+    // Retry captions starts the tries over from the first, and says so (D-382).
+    if (manual) this.status("connected", "Starting captions", undefined, this.captionDetail());
     this.captionsStarting = true;
     try {
       // Right after Connected: give the capabilities a moment instead of failing on them.
@@ -963,13 +980,14 @@ export class MeetingMedia {
   }
   /** Teams captions run: the transcript is theirs again, and the local one stops. */
   private captionsRunning(): void {
+    const detail = this.captionDetail();
     clearTimeout(this.captionRetry);
     this.captionRetry = undefined;
     this.captionAttempt = 0;
     if (this.teamsActive) return;
     this.teamsActive = true;
     this.teamsFailed = false;
-    this.status("connected", "Capturing live captions");
+    this.status("connected", "Capturing live captions", undefined, detail);
     const captions = this.captions;
     if (captions?.kind === "TeamsCaptions")
       this.update({ captionLanguages: (captions as TeamsCaptions).supportedCaptionLanguages ?? [] });
@@ -977,10 +995,15 @@ export class MeetingMedia {
     this.followSource();
   }
   private captionsFailed(error: unknown): void {
+    const detail = this.captionDetail();
     const decision = captionStartDecision({
       error,
       attempt: this.captionAttempt,
       capability: this.captionCapability(),
+      early:
+        !this.capabilitiesSeen &&
+        this.connectedAt !== undefined &&
+        Date.now() - this.connectedAt < CAPABILITY_GRACE_MS,
     });
     if (decision.kind === "active") {
       this.captionsRunning();
@@ -994,6 +1017,8 @@ export class MeetingMedia {
       this.status(
         "connected",
         `Captions not ready: ${reason} — trying again in ${Math.round(decision.delayMs / 1000)} s`,
+        undefined,
+        detail,
       );
       this.retryCaptionsSoon(decision.delayMs);
     } else {
@@ -1002,6 +1027,7 @@ export class MeetingMedia {
         "connected",
         "Captions unavailable — retry captions",
         `Captions could not start: ${reason}`,
+        detail,
       );
     }
     this.followSource();
@@ -1294,6 +1320,8 @@ export class MeetingMedia {
     clearTimeout(this.captionRetry);
     this.captionRetry = undefined;
     this.captionAttempt = 0;
+    this.connectedAt = undefined;
+    this.capabilitiesSeen = false;
     this.teamsActive = false;
     this.teamsFailed = false;
     this.transcriptSwitch = { source: "none", since: 0 };

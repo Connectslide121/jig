@@ -357,7 +357,7 @@ All methods are typed in shared/ipc.ts; argument-bearing methods have validate.t
 | meetings.startCall | Create the global record of a one-to-one Teams call (`{ peerId, peerName, direction }`); room only, one active call |
 | meetings.setRinging | Turn ringing for Teams calls in Jig on or off; lobby or room |
 | meetings.incoming | A call rings (`name`) or stopped ringing: brings the room to the front with a system notification; room only |
-| meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only. A caption may carry `source: "local"` (transcribed on this computer, D-321); main logs each status change to `main.log` |
+| meetings.caption / meetings.status | Persist live caption revisions/lifecycle/gaps; owned active room only. A caption may carry `source: "local"` (transcribed on this computer, D-321); main logs each status change to `main.log`, with `detail` (the caption capability and try, D-382) that only the log gets |
 | meetings.shareSources / meetings.selectShare | Room-only screen/window picker; one-use 30-second source grant; the granted source gets a frame (D-266) |
 | meetings.shareStopped | Room-only: sharing ended, remove the frame around the shared screen/window |
 | meetings.ask / meetings.notes | Frozen transcript + normal Plan-mode Claude Code question/notes chat; ask from the lobby or room, notes also from the main window |

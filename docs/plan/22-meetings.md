@@ -41,6 +41,7 @@ No Work IQ, Teams DOM scraping, recording upload, background AI or direct Anthro
 - [ ] Verify @chat on a busy real chat in a Claude and a ChatGPT chat, paging back (D-333).
 - [x] Captions in group meetings: wait for the meeting's capabilities, retry with backoff, keep Teams' real reason (D-321).
 - [x] Transcribe on this computer (Whisper) when Teams captions aren't available, switch back without duplicates (D-321).
+- [x] Treat `FeatureNotSupported` right after Connected as not known yet, retry it, log the capability on each try (D-382).
 - [ ] Verify captions in a real group meeting and the local transcript's CPU on a 30-minute call (D-321).
 - [x] Noise suppression on your microphone: Azure deep noise suppression by default, browser fallback, switch in the call's ⋯ menu and Devices… (D-322).
 - [ ] Verify noise suppression on a real call: colleagues don't hear typing, voice quality matches Teams (D-322).
