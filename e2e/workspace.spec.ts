@@ -94,12 +94,18 @@ test("a folder of repositories works as one workspace: every repo's changes in G
   await expect(page.getByTestId("git-workspace").getByTestId("git-repo-client-a/portal")).toBeVisible({
     timeout: 15000,
   });
-  await page
-    .getByTestId("git-workspace")
-    .getByTestId("git-repo-client-a/portal")
-    .getByText("client-a/portal", { exact: true })
-    .hover();
-  await page.getByTestId("git-repo-hide-client-a/portal").click();
+  // Hide shows on hover; the list may still settle after the reload and move the row from under
+  // the mouse, so hover again until the button shows.
+  const hide = page.getByTestId("git-repo-hide-client-a/portal");
+  await expect(async () => {
+    await page
+      .getByTestId("git-workspace")
+      .getByTestId("git-repo-client-a/portal")
+      .getByText("client-a/portal", { exact: true })
+      .hover();
+    await expect(hide).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15000 });
+  await hide.click();
   await expect(view.getByTestId("git-repo-client-a/portal")).toHaveCount(0);
 
   // Every repository at a glance in the Repos view, in the lower half of the sidebar.
