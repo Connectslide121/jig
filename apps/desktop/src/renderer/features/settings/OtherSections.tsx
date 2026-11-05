@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../../../shared/engine";
+import { BOTTOM_SPANS, DEFAULT_BOTTOM_SPAN } from "../../../shared/layout";
 import type { LanguageServerInfo } from "../../../shared/lsp";
 import { modelOptions } from "../../../shared/models";
 import { shellName } from "../../../shared/shellNames";
@@ -32,6 +33,7 @@ import {
   Textarea,
 } from "../../ui";
 import { addWorkspace, hiddenViews, openSettings, resetLayout, saveLayoutAs } from "../../workbench/actions";
+import { BOTTOM_SPAN_LABELS, BottomSpanIcon } from "../../workbench/bottomSpan";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
@@ -41,16 +43,34 @@ import { lookForPatterns, useLearning } from "../learning/store";
 import { newTerminal } from "../terminals/actions";
 import { shellEntries } from "../terminals/shellEntries";
 import { useShellChoices } from "../terminals/shells";
-import { SettingRow, SettingsSection } from "./parts";
+import { SegmentedSwitch, SettingRow, SettingsSection } from "./parts";
 
 export function LayoutSettings() {
   useWorkbench((s) => s.layout?.hidden);
+  const bottomSpan = useWorkbench((s) => s.layout?.bottomSpan ?? DEFAULT_BOTTOM_SPAN);
   const hidden = hiddenViews();
   return (
     <SettingsSection
       title="Layout"
       description="Move views with the ⋯ menu on each view, or right-click its tab."
     >
+      <SettingRow
+        label="Bottom panel width"
+        description="How far it reaches under the sidebars. Sizes stay as they are."
+      >
+        <SegmentedSwitch
+          label="Bottom panel width"
+          value={bottomSpan}
+          options={BOTTOM_SPANS.map((span) => ({
+            id: span,
+            label: BOTTOM_SPAN_LABELS[span].short,
+            title: BOTTOM_SPAN_LABELS[span].label,
+            leading: <BottomSpanIcon span={span} />,
+          }))}
+          onChange={(span) => workbench.setBottomSpan(span)}
+          testId="settings-bottom-span"
+        />
+      </SettingRow>
       {hidden.length === 0 && <SettingRow label="No hidden views">{null}</SettingRow>}
       {hidden.map((view) => (
         <SettingRow key={view.id} label={view.title} description="Hidden">

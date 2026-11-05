@@ -6148,3 +6148,35 @@ choice of Telegram and everything below: Claude, on my own.
   front without the keyboard (so Enter meant for a chat can't answer it), and the Meetings lobby
   opening after a call ended does too. `revealWindow`/`focusJig` remain for what you just did
   (notification clicks, a second launch, opening Meetings, the quit dialog).
+
+## D-375: Bottom panel span: how far the bottom panel reaches under the sidebars
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05: choose, for the left and right sidebar independently, whether the sidebar
+  runs the full height of the window or the bottom panel (Task queue, Terminals…) takes that width.
+  One setting on the bottom panel with four options, in Settings → Layout, as a quick pick in the bottom
+  panel's ⋯ menu, and for Claude through `jig_get_layout` / `jig_change_layout`. Details below are
+  Claude, on my own.
+- **Model:** `Layout.bottomSpan`, one of `center` (under the centre only, both sidebars full height),
+  `left` (also under the left sidebar), `right` (also under the right sidebar), `full` (the whole window
+  width). Part of the layout, not of `config.json`: it is where the panels are, so it is saved with
+  `layout.json`, kept in named layouts (`SavedLayout.bottomSpan`, optional; older named layouts leave
+  it as it is), reset by Reset layout, and undone like any layout change from a chat's change card.
+- **Default `right`, not `center`.** The request described today's layout as "both sidebars run all the
+  way down", but the code had the bottom panel running under the centre *and the right sidebar* (the
+  right sidebar sat above it). The default keeps what every user already sees; nobody's window changes
+  until they pick another shape. Flip `DEFAULT_BOTTOM_SPAN` if centre-only should be the default.
+- **One grid, panels never remount.** The workbench lays the sidebars, the main area and the bottom
+  panel out on one CSS grid (`Panels` in `Workbench.tsx`: columns `auto 1fr auto`, rows `1fr auto`);
+  the option only changes `grid-template-areas`. Every panel stays mounted in the same element, so
+  switching keeps terminals, views and scroll positions, and widths, heights, collapsed and hidden
+  states are untouched (`setBottomSpan` changes nothing else). A collapsed or empty sidebar is a
+  zero-width column, a collapsed bottom panel a zero-height row, so every combination works without
+  special cases.
+- **Menu:** a new `MenuEntry` kind, `{ label, choices }`: a row of small icon buttons (`menuitemradio`,
+  the current one marked with the accent), choosing one closes the menu. The shapes are drawn by
+  `BottomSpanIcon` (`workbench/bottomSpan.tsx`), a tiny picture of the window in the text colour at
+  Lucide's stroke width, since Lucide has no icon for each shape. Settings → Layout uses the same
+  pictures in a `SegmentedSwitch` (Centre / Left / Right / Full), first in the section.
+- **Tools:** the layout op `{ op: "span", span }` (chat tools and the builder's `stage_layout`);
+  `jig_get_layout` reports `bottom panel width`.

@@ -29,6 +29,7 @@ import {
   Spinner,
   Textarea,
 } from "../../ui";
+import { BOTTOM_SPAN_LABELS } from "../../workbench/bottomSpan";
 import type { TabProps } from "../../workbench/registry";
 import { notify } from "../../workbench/toasts";
 import { openPreview } from "../preview/actions";
@@ -43,6 +44,7 @@ function describeOp(op: LayoutOp): string {
   if (op.op === "hide") return `Hide ${view}`;
   if (op.op === "show") return `Show ${view}`;
   if (op.op === "resize") return `Make the ${op.region} region ${op.size}px`;
+  if (op.op === "span" && op.span) return `Bottom panel width: ${BOTTOM_SPAN_LABELS[op.span].label}`;
   if (op.op === "save") return `Save the layout as "${op.name}"`;
   if (op.op === "use") return `Switch to the layout "${op.name}"`;
   return `${op.op === "collapse" ? "Collapse" : "Expand"} the ${op.region} region`;

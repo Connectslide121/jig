@@ -17,6 +17,19 @@ export const LOWER_HALF: Partial<Record<SideRegion, SideRegion>> = { left: "left
 /** The region that owns the width and collapsed state: a lower half belongs to its sidebar. */
 export const columnOf = (region: SideRegion): SideRegion => COLUMN[region] ?? region;
 
+/**
+ * How far the bottom panel reaches (D-375): under the centre only (both sidebars full height), also under
+ * the left or the right sidebar, or the whole window width. Sizes and collapsed states don't change.
+ */
+export const BOTTOM_SPANS = ["center", "left", "right", "full"] as const;
+export type BottomSpan = (typeof BOTTOM_SPANS)[number];
+/** Jig's layout before the option existed: the bottom panel ran under the centre and the right sidebar. */
+export const DEFAULT_BOTTOM_SPAN: BottomSpan = "right";
+
+/** The bottom panel runs under that sidebar (the sidebar stops above it). */
+export const bottomUnder = (span: BottomSpan, side: "left" | "right"): boolean =>
+  span === "full" || span === side;
+
 const RegionSchema = (size: number, collapsed: boolean) =>
   z
     .object({
@@ -53,6 +66,7 @@ const SavedLayoutSchema = z.object({
   bottom: SavedRegionSchema,
   hidden: z.array(z.string()).default([]),
   panes: z.record(z.string(), z.number()).default({}),
+  bottomSpan: z.enum(BOTTOM_SPANS).optional(),
 });
 export type SavedLayout = z.infer<typeof SavedLayoutSchema>;
 
@@ -67,6 +81,8 @@ export const LayoutSchema = z.object({
   /** The lower half of the right sidebar. */
   right2: RegionSchema(260, false),
   bottom: RegionSchema(260, true),
+  /** How far the bottom panel reaches under the sidebars. */
+  bottomSpan: z.enum(BOTTOM_SPANS).default(DEFAULT_BOTTOM_SPAN),
   /** Views the user hid; they come back from the Views menu. */
   hidden: z.array(z.string()).default([]),
   /** Old layouts: views shown below another view. Moved into the lower half of that sidebar on load. */
@@ -324,6 +340,14 @@ export function setPaneSize(input: Layout, id: string, size: number): Layout {
     size <= 1
       ? Math.round(Math.max(0.1, Math.min(0.9, size)) * 1000) / 1000
       : Math.round(Math.min(4000, Math.max(48, size)));
+  return layout;
+}
+
+/** Sets how far the bottom panel reaches; every size and collapsed state stays as it is. */
+export function setBottomSpan(input: Layout, span: BottomSpan): Layout {
+  if (input.bottomSpan === span) return input;
+  const layout = clone(input);
+  layout.bottomSpan = span;
   return layout;
 }
 
@@ -585,6 +609,7 @@ export function saveNamedLayout(input: Layout, name: string): Layout {
     bottom: structuredClone(layout.bottom),
     hidden: [...layout.hidden],
     panes: { ...layout.panes },
+    bottomSpan: layout.bottomSpan,
   };
   const others = layout.saved.filter((l) => l.name.toLowerCase() !== trimmed.toLowerCase());
   layout.saved = [...others, snapshot].slice(-MAX_SAVED_LAYOUTS);
@@ -603,6 +628,7 @@ export function applyNamedLayout(input: Layout, name: string): Layout {
   for (const r of SIDE_REGIONS) layout[r] = structuredClone(saved[r]);
   layout.hidden = [...saved.hidden];
   layout.panes = { ...saved.panes };
+  if (saved.bottomSpan) layout.bottomSpan = saved.bottomSpan;
   return layout;
 }
 

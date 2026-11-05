@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   activateTab,
   applyNamedLayout,
+  type BottomSpan,
   closeTab,
   defaultLayout,
   deleteNamedLayout,
@@ -15,6 +16,7 @@ import {
   openViewTab,
   type SideRegion,
   saveNamedLayout,
+  setBottomSpan,
   setPaneSize,
   setRegion,
   showView,
@@ -165,6 +167,8 @@ export const workbench = {
     updateLayout((l) => showView(l, viewId, fallback));
   },
   toggleRegion: (region: SideRegion) => updateLayout((l) => toggleRegion(l, region)),
+  /** How far the bottom panel reaches under the sidebars (D-375). */
+  setBottomSpan: (span: BottomSpan) => updateLayout((l) => setBottomSpan(l, span)),
   resizeRegion: (region: SideRegion, size: number) => updateLayout((l) => setRegion(l, region, { size })),
   resizePane: (id: string, size: number) => updateLayout((l) => setPaneSize(l, id, size)),
   resetPane: (id: string) =>

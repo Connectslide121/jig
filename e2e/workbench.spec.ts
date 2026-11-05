@@ -76,6 +76,73 @@ test("views move between regions from their ⋯ menu and the layout is saved", a
   await expect(page.getByTestId("view-tab-jig.projects")).toHaveCount(0);
 });
 
+test("the bottom panel reaches under the sidebars as chosen; sizes and collapsed sidebars keep working", async ({
+  page,
+  jigHome,
+}) => {
+  const left = page.getByTestId("region-left");
+  const right = page.getByTestId("region-right");
+  const bottom = page.getByTestId("region-bottom");
+  const panels = page.getByTestId("workbench-panels");
+  // Both sidebars and the bottom panel showing.
+  await page.getByTestId("view-menu-jig.projects").click();
+  await page.getByTestId("move-view-right").click();
+  await page.keyboard.press("Control+J");
+  await expect(bottom).toBeVisible();
+  const box = async (l: Locator) => (await l.boundingBox())!;
+  const before = {
+    left: (await box(left)).width,
+    right: (await box(right)).width,
+    bottom: (await box(bottom)).height,
+  };
+  const pick = async (span: string) => {
+    await page.getByTestId("view-menu-jig.terminals").click();
+    await page.getByTestId(`bottom-span-${span}`).click();
+    await expect(panels).toHaveAttribute("data-bottom-span", span);
+  };
+  const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
+
+  await pick("full");
+  const all = await box(panels);
+  near((await box(bottom)).x, all.x);
+  near((await box(bottom)).width, all.width);
+  near((await box(left)).y + (await box(left)).height, (await box(bottom)).y);
+  near((await box(right)).y + (await box(right)).height, (await box(bottom)).y);
+
+  await pick("center");
+  near((await box(bottom)).x, all.x + before.left);
+  near((await box(bottom)).x + (await box(bottom)).width, all.x + all.width - before.right);
+  near((await box(left)).height, all.height);
+  near((await box(right)).height, all.height);
+
+  await pick("left");
+  near((await box(bottom)).x, all.x);
+  near((await box(right)).height, all.height);
+  // Sizes stay whatever the shape.
+  near((await box(left)).width, before.left);
+  near((await box(right)).width, before.right);
+  near((await box(bottom)).height, before.bottom);
+  // A collapsed left sidebar: the bottom panel still starts at the window's left edge, nothing breaks.
+  await page.keyboard.press("Control+B");
+  await expect(left).toBeHidden();
+  near((await box(bottom)).x, all.x);
+  await page.keyboard.press("Control+B");
+  await expect(left).toBeVisible();
+  near((await box(left)).width, before.left);
+
+  // The current shape is marked in the menu, and saved with the layout.
+  await page.getByTestId("view-menu-jig.terminals").click();
+  await expect(page.getByTestId("bottom-span-left")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("bottom-span-full")).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Escape");
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(await readFile(join(jigHome, "layout.json"), "utf8").catch(() => "{}")).bottomSpan,
+    )
+    .toBe("left");
+});
+
 test("projects: add, switch, rename and remove", async ({ page, jigHome }) => {
   const alpha = join(jigHome, "work-alpha");
   const beta = join(jigHome, "work-beta");

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { bottomUnder, DEFAULT_BOTTOM_SPAN } from "../../shared/layout";
 import { useAddonsSync } from "../addons/loader";
 import { openAddonTarget } from "../addons/runtime";
 import { AttemptsDialogHost } from "../features/attempts";
@@ -90,6 +91,43 @@ function useShortcuts() {
   }, []);
 }
 
+/**
+ * The sidebars, the main area and the bottom panel on one grid. How far the bottom panel reaches
+ * (`bottomSpan`, D-375) only changes the grid's areas: every panel stays mounted where it is, so
+ * switching keeps views, terminals and scroll positions, and every size stays as it was.
+ */
+function Panels() {
+  const span = useWorkbench((s) => s.layout?.bottomSpan ?? DEFAULT_BOTTOM_SPAN);
+  const left = bottomUnder(span, "left") ? "bottom" : "left";
+  const right = bottomUnder(span, "right") ? "bottom" : "right";
+  return (
+    <div
+      className="relative grid min-h-0 flex-1"
+      data-testid="workbench-panels"
+      data-bottom-span={span}
+      style={{
+        gridTemplateColumns: "auto minmax(0, 1fr) auto",
+        gridTemplateRows: "minmax(0, 1fr) auto",
+        gridTemplateAreas: `"left main right" "${left} bottom ${right}"`,
+      }}
+    >
+      <ViewDropEdges />
+      <div className="flex min-h-0" style={{ gridArea: "left" }}>
+        <Region region="left" />
+      </div>
+      <div className="flex min-h-0 min-w-0" style={{ gridArea: "main" }}>
+        <MainArea />
+      </div>
+      <div className="flex min-h-0" style={{ gridArea: "right" }}>
+        <Region region="right" />
+      </div>
+      <div className="flex min-w-0 flex-col" style={{ gridArea: "bottom" }}>
+        <Region region="bottom" />
+      </div>
+    </div>
+  );
+}
+
 export function Workbench() {
   useShellState();
   useSessionsSync();
@@ -109,19 +147,7 @@ export function Workbench() {
     <div className="flex h-full flex-col" data-testid="app-root">
       <Topbar />
       <StartupBanner />
-      {ready && (
-        <div className="relative flex min-h-0 flex-1">
-          <ViewDropEdges />
-          <Region region="left" />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1">
-              <MainArea />
-              <Region region="right" />
-            </div>
-            <Region region="bottom" />
-          </div>
-        </div>
-      )}
+      {ready && <Panels />}
       <StatusBar />
       <MenuHost />
       <GoToHost />

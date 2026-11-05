@@ -1,5 +1,5 @@
 import type { DeepPartial, JigConfig } from "./config";
-import type { Layout } from "./layout";
+import type { BottomSpan, Layout } from "./layout";
 
 /**
  * Build jobs: "Build something…" from anywhere. A job runs a builder session (Claude Code with Jig's
@@ -21,9 +21,11 @@ export type BuildStatus =
 export type BuildKind = "layout" | "settings" | "change-addon" | "new-addon" | "app" | "nothing";
 
 export interface LayoutOp {
-  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below" | "save" | "use";
+  op: "move" | "hide" | "show" | "resize" | "collapse" | "expand" | "below" | "span" | "save" | "use";
   /** For "save" / "use": a named layout (D-175). */
   name?: string;
+  /** For "span": how far the bottom panel reaches (D-375). */
+  span?: BottomSpan;
   view?: string;
   /** For "below": the view to show `view` beside, in the lower half of that view's sidebar. */
   host?: string;

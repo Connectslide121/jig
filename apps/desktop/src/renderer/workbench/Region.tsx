@@ -5,6 +5,7 @@ import { requestBuild } from "../addons/buildRequests";
 import { useBadges } from "../addons/runtime";
 import { cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt, ResizeHandle } from "../ui";
 import { MOTION_MS, reducedMotion, usePresence } from "../ui/motion";
+import { bottomSpanMenuEntry } from "./bottomSpan";
 import { useRegistry } from "./registry";
 import { startViewDrag, useViewDrag, useWorkbench, VIEW_DRAG, workbench } from "./store";
 import { useViewBadges } from "./viewBadges";
@@ -40,6 +41,8 @@ export function viewMenu(viewId: string, region: SideRegion): MenuEntry[] {
           { separator: true } as const,
         ]
       : []),
+    // How far the bottom panel reaches, as a quick pick in its own menu (D-375).
+    ...(region === "bottom" ? [bottomSpanMenuEntry(), { separator: true } as const] : []),
     // A lower half (split sidebar) is made by dragging a tab there, not from this menu (D-173).
     ...(["left", "right", "bottom"] as const)
       .filter((r) => r !== region)

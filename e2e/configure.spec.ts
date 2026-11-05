@@ -53,4 +53,16 @@ test("Claude configures Jig from a chat; each change has a card with Undo", asyn
   await expect(
     page.getByTestId("region-left2").getByTestId("view-tab-addon.pipelines.pipelines"),
   ).toHaveCount(0);
+
+  // How far the bottom panel reaches (D-375).
+  const panels = page.getByTestId("workbench-panels");
+  await expect(panels).toHaveAttribute("data-bottom-span", "right");
+  await page.getByTestId("composer-input").fill("make the bottom panel full width");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("change-card").nth(3)).toContainText("Changed Jig's layout", {
+    timeout: 15000,
+  });
+  await expect(panels).toHaveAttribute("data-bottom-span", "full");
+  await page.getByTestId("change-card").nth(3).getByTestId("change-undo").click();
+  await expect(panels).toHaveAttribute("data-bottom-span", "right");
 });

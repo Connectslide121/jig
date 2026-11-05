@@ -11,7 +11,7 @@ defaults are used, so a hand-edit mistake never prevents Jig from starting.
 | `window-state.json` | JSON | main window size, position, maximised |
 | `logs/main.log` | text | host log |
 | `electron/` | Electron's own data | only when `JIG_HOME` is set: Electron's data folder (and so its one-instance lock) moves here, so a Jig with another home runs next to your usual one (your usual Jig keeps Electron's default folder) |
-| `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, main-area tabs, named layouts (`saved`) — see `docs/reference/layout.md` |
+| `layout.json` | JSON, `LayoutSchema` (`shared/layout.ts`) | regions, views, hidden views, how far the bottom panel reaches (`bottomSpan`), main-area tabs, named layouts (`saved`) — see `docs/reference/layout.md` |
 | `dev-requests/<build id>/` | `files/` (README.md, SPEC.md, PROMPT.md, mockup.html, context.json), `jig-request-<title>-<id>.zip`, `request.json` (`DevRequestInfo` and `approvedHash`, the version you confirmed) | development requests (D-119), written again from the build each time |
 | `worktree-chats.json`, `worktrees/<id>/` | `{ chats: WorktreeChat[] }`; git worktrees | chats in their own worktree (New chat in a worktree…), removed from the chat's ⋯ menu |
 | `attempts/<run>.json`, `attempts/<run>/<n>/` | JSON `AttemptRun`; git worktrees | "Try several ways" runs and the attempts' worktrees (removed on Keep or Discard) |

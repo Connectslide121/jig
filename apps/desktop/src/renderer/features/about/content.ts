@@ -148,7 +148,10 @@ export const CONFIGURE_TOOLS: Array<{ name: string; what: string }> = [
   { name: "jig_find_themes", what: "Search the VS Code marketplace for themes" },
   { name: "jig_install_theme", what: "Install a theme from the marketplace" },
   { name: "jig_get_layout", what: "See where views are" },
-  { name: "jig_change_layout", what: "Move, show and hide views; resize panes" },
+  {
+    name: "jig_change_layout",
+    what: "Move, show and hide views; resize panes; set the bottom panel's width",
+  },
   { name: "jig_list_addons", what: "List add-ons" },
   { name: "jig_set_addon_enabled", what: "Turn an add-on on or off" },
   { name: "jig_list_projects", what: "See your projects, their settings and links" },

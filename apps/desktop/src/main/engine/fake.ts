@@ -1102,7 +1102,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|any pipelines running)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|bottom panel full width|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|any pipelines running)\b/.test(
             lower,
           )
         ) {
@@ -1264,6 +1264,10 @@ ${output.slice(0, 600)}`,
               "Pipelines now shows in the lower half of the sidebar, below Git.",
               signal,
             );
+          } else if (/bottom panel full width/.test(lower)) {
+            await call("jig_get_layout", {});
+            await call("jig_change_layout", { ops: [{ op: "span", span: "full" }] });
+            await stream(`${msg}:text:0`, "The bottom panel now runs the full width of the window.", signal);
           } else if (/terminals? to the right/.test(lower)) {
             await call("jig_get_layout", {});
             await call("jig_change_layout", {

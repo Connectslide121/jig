@@ -1372,6 +1372,11 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   chats, views, actions and files. **View → Layout → Layouts** saves named layouts and switches
   between them (also Settings → Layout, and from a chat). Learning notices views you keep opening or
   moving the same way and suggests placing them.
+- Bottom panel width (D-375): the bottom panel's ⋯ menu → **Panel width** (four small pictures, the
+  current one marked) or Settings → Layout → Bottom panel width: under the centre only (both sidebars
+  full height), also under the left or the right sidebar, or the full window width. Sizes and collapsed
+  sidebars stay as they are; saved with the layout and named layouts. From a chat: "make the bottom
+  panel full width". The default is the shape Jig always had (also under the right sidebar).
 - Chats board (D-178): Chats view header → board icon, or Chats menu → Chats board.
 - Task queue (D-182): Chats menu → Task queue. Add tasks grouped in chats, one field per task
   (a chat's first task starts it, the next ones continue it; D-186), then Start. Claude does them in

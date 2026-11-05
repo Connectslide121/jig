@@ -13,6 +13,7 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   "right":  { "views": [], "size": 320, "collapsed": true },
   "right2": { "views": [], "size": 260, "collapsed": false },
   "bottom": { "views": ["jig.terminals"], "active": "jig.terminals", "size": 260, "collapsed": true },
+  "bottomSpan": "right",
   "hidden": ["addon.releases.releases", "jig.suggestions"],
   "panes":  { "jig.terminals.list": 240, "addon.git.diff": 0.4 },
   "main":   { "tabs": [{ "id": "t…", "type": "jig.chat", "params": { "sessionId": "…" } }], "active": "t…",
@@ -34,6 +35,13 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
   tab onto the lower part of a sidebar that isn't split ("Drop to split the sidebar"), or onto a
   lower half's tab bar; there is no menu entry for it. The Repos add-on starts in `left2`, below the
   left sidebar's tabs.
+- **bottomSpan** (D-375): how far the bottom panel reaches under the sidebars: `center` (under the
+  main area only, both sidebars full height), `left` / `right` (also under that sidebar, which then
+  stops above it), `full` (the whole window width). Default `right`, the layout Jig always had. Set it
+  in Settings → Layout, from the quick pick at the top of the bottom panel's ⋯ menu (a picture of each
+  shape, the current one marked), or from a chat (`{ op: "span", span }`). Only the shape changes:
+  sizes, collapsed and hidden states stay, and no panel remounts (one CSS grid, `Panels` in
+  `Workbench.tsx`). Saved with named layouts and reset by Reset layout.
 - **Drag anywhere** (D-174): drag a view's tab (in a sidebar, or a view open as a main tab) to any
   place: another region's tab bar, a sidebar's lower part (splits it), the main area ("Drop to open
   as a tab"), or, for a region that isn't showing, the dashed target at the left, right or bottom
@@ -54,7 +62,7 @@ Source of truth: `apps/desktop/src/shared/layout.ts` (schema + pure operations, 
 - Old layouts (before D-173) had `sections`, `closedSections` and `waitingUnder` (views shown below
   another view, D-099). On load, sections move to the lower half of their host's sidebar and the
   other two fields are dropped.
-- **saved** (D-175): named layouts (at most 20), `[{ name, left, left2, right, right2, bottom, hidden, panes }]` — where every view is,
+- **saved** (D-175): named layouts (at most 20), `[{ name, left, left2, right, right2, bottom, hidden, panes, bottomSpan? }]` — where every view is,
   sizes and sidebars, not the open chats. **View → Layout → Layouts** saves the current one
   (`saveNamedLayout`), switches (`applyNamedLayout`, keeps tabs that aren't views) and manages them;
   Settings → Layout lists them with Use / Delete; chats use the `save` / `use` layout ops.
@@ -83,6 +91,7 @@ that is reloading or switched off) are kept in place but never shown; duplicates
 | `hideView` / `showView(layout, viewId, fallbackRegion)` | hide / show and activate (un-hiding into `fallbackRegion`) |
 | `splitBeside(layout, viewId, hostId)` | move a view to the lower half of the sidebar `hostId` is in (the bottom panel if the host is there) |
 | `setRegion(layout, region, { size?, collapsed?, active? })`, `toggleRegion` | resize, collapse/expand (`collapsed` of a lower half goes to its sidebar, `columnOf`) |
+| `setBottomSpan(layout, span)`, `bottomUnder(span, side)` | how far the bottom panel reaches (D-375); whether it runs under that sidebar |
 | `reorderView(layout, viewId, index)` | order within a region |
 | `dropView(layout, viewId, region, beforeId?)` | drag and drop: move to `region` (if elsewhere) before `beforeId` or at the end, and show it |
 | `openTab(layout, { type, params })` → `{ layout, tabId }` | open or focus a tab |
@@ -171,7 +180,7 @@ Chat tabs report it from the chat's status and the turns seen while the tab show
 ## Menus and shortcuts
 
 Every view has a `⋯` menu (and a right-click menu on its tab): Move to left sidebar / right sidebar /
-bottom panel, Hide. **Drag a view's tab** to reorder it, or onto another sidebar's (or the bottom
+bottom panel, Hide. In the bottom panel it starts with **Panel width**, the four shapes of `bottomSpan`. **Drag a view's tab** to reorder it, or onto another sidebar's (or the bottom
 panel's) tabs to move it there, before the tab you drop it on (`dropView`); the menus work as before. The top bar's View menu toggles regions and shows views. Main-area tabs:
 middle-click or `×` closes; right-click → Close, Close others, Close all; drag to reorder.
 

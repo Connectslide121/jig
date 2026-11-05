@@ -139,6 +139,7 @@ in this order:
 | "add the stage links" | Claude adds a Stage group with the stage site and resource group (`jig_add_project_links`) |
 | "make a project for this chat" | Claude lists projects, creates "Fake project" (plan mode) and moves the chat into it, pinned (`jig_list_projects`, `jig_create_project`, `jig_move_chat`) |
 | "pipelines below git" (or "under") | Claude shows Pipelines in the lower half of Git's sidebar (`jig_change_layout` op `below`) |
+| "bottom panel full width" | Claude makes the bottom panel run the whole window width (`jig_change_layout` op `span`, D-375) |
 | "browse <url>" | Claude's browser opens the page, clicks `[1]`, takes a screenshot; with "phone" also one at phone and desktop sizes; with "requests" or "network" it reads the network log (all, then failed ones); with "read it again" it reads the page after the click (a page that hangs on it, `e2e/browser-hangs.spec.ts`). The browser's waits run with `JIG_BROWSER_TIMEOUT_SCALE` (0.2 in that spec: load 6 s, page script 3 s, whole call 12 s) |
 | "read the browser page" | Claude reads its own chat's page of Claude's browser (`jig_browser_read`) and answers "My page: Page: …" with the first line, the page's title and address: two chats on separate pages (D-320, `e2e/browser-pages.spec.ts`) |
 | a path ending in an image extension | a Read of that image (thumbnail in the card) |

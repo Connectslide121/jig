@@ -388,6 +388,7 @@ true"). This step checks the whole picture again:
 - [x] Split sidebars, daily views only in sidebars, Reset layout (D-173)
 - [x] Fewer top bar menus, views open as main tabs, drag any view anywhere (D-174)
 - [x] Named layouts, and Learning noticing how you arrange views (D-175)
+- [x] Bottom panel width: under the centre, also under the left or right sidebar, or full width (D-375)
 - [x] Go to (Ctrl+P): chats, views, actions, files (D-176)
 - [x] Workflows triggered by a push or a finished pipeline (D-177)
 - [x] Chats board across projects (D-178)

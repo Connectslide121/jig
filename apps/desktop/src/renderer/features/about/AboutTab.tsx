@@ -775,6 +775,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Split view: right-click a tab → Open to the side, or drag it to the right edge",
                 "Drag any view's tab anywhere: a sidebar, its lower half (splits it), the bottom panel, or the main area as a tab; View → Reset layout puts everything back",
                 "View in the top bar shows or hides the sidebars and the bottom panel, opens any view (Views), and switches named layouts: save how the views are arranged and switch between them (Layouts)",
+                "Pick how far the bottom panel reaches: under the centre only, also under the left or right sidebar, or the whole window width (the bottom panel's ⋯ menu → Panel width, or Settings → Layout)",
                 "Search in the center of the top bar (Ctrl+P or Ctrl+K): any chat, view, action or file, with results directly below",
                 "Right-click a file to open it in VS Code or ask Claude about it",
               ]}

@@ -45,7 +45,23 @@ export interface MenuItem {
   /** Used by tests (`data-testid`). */
   testId?: string;
 }
-export type MenuEntry = MenuItem | { separator: true } | { heading: string };
+/** One option of a `choices` row: a small picture of what it does, its name as the tooltip. */
+export interface MenuChoice {
+  label: string;
+  icon: ReactNode;
+  selected?: boolean;
+  onSelect: () => void;
+  testId?: string;
+}
+/**
+ * A quick pick among a few options drawn as icons in one row (how far the bottom panel reaches): its
+ * label on the left, the options at the right edge, the current one marked. Choosing one closes the menu.
+ */
+export interface MenuChoices {
+  choices: MenuChoice[];
+  label: string;
+}
+export type MenuEntry = MenuItem | MenuChoices | { separator: true } | { heading: string };
 
 export interface MenuPosition {
   x: number;
@@ -113,7 +129,7 @@ export function contextMenu(entries: MenuEntry[] | (() => MenuEntry[])) {
   };
 }
 
-const isItem = (e: MenuEntry): e is MenuItem => "label" in e;
+const isItem = (e: MenuEntry): e is MenuItem => "label" in e && !("choices" in e);
 
 function MenuList({
   entries,
@@ -224,6 +240,46 @@ function MenuList({
                 className="px-2 pt-1.5 pb-1 text-2xs font-semibold tracking-wide text-hint uppercase"
               >
                 {entry.heading}
+              </div>
+            );
+          if ("choices" in entry)
+            return (
+              <div
+                key={index}
+                role="group"
+                aria-label={entry.label}
+                className="flex h-8 items-center gap-2 px-2"
+              >
+                <span className="min-w-0 flex-1 truncate text-muted">{entry.label}</span>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  {entry.choices.map((choice) => (
+                    <button
+                      key={choice.label}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={!!choice.selected}
+                      aria-label={choice.label}
+                      title={choice.label}
+                      data-testid={choice.testId}
+                      onMouseEnter={() => {
+                        setActive(-1);
+                        setSub(undefined);
+                      }}
+                      onClick={() => {
+                        onClose();
+                        choice.onSelect();
+                      }}
+                      className={cn(
+                        "flex h-7 w-8 items-center justify-center rounded-md",
+                        choice.selected
+                          ? "bg-accent-soft text-accent ring-1 ring-inset ring-accent/60"
+                          : "text-muted hover:bg-hover hover:text-fg",
+                      )}
+                    >
+                      {choice.icon}
+                    </button>
+                  ))}
+                </div>
               </div>
             );
           const Icon = entry.icon;

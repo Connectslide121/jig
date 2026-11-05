@@ -20,7 +20,7 @@ import {
   PERMISSION_MODES,
   type SessionMeta,
 } from "../../shared/engine";
-import { type Layout, SIDE_REGIONS } from "../../shared/layout";
+import { BOTTOM_SPANS, type Layout, SIDE_REGIONS } from "../../shared/layout";
 import {
   defaultLinkLabel,
   guessLinkType,
@@ -264,20 +264,33 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
         return [
           ...regions,
           `hidden: ${layout.hidden.map((v) => `${title(v)} [${v}]`).join(", ") || "none"}`,
+          `bottom panel width: ${layout.bottomSpan} (center = under the centre only, both sidebars full height; left / right = also under that sidebar; full = the whole window width)`,
           `named layouts: ${layout.saved.map((l) => l.name).join(", ") || "none"}`,
           `All views: ${views.map((v) => `${v.id} (${v.title})`).join("; ")}`,
-          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view in the lower half of the host sidebar, a split sidebar; regions: left, left2 = lower left, right, right2 = lower right, bottom) | { op: "save", name } (save where every view is as a named layout) | { op: "use", name } (switch to a named layout).',
+          'Change it with jig_change_layout ops: { op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "below", view, host } (view in the lower half of the host sidebar, a split sidebar; regions: left, left2 = lower left, right, right2 = lower right, bottom) | { op: "span", span: "center" | "left" | "right" | "full" } (how far the bottom panel reaches; sizes stay) | { op: "save", name } (save where every view is as a named layout) | { op: "use", name } (switch to a named layout).',
         ].join("\n");
       },
     },
     {
       name: "jig_change_layout",
       description:
-        "Move, hide, show or resize views, put a view in the lower half of a sidebar (a split sidebar), collapse/expand a region, or save / switch to a named layout. Applied at once; the user can undo it from the chat.",
+        "Move, hide, show or resize views, put a view in the lower half of a sidebar (a split sidebar), collapse/expand a region, set how far the bottom panel reaches (span: center, left, right or full width), or save / switch to a named layout. Applied at once; the user can undo it from the chat.",
       shape: {
         ops: z.array(
           z.object({
-            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below", "save", "use"]),
+            op: z.enum([
+              "move",
+              "hide",
+              "show",
+              "resize",
+              "collapse",
+              "expand",
+              "below",
+              "span",
+              "save",
+              "use",
+            ]),
+            span: z.enum(BOTTOM_SPANS).optional(),
             name: z.string().max(60).optional(),
             host: z.string().optional(),
             view: z.string().optional(),
@@ -298,6 +311,7 @@ export function configureTools(deps: ConfigureDeps): JigTool[] {
             o.view,
             o.host && `under ${o.host}`,
             o.region && `→ ${o.region}`,
+            o.span && `→ ${o.span}`,
             o.size && `${o.size}px`,
           ]
             .filter(Boolean)

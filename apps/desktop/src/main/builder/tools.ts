@@ -7,12 +7,14 @@ import type { BuildJob, BuildKind, ExtensionProposal, LayoutOp } from "../../sha
 import { ConfigSchema, type DeepPartial, deepMerge, type JigConfig, protectedIn } from "../../shared/config";
 import {
   applyNamedLayout,
+  BOTTOM_SPANS,
   hideView,
   type Layout,
   moveView,
   SIDE_REGIONS,
   type SideRegion,
   saveNamedLayout,
+  setBottomSpan,
   setRegion,
   showView,
   splitBeside,
@@ -97,6 +99,7 @@ export function applyLayoutOps(layout: Layout, ops: LayoutOp[], viewIds: string[
     else if (op.op === "resize" && op.region && op.size) next = setRegion(next, op.region, { size: op.size });
     else if (op.op === "collapse" && op.region) next = setRegion(next, op.region, { collapsed: true });
     else if (op.op === "expand" && op.region) next = setRegion(next, op.region, { collapsed: false });
+    else if (op.op === "span" && op.span) next = setBottomSpan(next, op.span);
     else if (op.op === "save" && op.name) next = saveNamedLayout(next, op.name);
     else if (op.op === "use" && op.name) next = applyNamedLayout(next, op.name);
     else throw new Error(`Incomplete operation: ${JSON.stringify(op)}`);
@@ -123,7 +126,9 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
           .join("\n");
         const regions = SIDE_REGIONS.map(
           (r) => `${r}: ${layout[r].collapsed ? "collapsed" : "open"}, ${layout[r].size}px`,
-        ).join("; ");
+        )
+          .join("; ")
+          .concat(`; bottom panel width: ${layout.bottomSpan}`);
         const readmes = env
           .addons()
           .filter((a) => a.readme)
@@ -178,11 +183,12 @@ export function builderTools(env: BuilderEnv): BuilderTool[] {
     {
       name: "stage_layout",
       description:
-        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "below", view, host } | { op: "resize", region, size } | { op: "collapse" | "expand", region }]. "below" shows view in the lower half of the host\'s sidebar (a split sidebar); regions: left, left2 (lower left), right, right2 (lower right), bottom. View ids come from the catalog.',
+        'Level 1: stage layout changes for the user to accept. ops: [{ op: "move", view, region } | { op: "hide", view } | { op: "show", view } | { op: "below", view, host } | { op: "resize", region, size } | { op: "collapse" | "expand", region } | { op: "span", span }]. "below" shows view in the lower half of the host\'s sidebar (a split sidebar); regions: left, left2 (lower left), right, right2 (lower right), bottom. "span" sets how far the bottom panel reaches: center (under the centre only, both sidebars full height), left (also under the left sidebar), right (also under the right sidebar), full (the whole window width). View ids come from the catalog.',
       shape: {
         ops: z.array(
           z.object({
-            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below"]),
+            op: z.enum(["move", "hide", "show", "resize", "collapse", "expand", "below", "span"]),
+            span: z.enum(BOTTOM_SPANS).optional(),
             host: z.string().optional(),
             view: z.string().optional(),
             region: z.enum(SIDE_REGIONS).optional(),

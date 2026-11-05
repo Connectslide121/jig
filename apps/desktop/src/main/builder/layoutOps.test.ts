@@ -41,4 +41,10 @@ describe("applyLayoutOps", () => {
     expect(back.left.views).toContain("addon.git.git");
     expect(() => applyLayoutOps(back, [{ op: "use", name: "Nope" }], ids)).toThrow('No layout named "Nope"');
   });
+
+  it("sets how far the bottom panel reaches, and needs a span to do it (D-375)", () => {
+    const layout = normalizeLayout(defaultLayout(), views);
+    expect(applyLayoutOps(layout, [{ op: "span", span: "full" }], ids).bottomSpan).toBe("full");
+    expect(() => applyLayoutOps(layout, [{ op: "span" }], ids)).toThrow("Incomplete operation");
+  });
 });

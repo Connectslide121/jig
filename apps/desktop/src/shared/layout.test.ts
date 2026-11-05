@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activateTab,
   applyNamedLayout,
+  bottomUnder,
   closeOtherTabs,
   closeTab,
   closeTabsWhere,
@@ -25,6 +26,7 @@ import {
   reorderView,
   revealAction,
   saveNamedLayout,
+  setBottomSpan,
   setPaneSize,
   setRegion,
   showView,
@@ -468,5 +470,37 @@ describe("revealAction (a view that wants attention, D-349)", () => {
       "show",
     );
     expect(revealAction(hideView(layout(), "jig.sessions"), "jig.sessions", "main-left")).toBe("show");
+  });
+});
+
+describe("bottom panel span (D-375)", () => {
+  it("defaults to the layout Jig had before the option, and old layout files get it", () => {
+    expect(defaultLayout().bottomSpan).toBe("right");
+    expect(LayoutSchema.parse({ left: { size: 300 } }).bottomSpan).toBe("right");
+  });
+
+  it("changes only the span, never sizes or collapsed states", () => {
+    const start = setRegion(setRegion(base(), "left", { size: 333 }), "bottom", {
+      size: 222,
+      collapsed: false,
+    });
+    const full = setBottomSpan(start, "full");
+    expect(full.bottomSpan).toBe("full");
+    expect({ ...full, bottomSpan: start.bottomSpan }).toEqual(start);
+    expect(setBottomSpan(full, "full")).toBe(full);
+  });
+
+  it("tells which sidebars the bottom panel runs under", () => {
+    expect(["left", "right"].map((s) => bottomUnder("center", s as "left"))).toEqual([false, false]);
+    expect(["left", "right"].map((s) => bottomUnder("left", s as "left"))).toEqual([true, false]);
+    expect(["left", "right"].map((s) => bottomUnder("right", s as "left"))).toEqual([false, true]);
+    expect(["left", "right"].map((s) => bottomUnder("full", s as "left"))).toEqual([true, true]);
+  });
+
+  it("is saved with a named layout and restored by it; older named layouts keep the current one", () => {
+    const saved = saveNamedLayout(setBottomSpan(base(), "full"), "Wide");
+    expect(applyNamedLayout(setBottomSpan(saved, "center"), "Wide").bottomSpan).toBe("full");
+    const old = { ...saved, saved: saved.saved.map(({ bottomSpan: _, ...rest }) => rest) };
+    expect(applyNamedLayout(setBottomSpan(old, "left"), "Wide").bottomSpan).toBe("left");
   });
 });
