@@ -30,14 +30,18 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  CircleAlert,
   CircleCheck,
+  CircleDashed,
   CircleMinus,
+  CircleX,
   CornerDownRight,
   FileText,
   GripVertical,
   History,
   LayoutDashboard,
   ListTodo,
+  LoaderCircle,
   MessageSquare,
   MessageSquareReply,
   MoreHorizontal,
@@ -61,6 +65,7 @@ import {
   COUNT_LABEL,
   COUNT_ORDER,
   type CountKey,
+  countKey,
   countTasks,
   countText,
   progressText,
@@ -101,11 +106,13 @@ import {
   formatMs,
   isActive,
   isFinished,
+  isParked,
   isReady,
   MARKED_DONE_SUMMARY,
   type NewTask,
   type PermissionMode,
   PROVIDER_LABEL,
+  parsePrompts,
   parseTaskIds,
   type Queue,
   type Run,
@@ -115,11 +122,11 @@ import {
   runProvidersText,
   runsOn,
   STATUS_LABEL,
+  sameSlot,
   stepTasks,
   type Task,
   type TaskFile,
   type TaskProvider,
-  type TaskStatus,
   tally,
 } from "./lib/tasks";
 import {
@@ -217,9 +224,12 @@ function Tick({
   );
 }
 
-/** Ticked state of a set of tasks: only queued ones count; none queued hides the tick. */
+/**
+ * Ticked state of a set of tasks: only queued ones count, never parked ones (D-369: no tick includes an
+ * idea); none queued hides the tick.
+ */
 function tickState(tasks: Task[]): { ids: string[]; checked: boolean; mixed: boolean } {
-  const queued = tasks.filter((t) => t.status === "queued");
+  const queued = tasks.filter((t) => t.status === "queued" && !t.parked);
   const ticked = queued.filter(isReady).length;
   return {
     ids: queued.map((t) => t.id),
@@ -393,16 +403,24 @@ function LabeledSwitch({
   onChange,
   label,
   labelClassName,
+  disabled,
+  testId,
 }: {
   checked: boolean;
   onChange: (on: boolean) => void;
   label: string;
   /** E.g. hide the words in a narrow container; the switch keeps its label for screen readers. */
   labelClassName?: string;
+  disabled?: boolean;
+  testId?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-muted" title={label}>
-      <Switch checked={checked} onChange={onChange} label={label} />
+    <div
+      className={cn("flex items-center gap-2 text-xs text-muted", disabled && "opacity-60")}
+      title={label}
+      data-testid={testId}
+    >
+      <Switch checked={checked} onChange={onChange} label={label} disabled={disabled} />
       <span className={cn("truncate", labelClassName)}>{label}</span>
     </div>
   );
@@ -620,6 +638,7 @@ function QueuePanel({
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>();
   const [marking, setMarking] = useState<Task | undefined>();
+  const [idea, setIdea] = useState(false);
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
   const call = (method: string, args?: Record<string, unknown>) =>
@@ -652,6 +671,13 @@ function QueuePanel({
     if (ok) await call("reset");
   };
 
+  /** A count in the header was clicked: its first task (or the parked pool) scrolls into view and takes the focus. */
+  const reveal = (testId: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-testid="tasks-view"] [data-testid="${testId}"]`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
+  };
+
   const askReport = async (task: Task) => {
     try {
       await ctx.host.call("askReport", { projectId, id: task.id });
@@ -676,7 +702,24 @@ function QueuePanel({
             ]
           : []),
         { separator: true as const },
-        ...(queued
+        ...(queued && task.parked
+          ? [
+              { label: "Edit…", icon: "pencil", onSelect: () => setEditing(task) },
+              {
+                label: "Unpark: back to the queue",
+                icon: QUEUE_ICON,
+                onSelect: () => call("park", { ids: [task.id], on: false }),
+              },
+              ...MOVES.map((m) => ({
+                label: m.label,
+                icon: m.icon,
+                shortcut: m.shortcut,
+                disabled: !canStep(queue, task, m.to),
+                onSelect: () => call("move", { ids: [task.id], to: m.to }),
+              })),
+            ]
+          : []),
+        ...(queued && !task.parked
           ? [
               { label: "Edit…", icon: "pencil", onSelect: () => setEditing(task) },
               task.leftOut
@@ -690,6 +733,11 @@ function QueuePanel({
                     icon: "square",
                     onSelect: () => call("select", { ids: [task.id], on: false }),
                   },
+              {
+                label: "Park: keep as an idea",
+                icon: PARK_ICON,
+                onSelect: () => call("park", { ids: [task.id], on: true }),
+              },
               ...MOVES.map((m) => ({
                 label: m.label,
                 icon: m.icon,
@@ -739,13 +787,14 @@ function QueuePanel({
 
   return (
     <>
-      {/* One row: the queue's progress on the left, its size, time and cost and its controls on the
-          right, a 2 px progress line along the bottom edge (D-352). In a narrow place (a sidebar) the
-          size, the time, the quiet counts and the switch's words give way. */}
+      {/* The queue's counts in fixed segments on the left, its time and cost and its controls on the
+          right, a 2 px progress line along the bottom edge (D-352, D-369). In a narrow place (a sidebar)
+          the counts get their own line above the controls; in a wide one the counts' words show. */}
       <div className="@container shrink-0">
-        <div className="relative flex h-10 items-center gap-3 px-3">
-          {queue.tasks.length > 0 ? <QueueSummary tasks={queue.tasks} inline /> : <span className="flex-1" />}
-          <div className="flex shrink-0 items-center gap-2">
+        <div className="relative flex px-3 @max-xl:flex-col @xl:h-10 @xl:flex-row @xl:items-center @xl:gap-3">
+          <QueueStats tasks={queue.tasks} onReveal={reveal} />
+          <div className="flex shrink-0 items-center gap-2 @max-xl:h-9 @xl:h-10">
+            <QueueSize tasks={queue.tasks} />
             <LabeledSwitch
               checked={queue.stopOnFailure}
               onChange={(on) => void call("setStopOnFailure", { on })}
@@ -775,7 +824,9 @@ function QueuePanel({
                 title={
                   n.ready < n.queued
                     ? `Starts the ${n.ready} ticked of ${n.queued} queued tasks`
-                    : "Starts the queued tasks, one after another"
+                    : n.parked
+                      ? "Starts the queued tasks, one after another; parked ones stay"
+                      : "Starts the queued tasks, one after another"
                 }
                 onClick={() => void call("start")}
                 data-testid="tasks-start"
@@ -799,9 +850,10 @@ function QueuePanel({
                     {
                       label: "Start over…",
                       icon: "undo-2",
-                      disabled: n.queued === n.total,
+                      disabled: n.queued + n.parked === n.total,
                       onSelect: () => void resetQueue(),
                     },
+                    { label: "Add an idea…", icon: PARK_ICON, onSelect: () => setIdea(true) },
                     { separator: true as const },
                     { label: "Past runs", icon: "history", onSelect: onHistory },
                   ],
@@ -819,9 +871,14 @@ function QueuePanel({
             continuing the one before, and reports how each went here. Claude can queue tasks too (ask it in a
             chat, e.g. "queue a task for each spec in docs/"). Every run is kept in History.
           </div>
-          <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
-            Add tasks
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" icon={Plus} onClick={() => setAdding(true)}>
+              Add tasks
+            </Button>
+            <Button size="sm" variant="ghost" icon={Pause} onClick={() => setIdea(true)}>
+              Add an idea
+            </Button>
+          </div>
         </Empty>
       ) : (
         <TaskTable
@@ -833,6 +890,16 @@ function QueuePanel({
           onMenu={menuFor}
           onTick={(ids, on) => void call("select", { ids, on })}
           onMove={(ids, move) => void call("move", { ids, ...move })}
+          onAddIdea={() => setIdea(true)}
+        />
+      )}
+      {idea && (
+        <IdeaDialog
+          onClose={() => setIdea(false)}
+          onSave={async (prompts) => {
+            await ctx.host.call("add", { projectId, prompts, newChat: true, parked: true });
+            setIdea(false);
+          }}
         />
       )}
       {adding && (
@@ -907,6 +974,13 @@ function QueuePanel({
 
 type MoveTo = -1 | 1 | "top" | "bottom";
 
+/**
+ * One icon each for the parked pool (D-369), the same as the composer's parked prompts (D-365): `pause`
+ * parks, `list-end` puts back in the queue.
+ */
+const PARK_ICON = "pause";
+const QUEUE_ICON = "list-end";
+
 /** The ⋯ menu's moves; up and down are also Alt+↑/↓ on a focused row (D-307). */
 const MOVES: Array<{ label: string; icon: string; shortcut?: string; to: MoveTo }> = [
   { label: "Move up", icon: "arrow-up", shortcut: "Alt+↑", to: -1 },
@@ -923,8 +997,6 @@ function canStep(queue: Queue, task: Task, to: MoveTo): boolean {
     return false;
   }
 }
-
-const sameSlot = (a?: DropSlot, b?: DropSlot) => !!a && !!b && a.before === b.before && a.join === b.join;
 
 /**
  * Drag and drop in the queue, handed from the table to its cards and rows. It runs on pointer events
@@ -947,14 +1019,14 @@ function dragLabel(queue: Queue, ids?: string[]): string {
 }
 
 /** The line where a drag will land: drawn over the gap or edge, so nothing moves to make room. */
-function DropLine({ at }: { at: "above" | "below" | "row" }) {
+function DropLine({ at }: { at: "above" | "below" | "row" | "row-top" }) {
   return (
     <span
       aria-hidden
       data-testid="tasks-drop-line"
       className={cn(
         "pointer-events-none absolute inset-x-0 z-20 h-0.5 rounded-full bg-accent",
-        at === "above" ? "-top-2" : at === "below" ? "-bottom-2" : "bottom-0",
+        at === "above" ? "-top-2" : at === "below" ? "-bottom-2" : at === "row-top" ? "top-0" : "bottom-0",
       )}
     />
   );
@@ -974,6 +1046,7 @@ function TaskTable({
   onMenu,
   onTick,
   onMove,
+  onAddIdea,
 }: {
   ctx: AddonUiContext;
   queue: Queue;
@@ -985,9 +1058,15 @@ function TaskTable({
   onTick?: (ids: string[], on: boolean) => void;
   /** The queue (not a past run): moves queued tasks to a dropped slot, or a step. */
   onMove?: (ids: string[], move: { slot?: DropSlot; to?: MoveTo }) => void;
+  /** The queue (not a past run): its parked pool's "Add idea" (D-369). */
+  onAddIdea?: () => void;
 }) {
   const all = tickState(queue.tasks);
   const groups = chatGroups(queue);
+  // The parked pool is always last (D-369): the chats above it, its tasks (one per chat) below.
+  const poolAt = groups.findIndex((g) => isParked(g.tasks[0]!.task));
+  const work = poolAt < 0 ? groups : groups.slice(0, poolAt);
+  const pool = poolAt < 0 ? [] : groups.slice(poolAt).flatMap((g) => g.tasks);
   const listRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<DropSlot>();
@@ -1046,6 +1125,10 @@ function TaskTable({
       const task = queue.tasks.find((t) => t.id === row.dataset.dropTask);
       if (!task || ids.includes(task.id)) return show(undefined);
       const box = row.getBoundingClientRect();
+      if (task.parked) {
+        const before = y < box.top + box.height / 2 ? task.id : left[left.indexOf(task) + 1]?.id;
+        return show(resolve({ before, join: false, parked: true }));
+      }
       if (y < box.top + box.height / 2) {
         const group = groups.find((g) => g.tasks.some((t) => t.task.id === task.id));
         const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
@@ -1053,25 +1136,53 @@ function TaskTable({
       }
       return show(resolve({ before: left[left.indexOf(task) + 1]?.id, join: true }));
     }
+    // The pool's divider: its top half the end of the queue, its bottom half the top of the pool; the
+    // empty pool's row, the pool.
+    const divider = under.closest("[data-drop-pool]");
+    if (divider) {
+      const box = divider.getBoundingClientRect();
+      const firstParked = left.find((t) => t.parked)?.id;
+      return show(
+        resolve(
+          y < box.top + box.height / 2
+            ? { before: firstParked, join: false }
+            : { before: firstParked, join: false, parked: true },
+        ),
+      );
+    }
+    if (under.closest("[data-drop-pool-end]")) return show(resolve({ join: false, parked: true }));
     const header = under.closest<HTMLElement>("[data-drop-group]");
     if (header) {
       const group = groups[Number(header.dataset.dropGroup)];
       const first = group?.tasks.find((t) => !ids.includes(t.task.id))?.task;
       return show(resolve(first && { before: first.id, join: false }));
     }
-    const last = listRef.current?.lastElementChild;
-    if (last && y > last.getBoundingClientRect().bottom) show(resolve({ join: false }));
+    // Below the pool, its end; between the last chat and the pool's divider, the end of the queue.
+    const end = listRef.current?.lastElementChild;
+    // (A whole chat can't be parked: there it goes to the end of the queue.)
+    if (end && y > end.getBoundingClientRect().bottom)
+      return show(
+        resolve({ join: false, parked: true }) ??
+          resolve({ before: left.find((t) => t.parked)?.id, join: false }),
+      );
+    const lastCard = listRef.current?.querySelector("[data-pool]")?.previousElementSibling;
+    if (lastCard && y > lastCard.getBoundingClientRect().bottom)
+      show(resolve({ before: left.find((t) => t.parked)?.id, join: false }));
   };
 
   // Where the line shows: under the row a task joins after, or above a card (or below the last one).
   const joinAfter = target?.join
     ? (target.before ? rest[rest.findIndex((t) => t.id === target.before) - 1] : rest[rest.length - 1])?.id
     : undefined;
+  const firstParked = rest.find((t) => t.parked)?.id;
   const cardBefore =
-    target && !target.join && target.before
-      ? groups.findIndex((g) => g.tasks.some((t) => t.task.id === target.before))
+    target && !target.join && !target.parked && target.before && target.before !== firstParked
+      ? work.findIndex((g) => g.tasks.some((t) => t.task.id === target.before))
       : -1;
-  const lineAtEnd = !!target && !target.join && !target.before;
+  // The end of the queue: above the pool (or at the very end without one).
+  const lineAtEnd = !!target && !target.join && !target.parked && target.before === firstParked;
+  // In the pool: above the parked task it goes before, or below the last one.
+  const poolLine = target?.parked ? (target.before ?? "end") : undefined;
 
   const dnd: QueueDnd | undefined = onMove && {
     dragging: (id) => !!dragged?.includes(id),
@@ -1112,7 +1223,7 @@ function TaskTable({
         <span className={cn(COL.status, CELL)}>Status</span>
       </div>
       <div ref={listRef} className="flex flex-col gap-3 pt-2" data-testid="tasks-list">
-        {groups.map((group, gi) => (
+        {work.map((group, gi) => (
           <div key={group.tasks[0]!.task.id} className="relative">
             {cardBefore === gi && <DropLine at="above" />}
             <ChatCard
@@ -1126,9 +1237,114 @@ function TaskTable({
               onTick={onTick}
               dnd={dnd}
             />
-            {lineAtEnd && gi === groups.length - 1 && <DropLine at="below" />}
+            {lineAtEnd && gi === work.length - 1 && <DropLine at="below" />}
           </div>
         ))}
+        {onMove && (
+          <ParkedPool
+            ctx={ctx}
+            tasks={pool}
+            runsOnOf={(task) => runsOn(queue, task, projectDefault)}
+            onOpen={onOpen}
+            onMenu={onMenu}
+            onAddIdea={onAddIdea}
+            dnd={dnd}
+            lineBefore={poolLine}
+            lineAbove={lineAtEnd && !work.length}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The parked pool at the end of the queue (D-369): ideas kept for later, faded under a divider with
+ * their count and "Add idea". They never run and no tick includes them; drag a task here to park it,
+ * or a parked one up into the queue to unpark it. Always shown in the queue, so the first idea fills
+ * its empty row instead of making room.
+ */
+function ParkedPool({
+  ctx,
+  tasks,
+  runsOnOf,
+  onOpen,
+  onMenu,
+  onAddIdea,
+  dnd,
+  lineBefore,
+  lineAbove,
+}: {
+  ctx: AddonUiContext;
+  tasks: Array<{ task: Task; index: number }>;
+  runsOnOf: (task: Task) => RunsOn;
+  onOpen: (id: string) => void;
+  onMenu: (task: Task, at: MouseEvent | HTMLElement) => void;
+  onAddIdea?: () => void;
+  dnd?: QueueDnd;
+  /** Where a drag will land in the pool: before this task, or "end". */
+  lineBefore?: string;
+  /** The drop line for the end of an empty queue, drawn above the divider. */
+  lineAbove?: boolean;
+}) {
+  return (
+    <div className="relative flex flex-col" data-pool data-testid="tasks-pool">
+      {lineAbove && <DropLine at="above" />}
+      <div
+        data-drop-pool
+        className="flex h-8 items-center gap-2 px-3 text-2xs font-medium uppercase tracking-wide text-hint"
+        data-testid="tasks-pool-header"
+      >
+        <span className="flex w-4 shrink-0 items-center justify-center">
+          <Pause className="size-3.5" />
+        </span>
+        <span className="shrink-0" title="Ideas kept for later: they never run until you unpark them">
+          Parked · <span className="tabular-nums">{tasks.length}</span>
+        </span>
+        <span className="h-px min-w-4 flex-1 bg-line" />
+        {onAddIdea && (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Plus}
+            onClick={onAddIdea}
+            title="Write an idea straight into the parked pool"
+            data-testid="tasks-add-idea"
+          >
+            <span className="normal-case tracking-normal">Add idea</span>
+          </Button>
+        )}
+      </div>
+      <div className="relative overflow-hidden rounded-lg border border-dashed border-line">
+        {tasks.map(({ task, index }) => (
+          <div key={task.id} className="relative">
+            {lineBefore === task.id && <DropLine at="row-top" />}
+            <TaskRow
+              ctx={ctx}
+              task={task}
+              index={index}
+              continues={false}
+              on={runsOnOf(task)}
+              onOpen={() => onOpen(task.id)}
+              onMenu={(at) => onMenu(task, at)}
+              dnd={dnd}
+            />
+          </div>
+        ))}
+        {!tasks.length && (
+          <div
+            data-drop-pool-end
+            className="flex h-16 items-center gap-3 px-3 text-xs text-hint"
+            data-testid="tasks-pool-empty"
+          >
+            <span className="w-4 shrink-0" />
+            <span className="line-clamp-2 min-w-0 flex-1">
+              Park ideas here: they wait below the queue, never run, and the tick that includes every task
+              passes them by. Drag a task here or pick Park in its menu.
+            </span>
+          </div>
+        )}
+        {lineBefore === "end" && <DropLine at="row" />}
       </div>
     </div>
   );
@@ -1471,7 +1687,164 @@ function Breakdown({ counts: c }: { counts: QueueCounts }) {
       {row("Tasks", c.total)}
       {row("Chats", c.chats)}
       {row("Chats up next", c.chatsUpNext)}
+      {c.parked > 0 && row("Parked ideas", c.parked, true)}
     </div>
+  );
+}
+
+/** One count of the queue's header (D-369): which tasks it counts, how it reads and where it leads. */
+interface Segment {
+  key: "done" | "running" | "notDone" | "toRun" | "leftOut" | "parked";
+  n: number;
+  /** Done shows "n/of": done of the tasks that will run. */
+  of?: number;
+  label: string;
+  /** What it counts, for its tooltip. */
+  title: string;
+  icon: ReactNode;
+  /** The first task it counts (scrolled to on a click); "pool" for the parked pool. */
+  first?: string;
+}
+
+const SEG_ICON = "size-3.5 shrink-0";
+
+/** The header's counts, in their fixed order: what ran, what runs, what will, what won't, the ideas. */
+function segments(tasks: Task[], c: QueueCounts): Segment[] {
+  const first = (keys: CountKey[]) => tasks.find((t) => !t.parked && keys.includes(countKey(t)))?.id;
+  const notDone: CountKey[] = ["partial", "failed", "blocked", "error", "no_report"];
+  const sum = (keys: CountKey[]) => keys.reduce((n, k) => n + c.by[k], 0);
+  const needsYou = c.by.needs_you > 0;
+  const running = c.by.running + c.by.needs_you;
+  return [
+    {
+      key: "done",
+      n: c.by.done,
+      of: c.willRun,
+      label: "done",
+      title: `${progressText(c)}: done of the tasks that will run (left-out, skipped and parked ones aren't counted)`,
+      icon: <CircleCheck className={cn(SEG_ICON, c.by.done ? "text-success" : "text-hint")} />,
+      first: first(["done"]),
+    },
+    {
+      key: "running",
+      n: running,
+      label: needsYou ? "need you" : "running",
+      title: needsYou ? `${running} running, ${c.by.needs_you} waiting for you` : `${running} running`,
+      icon: needsYou ? (
+        <CircleAlert className={cn(SEG_ICON, "text-warning")} />
+      ) : (
+        <LoaderCircle className={cn(SEG_ICON, running ? "animate-spin text-info" : "text-hint")} />
+      ),
+      first: first(["needs_you", "running"]),
+    },
+    {
+      key: "notDone",
+      n: sum(notDone),
+      label: "not done",
+      title: `Ended without being done: ${notDone.map((k) => countText(k, c.by[k])).join(", ")}`,
+      icon: <CircleX className={cn(SEG_ICON, sum(notDone) ? "text-danger" : "text-hint")} />,
+      first: first(notDone),
+    },
+    {
+      key: "toRun",
+      n: c.by.upNext,
+      label: "to run",
+      title: `${c.by.upNext} ticked: Start runs them`,
+      icon: <CircleDashed className={cn(SEG_ICON, c.by.upNext ? "text-fg" : "text-hint")} />,
+      first: first(["upNext"]),
+    },
+    {
+      key: "leftOut",
+      n: c.by.leftOut,
+      label: "left out",
+      title: `${c.by.leftOut} unticked: they stay queued, Start passes them by`,
+      icon: <CircleMinus className={cn(SEG_ICON, "text-hint")} />,
+      first: first(["leftOut"]),
+    },
+    {
+      key: "parked",
+      n: c.parked,
+      label: "parked",
+      title: `${c.parked} parked: ideas kept below the queue, never run`,
+      icon: <Pause className={cn(SEG_ICON, "text-hint")} />,
+      first: "pool",
+    },
+  ];
+}
+
+/**
+ * The queue's counts in the header (D-369): six fixed segments, always in the same place, each its own
+ * width so a count that changes moves nothing else. A zero stays, quiet. Narrow: icon and number;
+ * wide: with their words. A count with tasks scrolls to the first of them (the pool for parked); the
+ * full breakdown is on hover of the done segment.
+ */
+function QueueStats({ tasks, onReveal }: { tasks: Task[]; onReveal: (testId: string) => void }) {
+  const c = countTasks(tasks);
+  return (
+    <div
+      className="flex min-w-0 items-center @max-xl:h-9 @max-xl:justify-between @xl:flex-1 @xl:gap-1"
+      data-testid="tasks-summary"
+    >
+      {segments(tasks, c).map((seg) => {
+        const target = seg.first === "pool" ? "tasks-pool" : seg.first && `task-${seg.first}`;
+        const text = seg.of !== undefined ? `${seg.n}/${seg.of}` : `${seg.n}`;
+        const button = (
+          <button
+            key={seg.key}
+            type="button"
+            disabled={!seg.n || !target}
+            onClick={() => target && onReveal(target)}
+            aria-label={`${text} ${seg.label}. ${seg.title}`}
+            title={seg.key === "done" ? undefined : seg.title}
+            data-testid={`tasks-count-${seg.key}`}
+            className={cn(
+              "flex h-6 shrink-0 items-center gap-1 rounded-md px-1 text-left text-xs tabular-nums enabled:hover:bg-hover disabled:cursor-default",
+              seg.n ? "text-fg" : "text-hint",
+              seg.key === "done" ? "@max-6xl:w-16 @6xl:w-24" : "@max-6xl:w-10 @6xl:w-24",
+            )}
+          >
+            {seg.icon}
+            <span className={cn("whitespace-nowrap", seg.key === "done" && seg.n > 0 && "font-semibold")}>
+              {text}
+              <span className="@max-6xl:hidden @6xl:inline text-muted"> {seg.label}</span>
+            </span>
+          </button>
+        );
+        return seg.key === "done" ? (
+          <Tooltip key={seg.key} content={<Breakdown counts={c} />}>
+            {button}
+          </Tooltip>
+        ) : (
+          button
+        );
+      })}
+    </div>
+  );
+}
+
+/** The header's quiet size, time and cost of the queue's tasks (the parked ones have none). */
+function QueueSize({ tasks }: { tasks: Task[] }) {
+  const c = countTasks(tasks);
+  const time = formatMs(c.ms);
+  const dot = <span className="text-hint"> · </span>;
+  if (!c.total) return <span className="@max-xl:mr-auto" />;
+  return (
+    <span
+      className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted @max-xl:mr-auto @max-xl:inline @xl:@max-4xl:hidden @4xl:inline"
+      data-testid="tasks-size"
+    >
+      <span className="@max-7xl:hidden @7xl:inline">
+        {sizeText(c)}
+        {(time || c.costUsd !== undefined) && dot}
+      </span>
+      {time && (
+        <span title="Time spent on these tasks">
+          {time}
+          {c.costUsd !== undefined && dot}
+        </span>
+      )}
+      {c.costUsd !== undefined && <span title="What these tasks cost so far">{money(c.costUsd)}</span>}
+    </span>
   );
 }
 
@@ -1680,7 +2053,8 @@ function TaskRow({
   dnd?: QueueDnd;
 }) {
   const canDrag = !!dnd && task.status === "queued";
-  const leftOut = task.status === "queued" && !!task.leftOut;
+  const parked = isParked(task);
+  const leftOut = task.status === "queued" && !!task.leftOut && !parked;
   const detail = task.report?.summary ?? task.error ?? task.answer;
   const notes = task.report?.notes.length ?? 0;
   const followUps = task.report?.followUps.length ?? 0;
@@ -1725,12 +2099,13 @@ function TaskRow({
       )}
     >
       {dnd?.lineAfter === task.id && <DropLine at="row" />}
-      {onTick && (
+      {/* A parked task has no tick, only its empty slot (D-369); the pool passes none. */}
+      {(onTick || parked) && (
         <Tick
-          hidden={task.status !== "queued"}
+          hidden={task.status !== "queued" || parked || !onTick}
           checked={!leftOut}
           label={leftOut ? "Include when starting" : "Leave out for now"}
-          onChange={onTick}
+          onChange={(on) => onTick?.(on)}
           testId={`task-tick-${task.id}`}
         />
       )}
@@ -1741,7 +2116,7 @@ function TaskRow({
         <span className={cn(canDrag && "group-hover:hidden")}>{index + 1}</span>
         {canDrag && <GripVertical aria-hidden className="hidden size-3.5 cursor-grab group-hover:block" />}
       </span>
-      <div className={cn("flex min-w-0 flex-1 flex-col", leftOut && "opacity-60")}>
+      <div className={cn("flex min-w-0 flex-1 flex-col", (leftOut || parked) && "opacity-60")}>
         <div className="flex min-w-0 items-center gap-2">
           {continues && (
             <CornerDownRight className="size-3.5 shrink-0 text-hint" aria-label="Continues the chat" />
@@ -1804,7 +2179,12 @@ function TaskRow({
         className={cn(COL.status, "flex shrink-0 items-center justify-end gap-1.5 whitespace-nowrap")}
         data-testid={`task-status-${task.id}`}
       >
-        {leftOut ? (
+        {parked ? (
+          <>
+            <Badge tone="neutral">Parked</Badge>
+            <Pause className="size-4 shrink-0 text-hint" />
+          </>
+        ) : leftOut ? (
           <>
             <Badge tone="neutral">Left out</Badge>
             <CircleMinus className="size-4 shrink-0 text-hint" />
@@ -2569,7 +2949,12 @@ function EditDialog({
         <LabeledSwitch
           checked={sameChat}
           onChange={setSameChat}
-          label="Continue the chat of the task before"
+          disabled={!!task.parked}
+          label={
+            task.parked
+              ? "Continue the chat of the task before (a parked task starts its own)"
+              : "Continue the chat of the task before"
+          }
         />
         <div className="flex items-center gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted">
@@ -2690,6 +3075,8 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
       "",
   );
   const [startNow, setStartNow] = useState(request.input.start === true);
+  // Into the parked pool at the end of the queue instead (D-369): ideas that never run by themselves.
+  const [parked, setParked] = useState(request.input.parked === true);
   const [busy, setBusy] = useState(false);
   const count = items.filter((i) => i.prompt.trim()).length;
   const project = projects.find((p) => p.id === projectId);
@@ -2719,15 +3106,19 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
         .filter((i) => i.prompt.trim())
         .map((i, n) => ({
           prompt: i.prompt.trim(),
-          newChat: i.newChat,
+          newChat: parked || i.newChat,
           ...(i.title.trim() ? { title: i.title.trim() } : {}),
           // A task that continues a chat runs on that chat's provider: its own choice goes.
-          ...((i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
-          ...((i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
+          ...((parked || i.newChat || n === 0) && i.provider !== undefined ? { provider: i.provider } : {}),
+          ...((parked || i.newChat || n === 0) && i.model !== undefined ? { model: i.model } : {}),
         }));
       await respond({
         behavior: "allow",
-        input: { tasks, ...(projectId ? { project: projectId } : {}), start: startNow },
+        input: {
+          tasks,
+          ...(projectId ? { project: projectId } : {}),
+          ...(parked ? { parked: true, start: false } : { start: startNow }),
+        },
       });
     } finally {
       setBusy(false);
@@ -2742,7 +3133,7 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
       <div className="flex items-center gap-2 text-sm font-medium text-fg">
         <ListTodo className="size-4 shrink-0 text-accent" />
         <span className="min-w-0 truncate">
-          Claude wants to queue {count === 1 ? "a task" : `${count} tasks`}
+          Claude wants to {parked ? "park" : "queue"} {count === 1 ? "a task" : `${count} tasks`}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {project && <ProjectSwatch color={project.color} />}
@@ -2803,7 +3194,8 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
               </div>
               {i > 0 && (
                 <LabeledSwitch
-                  checked={!item.newChat}
+                  checked={!parked && !item.newChat}
+                  disabled={parked}
                   onChange={(on) => set(item.key, { newChat: !on })}
                   label="Same chat"
                 />
@@ -2822,7 +3214,13 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
           onClick={() => void answer(true)}
           data-testid="tasks-review-allow"
         >
-          {count === 1 ? "Queue the task" : `Queue ${count} tasks`}
+          {parked
+            ? count === 1
+              ? "Park the task"
+              : `Park ${count} tasks`
+            : count === 1
+              ? "Queue the task"
+              : `Queue ${count} tasks`}
         </Button>
         <Button
           size="sm"
@@ -2834,8 +3232,19 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
         >
           Don't queue
         </Button>
-        <div className="ml-auto">
-          <LabeledSwitch checked={startNow} onChange={setStartNow} label="Start the queue right away" />
+        <div className="ml-auto flex items-center gap-3">
+          <LabeledSwitch
+            checked={parked}
+            onChange={setParked}
+            label="Park as ideas"
+            testId="tasks-review-parked"
+          />
+          <LabeledSwitch
+            checked={startNow && !parked}
+            disabled={parked}
+            onChange={setStartNow}
+            label="Start the queue right away"
+          />
         </div>
       </div>
     </div>
@@ -2986,6 +3395,79 @@ export function DeleteTasks({ request, status, projectId: chatProject, respond }
  * Marks a task done by hand (D-356): for one that ended in Error or without a report although its chat
  * did the work (say it hit its plan's limit first). An optional one-line note becomes its summary.
  */
+/**
+ * Writes ideas straight into the parked pool (D-369): the text is one idea, or each line one with
+ * "One idea per line". They wait at the end of the queue and never run until you unpark them.
+ */
+function IdeaDialog({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (prompts: string[]) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [eachLine, setEachLine] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const textId = useId();
+  const prompts = parsePrompts(text, eachLine);
+  const save = async () => {
+    if (!prompts.length) return;
+    setSaving(true);
+    try {
+      await onSave(prompts);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      width="md"
+      testId="tasks-idea"
+      title="Add an idea"
+      footer={
+        <>
+          <LabeledSwitch checked={eachLine} onChange={setEachLine} label="One idea per line" />
+          <span className="flex-1" />
+          <Button size="sm" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={Pause}
+            disabled={saving || !prompts.length}
+            onClick={() => void save()}
+            data-testid="tasks-idea-save"
+          >
+            {prompts.length > 1 ? `Park ${prompts.length} ideas` : "Park it"}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-1">
+        <label htmlFor={textId} className="text-xs text-muted">
+          It waits in the parked pool at the end of the queue and never runs until you unpark it.
+        </label>
+        <Textarea
+          autoFocus
+          id={textId}
+          rows={5}
+          value={text}
+          placeholder="What you'd like done some day, as a prompt"
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) void save();
+          }}
+          data-testid="tasks-idea-text"
+        />
+      </div>
+    </Dialog>
+  );
+}
+
 function MarkDoneDialog({
   task,
   index,

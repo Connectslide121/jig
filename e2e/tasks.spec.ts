@@ -248,6 +248,67 @@ test("Tasks: leave tasks out, put a task back and start the queue over", async (
   expect(runs.value).toHaveLength(1);
 });
 
+test("Tasks: park ideas below the queue, where no tick includes them, and unpark one (D-369)", async ({
+  page,
+  jigHome,
+}) => {
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: {
+      projectId: ids.shop,
+      prompts: ["update the readme", "an idea", "tidy the styles"],
+      newChat: true,
+    },
+  });
+  const pool = view.getByTestId("tasks-pool");
+  await expect(pool.getByTestId("tasks-pool-empty")).toBeVisible();
+  await expect(view.getByTestId("tasks-count-parked")).toContainText("0");
+
+  // Park from the task's menu: it goes into the pool, faded, without a tick.
+  await view.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: /^Park/ }).click();
+  await expect(pool.getByTestId("task-status-t2")).toContainText("Parked");
+  await expect(view.getByTestId("task-tick-t2")).toHaveCount(0);
+  await expect(view.getByTestId("tasks-count-parked")).toContainText("1");
+  await expect(view.getByTestId("tasks-count-toRun")).toContainText("2");
+
+  // Unticking and ticking every task passes the parked one by.
+  await view.getByTestId("tasks-tick-all").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("Left out");
+  await view.getByTestId("tasks-tick-all").click();
+  await expect(view.getByTestId("tasks-tick-all")).toBeChecked();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Parked");
+
+  // A new idea goes straight into the pool; tasks added later still land above it.
+  await pool.getByTestId("tasks-add-idea").click();
+  await page.getByTestId("tasks-idea-text").fill("rename the cart");
+  await page.getByTestId("tasks-idea-save").click();
+  await expect(pool.getByTestId("task-t4")).toContainText("rename the cart");
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["write the changelog"], newChat: true },
+  });
+  await expect(view.getByTestId("task-t5")).toBeVisible();
+  await expect(pool.getByTestId("task-t5")).toHaveCount(0);
+  await expect(view.getByTestId("tasks-count-parked")).toContainText("2");
+
+  // Unpark: back as the last queued task, left out until ticked.
+  await pool.getByTestId("task-t2").click({ button: "right" });
+  await page.getByRole("menuitem", { name: /^Unpark/ }).click();
+  await expect(view.getByTestId("task-status-t2")).toContainText("Left out");
+  await expect(pool.getByTestId("task-t2")).toHaveCount(0);
+  const list = (await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "list",
+    args: { projectId: ids.shop },
+  })) as { value: { tasks: Array<{ id: string }> } };
+  expect(list.value.tasks.map((t) => t.id)).toEqual(["t1", "t3", "t5", "t2", "t4"]);
+});
+
 test("Tasks: every run is kept in the history, with its results", async ({ page, jigHome }) => {
   // Two tasks run one after the other: under the full parallel suite that can take a while.
   test.setTimeout(120_000);
@@ -270,7 +331,8 @@ test("Tasks: every run is kept in the history, with its results", async ({ page,
   await expect(view.getByTestId("tasks-start")).toBeVisible();
   await expect(view.getByTestId("task-status-t3")).toContainText("Queued");
   await expect(view.getByTestId("task-t1")).toContainText("Did it: fix the cart");
-  await expect(view.getByTestId("tasks-progress")).toHaveText("1 of 3 done · 1 failed");
+  await expect(view.getByTestId("tasks-count-done")).toContainText("1/3");
+  await expect(view.getByTestId("tasks-count-notDone")).toContainText("1");
 
   // The details: summary, things to know, a follow-up that goes into the queue.
   await view.getByTestId("task-t1").click();

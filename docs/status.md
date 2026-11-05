@@ -1,5 +1,17 @@
 # Status
 
+Parked ideas in the task queue, and a new queue header (2026-11-05, D-369, Jon): park a queued task
+(⋯ → Park: keep as an idea, or drag it below the "Parked · N" divider) and it waits in a faded pool at
+the very end of the queue: it never runs, has no tick (the tick for every task passes it by), and every
+task added later, by you or Claude, lands above it. **Add idea** in the divider (or the view's ⋯) writes
+ideas straight into the pool; Unpark puts one back as the last queued task, left out. Claude sees
+`[Queued, parked]`, can park and unpark with `addon_tasks_edit` and park with `addon_tasks_add`. The
+header now shows six fixed counts: done of what will run, running, not done, to run, left out and
+parked; zeros stay in place, and clicking a count scrolls to its first task. Narrow, the counts get
+their own line above the buttons. Checked with screenshots in the sidebar, bottom panel and a tab;
+unit tests and the Tasks e2e specs pass.
+**Check on your machine:** park the ideas you keep moving to the bottom; Select all leaves them be.
+
 Meetings call window stays light between calls (2026-11-05, D-368): after a meeting or call, the
 hidden call window that listens for Teams calls is replaced by a fresh one, so it no longer keeps
 ~1.7 GB of memory (and the camera service) for the rest of the day. Calls still ring in Jig.

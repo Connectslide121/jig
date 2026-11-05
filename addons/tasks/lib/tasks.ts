@@ -59,6 +59,11 @@ export interface Task {
   runId?: string;
   /** Unticked: stays queued but Start passes it by, until it is ticked again. */
   leftOut?: boolean;
+  /**
+   * Parked (D-369): an idea kept in the pool at the end of the queue. It never runs, no tick includes
+   * it, it always starts its own chat, and nothing that isn't parked comes after it. Missing = not parked.
+   */
+  parked?: boolean;
   /** When the queue asked its chat for the report, after a turn ended without one (once per task). */
   nudgedAt?: string;
   /** Its report came after it was marked No report or Interrupted (`addon_tasks_report` with taskId). */
@@ -193,6 +198,8 @@ export function parsePrompts(text: string, eachLine: boolean): string[] {
 
 export interface NewTask {
   prompt: string;
+  /** Goes into the parked pool instead of the queue. */
+  parked?: boolean;
   title?: string;
   newChat?: boolean;
   attachments?: TaskFile[];
@@ -217,6 +224,8 @@ export function addTasks(
     permissionMode?: PermissionMode;
     from?: string;
     addedBy?: string;
+    /** Every task goes into the parked pool (D-369). */
+    parked?: boolean;
   },
 ): Queue {
   let seq = queue.seq;
@@ -236,13 +245,59 @@ export function addTasks(
         ...(options.from ? { from: options.from } : {}),
         ...(options.addedBy ? { addedBy: options.addedBy } : {}),
         ...providerFields(item.provider, item.model),
+        // A parked task always starts its own chat: the pool holds ideas, not chats.
+        ...(options.parked || item.parked ? { parked: true, newChat: true } : {}),
       }),
     );
-  return { ...queue, seq, tasks: [...queue.tasks, ...added] };
+  // New tasks land before the pool; new parked ones at its end.
+  return { ...queue, seq, tasks: poolLast([...queue.tasks, ...added]) };
+}
+
+/** A task in the parked pool: queued, kept as an idea, never run (D-369). */
+export const isParked = (task: Task): boolean => task.status === "queued" && !!task.parked;
+
+/**
+ * The tasks with the parked pool at the end (D-369): the others in their order, then the parked ones in
+ * theirs. Every change of the queue keeps this, so nothing that isn't parked comes after a parked task.
+ */
+export function poolLast(tasks: Task[]): Task[] {
+  const pool = tasks.filter(isParked);
+  if (!pool.length) return tasks;
+  const rest = tasks.filter((t) => !isParked(t));
+  const sorted = [...rest, ...pool];
+  return sorted.every((t, i) => t === tasks[i]) ? tasks : sorted;
+}
+
+/**
+ * Parks queued tasks (to the end of the pool, each starting its own chat) or unparks them (to the end
+ * of the queue before the pool, left out until you tick them). A chat's first task that is parked hands
+ * its chat to the next one, as a move does. Throws, changing nothing, when one isn't queued.
+ */
+export function setParked(queue: Queue, ids: string[], parked: boolean): Queue {
+  const wanted = new Set(ids);
+  if (!wanted.size) throw new Error("Give at least one task to park or unpark");
+  for (const id of wanted) {
+    const task = queue.tasks.find((t) => t.id === id);
+    if (!task) throw new Error(`There is no task ${id} in this queue`);
+    if (task.status !== "queued")
+      throw new Error(
+        `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only queued tasks can be ${parked ? "parked" : "unparked"}`,
+      );
+  }
+  const changing = queue.tasks.filter((t) => wanted.has(t.id) && !!t.parked !== parked);
+  if (!changing.length) return queue;
+  const rest = withoutTasks(queue.tasks, new Set(changing.map((t) => t.id)));
+  const moved = changing.map((t): Task => {
+    const { parked: _p, leftOut: _l, ...plain } = t;
+    return parked ? { ...plain, parked: true, newChat: true } : { ...plain, leftOut: true, newChat: true };
+  });
+  const firstParked = rest.findIndex(isParked);
+  const at = parked || firstParked < 0 ? rest.length : firstParked;
+  return { ...queue, tasks: [...rest.slice(0, at), ...moved, ...rest.slice(at)] };
 }
 
 /** A queued task Start will take (ticked). */
-export const isReady = (task: Task): boolean => task.status === "queued" && !task.leftOut;
+export const isReady = (task: Task): boolean => task.status === "queued" && !task.leftOut && !task.parked;
 
 /** The next task to run: the first ticked queued one, unless one is still running. */
 export function nextTask(queue: Queue): Task | undefined {
@@ -250,13 +305,16 @@ export function nextTask(queue: Queue): Task | undefined {
   return queue.tasks.find(isReady);
 }
 
-/** Ticks or unticks queued tasks (`ids`, or every queued one). Ticked is the default. */
+/**
+ * Ticks or unticks queued tasks (`ids`, or every queued one). Ticked is the default. Parked tasks are
+ * never ticked or unticked: unpark one first (D-369).
+ */
 export function setLeftOut(queue: Queue, leftOut: boolean, ids?: string[]): Queue {
   const wanted = ids && new Set(ids);
   return {
     ...queue,
     tasks: queue.tasks.map((t) => {
-      if (t.status !== "queued" || (wanted && !wanted.has(t.id))) return t;
+      if (t.status !== "queued" || t.parked || (wanted && !wanted.has(t.id))) return t;
       const { leftOut: _was, ...rest } = t;
       return leftOut ? { ...rest, leftOut: true } : rest;
     }),
@@ -608,6 +666,8 @@ export interface TaskEdit {
   /** Added to the prompt as a new paragraph. */
   append?: string;
   leftOut?: boolean;
+  /** Parks it (to the pool at the end) or unparks it (to the end of the queue, left out unless `leftOut` is false). */
+  parked?: boolean;
   /** False continues the chat of the task before it, true starts a new one. */
   newChat?: boolean;
   /** Moves the task (or with `wholeChat` its whole chat) by the Queue tab's rules (D-307). */
@@ -648,6 +708,7 @@ export function parseTaskEdits(value: unknown): TaskEdit[] {
     const append = text(o.append);
     if (append) edit.append = append;
     if (typeof o.leftOut === "boolean") edit.leftOut = o.leftOut;
+    if (typeof o.parked === "boolean") edit.parked = o.parked;
     if (typeof o.newChat === "boolean") edit.newChat = o.newChat;
     if (o.moveTo !== undefined && o.moveTo !== null) edit.moveTo = parseMoveTo(o.moveTo, id);
     if (o.wholeChat === true) {
@@ -693,11 +754,21 @@ export function editTasks(queue: Queue, edits: TaskEdit[]): Queue {
         if (t.id !== e.id) return t;
         let prompt = e.prompt ?? t.prompt;
         if (e.append) prompt = prompt ? `${prompt}\n\n${e.append}` : e.append;
-        let task: Task = { ...t, prompt, ...(e.title ? { title: e.title } : {}) };
-        if (e.leftOut !== undefined) task = setLeftOut({ ...next, tasks: [task] }, e.leftOut).tasks[0]!;
-        return setProviderChoice(task, e.provider, e.model);
+        return setProviderChoice(
+          { ...t, prompt, ...(e.title ? { title: e.title } : {}) },
+          e.provider,
+          e.model,
+        );
       }),
     };
+    if (e.parked !== undefined) next = setParked(next, [e.id], e.parked);
+    if (e.leftOut !== undefined) {
+      if (next.tasks.find((t) => t.id === e.id)?.parked)
+        throw new Error(
+          `Task ${e.id} is parked, so it is never ticked or left out: unpark it first (parked: false)`,
+        );
+      next = setLeftOut(next, e.leftOut, [e.id]);
+    }
     if (e.moveTo) next = moveTo(next, e.id, e.moveTo, { newChat: e.newChat, wholeChat: e.wholeChat });
     else if (e.newChat !== undefined) next = setNewChat(next, e.id, e.newChat);
   }
@@ -719,6 +790,8 @@ export function setNewChat(queue: Queue, id: string, newChat: boolean): Queue {
   const task = queue.tasks[index];
   if (!task) throw new Error(`There is no task ${id} in this queue`);
   if (task.status !== "queued") throw new Error(`Task ${id} has started; only queued tasks can be changed`);
+  if (!newChat && task.parked)
+    throw new Error(`Task ${id} is parked; a parked task always starts its own chat`);
   if (!newChat && index === 0)
     throw new Error(`Task ${id} is the first in the queue, so there is no chat before it to continue`);
   return { ...queue, tasks: queue.tasks.map((t) => (t.id === id ? { ...t, newChat } : t)) };
@@ -747,10 +820,13 @@ export function moveTo(
   const ids = options.wholeChat ? chatOf(queue, id) : [id];
   if (options.wholeChat && options.newChat === false)
     throw new Error("A whole chat only moves between chats; it can't continue another chat");
-  const slots = dropSlots(queue, ids);
+  // A task stays on its side of the parked pool's divider: parking and unparking are their own change.
+  const parked = !!queue.tasks.find((t) => t.id === id)?.parked;
+  const slots = dropSlots(queue, ids).filter((s) => !!s.parked === parked);
   const join = options.newChat === false;
   const rest = withoutTasks(queue.tasks, new Set(ids));
   const what = options.wholeChat ? `The chat of task ${id}` : `Task ${id}`;
+  if (parked && join) throw new Error(`${what} is parked; a parked task always starts its own chat`);
   let slot: DropSlot | undefined;
   // The top continues a chat only right below the tasks that ran (the first slot), never further down.
   if (to === "top") slot = join ? (slots[0]?.join ? slots[0] : undefined) : slots.find((s) => !s.join);
@@ -761,6 +837,15 @@ export function moveTo(
     const k = rest.findIndex((t) => t.id === target);
     if (k < 0) throw new Error(`There is no task ${target} in this queue`);
     const before = "before" in to ? target : rest[k + 1]?.id;
+    const firstParked = rest.find(isParked)?.id;
+    if (!parked && rest[k]!.parked && before !== firstParked)
+      throw new Error(
+        `${what} isn't parked, so it can't go into the parked pool at the end of the queue: park it with parked: true, or move it before the first parked task`,
+      );
+    if (parked && !rest[k]!.parked && before !== firstParked)
+      throw new Error(
+        `${what} is parked, so it stays in the parked pool at the end of the queue: unpark it first with parked: false`,
+      );
     const inside = before !== undefined && rest.find((t) => t.id === before)?.newChat === false;
     if (inside && options.newChat === true)
       throw new Error(
@@ -784,7 +869,13 @@ export function moveTo(
 export interface DropSlot {
   before?: string;
   join: boolean;
+  /** In the parked pool (D-369): what lands there is parked; a parked task dropped elsewhere is unparked. */
+  parked?: boolean;
 }
+
+/** Whether two slots are the same place. */
+export const sameSlot = (a?: DropSlot, b?: DropSlot): boolean =>
+  !!a && !!b && a.before === b.before && a.join === b.join && !!a.parked === !!b.parked;
 
 /**
  * The queue without the tasks being moved. A chat's first task that moves away hands its chat to the
@@ -822,13 +913,15 @@ function movingTasks(queue: Pick<Queue, "tasks">, ids: string[]): Task[] {
 /** A slot's place in the list, top to bottom: a chat's end comes before the gap after its card. */
 const slotOrder = (rest: Task[], slot: DropSlot) => {
   const k = slot.before ? rest.findIndex((t) => t.id === slot.before) : rest.length;
-  return k * 2 + (slot.join ? 0 : 1);
+  // Before the first parked task: the queue's end comes before the top of the pool.
+  return k * 4 + (slot.join ? 0 : slot.parked ? 2 : 1);
 };
 
 /**
  * Where `ids` can be dropped, top to bottom. Never above or between running or finished tasks: only
  * after the last task that isn't queued. One task can join a chat (inside a card, or at its end) or
- * start its own (between cards); a whole chat only goes between cards, never into another chat.
+ * start its own (between cards); a whole chat only goes between cards, never into another chat. Below
+ * the queue, one task can also go into the parked pool (`parked` slots, D-369), between parked tasks.
  */
 export function dropSlots(queue: Pick<Queue, "tasks">, ids: string[]): DropSlot[] {
   const moving = movingTasks(queue, ids);
@@ -839,7 +932,9 @@ export function dropSlots(queue: Pick<Queue, "tasks">, ids: string[]): DropSlot[
     if (t.status !== "queued") lastFixed = i;
   });
   const slots: DropSlot[] = [];
-  for (let k = lastFixed + 1; k <= rest.length; k++) {
+  const pool = rest.findIndex(isParked);
+  const end = pool < 0 ? rest.length : pool;
+  for (let k = lastFixed + 1; k <= end; k++) {
     const next = rest[k];
     const before = next?.id;
     if (next && !next.newChat) {
@@ -850,6 +945,8 @@ export function dropSlots(queue: Pick<Queue, "tasks">, ids: string[]): DropSlot[
     if (single && k > 0) slots.push({ before, join: true });
     slots.push({ before, join: false });
   }
+  if (single)
+    for (let k = end; k <= rest.length; k++) slots.push({ before: rest[k]?.id, join: false, parked: true });
   return slots;
 }
 
@@ -861,22 +958,29 @@ export function currentSlot(queue: Pick<Queue, "tasks">, ids: string[]): DropSlo
   const after = queue.tasks.slice(i).find((t) => !ids.includes(t.id));
   const rest = withoutTasks(queue.tasks, new Set(ids));
   const before = after && rest.find((t) => t.id === after.id);
+  if (first.parked) return { before: before?.id, join: false, parked: true };
   return { before: before?.id, join: i > 0 && !first.newChat };
 }
 
 /**
  * Moves `ids` (one task, or a whole chat) to `slot`, which must be one of `dropSlots`. The first moved
  * task starts its own chat unless the slot joins one; a chat's first task that moves away hands its
- * chat to its next task.
+ * chat to its next task. A task dropped into the parked pool is parked; a parked one dropped in the
+ * queue is unparked, left out until you tick it (D-369).
  */
 export function moveTasks(queue: Queue, ids: string[], slot: DropSlot): Queue {
   const moving = movingTasks(queue, ids);
   const allowed = dropSlots(queue, ids);
-  if (!allowed.some((s) => s.before === slot.before && s.join === slot.join))
+  if (!allowed.some((s) => sameSlot(s, slot)))
     throw new Error("Tasks can only move among the queued tasks, below the ones that ran");
   const rest = withoutTasks(queue.tasks, new Set(ids));
   const at = slot.before ? rest.findIndex((t) => t.id === slot.before) : rest.length;
-  const block = moving.map((t, i) => (i === 0 ? { ...t, newChat: !slot.join } : t));
+  const block = moving.map((t, i): Task => {
+    const { parked: _p, leftOut: _l, ...plain } = t;
+    if (slot.parked) return { ...plain, parked: true, newChat: true };
+    const kept = t.parked ? { ...plain, leftOut: true } : t;
+    return i === 0 ? { ...kept, newChat: !slot.join } : kept;
+  });
   const tasks = [...rest.slice(0, at), ...block, ...rest.slice(at)];
   return { ...queue, tasks };
 }
@@ -884,9 +988,12 @@ export function moveTasks(queue: Queue, ids: string[], slot: DropSlot): Queue {
 /**
  * One step up or down (Alt+↑/↓, Move up/down) through the same slots a drag offers; Move to top and
  * bottom go to the first slot that starts a chat and to the end. Unchanged when it can't go further.
+ * A queued task stays above the parked pool and a parked one inside it.
  */
 export function stepTasks(queue: Queue, ids: string[], to: -1 | 1 | "top" | "bottom"): Queue {
-  const slots = dropSlots(queue, ids);
+  // Steps stay on the task's side of the parked pool's divider; Park and Unpark cross it.
+  const parked = !!movingTasks(queue, ids)[0]!.parked;
+  const slots = dropSlots(queue, ids).filter((s) => !!s.parked === parked);
   const rest = withoutTasks(queue.tasks, new Set(ids));
   const here = slotOrder(rest, currentSlot(queue, ids));
   const target =
@@ -1073,7 +1180,7 @@ export function joinQueues(into: Queue, from: Queue): Queue {
     id: shift(t.id),
     ...(t.from && ids.has(t.from) ? { from: shift(t.from) } : {}),
   }));
-  return { ...into, seq: into.seq + from.seq, tasks: [...into.tasks, ...tasks] };
+  return { ...into, seq: into.seq + from.seq, tasks: poolLast([...into.tasks, ...tasks]) };
 }
 
 /** Every file the history's tasks use (kept as long as their run is). */
@@ -1132,7 +1239,10 @@ export function taskContext(queue: Queue, sessionId: string): string {
     ...(waiting.length
       ? [
           "Already queued, so never suggest these (or work they cover) as follow-ups, and leave their work to them:",
-          ...shown.map((t) => `- ${t.title}${t.leftOut ? " (left out of this run)" : ""}`),
+          ...shown.map(
+            (t) =>
+              `- ${t.title}${t.parked ? " (parked: an idea the user keeps for later)" : t.leftOut ? " (left out of this run)" : ""}`,
+          ),
           ...(waiting.length > shown.length ? [`- … and ${waiting.length - shown.length} more`] : []),
         ]
       : []),
@@ -1143,14 +1253,18 @@ export function taskContext(queue: Queue, sessionId: string): string {
 const MAX_QUEUED_IN_CONTEXT = 15;
 
 export function counts(queue: Queue): {
+  /** Queued and not parked. */
   queued: number;
   /** Queued and ticked: what Start takes. */
   ready: number;
+  /** In the parked pool (D-369). */
+  parked: number;
   finished: number;
   total: number;
 } {
   return {
-    queued: queue.tasks.filter((t) => t.status === "queued").length,
+    queued: queue.tasks.filter((t) => t.status === "queued" && !t.parked).length,
+    parked: queue.tasks.filter(isParked).length,
     ready: queue.tasks.filter(isReady).length,
     finished: queue.tasks.filter(isFinished).length,
     total: queue.tasks.length,
@@ -1246,12 +1360,16 @@ const queueRunsOn = (queue: Queue) =>
     ? `New chats run on ${PROVIDER_LABEL[queue.provider]}.`
     : "New chats run on the project's default.";
 
+/** ", parked" or ", left out" after a queued task's status in Claude's listings. */
+const stateText = (t: Task) =>
+  t.status !== "queued" ? "" : t.parked ? ", parked" : t.leftOut ? ", left out" : "";
+
 /** One line per task for Claude (the list tool); `projectDefault`: the project's provider. */
 export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): string {
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? ", marked done by the user" : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${stateText(t)}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? ", marked done by the user" : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`, ...lines].join(
@@ -1261,10 +1379,7 @@ export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): 
 
 /** One short line per task (id, status, title), for listing every project's queue at once. */
 export function compactListing(queue: Queue): string {
-  const lines = queue.tasks.map(
-    (t) =>
-      `- ${t.id} [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}] ${t.title}`,
-  );
+  const lines = queue.tasks.map((t) => `- ${t.id} [${STATUS_LABEL[t.status]}${stateText(t)}] ${t.title}`);
   return [
     `${queue.tasks.length} task${queue.tasks.length === 1 ? "" : "s"}, ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`,
     ...lines,

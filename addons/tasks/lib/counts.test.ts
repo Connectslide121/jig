@@ -53,6 +53,22 @@ describe("countTasks", () => {
   });
 });
 
+describe("parked tasks (D-369)", () => {
+  it("counts them on their own: not in the total, the chats, what will run or the progress", () => {
+    const c = countTasks([
+      task("a", { status: "done" }),
+      task("b"),
+      task("c", { leftOut: true }),
+      task("x", { parked: true }),
+      task("y", { parked: true }),
+    ]);
+    expect(c).toMatchObject({ total: 3, willRun: 2, chats: 3, parked: 2 });
+    expect(COUNT_ORDER.reduce((n, k) => n + c.by[k], 0)).toBe(c.total);
+    expect(progressText(c)).toBe("1 of 2 done");
+    expect(countTasks([task("x", { parked: true })])).toMatchObject({ total: 0, parked: 1 });
+  });
+});
+
 describe("progressText", () => {
   it("reads done of what will run, all done, or why nothing runs", () => {
     expect(progressText(countTasks(jons()))).toBe("5 of 6 done");

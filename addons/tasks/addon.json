@@ -116,6 +116,11 @@
             "description": "All tasks continue one chat instead of each starting a new one (default false)",
             "optional": true
           },
+          "parked": {
+            "type": "boolean",
+            "description": "Park the tasks: they go into the parked pool at the end of the queue, ideas the user keeps for later that never run until the user unparks them. Only when the user asks to park them or keep them as ideas (default false: new tasks land before the parked pool)",
+            "optional": true
+          },
           "start": {
             "type": "boolean",
             "description": "Start the queue right away; only when the user said so",
@@ -126,11 +131,11 @@
       },
       {
         "id": "edit",
-        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, whether they are left out of the run, whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn changes the whole queue's provider. Moves follow the Queue tab's rules: never above or between tasks that ran; a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. addon_tasks_list gives the ids.",
+        "description": "Changes tasks that are still queued (not running or finished): their title, their prompt, text appended to the prompt, whether they are left out of the run, whether they are parked (ideas kept in a pool at the end of the queue, never run), whether they continue the previous task's chat (newChat), where they are in the queue (moveTo), and who runs them (provider, model). runsOn changes the whole queue's provider. Moves follow the Queue tab's rules: never above or between tasks that ran, and only parked tasks go into the parked pool at the end (park or unpark with parked); a task that lands inside a chat continues it, between chats it starts its own unless newChat is false; wholeChat moves the task's whole chat, only between chats. Edits apply in order and all or nothing: a broken rule changes nothing and says why. Safe while the queue runs: it changes only those tasks, never the queue's status. Always use it instead of jig_set_addon_data for the queue; to delete a queued task use addon_tasks_delete. addon_tasks_list gives the ids.",
         "params": {
           "tasks": {
             "type": "array",
-            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut?, newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat), provider? (\"claude\", \"chatgpt\", or \"default\" for the queue's choice; only on a task that starts a chat), model? (e.g. opus, sol; null for the default) }",
+            "description": "One entry per task: { id, title?, prompt? (replaces it), append? (added on a new paragraph at the end), leftOut? (not on a parked task), parked? (true parks it: to the end of the parked pool; false unparks it: to the end of the queue before the pool, left out unless leftOut is false), newChat? (false continues the chat of the task before it, true starts a new one; the first task in the queue can't continue), moveTo? (\"top\", \"bottom\", { after: id } or { before: id }), wholeChat? (with moveTo: move every task of its chat), provider? (\"claude\", \"chatgpt\", or \"default\" for the queue's choice; only on a task that starts a chat), model? (e.g. opus, sol; null for the default) }",
             "optional": true
           },
           "runsOn": {

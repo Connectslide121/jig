@@ -79,7 +79,7 @@ export function queueState(queue: Queue): QueueState {
 }
 
 /**
- * A project's card, from its queue alone; undefined when the queue has no tasks. `projectDefault`: who
+ * A project's card, from its queue alone; undefined when the queue has no tasks (parked ones aside). `projectDefault`: who
  * runs the project's new chats when the queue doesn't say.
  */
 export function queueCard(
@@ -87,8 +87,9 @@ export function queueCard(
   queue: Queue,
   projectDefault: TaskProvider = "claude",
 ): QueueCard | undefined {
-  if (!queue.tasks.length) return undefined;
   const counts = countTasks(queue.tasks);
+  // Only parked ideas (D-369): nothing for the dashboard, as an empty queue.
+  if (!counts.total) return undefined;
   const active = queue.tasks.find(isActive);
   const ready = queue.tasks.filter(isReady);
   const last = queue.tasks

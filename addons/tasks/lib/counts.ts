@@ -2,10 +2,19 @@
  * How a queue's tasks add up (one helper for the Queue tab's strip, a chat card's header and the
  * all-queues dashboard): every task in exactly one count, in a fixed order, so the counts always sum
  * to the total. "Will run" is everything except the left-out and skipped tasks; progress is "done of
- * will run", so left-out tasks never make a queue look unfinished.
+ * will run", so left-out tasks never make a queue look unfinished. Parked tasks (D-369) are ideas, not
+ * queue work: they are counted on their own (`parked`) and in none of the rest.
  */
 
-import { chatGroups, durationMs, isActive, STATUS_LABEL, type Task, type TaskStatus } from "./tasks";
+import {
+  chatGroups,
+  durationMs,
+  isActive,
+  isParked,
+  STATUS_LABEL,
+  type Task,
+  type TaskStatus,
+} from "./tasks";
 
 /** The counts, in the order they are listed: what ran, what runs, what will, what won't. */
 export const COUNT_ORDER = [
@@ -40,7 +49,7 @@ export function countKey(task: Task): CountKey {
 const WONT_RUN: CountKey[] = ["leftOut", "skipped"];
 
 export interface QueueCounts {
-  /** Tasks per count; they add up to `total`. */
+  /** Tasks per count; they add up to `total`. Parked tasks are in none of them. */
   by: Record<CountKey, number>;
   total: number;
   /** Every task except the left-out and skipped ones: progress is `by.done` of this. */
@@ -53,9 +62,12 @@ export interface QueueCounts {
   ms: number;
   /** Cost of every task; undefined until one has a cost. */
   costUsd?: number;
+  /** Tasks in the parked pool (D-369): never run, not in `total`. */
+  parked: number;
 }
 
-export function countTasks(tasks: Task[], now = Date.now()): QueueCounts {
+export function countTasks(all: Task[], now = Date.now()): QueueCounts {
+  const tasks = all.filter((t) => !isParked(t));
   const by = Object.fromEntries(COUNT_ORDER.map((k) => [k, 0])) as Record<CountKey, number>;
   let ms = 0;
   let costUsd: number | undefined;
@@ -73,6 +85,7 @@ export function countTasks(tasks: Task[], now = Date.now()): QueueCounts {
     chatsUpNext: groups.filter((g) => g.tasks.some(({ task }) => countKey(task) === "upNext")).length,
     ms,
     ...(costUsd !== undefined ? { costUsd } : {}),
+    parked: all.length - tasks.length,
   };
 }
 

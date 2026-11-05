@@ -27,6 +27,7 @@ import {
   finishTask,
   historyFiles,
   interruptedTurn,
+  isParked,
   joinQueues,
   limitedTask,
   listing,
@@ -45,6 +46,7 @@ import {
   parseTaskEdits,
   parseTaskIds,
   pendingReportsNote,
+  poolLast,
   providerOfModel,
   type Queue,
   type Run,
@@ -59,6 +61,7 @@ import {
   runProvidersText,
   runsOn,
   setLeftOut,
+  setParked,
   setProviderChoice,
   shouldPause,
   splitQueue,
@@ -608,6 +611,110 @@ describe("moving tasks (D-307)", () => {
   });
 });
 
+/** A picture with a parked pool: the tasks of `parked` (ids) are parked. */
+const parkedPic = (spec: string, parked: string, done = ""): Queue => {
+  const q = pic(spec, done);
+  return { ...q, tasks: q.tasks.map((t) => (parked.includes(t.id) ? { ...t, parked: true } : t)) };
+};
+/** The queue as a picture, a parked task marked with ~ and a left-out one with -. */
+const drawPool = (q: Queue) =>
+  q.tasks
+    .map((t) => `${t.parked ? "~" : ""}${t.leftOut ? "-" : ""}${t.newChat ? t.id.toUpperCase() : t.id}`)
+    .join("");
+
+describe("the parked pool (D-369)", () => {
+  it("parks a task at the end of the pool and unparks it as the last queued task, left out", () => {
+    const q = parkedPic("Ab C X", "x");
+    const parked = setParked(q, ["a"], true);
+    // The chat's first task parks: its next task starts the chat.
+    expect(drawPool(parked)).toBe("BC~X~A");
+    expect(drawPool(setParked(parked, ["x"], false))).toBe("BC-X~A");
+    expect(setParked(q, ["x"], true)).toBe(q);
+    expect(() => setParked(parkedPic("Ab", "", "a"), ["a"], true)).toThrow(/only queued tasks/);
+  });
+  it("never runs a parked task, and no tick includes it", () => {
+    const q = parkedPic("A B", "a");
+    expect(nextTask(q)?.id).toBe("b");
+    expect(nextTask(parkedPic("A", "a"))).toBeUndefined();
+    const all = setLeftOut(setLeftOut(q, true), false);
+    expect(all.tasks.find((t) => t.id === "a")).toEqual(q.tasks[0]);
+    expect(setLeftOut(q, false, ["a"]).tasks[0]).toEqual(q.tasks[0]);
+    expect(counts(q)).toMatchObject({ queued: 1, ready: 1, parked: 1, total: 2 });
+    expect(isParked(q.tasks[0]!)).toBe(true);
+  });
+  it("adds new tasks before the pool, and parked ones at its end, each in its own chat", () => {
+    const q = addTasks(parkedPic("A X", "x"), ["b"], { newChat: true });
+    expect(q.tasks.map((t) => t.id)).toEqual(["a", "t1", "x"]);
+    const same = addTasks(parkedPic("A X", "x"), ["b"], { newChat: false });
+    expect(drawPool(same)).toBe("At1~X");
+    const ideas = addTasks(parkedPic("A X", "x"), ["b", "c"], { newChat: false, parked: true });
+    expect(drawPool(ideas)).toBe("A~X~T1~T2");
+    // Run again lands before the pool too.
+    expect(requeue(parkedPic("A X", "x", "a"), "a").tasks.map((t) => t.id)).toEqual(["a", "t1", "x"]);
+  });
+  it("keeps the pool last when queues are joined", () => {
+    const joined = joinQueues(parkedPic("A X", "x"), { ...pic("B"), seq: 1 });
+    expect(joined.tasks.map((t) => t.id)).toEqual(["a", expect.any(String), "x"]);
+    expect(poolLast(pic("A B").tasks)).toEqual(pic("A B").tasks);
+  });
+  it("drops a single task into the pool or a parked one into the queue, never a whole chat", () => {
+    const q = parkedPic("Ab C X Y", "xy");
+    const slots = dropSlots(q, ["c"]);
+    expect(slots.filter((s) => s.parked)).toEqual([
+      { before: "x", join: false, parked: true },
+      { before: "y", join: false, parked: true },
+      { before: undefined, join: false, parked: true },
+    ]);
+    // The queue's end is before the first parked task, outside the pool.
+    expect(slots).toContainEqual({ before: "x", join: false });
+    expect(dropSlots(q, ["a", "b"]).some((s) => s.parked)).toBe(false);
+    expect(drawPool(moveTasks(q, ["c"], { before: "y", join: false, parked: true }))).toBe("Ab~X~C~Y");
+    expect(drawPool(moveTasks(q, ["y"], { before: "c", join: false }))).toBe("Ab-YC~X");
+    expect(drawPool(moveTasks(q, ["y"], { before: "x", join: true }))).toBe("AbC-y~X");
+    expect(currentSlot(q, ["x"])).toEqual({ before: "y", join: false, parked: true });
+  });
+  it("steps stay on their side of the divider", () => {
+    const q = parkedPic("A B X Y", "xy");
+    expect(stepTasks(q, ["b"], 1)).toBe(q);
+    expect(drawPool(stepTasks(q, ["b"], "bottom"))).toBe(drawPool(q));
+    expect(stepTasks(q, ["x"], -1)).toBe(q);
+    expect(drawPool(stepTasks(q, ["x"], 1))).toBe("AB~Y~X");
+    expect(drawPool(stepTasks(q, ["y"], "top"))).toBe("AB~Y~X");
+  });
+  it("Claude's moves and edits keep the pool last, all or nothing", () => {
+    const q = parkedPic("A B X Y", "xy");
+    expect(drawPool(editTasks(q, [{ id: "a", moveTo: "bottom" }]))).toBe("BA~X~Y");
+    expect(drawPool(editTasks(q, [{ id: "a", moveTo: { before: "x" } }]))).toBe("BA~X~Y");
+    expect(() => editTasks(q, [{ id: "a", moveTo: { after: "x" } }])).toThrow(
+      /can't go into the parked pool/,
+    );
+    expect(() => editTasks(q, [{ id: "y", moveTo: "top" }])).not.toThrow();
+    expect(drawPool(editTasks(q, [{ id: "y", moveTo: "top" }]))).toBe("AB~Y~X");
+    expect(() => editTasks(q, [{ id: "x", moveTo: { before: "a" } }])).toThrow(/stays in the parked pool/);
+    expect(drawPool(editTasks(q, [{ id: "x", parked: false }]))).toBe("AB-X~Y");
+    expect(drawPool(editTasks(q, [{ id: "x", parked: false, leftOut: false }]))).toBe("ABX~Y");
+    expect(drawPool(editTasks(q, [{ id: "a", parked: true }]))).toBe("B~X~Y~A");
+    expect(() => editTasks(q, [{ id: "x", leftOut: false }])).toThrow(/unpark it first/);
+    expect(() => editTasks(q, [{ id: "x", newChat: false }])).toThrow(/always starts its own chat/);
+    // All or nothing: the second edit breaks a rule, so the first doesn't apply either.
+    expect(() =>
+      editTasks(q, [
+        { id: "a", parked: true },
+        { id: "b", moveTo: { after: "y" } },
+      ]),
+    ).toThrow();
+    expect(parseTaskEdits([{ id: "x", parked: false }])).toEqual([{ id: "x", parked: false }]);
+  });
+  it("tells Claude which tasks are parked, and counts them apart from the queue's work", () => {
+    const q = parkedPic("A X", "x");
+    expect(listing(q)).toContain("[Queued, parked] X");
+    expect(compactListing(q)).toContain("- x [Queued, parked] X");
+    const c = countTasks(q.tasks);
+    expect(c).toMatchObject({ total: 1, willRun: 1, parked: 1, chats: 1 });
+    expect(c.by.upNext).toBe(1);
+  });
+});
+
 describe("deleting tasks (the Queue tab's Remove, addon_tasks_delete)", () => {
   it("hands a chat to its next task when its first one is deleted, as a move away does", () => {
     expect(draw(removeTasks(pic("Abc D"), ["a"]))).toBe("BcD");
@@ -775,7 +882,7 @@ describe("taskContext, counts, duration, listing", () => {
   it("counts and times", () => {
     const q = queued(["a", "b"]);
     q.tasks[0]!.status = "done";
-    expect(counts(q)).toEqual({ queued: 1, ready: 1, finished: 1, total: 2 });
+    expect(counts(q)).toEqual({ queued: 1, ready: 1, parked: 0, finished: 1, total: 2 });
     const t = { ...q.tasks[0]!, sentAt: "2025-01-01T10:00:00Z", finishedAt: "2025-01-01T10:00:42Z" };
     expect(duration(t)).toBe("42s");
     expect(duration({ ...t, finishedAt: "2025-01-01T11:05:00Z" })).toBe("1h 5m");

@@ -53,6 +53,7 @@ import {
   runsOn,
   STATUS_LABEL,
   setLeftOut,
+  setParked,
   setProviderChoice,
   shouldPause,
   splitQueue,
@@ -550,6 +551,8 @@ export async function add(
     newChat: boolean;
     permissionMode?: PermissionMode;
     from?: string;
+    /** Into the parked pool at the end of the queue (D-369): ideas kept for later. */
+    parked?: boolean;
   },
   api: AddonHostApi,
 ): Promise<Queue> {
@@ -559,15 +562,19 @@ export async function add(
       ...args,
       projectId,
       permissionMode: parsePermissionMode(args.permissionMode),
+      parked: args.parked === true,
     });
-    checkProviderChoices(
-      added,
-      added.tasks.slice(q.tasks.length).map((t) => t.id),
-    );
+    checkProviderChoices(added, newIds(q, added));
     const next = await advance(api, added);
     return [next, next];
   });
 }
+
+/** The ids of the tasks `after` has and `before` hadn't (new tasks land before the parked pool). */
+const newIds = (before: Queue, after: Queue) => {
+  const had = new Set(before.tasks.map((t) => t.id));
+  return after.tasks.filter((t) => !had.has(t.id)).map((t) => t.id);
+};
 
 export async function update(
   args: ProjectArgs & {
@@ -599,7 +606,8 @@ export async function update(
       prompt,
       attachments: attachments.length ? attachments : undefined,
       title: args.title?.trim() || (args.prompt !== undefined ? titleFor(prompt, attachments) : task.title),
-      newChat: args.newChat ?? task.newChat,
+      // A parked task always starts its own chat (D-369).
+      newChat: task.parked ? true : (args.newChat ?? task.newChat),
       permissionMode: parsePermissionMode(args.permissionMode) ?? task.permissionMode,
     });
     checkProviderChoices(next, [task.id]);
@@ -638,7 +646,11 @@ export async function move(
   const ids = Array.isArray(args?.ids) ? args.ids.filter((id) => typeof id === "string") : [];
   await change(api, await projectArg(api, args?.projectId), (q) => [
     args.slot
-      ? moveTasks(q, ids, { before: args.slot.before, join: !!args.slot.join })
+      ? moveTasks(q, ids, {
+          before: args.slot.before,
+          join: !!args.slot.join,
+          ...(args.slot.parked ? { parked: true } : {}),
+        })
       : stepTasks(q, ids, args.to ?? 1),
     undefined,
   ]);
@@ -746,6 +758,18 @@ export async function select(
 ): Promise<void> {
   const ids = Array.isArray(args.ids) ? args.ids.filter((id) => typeof id === "string") : undefined;
   await change(api, await projectArg(api, args?.projectId), (q) => [setLeftOut(q, !args.on, ids), undefined]);
+}
+
+/**
+ * Parks queued tasks (`on`: into the pool at the end of the queue, never run) or unparks them (to the
+ * end of the queue before the pool, left out until ticked) (D-369).
+ */
+export async function park(
+  args: ProjectArgs & { ids: string[]; on: boolean },
+  api: AddonHostApi,
+): Promise<void> {
+  const ids = Array.isArray(args?.ids) ? args.ids.filter((id) => typeof id === "string") : [];
+  await change(api, await projectArg(api, args?.projectId), (q) => [setParked(q, ids, !!args.on), undefined]);
 }
 
 export async function start(args: ProjectArgs, api: AddonHostApi): Promise<void> {
@@ -936,26 +960,35 @@ async function projectNamed(
 }
 
 export async function toolAdd(
-  args: ChatArgs & { tasks?: unknown; project?: string; sameChat?: boolean; start?: boolean },
+  args: ChatArgs & {
+    tasks?: unknown;
+    project?: string;
+    sameChat?: boolean;
+    start?: boolean;
+    parked?: boolean;
+  },
   api: AddonHostApi,
 ): Promise<string> {
   const tasks = parseNewTasks(args.tasks);
+  const parked = args.parked === true;
+  if (parked && args.sameChat) throw new Error("Parked tasks each start their own chat: leave sameChat out");
   const projectId = await projectNamed(api, args.project, args.chat?.projectId);
   if (!projectId) throw new Error("Say which project the tasks are for (this chat has none)");
   const fallback = await projectProvider(api, projectId);
   return change(api, projectId, async (q) => {
-    let next = addTasks(q, tasks, { projectId, newChat: !args.sameChat, addedBy: args.chat?.sessionId });
-    checkProviderChoices(
-      next,
-      next.tasks.slice(q.tasks.length).map((t) => t.id),
-    );
+    let next = addTasks(q, tasks, {
+      projectId,
+      newChat: !args.sameChat,
+      addedBy: args.chat?.sessionId,
+      parked,
+    });
+    checkProviderChoices(next, newIds(q, next));
     if (args.start) next = await advance(api, openRun({ ...next, running: true }));
-    return [
-      next,
-      `Queued ${tasks.length} task${tasks.length === 1 ? "" : "s"}${
-        args.start ? " and started the queue" : "; the user starts the queue from its view"
-      }.\n${listing(next, fallback)}`,
-    ];
+    const n = `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
+    const what = parked
+      ? `Parked ${n} at the end of the queue: they never run until the user unparks them`
+      : `Queued ${n}${args.start ? " and started the queue" : "; the user starts the queue from its view"}`;
+    return [next, `${what}.\n${listing(next, fallback)}`];
   });
 }
 

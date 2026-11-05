@@ -5932,3 +5932,50 @@ choice of Telegram and everything below: Claude, on my own.
 - **Trade-off:** a call that rings in the second between `callIdle` and the new window's agent
   listening rings on the Teams app only. Prejoin of the next join loads in a new window (a moment
   slower than a warm one).
+
+## D-369: Tasks: a parked pool at the end of the queue, and a stats header with fixed segments
+
+- Status: accepted; extends D-279 (ticks), D-307 (moves) and D-352 (the queue's header).
+- **Who:** Jon, 2026-11-05: he keeps ideas in the queue that he doesn't want done yet and keeps moving
+  them to the bottom; he wants to **park** them in a pool at the end of the queue, under a divider and
+  faded, never enabled by the tick that includes every task, with anything AI adds landing before
+  them. He also asked for a header that shows done, running, enabled, left out and parked as fixed,
+  aligned segments. The details below: Claude, on my own, along the lines of Jon's task.
+- **State:** `Task.parked` (missing = not parked, so old state files read as before; nothing is
+  migrated). Only a queued task is parked. A parked task never runs (`isReady` is false), no tick
+  includes or leaves it out (`setLeftOut` passes it by; `leftOut` on a parked task is refused) and it
+  always starts its own chat (`newChat: true`; continuing a chat is refused).
+- **The pool is always last** (`poolLast`): every insert lands before it (`addTasks`, Run again, the
+  Queue tab's Add, Claude's `addon_tasks_add`, joined queues), parked additions at its end. Park puts a
+  task at the end of the pool (its chat goes to its next task, as when it moves away); Unpark puts it
+  last before the pool, **left out**, so it never runs by surprise. Moves keep to their side:
+  `dropSlots` offers a single task `parked` slots between parked tasks (a drop there parks it; a
+  parked task dropped in the queue is unparked); steps (Alt+↑/↓, Move up/down/top/bottom) and Claude's
+  `moveTo` stay on the task's side of the divider and say why when a place is in the other one
+  (all or nothing, as before). A whole chat is never parked by a drag.
+- **Claude:** `addon_tasks_list` shows `[Queued, parked]`; `addon_tasks_edit` takes `parked` (unpark =
+  last before the pool, left out unless `leftOut: false` in the same edit); `addon_tasks_add` takes
+  `parked` (only when the user asks; the review card has a **Park as ideas** switch, which turns off
+  Start right away and Same chat). A running task's instructions name parked ones as ideas, so they
+  aren't suggested as follow-ups.
+- **The view:** the pool is always shown under the queue's chats: a divider "⏸ Parked · N" with **Add
+  idea** (a modal: one idea, or one per line), then a dashed card of faded rows with an empty tick slot,
+  "Parked" and the pause icon in the status column. Empty, it holds one row-high hint, so the first idea
+  replaces it instead of pushing anything. ⋯ on a queued task: **Park: keep as an idea**; on a parked
+  one: **Unpark: back to the queue**. The view's ⋯ and the empty queue have **Add an idea**.
+- **Naming, with the composer's parked prompts (D-365):** both say **Park** and use the same icons
+  (`pause` parks, `list-end` = back to the queue) and the same muted, dashed look: one meaning, "kept,
+  never sent or run by itself". They stay two pools: a chat's parked prompts belong to that chat and
+  are sent into it; parked tasks are the project's queue's ideas and run in new chats. Merging them
+  would make core depend on the Tasks add-on (D-365 left that out for the same reason).
+- **Counts:** parked tasks are in no count of `countTasks` (not the total, chats, "will run", progress
+  or the progress line), only in `parked`; a queue with only ideas has no dashboard card. The badge
+  (tasks that need you) never counted them.
+- **The header (replaces the left part of D-352's line):** six fixed segments, always shown in the
+  same order and place, a zero in quiet grey: done as "done/will run" (its tooltip is the full
+  breakdown), running (or "need you" with the warning icon), not done (partly done, failed, blocked,
+  error, no report), to run (ticked), left out, parked. Each is its own fixed width with tabular digits,
+  so a changing count moves nothing; one with tasks scrolls to the first of them (parked: to the pool).
+  Narrow (a sidebar, below `@xl`): icons and numbers on their own line above the controls, with time
+  and cost left of the controls; from `@xl` one line; from `@6xl` the segments' words show, from `@7xl`
+  "N tasks in M chats" too. Skipped tasks are only in the breakdown.
