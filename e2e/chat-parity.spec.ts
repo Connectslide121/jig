@@ -113,7 +113,7 @@ test("composer: / commands, @ files, ! shell, # memory, history, Shift+Tab", asy
   await expect(input).toHaveValue("");
 
   // Shift+Tab goes through the permission modes; a new chat starts in plan mode (the default).
-  // The button in the box, beside the provider picker, shows the mode (D-364); no extra line above the box.
+  // The button in the box, before the provider picker, shows the mode (D-364, D-392); no line above the box.
   const permissions = page.getByTestId("permission-menu");
   await expect(permissions).toContainText("Plan only");
   await expect(page.getByTestId("composer-mode")).toHaveCount(0);

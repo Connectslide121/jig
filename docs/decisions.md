@@ -6699,3 +6699,19 @@ stopped for good.
 - **Late reports:** its own chat may still revise it (D-353), which replaces the mark's report, but a
   failed or blocked revision of a task you marked done never pauses the queue (`applyReport`): you
   already decided it's finished.
+
+## D-392: Chat box: permission › provider › model at their natural width
+
+- Status: accepted; amends D-364 (the permission button's place and its fixed slot) and through it
+  D-347.
+- **Who:** Jon, 2026-11-05: the fixed `w-48` slot left a big gap between "Don't ask" and the model
+  button. He wants the order permission › provider › model, each button at its natural width (`px-2`,
+  icon, label, chevron) beside the next with the toolbar's normal gap, and **explicitly accepts that
+  these buttons shift when a label changes**. A deliberate exception to the no-layout-shift rule for
+  this one group only.
+- **The row's end:** `PermissionButton` (`permission-menu`), then `ProviderPicker` (`provider-menu`,
+  never had a fixed width; builder chats have none), then the model button (`model-menu`), Stop, Send.
+  Below `@2xl/toolbar` the permission button stays the icon alone in a centred `w-7` (label in its
+  tooltip and accessible name), as in D-364. Its chevron lost a plain `block` that add-on CSS made
+  win over `@max-2xl/toolbar:hidden` (D-297): the icon-only button showed a chevron spilling out of
+  its slot (Claude, on my own).

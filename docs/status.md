@@ -141,10 +141,15 @@ Chats list marks every chat's provider (2026-11-04, D-348, Jon): each row shows 
 ChatGPT's aperture at the far right, in one aligned column; hovering a row still shows the pin button
 there.
 
+Chat box: permission › provider › model (2026-11-05, D-392, Jon; amends D-364): the bottom row's
+end reads permission mode, provider, model, each button at its natural width with the toolbar's
+normal gap, so no gap after "Don't ask"; the buttons may shift when a label changes (Jon accepted
+that). In a narrow box the permission button is still the icon alone.
+
 Permission mode back in the message box (2026-11-05, D-364, Jon; amends D-347): the permission
 button is in the box's bottom row again, right after the provider picker (Claude/ChatGPT): icon and
-label, red for Don't ask, the accent for Accept edits and Plan only. It keeps one fixed width, so
-switching modes moves nothing; in a narrow box it is the icon alone. The chat's header no longer shows
+label, red for Don't ask, the accent for Accept edits and Plan only (its fixed width went in D-392); in
+a narrow box it is the icon alone. The chat's header no longer shows
 the mode and the model menu no longer has "Permissions: <mode> ›". Shift+Tab still switches. Checked
 with the fake engine at wide and narrow widths, every mode.
 

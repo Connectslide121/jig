@@ -490,13 +490,13 @@ export function Composer({
           }
           toolbarEnd={
             <>
+              <PermissionButton meta={meta} who={who} />
               {meta.kind !== "builder" && (
                 <ProviderPicker
                   meta={meta}
                   fresh={canChangeProvider(meta, sent?.length ?? 0, queue.length)}
                 />
               )}
-              <PermissionButton meta={meta} who={who} />
               <button
                 type="button"
                 data-testid="model-menu"
@@ -563,9 +563,10 @@ export function Composer({
 }
 
 /**
- * The chat's permission mode, beside the provider picker (D-347, amended by D-364): its icon and
- * label in a fixed slot that fits the longest mode, so nothing moves when it changes; only the icon
- * in a narrow message box. Red for Don't ask, the accent for the other modes but Ask.
+ * The chat's permission mode, first of permission › provider › model (D-347, D-364, amended by
+ * D-392): its icon and label at their natural width, so the three sit side by side and may shift
+ * when the label changes (Jon accepted that); only the icon in a narrow message box. Red for Don't
+ * ask, the accent for the other modes but Ask.
  */
 function PermissionButton({ meta, who }: { meta: SessionMeta; who: string }) {
   const mode = meta.permissionMode;
@@ -582,14 +583,14 @@ function PermissionButton({ meta, who }: { meta: SessionMeta; who: string }) {
       className={cn(
         // Container variants on both sides: a plain utility would win over them (D-297).
         "flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md text-sm leading-none hover:bg-hover",
-        "@max-2xl/toolbar:w-7 @max-2xl/toolbar:justify-center @2xl/toolbar:w-48 @2xl/toolbar:px-2",
+        "@max-2xl/toolbar:w-7 @max-2xl/toolbar:justify-center @2xl/toolbar:px-2",
         permissionTone(mode),
         mode === "default" && "hover:text-fg",
       )}
     >
       <Icon className="block size-3.5 shrink-0" />
-      <span className="min-w-0 truncate @max-2xl/toolbar:hidden @2xl/toolbar:inline">{label}</span>
-      <ChevronDown className="block size-3.5 shrink-0 @max-2xl/toolbar:hidden @2xl/toolbar:block" />
+      <span className="@max-2xl/toolbar:hidden @2xl/toolbar:inline">{label}</span>
+      <ChevronDown className="size-3.5 shrink-0 @max-2xl/toolbar:hidden @2xl/toolbar:block" />
     </button>
   );
 }

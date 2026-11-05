@@ -21,7 +21,7 @@ resolved active model is recorded separately and never replaces the selected ali
 | `!` bash mode | `! command` runs in the chat's folder (PowerShell on Windows, `$SHELL` elsewhere, 2 minutes at most). The output shows as a card and goes to Claude with your next message as `<bash-input>`/`<bash-stdout>`, like Claude Code |
 | `#` memory | `# text` → Enter asks which CLAUDE.md: the chat folder's or `~/.claude/CLAUDE.md`; a line `- text` is appended |
 | ↑ / ↓ history | your earlier messages of this chat (↑ on the first line of an empty box; a recalled `/command` doesn't open the picker) |
-| Shift+Tab modes | Ask before changes → Accept edits → Plan only → Ask. The mode shows on a button in the box's bottom row, right after the provider picker (icon and label in a fixed slot, only the icon in a narrow box; red for Don't ask, the accent for the others but Ask, D-364); the button opens the modes; no line above the box (Jon); plan mode outlines the box |
+| Shift+Tab modes | Ask before changes → Accept edits → Plan only → Ask. The mode shows on a button in the box's bottom row, first of permission › provider › model (icon and label at their natural width, only the icon in a narrow box; red for Don't ask, the accent for the others but Ask, D-364, D-392); the button opens the modes; no line above the box (Jon); plan mode outlines the box |
 | Esc | stops Claude |
 | A terminal Claude started ends | Jig tells the chat (D-281): one muted line "Terminal "…" finished" / "failed with exit code N" with "Jig told Claude"; it starts a turn, or joins the running one. Not editable, not in ↑ history |
 | The task queue asks for a task's report | the same muted line with the Tasks add-on's icon, "Task queue: asked for the report of task N" (D-318, `chats.send` with `from`); the request itself is in its tooltip |
@@ -37,7 +37,7 @@ resolved active model is recorded separately and never replaces the selected ali
 | Ctrl+B background | ⤓ on a running Bash or Task card moves it to the background; background commands and agents are listed above the box with Stop |
 | `/mcp` | chat ⋯ → MCP servers…: status (connected, failed, needs sign-in, off), tools, on/off, reconnect. A server that fails at start adds a notice in the chat |
 | `/add-dir` | chat ⋯ → Folders for this chat…: other folders Claude may use (Claude Code restarts with them at the next message) |
-| `/model`, effort | the model menu (bottom row of the message box) lists Claude Code's models (`sessions.models`) and an Effort submenu for models that support it (`sessions.setEffort`, applied to the running session); the permission mode is its own button beside the provider picker (D-364) |
+| `/model`, effort | the model menu (bottom row of the message box) lists Claude Code's models (`sessions.models`) and an Effort submenu for models that support it (`sessions.setEffort`, applied to the running session); the permission mode is its own button before the provider picker (D-364, D-392) |
 | `/export` | chat ⋯ → Export as Markdown… (`shared/chatExport.ts`) |
 | `/context`, `/compact`, `/usage` | the context meter, Compact, the plan usage ring (`docs/reference/engine.md`) |
 

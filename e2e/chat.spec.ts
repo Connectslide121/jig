@@ -248,24 +248,39 @@ test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await page.getByTestId("model-opus").click();
   await expect(page.getByTestId("model-menu")).toContainText("Opus");
   await expect(page.getByTestId("model-menu")).not.toContainText("Plan");
-  // The mode's button is in the message box, beside the provider picker; the model menu and the
-  // chat's header don't have it (D-364).
+  // The mode's button is in the message box, first of permission › provider › model; the model menu
+  // and the chat's header don't have it (D-364). Each at its natural width, the toolbar's gap between
+  // them (D-392).
   const toolbar = page.getByTestId("composer-toolbar");
   await expect(toolbar.getByTestId("permission-menu")).toBeVisible();
   await expect(page.getByTestId("chat").locator("header").getByTestId("permission-menu")).toHaveCount(0);
-  const provider = await settledBox(toolbar.getByTestId("provider-menu"));
-  const before = await settledBox(toolbar.getByTestId("permission-menu"));
-  expect(Math.abs(before!.x - (provider!.x + provider!.width) - 4)).toBeLessThanOrEqual(1);
+  const adjacent = async () => {
+    const permission = await settledBox(toolbar.getByTestId("permission-menu"));
+    const provider = await settledBox(toolbar.getByTestId("provider-menu"));
+    const model = await settledBox(toolbar.getByTestId("model-menu"));
+    expect(Math.abs(provider!.x - (permission!.x + permission!.width) - 4)).toBeLessThanOrEqual(1);
+    expect(Math.abs(model!.x - (provider!.x + provider!.width) - 4)).toBeLessThanOrEqual(1);
+    return permission!;
+  };
+  const before = await adjacent();
   await page.getByTestId("model-menu").click();
   await expect(page.getByTestId("model-opus")).toBeVisible();
   await expect(page.getByTestId("permission-submenu")).toHaveCount(0);
   await page.keyboard.press("Escape");
-  // Its slot is fixed: switching to a mode with a longer label moves nothing.
+  // No reserved slot: a longer label makes the button wider, and the others stay beside it.
   await toolbar.getByTestId("permission-menu").click();
   await page.getByTestId("mode-default").click();
   await expect(toolbar.getByTestId("permission-menu")).toHaveAttribute("data-mode", "default");
   await expect(toolbar.getByTestId("permission-menu")).toContainText("Ask before changes");
-  expect(await settledBox(toolbar.getByTestId("permission-menu"))).toEqual(before);
+  const after = await adjacent();
+  expect(after.width).toBeGreaterThan(before.width);
+  // In a narrow box it is the icon alone, in a square slot.
+  await page.setViewportSize({ width: 640, height: 900 });
+  await expect(async () => {
+    const box = await toolbar.getByTestId("permission-menu").boundingBox();
+    expect(Math.abs(box!.width - box!.height)).toBeLessThanOrEqual(1);
+  }).toPass();
+  await adjacent();
 });
 
 test("chat: sessions list across projects and survive a restart", async ({ app, page, jigHome }) => {
