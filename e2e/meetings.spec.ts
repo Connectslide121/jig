@@ -21,6 +21,16 @@ async function meetingWindows(app: ElectronApplication): Promise<{ lobby: Page; 
   return { lobby, room };
 }
 
+/** After a call, a fresh call window replaces the one that ran it (D-368): the new one, once loaded. */
+async function renewedRoom(app: ElectronApplication, used: Page): Promise<Page> {
+  const fresh = () => app.windows().find((w) => w !== used && w.url().includes("meetingRoom=1"));
+  await expect.poll(() => Boolean(fresh()) && used.isClosed(), { timeout: 30_000 }).toBe(true);
+  const room = fresh()!;
+  await room.emulateMedia({ reducedMotion: "reduce" });
+  await expect(room.getByTestId("meeting-room")).toBeAttached();
+  return room;
+}
+
 test("Meetings: device setup failure is visible and retryable before joining", async ({ jigHome }) => {
   const app = await launchJig(jigHome, { JIG_MEETINGS: "" });
   try {
@@ -125,7 +135,7 @@ test("Meetings: global live capture, project questions, notes and reviewed tasks
     await room.screenshot({ animations: "disabled", path: ".jig-test-home-meeting-screenshots/prejoin.png" });
     await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
     const overview = async (): Promise<MeetingOverview> => {
-      const result = await hostCall(room, "meetings.overview");
+      const result = await hostCall(lobby, "meetings.overview");
       if (!result.ok) throw new Error("Missing meeting");
       return result.value as MeetingOverview;
     };
@@ -352,7 +362,8 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     const main = await app.firstWindow();
     await main.waitForSelector("[data-testid=app-root]");
     await hostCall(main, "meetings.open");
-    const { lobby, room } = await meetingWindows(app);
+    const { lobby, room: first } = await meetingWindows(app);
+    let room = first;
     await expect(lobby).toHaveTitle("Jig Meetings");
     await expect(room).toHaveTitle("Jig Call");
 
@@ -368,11 +379,13 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await expect(room).toHaveTitle("Call with Alex Contoso · Jig Meetings");
     await expect(lobby.getByTestId("lobby-live-call")).toContainText("Call with Alex Contoso");
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
-    // Hung up: the lobby shows the call's review.
+    // Hung up: the lobby shows the call's review, and a fresh call window replaces the used one.
     await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
     await lobby.getByRole("button", { name: "Back to meetings" }).click();
+    room = await renewedRoom(app, room);
 
-    // A call rings: answer it; the call is kept like a meeting, and the last caller is a recent call.
+    // A call rings in the fresh window: answer it; the call is kept like a meeting, and the last
+    // caller is a recent call.
     await room.evaluate(() =>
       (window as { jigTestRing?: (name: string) => void }).jigTestRing?.("Sam Fabrikam"),
     );
@@ -387,6 +400,8 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await room.getByRole("button", { name: "Hang up", exact: true }).click();
     await expect(lobby.getByRole("button", { name: "Call back", exact: true })).toBeVisible();
     await lobby.getByRole("button", { name: "Back to meetings" }).click();
+    room = await renewedRoom(app, room);
+    const ringing = room.getByTestId("incoming-call");
     await lobby.getByRole("button", { name: "Call…", exact: true }).click();
     await expect(dialog).toContainText("Recent calls");
     await expect(dialog.getByTestId("call-person").first()).toContainText("Sam Fabrikam");
@@ -396,8 +411,8 @@ test("Meetings: call someone, hang up, and answer a call that rings in Jig", asy
     await room.evaluate(() =>
       (window as { jigTestRing?: (name: string) => void }).jigTestRing?.("Robin Shop"),
     );
-    await incoming.getByRole("button", { name: "Decline", exact: true }).click();
-    await expect(incoming).toHaveCount(0);
+    await ringing.getByRole("button", { name: "Decline", exact: true }).click();
+    await expect(ringing).toHaveCount(0);
   } finally {
     await app.close();
   }
@@ -787,7 +802,7 @@ test("Meetings: System default names its device, and a picked device is remember
     await prejoin.getByRole("button", { name: "Join meeting", exact: true }).click();
     await expect(room.getByTestId("meeting-transcript")).toContainText("We should review the Shop API");
     const devices = async () => {
-      const result = await hostCall(room, "meetings.overview");
+      const result = await hostCall(lobby, "meetings.overview");
       return result.ok ? (result.value as MeetingOverview).devices : undefined;
     };
     await expect

@@ -1,5 +1,11 @@
 # Status
 
+Meetings call window stays light between calls (2026-11-05, D-368): after a meeting or call, the
+hidden call window that listens for Teams calls is replaced by a fresh one, so it no longer keeps
+~1.7 GB of memory (and the camera service) for the rest of the day. Calls still ring in Jig.
+Needs a real check: after a call ends, Task Manager's "Jig — Call" process drops to a few hundred MB
+within seconds, and the next incoming call rings and can be answered.
+
 Send menu and parked prompts (2026-11-05, D-365, Jon): Send in the chat's message box is a split
 button: the chevron beside it opens Send (Queue: after this turn while the chat works), Send now
 (Ctrl+Enter, only while it works), Park (Alt+Enter) and Send in a new chat. A parked prompt keeps its

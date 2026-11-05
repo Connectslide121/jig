@@ -687,7 +687,8 @@ page; agenda, history, reviews, notes, questions, the action queue), a sandboxed
 credential. The **call window** above (`?meetingRoom=1` on the loopback page) opens hidden beside it
 and shows only prejoin, the live call and ringing; the lobby asks main to bring it up with
 `meetings.start`, which it takes with `meetings.takeStart`. When a call ends main hides it again and
-the lobby opens that meeting's review. Main's guards: `own()` for the call window's media, credential,
+the lobby opens that meeting's review; once it reports `meetings.callIdle`, a fresh hidden call window
+replaces the one that ran the call (D-368), so its renderer's memory goes back to a listening window's. Main's guards: `own()` for the call window's media, credential,
 captions, status and chat, `lobbyOrCall()` for what both windows show. The lobby also lists your
 Teams chats (D-296: `/me/chats` with Chat.Read, read on demand, never stored or logged) and opens one
 beside the list with the same chat panel as the call. Its toolbar (D-332) filters the loaded list in

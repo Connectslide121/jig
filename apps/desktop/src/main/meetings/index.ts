@@ -433,6 +433,8 @@ const auth = new MeetingAuth(() => store.settings());
 const fake = () => process.env.JIG_ENGINE === "fake" && process.env.JIG_MEETINGS === "fake";
 /** The call window (D-217, D-292): the calling SDK and its credential live only here. */
 let room: BrowserWindow | undefined;
+/** A meeting or call has run in this call window: once it's over, a fresh window replaces it (D-368). */
+let roomUsed = false;
 /** The lobby window (D-292): agenda, history and reviews; never sees the calling credential. */
 let lobby: BrowserWindow | undefined;
 /** What the lobby asked the call window to start, until the call window takes it. */
@@ -537,6 +539,7 @@ async function openCall(options: { show?: boolean } = {}): Promise<void> {
     },
   });
   const window = room;
+  roomUsed = false;
   // Hidden and between calls, it doesn't keep Jig running once the main window is gone.
   markBackgroundWindow(window, () => !activeId);
   window.setMenuBarVisibility(false);
@@ -624,6 +627,27 @@ async function openCall(options: { show?: boolean } = {}): Promise<void> {
   url.searchParams.set("meetingRoom", "1");
   await window.loadURL(url.href);
   if (show && !hiddenMode()) window.show();
+}
+
+/**
+ * After a call, the hidden call window is replaced by a fresh one (D-368): a renderer that ran a
+ * Teams call keeps well over a gigabyte (media buffers, the SDK's heap) that Chromium never hands
+ * back, while a fresh one that only listens for calls is a fraction of that. The new window listens
+ * again before the next call can ring; without ringing or the lobby, none is needed until a join.
+ */
+function renewCall(used: BrowserWindow): void {
+  setTimeout(() => {
+    if (room !== used || used.isDestroyed() || used.isVisible() || activeId || pendingStart) return;
+    if (appQuitting || !appWindows().some((w) => w !== used)) return;
+    // The new window opens once the old one's `closed` has run (it closes the meeting page server).
+    used.once("closed", () => {
+      if (appQuitting || room || !(listening() || (lobby && !lobby.isDestroyed()))) return;
+      void openCall({ show: false }).catch(() => {
+        /* Ringing is a convenience; joining opens the call window again. */
+      });
+    });
+    used.destroy();
+  }, 1000).unref();
 }
 
 /**
@@ -803,6 +827,7 @@ export async function startMeetings(): Promise<void> {
     own(ctx);
     if (activeId || pendingStart || !room || room.isDestroyed()) return;
     room.hide();
+    if (roomUsed) renewCall(room);
     closeHelpersIfAlone();
   });
   // Calls ring in Jig while it runs: the meeting window starts hidden once an account is restored.
@@ -1010,6 +1035,7 @@ export async function startMeetings(): Promise<void> {
     if (activeId) throw new JigError("meeting_active", "Leave the active meeting first");
     const record = await store.create(url, title);
     activeId = record.id;
+    roomUsed = true;
     activity("join");
     changed();
     return record;
@@ -1334,6 +1360,7 @@ export async function startMeetings(): Promise<void> {
     if (activeId) throw new JigError("meeting_active", "Leave the active call first");
     const record = await store.createCall(call);
     activeId = record.id;
+    roomUsed = true;
     ring(undefined);
     activity(call.direction === "incoming" ? "answer" : "call");
     changed();

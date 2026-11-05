@@ -5907,3 +5907,28 @@ choice of Telegram and everything below: Claude, on my own.
   runs, so opening the picker doesn't wake a chat.
 - **Setting:** `engine.idleStopMinutes` (default 20, 0–1440, 0 = keep until the chat closes) in
   Settings → Chats → All chats → Stop idle chats. Not protected: it only stops processes.
+
+## D-368: Meetings: a fresh call window after each call
+
+- Status: accepted.
+- **Who:** Claude, on my own (Jon's task: measure the call window's idle cost and keep it light).
+- **Measured (2026-11-05, installed 0.12.0, ringing on):** in a Teams meeting the call window's renderer
+  held ~1.7-1.8 GB private memory. After the meeting ended (`meetings.callIdle`, window hidden, no
+  call) it stayed at ~1.67 GB for the whole 12 minutes sampled, CPU flat, plus the camera service
+  (`video_capture`, ~120 MB private) and the audio service (~13 MB) kept alive. Chromium doesn't give a
+  renderer's heap and media buffers back once a call has used them. A fresh call window (bundle and
+  calling SDK loaded, fake meeting service, no Teams agent) is ~105 MB private; the real listening
+  window right after startup adds the Teams call agent's signalling, not measured with a real sign-in.
+- **Decision:** once a meeting or call has run in the call window (`meetings.join` /
+  `meetings.startCall` set `roomUsed`) and the window reports `meetings.callIdle`, main destroys it a
+  second later and opens a fresh hidden one when Jig still needs it (ringing on and signed in, or the
+  lobby open). The new window opens on the old one's `closed`, which shuts the loopback page server
+  first, and only while another Jig window is open (so it never makes Jig quit). Its Teams call agent
+  starts listening again within seconds, so calls keep ringing in Jig.
+- **Not chosen:** background throttling while idle (the hidden window must keep the signalling and the
+  ringtone on time, and it doesn't free the memory anyway); disposing the call agent or releasing
+  devices in place (the renderer's heap stays as large); reloading the page (a reload keeps the same
+  renderer process, so its memory isn't reliably given back).
+- **Trade-off:** a call that rings in the second between `callIdle` and the new window's agent
+  listening rings on the Teams app only. Prejoin of the next join loads in a new window (a moment
+  slower than a warm one).
