@@ -438,6 +438,16 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+A run report on demand (2026-11-05, D-355): in Tasks → History, a finished run's row has a report
+action (hover, left of Status) and its page a **Run report** button; it opens a tab with an AI-made
+report from the tasks' reports: a summary and one line per task (where it was committed), things to
+be aware of, blocked/partly done/failed with what would unblock them, what needs you, and the run's
+follow-ups merged into proposals you queue one by one, ticked or all (marked Queued). The report is
+kept with the run, opens instantly later with when and by which provider/model it was made, and
+Regenerate makes a new one. Pick its provider and model in Settings → AI features → "Task run report".
+Never made for an open run or in the background. Covered by unit tests and `e2e/tasks-report.spec.ts`.
+Needs testing with a real model: the quality of the merged proposals on a big run.
+
 History shows each run's provider (2026-11-05, D-354): the Tasks add-on's History list has a "Ran on"
 column with the provider marks of what the run's tasks actually ran on (both marks when a run mixed
 ChatGPT and Claude, e.g. a task on Claude in a ChatGPT queue or a handover; the counts on hover, the

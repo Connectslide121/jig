@@ -270,10 +270,10 @@ export async function featureOneShot(
   feature: AiFeatureId,
   prompt: string,
   extras: OneShotExtras & { timeoutMs?: number } = {},
-): Promise<{ text: string; provider: AiProvider }> {
+): Promise<{ text: string; provider: AiProvider; model: string }> {
   const { provider, model } = aiChoice(getConfig(), feature);
   const text = await oneShot(provider, model, prompt, extras.timeoutMs, extras);
-  return { text, provider };
+  return { text, provider, model };
 }
 
 export function registerProviderHandlers(): void {

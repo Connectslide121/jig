@@ -7,6 +7,7 @@ import {
   sortCards,
   summarize,
 } from "./lib/dashboard";
+import { saveReport as keepReport, markQueued as markProposals, type RunReport } from "./lib/report";
 import {
   addTasks,
   afterTurn,
@@ -73,6 +74,8 @@ import {
 
 const KEY = "queue";
 const HISTORY = "history";
+/** A project's run reports by run id (D-355), apart from the history so its list stays light. */
+const REPORTS = "reports";
 let chain: Promise<unknown> = Promise.resolve();
 let migrated = false;
 
@@ -80,6 +83,11 @@ const scope = (projectId: string) => ({ scope: "project" as const, id: projectId
 
 async function load(api: AddonHostApi, projectId: string): Promise<Queue> {
   return { ...emptyQueue(), ...((await api.storage.get<Queue>(KEY, scope(projectId))) ?? {}) };
+}
+
+async function loadReports(api: AddonHostApi, projectId: string): Promise<Record<string, RunReport>> {
+  const reports = await api.storage.get<Record<string, RunReport>>(REPORTS, scope(projectId));
+  return reports && typeof reports === "object" ? reports : {};
 }
 
 async function loadHistory(api: AddonHostApi, projectId: string): Promise<Run[]> {
@@ -411,6 +419,63 @@ export async function history(args: ProjectArgs, api: AddonHostApi): Promise<Run
   return loadHistory(api, projectId);
 }
 
+/** When each run's report was made, by run id: the runs that have one (D-355). */
+export async function reports(args: ProjectArgs, api: AddonHostApi): Promise<Record<string, string>> {
+  const projectId = await projectArg(api, args?.projectId);
+  const all = await loadReports(api, projectId);
+  return Object.fromEntries(Object.entries(all).map(([id, r]) => [id, r.madeAt]));
+}
+
+/** A run's saved report, or null when none was made. */
+export async function report(
+  args: ProjectArgs & { runId: string },
+  api: AddonHostApi,
+): Promise<RunReport | null> {
+  const projectId = await projectArg(api, args?.projectId);
+  return (await loadReports(api, projectId))[args.runId] ?? null;
+}
+
+/** Keeps a run's report (a new one replaces the old); only for a finished run still in the history. */
+export async function saveReport(
+  args: ProjectArgs & { report: RunReport },
+  api: AddonHostApi,
+): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  const made = args.report;
+  if (!made || typeof made.runId !== "string" || !Array.isArray(made.proposals))
+    throw new Error("That isn't a run report");
+  await serial(async () => {
+    const runs = await loadHistory(api, projectId);
+    const run = runs.find((r) => r.id === made.runId);
+    if (!run) throw new Error("This run is no longer in the history");
+    if (!run.finishedAt) throw new Error("This run is still going");
+    const next = keepReport(
+      await loadReports(api, projectId),
+      made,
+      runs.map((r) => r.id),
+    );
+    await api.storage.set(REPORTS, next, scope(projectId));
+  });
+  api.emit("changed", { projectId });
+}
+
+/** Marks a report's proposals as queued (after the view queued them). */
+export async function reportQueued(
+  args: ProjectArgs & { runId: string; ids: string[] },
+  api: AddonHostApi,
+): Promise<RunReport | null> {
+  const projectId = await projectArg(api, args?.projectId);
+  return serial(async () => {
+    const all = await loadReports(api, projectId);
+    const saved = all[args.runId];
+    if (!saved) return null;
+    const next = markProposals(saved, Array.isArray(args.ids) ? args.ids : []);
+    await api.storage.set(REPORTS, { ...all, [args.runId]: next }, scope(projectId));
+    api.emit("changed", { projectId });
+    return next;
+  });
+}
+
 /** Removes a finished run from the history (its files go when nothing else uses them). */
 export async function forgetRun(args: ProjectArgs & { runId: string }, api: AddonHostApi): Promise<void> {
   const projectId = await projectArg(api, args?.projectId);
@@ -428,6 +493,11 @@ function dropRun(api: AddonHostApi, projectId: string, runId: string, finishedOn
       throw new Error("This run is still going; it can be removed once the queue finishes");
     const left = runs.filter((r) => r !== run);
     await api.storage.set(HISTORY, left, scope(projectId));
+    const reports = await loadReports(api, projectId);
+    if (reports[runId]) {
+      const { [runId]: _gone, ...rest } = reports;
+      await api.storage.set(REPORTS, rest, scope(projectId));
+    }
     const queue = await load(api, projectId);
     const used = new Set([
       ...historyFiles(left),

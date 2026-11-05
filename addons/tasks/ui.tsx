@@ -32,6 +32,7 @@ import {
   CircleCheck,
   CircleMinus,
   CornerDownRight,
+  FileText,
   GripVertical,
   History,
   LayoutDashboard,
@@ -48,6 +49,11 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { DashboardView } from "./Dashboard";
+import { canReport } from "./lib/report";
+import { openReport, REPORT_OPEN_RUN } from "./Report";
+
+export { RunReportTab } from "./Report";
+
 import {
   COUNT_LABEL,
   COUNT_ORDER,
@@ -526,7 +532,7 @@ export function TasksView({ ctx }: AddonComponentProps) {
           onQueued={() => setTab("queue")}
         />
       ) : (
-        <HistoryPanel key={project.id} projectId={project.id} onOpen={setRun} />
+        <HistoryPanel key={project.id} ctx={ctx} projectId={project.id} onOpen={setRun} />
       )}
     </div>
   );
@@ -1076,11 +1082,24 @@ function runTime(run: Run): string {
 }
 
 /** The project's past runs, newest first: when, how it went, time and cost. Each opens its results. */
-function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId: string) => void }) {
+function HistoryPanel({
+  ctx,
+  projectId,
+  onOpen,
+}: {
+  ctx: AddonUiContext;
+  projectId: string;
+  onOpen: (runId: string) => void;
+}) {
   const { data: runs, reload, error } = useHostCall<Run[]>("history", { projectId });
+  // The runs that have a report (D-355): their report action shows without hovering.
+  const reports = useHostCall<Record<string, string>>("reports", { projectId });
   useAddonEvent("changed", (payload) => {
     const changed = (payload as { projectId?: string } | undefined)?.projectId;
-    if (!changed || changed === projectId) void reload();
+    if (!changed || changed === projectId) {
+      void reload();
+      void reports.reload();
+    }
   });
   if (!runs) return error ? <div className="p-3 text-xs text-danger">{error}</div> : <Spinner center />;
   if (!runs.length)
@@ -1104,6 +1123,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
         <span className={RAN_ON} title="The providers its tasks ran on">
           <span className="@max-xl:hidden @xl:inline">Ran on</span>
         </span>
+        <span className="w-7 shrink-0" />
         <span className={cn("w-24", CELL)}>Status</span>
       </div>
       <div className="overflow-hidden rounded-lg border border-line bg-raised">
@@ -1111,13 +1131,18 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
           const o = runOutcome(run);
           const t = tally(run.tasks);
           const titles = run.tasks.map((task) => task.title).join(" · ");
+          const reported = reports.data?.[run.id];
           return (
-            <button
+            <div
               key={run.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               data-testid={`tasks-run-${i}`}
               onClick={() => onOpen(run.id)}
-              className="flex h-12 w-full items-center gap-3 border-b border-line px-3 text-left last:border-b-0 hover:bg-hover"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onOpen(run.id);
+              }}
+              className="group flex h-12 w-full cursor-default items-center gap-3 border-b border-line px-3 text-left last:border-b-0 hover:bg-hover"
             >
               <span className="@max-xl:w-24 shrink-0 truncate text-xs tabular-nums text-fg @xl:w-40">
                 {when(run.startedAt)}
@@ -1139,6 +1164,32 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
               <span className={cn(COL.time, CELL, "text-xs text-muted")}>{runTime(run)}</span>
               <span className={cn(COL.cost, CELL, "text-xs text-muted")}>{money(t.costUsd)}</span>
               <RanOn tasks={run.tasks} className={RAN_ON} testId={`tasks-run-provider-${i}`} />
+              {/* The report action: always in this slot, shown on hover, or always once it has a report. */}
+              <span
+                className="w-7 shrink-0"
+                title={
+                  !canReport(run)
+                    ? REPORT_OPEN_RUN
+                    : reported
+                      ? `Run report of ${when(reported)}`
+                      : "Run report"
+                }
+              >
+                <IconButton
+                  size="sm"
+                  icon={FileText}
+                  label={reported ? "Open the run report" : "Make a run report"}
+                  disabled={!canReport(run)}
+                  data-testid={`tasks-run-report-${i}`}
+                  className={cn(
+                    reported ? "text-accent" : "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openReport(ctx, projectId, run, !!reported);
+                  }}
+                />
+              </span>
               <span className="flex w-24 shrink-0 items-center justify-end gap-1.5 whitespace-nowrap">
                 {run.finishedAt ? (
                   o.failed ? (
@@ -1150,7 +1201,7 @@ function HistoryPanel({ projectId, onOpen }: { projectId: string; onOpen: (runId
                   <Badge tone="info">Open</Badge>
                 )}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1196,7 +1247,11 @@ function RunPanel({
   onQueued: () => void;
 }) {
   const { data: runs, reload } = useHostCall<Run[]>("history", { projectId });
-  useAddonEvent("changed", () => void reload());
+  const reports = useHostCall<Record<string, string>>("reports", { projectId });
+  useAddonEvent("changed", () => {
+    void reload();
+    void reports.reload();
+  });
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
   const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? "";
@@ -1242,6 +1297,18 @@ function RunPanel({
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* At the right, beside ⋯: a provider joining while it runs grows leftward, moving nothing. */}
           <RanOn tasks={run.tasks} className="flex shrink-0 items-center gap-1" testId="tasks-run-provider" />
+          <span title={canReport(run) ? undefined : REPORT_OPEN_RUN}>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={FileText}
+              disabled={!canReport(run)}
+              onClick={() => openReport(ctx, projectId, run, !!reports.data?.[run.id])}
+              data-testid="tasks-run-report"
+            >
+              Run report
+            </Button>
+          </span>
           <IconButton
             size="sm"
             icon={MoreHorizontal}

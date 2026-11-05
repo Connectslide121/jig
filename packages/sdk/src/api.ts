@@ -272,10 +272,12 @@ export interface AddonUiContext {
    * Releases add-ons: `commitMessage`, `commitCheck`, `releaseNotes`).
    */
   ai: {
-    ask(
+    ask(prompt: string, options?: AddonAiOptions): Promise<string>;
+    /** Like `ask`, with the provider and model that answered (to show beside an AI-made result). */
+    answer(
       prompt: string,
-      options?: { cwd?: string; quick?: boolean; feature?: "commitMessage" | "commitCheck" | "releaseNotes" },
-    ): Promise<string>;
+      options?: AddonAiOptions,
+    ): Promise<{ text: string; provider: "claude" | "chatgpt"; model: string }>;
     /**
      * Opens a guided tour of the uncommitted changes of the repository `cwd` is in: Claude orders the
      * changes for understanding and explains each step next to its diff. `focus` says what they're for.
@@ -376,6 +378,17 @@ export interface AddonUiContext {
 export interface AddonComponentProps {
   ctx: AddonUiContext;
 }
+/**
+ * `ctx.ai.ask` / `ctx.ai.answer` options. `feature` names one of Jig's own rows in Settings → AI features
+ * (the built-in add-ons: Git's `commitMessage` and `commitCheck`, Releases' `releaseNotes`, Tasks'
+ * `taskRunReport`).
+ */
+export interface AddonAiOptions {
+  cwd?: string;
+  quick?: boolean;
+  feature?: "commitMessage" | "commitCheck" | "releaseNotes" | "taskRunReport";
+}
+
 export interface AddonTabProps extends AddonComponentProps {
   params: Record<string, unknown>;
   tabId: string;

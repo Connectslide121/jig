@@ -33,8 +33,10 @@ export function registerAiHandlers(): void {
     // The add-on's own row in Settings → AI features (built-in add-ons), else the add-ons' rows (D-297).
     const answer = await featureOneShot(feature ?? (quick ? "addonQuick" : "addonHelper"), prompt, {
       cwd: cwd || jigHome(),
+      // A run report reads a whole run's reports and can take a while on a large model.
+      ...(feature === "taskRunReport" ? { timeoutMs: 10 * 60_000 } : {}),
       system: `You are answering a request from "${addon!.name}", a tool inside Jig (a desktop workbench). Answer with exactly what was asked, without preamble.`,
     });
-    return answer.text.trim();
+    return { text: answer.text.trim(), provider: answer.provider, model: answer.model };
   });
 }

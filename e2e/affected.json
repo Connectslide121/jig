@@ -218,7 +218,20 @@
     },
     { "files": ["addons/boards/**"], "specs": ["boards.spec.ts"] },
     { "files": ["addons/releases/**"], "specs": ["releases.spec.ts"] },
-    { "files": ["addons/tasks/**"], "specs": ["tasks.spec.ts", "tasks-dashboard.spec.ts"] },
+    {
+      "files": ["addons/tasks/**"],
+      "specs": ["tasks.spec.ts", "tasks-dashboard.spec.ts", "tasks-report.spec.ts"]
+    },
+    {
+      "files": [
+        "apps/desktop/src/main/ai/**",
+        "apps/desktop/src/main/providers/**",
+        "apps/desktop/src/main/engine/fake.ts",
+        "apps/desktop/src/shared/aiFeatures.ts",
+        "apps/desktop/src/renderer/addons/context.ts"
+      ],
+      "specs": ["tasks-report.spec.ts"]
+    },
     {
       "files": [
         "apps/desktop/src/main/sessions/**",

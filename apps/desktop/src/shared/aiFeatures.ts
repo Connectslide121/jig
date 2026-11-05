@@ -31,6 +31,7 @@ export const AI_FEATURE_IDS = [
   "tour",
   "attemptsJudge",
   "standup",
+  "taskRunReport",
   "chatTitles",
   "chatSuggestions",
   "learning",
@@ -83,6 +84,15 @@ export const AI_FEATURES: AiFeature[] = [
     json: true,
   },
   { id: "standup", label: "Standup", where: "Tools → Standup", fallback: chat, chatgpt: "sol" },
+  {
+    // Made only when you ask, from a finished run in Tasks → History (D-355).
+    id: "taskRunReport",
+    label: "Task run report",
+    where: "Tasks → History",
+    fallback: chat,
+    chatgpt: "sol",
+    json: true,
+  },
   { id: "chatTitles", label: "Chat names", where: "New chats", fallback: quick, chatgpt: "luna" },
   {
     // Claude chats get Claude Code's own suggestion; Codex has none, so Jig asks after each turn (D-315).
@@ -124,7 +134,7 @@ export const AI_FEATURES: AiFeature[] = [
 ];
 
 /** Features an add-on may name in `ctx.ai.ask({ feature })`: the built-in add-ons' own rows. */
-export const ADDON_AI_FEATURES = ["commitMessage", "commitCheck", "releaseNotes"] as const;
+export const ADDON_AI_FEATURES = ["commitMessage", "commitCheck", "releaseNotes", "taskRunReport"] as const;
 export type AddonAiFeature = (typeof ADDON_AI_FEATURES)[number];
 
 export function aiFeature(id: AiFeatureId): AiFeature {

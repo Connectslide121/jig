@@ -5555,3 +5555,29 @@ choice of Telegram and everything below: Claude, on my own.
   ChatGPT · 5 tasks, Claude · 1". The run page's header shows the same at its right, beside ⋯, so a
   provider joining an open run grows leftward and moves nothing.
 
+## D-355: A finished run's report, made on demand from History
+
+- Status: accepted. Extends History (D-248) and the AI features (D-297).
+- **Who:** Jon, 2026-11-05: a structured report for some finished runs, asked for from History, kept
+  with the run, not a chat; sections for what was done, things to be aware of, what's stuck, what
+  needs you and the follow-ups reshaped into proposals to queue. Details below are Claude, on my own.
+- **Where: a main-area tab** (`report`, one per run, keyed by project and run), not a page inside
+  History: a long document reads best wide and can stay open beside the queue while its proposals
+  are queued. It is laid out by its container, so it also works narrow (marks and badges in fixed
+  slots, the commit column folds under the line).
+- **When:** only from your action (the History row's report action in a fixed slot left of Status, or
+  Run report in the run page's header), never in the background; an open run's action is off with a
+  tooltip. Opening a run with a saved report shows it; without one, it starts making it. Regenerate
+  replaces it (and its Queued marks).
+- **How:** one call through `ctx.ai.answer` with a new AI feature `taskRunReport` (Settings → AI
+  features; Claude's chat model or ChatGPT's `sol` by default; 10-minute timeout). `ctx.ai.answer` is
+  new: `ctx.ai.ask` with the provider and model that answered, which the report shows. The input is
+  the tasks' reports, never transcripts (reports carry what matters and transcripts would be large
+  and costly); prompts are cut first, then answers and long texts, to stay under 150k characters.
+  The answer is JSON, checked against the run (`parseRunReport`): unknown ids go, a follow-up belongs
+  to one proposal, and follow-ups the AI left out stay as their own proposals so none is lost.
+- **Kept:** in the add-on's project storage under `reports` (by run id), apart from `history` so the
+  History list stays light; removed with the run and pruned to runs still in the history.
+- **Disclosure:** a fixed line under the header, "AI-generated report · check important details",
+  with the provider mark, model and when it was made.
+

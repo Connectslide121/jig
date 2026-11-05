@@ -5,7 +5,7 @@
   "description": "A queue of prompts Claude or ChatGPT does one after another, each in its own chat or continuing the one before. Each queue picks who runs it, and each task can too. Every task reports back how it went: outcome, summary, things to know and follow-ups, in one table with links to the chats. Each project has its own queue, and every run is kept in its history. Claude can queue tasks too, after you review and edit them.",
   "version": "1.0.0",
   "icon": "list-todo",
-  "permissions": ["chat"],
+  "permissions": ["chat", "ai"],
   "exports": ["addReviewed"],
   "storage": {
     "scope": "project"
@@ -27,6 +27,12 @@
         "title": "All queues",
         "icon": "layout-dashboard",
         "component": "DashboardTab"
+      },
+      {
+        "type": "report",
+        "title": "Run report",
+        "icon": "file-text",
+        "component": "RunReportTab"
       }
     ],
     "actions": [
