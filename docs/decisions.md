@@ -5818,9 +5818,11 @@ choice of Telegram and everything below: Claude, on my own.
   and a Send split button whose menu has Send/Queue, Send now and Park with their keys. The menu's
   extra entries, the shortcut, the icons and the storage: Claude, on my own, along the lines Jon's
   task asked for.
-- **The split button:** Send (`composer-send`, unchanged) and, 1 px beside it, a narrow chevron part
+- **The split button:** Send (`composer-send`, unchanged) and, flush against it, a narrow chevron part
   in the same accent (`composer-send-menu`, `w-4`), always there, idle or busy, so nothing moves when
-  a turn starts or ends. Its menu (`openMenuAt`, right-aligned, through `ui/Menu.tsx`): **Send** idle
+  a turn starts or ends. Amended (Jon, 2026-11-05): the halves read as one control, square inner
+  corners and a hairline (`border-on-accent/25`) between them instead of a 1 px gap, and the chevron
+  is disabled whenever Send is (empty box), with the same faded look, so its menu can't open. Its menu (`openMenuAt`, right-aligned, through `ui/Menu.tsx`): **Send** idle
   or **Queue: after this turn** busy (Enter; Run in shell / Remember in `!`/`#` mode), **Send now:
   into the running turn** (Mod+Enter, enabled only while busy), **Park: keep it, send it later**
   (**Alt+Enter**, free in the composer and app-wide), a separator, **Send in a new chat**. Entries

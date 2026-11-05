@@ -166,9 +166,13 @@ test("chat: the Send menu parks a message; parked ones wait for you, even across
   await page.keyboard.press("Control+N");
   await say(page, "hold until released, then answer");
   await expect(page.getByTestId("composer-stop")).toBeVisible();
-  // The split part is always there; its menu has the ways to send, with their keys.
+  // The split part is always there, disabled with Send while the box is empty; its menu has the ways
+  // to send, with their keys.
   const input = page.getByTestId("composer-input");
+  await expect(page.getByTestId("composer-send")).toBeDisabled();
+  await expect(page.getByTestId("composer-send-menu")).toBeDisabled();
   await input.fill("answer this first");
+  await expect(page.getByTestId("composer-send-menu")).toBeEnabled();
   await page.getByTestId("composer-send-menu").click();
   await expect(page.getByTestId("send-menu-send")).toContainText("Queue: after this turn");
   await expect(page.getByTestId("send-menu-now")).toBeEnabled();
@@ -202,6 +206,7 @@ test("chat: the Send menu parks a message; parked ones wait for you, even across
   await expect(page.getByTestId("queue-item")).toHaveCount(0);
   await expect(page.getByTestId("parked-item")).toHaveText(/answer this first/);
   // Idle, the menu sends; Send now is only for a running turn.
+  await expect(page.getByTestId("composer-stop")).toHaveCount(0);
   await input.fill("x");
   await page.getByTestId("composer-send-menu").click();
   await expect(page.getByTestId("send-menu-send")).toContainText("Send");

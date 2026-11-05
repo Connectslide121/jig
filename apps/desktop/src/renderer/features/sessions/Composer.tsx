@@ -522,8 +522,9 @@ export function Composer({
                   onClick={() => void call("sessions.interrupt", { id: meta.id })}
                 />
               )}
-              {/* Send and its menu, one split button that is always there (D-365). */}
-              <div className="flex shrink-0 items-center gap-px">
+              {/* Send and its menu, one split button that is always there (D-365): flush halves with a
+                  hairline between them, the menu disabled whenever Send is. */}
+              <div className="flex shrink-0 items-center">
                 <Button
                   size="icon"
                   variant="primary"
@@ -540,8 +541,9 @@ export function Composer({
                   aria-label="More ways to send"
                   title={`More ways to send: send now, park (${formatShortcut("Alt+Enter")}), in a new chat`}
                   data-testid="composer-send-menu"
+                  disabled={empty}
                   onClick={(e) => openMenuAt(e.currentTarget, sendMenu(), true)}
-                  className="no-drag inline-flex h-7 w-4 shrink-0 items-center justify-center rounded-r-md bg-accent text-on-accent transition-colors hover:bg-accent-hover"
+                  className="no-drag inline-flex h-7 w-4 shrink-0 items-center justify-center rounded-r-md border-l border-on-accent/25 bg-accent text-on-accent transition-colors hover:bg-accent-hover disabled:pointer-events-none disabled:opacity-50"
                 >
                   <ChevronDown className="block size-3 shrink-0" />
                 </button>

@@ -41,7 +41,7 @@ Needs a real check: after a call ends, Task Manager's "Jig — Call" process dro
 within seconds, and the next incoming call rings and can be answered.
 
 Send menu and parked prompts (2026-11-05, D-365, Jon): Send in the chat's message box is a split
-button: the chevron beside it opens Send (Queue: after this turn while the chat works), Send now
+button (one joined control, disabled as a whole while the box is empty): the chevron beside it opens Send (Queue: after this turn while the chat works), Send now
 (Ctrl+Enter, only while it works), Park (Alt+Enter) and Send in a new chat. A parked prompt keeps its
 text and files, is saved with the chat (switching chats and restarting Jig keep it) and is never sent
 by itself; it shows under the queue as "Parked" (muted, dashed, the pause icon): click it to edit,
