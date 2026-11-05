@@ -22,6 +22,7 @@ that can only answer. Each feature has a visible button or menu entry (D-083).
 | Images from tools | tool cards in the chat | screenshots and charts a tool returns are saved and shown |
 | Ask Claude about a failed script | failure toast, terminal list ✨, terminal menu | a chat with the command, exit code and output |
 | Ask Claude about a file | Preview tab | a chat with a request suited to the file kind |
+| Task run report | Tasks → History, a finished run's report action | `ctx.ai.answer` (`taskRunReport`) over the run's task reports → JSON → the `report` tab (D-355, `addons/tasks/README.md`) |
 | Write my standup | Search → Write my standup… | `digest.standup` (below) |
 | Desktop notifications | system | `main/sessions/notify.ts` |
 

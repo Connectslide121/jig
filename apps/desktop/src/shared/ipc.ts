@@ -382,7 +382,8 @@ export interface HostMethods {
   /** An add-on with the `ai` permission asks Claude a one-shot question (no tools) through Claude Code. */
   "ai.ask": {
     args: { addonId: string; prompt: string; cwd?: string; quick?: boolean; feature?: AddonAiFeature };
-    result: string;
+    /** The answer, and the provider and model of the feature's setting that gave it. */
+    result: { text: string; provider: AiProvider; model: string };
   };
   /** The models an AI provider offers for one-shot features (D-294): Claude Code's, or Codex's list. */
   "ai.models": { args: { provider: AiProvider }; result: ModelInfo[] };

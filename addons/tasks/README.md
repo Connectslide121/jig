@@ -154,6 +154,18 @@ went, so you read the results as a table instead of scrolling one long chat.
   started task's `ranOn`, plus `startedOn` after a handover), both when it mixed them, the counts on
   hover, the name beside them when there's room; empty for runs from before `ranOn` was kept. The run's
   header shows the same.
+- **Run report** (D-355): on demand only, for a finished run: the History row's report action (a
+  fixed slot left of Status, shown on hover, or always once the run has one) or **Run report** in the
+  run page's header; off with a tooltip while the run is open. It opens the `report` tab (one per run)
+  and, without a saved report, makes one: `ctx.ai.answer` with the `taskRunReport` AI feature over
+  `reportPrompt(run)` (the tasks' titles, prompts, status, reports, times, cost, errors; never the
+  transcripts; prompts cut first to stay under 150k characters), checked by `parseRunReport` (unknown
+  task and follow-up ids dropped, each follow-up in one proposal, the ones the AI left out kept as
+  their own). The host keeps it in `reports` (by run id; `report`, `reports`, `saveReport`,
+  `reportQueued`), removed with the run. Sections: what was done, things to be aware of, blocked/partly
+  done/failed, needs you, follow-ups as proposals by kind (sources in a modal; queue one, the ticked
+  ones or all, marked Queued). The AI disclosure, the provider/model and when it was made sit in a
+  fixed line; Regenerate replaces it.
   a run opens read-only (details, files, open chat, Run again, Queue every task again, Remove from
   history once finished). Clearing finished tasks keeps them in the history; the last 200 runs are
   kept, and their files stay until the run is removed.

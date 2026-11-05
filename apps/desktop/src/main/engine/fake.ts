@@ -1785,6 +1785,39 @@ ${output.slice(0, 600)}`,
   async oneShot(prompt: string, _options: OneShotOptions): Promise<string> {
     const scripted = process.env.JIG_FAKE_ONESHOT;
     if (scripted) return scripted;
+    // A task run report (D-355): every task in a line, its follow-ups merged into one proposal.
+    if (/Write a structured report on this task-queue run/.test(prompt)) {
+      const ids = [...prompt.matchAll(/^id: (\S+)$/gm)].map((m) => m[1]!);
+      const followUps = [...prompt.matchAll(/^- \[(\S+)\] /gm)].map((m) => m[1]!);
+      return JSON.stringify({
+        overview: `The run did ${ids.length} tasks (scripted report).`,
+        tasks: ids.map((taskId) => ({
+          taskId,
+          line: `Changed what ${taskId} asked for.`,
+          committed: "main",
+        })),
+        aware: [{ kind: "decision", text: "Picked the simpler fix on its own.", taskIds: ids.slice(0, 1) }],
+        stuck: [...prompt.matchAll(/^id: (\S+)\ntitle: .*\nstatus: (Failed|Blocked|Partly done)$/gm)].map(
+          (m) => ({
+            taskId: m[1],
+            what: `It ended ${m[2]!.toLowerCase()}.`,
+            unblock: "Run it again once the cause is fixed.",
+          }),
+        ),
+        needsYou: [{ kind: "push", text: "Push the commits on main.", repo: "shop", taskIds: ids }],
+        proposals: followUps.length
+          ? [
+              {
+                kind: "fix",
+                title: "Do the follow-ups together",
+                why: "They touch the same code.",
+                prompt: "Do the run's follow-ups together, and check the tests pass.",
+                sources: followUps,
+              },
+            ]
+          : [],
+      });
+    }
     if (/Check these changes before they are committed/.test(prompt)) {
       const debug = /^\+.*console\.log/m.test(prompt);
       return JSON.stringify({

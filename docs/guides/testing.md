@@ -146,7 +146,8 @@ More behaviour:
 - **Commands, models and MCP servers:** canned lists (`/usage`, `/explain-code`; models with effort
   levels; `github` connected and `jira` needing sign-in).
 - **One-shot questions:** answers for attempts judging, tours, the pre-commit check, standups,
-  commit messages and release drafts (bump, changelog, one note for customers). The reflection
+  commit messages and release drafts (bump, changelog, one note for customers), and a task run report
+  (every task in a line, failed/blocked ones as stuck, one push, every follow-up merged into one proposal, D-355). The reflection
   answers a `practice` pattern with a "better practice" suggestion (D-213), a `habit` pattern with a
   prompting tip whose `example` is a rewritten prompt (D-214), any other pattern with a
   new-add-on suggestion, and a `manual-work` note (without patterns) with a workflow suggestion plus
