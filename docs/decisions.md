@@ -5801,3 +5801,43 @@ choice of Telegram and everything below: Claude, on my own.
 - **Gone:** the header's chip, its fixed status slot (`w-20`) and the header's `@container`; the model
   menu lists only models, Effort and Other model…. `/permissions`, the + menu's "Permission mode…"
   and Shift+Tab still open or switch the modes.
+
+## D-365: Composer: Send is a split button with a menu, and prompts can be parked
+
+- Status: accepted; changes D-346 (the separate Send-now button goes) and extends D-308 (editing
+  applies to parked messages too).
+- **Who:** Jon, 2026-11-05: while a chat was working he wrote a prompt but wanted to answer what the
+  chat had just said first; he wants to **park** a prompt (kept, never sent by itself, sent by hand),
+  and a Send split button whose menu has Send/Queue, Send now and Park with their keys. The menu's
+  extra entries, the shortcut, the icons and the storage: Claude, on my own, along the lines Jon's
+  task asked for.
+- **The split button:** Send (`composer-send`, unchanged) and, 1 px beside it, a narrow chevron part
+  in the same accent (`composer-send-menu`, `w-4`), always there, idle or busy, so nothing moves when
+  a turn starts or ends. Its menu (`openMenuAt`, right-aligned, through `ui/Menu.tsx`): **Send** idle
+  or **Queue: after this turn** busy (Enter; Run in shell / Remember in `!`/`#` mode), **Send now:
+  into the running turn** (Mod+Enter, enabled only while busy), **Park: keep it, send it later**
+  (**Alt+Enter**, free in the composer and app-wide), a separator, **Send in a new chat**. Entries
+  are disabled while the box is empty; Send now, Park and Send in a new chat also in `!`/`#` mode
+  (those are commands, not messages). The separate ⚡ Send-now button is gone; Mod+Enter still sends
+  now. The hint under the box says "Alt+Enter parks" while busy.
+- **Parked messages are host state saved with the chat:** `Live.parked` in `sessions/manager.ts`,
+  written next to `queue` in the session file (`parked`, default `[]`), sent as their own update
+  (`{ op: "parked" }`) and in `SessionSnapshot.parked`. Not on `SessionMeta`: meta goes to every
+  list and add-on, and the parked list belongs with the queue it sits beside. Nothing reads it when a
+  turn ends, so it is never sent by itself. Parking in a new (draft) chat makes it a real chat, so it
+  survives a restart. New IPC: `sessions.park` (`{ text, attachments }`, or `{ queuedId }` to move a
+  queued message) and `sessions.sendParked` (`{ parkedId, now? }`: sends as `sessions.send` would:
+  now, queued while busy, or into the turn; it goes back to the parked ones if sending fails).
+  `sessions.editQueued` and `sessions.removeQueued` take a parked message's id too.
+- **The box above the composer** (`ComposerQueue.tsx`) shows "Sends after this turn" and, under it,
+  "Parked · sent only when you send it". It grows the way the queue box always did and scrolls past
+  `max-h-48`. Every row is the click target (edit in the D-308 modal) and has three fixed action
+  slots so both groups line up: send now (⚡, busy only, an empty slot otherwise), move (queued:
+  Park; parked: Send idle, Queue busy) and remove (×). Parked rows are muted with a dashed outline.
+  One icon each everywhere: `ListEnd` = the queue, `Pause` = parked, `Zap` = send now (`QUEUE_ICON`,
+  `PARK_ICON`, `SEND_NOW_ICON`).
+- **Send in a new chat** earns its place: a side question while a chat works is common, and it keeps
+  the prompt and files (copied into the new chat with `sessions.addAttachment`). Not in builder chats.
+- **Left out: "Add to Tasks queue".** The Tasks queue is an add-on and the composer is core: core
+  must not depend on an add-on (it would have to come through a slot the Tasks add-on contributes).
+  Parking already covers "later", and Tasks has its own Add dialog with the fields a task needs.

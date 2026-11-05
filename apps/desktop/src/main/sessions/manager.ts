@@ -70,27 +70,27 @@ const RESUME_GRACE_MS = 30_000;
 /** Longest a timer can wait (setTimeout's limit); a later reset waits again then. */
 const MAX_TIMER_MS = 2_000_000_000;
 
+const QueuedSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  attachments: z
+    .array(
+      z.object({
+        path: z.string(),
+        mime: z.string(),
+        name: z.string().optional(),
+        kind: z.enum(["image", "pdf", "office", "text"]).optional(),
+      }),
+    )
+    .optional(),
+});
+
 const SessionFileSchema = z.object({
   meta: z.custom<SessionMeta>((v) => typeof v === "object" && v !== null && "id" in v),
   items: z.array(z.custom<ChatItem>()).default([]),
-  queue: z
-    .array(
-      z.object({
-        id: z.string(),
-        text: z.string(),
-        attachments: z
-          .array(
-            z.object({
-              path: z.string(),
-              mime: z.string(),
-              name: z.string().optional(),
-              kind: z.enum(["image", "pdf", "office", "text"]).optional(),
-            }),
-          )
-          .optional(),
-      }),
-    )
-    .default([]),
+  queue: z.array(QueuedSchema).default([]),
+  /** Messages you parked (D-365). */
+  parked: z.array(QueuedSchema).default([]),
 });
 
 export interface SessionManagerOptions {
@@ -185,6 +185,8 @@ interface PendingPermission {
 interface Live {
   state: ChatState;
   queue: QueuedMessage[];
+  /** Messages you parked (D-365): saved with the chat, sent only when you send one. */
+  parked: QueuedMessage[];
   engine?: EngineSession;
   permissions: Map<string, PendingPermission>;
   saveTimer?: NodeJS.Timeout;
@@ -245,6 +247,7 @@ export class SessionManager {
             !data.meta.importedFrom &&
             !data.meta.turns &&
             data.queue.length === 0 &&
+            data.parked.length === 0 &&
             !data.items.some(
               (item) => item.kind === "user" || item.kind === "assistant" || item.kind === "tool",
             );
@@ -261,6 +264,7 @@ export class SessionManager {
               items: data.items,
             },
             queue: data.queue,
+            parked: data.parked,
             permissions: new Map(),
             loaded: true,
           };
@@ -300,6 +304,7 @@ export class SessionManager {
         meta: live.state.meta,
         items: live.state.items.slice(-MAX_ITEMS),
         queue: live.queue,
+        parked: live.parked,
       }).catch((error) => log.error("Saving session failed", error));
       return live.saving;
     };
@@ -363,7 +368,13 @@ export class SessionManager {
       ...(input.effort ? { effort: input.effort } : {}),
       ...(input.meetingNotes ? { meetingNotes: input.meetingNotes } : {}),
     };
-    const live: Live = { state: { meta, items: [] }, queue: [], permissions: new Map(), loaded: true };
+    const live: Live = {
+      state: { meta, items: [] },
+      queue: [],
+      parked: [],
+      permissions: new Map(),
+      loaded: true,
+    };
     this.sessions.set(meta.id, live);
     this.scheduleSave(live, true);
     this.options.onUpdate(meta.id, [{ op: "meta", meta }]);
@@ -372,7 +383,7 @@ export class SessionManager {
 
   async snapshot(id: string): Promise<SessionSnapshot> {
     const live = await this.live(id);
-    return { meta: live.state.meta, items: live.state.items, queue: live.queue };
+    return { meta: live.state.meta, items: live.state.items, queue: live.queue, parked: live.parked };
   }
 
   /** The engine that runs this chat: its provider's (D-309). */
@@ -1142,8 +1153,8 @@ export class SessionManager {
   }
 
   /**
-   * Changes a queued message before it is sent: its text, and with `attachments` its files too (left
-   * out, it keeps them). It keeps its place in the queue.
+   * Changes a queued or parked message before it is sent: its text, and with `attachments` its files
+   * too (left out, it keeps them). It keeps its place in its list.
    */
   async editQueued(
     id: string,
@@ -1152,7 +1163,8 @@ export class SessionManager {
     attachments?: ChatAttachment[],
   ): Promise<void> {
     const live = await this.live(id);
-    const queued = live.queue.find((q) => q.id === queuedId);
+    const list = live.queue.some((q) => q.id === queuedId) ? "queue" : "parked";
+    const queued = live[list].find((q) => q.id === queuedId);
     if (!queued) throw new JigError("not_found", "That message has already been sent");
     const trimmed = text.trim();
     const files = attachments ?? queued.attachments ?? [];
@@ -1162,14 +1174,66 @@ export class SessionManager {
       text: trimmed,
       ...(files.length ? { attachments: files } : {}),
     };
-    live.queue = live.queue.map((q) => (q.id === queuedId ? edited : q));
-    this.emit(live, [{ op: "queue", queue: live.queue }]);
+    live[list] = live[list].map((q) => (q.id === queuedId ? edited : q));
+    this.emitLists(live);
   }
 
+  /** Removes a queued or a parked message. */
   async removeQueued(id: string, queuedId: string): Promise<void> {
     const live = await this.live(id);
     live.queue = live.queue.filter((q) => q.id !== queuedId);
-    this.emit(live, [{ op: "queue", queue: live.queue }]);
+    live.parked = live.parked.filter((q) => q.id !== queuedId);
+    this.emitLists(live);
+  }
+
+  /**
+   * Parks a message (D-365): it stays with the chat, saved, until you send or remove it; nothing sends
+   * it by itself. With `queuedId`, that queued message moves to the end of the parked ones.
+   */
+  async park(id: string, text = "", attachments: ChatAttachment[] = [], queuedId?: string): Promise<void> {
+    const live = await this.live(id);
+    let message: QueuedMessage;
+    if (queuedId) {
+      const queued = live.queue.find((q) => q.id === queuedId);
+      if (!queued) throw new JigError("not_found", "That message has already been sent");
+      live.queue = live.queue.filter((q) => q.id !== queuedId);
+      message = queued;
+    } else {
+      const trimmed = text.trim();
+      if (!trimmed && attachments.length === 0) throw new JigError("invalid_args", "The message is empty");
+      message = { id: randomUUID(), text: trimmed, ...(attachments.length ? { attachments } : {}) };
+    }
+    // A new chat holding only a parked message is kept, like one you've sent from.
+    if (live.state.meta.draft) this.setMeta(live, { draft: false });
+    live.parked = [...live.parked, message];
+    this.emitLists(live);
+    await this.scheduleSave(live, true);
+  }
+
+  /** Sends a parked message as `send` would: now, into the queue while busy, or into the running turn. */
+  async sendParked(id: string, parkedId: string, now = false): Promise<void> {
+    const live = await this.live(id);
+    const parked = live.parked.find((q) => q.id === parkedId);
+    if (!parked) throw new JigError("not_found", "That message has already been sent");
+    live.parked = live.parked.filter((q) => q.id !== parkedId);
+    this.emit(live, [{ op: "parked", parked: live.parked }]);
+    try {
+      await this.send(id, parked.text, parked.attachments ?? [], now);
+    } catch (error) {
+      // Not sent: it stays parked.
+      if (!live.parked.some((q) => q.id === parkedId)) {
+        live.parked = [parked, ...live.parked];
+        this.emit(live, [{ op: "parked", parked: live.parked }]);
+      }
+      throw error;
+    }
+  }
+
+  private emitLists(live: Live) {
+    this.emit(live, [
+      { op: "queue", queue: live.queue },
+      { op: "parked", parked: live.parked },
+    ]);
   }
 
   /** Replaces a transcript item (by id) and sends it. */

@@ -157,6 +157,69 @@ test("chat: follow-ups queue while Claude works; Stop interrupts", async ({ page
   await expect(page.getByTestId("queue")).toHaveCount(0);
 });
 
+test("chat: the Send menu parks a message; parked ones wait for you, even across a restart (D-365)", async ({
+  app,
+  page,
+  jigHome,
+}) => {
+  await withProject(page, jigHome);
+  await page.keyboard.press("Control+N");
+  await say(page, "hold until released, then answer");
+  await expect(page.getByTestId("composer-stop")).toBeVisible();
+  // The split part is always there; its menu has the ways to send, with their keys.
+  const input = page.getByTestId("composer-input");
+  await input.fill("answer this first");
+  await page.getByTestId("composer-send-menu").click();
+  await expect(page.getByTestId("send-menu-send")).toContainText("Queue: after this turn");
+  await expect(page.getByTestId("send-menu-now")).toBeEnabled();
+  await page.getByTestId("send-menu-park").click();
+  await expect(input).toHaveValue("");
+  await expect(page.getByTestId("parked-item")).toHaveText(/answer this first/);
+  // Alt+Enter parks too; Enter queues; a queued one can be parked and a parked one queued.
+  await input.fill("second thought");
+  await input.press("Alt+Enter");
+  await expect(page.getByTestId("parked-item")).toHaveCount(2);
+  await say(page, "queued one");
+  await expect(page.getByTestId("queue-item")).toHaveText(/queued one/);
+  await page.getByTestId("queue-item").getByTestId("queue-park").click();
+  await expect(page.getByTestId("queue-item")).toHaveCount(0);
+  await expect(page.getByTestId("parked-item")).toHaveCount(3);
+  await page
+    .getByTestId("parked-item")
+    .filter({ hasText: "second thought" })
+    .getByTestId("parked-send")
+    .click();
+  await expect(page.getByTestId("queue-item")).toHaveText(/second thought/);
+  await page
+    .getByTestId("parked-item")
+    .filter({ hasText: "queued one" })
+    .getByTestId("parked-remove")
+    .click();
+  await expect(page.getByTestId("parked-item")).toHaveCount(1);
+  // The turn ends: the queued one is sent, the parked one stays.
+  await hostCall(page, "fake.release", {});
+  await expect(page.getByTestId("user-message-text").last()).toHaveText("second thought");
+  await expect(page.getByTestId("queue-item")).toHaveCount(0);
+  await expect(page.getByTestId("parked-item")).toHaveText(/answer this first/);
+  // Idle, the menu sends; Send now is only for a running turn.
+  await input.fill("x");
+  await page.getByTestId("composer-send-menu").click();
+  await expect(page.getByTestId("send-menu-send")).toContainText("Send");
+  await expect(page.getByTestId("send-menu-now")).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await input.fill("");
+  // Parked messages are saved with the chat.
+  await page.waitForTimeout(700);
+  await app.close();
+  const again = await launchJig(jigHome);
+  const page2 = await again.firstWindow();
+  await expect(page2.getByTestId("parked-item")).toHaveText(/answer this first/);
+  await page2.getByTestId("parked-send").click();
+  await expect(page2.getByTestId("user-message-text").last()).toHaveText("answer this first");
+  await expect(page2.getByTestId("queue")).toHaveCount(0);
+  await again.close();
+});
+
 test("chat: model and permission mode menus", async ({ page, jigHome }) => {
   await withProject(page, jigHome);
   await page.keyboard.press("Control+N");

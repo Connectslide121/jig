@@ -120,8 +120,8 @@ settings, add-on permissions.
 | `sessions.addAttachment` | `{ id, data?, mime?, name?, path? }` | `ChatAttachment { path, mime, name, kind }` | keeps pasted/dropped bytes (base64) or copies a file into `attachments/<session>/`: images, PDFs, .docx/.xlsx/.pptx, text files (`docs/reference/engine.md` → Attachments); `not_supported`, `too_large`, `not_found`, `unreadable` |
 | `sessions.interrupt` | `{ id }` | — | stops the current turn |
 | `sessions.answerPermission` | `{ id, requestId, decision }` | — | `{ behavior: "allow", always?, updatedInput? }` or `{ behavior: "deny", message? }` |
-| `sessions.removeQueued` | `{ id, queuedId }` | — | |
-| `sessions.editQueued` | `{ id, queuedId, text, attachments? }` | — | changes a queued message in the same place in the queue: its text, and with `attachments` (files kept by `sessions.addAttachment`; left out, it keeps its own) its files; text may be empty only when files remain; `invalid_args` when both are empty, `not_found` once it has been sent (schema: prompt text, attachments) |
+| `sessions.removeQueued` | `{ id, queuedId }` | — | a queued or parked message (D-365) |
+| `sessions.editQueued` | `{ id, queuedId, text, attachments? }` | — | changes a queued or parked message (D-365) in the same place in its list: its text, and with `attachments` (files kept by `sessions.addAttachment`; left out, it keeps its own) its files; text may be empty only when files remain; `invalid_args` when both are empty, `not_found` once it has been sent (schema: prompt text, attachments) |
 | `sessions.setModel` / `sessions.setPermissionMode` | `{ id, model }` / `{ id, mode }` | — | applied live |
 | `sessions.setProvider` | `{ id, provider }` | `SessionMeta` | who runs a chat that hasn't sent anything yet (the composer's provider picker, D-314): it takes that provider's default model, effort and permission mode (Plan only becomes Ask before changes on Codex). `not_allowed` once the chat has a turn, a queued message or anything in its transcript: after that it changes only through a handover (`sessions.handOver`, D-339, or a limit, D-338) |
 | `sessions.handOverPlan` | `{ id, provider }` | `HandoverPlan` | what handing the chat over to `provider` would do (D-339), for the confirmation dialog: model/effort/mode before and after, the other plan's room, messages and edited files to carry over, `blocked` while a turn runs or for chats that stay on Claude Code |
@@ -132,6 +132,8 @@ settings, add-on permissions.
 | `sessions.stop` | `{ id }` | — | ends the Claude Code process (resumes on the next message) |
 | `sessions.delete` | `{ id }` | — | removes Jig's record; Claude Code's own transcript stays |
 | `sessions.send` | `{ id, text, attachments?, now? }` | — | sends, or queues while Claude works; `now` joins the running turn instead |
+| `sessions.park` | `{ id, text?, attachments?, queuedId? }` | — | parks a message (D-365): saved with the chat, never sent by itself; with `queuedId` a queued message moves to the parked ones; `invalid_args` when empty, `not_found` when the queued one has gone (schema: prompt text, attachments) |
+| `sessions.sendParked` | `{ id, parkedId, now? }` | — | sends a parked message as `sessions.send` would (now, queued while busy, or into the turn with `now`); it stays parked if sending fails; `not_found` once it has gone |
 | `sessions.rewind` | `{ id, itemId, files }` | `{ text, files? }` | rewinds the chat to before your message (and with `files`, restores the files); returns the message for the box |
 | `sessions.runShell` | `{ id, command }` | — | a `!` command in the chat's folder; output goes with the next message |
 | `sessions.remember` | `{ id, text, scope: project \| user }` | `{ path }` | appends `- text` to CLAUDE.md |

@@ -379,6 +379,19 @@ export const SCHEMAS: Partial<Record<MethodName, z.ZodType>> = {
     .object({ id, queuedId: id, text, attachments: z.array(attachment).max(50).optional() })
     .strict()
     .refine((a) => a.text.trim() !== "" || (a.attachments?.length ?? 0) > 0, "The message is empty"),
+  "sessions.park": z
+    .object({
+      id,
+      text: text.optional(),
+      attachments: z.array(attachment).max(50).optional(),
+      queuedId: id.optional(),
+    })
+    .strict()
+    .refine(
+      (a) => a.queuedId !== undefined || (a.text ?? "").trim() !== "" || (a.attachments?.length ?? 0) > 0,
+      "The message is empty",
+    ),
+  "sessions.sendParked": z.object({ id, parkedId: id, now: z.boolean().optional() }).strict(),
   "sessions.rewind": z.object({ id, itemId: id, files: z.boolean() }),
   "sessions.runShell": z.object({ id, command: z.string().min(1).max(10_000) }),
   "sessions.remember": z.object({

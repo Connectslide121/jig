@@ -37,6 +37,7 @@ import { VoiceButton } from "../speech/VoiceButton";
 import { startVoice, toggleVoice, useVoice, type VoiceHooks } from "../speech/voice";
 import { newSession } from "./actions";
 import { type BoxCommand, ComposerBox, useComposerText } from "./ComposerBox";
+import { ComposerQueue, PARK_ICON, QUEUE_ICON, SEND_NOW_ICON } from "./ComposerQueue";
 import { historyStep, inputMode, nextPermissionMode, tokenAt } from "./composerInput";
 import { registerComposer, takeDraft } from "./drafts";
 import {
@@ -52,7 +53,7 @@ import { ProviderPicker } from "./ProviderPicker";
 import { usePrompts } from "./prompts";
 import { canChangeProvider, capabilitiesOf, providerName } from "./provider";
 import { openSavedChatsDialog } from "./SavedChatsDialog";
-import { openEditQueuedDialog, openFoldersDialog, openMcpDialog } from "./SessionDialogs";
+import { openFoldersDialog, openMcpDialog } from "./SessionDialogs";
 import { useSessions } from "./store";
 
 /**
@@ -93,10 +94,12 @@ const LOCAL_COMMANDS: LocalCommand[] = [
 export function Composer({
   meta,
   queue,
+  parked,
   active,
 }: {
   meta: SessionMeta;
   queue: QueuedMessage[];
+  parked: QueuedMessage[];
   active: boolean;
 }) {
   const input = useComposerText(() => takeDraft(meta.id));
@@ -217,6 +220,85 @@ export function Composer({
     else if (mode === "memory") remember(text.replace(/^#\s*/, ""));
     else void send(text, files, now);
   };
+  /** Keeps the message with the chat without sending it (D-365); the box empties as on Send. */
+  const park = async () => {
+    const trimmed = text.trim();
+    if ((!trimmed && files.length === 0) || mode) return;
+    const withFiles = files;
+    setText("");
+    setFiles([]);
+    setHistory({ index: -1, draft: "" });
+    try {
+      await call("sessions.park", { id: meta.id, text: trimmed, attachments: withFiles });
+    } catch (error) {
+      setText(trimmed);
+      setFiles(withFiles);
+      notify({ title: "Not parked", message: errorMessage(error), tone: "danger" });
+    }
+  };
+  /** Starts a new chat in this project with the message and its files (copied into the new chat). */
+  const sendInNewChat = async () => {
+    const trimmed = text.trim();
+    if ((!trimmed && files.length === 0) || mode) return;
+    const withFiles = files;
+    const id = await newSession(meta.projectId, meta.cwd);
+    if (!id) return;
+    setText("");
+    setFiles([]);
+    setHistory({ index: -1, draft: "" });
+    try {
+      const copies = await Promise.all(
+        withFiles.map((f) => call("sessions.addAttachment", { id, path: f.path, name: f.name })),
+      );
+      await call("sessions.send", { id, text: trimmed, attachments: copies });
+    } catch (error) {
+      notify({ title: "Not sent in the new chat", message: errorMessage(error), tone: "danger" });
+    }
+  };
+  const empty = !text.trim() && files.length === 0;
+  /** The Send button's menu (D-365): how to send what you wrote, with each one's key. */
+  const sendMenu = (): MenuEntry[] => [
+    {
+      label:
+        mode === "shell"
+          ? "Run in shell"
+          : mode === "memory"
+            ? "Remember"
+            : busy
+              ? "Queue: after this turn"
+              : "Send",
+      icon:
+        mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : busy ? QUEUE_ICON : ArrowUp,
+      shortcut: "Enter",
+      disabled: empty,
+      testId: "send-menu-send",
+      onSelect: () => submit(),
+    },
+    {
+      label: "Send now: into the running turn",
+      icon: SEND_NOW_ICON,
+      shortcut: formatShortcut("Mod+Enter"),
+      disabled: empty || !busy || Boolean(mode),
+      testId: "send-menu-now",
+      onSelect: () => submit(true),
+    },
+    {
+      label: "Park: keep it, send it later",
+      icon: PARK_ICON,
+      shortcut: formatShortcut("Alt+Enter"),
+      disabled: empty || Boolean(mode),
+      testId: "send-menu-park",
+      onSelect: () => void park(),
+    },
+    { separator: true },
+    {
+      label: "Send in a new chat",
+      icon: SquarePlus,
+      disabled: empty || Boolean(mode) || meta.kind === "builder",
+      testId: "send-menu-new-chat",
+      onSelect: () => void sendInNewChat(),
+    },
+  ];
 
   const moreMenu = (base: { commands: MenuEntry; mention: MenuEntry; attach: MenuEntry }): MenuEntry[] => [
     base.commands,
@@ -268,6 +350,9 @@ export function Composer({
     } else if (e.key === "Tab" && !text && suggestion) {
       e.preventDefault();
       setText(suggestion);
+    } else if (e.key === "Enter" && e.altKey && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      void park();
     } else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       submit(busy && (e.ctrlKey || e.metaKey));
@@ -303,61 +388,7 @@ export function Composer({
       style={{ paddingRight: "var(--jig-scrollbar-size)" }}
     >
       <div className="mx-auto flex max-w-[var(--jig-chat-width)] flex-col gap-2 px-6">
-        {queue.length > 0 && (
-          <div className="flex flex-col gap-1" data-testid="queue">
-            <div className="text-2xs font-medium text-hint uppercase">Sends after this turn</div>
-            {queue.map((q) => (
-              // The whole row edits the message (a modal); its buttons send it now or remove it.
-              <div
-                key={q.id}
-                role="button"
-                tabIndex={0}
-                title="Edit this message before it is sent"
-                data-testid="queue-item"
-                onClick={() => openEditQueuedDialog(meta.id, q)}
-                onKeyDown={(e) => {
-                  if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
-                  e.preventDefault();
-                  openEditQueuedDialog(meta.id, q);
-                }}
-                className="flex cursor-pointer items-center gap-2 rounded-md bg-surface px-2 py-1 text-xs hover:bg-hover focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-1">
-                  {q.attachments?.length ? (
-                    <span className="flex shrink-0 items-center gap-0.5 text-muted">
-                      <Paperclip className="size-3" />
-                      {q.attachments.length}
-                    </span>
-                  ) : null}
-                  <span className="min-w-0 truncate">{q.text}</span>
-                </span>
-                {busy && (
-                  <IconButton
-                    icon={Zap}
-                    size="sm"
-                    label={`Send now: ${who} reads it at its next step`}
-                    data-testid="queue-send-now"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await call("sessions.removeQueued", { id: meta.id, queuedId: q.id });
-                      await send(q.text, q.attachments ?? [], true);
-                    }}
-                  />
-                )}
-                <IconButton
-                  icon={X}
-                  size="sm"
-                  label="Remove from queue"
-                  data-testid="queue-remove"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void call("sessions.removeQueued", { id: meta.id, queuedId: q.id });
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        <ComposerQueue sessionId={meta.id} queue={queue} parked={parked} busy={busy} who={who} />
         {suggestion && (
           <div className="flex min-w-0 items-center gap-1" data-testid="suggestion">
             <button
@@ -490,32 +521,37 @@ export function Composer({
                   onClick={() => void call("sessions.interrupt", { id: meta.id })}
                 />
               )}
-              {busy && (text.trim() || files.length > 0) && !mode && (
-                <IconButton
-                  icon={Zap}
-                  size="sm"
-                  label={`Send now: ${who} reads it at its next step (${formatShortcut("Mod+Enter")})`}
-                  data-testid="composer-send-now"
-                  onClick={() => void send(text, files, true)}
+              {/* Send and its menu, one split button that is always there (D-365). */}
+              <div className="flex shrink-0 items-center gap-px">
+                <Button
+                  size="icon"
+                  variant="primary"
+                  icon={mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : ArrowUp}
+                  aria-label={sendLabel}
+                  title={sendLabel}
+                  disabled={empty}
+                  data-testid="composer-send"
+                  className="rounded-r-none"
+                  onClick={() => submit()}
                 />
-              )}
-              <Button
-                size="icon"
-                variant="primary"
-                icon={mode === "shell" ? SquareTerminal : mode === "memory" ? BookmarkPlus : ArrowUp}
-                aria-label={sendLabel}
-                title={sendLabel}
-                disabled={!text.trim() && files.length === 0}
-                data-testid="composer-send"
-                onClick={() => submit()}
-              />
+                <button
+                  type="button"
+                  aria-label="More ways to send"
+                  title={`More ways to send: send now, park (${formatShortcut("Alt+Enter")}), in a new chat`}
+                  data-testid="composer-send-menu"
+                  onClick={(e) => openMenuAt(e.currentTarget, sendMenu(), true)}
+                  className="no-drag inline-flex h-7 w-4 shrink-0 items-center justify-center rounded-r-md bg-accent text-on-accent transition-colors hover:bg-accent-hover"
+                >
+                  <ChevronDown className="block size-3 shrink-0" />
+                </button>
+              </div>
             </>
           }
         />
         <div className="flex items-center gap-1 text-2xs text-hint">
           <History className="size-3" />
           {busy
-            ? `Enter queues · ${formatShortcut("Mod+Enter")} sends now · Esc stops ${who}`
+            ? `Enter queues · ${formatShortcut("Mod+Enter")} sends now · ${formatShortcut("Alt+Enter")} parks · Esc stops ${who}`
             : "Enter to send · Shift+Enter new line · / commands · @ files · ! shell · # remember · ↑ earlier messages · Shift+Tab mode"}
         </div>
       </div>

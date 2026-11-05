@@ -6,6 +6,8 @@ import { call } from "../../lib/host";
 interface Transcript {
   items: ChatItem[];
   queue: QueuedMessage[];
+  /** Messages you parked (D-365). */
+  parked: QueuedMessage[];
 }
 
 interface SessionsState {
@@ -38,7 +40,10 @@ export function ensureTranscript(id: string): Promise<void> {
       .then((snap) =>
         useSessions.setState((s) => ({
           metas: { ...s.metas, [id]: snap.meta },
-          transcripts: { ...s.transcripts, [id]: { items: snap.items, queue: snap.queue } },
+          transcripts: {
+            ...s.transcripts,
+            [id]: { items: snap.items, queue: snap.queue, parked: snap.parked },
+          },
         })),
       )
       .finally(() => loading.delete(id));
@@ -58,12 +63,15 @@ export function applySessionUpdates(sessionId: string, updates: ChatUpdate[]): v
     const current = s.transcripts[sessionId];
     const items = current ? [...current.items] : undefined;
     let queue = current?.queue;
+    let parked = current?.parked;
     for (const update of updates) {
       if (update.op === "meta") metas = { ...metas, [sessionId]: update.meta };
       else if (update.op === "queue") queue = update.queue;
+      else if (update.op === "parked") parked = update.parked;
       else if (items) applyUpdate(items, update);
     }
-    if (current && items && queue) transcripts = { ...transcripts, [sessionId]: { items, queue } };
+    if (current && items && queue)
+      transcripts = { ...transcripts, [sessionId]: { items, queue, parked: parked ?? [] } };
     return { metas, transcripts };
   });
 }

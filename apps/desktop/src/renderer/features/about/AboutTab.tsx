@@ -631,6 +631,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "File paths Claude writes are links: click opens the file in Preview, Ctrl+click with its own app",
                 "Mentioned files are highlighted in the message box, with a chip each to open them (or Ctrl+click)",
                 "↑ for earlier messages, Shift+Tab for modes, Ctrl+Enter to send while Claude works",
+                "Park a message to send later (Alt+Enter, or the menu beside Send): it waits under the queue, saved with the chat, until you send it; the same menu sends now or in a new chat",
                 "Todo lists, plans to approve, diffs on every edit, subagent progress and background tasks",
                 "Edit and send again: rewind the chat (and the files) to before any message",
                 "Whole-chat file count and line totals fixed above the input: click for a file breakdown, Walk me through or Undo",

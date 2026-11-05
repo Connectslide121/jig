@@ -318,6 +318,42 @@ describe("SessionManager", () => {
     await m.interrupt(session.id);
   });
 
+  it("parks messages: never sent by themselves, sent or queued by hand, saved with the chat (D-365)", async () => {
+    const m = manager();
+    const session = await create(m);
+    // Parking in a new chat keeps the chat.
+    await m.park(session.id, " answer first ");
+    expect((await metaOf(m, session.id)).draft).toBe(false);
+    await m.send(session.id, "slow please");
+    await m.send(session.id, "queued");
+    const [queued] = (await m.snapshot(session.id)).queue;
+    await m.park(session.id, undefined, undefined, queued!.id);
+    let snap = await m.snapshot(session.id);
+    expect(snap.queue).toEqual([]);
+    expect(snap.parked.map((p) => p.text)).toEqual(["answer first", "queued"]);
+    // Edited and removed like queued ones.
+    await m.editQueued(session.id, snap.parked[1]!.id, "queued, changed");
+    // Sending one while Claude works queues it.
+    await m.sendParked(session.id, snap.parked[1]!.id);
+    snap = await m.snapshot(session.id);
+    expect(snap.queue.map((q) => q.text)).toEqual(["queued, changed"]);
+    expect(snap.parked.map((p) => p.text)).toEqual(["answer first"]);
+    // The turns end; the parked one is still there, and is saved.
+    await until(async () => (await metaOf(m, session.id)).turns === 2);
+    await until(async () => (await metaOf(m, session.id)).status === "idle");
+    expect((await m.snapshot(session.id)).parked.map((p) => p.text)).toEqual(["answer first"]);
+    await m.shutdown();
+    const again = manager();
+    const restored = await again.snapshot(session.id);
+    expect(restored.parked.map((p) => p.text)).toEqual(["answer first"]);
+    await again.sendParked(session.id, restored.parked[0]!.id);
+    await until(async () => (await metaOf(again, session.id)).turns === 3);
+    expect((await again.snapshot(session.id)).parked).toEqual([]);
+    await expect(again.sendParked(session.id, "gone")).rejects.toThrow("already been sent");
+    await expect(again.park(session.id, " ")).rejects.toThrow("empty");
+    await again.shutdown();
+  });
+
   it("asks for permission and continues when allowed", async () => {
     const m = manager();
     const session = await create(m);

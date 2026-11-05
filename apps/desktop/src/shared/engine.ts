@@ -531,6 +531,8 @@ export type ChatUpdate =
   | { op: "append"; id: string; text: string }
   | { op: "meta"; meta: SessionMeta }
   | { op: "queue"; queue: QueuedMessage[] }
+  /** Your parked messages (D-365): kept for you to send by hand, never sent by themselves. */
+  | { op: "parked"; parked: QueuedMessage[] }
   /** The whole transcript changed (the conversation was rewound). */
   | { op: "reset"; items: ChatItem[] };
 
@@ -556,6 +558,8 @@ export interface SessionSnapshot {
   meta: SessionMeta;
   items: ChatItem[];
   queue: QueuedMessage[];
+  /** Messages you parked (D-365): saved with the chat, sent only when you send them. */
+  parked: QueuedMessage[];
 }
 
 /** Engine events, normalised from Claude Code's SDK messages. */

@@ -27,6 +27,7 @@ const snap = (over: Partial<SessionMeta> = {}): SessionSnapshot => ({
     { kind: "assistant", id: "a3", text: "last", at: "2025-01-01T10:01:00Z" },
   ],
   queue: [{ id: "q", text: "later" }],
+  parked: [],
 });
 
 function setup(permitted = true, chatGptReady = true, builtin = true) {
@@ -101,7 +102,7 @@ describe("chatInfo", () => {
       request: { requestId: toolName, toolName, input: {}, canAlwaysAllow: false },
     });
     const info = (items: SessionSnapshot["items"], status: SessionMeta["status"] = "needs_you") =>
-      chatInfo({ meta: meta({ status }), items, queue: [] });
+      chatInfo({ meta: meta({ status }), items, queue: [], parked: [] });
     expect(info([pending("Bash")]).waitingFor).toBe("permission");
     expect(info([pending("Bash", "allowed"), pending("AskUserQuestion")]).waitingFor).toBe("question");
     expect(info([pending("ExitPlanMode")]).waitingFor).toBe("plan");
@@ -260,6 +261,7 @@ describe("chatInfo: a limit (D-338)", () => {
       },
       items: [],
       queue: [],
+      parked: [],
     });
     expect(info.limit).toEqual({ provider: "chatgpt", state: "waiting", resetsAt: "2026-11-04T14:00:00Z" });
   });

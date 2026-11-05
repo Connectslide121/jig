@@ -1,5 +1,15 @@
 # Status
 
+Send menu and parked prompts (2026-11-05, D-365, Jon): Send in the chat's message box is a split
+button: the chevron beside it opens Send (Queue: after this turn while the chat works), Send now
+(Ctrl+Enter, only while it works), Park (Alt+Enter) and Send in a new chat. A parked prompt keeps its
+text and files, is saved with the chat (switching chats and restarting Jig keep it) and is never sent
+by itself; it shows under the queue as "Parked" (muted, dashed, the pause icon): click it to edit,
+its buttons send or queue it, send it now while the chat works, or remove it, and a queued row's
+pause button parks it. The separate ⚡ Send-now button is gone. Checked with the fake engine, idle
+and busy, narrow and wide. Known: in a very narrow chat while it works, the model name truncates to
+its first letter (Stop and the split button take the room; it did with Send now before too).
+
 Chats list marks every chat's provider (2026-11-04, D-348, Jon): each row shows Claude's asterisk or
 ChatGPT's aperture at the far right, in one aligned column; hovering a row still shows the pin button
 there.

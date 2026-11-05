@@ -31,7 +31,7 @@ export async function newSession(
     const meta = await call("sessions.create", { projectId: id, cwd });
     useSessions.setState((s) => ({
       metas: { ...s.metas, [meta.id]: meta },
-      transcripts: { ...s.transcripts, [meta.id]: { items: [], queue: [] } },
+      transcripts: { ...s.transcripts, [meta.id]: { items: [], queue: [], parked: [] } },
     }));
     if (draft) setDraft(meta.id, draft);
     workbench.openTab("jig.chat", { sessionId: meta.id });

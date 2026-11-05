@@ -563,6 +563,8 @@ export function startSessions(): void {
     m.answerPermission(id, requestId, decision),
   );
   handle("sessions.removeQueued", ({ id, queuedId }) => m.removeQueued(id, queuedId));
+  handle("sessions.park", ({ id, text, attachments, queuedId }) => m.park(id, text, attachments, queuedId));
+  handle("sessions.sendParked", ({ id, parkedId, now }) => m.sendParked(id, parkedId, now));
   handle("sessions.editQueued", ({ id, queuedId, text, attachments }) =>
     m.editQueued(id, queuedId, text, attachments),
   );

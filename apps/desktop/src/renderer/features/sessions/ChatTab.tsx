@@ -242,7 +242,12 @@ export function ChatTab({ params, active, focused }: TabProps) {
             <BackgroundTasks meta={meta} />
           </div>
           <ChatChanges key={id} meta={meta} items={transcript?.items ?? []} />
-          <Composer meta={meta} queue={transcript?.queue ?? []} active={Boolean(focused)} />
+          <Composer
+            meta={meta}
+            queue={transcript?.queue ?? []}
+            parked={transcript?.parked ?? []}
+            active={Boolean(focused)}
+          />
         </div>
         <div
           className={cn("jig-side-slide box-content shrink-0 pt-3", showOverview ? "w-52 pr-3" : "w-0 pr-0")}

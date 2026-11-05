@@ -606,15 +606,30 @@ export interface HostMethods {
     args: { id: string; requestId: string; decision: PermissionDecision };
     result: void;
   };
+  /** Removes a queued or a parked message (D-365). */
   "sessions.removeQueued": { args: { id: string; queuedId: string }; result: void };
   /**
-   * Changes a queued message before it is sent, in the same place in the queue: its text, and with
-   * `attachments` (files kept by `sessions.addAttachment`) its files; fails once it has been sent.
+   * Changes a queued or parked message before it is sent, in the same place in its list: its text,
+   * and with `attachments` (files kept by `sessions.addAttachment`) its files; fails once it has been
+   * sent.
    */
   "sessions.editQueued": {
     args: { id: string; queuedId: string; text: string; attachments?: ChatAttachment[] };
     result: void;
   };
+  /**
+   * Parks a message (D-365): kept with the chat, never sent by itself. With `queuedId`, a queued
+   * message moves to the parked ones instead (`text` and `attachments` are then ignored).
+   */
+  "sessions.park": {
+    args: { id: string; text?: string; attachments?: ChatAttachment[]; queuedId?: string };
+    result: void;
+  };
+  /**
+   * Sends a parked message as `sessions.send` would (D-365): now in an idle chat, into the queue
+   * while it works, or with `now` into the running turn. It leaves the parked ones.
+   */
+  "sessions.sendParked": { args: { id: string; parkedId: string; now?: boolean }; result: void };
   "sessions.setModel": { args: { id: string; model: string }; result: void };
   /**
    * Who runs a chat that hasn't sent anything yet (the new-chat picker, D-314): it takes that

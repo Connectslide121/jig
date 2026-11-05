@@ -189,7 +189,8 @@ export async function startPhone(): Promise<void> {
     else job.resolve(result);
   });
   onChatUpdates((sessionId, updates) => {
-    if (updates.some((u) => u.op !== "meta" && u.op !== "queue")) s.chatChanged(sessionId);
+    if (updates.some((u) => u.op !== "meta" && u.op !== "queue" && u.op !== "parked"))
+      s.chatChanged(sessionId);
   });
   // A chat Jig starts for you from the phone opens as a room there.
   onConciergeStartedChat((sessionId) => s.openRoom(sessionId, s.askedIn()));
