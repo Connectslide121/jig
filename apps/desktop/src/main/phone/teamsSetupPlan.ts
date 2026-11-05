@@ -247,7 +247,17 @@ export function plannedCommands(
     cmd(
       "function.host",
       "function",
-      ["functionapp", "show", "--name", n.functionApp, ...rg, ...sub, "--query", "{host: defaultHostName}"],
+      // Newer az (2.85) answers with the ARM shape, the fields under `properties`.
+      [
+        "functionapp",
+        "show",
+        "--name",
+        n.functionApp,
+        ...rg,
+        ...sub,
+        "--query",
+        "{host: defaultHostName || properties.defaultHostName}",
+      ],
       { outputs: ["host"] },
     ),
     cmd(
