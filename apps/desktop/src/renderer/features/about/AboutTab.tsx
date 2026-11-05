@@ -985,7 +985,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
             id="voice"
             title="Voice commands"
             lead={
-              'Say "Hey Jig" and a command, also while Jig is minimized or behind other windows. Jig hears and runs these on this computer, without Claude and without using your plan; only "ask Claude" starts a chat. Turn it on with a click on Hey Jig in the status bar (right-click for more) or in Settings → Speech.'
+              'Say "Hey Jig" and a command, also while Jig is minimized or behind other windows. Jig hears and runs these on this computer, without Claude and without using your plan; only "ask Claude" starts a chat. Turn it on with a click on Hey Jig in the status bar (right-click for more) or in Settings → Speech. The first time, Jig asks you to say "Hey Jig" five times so it learns your voice (Train Hey Jig, also in the right-click menu); only text is kept, never your voice.'
             }
           >
             <VoiceCommandsList />

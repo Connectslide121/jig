@@ -1,7 +1,16 @@
 /** Messages between the dictation controller and the Whisper worker. */
 export type WorkerRequest =
   | { type: "load"; id: number; repo: string; gpu: boolean }
-  | { type: "transcribe"; id: number; repo: string; gpu: boolean; audio: Float32Array; language: string };
+  | {
+      type: "transcribe";
+      id: number;
+      repo: string;
+      gpu: boolean;
+      audio: Float32Array;
+      language: string;
+      /** Text Whisper takes as what was said just before, to lean towards its words (D-389). */
+      prompt?: string;
+    };
 
 export type WorkerReply =
   | { type: "ready"; id: number; device: "gpu" | "cpu" }

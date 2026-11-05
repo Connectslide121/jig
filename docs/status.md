@@ -1116,10 +1116,24 @@ a note, mute, repeat, stop listening, what can I say. A chat opened by voice sta
 Everything is understood and run on this computer, without Claude (only "ask Claude" starts a
 chat). Jig also says when a chat finishes or needs you. The status bar's "Hey Jig" is always there
 (D-387): dimmed with a crossed-out microphone while off, a click turns listening on or off, and a
-right-click offers Voice commands…, Speech settings… and (soon) Train Hey Jig…; a crossed-out speaker
+right-click offers Train Hey Jig…, Voice commands… and Speech settings…; a crossed-out speaker
 after the label means Jig's voice is muted (Settings → Speech → Hey Jig → Jig's voice unmutes it).
 Jig menu → Voice commands lists every command. Covered by `voice-commands.spec.ts`
 with the fake engine; the real microphone, waking from minimized and CPU need a real machine.
+
+Train Hey Jig (2026-11-05, D-389): turning Hey Jig on the first time opens a dialog that asks you
+to say "Hey Jig" five times (a live level bar, a tick per take or "say it again"); "Listen without
+training" skips it. Jig keeps what Whisper wrote for each take and how loud you were, never audio
+(D-388). Starts Whisper writes for your voice ("Hey you") then count as "Hey Jig", softer speech
+starts listening, and for everyone Jig now also hears words that sound like "jig" ("Hey, big", "Hey,
+Geek") and reads the first moments with a hint towards "Jig". Settings → Speech → Hey Jig says when
+you trained it (Train again…). The dialog's "Heard lately while listening" lists the last things
+Jig read, whether they woke it and why not. **To try on a real machine:** turn Hey Jig on and train;
+then say "Hey Jig, what's happening" a few times from across the room, softly, and with music on.
+For each miss, open Train Hey Jig… (right-click the status bar) and look at Heard lately: if a miss
+isn't in the list, the microphone gate didn't open (speak up or train again); if it is, its reason
+says what Whisper wrote. Also check that ordinary talk near the computer ("hey, did you…", names
+such as Jake) doesn't wake it.
 
 Language servers (2026-11-03, D-259): in the file editor, the language servers you install give
 errors and warnings as you type (wavy underlines, message on hover), hover information, go to

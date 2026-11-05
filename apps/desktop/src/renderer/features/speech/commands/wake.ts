@@ -9,9 +9,10 @@ import { cleanSpeech, level, SAMPLE_RATE } from "../protocol";
 import { isNo, isYes } from "../replies";
 import { speak, stopSpeaking } from "../speak";
 import { useVoice } from "../voice";
-import { afterWake, parseCommand } from "./match";
+import { cleanWords, isGreeting, matchWake, parseCommand } from "./match";
 import { runCommand, type VoiceReply } from "./run";
-import { useWake, useWakeVoice } from "./state";
+import { recordWakeCheck, useWake, useWakeVoice } from "./state";
+import { wakeThresholds } from "./tuning";
 
 /**
  * "Hey Jig" (D-278): while Jig runs, the microphone is open and the voice detector (D-275) notices
@@ -22,8 +23,8 @@ import { useWake, useWakeVoice } from "./state";
 
 /** Frames (128 ms) of voice that start something said. */
 const START_FRAMES = 2;
-/** Audio kept from before the voice was noticed. */
-const PREROLL = 0.3 * SAMPLE_RATE;
+/** Audio kept from before the voice was noticed: a soft "hey" starts before the detector is sure (D-389). */
+const PREROLL = 0.5 * SAMPLE_RATE;
 /** How much of each thing said is read to look for "Hey Jig". */
 const WAKE_WINDOW = 2 * SAMPLE_RATE;
 /** The longest command. */
@@ -32,7 +33,23 @@ const MAX_COMMAND = 12 * SAMPLE_RATE;
 const END_PAUSE = 0.8 * SAMPLE_RATE;
 /** After "Hey Jig" alone, or a question Jig asked, how long it waits for you. */
 const AWAKE_MS = 8000;
-const VOICE = { start: 0.6, keep: 0.4 };
+/**
+ * What Whisper is told came just before when it reads the first moments (D-389), so it writes "Jig"
+ * rather than "you", "big" or "geek": with it every "Hey Jig" of the test clips was heard. Milder
+ * prompts ("Jig", "Jig.") made it drop a real "Hey Jig" as already said; two "Hey Jig" sentences made
+ * it write "Hey Jig" for "Hey Jake". It bends the words after it too, so commands are read without it.
+ */
+export const WAKE_PROMPT = " Hey Jig, run the tests.";
+
+/** Reads the first moments of something said, leaning towards "Jig" (D-389): only to find the wake words. */
+export function transcribeWake(audio: Float32Array): Promise<string> {
+  return transcribe(audio, speechSettings(), WAKE_PROMPT);
+}
+
+/** The trained profile, if any (D-389). */
+function wakeProfile() {
+  return useConfig.getState().config?.speech.wakeProfile ?? null;
+}
 
 let listener: WakeListener | undefined;
 
@@ -45,6 +62,9 @@ class WakeListener {
   private from?: number;
   private lastVoice = 0;
   private voicedFrames = 0;
+  /** The loudest frame and the highest voice score of what is being said, for the readout. */
+  private peak = 0;
+  private voiceMax?: number;
   /** The start didn't say "Hey Jig": the rest of it is ignored until the next pause. */
   private ignoring = false;
   private checking = false;
@@ -94,7 +114,12 @@ class WakeListener {
 
   /** Talking with Claude or dictation has the microphone; Jig is speaking or running something. */
   private paused(): boolean {
-    return this.busy || useVoice.getState().phase !== "off" || useDictation.getState().phase !== "idle";
+    return (
+      this.busy ||
+      useWake.getState().training ||
+      useVoice.getState().phase !== "off" ||
+      useDictation.getState().phase !== "idle"
+    );
   }
 
   private idle(): void {
@@ -109,6 +134,8 @@ class WakeListener {
     this.ignoring = false;
     this.checking = false;
     this.woke = undefined;
+    this.peak = 0;
+    this.voiceMax = undefined;
   }
 
   private frame(frame: Float32Array, now: number, voice: number | undefined): void {
@@ -122,10 +149,19 @@ class WakeListener {
     const l = level(frame, 0, frame.length);
     this.floor = l < this.floor ? this.floor * 0.7 + l * 0.3 : this.floor * 0.998 + l * 0.002;
     this.floor = Math.max(this.floor, 0.002);
-    const loud = l > Math.max(0.012, this.floor * 3);
-    const voiced = loud && (voice === undefined || voice >= VOICE.start);
+    const t = wakeThresholds(wakeProfile());
+    const loud = l > Math.max(t.gate, this.floor * 3);
+    const voiced = loud && (voice === undefined || voice >= t.start);
+    if (voiced || this.from !== undefined) {
+      this.peak = Math.max(this.peak, l);
+      if (voice !== undefined) this.voiceMax = Math.max(this.voiceMax ?? 0, voice);
+    }
     if (this.from === undefined) {
       this.loud = voiced ? this.loud + 1 : 0;
+      if (!voiced) {
+        this.peak = 0;
+        this.voiceMax = undefined;
+      }
       if (this.loud >= START_FRAMES) {
         this.from = Math.max(0, now - (this.loud + 1) * FRAME - PREROLL);
         this.lastVoice = now;
@@ -134,7 +170,7 @@ class WakeListener {
       } else capture.forget(now - SAMPLE_RATE);
       return;
     }
-    const going = voice === undefined ? loud : voice >= VOICE.keep && l > Math.max(0.008, this.floor * 2);
+    const going = voice === undefined ? loud : voice >= t.keep && l > Math.max(t.keepGate, this.floor * 2);
     if (going) this.lastVoice = now;
     if (voiced) this.voicedFrames++;
     const ended = now - this.lastVoice > END_PAUSE;
@@ -152,9 +188,11 @@ class WakeListener {
     if (ended || now - this.from > MAX_COMMAND) {
       const from = this.from;
       const ignored = this.ignoring;
+      const woke = this.woke !== undefined;
       const voiced = (this.voicedFrames * FRAME) / SAMPLE_RATE;
+      const stats = { level: this.peak, voice: this.voiceMax };
       this.reset();
-      if (!ignored) void this.finish(from, now, voiced);
+      if (!ignored) void this.finish(from, now, voiced, woke, stats);
       capture.forget(now);
     }
   }
@@ -163,8 +201,17 @@ class WakeListener {
     if (!this.capture) return;
     this.checking = true;
     try {
-      const text = cleanSpeech(await transcribe(this.capture.samples(from, to)), 2);
-      const rest = afterWake(text);
+      const text = cleanSpeech(await transcribeWake(this.capture.samples(from, to)), 2);
+      const match = matchWake(text, wakeProfile()?.variants);
+      const rest = match.rest;
+      recordWakeCheck({
+        at: Date.now(),
+        text,
+        woke: rest !== undefined,
+        reason: match.reason,
+        level: this.peak,
+        voice: this.voiceMax,
+      });
       if (this.from !== from) return;
       if (rest === undefined) this.ignoring = true;
       else {
@@ -179,14 +226,37 @@ class WakeListener {
   }
 
   /** Something said ended: read it all when it was for Jig. */
-  private async finish(from: number, to: number, voiced: number): Promise<void> {
+  private async finish(
+    from: number,
+    to: number,
+    voiced: number,
+    woke: boolean,
+    stats: { level: number; voice?: number },
+  ): Promise<void> {
     const capture = this.capture;
     if (!capture) return;
     const awake = Date.now() < this.awakeUntil;
     this.busy = true;
     try {
-      const text = cleanSpeech(await transcribe(capture.samples(from, to)), voiced);
-      await this.heard(text, awake);
+      // The command is read without the prompt, which would bend it ("open a new" → "… test").
+      const audio = capture.samples(from, to);
+      const text = cleanSpeech(await transcribe(audio), voiced);
+      const learned = wakeProfile()?.variants;
+      if (woke || awake || matchWake(text, learned).rest !== undefined) {
+        await this.heard(text, awake, woke ? "woke" : stats);
+        return;
+      }
+      // Short, and plainly not "Hey Jig": its first moments again, leaning towards "Jig", decide.
+      const leaning = cleanSpeech(await transcribeWake(audio.subarray(0, WAKE_WINDOW)), voiced);
+      const match = matchWake(leaning, learned);
+      recordWakeCheck({
+        at: Date.now(),
+        text: leaning,
+        woke: match.rest !== undefined,
+        reason: match.reason,
+        ...stats,
+      });
+      if (match.rest !== undefined) await this.heard(text, awake, "woke");
     } catch (error) {
       notify({ title: "Couldn't understand that", message: errorMessage(error), tone: "danger" });
     } finally {
@@ -195,10 +265,27 @@ class WakeListener {
     }
   }
 
-  /** What was said: `awake` = Jig was waiting for you, so "Hey Jig" isn't needed. */
-  private async heard(text: string, awake: boolean): Promise<void> {
+  /**
+   * What was said: `awake` = Jig was waiting for you, so "Hey Jig" isn't needed. `check`: "woke" when
+   * its first moments were "Hey Jig" (already recorded), else how loud it was, for the readout.
+   */
+  private async heard(
+    text: string,
+    awake: boolean,
+    check: "woke" | { level: number; voice?: number },
+  ): Promise<void> {
     if (this.stopped) return;
-    const rest = afterWake(text) ?? (awake ? text : undefined);
+    const match = matchWake(text, wakeProfile()?.variants);
+    if (check !== "woke" && !awake)
+      recordWakeCheck({
+        at: Date.now(),
+        text,
+        woke: match.rest !== undefined,
+        reason: match.reason,
+        ...check,
+      });
+    // Woken by the first moments but the whole reads differently: the command is what follows them.
+    const rest = match.rest ?? (awake ? text : check === "woke" ? afterGreeting(text) : undefined);
     if (rest === undefined) return;
     useWake.setState({ heard: rest || undefined });
     if (this.confirm && awake) {
@@ -220,7 +307,7 @@ class WakeListener {
     if (parsed.command.id === "voice.repeat")
       return this.say(this.lastSaid || "I haven't said anything yet.");
     if (parsed.command.id === "voice.sleep") {
-      await this.say("Okay, I've stopped listening. Turn me on again in Settings, Speech.");
+      await this.say("Okay, I've stopped listening. Click Hey Jig in the status bar to turn me on again.");
       void updateConfig({ speech: { wake: false } });
       return;
     }
@@ -276,9 +363,21 @@ class WakeListener {
 
   /** Tests: the fake engine "hears" `jig-fake-wake` events (the whole thing said). */
   private readonly fakeHeard = (event: Event) => {
+    // The training hears these as takes.
+    if (useWake.getState().training) return;
     const text = String((event as CustomEvent<string>).detail ?? "");
-    void this.heard(text, Date.now() < this.awakeUntil).finally(() => this.idle());
+    void this.heard(text, Date.now() < this.awakeUntil, { level: 0 }).finally(() => this.idle());
   };
+}
+
+/** `text` as words, without its first `n`. */
+function wordsAfter(text: string, n: number): string {
+  return cleanWords(text).split(" ").slice(n).join(" ");
+}
+
+/** What follows the misheard wake words: "Hey, you open a new chat" → "open a new chat". */
+function afterGreeting(text: string): string {
+  return wordsAfter(text, isGreeting(cleanWords(text).split(" ")[0]) ? 2 : 1);
 }
 
 /** Says something as Jig, while listening is on (announcements); nothing otherwise. */

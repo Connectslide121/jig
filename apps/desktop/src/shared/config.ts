@@ -216,6 +216,25 @@ export const ConfigSchema = z.object({
        * stays open; commands are understood and run on this computer, without Claude.
        */
       wake: z.boolean().default(false),
+      /**
+       * What "Train Hey Jig" learned from your voice (D-389); null = not trained. Only text and
+       * numbers: what Whisper wrote for each take and how loud and voice-like they were, never audio.
+       */
+      wakeProfile: z
+        .object({
+          /** When you trained it (ISO). */
+          trainedAt: z.string().max(40),
+          /** What Whisper wrote for each take. */
+          heard: z.array(z.string().max(120)).max(10),
+          /** Starts of those takes the defaults didn't hear as "Hey Jig", now heard as it ("hey you"). */
+          variants: z.array(z.string().max(40)).max(10),
+          /** Typical loudness (RMS) of the loud part of your "Hey Jig". */
+          level: z.number().min(0).max(1),
+          /** Typical voice-detector score while you said it (0–1). */
+          voice: z.number().min(0).max(1),
+        })
+        .nullable()
+        .default(null),
       /** With `wake`: say out loud when a chat finishes or needs you. */
       announce: z.boolean().default(true),
     })
@@ -405,6 +424,7 @@ export const PROTECTED_SETTINGS = [
   "meetings.translationModel",
   "azure.activeTenant",
   "speech.wake",
+  "speech.wakeProfile",
   "phone",
   "terminal.shell",
   "updates",

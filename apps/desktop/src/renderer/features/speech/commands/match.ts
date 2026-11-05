@@ -21,19 +21,97 @@ export function cleanWords(text: string): string {
   return t;
 }
 
-/** How Whisper writes "Hey Jig": the greeting, then the name as it hears it. */
-const WAKE = /^(?:(?:hey|hay|hi|ok|okay|a|yo) )?(?:jig|jigg|jigs|jik|jick|jeg|gig|zig)(?: (?<rest>.*))?$/;
-const GREETED_WAKE = /^(?:hey|hay|hi|ok|okay|a|yo) (?:jig|jigg|jigs|jik|jick|jeg|gig|zig)\b/;
+/** The greetings before "Jig", as Whisper writes them. */
+const GREETINGS = new Set(["hey", "hay", "hei", "hej", "hi", "ey", "eh", "ok", "okay", "a", "yo"]);
+/** How Whisper has written the name itself. */
+const SPELLINGS = new Set(["jig", "jigg", "jigs", "jik", "jick", "jeg", "gig", "zig"]);
+/**
+ * A word that sounds like "jig" (D-389): a j-like start (j, g, dj, z, ch, sh, or b/d, which Whisper
+ * swaps for a soft j), a short i, and a hard end (g, k, ck…); an e only after j or g ("jeg", not
+ * "check" or "deck"); "jeep" and the bare letter "g" too. "Jake", "Jack", "Jim", "Jeff", "did",
+ * "give" don't.
+ */
+const SOUNDS_LIKE_JIG =
+  /^(?:(?:j|g|dj|dg|dz|z|ch|sh|b|d)(?:i|ee|ea|ie|y)(?:g|gg|gs|k|ck|ks|c|q|x)|[jg]e(?:g|gg|k|ck)|jeep|g)$/;
+/** "Hey Jig" written as one word: "heyjig", "hijig", "hejig". */
+const MERGED = /^(?:hey|hay|hi|he|hej|ok|okay)(?<name>[a-z]+)$/;
+
+/** Whether a word is one of the greetings before "Jig" ("hey", "ok"…). */
+export function isGreeting(word: string | undefined): boolean {
+  return word !== undefined && GREETINGS.has(word);
+}
+
+/** Whether a word is the name, as Whisper spells it or close enough in sound. */
+function nameWord(word: string | undefined): "spelling" | "sounds-like" | undefined {
+  if (!word) return undefined;
+  if (SPELLINGS.has(word)) return "spelling";
+  return SOUNDS_LIKE_JIG.test(word.replace(/(.)\1+/g, "$1$1")) ? "sounds-like" : undefined;
+}
+
+/** What the wake check made of the start of something said: for the readout in the training (D-389). */
+export interface WakeMatch {
+  /** What was said after the wake words ("" = only them); undefined when it wasn't for Jig. */
+  rest?: string;
+  /** How the wake words were found. */
+  via?: "spelling" | "sounds-like" | "learned";
+  /** Why it was or wasn't "Hey Jig", in plain words. */
+  reason: string;
+}
+
+/**
+ * Whether `text` starts with "Hey Jig" (D-278, D-389): the greeting and the name as Whisper spells
+ * it, a word that sounds like "jig", or one of the starts Whisper wrote for your own voice when you
+ * trained it (`learned`, cleaned words such as "hey you"). The greeting is needed unless `bare`.
+ */
+export function matchWake(text: string, learned: readonly string[] = [], bare = false): WakeMatch {
+  const words = cleanWords(text).split(" ").filter(Boolean);
+  if (!words.length) return { reason: "Nothing was heard" };
+  const after = (n: number) => words.slice(n).join(" ");
+  for (const variant of learned) {
+    const v = cleanWords(variant).split(" ").filter(Boolean);
+    if (v.length && v.every((w, i) => words[i] === w))
+      return { rest: after(v.length), via: "learned", reason: `Your trained “${v.join(" ")}”` };
+  }
+  const [first, second] = words;
+  if (first && GREETINGS.has(first)) {
+    // "a big deal", "a gig tonight": after "a" only the name's own spellings count.
+    const via = first === "a" && !SPELLINGS.has(second ?? "") ? undefined : nameWord(second);
+    if (via)
+      return {
+        rest: after(2),
+        via,
+        reason: `“${first} ${second}”${via === "spelling" ? "" : " sounds like Hey Jig"}`,
+      };
+    return { reason: second ? `“${first}” then “${second}”, not Jig` : `Only “${first}”` };
+  }
+  const merged = first ? MERGED.exec(first) : null;
+  const mergedVia = nameWord(merged?.groups?.name);
+  if (mergedVia) return { rest: after(1), via: mergedVia, reason: `“${first}” sounds like Hey Jig` };
+  const bareVia = bare ? nameWord(first) : undefined;
+  if (bareVia) return { rest: after(1), via: bareVia, reason: `“${first}”` };
+  return { reason: `Starts with “${words.slice(0, 2).join(" ")}”, not Hey Jig` };
+}
 
 /**
  * What you said after "Hey Jig", or undefined when it wasn't for Jig. The greeting is needed unless
  * `bare` (then "Jig, new chat" counts too). "Hey Jig" alone gives "".
  */
-export function afterWake(text: string, bare = false): string | undefined {
-  const words = cleanWords(text);
-  if (!bare && !GREETED_WAKE.test(words)) return undefined;
-  const m = WAKE.exec(words);
-  return m ? (m.groups?.rest ?? "").trim() : undefined;
+export function afterWake(text: string, bare = false, learned: readonly string[] = []): string | undefined {
+  return matchWake(text, learned, bare).rest;
+}
+
+/**
+ * The start of a take in the training (cleaned, at most three words) that the defaults don't already
+ * hear as "Hey Jig", to be learned as yours; undefined when the defaults hear it or it's no use (empty,
+ * or a whole sentence).
+ */
+export function learnedStart(text: string): string | undefined {
+  const words = cleanWords(text).split(" ").filter(Boolean);
+  if (!words.length || words.length > 3) return undefined;
+  // A greeting alone would wake Jig on every "hey".
+  if (words.length === 1 && GREETINGS.has(words[0]!)) return undefined;
+  if (matchWake(text).rest !== undefined) return undefined;
+  return words.join(" ");
 }
 
 /** Polite padding around a command: "could you please …", "… for me". */

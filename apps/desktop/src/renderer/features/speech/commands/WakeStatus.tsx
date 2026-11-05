@@ -5,6 +5,7 @@ import { openSettings } from "../../../workbench/actions";
 import { openAbout } from "../../about";
 import { useWake, useWakeVoice, type WakePhase } from "./state";
 import { toggleWake } from "./toggle";
+import { openWakeTraining } from "./train";
 
 const LABEL: Record<WakePhase, string> = {
   off: "Hey Jig",
@@ -17,11 +18,16 @@ const LABEL: Record<WakePhase, string> = {
 
 /**
  * The three ways into "Hey Jig" besides on/off (D-387), the same in the status bar's right-click menu
- * and in Settings → Speech → Hey Jig. Training arrives with its own task; until then it shows as soon.
+ * and in Settings → Speech → Hey Jig.
  */
 export function wakeMenu(): MenuEntry[] {
   return [
-    { label: "Train Hey Jig…", icon: AudioLines, disabled: true, badge: "Soon", testId: "wake-menu-train" },
+    {
+      label: "Train Hey Jig…",
+      icon: AudioLines,
+      onSelect: () => openWakeTraining(),
+      testId: "wake-menu-train",
+    },
     {
       label: "Voice commands…",
       icon: ScrollText,

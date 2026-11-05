@@ -6609,3 +6609,51 @@ stopped for good.
 - **Exception:** only if matching against audio templates (comparing sound, not text) proves
   necessary for "Hey Jig" to be heard reliably may training store audio, and then it gets its own
   decision first: what is kept, where in `JIG_HOME`, and a way to delete it in Settings.
+
+## D-389: Train Hey Jig: five takes, learned spellings, sounds-like matching, tuned thresholds and a Whisper prompt
+
+- Status: accepted.
+- **Who:**
+  Jon asked for it (2026-11-05, task queue): "most of the times it doesn't react when I say 'Hey
+  jig'… When I set up Siri I had to say Hey Siri a few times… it should ask me to do it if it's not
+  set." The storage rule is D-388, which Jon approved. The matching rules, thresholds, prompt and
+  layout are Claude, on my own, based on the measurements below.
+- **What was measured** (no microphone in tests, so a lab in `.tmp`, not kept). Windows' own voices
+  (David, Zira, and Helena, who has a Spanish accent) said "Hey Jig" with commands, plus 60 sentences
+  that aren't for Jig ("Hey Jake…", "Hey, did…", "Hey Siri…", "a gig tonight"). Whisper small (Jon's
+  model, the app's q4 decoder) read the first 2 s, as listening does. The English voices were heard as
+  "Hey jig" every time. The accented voice was heard as "Hey you", "Hey, big", "Hey, Geek", "a big",
+  "Okay, you", "Any way". None of these were in the fixed spelling list, which explains Jon's misses.
+  Prompts tried, with the new matcher (48 "Hey Jig" clips, 60 others): none 40/48 heard, 1 false wake;
+  " Jig" 41/48, 2; " Jig." 43/48, 2; **" Hey Jig, run the tests." 48/48, 3**. All of the false wakes
+  were "Hey, gee", which sounds almost the same. An earlier run showed "Hey Jig." alone makes Whisper
+  drop a real "Hey Jig" as already said, and two "Hey Jig" sentences make it write "Hey Jig" for "Hey
+  Jake" (14 false wakes).
+- **(a) Learned starts:** the training keeps the starts the defaults don't hear as "Hey Jig" ("hey
+  you"), at most three words. A greeting alone or a sentence is never learned. `matchWake` accepts
+  them as wake words.
+- **(b) Sounds like "jig"** (`match.ts`, `SOUNDS_LIKE_JIG`): after a greeting, a word with a j-like
+  start (j, g, dj, z, ch, sh, b, d), a short i (e only after j/g) and a hard end; also "jeep", the
+  letter "g" and "heyjig" as one word. After "a", only the real spellings count ("a big deal").
+  "Jake", "Jack", "Jim", "Jeff", "Jill", "check", "did", "give" don't match. The unit tests use the
+  recorded transcriptions, both kinds.
+- **(c) Thresholds from your takes** (`tuning.ts`): the loudness gate drops to a third of your median
+  take loudness and the voice score to 0.2 under yours. Training never makes Jig stricter than the
+  defaults, and never goes under a floor (gate 0.005, score 0.45). The audio kept from before the
+  voice was noticed went from 0.3 s to 0.5 s for every user, so a soft "hey" isn't cut.
+- **(d) Whisper prompt:** transformers.js 4.3 has no `prompt_ids` (it is commented out in Whisper's
+  `generate`). `decoder_input_ids` does reach it through the pipeline, so the worker builds
+  `<|startofprev|>` + prompt + the usual start tokens itself (`promptIds`) and cuts the prompt off the
+  result. `WAKE_PROMPT` = " Hey Jig, run the tests.", used **only** to decide whether something was
+  "Hey Jig": on the first 2 s, and in the training so takes are read the same way. The prompt also
+  bends the words after it ("open a new" → "open a new test"), so commands are always read without
+  it. A short thing said that plainly misses is read a second time with the prompt.
+- **No audio matching:** comparing sound (MFCC + DTW against the takes) isn't built. (a)–(d) covered
+  every test clip, and it would need the takes' audio kept (D-388).
+- **Asked when missing:** turning Hey Jig on (status bar, Settings switch, Jig menu action, all
+  through `setWake`) with no `speech.wakeProfile` opens the training first. "Listen without training"
+  still turns it on with the defaults. Train again: Settings → Speech → Hey Jig and the status bar's
+  right-click menu.
+- **Readout:** every wake check (what Whisper wrote, woke or not and why, loudness, voice score) is
+  kept in memory (last 8), logged with `console.debug("[hey-jig]")` in dev, and the last four are
+  shown in the training dialog under "Heard lately while listening". Nothing is written to disk.

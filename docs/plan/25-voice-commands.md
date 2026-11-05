@@ -18,12 +18,19 @@ subscription"; "somewhere where we can see all the voice commands that we suppor
       read. Off by default; `speech.wake` (protected); Settings → Speech → Hey Jig; Jig menu action;
       a status bar item (`WakeStatus.tsx`) of fixed width that opens the commands.
 - [x] The status bar item always shows (D-387): dimmed while off, a click turns listening on or off
-      (`toggleWake`, the same as the Jig menu action), a right-click opens Train Hey Jig… (soon),
+      (`toggleWake`, the same as the Jig menu action), a right-click opens Train Hey Jig…,
       Voice commands… and Speech settings…; one icon per meaning (Mic listening, MicOff not
       listening, VolumeX Jig's voice muted). Settings → Speech → Hey Jig: Jig's voice Mute/Unmute,
       Train…, Show the commands.
-- [ ] Train Hey Jig on your voice (its own task); no audio stored unless template matching proves
-      necessary (D-388).
+- [x] Train Hey Jig on your voice (D-389): a modal with five takes (live level, a tick or "say it
+      again" per take), asked for when Hey Jig is turned on untrained; `speech.wakeProfile` keeps
+      Whisper's text per take, learned starts, median loudness and voice score, never audio (D-388).
+      Used for learned wake starts, the tuned gate and voice score; for everyone a "sounds like jig"
+      matcher, a 0.5 s pre-roll and a Whisper prompt (`decoder_input_ids`) on the wake window only.
+- [x] Readout of every wake check (text, woke or why not, loudness, voice score) in the training
+      dialog, and `console.debug("[hey-jig]")` in dev.
+- [ ] On a real machine: train with Jon's voice, then count misses and false wakes over a day; the
+      readout says why each one was ignored. Audio matching (MFCC + DTW) only if that still misses.
 - [x] A chime on waking, spoken answers through the existing voices; "I didn't get that" for unknown
       commands (nothing goes to Claude unless you say "ask Claude"). "Hey Jig" alone waits 8 s for
       the command; a yes/no question waits 8 s for the answer.

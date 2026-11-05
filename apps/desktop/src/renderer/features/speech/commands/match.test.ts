@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { VOICE_COMMANDS } from "./grammar";
-import { afterWake, cleanWords, matchName, nameScore, parseCommand } from "./match";
+import { afterWake, cleanWords, learnedStart, matchName, matchWake, nameScore, parseCommand } from "./match";
 
 const id = (text: string) => parseCommand(text)?.command.id;
 const slots = (text: string) => parseCommand(text)?.slots;
@@ -17,6 +17,84 @@ describe("afterWake", () => {
     expect(afterWake("you")).toBeUndefined();
     expect(afterWake("Jig, new chat")).toBeUndefined();
     expect(afterWake("Jig, new chat", true)).toBe("new chat");
+  });
+});
+
+/**
+ * What Whisper (small, as in the app) wrote for "Hey Jig …" and for other speech, said by Windows'
+ * voices including a Spanish-accented one (D-389). Each line is a real transcription.
+ */
+const HEARD_AS_HEY_JIG = [
+  "Hey jig, what's happening?",
+  "Hey jig open a new chair",
+  "Hey Jig. What's happening?",
+  "Hey, big, what's happening?",
+  "Hey, Geek, open a new chat.",
+  "OK, big test.",
+  "Hey, big, stop listening.",
+  "Hey jig",
+  "heyjig",
+  "Hey G.",
+  "Hey jeep, new chat",
+];
+const NOT_FOR_JIG = [
+  "Hey Jake, how are you?",
+  "Hey hake, how are you?",
+  "Hey, did you see the email?",
+  "Hey, give me that.",
+  "Hey there, what's up?",
+  "I was talking about the jigsaw.",
+  "That's a big deal.",
+  "A big deal.",
+  "We have a gig tonight",
+  "Hey Jack, come here.",
+  "Hey Jim, nice to see you.",
+  "Hey guys, dinner is ready.",
+  "Hey Siri, set a timer.",
+  "Hey, just a second.",
+  "Hey Jeff, are you there?",
+  "Okay, jeez, fine.",
+  "Hi, Jill, how was it?",
+  "Yo, check this out.",
+  "Hijack the meeting",
+  "Hey, you",
+];
+
+describe("matchWake", () => {
+  it.each(HEARD_AS_HEY_JIG)("hears “%s” as Hey Jig", (text) => {
+    expect(matchWake(text).rest).toBeDefined();
+  });
+  it.each(NOT_FOR_JIG)("doesn't wake on “%s”", (text) => {
+    expect(matchWake(text).rest).toBeUndefined();
+  });
+  it("says how it was found, or why not", () => {
+    expect(matchWake("Hey jig, new chat")).toEqual({
+      rest: "new chat",
+      via: "spelling",
+      reason: "“hey jig”",
+    });
+    expect(matchWake("Hey, Geek, new chat").via).toBe("sounds-like");
+    expect(matchWake("Hey Jake").reason).toBe("“hey” then “jake”, not Jig");
+    expect(matchWake("").reason).toBe("Nothing was heard");
+    expect(matchWake("Hey").reason).toBe("Only “hey”");
+    expect(matchWake("Talking about jigs").reason).toBe("Starts with “talking about”, not Hey Jig");
+  });
+  it("hears your trained starts too", () => {
+    expect(matchWake("Hey, you. New chat.", ["hey you"])).toMatchObject({ rest: "new chat", via: "learned" });
+    expect(matchWake("Hey you", ["hey you"]).rest).toBe("");
+    expect(matchWake("Hey, youth", ["hey you"]).rest).toBeUndefined();
+  });
+});
+
+describe("learnedStart", () => {
+  it("learns only what the defaults miss, and never a greeting alone or a sentence", () => {
+    expect(learnedStart("Hey, you.")).toBe("hey you");
+    expect(learnedStart("Age.")).toBe("age");
+    expect(learnedStart("Hey Jig.")).toBeUndefined();
+    expect(learnedStart("Hey, big.")).toBeUndefined();
+    expect(learnedStart("Hey.")).toBeUndefined();
+    expect(learnedStart("")).toBeUndefined();
+    expect(learnedStart("I think it is something else")).toBeUndefined();
   });
 });
 

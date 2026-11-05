@@ -31,7 +31,13 @@ export const useSpeechEngine = create<{
 
 interface Transcriber {
   load(repo: string, gpu: boolean): Promise<"gpu" | "cpu">;
-  transcribe(repo: string, gpu: boolean, audio: Float32Array, language: string): Promise<string>;
+  transcribe(
+    repo: string,
+    gpu: boolean,
+    audio: Float32Array,
+    language: string,
+    prompt?: string,
+  ): Promise<string>;
 }
 
 type Request = WorkerRequest extends infer R ? (R extends WorkerRequest ? Omit<R, "id"> : never) : never;
@@ -72,8 +78,8 @@ function workerTranscriber(): Transcriber {
       const reply = await ask({ type: "load", repo, gpu });
       return reply.type === "ready" ? reply.device : "cpu";
     },
-    transcribe: async (repo, gpu, audio, language) => {
-      const reply = await ask({ type: "transcribe", repo, gpu, audio, language });
+    transcribe: async (repo, gpu, audio, language, prompt) => {
+      const reply = await ask({ type: "transcribe", repo, gpu, audio, language, prompt });
       return reply.type === "text" ? reply.text : "";
     },
   };
@@ -201,9 +207,10 @@ export async function prepareSpeech(target: string, afterDownload: "continue" | 
   return true;
 }
 
-export function transcribe(audio: Float32Array, s = speechSettings()): Promise<string> {
+/** `prompt`: text Whisper takes as said just before, so it leans towards those words (D-389). */
+export function transcribe(audio: Float32Array, s = speechSettings(), prompt?: string): Promise<string> {
   return speechVariant(s).then((variant) =>
-    engine(s.fake).transcribe(s.repo, variant === "gpu", audio, s.language),
+    engine(s.fake).transcribe(s.repo, variant === "gpu", audio, s.language, prompt),
   );
 }
 

@@ -127,6 +127,7 @@ A new state file is documented here in the same commit that adds it.
 | `speech.rate` | `1` | speed of the voice (0.5–2) |
 | `speech.workSound` | `true` | a soft note while Claude thinks during talking; a chime when work you handed over by voice finishes or needs you (D-210; no working motif after talking ends) |
 | `speech.wake` | `false` | listen for "Hey Jig" voice commands while Jig runs, also minimized or behind other windows (D-278); commands run on this computer, without Claude; protected (only you turn it on: Settings → Speech or a click on the status bar item, D-387) |
+| `speech.wakeProfile` | `null` | what Train Hey Jig learned (D-389): `trainedAt`, `heard` (Whisper's text for each of the 5 takes), `variants` (starts the defaults missed, now heard as "Hey Jig"), `level` and `voice` (median loudness and voice-detector score, which lower the listening thresholds); text and numbers only, never audio; protected |
 | `speech.announce` | `true` | with `speech.wake`: say out loud when a chat finishes or needs you |
 | `browser.showWhenUsed` | `true` | open Claude’s browser view by itself when Claude starts browsing (off: it stays closed until you open it) |
 | `browser.pageSessions` | `"shared"` | each chat has its own page in Claude’s browser (D-320); `shared`: the pages share the `persist:jig-browser` session (cookies, logins, storage), so a logout in one chat logs out the others; `separate`: each page gets an in-memory session of its own that ends with the page. Applies to pages opened afterwards |

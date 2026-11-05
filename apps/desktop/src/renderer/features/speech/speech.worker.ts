@@ -66,6 +66,35 @@ function load(repo: string, gpu: boolean) {
   return asr;
 }
 
+/**
+ * Whisper's own way of being told what came before (D-389): `<|startofprev|>` and the text, then the
+ * usual start. transformers.js has no `prompt_ids` option (4.3: commented out in `generate`), but
+ * `decoder_input_ids` reaches it through the pipeline.
+ */
+function promptIds(asr: Asr, prompt: string, language: string): number[] | undefined {
+  const tokenizer = asr.tokenizer as unknown as {
+    convert_tokens_to_ids(tokens: string[]): Array<number | undefined>;
+    encode(text: string, options: { add_special_tokens: boolean }): number[];
+  };
+  const special = tokenizer.convert_tokens_to_ids([
+    "<|startofprev|>",
+    "<|startoftranscript|>",
+    `<|${language || "en"}|>`,
+    "<|transcribe|>",
+    "<|notimestamps|>",
+  ]);
+  if (special.some((id) => typeof id !== "number")) return undefined;
+  const [prev, start, lang, task, noTimestamps] = special as number[];
+  return [
+    prev!,
+    ...tokenizer.encode(prompt, { add_special_tokens: false }),
+    start!,
+    lang!,
+    task!,
+    noTimestamps!,
+  ];
+}
+
 scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   try {
@@ -76,12 +105,17 @@ scope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     }
     // Whisper reads 30 seconds at a time; longer recordings go in overlapping pieces.
     const long = request.audio.length > 30 * 16_000;
+    const prompt = request.prompt && !long ? promptIds(asr, request.prompt, request.language) : undefined;
     const output = await asr(request.audio, {
       language: request.language || undefined,
       task: "transcribe",
       ...(long ? { chunk_length_s: 30, stride_length_s: 5 } : {}),
-    });
-    const text = (Array.isArray(output) ? output.map((o) => o.text).join(" ") : output.text).trim();
+      ...(prompt ? { decoder_input_ids: prompt } : {}),
+    } as Parameters<Asr>[1]);
+    let text = (Array.isArray(output) ? output.map((o) => o.text).join(" ") : output.text).trim();
+    // The prompt comes back in front of what was said.
+    if (request.prompt && text.startsWith(request.prompt.trim()))
+      text = text.slice(request.prompt.trim().length).trim();
     reply({ type: "text", id: request.id, text });
   } catch (error) {
     reply({ type: "error", id: request.id, message: error instanceof Error ? error.message : String(error) });

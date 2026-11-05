@@ -20,6 +20,8 @@ import { openAbout } from "../about";
 import { SettingRow, SettingsSection } from "../settings/parts";
 import { AudioDeviceRows } from "./AudioDevicesDialog";
 import { useWakeVoice } from "./commands/state";
+import { setWake } from "./commands/toggle";
+import { openWakeTraining } from "./commands/train";
 import { DICTATION_SHORTCUT } from "./DictationButton";
 import { hasGpu } from "./engine";
 import { downloadNaturalVoice, resetNaturalVoice, useNaturalVoice } from "./naturalVoice";
@@ -310,11 +312,7 @@ export function SpeechSettings() {
           label="Listen for “Hey Jig”"
           description="Uses the dictation model above and the voice detector; the first moments of what is said are read to find “Hey Jig”, and nothing else is kept."
         >
-          <Switch
-            label="Listen for Hey Jig"
-            checked={s.wake}
-            onChange={(v) => void updateConfig({ speech: { wake: v } })}
-          />
+          <Switch label="Listen for Hey Jig" checked={s.wake} onChange={setWake} />
         </SettingRow>
         <SettingRow
           label="Say when chats finish"
@@ -347,10 +345,19 @@ export function SpeechSettings() {
         </SettingRow>
         <SettingRow
           label="Train Hey Jig"
-          description="Say “Hey Jig” a few times so Jig hears your voice better. Coming soon."
+          description={
+            s.wakeProfile
+              ? `Trained on ${new Date(s.wakeProfile.trainedAt).toLocaleDateString()}. Say “Hey Jig” five times again if Jig still misses you.`
+              : "Say “Hey Jig” five times so Jig learns how it sounds in your voice. Only text and loudness are kept, never your voice."
+          }
         >
-          <Button variant="ghost" icon={AudioLines} disabled data-testid="settings-speech-train">
-            Train…
+          <Button
+            variant="ghost"
+            icon={AudioLines}
+            data-testid="settings-speech-train"
+            onClick={() => openWakeTraining()}
+          >
+            {s.wakeProfile ? "Train again…" : "Train…"}
           </Button>
         </SettingRow>
         <SettingRow label="Voice commands" description="Everything you can say, on What Jig can do.">
