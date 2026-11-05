@@ -83,8 +83,9 @@ The sections below are what the script does and checks, for reviewing it or reco
    SDK, launcher or other workspace packages solely to match Jig's app version.
 6. Write concise user-facing release notes from changes since the previous published tag (for
    the first release, describe the actual shipped features). Include material known gaps, not
-   internal task history. Save the exact Markdown to an ignored file such as
-   `release/jig-<version>-notes.md`, for `--notes-file`; never interpolate notes into a shell command.
+   internal task history. Save the exact Markdown to `release/jig-<version>-notes.md` (tracked in git:
+   the app's What's new tab is built from these files, D-393), for `--notes-file`; never interpolate
+   notes into a shell command.
    Update `docs/status.md` with the version's preparation/publication state, accurately.
 
 ## Validate and package

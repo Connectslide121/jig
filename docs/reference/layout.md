@@ -147,7 +147,7 @@ open from a top bar menu as a main tab (D-173, D-174). You can drag any view any
 | tab type | `jig.preview` / `jig.image` | | a file in Preview (editable for code and text) / an image |
 | tab type | `jig.skills` | | Skills library, opened from Chats → Skills library; details/project selection in modals |
 | tab type | `jig.knowledge` | | What Jig knows about me (D-111) |
-| tab type | `jig.about`, `jig.setup` | | What Jig can do; Get started |
+| tab type | `jig.about`, `jig.setup`, `jig.changelog` | | What Jig can do; Get started; What's new (D-393) |
 | tab type | `jig.attempts`, `jig.tour`, `jig.build` | | Try several ways; a change tour; a build |
 | tab type | `jig.routines`, `jig.artifacts` | | Claude Code routines and artifacts |
 | tab type | `addon.git.history` / `commit` / `diff` / `compare` | | Git |

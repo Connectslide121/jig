@@ -8,8 +8,12 @@ import { dirtyTabIds } from "../../workbench/dirty";
 import { runAction } from "../../workbench/registry";
 import { workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openChangelog } from "../changelog";
 import { openCopilotDialog } from "../completion/CopilotDialog";
 import { useCompletion, watchCompletion } from "../completion/store";
+
+/** Every published Jig with its notes and installer, newer ones than What's new knows too (D-393). */
+const RELEASES_URL = "https://github.com/Connectslide121/jig/releases";
 
 function CheckRow({ check }: { check: SetupCheck }) {
   const Icon = check.ok ? CheckCircle2 : check.optional ? CircleDashed : CircleAlert;
@@ -222,8 +226,27 @@ function UpdatesCard() {
           Check again
         </Button>
       </div>
-      <div className="h-5 text-muted" data-testid="installed-version">
-        Your version: {info?.current ?? installedVersion ?? "—"}
+      <div className="flex h-5 items-center gap-3 text-muted">
+        <span className="min-w-0 flex-1 truncate" data-testid="installed-version">
+          Your version: {info?.current ?? installedVersion ?? "—"}
+        </span>
+        <button
+          type="button"
+          className="shrink-0 text-accent hover:underline"
+          onClick={() => openChangelog(info?.current ?? installedVersion)}
+          data-testid="updates-changelog"
+        >
+          What's new
+        </button>
+        <button
+          type="button"
+          className="inline-flex shrink-0 items-center gap-1 text-accent hover:underline"
+          onClick={() => void call("app.openExternal", { url: RELEASES_URL })}
+          data-testid="updates-github"
+        >
+          Releases on GitHub
+          <ExternalLink className="size-3.5" />
+        </button>
       </div>
       <div className="h-10 overflow-hidden text-muted" title={info?.detail}>
         {info ? info.detail : <Spinner center />}

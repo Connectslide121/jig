@@ -1,7 +1,10 @@
 node_modules/
 dist/
 out/
-release/
+apps/desktop/release/
+/release/*
+# Each version's notes stay in git: What's new in the app is built from them (D-393).
+!release/jig-*-notes.md
 .cache/
 *.log
 test-results/

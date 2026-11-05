@@ -2008,6 +2008,10 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
   add-ons use each, an `addon.json` example, "Build something here"), your add-ons, the tools Claude
   gets to configure Jig with "Try in a chat" examples, your Claude Code skills (`~/.claude/skills` and
   the project's), build examples that open the Build dialog, and every keyboard shortcut.
+- **What's new** (the Jig menu, Settings → About → Version → What's new…, Get started's Updates card
+  beside your version, or the What Jig can do page): every Jig version's release notes, newest first, with its date; a version list on the left
+  (hidden in a narrow tab) jumps to a version and marks the one you're running (D-393). The Updates card also links to Releases on GitHub, for
+  versions newer than yours.
 - **File icon themes:** files and folders (Git, tabs, chat tool cards, builds, add-ons via `FileIcon`) use
   the icon theme your VS Code uses — e.g. Material Icon Theme — or any VS Code icon theme you pick in
   Settings → Appearance → File icons (or install from Open VSX); "Jig" keeps Jig's own icons.

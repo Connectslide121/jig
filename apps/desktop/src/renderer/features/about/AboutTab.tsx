@@ -40,6 +40,7 @@ import { runAction, type TabProps, useRegistry } from "../../workbench/registry"
 import { formatShortcut } from "../../workbench/shortcuts";
 import { workbench } from "../../workbench/store";
 import { openBuildDialog } from "../builder/BuildDialog";
+import { openChangelog } from "../changelog";
 import { openGallery } from "../gallery";
 import { newSession } from "../sessions/actions";
 import { VoiceCommandsList } from "../speech/commands/VoiceCommandsList";
@@ -248,6 +249,9 @@ function Overview() {
             </Button>
             <Button variant="ghost" onClick={() => void workbench.openTab("jig.setup")}>
               Check your setup
+            </Button>
+            <Button variant="ghost" onClick={() => openChangelog()} data-testid="about-changelog">
+              What's new
             </Button>
           </div>
         </div>

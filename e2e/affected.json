@@ -53,6 +53,13 @@
       "specs": ["about.spec.ts", "context.spec.ts"]
     },
     {
+      "files": [
+        "apps/desktop/src/renderer/features/changelog/**",
+        "apps/desktop/scripts/changelog-plugin.ts"
+      ],
+      "specs": ["changelog.spec.ts"]
+    },
+    {
       "files": ["apps/desktop/src/main/addons/**", "apps/desktop/src/renderer/addons/**", "packages/sdk/**"],
       "specs": ["addons.spec.ts", "addon-scope.spec.ts", "share-addons.spec.ts", "gallery.spec.ts"]
     },

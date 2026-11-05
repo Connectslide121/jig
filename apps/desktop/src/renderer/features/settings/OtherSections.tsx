@@ -37,6 +37,7 @@ import { BOTTOM_SPAN_LABELS, BottomSpanIcon } from "../../workbench/bottomSpan";
 import { useProjects } from "../../workbench/projects";
 import { useWorkbench, workbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
+import { openChangelog } from "../changelog";
 import { openCopilotDialog } from "../completion/CopilotDialog";
 import { useCompletion, watchCompletion } from "../completion/store";
 import { lookForPatterns, useLearning } from "../learning/store";
@@ -744,8 +745,10 @@ export function AboutSettings() {
   if (!info) return <Spinner center />;
   return (
     <SettingsSection title="About Jig">
-      <SettingRow label="Version">
-        <span className="text-sm text-muted">{info.version}</span>
+      <SettingRow label="Version" description={`${info.version}: what changed in each version.`}>
+        <Button size="sm" onClick={() => openChangelog(info.version)} data-testid="settings-about-changelog">
+          What's new…
+        </Button>
       </SettingRow>
       <SettingRow
         label="Data folder"

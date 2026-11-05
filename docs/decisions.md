@@ -6717,3 +6717,28 @@ stopped for good.
   tooltip and accessible name), as in D-364. Its chevron lost a plain `block` that add-on CSS made
   win over `@max-2xl/toolbar:hidden` (D-297): the icon-only button showed a chevron spilling out of
   its slot (Claude, on my own).
+
+## D-393: What's new: Jig's changelog in the app, from the release notes
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-06: "we should have a changelog in the app so we can easily check". The
+  shape is Claude, on my own.
+- **Source:** the release notes `npm run release` already writes for GitHub,
+  `release/jig-<version>-notes.md`. They were git-ignored (only on the releasing machine), so they
+  are now tracked (`.gitignore`: `/release/*` with `!release/jig-*-notes.md`), and the release
+  writes the new version's notes into its release commit, before the installer is built, so each
+  installer includes its own notes. The publication commit adds them again in case a resumed
+  release changed them.
+- **Bundled, not fetched:** a Vite plugin (`apps/desktop/scripts/changelog-plugin.ts`) turns the
+  files into `virtual:jig-changelog` at build time: version, notes, and the day from the version's
+  tag (or, before the tag exists, the commit that added its notes). No network and no IPC; a build
+  shows the notes up to its own version, which is what "what changed in what I'm running" needs.
+  Newer versions' notes stay with Check for updates and GitHub.
+- **Where:** the `jig.changelog` tab ("What's new", singleton), from the Jig menu (a "Jig" group
+  action), the Version row in Settings → About (opens at the running version), a button on the
+  What Jig can do page, and Get started's Updates card beside "Your version". That card also has
+  **Releases on GitHub**, for versions newer than the build (Jon: the GitHub link belongs where Jig
+  checks for updates and shows the version).
+- **Layout:** like What Jig can do: a resizable version list (version, date, a dot for the running
+  version in a fixed slot at the right) that hides in narrow tabs, and the notes rendered as
+  Markdown, newest first.

@@ -108,6 +108,8 @@ const plan = (() => {
   }
 })();
 const tag = `v${plan.version}`;
+// The notes, in git so every build shows them under What's new (D-393), and the GitHub release's text.
+const notesFile = join(root, "release", `jig-${plan.version}-notes.md`);
 console.log(`Jig ${plan.version} (${plan.bump}): ${plan.reason}`);
 
 // ── The repository and GitHub ─────────────────────────────────────────────
@@ -172,7 +174,15 @@ if (!resuming) {
     status,
     withStatus(readFileSync(status, "utf8"), plan.version, preparedParagraph(plan, today())),
   );
-  run("git", ["add", "package.json", "apps/desktop/package.json", "package-lock.json", "docs/status.md"]);
+  writeFileSync(notesFile, `${plan.notes}\n`);
+  run("git", [
+    "add",
+    "package.json",
+    "apps/desktop/package.json",
+    "package-lock.json",
+    "docs/status.md",
+    notesFile,
+  ]);
   run("git", ["commit", "-q", "-m", subject]);
 }
 const sha = read("git", ["rev-parse", "HEAD"]);
@@ -262,7 +272,6 @@ if (!localTag) run("git", ["tag", "-a", tag, "-m", `Jig ${plan.version}`]);
 if (!remoteTag) run("git", ["push", "--atomic", "origin", `${sha}:refs/heads/main`, `refs/tags/${tag}`]);
 
 step("Creating the draft release");
-const notesFile = join(root, "release", `jig-${plan.version}-notes.md`);
 writeFileSync(notesFile, `${plan.notes}\n`);
 const assets = [installer, blockmap, feedFile, sums];
 if (!draft)
@@ -354,7 +363,7 @@ writeFileSync(
     publishedParagraph(plan, { date: today(), url, sha, size, sha256 }),
   ),
 );
-run("git", ["add", "docs/status.md"]);
+run("git", ["add", "docs/status.md", notesFile]);
 run("git", ["commit", "-q", "-m", `Record Jig ${plan.version} publication`]);
 run("git", ["push", "origin", "HEAD:refs/heads/main"]);
 rmSync(planFile, { force: true });

@@ -5,6 +5,7 @@ import { registerArtifacts } from "./artifacts";
 import { registerAttempts } from "./attempts";
 import { registerBrowser } from "./browser";
 import { registerBuilder } from "./builder";
+import { registerChangelog } from "./changelog";
 import { registerDigest } from "./digest";
 import { registerFiles } from "./files";
 import { registerGallery } from "./gallery";
@@ -57,4 +58,5 @@ export function registerFeatures(): void {
   registerMeetingHistory();
   registerSkills();
   registerAbout();
+  registerChangelog();
 }
