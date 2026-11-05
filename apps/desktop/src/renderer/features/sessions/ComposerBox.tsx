@@ -16,6 +16,7 @@ import { fuzzyFilter } from "../../../shared/fuzzy";
 import type { MethodResult } from "../../../shared/ipc";
 import { call, errorMessage } from "../../lib/host";
 import { cn, FileIcon, IconButton, type MenuEntry, openMenuAt } from "../../ui";
+import { mayTakeFocus } from "../../workbench/takeFocus";
 import { notify } from "../../workbench/toasts";
 import { chatTime } from "../meetings/format";
 import { DictationButton, toggleDictation } from "../speech/DictationButton";
@@ -126,7 +127,8 @@ export function useComposerText(initial: string | (() => string)) {
     spoken.current = final
       ? undefined
       : { span: next.span, text: next.text.slice(next.span.start, next.span.end) };
-    el?.focus();
+    // Words keep arriving after you moved on to type elsewhere: they don't pull the caret back (D-374).
+    if (mayTakeFocus(el)) el?.focus();
   };
   // Dictation keeps its callback for as long as it runs: always call this render's function.
   const latestDictated = useRef(dictated);

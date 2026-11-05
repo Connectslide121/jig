@@ -173,6 +173,11 @@ What the fake engine does for which message is listed in `docs/guides/testing.md
   existing content, no spinner that swaps for a differently sized result. A form or picker that needs
   room is a modal (`Dialog`); something that loads reserves its space first (a fixed-height slot, a
   skeleton) or appears in a modal/overlay. Applies to Jig's UI and to every add-on.
+- **Never steal focus from where the user types (hard rule, Jon, D-374).** Something a chat, a tool,
+  the task queue, a host event or an add-on opens may show itself, but never moves the caret: code that
+  focuses by itself asks `mayTakeFocus(target)` (`workbench/takeFocus.ts`) first. Only a direct action
+  (a click, a shortcut) or a modal you or a real confirmation open may take the focus. In main, windows
+  shown by events use `showWindowQuietly`; `revealWindow`/`focusJig` are for something the user just did.
 - **Interaction motion (Jon, D-200).** Explicit extension-slot disclosures and workbench panel toggles
   may animate their requested expansion/collapse. Use shared `Collapse` and modal/menu motion (160 ms),
   honoring reduced motion. Do not animate arbitrary loading changes; forms and pickers remain modal.

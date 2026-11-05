@@ -87,6 +87,15 @@
     },
     {
       "files": [
+        "apps/desktop/src/renderer/workbench/takeFocus.ts",
+        "apps/desktop/src/renderer/features/terminals/XTerm.tsx",
+        "apps/desktop/src/renderer/features/sessions/Composer.tsx",
+        "apps/desktop/src/renderer/features/sessions/ComposerBox.tsx"
+      ],
+      "specs": ["focus-stays.spec.ts", "terminals.spec.ts"]
+    },
+    {
+      "files": [
         "apps/desktop/src/main/builder/**",
         "apps/desktop/src/renderer/features/builder/**",
         "apps/desktop/src/main/engine/fakeBuilder.ts"

@@ -38,6 +38,7 @@ import { StatusBar } from "./StatusBar";
 import { matchesShortcut } from "./shortcuts";
 import { setLayoutFromHost, useWorkbench } from "./store";
 import { Topbar } from "./Topbar";
+import { useTrackUserIntent } from "./takeFocus";
 import { notify, ToastHost } from "./toasts";
 
 /** Loads the host state the shell needs and keeps it in sync. */
@@ -94,6 +95,7 @@ export function Workbench() {
   useSessionsSync();
   useTerminalsSync();
   useTrackFocusedPanel();
+  useTrackUserIntent();
   useBrowserReveal();
   useAddonsSync();
   useBuildsSync();

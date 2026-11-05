@@ -405,6 +405,13 @@ itself. Covered by `e2e/browser-reveal.spec.ts` and the `revealAction` unit test
 your machine: a queue chat browsing while you read Pipelines in the browser's sidebar (badge, no
 switch), and while you type in another chat (switches).
 
+Your typing stays where it is (2026-11-05, D-374): when a chat starts a terminal, a chat tab opens by
+itself, or dictated words arrive late, the caret no longer jumps there; things still open and show.
+Shortcuts and clicks still focus what they open (Ctrl+` focuses the new terminal). An incoming Teams
+call and the Meetings lobby after a call come to the front without taking the keyboard. Covered by
+`e2e/focus-stays.spec.ts`. Needs testing on your machine: type a long message while a queue chat starts
+a dev server; let a Teams call ring while you type in a chat (the call shows, Enter doesn't answer it).
+
 Claude's terminals close themselves (2026-11-05, D-373): a terminal a chat started closes once it has
 exited and the chat got its exit notice, except the one you are looking at (it closes when you switch
 away) and failed ones, which wait until you have looked at them. `jig_terminal_stop` now closes the

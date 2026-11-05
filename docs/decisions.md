@@ -6116,3 +6116,33 @@ choice of Telegram and everything below: Claude, on my own.
   - Archiving or deleting a chat closes all its terminals (`onSessionClosed`, like its browser page).
 - A row removed from the list moves the rows below it up; the row you are on never moves away, since
   the terminal on screen is never closed.
+
+## D-374: Nothing takes the keyboard focus from where you type
+
+- Status: accepted. A hard UI rule (AGENTS.md); builds on D-349 (views badge instead of switching).
+- **Who:** Jon, 2026-11-05: when Claude started a terminal (`jig_terminal_run`), the caret jumped into
+  it and the rest of his message went to the terminal. While you type, nothing may take the focus away
+  except a modal you (or a real confirmation Jig must ask) open. Details below are Claude, on my own.
+- **Rule:** things that happen by themselves (a chat, a tool, the task queue, a host event, an add-on)
+  may still open or show a view, tab or window, but never move the caret. Only a direct action of yours
+  (a click, a shortcut) or a modal may.
+- **One helper** in the renderer, `mayTakeFocus(target)` (`renderer/workbench/takeFocus.ts`): yes when
+  the focus isn't in a text field (input, textarea, contenteditable, a terminal), or already inside
+  `target`; otherwise only within 1.5 s of your last *request*: a pointerdown outside a text field, or a
+  shortcut (Ctrl/Alt/Cmd, not editing chords like Ctrl+C/V/Z/A or arrows) pressed in one. Any typing in
+  a text field cancels that window, so a result that arrives after you started typing never takes the
+  focus. `useTrackUserIntent` (mounted by the workbench) records it. Chosen over passing a reason
+  through every reveal path, because focus is taken in effects far from what caused them (an `active`
+  prop), and the user's own events are the reliable signal.
+- **Where it is applied** (the background sources found in a sweep of every `.focus()`/`autoFocus`):
+  `XTerm` focusing when it becomes the active terminal (a chat's `terminals.reveal`, or a finished
+  terminal closing, D-373); the composer focusing when its chat tab becomes active (`sessions.reveal`,
+  add-ons opening chats); `fillComposer` (text put in a message box); dictated words arriving after you
+  moved on. The rest follow a direct action (menus, pickers, dialogs you open, Go to, chat search, the
+  composer's own buttons, Ctrl+L in the Browser, Tasks/Boards keyboard moves) or are modals (`Dialog`'s
+  focus trap, the quit confirmation, voice mode) and stay as they were.
+- **Main process:** `showWindowQuietly(window, raise?)` (`main/appWindows.ts`) shows a window without
+  activating it (a minimized one flashes instead). An incoming Teams call (`ring`) now comes to the
+  front without the keyboard (so Enter meant for a chat can't answer it), and the Meetings lobby
+  opening after a call ended does too. `revealWindow`/`focusJig` remain for what you just did
+  (notification clicks, a second launch, opening Meetings, the quit dialog).

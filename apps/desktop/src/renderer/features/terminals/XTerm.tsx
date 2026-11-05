@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { call } from "../../lib/host";
 import { useAppearance } from "../../stores/appearance";
 import { useConfig } from "../../stores/config";
+import { mayTakeFocus } from "../../workbench/takeFocus";
 import { setTerminalWriter } from "./store";
 
 /** One xterm.js instance bound to a host pty. Coloured by the theme's terminal palette. */
@@ -111,7 +112,8 @@ export function XTerm({ id, active }: { id: string; active: boolean }) {
       } catch {
         // Hidden.
       }
-      term.current?.focus();
+      // A terminal a chat started becomes active too: it never takes the caret from your typing (D-374).
+      if (mayTakeFocus(host.current)) term.current?.focus();
     });
   }, [active]);
 

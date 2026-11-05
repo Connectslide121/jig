@@ -51,7 +51,22 @@ export function openPath(path: string): Promise<string> {
   return hiddenMode() ? Promise.resolve("") : shell.openPath(path);
 }
 
-/** Shows a window and gives it focus, unless Jig runs hidden. */
+/**
+ * Shows a window without taking the keyboard focus (D-374), for things that happen by themselves (a
+ * call ringing or ending): you keep typing where you are. `raise` also puts it above other windows. A
+ * minimized window stays minimized and flashes in the taskbar instead.
+ */
+export function showWindowQuietly(window: BrowserWindow, raise = false): void {
+  if (hiddenMode() || window.isDestroyed()) return;
+  if (window.isMinimized()) {
+    window.flashFrame(true);
+    return;
+  }
+  if (!window.isVisible()) window.showInactive();
+  if (raise) window.moveTop();
+}
+
+/** Shows a window and gives it focus, unless Jig runs hidden. Only for something you just did. */
 export function revealWindow(window: BrowserWindow): void {
   if (hiddenMode() || window.isDestroyed()) return;
   if (window.isMinimized()) window.restore();

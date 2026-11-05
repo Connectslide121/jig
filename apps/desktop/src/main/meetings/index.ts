@@ -53,6 +53,7 @@ import {
   markSecondaryWindow,
   openExternal,
   revealWindow,
+  showWindowQuietly,
 } from "../appWindows";
 import { getConfig } from "../config";
 import { addMessageContext, registerJigTools } from "../engine/jigTools";
@@ -654,11 +655,12 @@ function renewCall(used: BrowserWindow): void {
  * Opens the Meetings lobby (D-292), or brings it to the front: a normal Jig window beside the call
  * window, usable during a call. `review` opens a saved meeting's review in it.
  */
-async function openLobby(review?: string): Promise<void> {
+async function openLobby(review?: string, quiet = false): Promise<void> {
   enabled();
   if (lobby && !lobby.isDestroyed()) {
     if (review) emit("meetings.review", { id: review });
-    revealWindow(lobby);
+    if (quiet) showWindowQuietly(lobby);
+    else revealWindow(lobby);
     return;
   }
   const here = fileURLToPath(new URL(".", import.meta.url));
@@ -692,14 +694,18 @@ async function openLobby(review?: string): Promise<void> {
   url.searchParams.set("meetingLobby", "1");
   if (review) url.searchParams.set("review", review);
   await window.loadURL(url.href);
-  if (!hiddenMode()) window.show();
+  if (quiet) showWindowQuietly(window);
+  else if (!hiddenMode()) window.show();
 }
 
-/** A call ended: the call window hides again and the lobby shows the meeting's review (D-292). */
+/**
+ * A call ended: the call window hides again and the lobby shows the meeting's review (D-292), without
+ * taking the keyboard (the call may have ended by itself while you type elsewhere, D-374).
+ */
 function callEnded(id: string): void {
   if (quitting || appQuitting) return;
   if (room && !room.isDestroyed() && room.isVisible()) room.hide();
-  void openLobby(id).catch(() => undefined);
+  void openLobby(id, true).catch(() => undefined);
 }
 
 /** A Teams call is ringing (`name`), or stopped ringing: the meeting window comes to the front. */
@@ -710,12 +716,9 @@ function ring(name: string | undefined): void {
   room.flashFrame(Boolean(name));
   if (!name || hiddenMode()) return;
   const window = room;
-  if (window.isMinimized()) window.restore();
-  window.show();
-  // Windows refuses focus to a background process, so the window is briefly put on top to take it.
-  window.setAlwaysOnTop(true);
-  window.focus();
-  window.setAlwaysOnTop(false);
+  // It comes to the front but never takes the keyboard: Enter meant for a chat must not answer the
+  // call (D-374). Clicking it, or its notification, gives it the focus.
+  showWindowQuietly(window, true);
   if (!Notification.isSupported()) return;
   const note = new Notification({
     title: `${name} is calling`,

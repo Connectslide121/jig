@@ -8,7 +8,6 @@ import {
   FolderPlus,
   History,
   MessageSquareShare,
-  Paperclip,
   Plug,
   Shield,
   Sparkles,
@@ -16,8 +15,6 @@ import {
   Square,
   SquarePlus,
   SquareTerminal,
-  X,
-  Zap,
 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,6 +27,7 @@ import { call, errorMessage } from "../../lib/host";
 import { Button, cn, ErrorBoundary, IconButton, type MenuEntry, openMenuAt } from "../../ui";
 import { useRegistry } from "../../workbench/registry";
 import { formatShortcut } from "../../workbench/shortcuts";
+import { mayTakeFocus } from "../../workbench/takeFocus";
 import { notify } from "../../workbench/toasts";
 import { openAttemptsDialog } from "../attempts/AttemptsDialog";
 import { takeTalkRequest, useTalkRequest } from "../speech/commands/talk";
@@ -132,14 +130,17 @@ export function Composer({
   );
 
   useEffect(() => {
-    if (active) ref.current?.focus();
+    // A chat tab that became active by itself (a notification, an add-on) leaves your caret alone (D-374).
+    if (active && mayTakeFocus(ref.current)) ref.current?.focus();
   }, [active, ref]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: setTyped only sets state and a ref.
   useEffect(
     () =>
       registerComposer(meta.id, (value) => {
         input.setTyped(value, value.length);
-        requestAnimationFrame(() => ref.current?.focus());
+        requestAnimationFrame(() => {
+          if (mayTakeFocus(ref.current)) ref.current?.focus();
+        });
       }),
     [meta.id],
   );
