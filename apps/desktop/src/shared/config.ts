@@ -98,6 +98,11 @@ export const ConfigSchema = z.object({
        * waits for you before Jig declines it; 0 = declined at once (D-336).
        */
       dontAskWaitSeconds: z.number().int().min(0).max(600).default(60),
+      /**
+       * Minutes an idle chat keeps its Claude Code or Codex process; then Jig stops it and the next
+       * message resumes the conversation (D-367). 0 = keep it until the chat is closed.
+       */
+      idleStopMinutes: z.number().int().min(0).max(1440).default(20),
       /** Claude Code suggests your next message after a turn (nearly free: it reuses the prompt cache). */
       promptSuggestions: z.boolean().default(true),
       /** The quick model names a new chat from its first message (a few words; D-288). */

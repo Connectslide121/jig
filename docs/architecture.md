@@ -161,6 +161,9 @@ Writes are atomic (write temp file + rename). Formats are documented in `docs/re
 - `ClaudeEngine` implements it with `query()` from `@anthropic-ai/claude-agent-sdk` in **streaming
   input mode** (an async queue of user messages), so one Claude Code process serves a whole
   conversation, follow-ups can be queued and turns can be interrupted.
+- A chat's process runs only while it is in use: the session manager stops an idle chat's process
+  after `engine.idleStopMinutes` (default 20) quietly, without a turn ending, and the next use
+  resumes the conversation by its session id, as after a restart (`sweepIdle`, `keepChatAwake`, D-367).
 - `FakeEngine` implements it with scripted replies. It is used by tests and by `JIG_ENGINE=fake`.
   Development and CI never use real Claude credentials.
 

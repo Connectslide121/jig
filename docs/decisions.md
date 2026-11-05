@@ -5876,3 +5876,34 @@ choice of Telegram and everything below: Claude, on my own.
 - **Measured** (fake engine, 15 chats of 600 items each, compact view): with all 15 open, JS heap
   211 → 57 MB, DOM elements 377k → 41k, renderer working set 755 → 267 MB; all closed again, JS heap
   44 → 37 MB (5 chats kept).
+
+## D-367: Idle chats let go of their Claude Code / Codex process and resume on the next use
+
+- Status: accepted.
+- **Who:** Jon, 2026-11-05: 16 claude.exe at ~250-300 MB each (~4.5 GB) while most chats sat idle;
+  stop idle chats' processes and restart them transparently. Default 20 minutes and the setting: Jon.
+  How: Claude, on my own.
+- **Where:** `SessionManager.sweepIdle` (`main/sessions/manager.ts`), every minute while any process
+  runs (an `unref`'d interval that stops itself when none is left). `lastActive` is the last event from
+  the process or the last call that needed it (`startEngine`: messages, `/` commands, MCP status,
+  rewinds). Both engines: Claude Code's `query` process and Codex's `codex app-server` (with its local
+  MCP server) close through `EngineSession.close`.
+- **Idle means:** status `idle` or `error`, no turn starting (`live.starting`), no pending permission,
+  question or plan card, no queued message, no background task (commands, subagents, monitors:
+  `meta.backgroundTasks`), no carry-on with the other provider pending (`autoContinue`), and no
+  `keepAwake` check answering true. The one check today is the Tasks add-on's: a task running or
+  waiting in the chat, or, while a queue runs, the next queued task that continues it
+  (`main/addons/taskChats.ts`, reading the add-on's own storage; registered with `keepChatAwake`).
+- **Quietly, not as an exit:** `sleep` closes the process with its event token cleared and emits no
+  `exit` event, so `onTurnEnd` doesn't run, the status doesn't change and the transcript gets nothing.
+  Add-ons following the chat (the task queue's `chatChanged`), the builder, notifications and the
+  phone hear nothing: a stopped process never advances the queue. Only `azureTenant` is cleared (the
+  next process records the tenant active then).
+- **Resume:** nothing new. The next `startEngine` resumes `meta.engineSessionId` exactly as after a
+  Jig restart (Claude Code's `resume`, Codex's `thread/resume`), with Jig's tool servers, plugins and
+  subagents rebuilt for the new process. Terminals Claude started stay Jig's; when one ends, `notify`
+  starts a turn, which resumes the process. The UI shows the usual starting/working state; no new
+  UI. Lists Claude Code gave once (`/` commands, models) are served from their caches while no process
+  runs, so opening the picker doesn't wake a chat.
+- **Setting:** `engine.idleStopMinutes` (default 20, 0–1440, 0 = keep until the chat closes) in
+  Settings → Chats → All chats → Stop idle chats. Not protected: it only stops processes.

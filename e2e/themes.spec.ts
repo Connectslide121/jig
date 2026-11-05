@@ -103,3 +103,19 @@ test("Settings → Chats: claude.ai connectors are off by default and the switch
   await toggle.click();
   await expect.poll(config).toBe(true);
 });
+
+test("Settings → Chats: idle chats stop their process after 20 minutes by default, and it can change (D-367)", async ({
+  page,
+}) => {
+  await page.getByTestId("settings-button").click();
+  await page.getByTestId("settings-nav-engine").click();
+  const picker = page.getByTestId("settings-idle-stop");
+  await expect(picker).toHaveValue("20");
+  const config = async () =>
+    ((await hostCall(page, "config.get")) as { value: { engine: { idleStopMinutes: number } } }).value.engine
+      .idleStopMinutes;
+  await picker.selectOption("0");
+  await expect.poll(config).toBe(0);
+  await picker.selectOption("60");
+  await expect.poll(config).toBe(60);
+});

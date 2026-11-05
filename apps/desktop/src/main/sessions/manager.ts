@@ -69,6 +69,10 @@ const RESUME_TEXT = "Your usage limit has reset. Carry on from where you stopped
 const RESUME_GRACE_MS = 30_000;
 /** Longest a timer can wait (setTimeout's limit); a later reset waits again then. */
 const MAX_TIMER_MS = 2_000_000_000;
+/** Minutes an idle chat keeps its Claude Code or Codex process when no setting says (D-367). */
+const IDLE_STOP_MINUTES = 20;
+/** How often idle chats are looked at. */
+const IDLE_SWEEP_MS = 60_000;
 
 const QueuedSchema = z.object({
   id: z.string(),
@@ -116,6 +120,8 @@ export interface SessionManagerOptions {
     dontAskWaitSeconds?: number;
     /** The Azure tenant `env` points at (recorded on the chat while its process runs). */
     azureTenant?: TenantTag;
+    /** Minutes an idle chat keeps its process before Jig stops it (it resumes on the next use); 0 = never. */
+    idleStopMinutes?: number;
   };
   appendSystemPrompt: (meta: SessionMeta) => string;
   /** Changes in selected skills restart an idle process before the next message, preserving resume. */
@@ -152,6 +158,11 @@ export interface SessionManagerOptions {
   nameChat?: (meta: SessionMeta, text: string) => Promise<string | undefined>;
   /** A next message after a turn, for engines that don't suggest one themselves (Codex, D-315). */
   suggestNext?: (meta: SessionMeta, turn: { message: string; reply: string }) => Promise<string | undefined>;
+  /**
+   * Whether something outside the chat still counts on its process (a queued task running in it): an
+   * idle chat it answers true for keeps its process (D-367).
+   */
+  keepAwake?: (meta: SessionMeta) => boolean | Promise<boolean>;
   /** A turn ended (result or process exit), e.g. to notice a builder that stopped. */
   onTurnEnd?: (meta: SessionMeta) => void;
   /** A chat was archived or deleted (what it holds open elsewhere, like its browser page, closes). */
@@ -208,6 +219,8 @@ interface Live {
   autoContinue?: boolean;
   /** Resumes the chat when its limit resets. */
   limitTimer?: NodeJS.Timeout;
+  /** When its process last did or was asked something (idle chats' processes stop after a while). */
+  lastActive?: number;
 }
 
 /**
@@ -221,6 +234,7 @@ export class SessionManager {
   /** Slash commands and skills by provider and folder, and each provider's model list, as last told. */
   private commandCache = new Map<string, SlashCommandInfo[]>();
   private modelCache = new Map<ChatProvider, ModelInfo[]>();
+  private idleSweep?: NodeJS.Timeout;
 
   constructor(private readonly options: SessionManagerOptions) {}
 
@@ -392,7 +406,9 @@ export class SessionManager {
   }
 
   private startEngine(live: Live): EngineSession {
+    live.lastActive = Date.now();
     if (live.engine) return live.engine;
+    this.armIdleSweep();
     const token = {};
     live.engineToken = token;
     const meta = live.state.meta;
@@ -492,6 +508,7 @@ export class SessionManager {
 
   private handleEvent(live: Live, incoming: EngineEvent) {
     let event = incoming;
+    live.lastActive = Date.now();
     // Images in tool results go to the chat's attachments; the transcript keeps their paths.
     if (event.type === "tool_result" && event.imageData?.length) {
       const { imageData, ...rest } = event;
@@ -1616,6 +1633,71 @@ export class SessionManager {
     if (archived) this.options.onClosed?.(id);
   }
 
+  /** Looks at idle chats every minute while any process runs (the timer never keeps Jig alive). */
+  private armIdleSweep() {
+    if (this.idleSweep) return;
+    this.idleSweep = setInterval(() => void this.sweepIdle(), IDLE_SWEEP_MS);
+    this.idleSweep.unref?.();
+  }
+
+  /**
+   * Stops the processes of chats idle for `engine.idleStopMinutes` (D-367): no turn running or
+   * starting, nothing waiting for you, no background task, no queued message, nothing outside counting
+   * on it (`keepAwake`). The chat doesn't change: its next message, or anything else that needs the
+   * process, resumes the same conversation. Returns how many it stopped.
+   */
+  async sweepIdle(now = Date.now()): Promise<number> {
+    const minutes = this.options.engineSettings().idleStopMinutes ?? IDLE_STOP_MINUTES;
+    let stopped = 0;
+    let running = 0;
+    for (const live of [...this.sessions.values()]) {
+      if (!live.engine) continue;
+      running++;
+      if (minutes <= 0 || now - (live.lastActive ?? now) < minutes * 60_000 || !this.isIdle(live)) continue;
+      const kept = await Promise.resolve(this.options.keepAwake?.(live.state.meta)).catch(() => true);
+      // Something may have started while the check ran.
+      if (kept || !this.isIdle(live) || now - (live.lastActive ?? now) < minutes * 60_000) continue;
+      this.sleep(live);
+      stopped++;
+    }
+    if (running === stopped) {
+      clearInterval(this.idleSweep);
+      this.idleSweep = undefined;
+    }
+    return stopped;
+  }
+
+  /** Nothing runs in or waits on the chat's process. */
+  private isIdle(live: Live): boolean {
+    const meta = live.state.meta;
+    return (
+      (meta.status === "idle" || meta.status === "error") &&
+      !live.starting &&
+      !live.autoContinue &&
+      live.permissions.size === 0 &&
+      live.queue.length === 0 &&
+      !meta.backgroundTasks?.length
+    );
+  }
+
+  /**
+   * Ends an idle chat's process quietly: unlike `stop` it is no turn ending (no exit event, no
+   * `onTurnEnd`, the status stays), so nothing following the chat (the task queue) reacts to it.
+   */
+  private sleep(live: Live) {
+    const engine = live.engine;
+    if (!engine) return;
+    live.engine = undefined;
+    live.engineToken = undefined;
+    engine.close();
+    log.info(`Stopped the idle process of chat ${live.state.meta.id}`);
+    // The next process starts with the tenant active then.
+    if (live.state.meta.azureTenant) {
+      live.state.meta = { ...live.state.meta, azureTenant: undefined };
+      this.emit(live, [{ op: "meta", meta: live.state.meta }]);
+    }
+  }
+
   /** Ends the Claude Code process (the conversation can continue later; it resumes). */
   async stopProcess(id: string): Promise<void> {
     this.stop(await this.live(id));
@@ -1646,6 +1728,8 @@ export class SessionManager {
 
   /** Ends every Claude Code process and writes what isn't saved yet (app quit). */
   async shutdown(): Promise<void> {
+    clearInterval(this.idleSweep);
+    this.idleSweep = undefined;
     const writes: Array<Promise<void> | undefined> = [];
     for (const live of this.sessions.values()) {
       clearTimeout(live.limitTimer);

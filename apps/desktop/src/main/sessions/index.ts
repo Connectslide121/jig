@@ -88,6 +88,16 @@ export function onSessionClosed(listener: (sessionId: string) => void): () => vo
   return () => closedListeners.delete(listener);
 }
 
+/**
+ * Checks that keep an idle chat's process running (D-367): one true and the chat keeps it. The task
+ * queue registers one for the chats its tasks run in.
+ */
+const awakeChecks = new Set<(meta: SessionMeta) => boolean | Promise<boolean>>();
+export function keepChatAwake(check: (meta: SessionMeta) => boolean | Promise<boolean>): () => void {
+  awakeChecks.add(check);
+  return () => awakeChecks.delete(check);
+}
+
 /** Called when a chat's status changes (add-ons that run chats follow them this way). */
 const statusListeners = new Set<(meta: SessionMeta) => void>();
 export function onSessionStatus(listener: (meta: SessionMeta) => void): () => void {
@@ -264,6 +274,7 @@ export function startSessions(): void {
         promptSuggestions: engine.promptSuggestions,
         fileCheckpoints: engine.fileCheckpoints,
         dontAskWaitSeconds: engine.dontAskWaitSeconds,
+        idleStopMinutes: engine.idleStopMinutes,
         azureTenant: azureTag(),
       };
     },
@@ -354,6 +365,10 @@ export function startSessions(): void {
       // A chat used some of its plan: refresh that provider's usage meter (D-298).
       if (chatProvider(meta) === "codex") chatGptChatUsed();
       else usageService().refreshIfOlder(60_000);
+    },
+    keepAwake: async (meta) => {
+      for (const check of awakeChecks) if (await check(meta)) return true;
+      return false;
     },
     onClosed: (id) => {
       for (const listener of closedListeners) listener(id);

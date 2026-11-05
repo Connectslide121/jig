@@ -27,7 +27,7 @@ import { projectStore } from "../projects";
 import { mimeFor } from "../protocols";
 import { providerStatus } from "../providers";
 import { GUARD_TIMEOUT_MS, registerQuitGuard } from "../quit";
-import { createChat, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
+import { createChat, keepChatAwake, onSessionStatus, sessionManager, setToolAddons } from "../sessions";
 import { addAddonAttachment, copyAddonAttachments, removeAddonAttachments } from "../sessions/attachments";
 import { notificationsAllowed } from "../sessions/notify";
 import { paths } from "../state/paths";
@@ -56,6 +56,7 @@ import {
   readPackage,
   writeContents,
 } from "./share";
+import { taskUsesChat } from "./taskChats";
 
 const log = logger("addons");
 const here = dirname(fileURLToPath(import.meta.url));
@@ -183,6 +184,12 @@ export async function startAddons(): Promise<void> {
     notify: (id, change) => addonService().call(id, "chatChanged", change),
   });
   onSessionStatus((meta) => chats.statusChanged(meta));
+  // A chat a queued task runs in, or will continue, keeps its process while idle (D-367).
+  keepChatAwake(async (meta) => {
+    const addons = service;
+    if (!addons?.list().some((a) => a.id === "tasks")) return false;
+    return taskUsesChat(await addons.storageAll("tasks").catch(() => ({})), meta.id);
+  });
 
   const badges = new Badges((all) => emit("addons.badges", all));
   const badge = (addonId: string, view: string, value: unknown) => {

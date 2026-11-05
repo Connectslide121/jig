@@ -820,3 +820,103 @@ describe("limits (D-338)", () => {
     await m.shutdown();
   });
 });
+
+describe("idle processes (D-367)", () => {
+  function sleepy(keepAwake?: (meta: SessionMeta) => boolean) {
+    const starts: Array<Parameters<FakeEngine["start"]>[0]> = [];
+    let closes = 0;
+    class Recording extends FakeEngine {
+      override start(...args: Parameters<FakeEngine["start"]>) {
+        starts.push(args[0]);
+        const session = super.start(...args);
+        const close = session.close.bind(session);
+        session.close = () => {
+          closes++;
+          close();
+        };
+        return session;
+      }
+    }
+    const turnEnds: string[] = [];
+    const m = new SessionManager({
+      ...(manager() as unknown as { options: ConstructorParameters<typeof SessionManager>[0] }).options,
+      engine: new Recording(1),
+      keepAwake,
+      onTurnEnd: (meta) => turnEnds.push(meta.status),
+    });
+    return { m, starts, turnEnds, closes: () => closes };
+  }
+  const later = (minutes: number) => Date.now() + minutes * 60_000;
+
+  it("stops an idle chat's process quietly and resumes the same conversation on the next message", async () => {
+    const { m, starts, turnEnds, closes } = sleepy();
+    const chat = await create(m);
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    const resume = (await metaOf(m, chat.id)).engineSessionId;
+    expect(await m.sweepIdle(later(5))).toBe(0);
+    expect(m.runningCount()).toBe(1);
+    const ends = turnEnds.length;
+    const seen = updates.length;
+    expect(await m.sweepIdle(later(21))).toBe(1);
+    expect(closes()).toBe(1);
+    expect(m.runningCount()).toBe(0);
+    // No turn ended and the status didn't change: nothing following the chat reacts.
+    expect(turnEnds).toHaveLength(ends);
+    expect(
+      updates.slice(seen).some((u) => u.updates.some((x) => x.op === "meta" && x.meta.status !== "idle")),
+    ).toBe(false);
+    expect((await metaOf(m, chat.id)).status).toBe("idle");
+    await m.send(chat.id, "Hello again");
+    await until(async () => (await metaOf(m, chat.id)).turns === 2);
+    expect(starts).toHaveLength(2);
+    expect(starts[1]?.resume).toBe(resume);
+    expect(m.runningCount()).toBe(1);
+    await m.shutdown();
+  });
+
+  it("a message from Jig (a finished terminal) resumes a stopped chat too", async () => {
+    const { m, starts } = sleepy();
+    const chat = await create(m);
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    await m.sweepIdle(later(30));
+    await m.notify(chat.id, "The dev server terminal has exited with code 0", "Terminal finished");
+    await until(async () => (await metaOf(m, chat.id)).turns === 2);
+    expect(starts[1]?.resume).toBe((await metaOf(m, chat.id)).engineSessionId);
+    await m.shutdown();
+  });
+
+  it("keeps chats that are working, have background tasks, or that something counts on", async () => {
+    const kept = new Set<string>();
+    const { m } = sleepy((meta) => kept.has(meta.id));
+    const busy = await create(m);
+    const counted = await create(m);
+    const background = await create(m);
+    await m.send(counted.id, "Hello");
+    await m.send(background.id, "Start a background job");
+    await until(async () => (await metaOf(m, counted.id)).turns === 1);
+    await until(async () => (await metaOf(m, background.id)).backgroundTasks?.length);
+    kept.add(counted.id);
+    // Never answers: stays working.
+    void m.send(busy.id, "Ask permission to edit");
+    await until(async () => (await metaOf(m, busy.id)).status === "needs_you");
+    expect(await m.sweepIdle(later(60))).toBe(0);
+    expect(m.runningCount()).toBe(3);
+    kept.clear();
+    expect(await m.sweepIdle(later(60))).toBe(1);
+    await m.shutdown();
+  });
+
+  it("0 minutes keeps processes until the chat closes", async () => {
+    const { m } = sleepy();
+    const chat = await create(m);
+    await m.send(chat.id, "Hello");
+    await until(async () => (await metaOf(m, chat.id)).turns === 1);
+    const options = (m as unknown as { options: ConstructorParameters<typeof SessionManager>[0] }).options;
+    const settings = options.engineSettings;
+    options.engineSettings = () => ({ ...settings(), idleStopMinutes: 0 });
+    expect(await m.sweepIdle(later(600))).toBe(0);
+    await m.shutdown();
+  });
+});

@@ -620,6 +620,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Tool calls with diffs and file previews",
                 "Detailed tools show the reported caller model; subagents separate reported and requested models. The overview and details summarize reported models",
                 "New chats stay unsaved until you send a prompt",
+                "Idle chats free their memory: after 20 minutes unused (Settings → Chats) a chat lets go of its Claude Code or Codex process, and your next message picks it up where it was",
                 "Compact chats: each run of Claude's steps folds into one line; Detailed shows every card",
                 "Times in chats: the clock button puts a time beside every message and step (hover any message for its time and the gap before it)",
                 "Your plans' usage as bars in the status bar, always visible: Claude's, and ChatGPT's when Codex is signed in",

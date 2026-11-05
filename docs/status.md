@@ -1186,6 +1186,14 @@ _Last updated: 2026-10-29 (phases 0–17: every phase of the plan is done; the l
 
 ## What works today
 
+- Idle chats let go of their process (D-367): a chat unused for 20 minutes (Settings → Chats → All
+  chats → Stop idle chats; 5 minutes to 2 hours, or Never) stops its Claude Code or Codex process; the
+  next message, or anything else that needs it, resumes the same conversation after a short start.
+  Chats that are working, wait for you, run something in the background, have queued messages or run
+  a queued task keep theirs, and a stopped process never moves the task queue on. Measured with the
+  real Claude engine: 4 idle chats, 4 claude.exe at 1,051 MB → 0; the resumed chat remembered its
+  earlier turn. Needs testing on your machine: a day of real chats, then count claude.exe in Task
+  Manager (before: 20 at ~6 GB).
 - Lighter chats (D-366): a long chat renders only its latest rows and more as you scroll up (what
   you're reading stays where it is); Find in chat still reaches every message. Chats you close are let
   go from memory after the five most recent, and load again when you open them. With 15 long chats
@@ -1764,6 +1772,11 @@ npm run dev          # opens Jig
 
 Things the cloud build environment couldn't verify:
 
+- **Idle chats stop their processes (D-367).** After a day of use, Task Manager shows claude.exe only
+  for chats used in the last 20 minutes (plus ones working, waiting or running background tasks). Check
+  that a chat stopped this way picks up where it was on the next message (same conversation, its
+  terminals, Jig's tools), that a Tasks queue left running overnight keeps going, and that a dev server
+  Claude started with jig_terminal_run still tells the chat when it exits.
 - **Jig on your phone (D-350).** Covered against a fake Telegram server (`e2e/phone.spec.ts`).
   Check with a real bot on your iPhone: pairing by the code, the buttons (Allow, an option,
   Approve), a reply going to the right chat, "Send a test", that "When I'm away" waits for 5 idle

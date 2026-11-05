@@ -30,6 +30,15 @@ function waitLabel(seconds: number): string {
   return `${seconds} seconds`;
 }
 
+/** How long an idle chat keeps its Claude Code or Codex process, in minutes; 0 = until it closes (D-367). */
+const IDLE_STOPS = [5, 10, 20, 30, 60, 120, 0];
+
+function idleLabel(minutes: number): string {
+  if (minutes === 0) return "Never: keep it until the chat closes";
+  if (minutes % 60 === 0) return minutes === 60 ? "After 1 hour" : `After ${minutes / 60} hours`;
+  return `After ${minutes} minutes`;
+}
+
 /** The group that new chats run on gets this badge at the far right of its header. */
 const DefaultBadge = () => (
   <Badge tone="accent" className="uppercase">
@@ -510,6 +519,27 @@ function AllChats() {
             .map((seconds) => (
               <option key={seconds} value={seconds}>
                 {waitLabel(seconds)}
+              </option>
+            ))}
+        </Select>
+      </SettingRow>
+      <SettingRow
+        label="Stop idle chats"
+        description="A chat you haven't used for this long lets go of its Claude Code or Codex process to free memory; your next message picks it up where it was, after a short start. Chats that are working, waiting for you, running something in the background or running a queued task keep theirs."
+      >
+        <Select
+          className={PICKER}
+          value={String(e.idleStopMinutes)}
+          aria-label="Stop idle chats"
+          data-testid="settings-idle-stop"
+          onChange={(ev) => void updateConfig({ engine: { idleStopMinutes: Number(ev.target.value) } })}
+        >
+          {[...new Set([...IDLE_STOPS, e.idleStopMinutes])]
+            // Never goes last.
+            .sort((a, b) => (a || Number.MAX_SAFE_INTEGER) - (b || Number.MAX_SAFE_INTEGER))
+            .map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {idleLabel(minutes)}
               </option>
             ))}
         </Select>
