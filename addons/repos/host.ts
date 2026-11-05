@@ -10,6 +10,7 @@ import {
   parseLog,
   type RepoCommit,
 } from "./lib/commits";
+import { commitText, findRepo, needsAttention, repoText } from "./lib/report";
 
 export type { CommitFile, RepoCommit };
 
@@ -158,6 +159,62 @@ export async function sync({ path }: { path: string }, api: AddonHostApi): Promi
     done.push(after.ahead ? `pushed ${after.ahead}` : "pushed the branch");
   }
   return done.length ? done.join(", ") : "nothing to sync";
+}
+
+// Claude's tools (D-371): status and commits only read; fetch asks you first. No pull or push tool.
+
+type ChatArgs = { chat?: { cwd?: string; projectId?: string } };
+
+/** The repository a tool names, among every workspace's (by path, name or a unique part of it). */
+async function repoFor(api: AddonHostApi, query: string): Promise<RepoItem> {
+  const items = repoItems(await api.workspaces());
+  const repo = findRepo(items, query);
+  if (!repo)
+    throw new Error(
+      `No single repository answers to "${query}". The status tool lists them: ${items.map((r) => r.name).join(", ")}`,
+    );
+  return repo;
+}
+
+/** Tool `status`: every repository's branch, to push / to pull, changed files and last fetch. */
+export async function toolStatus(
+  args: ChatArgs & { repo?: string; attention?: boolean },
+  api: AddonHostApi,
+): Promise<string> {
+  const q = args.repo?.trim().toLowerCase();
+  const all = (await overview(undefined, api)).filter(
+    (r) => !q || r.name.toLowerCase().includes(q) || r.path.toLowerCase() === q,
+  );
+  const shown = args.attention ? all.filter(needsAttention) : all;
+  if (!shown.length)
+    return args.attention && all.length
+      ? `All ${all.length} repositories are clean and in sync with their upstream.`
+      : "No repositories found (that match).";
+  const now = Date.now();
+  return shown.map((r) => `- ${repoText(r, now)}`).join("\n");
+}
+
+/** Tool `commits`: a repository's newest commits, the ones to pull first, each marked to push or pushed. */
+export async function toolCommits(
+  args: ChatArgs & { repo: string; limit?: number },
+  api: AddonHostApi,
+): Promise<string> {
+  const repo = await repoFor(api, args.repo);
+  const list = await commits({ path: repo.path, limit: Math.min(50, Math.max(1, args.limit ?? 15)) }, api);
+  if (!list.length) return `${repo.name} has no commits.`;
+  const now = Date.now();
+  return [`${repo.name} (${repo.path}):`, ...list.map((c) => `- ${commitText(c, now)}`)].join("\n");
+}
+
+/** Tool `fetch` (asks you first): fetches one repository, or all like Fetch all repos. */
+export async function toolFetch(args: ChatArgs & { repo?: string }, api: AddonHostApi): Promise<string> {
+  if (!args.repo?.trim()) {
+    const failed = (await fetchAll(undefined, api)) as string[];
+    return failed.length ? `Fetched, except:\n${failed.join("\n")}` : "Fetched every repository.";
+  }
+  const repo = await repoFor(api, args.repo);
+  await fetch({ path: repo.path }, api);
+  return `Fetched. ${repoText(await inspect(api, repo))}`;
 }
 
 export async function fetchAll(_: unknown, api: AddonHostApi) {

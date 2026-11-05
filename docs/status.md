@@ -1,5 +1,18 @@
 # Status
 
+Claude reads Pipelines and Repos (2026-11-05, D-371, Jon): chats and Jig on your phone can now answer
+"are any pipelines running?", "why did the last run fail?" and "is everything pushed?" with the add-ons'
+tools. Pipelines: `addon_pipelines_pipelines` (each pipeline's newest run), `addon_pipelines_runs`
+(running, recent or failed runs, with stages while they run) and `addon_pipelines_run` (one run's
+stages, jobs, failed step with its errors and the end of its log, and link); all read only, and no
+tool starts, queues or cancels a run: you still run pipelines from the Run form. Repos:
+`addon_repos_status` and `addon_repos_commits` (read only) and `addon_repos_fetch` (asks first); no
+pull or push. The phone concierge's prompt points it at them. Unit tests and the Pipelines e2e spec
+(fake az) pass. Scripts, Meetings, Git and Files have no tools yet: reasons and plan in D-371 and
+`docs/plan/26-phone.md`.
+**Check on your machine:** ask a chat and the phone bot "are any pipelines running?" while one runs,
+and "why did run N fail?" on a failed one; ask "anything unpushed?".
+
 Parked ideas in the task queue, and a new queue header (2026-11-05, D-369, Jon): park a queued task
 (⋯ → Park: keep as an idea, or drag it below the "Parked · N" divider) and it waits in a faded pool at
 the very end of the queue: it never runs, has no tick (the tick for every task passes it by), and every

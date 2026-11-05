@@ -507,6 +507,10 @@ in the browser view) starts a chat on the tester model with the same protocol (`
   `setAddonTools` replaces them when add-ons change, so new chats get the current set), and Jig's
   `jig_get_addon` / `jig_get_addon_data` / `jig_set_addon_data` / `jig_delete_addon_data`
   (`docs/reference/configure.md`).
+  The built-in add-ons with tools (each add-on's README says what they do): Releases, Workflows,
+  Tasks, Boards, Tests, Time, Pipelines (`pipelines`, `runs`, `run`: read only, never start a run,
+  D-371) and Repos (`status`, `commits` read only; `fetch` asks). Scripts, Git, Files and Meetings
+  have none yet (D-371, plan in `docs/plan/26-phone.md`).
 
 Tools marked `readOnly` run without a permission prompt. A tool may return images as well as text
 (`ToolOutput`); they show in the chat. `jigContext` (appended to Claude Code's system prompt) tells

@@ -52,6 +52,10 @@ if (has("pipelines", "list") && !has("runs")) say([
   { id: 12, name: "Shop CI", queueStatus: "enabled" },
   { id: 13, name: "(old) Shop", queueStatus: "enabled" },
 ]);
+if (has("pipelines", "runs", "show")) say({
+  id: 100, buildNumber: "20261029.1", status: "completed", result: "succeeded", sourceBranch: "refs/heads/main",
+  reason: "manual", queueTime: ago(40), startTime: ago(35), finishTime: ago(12), definition: { id: 12, name: "Shop CI" },
+});
 if (has("pipelines", "show")) say({ process: { yamlFilename: "/azure-pipelines.yml" }, repository: { defaultBranch: "refs/heads/main" } });
 if (has("pipelines", "runs", "list")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500);
 if (has("pipelines", "runs", "list")) say([{
@@ -167,6 +171,38 @@ test("Pipelines: your repositories' pipelines, the newest run and its stages, a 
   const cardAgain = again.getByTestId("pipeline-Shop CI");
   await expect(cardAgain.getByTestId("pipeline-time")).toHaveText("12m", { timeout: 1000 });
   await expect(cardAgain.getByTestId("pipeline-loading")).toHaveCount(0);
+});
+
+test("Pipelines and Repos: Claude reads runs and repository status with their tools, never runs a pipeline", async ({
+  page,
+  jigHome,
+}) => {
+  const bin = join(jigHome, "fake-bin");
+  await writeFile(join(bin, "az-signed-out.cjs"), fakeAz(jigHome));
+  await writeFile(join(bin, "az"), `#!/usr/bin/env node\n${fakeAz(jigHome)}`);
+  const dir = join(jigHome, "shop");
+  await mkdir(dir, { recursive: true });
+  git(dir, "init", "-q", "-b", "main");
+  git(dir, "config", "user.name", "Ann Demo");
+  git(dir, "config", "user.email", "ann@example.com");
+  git(dir, "remote", "add", "origin", "https://dev.azure.com/contoso/Shop/_git/shop");
+  await writeFile(join(dir, "azure-pipelines.yml"), YAML);
+  git(dir, "add", ".");
+  git(dir, "commit", "-q", "-m", "Add the pipeline");
+  await hostCall(page, "projects.add", { path: dir });
+
+  await page.keyboard.press("Control+N");
+  await page.getByTestId("composer-input").fill("are any pipelines running?");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("turn-result")).toHaveCount(1, { timeout: 60000 });
+  const chat = page.getByTestId("chat");
+  // The fake az has only a finished run: none going; the newest one, its stages, the repository's state.
+  await expect(chat).toContainText("No running or queued runs in your checked-out repositories' pipelines");
+  await expect(chat).toContainText("1 newest run in your checked-out repositories' pipelines:");
+  await expect(chat).toContainText("Shop CI (contoso/Shop) #100");
+  await expect(chat).toContainText(/shop · main \(no upstream\) · clean/);
+  // Reading never queues a run.
+  expect(await readFile(join(jigHome, "az-run.json"), "utf8").catch(() => "")).toBe("");
 });
 
 test("Pipelines: another tenant's pipelines replace these, the toolbar stays put", async ({

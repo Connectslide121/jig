@@ -934,6 +934,7 @@ export function AboutPage({ section, welcome }: { section?: string; welcome?: bo
                 "Every repository's commits at a glance in Repos: what's to pull and push, each commit's files and diffs",
                 "Views you keep opening as tabs: Jig suggests a place for them",
                 "Pipelines of your repositories, loaded when Jig starts, one compact row each; click one for the newest run and its stages, and a Run form with the branch, the YAML's parameters and a checkbox for each switch",
+                "Ask Claude (or Jig on your phone) whether any pipelines are running, why a run failed, or which repositories have something to push: it reads Pipelines and Repos with their tools, and never starts a run itself",
                 "Boards per project (Code → Boards): pick team boards found in your organisations; a tab per board with its columns and cards, like Azure DevOps, each card showing who has it (their Microsoft picture with the meeting sign-in, else initials)",
               ]}
             />

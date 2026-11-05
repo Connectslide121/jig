@@ -55,8 +55,19 @@ the pipelines plugin (D-148). Jig stores no tokens (D-018).
 - **Settings → Pipelines:** Check Azure CLI; the organisations for More pipelines (every one you
   belong to by default, added by URL, narrowed to projects).
 
+- **Claude's tools (D-371), read only:** `addon_pipelines_pipelines` (each pipeline with its newest
+  run, per repository; `everywhere: true` for every organisation and project of More pipelines),
+  `addon_pipelines_runs` (`state` running / recent / failed, filters pipeline, branch, repo, org,
+  project, `top`; running asks for `inProgress` and `notStarted` apart; the stages of runs going) and
+  `addon_pipelines_run` (one run by id or link: stages, jobs, failed steps with their errors, the last
+  40 lines of the first failed step's log, its link). Same code, caches and tenant pinning as the
+  view; `everywhere` looks at 40 projects a call at most. **No tool starts, queues, re-runs or
+  cancels a run**, and each description says so: runs and deploys are started only by you, from the
+  Run form. The phone concierge answers "are any pipelines running?" with them. Text in
+  `lib/report.ts` (tested).
+
 Commands used: `git remote get-url`, `git for-each-ref`, `az pipelines list / show / run / runs list
-/ runs show`, `az repos ref list`, `az devops invoke` (timeline, YAML), `az rest` (your organisations), `az devops project list`.
+/ runs show`, `az repos ref list`, `az devops invoke` (timeline, YAML, a failed step's log), `az rest` (your organisations), `az devops project list`.
 Parsers in `lib/devops.ts`, `lib/runs.ts` and `lib/orgs.ts` (tested).
 
 Run details include **Duration** (start-to-finish or live elapsed execution time, excluding queue

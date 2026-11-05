@@ -47,6 +47,118 @@
       }
     ],
     "events": [{ "on": "azure.tenant", "run": "tenantChanged" }],
+    "tools": [
+      {
+        "id": "pipelines",
+        "description": "List Azure DevOps pipelines with each one's newest run (state, branch, why, who, how long ago, stages), as the Pipelines view shows them: by default the pipelines of the user's checked-out repositories, grouped per repository; everywhere: true lists every organisation and project the view's More pipelines covers. Read only: never start, queue, re-run or cancel a pipeline run, with this or any other tool (not with az pipelines run in a shell either). Runs and deploys are started only by the user, from the Pipelines view's Run form.",
+        "readOnly": true,
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "Only the pipelines of repositories whose name contains this (with everywhere: pipelines whose name contains it)",
+            "optional": true
+          },
+          "org": {
+            "type": "string",
+            "description": "Only this Azure DevOps organisation (name or URL)",
+            "optional": true
+          },
+          "project": {
+            "type": "string",
+            "description": "Only Azure DevOps projects whose name contains this",
+            "optional": true
+          },
+          "everywhere": {
+            "type": "boolean",
+            "description": "Every organisation and project, not only the checked-out repositories' pipelines (slower)",
+            "optional": true
+          }
+        },
+        "run": "toolPipelines"
+      },
+      {
+        "id": "runs",
+        "description": "List Azure DevOps pipeline runs, newest first, each with its state (queued, running, succeeded, failed…), branch, why, who, timing, stages while it runs, and link. Use state 'running' to answer 'is anything running / deploying?', 'failed' for what broke, 'recent' (default) for the latest runs. By default the pipelines of the user's checked-out repositories; everywhere: true covers every organisation and project the Pipelines view knows. Read only: never start, queue, re-run or cancel a run. Runs and deploys are started only by the user, from the Pipelines view's Run form.",
+        "readOnly": true,
+        "params": {
+          "state": {
+            "type": "string",
+            "enum": ["running", "recent", "failed"],
+            "description": "running: queued or in progress; recent: the newest of any state (default); failed: failed ones",
+            "optional": true
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Only this pipeline: its key (org/project/id from the pipelines tool), id or part of its name",
+            "optional": true
+          },
+          "branch": {
+            "type": "string",
+            "description": "Only runs of this branch (e.g. main)",
+            "optional": true
+          },
+          "repo": {
+            "type": "string",
+            "description": "Only the pipelines of repositories whose name contains this",
+            "optional": true
+          },
+          "org": {
+            "type": "string",
+            "description": "Only this Azure DevOps organisation (name or URL)",
+            "optional": true
+          },
+          "project": {
+            "type": "string",
+            "description": "Only Azure DevOps projects whose name contains this",
+            "optional": true
+          },
+          "everywhere": {
+            "type": "boolean",
+            "description": "Every organisation and project, not only the checked-out repositories' pipelines (slower)",
+            "optional": true
+          },
+          "top": {
+            "type": "number",
+            "description": "How many runs at most (1-50, default 10)",
+            "optional": true
+          }
+        },
+        "run": "toolRuns"
+      },
+      {
+        "id": "run",
+        "description": "One Azure DevOps pipeline run in detail: its state, branch, parameters, every stage and job with its result, the steps that failed with their errors and the last lines of the first failed step's log, and its link. Give the run's id (from the runs tool) or its link. Read only: never re-run, retry or cancel it; the user starts runs from the Pipelines view's Run form.",
+        "readOnly": true,
+        "params": {
+          "id": {
+            "type": "number",
+            "description": "The run's id (the # in the runs tool's list)",
+            "optional": true
+          },
+          "url": {
+            "type": "string",
+            "description": "The run's link (…/_build/results?buildId=…), instead of id",
+            "optional": true
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "The pipeline's key (org/project/id), to know where the run is",
+            "optional": true
+          },
+          "org": {
+            "type": "string",
+            "description": "The run's organisation, with project, when it isn't one of the checked-out repositories'",
+            "optional": true
+          },
+          "project": {
+            "type": "string",
+            "description": "The run's Azure DevOps project, with org",
+            "optional": true
+          }
+        },
+        "run": "toolRun"
+      }
+    ],
     "settings": {
       "title": "Pipelines",
       "component": "PipelinesSettings"

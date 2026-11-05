@@ -6025,3 +6025,32 @@ choice of Telegram and everything below: Claude, on my own.
   setup window lists every resource and command first, one Create runs them in order (the active
   tenant from the top bar), with a written guide as the fallback. It never
   deletes them by itself; Disconnect says what to remove.
+
+## D-371: Claude tools for Pipelines and Repos: read-only, never start a run
+
+- Status: accepted.
+- **Who:** Jon asked, 2026-11-05 (task queue: "Claude can use everything the switched-on add-ons
+  offer"; the phone bot couldn't answer "are any pipelines running?"), and set the rule that pipeline
+  runs and deploys are always started by him from the Run form, never by Claude. Which tools, their
+  shape and the plan for the rest: Claude, on my own.
+- **Pipelines gets three read-only tools** (`addon_pipelines_pipelines`, `_runs`, `_run`), on the
+  same code and caches as the view (`pipelines`, `latest`, the organisations of More pipelines,
+  tenant pinning D-345). `runs` takes `state` running / recent / failed; running asks Azure DevOps
+  for `inProgress` and `notStarted` apart, so a long run older than the newest finished ones isn't
+  missed. `run` gives stages, jobs, the failed steps with their errors and the last 40 lines of the
+  first failed step's log. By default they cover your checked-out repositories' pipelines (the
+  view's main list); `everywhere: true` covers More pipelines' organisations, capped at 40 projects
+  a call so a call fits the add-on host's time limit.
+- **No tool starts, queues, re-runs or cancels a run,** and each tool's description says so (also
+  not with `az pipelines run` in a shell). The Run form stays the only way; the phone concierge's
+  "Never run pipelines or deploys" stays.
+- **Repos gets `status` and `commits` (read-only) and `fetch` (asks first)**, fitting the view's
+  Fetch / Fetch all repos actions. No pull or push tool: they change your working tree or the
+  remote, and Jon pushes himself.
+- **Not added, with reasons** (plan items in `docs/plan/26-phone.md`): Scripts (listing and
+  starting scripts lives on the UI context, `ctx.scripts`; the host API has no `scripts`, so a tool
+  needs a new host API first), Meetings (a meetings list is Jig's own code in `main/meetings`, not
+  the add-on; `jig_meeting_read` needs an id), Git and Files (chats have the shell and file tools;
+  Repos' status covers the phone).
+- The phone concierge's prompt names the new tools for pipeline and repository questions, so it
+  answers them itself instead of starting a chat.

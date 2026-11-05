@@ -160,7 +160,7 @@
         "apps/desktop/src/main/scripts/**",
         "apps/desktop/src/renderer/features/scripts/**"
       ],
-      "specs": ["builtin-addons.spec.ts", "terminals.spec.ts"]
+      "specs": ["builtin-addons.spec.ts", "terminals.spec.ts", "pipelines.spec.ts"]
     },
     {
       "files": ["apps/desktop/src/renderer/features/worktrees/**", "apps/desktop/src/main/worktrees/**"],

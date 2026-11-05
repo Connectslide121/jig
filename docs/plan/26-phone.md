@@ -128,6 +128,19 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       button, "🤖 Jig itself", goes back).
 - [ ] Check the concierge on a real bot: that `tools: ["ToolSearch"]` leaves the add-on tools
       reachable, how well it starts chats from loose wording, and the cost of the helper model.
+- [x] Pipelines and Repos tools (D-371): `addon_pipelines_pipelines` / `_runs` / `_run` (read only,
+      never start a run) and `addon_repos_status` / `_commits` (read only) / `_fetch` (asks); the
+      concierge's prompt names them for "are any pipelines running?" and "is everything pushed?".
+- [ ] Scripts tools: `list` (each project's scripts and groups, which run) read only, and `start` /
+      `stop` asking first, fitting the view's Run/Stop actions. Needs `scripts` on the add-on host
+      API first (today only the UI context has `ctx.scripts.list/run/stop`), so it's more than a
+      manifest change. Claude in a chat has `jig_terminal_list` meanwhile; the phone has nothing.
+- [ ] A meetings list tool (`jig_meetings_list`: recent meetings with id, title, date, whether
+      notes/actions wait for review), read only, in `main/meetings` (Jig's own code, not the add-on):
+      `jig_meeting_read` needs an id, so the phone can't answer "what was decided in today's meeting?".
+- [ ] Not planned: Git and Files tools. Chats have the shell and file tools, and Repos' status and
+      commits cover what the phone needs. Repos pull/push tools stay out (they change your working
+      tree or the remote; you pull and push yourself).
 - [x] Pictures (Jon: "can Jig send me screenshots? … there is no privacy to worry about"):
       `jig_phone_send` takes `browserScreenshot` (the chat's page) or `image` (a PNG/JPEG path);
       `/screen` sends Jig's window (JPEG, at most 1600 wide); a finished turn that used Claude's

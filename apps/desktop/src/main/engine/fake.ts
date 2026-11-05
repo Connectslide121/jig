@@ -1102,7 +1102,7 @@ ${output.slice(0, 600)}`,
           }
         } else if (
           toolHandlers?.jig_update_settings &&
-          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone)\b/.test(
+          /\b(theme|light mode|dark mode|terminals? to the right|pipelines (?:below|under) git|make a project for this chat|add the stage links|by hand on the vm|weekly check-in|profile interview|since the last release|in the releases data|as a workflow|remember in the notes|run the unit tests|in a jig terminal|text my phone|any pipelines running)\b/.test(
             lower,
           )
         ) {
@@ -1164,6 +1164,18 @@ ${output.slice(0, 600)}`,
             for (let i = 0; runId && i < 5 && /still running/.test(result); i++)
               result = await call("addon_tests_wait", { id: runId, wait: 10 });
             await stream(`${msg}:text:0`, `The unit tests ran. ${result.split("\n")[0]}`, signal);
+          } else if (/any pipelines running/.test(lower)) {
+            // The Pipelines and Repos tools (D-371): runs going, the newest runs, one run, repo status.
+            const running = await call("addon_pipelines_runs", { state: "running" });
+            const recent = await call("addon_pipelines_runs", {});
+            const id = /#(\d+)/.exec(recent)?.[1];
+            const run = id ? await call("addon_pipelines_run", { id: Number(id) }) : "";
+            const repos = await call("addon_repos_status", {});
+            await stream(
+              `${msg}:text:0`,
+              [running, recent, run, repos].map((r) => r.split("\n")[0]).join("\n\n"),
+              signal,
+            );
           } else if (/remember in the notes/.test(lower)) {
             // The project notes tool: a note for this project (it shows in its Knowledge and Notes view).
             await call("jig_notes_add", {

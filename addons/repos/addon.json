@@ -39,6 +39,55 @@
         "run": "fetchAll"
       }
     ],
+    "tools": [
+      {
+        "id": "status",
+        "description": "Every repository in the user's workspaces at a glance, as the Repos view shows it: branch and upstream, commits to push and to pull, changed (uncommitted) files, when it was last fetched, and its path. attention: true lists only those with something to do. Answers 'is everything pushed?', 'what is uncommitted?', 'which branch is X on?'. Read only; to-pull counts are as of the last fetch (the fetch tool updates them).",
+        "readOnly": true,
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "Only repositories whose name contains this (or this path)",
+            "optional": true
+          },
+          "attention": {
+            "type": "boolean",
+            "description": "Only repositories with changes, commits to push or pull, no upstream, or an error",
+            "optional": true
+          }
+        },
+        "run": "toolStatus"
+      },
+      {
+        "id": "commits",
+        "description": "A repository's newest commits (hash, how long ago, author, subject, branches and tags), the ones waiting to be pulled first, each marked to push or to pull. Read only.",
+        "readOnly": true,
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name or path, as the status tool lists it"
+          },
+          "limit": {
+            "type": "number",
+            "description": "How many commits (1-50, default 15)",
+            "optional": true
+          }
+        },
+        "run": "toolCommits"
+      },
+      {
+        "id": "fetch",
+        "description": "Fetch one repository from its remotes (git fetch --all --prune), or every repository like the Repos view's Fetch all repos, and say its state after. Only fetches: it never pulls, merges or pushes (the user does that from the Repos or Git view). Asks the user first.",
+        "params": {
+          "repo": {
+            "type": "string",
+            "description": "The repository's name or path; leave out to fetch all",
+            "optional": true
+          }
+        },
+        "run": "toolFetch"
+      }
+    ],
     "menus": [
       {
         "slot": "context.project",

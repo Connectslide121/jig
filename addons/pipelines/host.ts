@@ -23,6 +23,21 @@ import {
   readSettings,
   type Settings,
 } from "./lib/orgs";
+import {
+  detailText,
+  fromRun,
+  type ListedRun,
+  latestText,
+  logTail,
+  matchesFilter,
+  matchesName,
+  matchesPipeline,
+  parseRunUrl,
+  type RunFilter,
+  runDetail,
+  runText,
+  type TimelineRecord,
+} from "./lib/report";
 import { latestRuns, type Pipeline, type Run, runState, runUrl, toPipeline, toRun } from "./lib/runs";
 import { foreignErrors } from "./lib/tenants";
 
@@ -812,4 +827,318 @@ export async function saved(_: unknown, host: AddonHostApi) {
 /** Tools → Run a pipeline…: the view opens that pipeline's Run form. */
 export async function openRunForm({ key }: { key: string }, api: AddonHostApi) {
   api.emit("open-run", key);
+}
+
+// ── Claude's tools (D-371): read only. A run is started by you from the Run form, never by Claude. ──
+
+type ChatArgs = { chat?: { cwd?: string; projectId?: string } };
+
+interface Where {
+  /** Also every organisation and project of More pipelines, not only your checked-out repositories'. */
+  everywhere?: boolean;
+  repo?: string;
+  org?: string;
+  project?: string;
+}
+
+/** Projects looked at in one call at most when `everywhere` (each costs an az call or two). */
+const TOOL_PROJECTS = 40;
+/** Running runs whose stages are read for a list. */
+const STAGES_FOR = 8;
+
+const inOrg = (org: string, query?: string) => matchesName(orgName(org), query && orgName(query));
+
+/** Your checked-out repositories' pipelines that answer to the filters. */
+async function foundFor(api: AddonHostApi, args: Where & { pipeline?: string }) {
+  const found = await pipelines({}, api);
+  return {
+    errors: [...found.errors],
+    list: found.pipelines.filter(
+      (p) =>
+        matchesName(p.repoName, args.repo) &&
+        inOrg(p.org, args.org) &&
+        matchesName(p.project, args.project) &&
+        matchesPipeline(p, args.pipeline),
+    ),
+  };
+}
+
+/** Every organisation and project of More pipelines that answers to the filters (at most TOOL_PROJECTS). */
+async function projectsFor(api: AddonHostApi, args: Where) {
+  const { orgs, error } = await orgsToShow(api);
+  const errors = error ? [error] : [];
+  const pairs: Array<{ org: string; project: string }> = [];
+  await inBatches(
+    orgs.filter((o) => inOrg(o.org, args.org)),
+    PARALLEL,
+    async (o) => {
+      try {
+        const projects = o.projects ?? (await listProjects({ org: o.org }, api));
+        for (const project of projects)
+          if (matchesName(project, args.project)) pairs.push({ org: orgName(o.org), project });
+      } catch (e) {
+        errors.push(`${orgName(o.org)}: ${(e as Error).message}`);
+      }
+    },
+  );
+  pairs.sort((a, b) => a.org.localeCompare(b.org) || a.project.localeCompare(b.project));
+  if (pairs.length > TOOL_PROJECTS)
+    errors.push(
+      `Only the first ${TOOL_PROJECTS} of ${pairs.length} projects were looked at: name an organisation or project.`,
+    );
+  return { pairs: pairs.slice(0, TOOL_PROJECTS), errors };
+}
+
+/** A build's timeline, null when it can't be read. */
+function timelineOf(api: AddonHostApi, org: string, project: string, runId: number) {
+  return azSaved<{ records?: TimelineRecord[] }>(api, [
+    "devops",
+    "invoke",
+    "--area",
+    "build",
+    "--resource",
+    "Timeline",
+    "--route-parameters",
+    `project=${project}`,
+    `buildId=${runId}`,
+    "--org",
+    orgUrl(org),
+    "--api-version",
+    "7.1",
+  ]).catch(() => null);
+}
+
+const withErrors = (lines: string[], errors: string[]) =>
+  [...lines, ...(errors.length ? ["", "Couldn't read:", ...errors.map((e) => `- ${e}`)] : [])].join("\n");
+
+/** Tool `pipelines`: the pipelines and each one's newest run. */
+export async function toolPipelines(args: ChatArgs & Where, host: AddonHostApi): Promise<string> {
+  const api = pinned(host);
+  const now = Date.now();
+  const lines: string[] = [];
+  if (!args.everywhere) {
+    const { list, errors } = await foundFor(api, args);
+    if (!list.length)
+      return withErrors(
+        [
+          "No pipelines found for your checked-out repositories (that match). Pass everywhere: true for every organisation's pipelines.",
+        ],
+        errors,
+      );
+    const { runs, error } = await latest({ keys: list.map((p) => p.key) }, api);
+    let repo = "";
+    for (const p of list) {
+      if (p.repoName !== repo) {
+        repo = p.repoName;
+        lines.push(`${repo} (${p.org}/${p.project}, ${p.repoPath}):`);
+      }
+      lines.push(`- ${p.name} [${p.key}]: ${latestText(runs[p.key], now)}`);
+    }
+    return withErrors(lines, error ? [...errors, error] : errors);
+  }
+  const { pairs, errors } = await projectsFor(api, args);
+  const blocks = await inBatches(pairs, PARALLEL, async ({ org, project }) => {
+    try {
+      const common = ["--org", orgUrl(org), "--project", project];
+      const list = await pipelinesCache(api, `${orgUrl(org)}|${project}`.toLowerCase(), async () =>
+        ((await az<unknown[]>(api, ["pipelines", "list", ...common])) ?? []).map(toPipeline),
+      );
+      const wanted = list.filter((p) => matchesName(p.name, args.repo));
+      if (!wanted.length) return [];
+      const newest = latestRuns(
+        ((await az<unknown[]>(api, ["pipelines", "runs", "list", ...common, "--top", "100"])) ?? []).map(
+          toRun,
+        ),
+      );
+      return [
+        `${org}/${project}:`,
+        ...wanted.map((p) => {
+          const run = newest.get(p.id);
+          return `- ${p.name} [${org}/${project}/${p.id}]: ${latestText(run && fromRun(run), now)}`;
+        }),
+      ];
+    } catch (e) {
+      errors.push(`${org}/${project}: ${(e as Error).message}`);
+      return [];
+    }
+  });
+  lines.push(...blocks.flat());
+  return withErrors(lines.length ? lines : ["No pipelines found (that match)."], errors);
+}
+
+/** Tool `runs`: runs that are going, the newest or the failed ones, across the pipelines asked for. */
+export async function toolRuns(
+  args: ChatArgs & Where & { state?: RunFilter; pipeline?: string; branch?: string; top?: number },
+  host: AddonHostApi,
+): Promise<string> {
+  const api = pinned(host);
+  const filter: RunFilter = args.state ?? "recent";
+  const top = Math.min(50, Math.max(1, Math.round(args.top ?? 10)));
+  let targets: Array<{ org: string; project: string; ids?: number[] }>;
+  let errors: string[];
+  if (args.everywhere) {
+    ({ pairs: targets, errors } = await projectsFor(api, args));
+  } else {
+    const found = await foundFor(api, args);
+    errors = found.errors;
+    const byProject = new Map<string, { org: string; project: string; ids: number[] }>();
+    for (const p of found.list) {
+      const group = byProject.get(`${p.org}/${p.project}`) ?? { org: p.org, project: p.project, ids: [] };
+      group.ids.push(p.id);
+      byProject.set(`${p.org}/${p.project}`, group);
+    }
+    targets = [...byProject.values()];
+  }
+  const branch = args.branch?.trim();
+  const runs: ListedRun[] = [];
+  await inBatches(targets, PARALLEL, async ({ org, project, ids }) => {
+    const common = [
+      "pipelines",
+      "runs",
+      "list",
+      "--org",
+      orgUrl(org),
+      "--project",
+      project,
+      "--top",
+      String(top),
+      "--query-order",
+      "QueueTimeDesc",
+      ...(ids?.length ? ["--pipeline-ids", ...ids.map(String)] : []),
+      ...(branch ? ["--branch", branch.startsWith("refs/") ? branch : `refs/heads/${branch}`] : []),
+    ];
+    // Queued and running are asked for apart: a long run can be older than the newest finished ones.
+    const asks =
+      filter === "running"
+        ? [
+            [...common, "--status", "inProgress"],
+            [...common, "--status", "notStarted"],
+          ]
+        : filter === "failed"
+          ? [[...common, "--result", "failed"]]
+          : [common];
+    try {
+      for (const list of await Promise.all(asks.map((a) => az<unknown[]>(api, a)))) {
+        // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+        for (const b of (list ?? []) as any[]) {
+          const run = fromBuild(b);
+          const pipeline = String(b.definition?.name ?? "");
+          const pipelineId = Number(b.definition?.id);
+          if (!run || !matchesFilter(run, filter)) continue;
+          // Your repositories' pipelines were picked by id already; elsewhere the name is matched here.
+          if (!ids && !matchesPipeline({ id: pipelineId, name: pipeline }, args.pipeline)) continue;
+          runs.push({ ...run, pipeline, pipelineId, org, project });
+        }
+      }
+    } catch (e) {
+      errors.push(`${org}/${project}: ${(e as Error).message}`);
+    }
+  });
+  const listed = runs.sort((a, b) => b.queued - a.queued || b.id - a.id).slice(0, top);
+  // The stages of the runs still going (a finished run's: ask for that run).
+  await inBatches(
+    listed.filter((r) => r.status !== "completed").slice(0, STAGES_FOR),
+    PARALLEL,
+    async (r) => {
+      r.stages = stagesOf(await timelineOf(api, r.org, r.project, r.id));
+    },
+  );
+  const where = args.everywhere ? "in your organisations" : "in your checked-out repositories' pipelines";
+  const what = { running: "running or queued ", recent: "", failed: "failed " }[filter];
+  if (!listed.length) return withErrors([`No ${what}runs ${where} (that match).`], errors);
+  const now = Date.now();
+  return withErrors(
+    [
+      `${listed.length} ${what || "newest "}run${listed.length === 1 ? "" : "s"} ${where}:`,
+      ...listed.map(
+        (r) =>
+          `- ${r.pipeline} (${r.org}/${r.project}) ${runText(r, now)} · ${runUrl(orgUrl(r.org), r.project, r.id)}`,
+      ),
+    ],
+    errors,
+  );
+}
+
+/** Tool `run`: one run's stages, jobs, failed steps (with the end of the first one's log) and link. */
+export async function toolRun(
+  args: ChatArgs & { id?: number; url?: string; pipeline?: string; org?: string; project?: string },
+  host: AddonHostApi,
+): Promise<string> {
+  const api = pinned(host);
+  const fromUrl = args.url ? parseRunUrl(args.url) : null;
+  const id = fromUrl?.id ?? Number(args.id);
+  if (!id) throw new Error("Give the run's id (the # in the runs tool's list) or its link.");
+  let places: Array<{ org: string; project: string }>;
+  if (fromUrl) places = [fromUrl];
+  else if (args.pipeline && /^[^/]+\/[^/]+\/\d+$/.test(args.pipeline)) places = [fromKey(args.pipeline)];
+  else if (args.org && args.project) places = [{ org: orgName(args.org), project: args.project }];
+  else {
+    // The projects of your checked-out repositories' pipelines, each tried until one has the run.
+    const { list } = await foundFor(api, { ...args, pipeline: undefined });
+    places = [
+      ...new Map(list.map((p) => [`${p.org}/${p.project}`, { org: p.org, project: p.project }])).values(),
+    ];
+    if (!places.length) throw new Error("Name the run's organisation and project, or give its link.");
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: az JSON.
+  let shown: any;
+  let at: { org: string; project: string } | undefined;
+  let lastError = "";
+  for (const place of places) {
+    try {
+      shown = await az<unknown>(api, [
+        "pipelines",
+        "runs",
+        "show",
+        "--id",
+        String(id),
+        "--org",
+        orgUrl(place.org),
+        "--project",
+        place.project,
+      ]);
+      at = place;
+      break;
+    } catch (e) {
+      lastError = (e as Error).message;
+    }
+  }
+  const run = fromBuild(shown);
+  if (!at || !run) throw new Error(`Run #${id} wasn't found${lastError ? `: ${lastError}` : "."}`);
+  const timeline = await timelineOf(api, at.org, at.project, id);
+  const detail = timeline ? runDetail(timeline) : null;
+  const failed = detail?.failures.find((f) => f.logId !== undefined);
+  const log = failed
+    ? await azSaved<string>(
+        api,
+        [
+          "devops",
+          "invoke",
+          "--area",
+          "build",
+          "--resource",
+          "logs",
+          "--route-parameters",
+          `project=${at.project}`,
+          `buildId=${id}`,
+          `logId=${failed.logId}`,
+          "--org",
+          orgUrl(at.org),
+          "--api-version",
+          "7.1",
+        ],
+        "text/plain",
+      )
+        .then((text) => logTail(text))
+        .catch(() => "")
+    : "";
+  return detailText({
+    run,
+    pipeline: String(shown?.definition?.name ?? ""),
+    org: orgName(at.org),
+    project: at.project,
+    url: runUrl(orgUrl(at.org), at.project, id),
+    detail,
+    log,
+  });
 }

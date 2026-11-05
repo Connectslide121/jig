@@ -37,6 +37,12 @@ your projects (the add-on's global storage, `arrangement`); new repositories com
   repositories still present remain visible; refresh does not discard their saved arrangements.
 - **Live:** besides focus and a minute's poll, a commit or branch switch in any project's repository
   (from a chat, a terminal or another app) refreshes the overview at once (Jig events, D-215).
+- **Claude** (D-371): `addon_repos_status` (every repository's branch → upstream, to push / to pull,
+  changed files, last fetch and path; `attention: true` for only those with something to do) and
+  `addon_repos_commits` (a repository's newest commits, marked to push or to pull) only read;
+  `addon_repos_fetch` (one repository, or all like Fetch all repos) asks you first. There is no pull
+  or push tool: you pull and push from this view or Git. Text in `lib/report.ts` (tested). The phone
+  concierge uses them for "is everything pushed?".
 - Right-click a project or repo → Open in VS Code (your `code` command) / Open in Explorer.
 
 Uses your own `git` and `code`.
