@@ -688,6 +688,8 @@ export interface HostMethods {
   "terminals.rename": { args: { id: string; title: string }; result: void };
   "terminals.kill": { args: { id: string }; result: void };
   "terminals.close": { args: { id: string }; result: void };
+  /** The terminal on screen in the Terminals view (none: the view is out of sight), D-373. */
+  "terminals.watching": { args: { id?: string }; result: void };
   /** Opens a private terminal running Claude Code so you can sign in (`/login`). */
   /** Shells installed on this machine and the default one (what an empty `terminal.shell` starts), D-240. */
   "terminals.shells": { args: void; result: ShellChoices };

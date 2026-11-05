@@ -40,11 +40,12 @@ test("a chat's terminal badges the Terminals tab instead of switching while you 
   await expect(view).toHaveCount(0);
   await expect(other).toHaveClass(/bg-active/);
 
-  // Looking at the Terminals tab clears the badge and shows the chat's terminal.
+  // Looking at the Terminals tab clears the badge (the finished terminal may have closed, D-373).
   await page.getByTestId("view-tabs-bottom").locator("[data-view-id='jig.terminals']").click();
-  await expect(view).toBeVisible();
+  await expect(page.getByTestId("view-tabs-bottom").locator("[data-view-id='jig.terminals']")).toHaveClass(
+    /bg-active/,
+  );
   await expect(badge).toHaveCount(0);
-  await expect(page.getByTestId("terminal-tab-Claude: Build")).toHaveAttribute("aria-selected", "true");
 
   // You work in another panel: the next terminal switches the bottom panel to Terminals.
   await other.click();

@@ -4,6 +4,7 @@ import type { TerminalInfo } from "../../shared/terminals";
 import { outputTail } from "../../shared/terminalText";
 import type { JigTool } from "../engine/jigTools";
 import { isInside } from "../themes/sources";
+import type { FinishedTerminals } from "./autoClose";
 import type { TerminalManager } from "./manager";
 
 const describe = (t: TerminalInfo) =>
@@ -34,6 +35,8 @@ export function terminalTools(deps: {
   manager: () => TerminalManager;
   projectPath: (projectId: string | undefined) => Promise<string | undefined>;
   reveal: (id: string) => void;
+  /** Finished Claude terminals close by themselves (D-373); `hold` keeps one open while run answers. */
+  finished?: Pick<FinishedTerminals, "hold" | "release" | "forget">;
 }): JigTool[] {
   const visible = (projectId: string | undefined) =>
     deps
@@ -49,7 +52,7 @@ export function terminalTools(deps: {
     {
       name: "jig_terminal_run",
       description:
-        "Start a long-running command (dev server, watcher, `npm run dev`, a test runner in watch mode) in a terminal the user sees in Jig. Returns its id; read its output with jig_terminal_read. When it exits by itself, Jig sends this chat a message with its exit code and last lines, so don't poll it with sleep timers: end your turn and wait. Use your own shell for commands that finish quickly.",
+        "Start a long-running command (dev server, watcher, `npm run dev`, a test runner in watch mode) in a terminal the user sees in Jig. Returns its id; read its output with jig_terminal_read. When it exits by itself, Jig sends this chat a message with its exit code and last lines, so don't poll it with sleep timers: end your turn and wait; the terminal then closes by itself. Stop it with jig_terminal_stop once you no longer need it (e.g. a dev server after testing). Use your own shell for commands that finish quickly.",
       shape: {
         command: z.string().describe("The command, run by the user's shell"),
         title: z.string().optional().describe("Short name shown in the terminal list"),
@@ -76,10 +79,16 @@ export function terminalTools(deps: {
           sessionId: meta.id,
         });
         deps.reveal(t.id);
-        // Give it a moment, so the first output (a port, an error) comes back with the answer.
-        await new Promise((r) => setTimeout(r, 1500));
-        const now = deps.manager().get(t.id);
-        return `Started terminal ${t.id} (${now.status === "running" ? "running" : `exited with code ${now.exitCode}`}). First output:\n${outputTail(deps.manager().buffer(t.id), 30) || "(nothing yet)"}`;
+        // Give it a moment, so the first output (a port, an error) comes back with the answer; a
+        // command that already exited waits to close until then (D-373).
+        deps.finished?.hold(t.id);
+        try {
+          await new Promise((r) => setTimeout(r, 1500));
+          const now = deps.manager().get(t.id);
+          return `Started terminal ${t.id} (${now.status === "running" ? "running" : `exited with code ${now.exitCode}`}). First output:\n${outputTail(deps.manager().buffer(t.id), 30) || "(nothing yet)"}`;
+        } finally {
+          deps.finished?.release(t.id);
+        }
       },
     },
     {
@@ -115,14 +124,15 @@ export function terminalTools(deps: {
     {
       name: "jig_terminal_stop",
       description:
-        "Stop the process in a terminal you started (the terminal stays, so its output can still be read).",
+        "Stop a terminal you started and close it, once you no longer need it (a dev server after testing, a watcher). Read its output with jig_terminal_read first if you still need it.",
       shape: { id: z.string() },
       handler: async (args, meta) => {
         const t = find(meta.projectId, String(args.id));
         if (t.sessionId !== meta.id)
           throw new Error("Only terminals this chat started can be stopped; ask the user to stop the others");
-        deps.manager().kill(t.id);
-        return `Stopped ${t.id}.`;
+        deps.finished?.forget(t.id);
+        deps.manager().close(t.id);
+        return `Stopped and closed ${t.id}.`;
       },
     },
   ];

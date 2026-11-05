@@ -53,7 +53,8 @@ describe("terminal tools for Claude", () => {
       await expect(call("jig_terminal_stop", { id: other.id })).rejects.toThrow(
         /Only terminals this chat started/,
       );
-      expect(await call("jig_terminal_stop", { id })).toBe(`Stopped ${id}.`);
+      expect(await call("jig_terminal_stop", { id })).toBe(`Stopped and closed ${id}.`);
+      expect(m.list().some((t) => t.id === id)).toBe(false);
       m.kill(other.id);
       expect(tools.jig_terminal_read!.readOnly).toBe(true);
       expect(tools.jig_terminal_run!.readOnly).toBeUndefined();

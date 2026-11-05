@@ -70,13 +70,21 @@ Chats get tools on the `jig` MCP server (`main/terminals/claudeTools.ts`):
 - `jig_terminal_read { id, lines? }` (read-only, no prompt) returns the last lines of a terminal of the
   project, plain text: Claude's own terminals, scripts, or your dev server.
 - `jig_terminal_list` (read-only) lists the project's terminals.
-- `jig_terminal_stop { id }` stops only terminals that chat started.
+- `jig_terminal_stop { id }` stops and closes (removes) a terminal; only terminals that chat started.
+  The tool description and the appended prompt ask Claude to stop terminals it no longer needs.
 - When a terminal Claude started exits by itself (not stopped or closed), Jig tells the chat that
   started it (D-281): `SessionManager.notify` sends a message with the exit code and the last 40
   lines (`exitNotice`), starting a turn in an idle chat or joining the running one. The transcript
   shows it as one line (`from` on the user item, "Jig told Claude", the full text in its tooltip),
   never as something you typed. The tool description and the appended prompt tell Claude to end its
   turn instead of polling with sleep timers.
+- **Finished terminals close themselves (D-373).** Once the chat has its exit notice, the terminal is
+  closed (`FinishedTerminals`, `main/terminals/autoClose.ts`): one that succeeded right away, unless it
+  is the terminal on screen (the active one while the Terminals view is visible, which the renderer
+  reports with `terminals.watching`), then when you switch away; one that failed only after you have
+  looked at it and switched away. While `jig_terminal_run` is still answering it waits, so the answer
+  has the output. Archiving or deleting a chat closes all its terminals (`onSessionClosed`). Your own
+  terminals, scripts and sign-in terminals are never closed this way.
 
 Private terminals (the Claude Code sign-in) are never visible to these tools. The appended prompt tells
 Claude to use them for anything that keeps running, and its own shell for commands that finish. A

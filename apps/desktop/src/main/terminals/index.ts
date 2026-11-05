@@ -11,10 +11,11 @@ import { emit, handle } from "../ipc/router";
 import { projectStore } from "../projects";
 import { CODEX_UNSET_ENV, codexBinary } from "../providers";
 import { type CodexSignIn, parseCodexLoginStatus } from "../providers/codex";
-import { sessionManager } from "../sessions";
+import { onSessionClosed, sessionManager } from "../sessions";
 import { execTool } from "../setup/checks";
 import { type ClaudeSignIn, parseSignIn } from "../setup/signIn";
 import { refreshChatGptUsage } from "../usage";
+import { FinishedTerminals } from "./autoClose";
 import { claudeBinary } from "./claudeBinary";
 import { exitNotice, terminalTools } from "./claudeTools";
 import { TerminalManager } from "./manager";
@@ -34,6 +35,7 @@ export function terminalManager(): TerminalManager {
 
 export function startTerminals(): void {
   const which = makeWhich(process.env);
+  const finished = new FinishedTerminals((id) => manager?.close(id));
   manager = new TerminalManager({
     spawn: spawn as never,
     shell: () => defaultShell(getConfig().terminal.shell, process.platform, process.env, which),
@@ -50,11 +52,13 @@ export function startTerminals(): void {
       if (terminal.id === signInTerminal) void afterSignIn(terminal.id);
       if (terminal.id === codexSignInTerminal) void afterCodexSignIn(terminal.id);
       // A command Claude started has finished: tell its chat, so Claude reacts instead of polling.
+      // Once it has the notice, the terminal closes by itself when nothing needs it on screen (D-373).
       if (terminal.sessionId) {
         const notice = exitNotice(terminal, manager?.buffer(terminal.id) ?? "");
         void Promise.resolve()
           .then(() => sessionManager().notify(terminal.sessionId!, notice.text, notice.from))
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => finished.done(terminal.id, (terminal.exitCode ?? 0) !== 0));
       }
       if (terminal.scriptId && !terminal.private && terminal.exitCode && terminal.exitCode > 0)
         publishActivity({
@@ -66,6 +70,13 @@ export function startTerminals(): void {
     },
   });
   const m = manager;
+  // A chat archived or deleted no longer needs its terminals, finished or not (D-373).
+  onSessionClosed((sessionId) => {
+    for (const t of m.list().filter((x) => x.sessionId === sessionId)) {
+      finished.forget(t.id);
+      m.close(t.id);
+    }
+  });
   registerJigTools(
     terminalTools({
       manager: () => m,
@@ -78,6 +89,7 @@ export function startTerminals(): void {
             )?.path
           : undefined,
       reveal: (id) => emit("terminals.reveal", { id }),
+      finished,
     }),
   );
 
@@ -116,7 +128,11 @@ export function startTerminals(): void {
   handle("terminals.buffer", ({ id }) => m.buffer(id));
   handle("terminals.rename", ({ id, title }) => m.rename(id, title));
   handle("terminals.kill", ({ id }) => m.kill(id));
-  handle("terminals.close", ({ id }) => m.close(id));
+  handle("terminals.close", ({ id }) => {
+    finished.forget(id);
+    m.close(id);
+  });
+  handle("terminals.watching", ({ id }) => finished.watch(id));
   // Claude Code's own sign-in (`claude auth login`), which ends by itself once you're signed in.
   handle("terminals.claudeLogin", async ({ projectId }) => {
     const cwd = projectId ? (await projectStore().get(projectId)).path : homedir();

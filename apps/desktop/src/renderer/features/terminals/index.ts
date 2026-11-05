@@ -1,8 +1,10 @@
 import { KeyRound, SquareTerminal } from "lucide-react";
 import { useEffect } from "react";
+import { viewVisible } from "../../../shared/layout";
 import { call, useHostEvent } from "../../lib/host";
 import { registerAction, registerStatusItem, registerView } from "../../workbench/registry";
 import { revealView, useClearViewBadge } from "../../workbench/revealView";
+import { useWorkbench } from "../../workbench/store";
 import { notify } from "../../workbench/toasts";
 import { RunningScripts } from "../scripts/RunningScripts";
 import { claudeLogin, codexLogin, newTerminal, showTerminal, TERMINALS_VIEW } from "./actions";
@@ -82,6 +84,13 @@ export function useTerminalsSync(): void {
     revealView(TERMINALS_VIEW, id);
   });
   useClearViewBadge(TERMINALS_VIEW);
+  // The host closes finished Claude terminals, but never the one you are looking at (D-373).
+  const visible = useWorkbench((s) => (s.layout ? viewVisible(s.layout, TERMINALS_VIEW) : false));
+  const activeId = useTerminals((s) => s.activeId);
+  const watching = visible ? activeId : undefined;
+  useEffect(() => {
+    void call("terminals.watching", { id: watching }).catch(() => {});
+  }, [watching]);
   // Claude Code's sign-in ended: say whether it worked (the host closed its terminal if it did).
   useHostEvent("claude.signIn", ({ loggedIn, method }) =>
     notify(

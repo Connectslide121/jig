@@ -405,6 +405,14 @@ itself. Covered by `e2e/browser-reveal.spec.ts` and the `revealAction` unit test
 your machine: a queue chat browsing while you read Pipelines in the browser's sidebar (badge, no
 switch), and while you type in another chat (switches).
 
+Claude's terminals close themselves (2026-11-05, D-373): a terminal a chat started closes once it has
+exited and the chat got its exit notice, except the one you are looking at (it closes when you switch
+away) and failed ones, which wait until you have looked at them. `jig_terminal_stop` now closes the
+terminal, chats are asked to stop terminals they no longer need, and archiving or deleting a chat
+closes its terminals. Your own terminals and scripts are untouched. Covered by
+`e2e/claude-terminals.spec.ts` and `autoClose.test.ts`. Needs testing on your machine: a queue task
+that runs several commands in terminals should leave no "Claude: …" rows behind once it is done.
+
 Terminals stay out of your way too (2026-11-05, D-349): a terminal a chat starts (`jig_terminal_run`)
 no longer switches its panel while you work on another tab of it (e.g. Builds or Pipelines in the
 bottom panel); the Terminals tab gets a badge with the number of terminals started, cleared when you

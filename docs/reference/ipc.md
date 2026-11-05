@@ -156,6 +156,7 @@ settings, add-on permissions.
 | `terminals.write` / `terminals.resize` | `{ id, data }` / `{ id, cols, rows }` | — | input / size |
 | `terminals.buffer` | `{ id }` | `string` | scrollback so far |
 | `terminals.rename` / `terminals.kill` / `terminals.close` | `{ id, title }` / `{ id }` / `{ id }` | — | kill stops the process and keeps the output; close removes the terminal |
+| `terminals.watching` | `{ id? }` | — | the terminal on screen in the Terminals view (none: the view is out of sight); finished Claude terminals never close under you (D-373) |
 | `terminals.codexLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running the Codex CLI's ChatGPT sign-in (`codex login`, no OpenAI API key in its environment); when it ends, `codex.signIn` (D-294) |
 | `terminals.claudeLogin` | `{ projectId? }` | `TerminalInfo` | private terminal running Claude Code's sign-in (`claude auth login`); when it ends, `claude.signIn` |
 | `userBrowser.state` | — | `UserBrowserState` | current window's native user page; separate from Claude |

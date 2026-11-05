@@ -6090,3 +6090,29 @@ choice of Telegram and everything below: Claude, on my own.
   `update` takes the new card's type, since the board's cached cards don't have it yet (before, a
   new card's column move sent no state). `addon_boards_create` accepts the same fields;
   `addon_boards_update` gained area and iteration.
+
+## D-373: Claude's terminals close themselves when the chat is done with them
+
+- Status: accepted. Amends D-281 (the exit notice) and `jig_terminal_stop` (which used to keep the
+  terminal).
+- **Who:** Jon, 2026-11-05: the Terminals panel filled up with dozens of finished "Claude: …"
+  terminals; when a chat is done with a terminal it started, it should close itself. The details
+  below (failed terminals, the watched terminal, the hold) are Claude, on my own.
+- **Rule** (`FinishedTerminals`, `main/terminals/autoClose.ts`), only for terminals a chat started
+  (`sessionId`); your own terminals, scripts and sign-in terminals are untouched:
+  - It exits by itself → once its exit notice has been handed to the chat (it has the code and last
+    lines), it closes.
+  - **Not under your eyes:** the terminal on screen (the active one while the Terminals view is visible,
+    reported by the renderer with `terminals.watching`) stays until you switch away.
+  - **A failure stays until seen:** a non-zero exit closes only after you have looked at it and switched
+    away (a failure that happened on screen counts as seen). Why: a failed command is the one case you
+    may want to read yourself, the failure toast offers "Show output" and "Ask Claude" for it (both
+    need the terminal), and the chat being told doesn't mean you were. It's bounded: archiving the
+    chat closes it anyway.
+  - `jig_terminal_run` holds a terminal that exits during its first 1.5 s until its answer has read
+    the output.
+  - `jig_terminal_stop` now closes the terminal (kill + remove); the tool description and the appended
+    prompt ask Claude to stop terminals it no longer needs (a dev server after testing).
+  - Archiving or deleting a chat closes all its terminals (`onSessionClosed`, like its browser page).
+- A row removed from the list moves the rows below it up; the row you are on never moves away, since
+  the terminal on screen is never closed.
