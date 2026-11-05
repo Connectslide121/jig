@@ -77,6 +77,17 @@ went, so you read the results as a table instead of scrolling one long chat.
   id and title (`pendingReportsNote`), as the running task's context does. **Ask for a report** (a No
   report row's ⋯, and its details) sends the chat the same request; it answers with a late report.
   The chat never needs `jig_set_addon_data` for the queue, and the tool says so.
+- **Marked done by you (D-356):** a task that ended in Error or without a report (`canMarkDone`),
+  e.g. its chat did the work and hit its plan's limit before reporting, gets **Mark as done…** in its
+  ⋯ menu and its details. A dialog takes an optional one-line note; the task becomes Done with a
+  report whose summary is the note ("Marked as done by you." without one), keeping its times, cost
+  and chat, and `markedDone: { at, was, error? }` (`markDone`, host `markDone`). The row shows a quiet
+  hand-set mark left of the status badge, the details "Marked done by you …, was Error", Claude's
+  list "marked done by the user"; the counts and History count it as done. Remove and Run again stay.
+  From a chat, when you ask ("mark t33 done"): `addon_tasks_mark_done` (`taskId`, `note?`,
+  `project?`), not read-only, so you approve it on its card; other statuses are refused. Its own chat
+  may still report it later (a revision, D-353). Only tasks still in the queue; a task only in
+  History can't be marked.
 - **Revised reports (D-353):** a chat may report its own ended task again, e.g. after you followed
   up in it and the work is finished: `addon_tasks_report` with that `taskId` (without one, once the
   chat has no running task and nothing unreported, its last reported task). The new report replaces

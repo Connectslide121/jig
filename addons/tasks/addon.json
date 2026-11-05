@@ -144,6 +144,24 @@
         "run": "toolEdit"
       },
       {
+        "id": "mark_done",
+        "description": "Marks a task in the user's task queue as done by hand, only when the user asks for it (e.g. \"mark t33 done\"): for a task that ended in Error or without a report although its work was done, e.g. its chat hit its plan's usage limit before reporting. The task becomes Done with the note as its summary, marked as set by the user, not reported by a chat. Other statuses are refused. addon_tasks_list gives the ids.",
+        "params": {
+          "taskId": { "type": "string", "description": "The task's id (e.g. t33)" },
+          "note": {
+            "type": "string",
+            "description": "One line saved as the task's summary, e.g. what was done and where it was committed",
+            "optional": true
+          },
+          "project": {
+            "type": "string",
+            "description": "The project's name or id; leave out for this chat's project",
+            "optional": true
+          }
+        },
+        "run": "toolMarkDone"
+      },
+      {
         "id": "list",
         "description": "The user's task queue: each task's status and report summary. By default this chat's project's queue; `project` names another project's (its name or id); `all` lists every project's queue compactly (project name and id, then each task's id, status and title), to find a task anywhere and then change it with addon_tasks_edit and its `project`.",
         "params": {

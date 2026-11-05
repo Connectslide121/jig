@@ -5592,3 +5592,27 @@ choice of Telegram and everything below: Claude, on my own.
 - **Disclosure:** a fixed line under the header, "AI-generated report · check important details",
   with the provider mark, model and when it was made.
 
+## D-356: You can mark a task that ended in Error or without a report as done
+
+- Status: accepted. Extends late and revised reports (D-318, D-353).
+- **Who:** Jon, 2026-11-05: a ChatGPT task did all its work and committed it, then hit its plan's
+  usage limit before reporting; it showed Error, its chat couldn't report (still at its limit) and no
+  other chat may report it. He wants to close it as done by hand, from its menu, with an optional
+  note, shown as set by him rather than reported. Details below are Claude, on my own.
+- **Rule:** only a finished task in Error or No report (`canMarkDone`); others keep their own way
+  (a report, a revision, Run again). `markDone` sets Done and a report `{ outcome: done, summary:
+  note or "Marked as done by you.", no notes or follow-ups }`, keeps the times, cost and chat, drops
+  the error into `markedDone: { at, was, error? }`. Its chat may still report it later (a revision).
+  Being Done, it counts as done everywhere (queue strip, History, dashboard); a closed run's copy in
+  History follows, as late reports do.
+- **From a chat: a new tool, not `addon_tasks_edit`.** `addon_tasks_mark_done { taskId, note?,
+  project? }` for when the user asks ("mark t33 done"). Edit only changes queued tasks and is safe
+  while the queue runs; closing an ended task is a different act, so it gets its own tool, which is
+  not read-only: the user approves each call on its card. Its description says to use it only when
+  the user asks.
+- **Shown:** Mark as done… in the ⋯ menu (beside Put back, Run again and Remove, which stay) and in
+  the details' footer; a small modal with the task, its error and a one-line note (no inline
+  expander); a quiet hand-set mark left of the status badge (the revised mark's slot), so nothing
+  moves.
+- **Gap:** only tasks still in the queue; one only in History can't be marked.
+

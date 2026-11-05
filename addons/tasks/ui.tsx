@@ -45,9 +45,10 @@ import {
   PencilLine,
   Play,
   Plus,
+  UserCheck,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { DashboardView } from "./Dashboard";
 import { canReport } from "./lib/report";
 import { openReport, REPORT_OPEN_RUN } from "./Report";
@@ -85,6 +86,7 @@ import {
 } from "./lib/draft";
 import {
   type ChatGroup,
+  canMarkDone,
   canReportLate,
   chatGroups,
   counts,
@@ -97,6 +99,7 @@ import {
   isActive,
   isFinished,
   isReady,
+  MARKED_DONE_SUMMARY,
   type NewTask,
   type PermissionMode,
   PROVIDER_LABEL,
@@ -576,6 +579,7 @@ function QueuePanel({
 }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Task | undefined>();
+  const [marking, setMarking] = useState<Task | undefined>();
   const [open, setOpen] = useState<string | undefined>();
   const projects = useProjectList();
   const call = (method: string, args?: Record<string, unknown>) =>
@@ -664,6 +668,9 @@ function QueuePanel({
                 onSelect: () => call("reset", { ids: [task.id] }),
               },
               { label: "Run again", icon: "rotate-ccw", onSelect: () => call("runAgain", { id: task.id }) },
+              ...(canMarkDone(task)
+                ? [{ label: "Mark as done…", icon: "user-check", onSelect: () => setMarking(task) }]
+                : []),
             ]
           : []),
         ...(isActive(task)
@@ -837,6 +844,21 @@ function QueuePanel({
             setOpen(undefined);
           }}
           onAskReport={() => void askReport(openTask)}
+          onMarkDone={() => {
+            setOpen(undefined);
+            setMarking(openTask);
+          }}
+        />
+      )}
+      {marking && (
+        <MarkDoneDialog
+          task={marking}
+          index={queue.tasks.findIndex((t) => t.id === marking.id)}
+          onClose={() => setMarking(undefined)}
+          onSave={async (note) => {
+            await call("markDone", { id: marking.id, note });
+            setMarking(undefined);
+          }}
         />
       )}
     </>
@@ -1748,6 +1770,19 @@ function TaskRow({
         ) : (
           <>
             {/* Reported again after it ended (D-353): a quiet mark left of the badge, so nothing moves. */}
+            {/* Marked done by you (D-356): the same quiet place, a hand-set mark instead of a pencil. */}
+            {task.markedDone && !task.revised && (
+              <span
+                className="flex shrink-0 items-center text-hint"
+                title={`Marked as done by you: was ${STATUS_LABEL[task.markedDone.was]}`}
+                data-testid={`task-marked-done-${task.id}`}
+              >
+                <UserCheck
+                  aria-label={`Marked done by you, was ${STATUS_LABEL[task.markedDone.was]}`}
+                  className="size-3"
+                />
+              </span>
+            )}
             {task.revised && (
               <span
                 className="flex shrink-0 items-center text-hint"
@@ -1801,6 +1836,7 @@ function TaskDialog({
   onQueue,
   onRunAgain,
   onAskReport,
+  onMarkDone,
 }: {
   ctx: AddonUiContext;
   task: Task;
@@ -1813,6 +1849,8 @@ function TaskDialog({
   onRunAgain: () => Promise<void>;
   /** In the queue: ask the chat of a task that ended without a report for one (D-318). */
   onAskReport?: () => void;
+  /** In the queue: mark a task that ended in Error or without a report done by hand (D-356). */
+  onMarkDone?: () => void;
 }) {
   const report = task.report;
   const [queued, setQueued] = useState<Set<number>>(new Set());
@@ -1896,6 +1934,17 @@ function TaskDialog({
               Ask for a report
             </Button>
           )}
+          {onMarkDone && canMarkDone(task) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={UserCheck}
+              onClick={onMarkDone}
+              data-testid="task-details-mark-done"
+            >
+              Mark as done…
+            </Button>
+          )}
           {isFinished(task) && (
             <Button size="sm" variant="ghost" onClick={() => void onRunAgain()}>
               Run again
@@ -1911,6 +1960,15 @@ function TaskDialog({
         <div className="flex items-center gap-2">
           <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
           {task.reportedLate && <Badge tone="neutral">Reported late</Badge>}
+          {task.markedDone && (
+            <span
+              className="text-xs text-muted"
+              title={task.markedDone.error ? `Its error: ${task.markedDone.error}` : undefined}
+              data-testid="task-marked-done"
+            >
+              Marked done by you {when(task.markedDone.at)}, was {STATUS_LABEL[task.markedDone.was]}
+            </span>
+          )}
           {task.revised && (
             <span
               className="text-xs text-muted"
@@ -2756,5 +2814,93 @@ export function ReviewTasks({ request, status, projectId: chatProject, respond }
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Marks a task done by hand (D-356): for one that ended in Error or without a report although its chat
+ * did the work (say it hit its plan's limit first). An optional one-line note becomes its summary.
+ */
+function MarkDoneDialog({
+  task,
+  index,
+  onClose,
+  onSave,
+}: {
+  task: Task;
+  index: number;
+  onClose: () => void;
+  onSave: (note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const noteId = useId();
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSave(note);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      width="md"
+      testId="tasks-mark-done"
+      title={<span className="truncate">Mark task {index + 1} as done</span>}
+      footer={
+        <>
+          <Button size="sm" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={UserCheck}
+            disabled={saving}
+            onClick={() => void save()}
+            data-testid="tasks-mark-done-save"
+          >
+            Mark as done
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <StatusIcon status={task.status} />
+          <span className="min-w-0 truncate text-sm text-fg">{task.title}</span>
+          <Badge tone={STATUS_TONE[task.status]}>{STATUS_LABEL[task.status]}</Badge>
+        </div>
+        {task.error && (
+          <div className="line-clamp-2 text-xs text-muted" title={task.error}>
+            {task.error}
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <label htmlFor={noteId} className="text-xs text-muted">
+            Note (optional): what was done, where it was committed
+          </label>
+          <Input
+            autoFocus
+            value={note}
+            maxLength={500}
+            placeholder={MARKED_DONE_SUMMARY}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !saving) void save();
+            }}
+            id={noteId}
+            data-testid="tasks-mark-done-note"
+          />
+        </div>
+        <div className="text-xs text-hint">
+          It becomes Done, with your note as its summary, shown as set by you rather than reported by a chat.
+          Its times, cost and chat stay.
+        </div>
+      </div>
+    </Dialog>
   );
 }

@@ -525,6 +525,45 @@ test("Tasks: a turn without a report is asked once for it, and a chat reports la
   await expect(page.getByTestId("jig-message")).toHaveCount(2);
 });
 
+test("Tasks: a task that ended without a report is marked done by hand, with a note (D-356)", async ({
+  page,
+  jigHome,
+}) => {
+  test.setTimeout(90_000);
+  const ids = await twoProjects(page, jigHome);
+  const view = await openTasks(page);
+  await hostCall(page, "addons.call", {
+    id: "tasks",
+    method: "add",
+    args: { projectId: ids.shop, prompts: ["skip two reports for the screenshot"], newChat: true },
+  });
+  await view.getByTestId("tasks-start").click();
+  await expect(view.getByTestId("task-status-t1")).toContainText("No report", { timeout: 30000 });
+  const row = await view.getByTestId("task-t1").boundingBox();
+  // Its menu offers it; a dialog takes an optional note.
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Mark as done…" }).click();
+  const dialog = page.getByTestId("tasks-mark-done");
+  await dialog.getByTestId("tasks-mark-done-note").fill("Committed on main");
+  await dialog.getByTestId("tasks-mark-done-save").click();
+  await expect(dialog).toHaveCount(0);
+  await expect(view.getByTestId("task-status-t1")).toContainText("Done");
+  await expect(view.getByTestId("task-marked-done-t1")).toBeVisible();
+  await expect(view.getByTestId("task-t1")).toContainText("Committed on main");
+  expect(await view.getByTestId("task-t1").boundingBox()).toEqual(row);
+  // The details say it was you; the menu no longer offers it.
+  await view.getByTestId("task-t1").click();
+  await expect(page.getByTestId("task-marked-done")).toContainText("Marked done by you");
+  await expect(page.getByTestId("task-details-mark-done")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await view.getByTestId("task-t1").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "Mark as done…" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // History counts it as done.
+  await view.getByRole("tab", { name: "History" }).click();
+  await expect(view.getByTestId("tasks-run-0")).toContainText("Finished");
+});
+
 test("Tasks: a queue that runs on ChatGPT, and a task that runs on Claude in it (D-330)", async ({
   page,
   jigHome,

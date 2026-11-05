@@ -67,6 +67,11 @@ export interface Task {
    * report the new one replaced (only the last one; the chat has the rest).
    */
   revised?: { at: string; from: TaskReport };
+  /**
+   * You marked it done by hand (D-356), after it ended in Error or without a report: when, what it
+   * was, and its error. Its report is yours (`summary`: your note), not a chat's.
+   */
+  markedDone?: { at: string; was: TaskStatus; error?: string };
   /** Jig closed while its chat worked on it (status error); it can still be reported late. */
   interrupted?: boolean;
   /** While it needs you: what its chat waits for (D-326). */
@@ -368,6 +373,40 @@ export function canReportLate(task: Task): boolean {
     task.status === "no_report" ||
     (task.status === "error" && (!!task.interrupted || !!task.error?.startsWith("Interrupted")))
   );
+}
+
+/**
+ * A task you can mark done by hand (D-356): it ended in Error or without a report, e.g. its chat did
+ * the work and hit its plan's limit before reporting, so no chat can report it.
+ */
+export function canMarkDone(task: Task): boolean {
+  return isFinished(task) && (task.status === "error" || task.status === "no_report");
+}
+
+/** What a task marked done by hand says when you leave the note empty. */
+export const MARKED_DONE_SUMMARY = "Marked as done by you.";
+
+/**
+ * Marks a task done by hand (D-356): status Done, a report whose summary is your note (or
+ * `MARKED_DONE_SUMMARY`), keeping its times and cost, and `markedDone` with what it was and its error.
+ * Throws when it can't be (`canMarkDone`). A chat may still report it later (a revision, D-353).
+ */
+export function markDone(queue: Queue, id: string, note = "", at = new Date().toISOString()): Queue {
+  const task = queue.tasks.find((t) => t.id === id);
+  if (!task) throw new Error(`There is no task ${id} in this queue`);
+  if (!canMarkDone(task))
+    throw new Error(
+      `Task ${id} is ${STATUS_LABEL[task.status].toLowerCase()}; only a task that ended in Error or without a report can be marked done`,
+    );
+  const { error, interrupted: _interrupted, waitingFor: _waiting, limitResetsAt: _reset, ...rest } = task;
+  const summary = note.trim().split("\n")[0]!.trim().slice(0, 500) || MARKED_DONE_SUMMARY;
+  const done: Task = {
+    ...rest,
+    status: "done",
+    report: { outcome: "done", summary, notes: [], followUps: [] },
+    markedDone: { at, was: task.status, ...(error ? { error } : {}) },
+  };
+  return { ...queue, tasks: queue.tasks.map((t) => (t.id === id ? done : t)) };
 }
 
 /** A task that ended with a report, which its chat may replace (D-353). */
@@ -1122,7 +1161,7 @@ export function listing(queue: Queue, projectDefault: TaskProvider = "claude"): 
   if (!queue.tasks.length) return "The task queue is empty.";
   const lines = queue.tasks.map(
     (t, i) =>
-      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
+      `${i + 1}. [${STATUS_LABEL[t.status]}${t.status === "queued" && t.leftOut ? ", left out" : ""}${t.reportedLate ? ", reported late" : ""}${t.markedDone ? ", marked done by the user" : ""}${t.revised ? `, revised from ${STATUS_LABEL[t.revised.from.outcome].toLowerCase()}` : ""}] ${t.title} (id ${t.id}${t.newChat ? "" : ", continues the previous chat"}, ${runsOnText(queue, t, projectDefault)})` +
       (t.report ? ` — ${t.report.summary}` : ""),
   );
   return [`The task queue is ${queue.running ? "running" : "paused"}. ${queueRunsOn(queue)}`, ...lines].join(

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { countTasks } from "./counts";
 import {
   addTasks,
   afterTurn,
@@ -6,7 +7,9 @@ import {
   BACKGROUND_WAIT_MS,
   CHATGPT_SIGNED_OUT,
   type ChatState,
+  canMarkDone,
   canReportLate,
+  canRevise,
   chatFinished,
   chatGroups,
   chatToContinue,
@@ -26,6 +29,8 @@ import {
   joinQueues,
   limitedTask,
   listing,
+  MARKED_DONE_SUMMARY,
+  markDone,
   moveTasks,
   nextTask,
   nudgeFrom,
@@ -1064,5 +1069,71 @@ describe("runProviders: what a run's tasks ran on", () => {
     expect(runProviders([t({ provider: "chatgpt", sentAt: undefined, status: "skipped" })]).counts).toEqual(
       [],
     );
+  });
+});
+
+describe("marking a task done by hand (D-356)", () => {
+  const ended = (over: Partial<Task>): Queue => ({
+    ...queued(["fix the cart"]),
+    tasks: [
+      {
+        ...queued(["fix the cart"]).tasks[0]!,
+        status: "error",
+        error: "ChatGPT's usage limit",
+        sentAt: "2026-11-05T10:00:00Z",
+        finishedAt: "2026-11-05T10:30:00Z",
+        costUsd: 0.4,
+        sessionId: "s1",
+        ...over,
+      },
+    ],
+  });
+
+  it("makes an Error or No report task Done with your note, keeping its times and cost", () => {
+    const q = markDone(
+      ended({}),
+      "t1",
+      "  Committed on main as abc123\nsecond line ",
+      "2026-11-05T11:00:00Z",
+    );
+    const t = q.tasks[0]!;
+    expect(t.status).toBe("done");
+    expect(t.report).toEqual({
+      outcome: "done",
+      summary: "Committed on main as abc123",
+      notes: [],
+      followUps: [],
+    });
+    expect(t.markedDone).toEqual({
+      at: "2026-11-05T11:00:00Z",
+      was: "error",
+      error: "ChatGPT's usage limit",
+    });
+    expect(t.error).toBeUndefined();
+    expect([t.sentAt, t.finishedAt, t.costUsd, t.sessionId]).toEqual([
+      "2026-11-05T10:00:00Z",
+      "2026-11-05T10:30:00Z",
+      0.4,
+      "s1",
+    ]);
+    expect(countTasks(q.tasks).by.done).toBe(1);
+    const silent = markDone(ended({ status: "no_report", error: undefined }), "t1");
+    expect(silent.tasks[0]!.report!.summary).toBe(MARKED_DONE_SUMMARY);
+    expect(silent.tasks[0]!.markedDone!.was).toBe("no_report");
+  });
+
+  it("refuses other statuses and unknown tasks", () => {
+    expect(canMarkDone(ended({}).tasks[0]!)).toBe(true);
+    for (const status of ["queued", "running", "done", "failed", "blocked", "skipped"] as const) {
+      expect(canMarkDone(ended({ status }).tasks[0]!)).toBe(false);
+      expect(() => markDone(ended({ status }), "t1")).toThrow("only a task that ended in Error");
+    }
+    expect(() => markDone(ended({}), "t9")).toThrow("no task t9");
+  });
+
+  it("a chat can still report it later, as a revision", () => {
+    const q = markDone(ended({}), "t1");
+    expect(canRevise(q.tasks[0]!)).toBe(true);
+    expect(listing(q)).toContain("[Done, marked done by the user]");
   });
 });

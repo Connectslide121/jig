@@ -438,6 +438,14 @@ Queue tab. A move or chat change the rules don't allow is refused with the reaso
 only queued tasks change, so it is safe while the queue runs. Try it: ask a chat "make task t3
 continue the chat before it" or "move t5 to the top". Unit tests cover the rules (they pass).
 
+Mark a task done by hand (2026-11-05, D-356): a task that ended in Error or without a report (say
+its ChatGPT chat committed the work, then hit its plan's limit before reporting) has **Mark as
+done…** in its ⋯ menu and details: an optional one-line note becomes its summary, it turns Done
+(counted as done in the queue and History), with a quiet mark beside the status and "Marked done by
+you, was Error" in the details. From any chat, "mark t33 done" uses `addon_tasks_mark_done`, which
+you approve on its card. Covered by unit tests and `e2e/tasks.spec.ts`. Gap: a task already cleared
+from the queue (only in History) can't be marked.
+
 A run report on demand (2026-11-05, D-355): in Tasks → History, a finished run's row has a report
 action (hover, left of Status) and its page a **Run report** button; it opens a tab with an AI-made
 report from the tasks' reports: a summary and one line per task (where it was committed), things to

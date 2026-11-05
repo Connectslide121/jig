@@ -28,6 +28,7 @@ import {
   joinQueues,
   limitedTask,
   listing,
+  markDone as markTaskDone,
   moveTasks,
   type NewTask,
   nextTask,
@@ -644,6 +645,18 @@ export async function skip(args: ProjectArgs & { id: string }, api: AddonHostApi
   });
 }
 
+/** Marks a task that ended in Error or without a report done by hand, with your note (D-356). */
+export async function markDone(
+  args: ProjectArgs & { id: string; note?: string },
+  api: AddonHostApi,
+): Promise<void> {
+  const projectId = await projectArg(api, args?.projectId);
+  await change(api, projectId, (q) => [
+    markTaskDone(q, String(args.id), typeof args.note === "string" ? args.note : ""),
+    undefined,
+  ]);
+}
+
 export async function runAgain(args: ProjectArgs & { id: string }, api: AddonHostApi): Promise<void> {
   await change(api, await projectArg(api, args?.projectId), async (q) => [
     await advance(api, requeue(q, args.id)),
@@ -962,6 +975,29 @@ export async function toolEdit(
       .filter(Boolean)
       .join(" and ");
     return [next, `Changed ${what}.\n${listing(next, fallback)}`];
+  });
+}
+
+/**
+ * `addon_tasks_mark_done` (D-356): marks a task done when the user asks in a chat, e.g. "mark t33 done"
+ * after its own chat did the work but couldn't report. Not read-only, so the user approves each call.
+ */
+export async function toolMarkDone(
+  args: ChatArgs & { taskId?: unknown; note?: unknown; project?: string },
+  api: AddonHostApi,
+): Promise<string> {
+  const id = typeof args.taskId === "string" ? args.taskId.trim() : "";
+  if (!id) throw new Error("Say which task to mark done (its id, from addon_tasks_list)");
+  const projectId = await projectNamed(api, args.project, args.chat?.projectId);
+  if (!projectId) throw new Error("Say which project's queue (this chat has none)");
+  const note = typeof args.note === "string" ? args.note : "";
+  return change(api, projectId, (q) => {
+    const next = markTaskDone(q, id, note);
+    const task = next.tasks.find((t) => t.id === id)!;
+    return [
+      next,
+      `Marked task ${next.tasks.indexOf(task) + 1} ("${task.title}") as done: ${task.report!.summary} The user sees it in the task queue.`,
+    ];
   });
 }
 
