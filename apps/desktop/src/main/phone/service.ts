@@ -158,6 +158,9 @@ interface SentRequest {
   text: string;
 }
 
+/** The poll loop's warning while Telegram doesn't answer; any call that gets through clears it. */
+const UNREACHABLE = "Telegram can't be reached. Jig keeps trying.";
+
 const defaultPause = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, ms);
@@ -179,6 +182,8 @@ export class PhoneService {
   private wrongCodes = 0;
   private error: string | undefined;
   private poll: AbortController | undefined;
+  /** Ends the poll loop's current round (its poll or pause), so it asks Telegram again at once. */
+  private nudge: AbortController | undefined;
   private offset = 0;
   /**
    * Per thread (a topic, 0 without topics): the chat your messages there go to, the last one Jig
@@ -243,6 +248,7 @@ export class PhoneService {
   async checkTopics(): Promise<void> {
     if (!this.api) return;
     const me = await this.api.call<TelegramUser>("getMe");
+    this.reached();
     if (this.topics === (me.has_topics_enabled === true)) return;
     this.topics = me.has_topics_enabled === true;
     this.changed();
@@ -604,6 +610,7 @@ export class PhoneService {
         thread = undefined;
         return deliver(undefined);
       });
+      this.reached();
       if (sessionId) {
         this.remember(sent.message_id, sessionId);
         this.persist();
@@ -644,11 +651,15 @@ export class PhoneService {
     let failures = 0;
     while (!controller.signal.aborted && this.api) {
       const started = Date.now();
+      // wake() aborts this round only: the poll or pause in progress ends and the loop asks again now.
+      const nudge = new AbortController();
+      this.nudge = nudge;
+      const signal = AbortSignal.any([controller.signal, nudge.signal]);
       try {
         const updates = await this.api.call<TelegramUpdate[]>(
           "getUpdates",
           { offset: this.offset, timeout: 50, allowed_updates: ["message", "callback_query"] },
-          AbortSignal.any([controller.signal, AbortSignal.timeout(65_000)]),
+          AbortSignal.any([signal, AbortSignal.timeout(65_000)]),
         );
         failures = 0;
         if (this.error) {
@@ -661,9 +672,14 @@ export class PhoneService {
             this.deps.log?.warn("A message from the phone failed", error),
           );
         }
-        if (!updates.length && Date.now() - started < 500) await pause(1000, controller.signal);
+        if (!updates.length && Date.now() - started < 500) await pause(1000, signal);
       } catch (error) {
         if (controller.signal.aborted) break;
+        // Woken (the computer resumed, or a send got through) while asking: ask again, no error.
+        if (nudge.signal.aborted) {
+          failures = 0;
+          continue;
+        }
         failures++;
         const status = error instanceof TelegramError ? error.status : undefined;
         this.error =
@@ -671,13 +687,30 @@ export class PhoneService {
             ? "Telegram no longer accepts the bot's token. Set the phone up again."
             : status === 409
               ? "Another program is reading this bot's messages. Use this bot only for Jig."
-              : "Telegram can't be reached. Jig keeps trying.";
+              : UNREACHABLE;
         this.changed();
         if (status === 401) break;
-        await pause(Math.min(60_000, 2000 * 2 ** Math.min(failures, 5)), controller.signal);
+        await pause(Math.min(60_000, 2000 * 2 ** Math.min(failures, 5)), signal);
+        if (nudge.signal.aborted) failures = 0;
       }
     }
     if (this.poll === controller) this.poll = undefined;
+  }
+
+  /**
+   * The computer woke from sleep or was unlocked: a poll begun before sleeping may hang until its
+   * timeout and the pause after failures grows to a minute, so end both and ask Telegram now.
+   */
+  wake(): void {
+    this.nudge?.abort();
+  }
+
+  /** A call to Telegram went through: an "unreachable" warning is stale (not a 401/409 one). */
+  private reached(): void {
+    if (this.error !== UNREACHABLE) return;
+    this.error = undefined;
+    this.changed();
+    this.wake();
   }
 
   private async handle(update: TelegramUpdate): Promise<void> {

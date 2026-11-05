@@ -722,8 +722,11 @@ notes, `jig_knowledge_read` reads a document. The renderer shows them on the pro
 (POST JSON, long polling with `getUpdates`; `JIG_TELEGRAM_API` only with the fake engine);
 `messages.ts` is pure (what to send for a status change or a permission card, buttons, and the
 `PermissionDecision` a tap or reply gives); `service.ts` (`PhoneService`, injected dependencies,
-unit-tested) pairs by a code, polls, routes replies to chats and edits answered messages; `index.ts`
-wires it to Electron (safeStorage, `powerMonitor` idle, `phone.*` IPC, `onSessionStatus`,
+unit-tested) pairs by a code, polls, routes replies to chats and edits answered messages. The poll
+backs off after failures (up to a minute) with the "can't be reached" warning; `wake()` ends the
+current poll or pause and asks again at once, and any call that gets through (a send, `getMe`)
+clears that warning (never the 401/409 ones). `index.ts`
+wires it to Electron (safeStorage, `powerMonitor` idle, and `resume`/`unlock-screen` → `wake()`, `phone.*` IPC, `onSessionStatus`,
 `onPermissionCard` from the session manager, a 30 s sweep) and registers `jig_phone_send`. The
 renderer has Settings → Phone (`features/phone/`) and sees only `PhoneState`, never the token.
 `concierge.ts` registers the `concierge` session kind (`registerSessionKind`: its prompt, Jig's tool

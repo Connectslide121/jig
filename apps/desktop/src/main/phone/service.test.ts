@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ChatItem, PermissionDecision, SessionMeta } from "../../shared/engine";
 import type { PhoneState } from "../../shared/phone";
 import type { PermissionItem } from "./messages";
@@ -904,5 +904,92 @@ describe("PhoneService voice", () => {
     await t.service.chatStatus(meta({ status: "working" }));
     await t.service.chatStatus(meta({ status: "idle" }));
     expect(t.voices).toHaveLength(1);
+  });
+});
+
+describe("PhoneService reconnecting", () => {
+  /**
+   * Telegram as the computer sees it: every call fails while `down` (or with `refuse`'s status);
+   * getUpdates otherwise answers from `answers`, then hangs like a long poll. Pauses wait until woken.
+   */
+  function flaky(t: ReturnType<typeof setup>, answers: TelegramUpdate[][] = []) {
+    const net = { down: true, refuse: undefined as number | undefined, polls: 0, pauses: [] as number[] };
+    const call = t.api.call.bind(t.api);
+    t.api.call = (async (method: string, params?: Record<string, unknown>, signal?: AbortSignal) => {
+      if (method === "getUpdates") {
+        net.polls++;
+        if (net.refuse) throw new TelegramError("No", net.refuse);
+      }
+      if (net.down) throw new TelegramError("Telegram can't be reached.");
+      if (method !== "getUpdates") return call(method, params, signal);
+      const answer = answers.shift();
+      if (answer) return answer;
+      return new Promise((_, reject) =>
+        signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+      );
+    }) as TelegramApi["call"];
+    (t.service as unknown as { deps: { pause(ms: number, signal: AbortSignal): Promise<void> } }).deps.pause =
+      (ms, signal) => {
+        net.pauses.push(ms);
+        return new Promise((resolve) => signal.addEventListener("abort", () => resolve()));
+      };
+    return net;
+  }
+
+  it("asks Telegram again at once when the computer wakes, instead of waiting out the pause", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    const net = flaky(t, [[]]);
+    await t.service.start();
+    await vi.waitFor(() => expect(net.pauses).toEqual([4000]));
+    expect(t.service.state().error).toContain("can't be reached");
+
+    net.down = false;
+    t.service.wake();
+    // The empty answer at once proves Telegram is back (and is followed by the short pause).
+    await vi.waitFor(() => expect(net.pauses).toEqual([4000, 1000]));
+    expect(net.polls).toBe(2);
+    expect(t.service.state().error).toBeUndefined();
+
+    // The next poll hangs like a long poll; waking ends it and asks again, without calling it an error.
+    net.pauses.length = 0;
+    t.service.wake();
+    await vi.waitFor(() => expect(net.polls).toBe(3));
+    t.service.wake();
+    await vi.waitFor(() => expect(net.polls).toBe(4));
+    expect(t.service.state().error).toBeUndefined();
+    expect(net.pauses).toEqual([]);
+  });
+
+  it("clears the unreachable warning once a message gets through, and polls again", async () => {
+    const t = setup({ saved: paired });
+    current = t.service;
+    const net = flaky(t);
+    await t.service.start();
+    await vi.waitFor(() => expect(net.pauses).toHaveLength(1));
+    expect(t.service.state().error).toContain("can't be reached");
+    net.down = false;
+    await t.service.test();
+    expect(t.service.state().error).toBeUndefined();
+    expect(t.states.at(-1)?.error).toBeUndefined();
+    await vi.waitFor(() => expect(net.polls).toBe(2));
+  });
+
+  it("keeps the token and other-reader warnings when a message gets through", async () => {
+    for (const status of [401, 409]) {
+      const t = setup({ saved: paired });
+      current = t.service;
+      const net = flaky(t);
+      net.down = false;
+      net.refuse = status;
+      await t.service.start();
+      await vi.waitFor(() => expect(t.service.state().error).toBeDefined());
+      const error = t.service.state().error;
+      expect(error).not.toContain("can't be reached");
+      await t.service.test();
+      expect(t.messages().at(-1)).toContain("A test from Jig");
+      expect(t.service.state().error).toBe(error);
+      t.service.stop();
+    }
   });
 });

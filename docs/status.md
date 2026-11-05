@@ -1,5 +1,14 @@
 # Status
 
+Phone reconnects after sleep (2026-11-05): the top bar's phone dot no longer says "Telegram can't be
+reached. Jig keeps trying." for up to a minute after the computer wakes or the network returns. On
+resume from sleep or unlocking, Jig drops the poll that was in flight and its backoff pause and asks
+Telegram at once; any message that gets through also clears the warning (the bad-token and
+another-program warnings stay). Unit tests cover both. A network that comes back while the computer
+stays awake is still noticed at the next backoff round (Electron's main process has no online event).
+**Check on your machine:** sleep the PC with the phone connected, wake it, and the dot should be green
+within a few seconds.
+
 Claude reads Pipelines and Repos (2026-11-05, D-371, Jon): chats and Jig on your phone can now answer
 "are any pipelines running?", "why did the last run fail?" and "is everything pushed?" with the add-ons'
 tools. Pipelines: `addon_pipelines_pipelines` (each pipeline's newest run), `addon_pipelines_runs`

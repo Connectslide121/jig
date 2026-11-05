@@ -126,6 +126,9 @@ page), running on the helper model with only Jig's tools (no file tools, no shel
       marked "🤖 Jig · AI", also while you're at the computer. Plain text never goes to a chat on its
       own any more: only a reply to a chat's message, or a chat picked with /chats (whose first
       button, "🤖 Jig itself", goes back).
+- [x] Reconnect right after sleep: `powerMonitor` `resume`/`unlock-screen` end the poll's backoff
+      pause and a poll begun before sleeping, and a message that gets through clears "Telegram can't
+      be reached" (not the token/other-reader warnings). No main-process "online" event exists.
 - [ ] Check the concierge on a real bot: that `tools: ["ToolSearch"]` leaves the add-on tools
       reachable, how well it starts chats from loose wording, and the cost of the helper model.
 - [x] Pipelines and Repos tools (D-371): `addon_pipelines_pipelines` / `_runs` / `_run` (read only,

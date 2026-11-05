@@ -196,6 +196,11 @@ export async function startPhone(): Promise<void> {
   onConciergeStartedChat((sessionId) => s.openRoom(sessionId, s.askedIn()));
 
   onConfigChange(() => s.refresh());
+  // Back from sleep or the lock screen: ask Telegram now instead of after a stale poll or a backoff.
+  // Electron's main process has no "online" event (only net.isOnline()), so a network that returns
+  // while awake is caught by the next backoff round or a send that gets through.
+  powerMonitor.on("resume", () => s.wake());
+  powerMonitor.on("unlock-screen", () => s.wake());
   onSessionStatus((meta) => void s.chatStatus(meta).catch((error) => log.warn("Phone status failed", error)));
   onPermissionCard((sessionId, item) => {
     void m
