@@ -120,6 +120,11 @@ export interface Health {
   paired: boolean;
   /** The 1:1 chat with the paired user is known (the bot can write first). */
   personal: boolean;
+  /**
+   * Someone in the bot's tenant added the app for themselves (its install event, or a message in a
+   * 1:1 chat), before or after pairing: setup ticks "Upload the app for yourself" with it.
+   */
+  app?: boolean;
   /** The team the bot was added to, if any. */
   team?: { id: string; name?: string };
   channels: number;
@@ -141,3 +146,14 @@ export const MAX_WAIT_S = 25;
 export const MAX_IMAGE_BYTES = 1024 * 1024;
 /** Teams rejects messages over 100 KB; base64 images don't count. */
 export const MAX_TEXT_BYTES = 80 * 1024;
+
+/**
+ * The resource-specific consent the bot's app package asks a team for (D-370, D-380): make channels,
+ * rename them, and read what you write in its threads without @mentioning the bot. Jig's setup and
+ * the tenant check (`scripts/teams-check-lib.ts`) use the same list.
+ */
+export const RSC_PERMISSIONS = [
+  "Channel.Create.Group",
+  "ChannelSettings.ReadWrite.Group",
+  "ChannelMessage.Read.Group",
+] as const;

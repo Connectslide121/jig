@@ -5,16 +5,10 @@
  * grant an app RSC as its owner. Pure parts here; `teams-check.ts` writes and runs them.
  */
 import { crc32, deflateSync } from "node:zlib";
+import { RSC_PERMISSIONS } from "../relay/teams/src/protocol.ts";
 
-/**
- * The RSC permissions Jig's bot asks a team for: make channels, rename them (D-370), and read what
- * you write in its threads without @mentioning the bot (D-380).
- */
-export const RSC_PERMISSIONS = [
-  "Channel.Create.Group",
-  "ChannelSettings.ReadWrite.Group",
-  "ChannelMessage.Read.Group",
-] as const;
+/** The RSC permissions Jig's bot asks a team for (one list, with setup's app package). */
+export { RSC_PERMISSIONS };
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isGuid = (s: string | undefined): s is string => !!s && GUID.test(s);

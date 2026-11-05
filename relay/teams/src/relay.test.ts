@@ -326,6 +326,7 @@ describe("POST /api/channels and GET /api/health", () => {
       version: "9.9.9",
       paired: true,
       personal: true,
+      app: true,
       team: undefined,
       channels: 0,
       rsc: "unknown",
@@ -345,6 +346,25 @@ describe("POST /api/channels and GET /api/health", () => {
       rsc: "granted",
     });
     expect(channels.granted).toHaveBeenCalledWith("group-1");
+  });
+
+  it("tells setup the app was added for yourself, before pairing, until it is removed", async () => {
+    const { relay } = setup();
+    const health = async () => ((await relay.health(keyed())).jsonBody as { app: boolean }).app;
+    expect(await health()).toBe(false);
+    const install = {
+      type: "installationUpdate",
+      action: "add",
+      from: { id: "29:alex", aadObjectId: "oid-alex" },
+      conversation: { id: "a:alex", conversationType: "personal", tenantId: TENANT },
+    };
+    await deliver(relay, install);
+    expect(await health()).toBe(true);
+    await deliver(relay, { ...install, action: "remove" });
+    expect(await health()).toBe(false);
+    // Another tenant's install isn't kept, so it doesn't count either.
+    await deliver(relay, { ...install, conversation: { ...install.conversation, tenantId: "other" } });
+    expect(await health()).toBe(false);
   });
 
   it("forgets the team when the app is removed from it", async () => {

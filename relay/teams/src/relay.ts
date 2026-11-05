@@ -123,6 +123,12 @@ export function createRelay(deps: RelayDeps) {
 
   async function remember(a: RelayActivity, serviceUrl: string, pairing: Pairing | undefined) {
     const cd = a.channelData;
+    if (a.conversation.conversationType === "personal") {
+      // The app added for yourself (setup's first Teams step): its install event or any 1:1 message.
+      if (a.type === "installationUpdate" && a.action?.startsWith("remove")) await store.delete("app");
+      else if (a.type !== "conversationUpdate" || a.membersAdded?.length)
+        await store.set("app", { at: now() });
+    }
     if (a.conversation.conversationType === "personal" && a.from?.aadObjectId && a.type === "message") {
       const ref: PersonalRef = {
         conversationId: a.conversation.id,
@@ -385,6 +391,7 @@ export function createRelay(deps: RelayDeps) {
         version: config.version,
         paired: !!pairing,
         personal: !!pairing && !!(await store.get(`personal:${pairing.aadObjectId}`)),
+        app: !!(await store.get("app")),
         team: t && { id: t.teamId, name: t.name },
         channels: (await store.list("channel:")).length,
         rsc,
