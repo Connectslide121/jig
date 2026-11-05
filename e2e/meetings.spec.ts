@@ -529,6 +529,8 @@ test("Meetings: Teams chats in the lobby, and Chat with someone from Call…", a
 });
 
 test("Meetings chats: search, filters, Jig's pins and New chat (D-332)", async ({ jigHome }) => {
+  // A long walk with screenshots in both themes: about 50 s alone, over a minute beside the parallel suite.
+  test.setTimeout(120_000);
   const app = await launchJig(jigHome, { JIG_MEETINGS: "fake" });
   try {
     const main = await app.firstWindow();
