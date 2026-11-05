@@ -58,7 +58,7 @@ let file: TenantsFile = emptyTenantsFile();
 let active = DEFAULT_TENANT;
 const listeners = new Set<(state: TenantsState) => void>();
 /** The sign-in that is running (one at a time: each opens the browser). */
-let signingIn: { key: string; child: ChildProcess; cancelled: boolean } | undefined;
+let signingIn: { key: string; child: ChildProcess; cancelled: boolean; ended: Promise<unknown> } | undefined;
 
 const envFor = (key: string) => azEnv(key, { root: paths.azure(), home: homedir(), env: process.env, join });
 
@@ -167,6 +167,9 @@ async function checkAll(): Promise<TenantsState> {
  * ended well; rejects with `cancelled`, `az_missing` or `az_login_failed`.
  */
 async function login(key: string, requested: string | undefined, method?: SignInMethod): Promise<void> {
+  // A cancelled sign-in may take a moment to end (taskkill on Windows): wait for it, not refuse.
+  const ending = signingIn?.cancelled && signingIn.ended;
+  if (ending) await Promise.race([ending, new Promise((resolve) => setTimeout(resolve, 10_000))]);
   if (signingIn) throw new JigError("busy", "Another sign-in is running. Finish or cancel it first.");
   const dir = tenantConfigDir(paths.azure(), key, join);
   if (dir) await mkdir(dir, { recursive: true });
@@ -178,7 +181,11 @@ async function login(key: string, requested: string | undefined, method?: SignIn
     // The browser (or a code), never Windows' account window; no subscription question (LOGIN_ENV).
     env: { ...process.env, ...envFor(key), ...c.env, ...LOGIN_ENV },
   });
-  const run = { key, child, cancelled: false };
+  const code = new Promise<number | "missing">((resolve) => {
+    child.on("error", (error: NodeJS.ErrnoException) => resolve(error.code === "ENOENT" ? "missing" : 1));
+    child.on("close", (c) => resolve(c ?? 1));
+  });
+  const run = { key, child, cancelled: false, ended: code };
   signingIn = run;
   let output = "";
   const progress = (text: string) => {
@@ -194,18 +201,15 @@ async function login(key: string, requested: string | undefined, method?: SignIn
   child.stdout?.on("data", progress);
   child.stderr?.on("data", progress);
   const timer = setTimeout(() => stop(run), LOGIN_TIMEOUT);
-  const code = await new Promise<number | "missing">((resolve) => {
-    child.on("error", (error: NodeJS.ErrnoException) => resolve(error.code === "ENOENT" ? "missing" : 1));
-    child.on("close", (c) => resolve(c ?? 1));
-  });
+  const exit = await code;
   clearTimeout(timer);
   c.done();
-  signingIn = undefined;
+  if (signingIn === run) signingIn = undefined;
   emit("azure.signInProgress", { key, text: "", done: true });
   if (run.cancelled) throw new JigError("cancelled", "The sign-in was cancelled.");
-  if (code === "missing")
+  if (exit === "missing")
     throw new JigError("az_missing", "The Azure CLI (az) is not installed or not on PATH.");
-  if (code !== 0) throw new JigError("az_login_failed", errorLine(output) || "The sign-in didn't finish.");
+  if (exit !== 0) throw new JigError("az_login_failed", errorLine(output) || "The sign-in didn't finish.");
 }
 
 function stop(run: NonNullable<typeof signingIn>): void {
